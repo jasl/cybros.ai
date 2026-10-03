@@ -1,0 +1,155 @@
+module CybrosAgent
+  module Platform
+    class Session < Data
+      attr_reader public_id: String
+      attr_reader kind: String
+      attr_reader expires_at: String
+
+      def self.new: (public_id: String, kind: String, expires_at: String) -> instance
+    end
+
+    class SessionGrant < Data
+      include Redacted
+
+      attr_reader session: Session
+      attr_reader token: String
+      attr_reader token_type: String
+
+      def self.new: (session: Session, token: String, token_type: String) -> instance
+      def inspect: () -> String
+    end
+
+    class Member < Data
+      attr_reader public_id: String
+      attr_reader kind: String
+      attr_reader role: String
+
+      def self.new: (public_id: String, kind: String, role: String) -> instance
+    end
+
+    class Profile < Data
+      attr_reader member: Member
+      attr_reader credential_plane: String?
+
+      def self.new: (member: Member, credential_plane: String?) -> instance
+    end
+
+    class CostUnit < Data
+      attr_reader cost_unit: String?
+
+      def self.new: (cost_unit: String?) -> instance
+    end
+
+    class Retention < Data
+      attr_reader execution_details_retention_days: Integer?
+
+      def self.new: (execution_details_retention_days: Integer?) -> instance
+    end
+
+    class RetentionContext
+      include Projections
+
+      PATH: String
+      def initialize: (dispatch: Api::_Dispatch) -> void
+      def fetch: () -> Retention
+      def update: (execution_details_retention_days: Integer?) -> Retention
+    end
+
+    module Projections
+      include Api::Parsing
+    end
+
+    class SessionContext
+      include Projections
+
+      def initialize: (dispatch: Api::_Dispatch) -> void
+      def fetch: () -> Session
+      def revoke: () -> nil
+    end
+
+    class ProfileContext
+      include Projections
+
+      def initialize: (dispatch: Api::_Dispatch) -> void
+      def fetch: () -> Profile
+    end
+
+    class CostUnitContext
+      include Projections
+
+      def initialize: (dispatch: Api::_Dispatch) -> void
+      def fetch: () -> CostUnit
+      def configure: (String cost_unit) -> CostUnit
+    end
+
+    class ModelCatalog < Api::ModelCatalog
+      PATH: String
+
+      def list: (?workload: String?, ?available: bool?) -> Array[Api::ModelCatalog::Model]
+    end
+
+    class ModelProviders < Api::ModelProviders
+      PATH: String
+
+      def provider: (String provider_id) -> ModelProviderContext
+    end
+
+    class ModelProviderContext
+      def initialize: (dispatch: Api::_Dispatch, provider_id: String) -> void
+      def fetch: () -> Api::ModelProviders::Lane
+      def configuration: () -> ModelProviderConfiguration
+      def set_definition: (definition: Hash[String, untyped], expected_lock_version: Integer?) -> ModelProviderConfiguration
+      def reset_definition: (expected_lock_version: Integer?) -> ModelProviderConfiguration
+      def set_model_definition: (model: String, definition: Hash[String, untyped], expected_lock_version: Integer?) -> ModelProviderConfiguration
+      def remove_model_definition: (model: String, expected_lock_version: Integer?) -> ModelProviderConfiguration
+      def reset_model_definition: (model: String, expected_lock_version: Integer?) -> ModelProviderConfiguration
+      def discover_models: () -> Array[DiscoveredModel]
+      def authorization: () -> ProviderAuthorizationContext
+      def enable: (?expected_lock_version: Integer?) -> Api::ModelProviders::Lane
+      def disable: (expected_lock_version: Integer?) -> Api::ModelProviders::Lane
+      def set_model_visibility: (model: String, visible: bool, expected_lock_version: Integer?) -> Api::ModelProviders::Lane
+      def install_api_key: (String api_key) -> Api::ModelProviders::Lane
+      def remove_api_key: () -> Api::ModelProviders::Lane
+    end
+
+    class ModelDefinition < Data
+      attr_reader model: String
+      attr_reader definition: Hash[String, untyped]?
+      attr_reader source: String
+      attr_reader removed: bool
+      def self.new: (model: String, definition: Hash[String, untyped]?, source: String, removed: bool) -> instance
+    end
+
+    class ModelProviderConfiguration < Data
+      attr_reader provider: Api::ModelProviders::Lane
+      attr_reader definition: Hash[String, untyped]?
+      attr_reader source: String
+      attr_reader models: Array[ModelDefinition]
+      def self.new: (provider: Api::ModelProviders::Lane, definition: Hash[String, untyped]?, source: String, models: Array[ModelDefinition]) -> instance
+    end
+
+    class DiscoveredModel < Data
+      attr_reader id: String
+      attr_reader display_name: String?
+      def self.new: (id: String, display_name: String?) -> instance
+    end
+
+    module ModelProviderConfigurationProjections
+      include Api::ModelProviderProjections
+    end
+  end
+
+  class Sessions < Api::BaseClient
+    def initialize: (base_url: String, ?transport: _Transport?, ?request_timeout: Numeric) -> void
+    def create: (email: String, password: String) -> Platform::SessionGrant
+  end
+
+  class PlatformClient < Api::BaseClient
+    def session: () -> Platform::SessionContext
+    def profile: () -> Platform::ProfileContext
+    def cost_unit: () -> Platform::CostUnitContext
+    def retention: () -> Platform::RetentionContext
+    def models: () -> Platform::ModelCatalog
+    def model_providers: () -> Platform::ModelProviders
+  end
+end

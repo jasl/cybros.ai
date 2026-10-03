@@ -1,0 +1,36 @@
+<% content_for :title, "Join Nexus" %>
+
+<div class="space-y-8">
+  <header class="space-y-1.5 text-center">
+    <h1 class="wrap-anywhere text-2xl font-semibold tracking-tight">Join <%= @invitation.account.name %></h1>
+    <p class="text-base-content/60">
+      You were invited as <span class="font-medium"><%= @invitation.role %></span> with
+      <span class="hyphens-none wrap-anywhere font-medium"><%= @invitation.email %></span>
+    </p>
+  </header>
+
+  <%= render "layouts/shared/flash" %>
+
+  <% if @errors.present? %>
+    <div role="alert" class="alert alert-error">
+      <span class="iconify lucide--circle-alert size-5" aria-hidden="true"></span>
+      <span>Some fields need attention before you can join.</span>
+    </div>
+  <% end %>
+
+  <%= form_with url: join_path, scope: :acceptance do |form| %>
+    <%= hidden_field_tag :token, params[:token] %>
+    <fieldset class="fieldset">
+      <%= form.label :display_name, "Your name", class: "label" %>
+      <%= validated_field form, :text_field, :display_name, @errors[:display_name], value: @submitted_display_name, required: true, autofocus: true, autocomplete: "name", placeholder: "Enter your display name" %>
+
+      <%= form.label :password, "Password", class: "label mt-2" %>
+      <%= validated_field form, :password_field, :password, @errors[:password], required: true, autocomplete: "new-password", placeholder: "Enter a password", maxlength: 72 %>
+
+      <%= form.label :password_confirmation, "Repeat password", class: "label mt-2" %>
+      <%= validated_field form, :password_field, :password_confirmation, @errors[:password_confirmation], required: true, autocomplete: "new-password", placeholder: "Repeat the password", maxlength: 72 %>
+
+      <%= form.submit "Accept invitation", class: "btn btn-primary btn-block mt-4" %>
+    </fieldset>
+  <% end %>
+</div>

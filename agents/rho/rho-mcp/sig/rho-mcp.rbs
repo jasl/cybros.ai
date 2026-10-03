@@ -1,0 +1,509 @@
+module Rho
+  module Mcp
+    VERSION: String
+    NAME: String
+    LOCK: Mutex
+    REFERENCE_TOOLSET_BYTES: Integer
+    CLOSE_JOIN_SECONDS: Float
+
+    class Error < Rho::Runner::Error
+    end
+    class Unavailable < Error
+    end
+    class ServerGone < Error
+    end
+    class CallRefused < Error
+    end
+    class Closed < Error
+    end
+
+    class Entry < ::Data
+      attr_reader key: String
+      attr_reader row: untyped
+      attr_reader connection: Connection?
+      attr_reader curated: untyped
+      attr_reader documents: Documents::Curated?
+      attr_reader fault: String?
+      attr_reader state: String
+      attr_reader storage: Oauth::Storage?
+      def connected?: () -> bool
+      def announces?: (Symbol serves, String name) -> bool
+      def status: () -> [String, String?]
+    end
+
+    def self.settings_table: () -> untyped
+    def self.settings_table=: (untyped) -> untyped
+    def self.transport_factory: () -> ^(untyped row, read_timeout: Float?, ?oauth: untyped) -> untyped
+    def self.transport_factory=: (untyped) -> untyped
+    def self.child_env: (untyped row, ?Hash[String, String] current) -> Hash[String, String]
+    def self.entries: () -> Hash[String, Entry]
+    def self.connections: () -> Hash[String, Connection]
+    def self.call: (String server_key, String raw_name, untyped args, ?env: untyped, ?public_name: String) -> Rho::Runner::Result?
+    def self.documents_for: (Symbol serves) -> Array[Hash[String, String]]
+    def self.load_document: (Symbol serves, String name, untyped env) -> Rho::Runner::Result?
+    def self.close!: () -> nil
+    def self.reset!: () -> nil
+    def self.conversations: () -> Array[Conversations::Set]
+    def self.hold_conversation: (Conversations::Set set) -> Conversations::Set
+    def self.release_conversation: (Conversations::Set set) -> nil
+    def self.ledger: () -> Hash[Symbol, Array[Hash[String, untyped]]]
+    def self.report: () -> Hash[String, untyped]
+    def self.register: (untyped api) -> untyped
+    def self.connect: (untyped row, Array[Connection] built, Budget budget, ?storage: untyped, ?owner: String?, ?log: untyped) ?{ (Connection connection) -> untyped } -> Entry
+    def self.log_connected: (untyped row, Connection connection, Curation::Curated curated, ?documents: Documents::Curated?, ?owner: String?, ?log: untyped) -> untyped
+    def self.close_all: (Array[Connection] connections) -> nil
+
+    class Budget
+      BOUND: Integer
+      attr_reader ledger: Hash[Symbol, Array[Hash[String, untyped]]]
+      def initialize: (untyped announced) -> void
+      def self.entries_for: (untyped row, Curation::Curated curated) -> Array[Hash[String, untyped]]
+      def judge: (untyped row, Curation::Curated curated) -> Curation::Curated
+    end
+
+    # THE EDITOR'S SERVERS, PER CONVERSATION.
+    module Conversations
+      class Set
+        attr_reader anchor: String
+        attr_reader digest: String
+        attr_reader entries: Array[Entry]
+        attr_reader kernel_entries: Array[Hash[String, untyped]]
+        def initialize: (anchor: String, digest: String) { (Set set) -> Array[Entry] } -> void
+        def classes: () -> Array[Class]
+        def report: () -> Array[Hash[Symbol, String?]]
+        def closed?: () -> bool
+        def close: () -> nil
+        def detach: () -> Array[Connection]
+      end
+
+      def self?.open: (String anchor, untyped entries, api: untyped, ?log: untyped) -> Set
+      def self?.digest: (Array[Settings::Row | Settings::Fault] rows) -> String
+      def self?.entry_for: (Set set, Settings::Row | Settings::Fault row, Array[Connection] built, Budget budget, untyped log) -> Entry
+      def self?.caller_for: (Set set, Connection connection) -> untyped
+    end
+
+    class RedactingLog
+      def initialize: (untyped inner, Rho::Runner::Redact redact) -> void
+      def debug: (String event, **untyped fields) -> untyped
+      def info: (String event, **untyped fields) -> untyped
+      def warn: (String event, **untyped fields) -> untyped
+      def error: (String event, **untyped fields) -> untyped
+    end
+
+    module Naming
+      PREFIX: String
+      MAX_LENGTH: Integer
+      HASH_LENGTH: Integer
+      INVALID: Regexp
+      DOCUMENT_INVALID: Regexp
+      def self?.tool: (String server, String raw) -> String
+      def self?.document: (String server, String raw) -> String
+      def self?.digest: (String server, String raw) -> String
+    end
+
+    module Builtin
+      ROWS: Hash[String, Hash[String, untyped]]
+      def self?.under: (untyped table) -> untyped
+      def self?.overlaid: (Hash[String, untyped] row, Hash[String, untyped] person, String key) -> untyped
+    end
+
+    module Settings
+      class Malformed < Rho::Runner::Extensions::RegistrationError
+      end
+      TRANSPORTS: Array[String]
+      SERVES: Array[String]
+      KEY_FORMAT: Regexp
+      KEY_MAX_LENGTH: Integer
+      KEYS: Array[String]
+      ENABLED: String
+      DEFAULT_STARTUP_TIMEOUT_MS: Integer
+      DEFAULT_HTTP_TIMEOUT_MS: Integer
+      ALL_TOOLS: String
+      ACP_TYPES: Array[String]
+      ACP_UNSUPPORTED_TYPES: Array[String]
+      OAUTH_KEYS: Array[String]
+      PORT_RANGE: Range[Integer]
+      AUTHORIZATION_HEADER: String
+      NO_TOOLS_SENTENCE: String
+
+      class Oauth < ::Data
+        attr_reader client_id: String?
+        attr_reader callback_port: Integer?
+      end
+
+      class Row < ::Data
+        attr_reader key: String
+        attr_reader transport: String
+        attr_reader command: String?
+        attr_reader args: Array[String]
+        attr_reader env: Hash[String, String]
+        attr_reader cwd: String?
+        attr_reader url: String?
+        attr_reader headers: Hash[String, String]
+        attr_reader tools: untyped
+        attr_reader timeout_ms: Integer?
+        attr_reader startup_timeout_ms: Integer
+        attr_reader serves: Symbol
+        attr_reader effect_profiles: Hash[String, Hash[String, untyped]]
+        attr_reader secrets: Array[String]
+        attr_reader oauth: Oauth?
+        attr_reader enabled: bool
+        def fault?: () -> bool
+        def stdio?: () -> bool
+        def http?: () -> bool
+        def all_tools?: () -> bool
+        def enabled?: () -> bool
+        def allows?: (String raw_name) -> bool
+        def launch: () -> String
+        def secure_url?: () -> bool
+        def authorization_header?: () -> bool
+        def oauth?: () -> bool
+      end
+
+      class Fault < ::Data
+        attr_reader key: String
+        attr_reader transport: String?
+        attr_reader serves: String?
+        attr_reader sentence: String
+        def fault?: () -> bool
+        def launch: () -> nil
+        def env: () -> Hash[String, String]
+        def headers: () -> Hash[String, String]
+        def stdio?: () -> bool
+        def http?: () -> bool
+        def oauth?: () -> bool
+        def enabled?: () -> bool
+      end
+
+      def self?.parse: (untyped table, ?env: untyped, ?home: String) -> Array[Row | Fault]
+      def self?.from_acp: (untyped entries, ?home: String) -> Array[Row | Fault]
+    end
+
+    module Documents
+      TEXT_TYPES: Regexp
+      DESCRIPTION_MAX_BYTES: Integer
+      ASSISTANT_LINE: String
+
+      class Announced < ::Data
+        attr_reader name: String
+        attr_reader kind: String
+        attr_reader raw_name: String
+        attr_reader uri: String?
+        attr_reader description: String
+        attr_reader mime_type: String?
+        def entry: () -> Hash[String, String]
+        def prompt?: () -> bool
+      end
+
+      class Skipped < ::Data
+        attr_reader name: String
+        attr_reader kind: String
+        attr_reader reason: String
+      end
+
+      class Curated < ::Data
+        attr_reader announced: Array[Announced]
+        attr_reader skipped: Array[Skipped]
+        def entries: () -> Array[Hash[String, String]]
+        def find: (String name) -> Announced?
+        def names: () -> Array[String]
+      end
+
+      def self?.curate: (untyped row, untyped prompts, untyped resources) -> Curated
+      def self?.text_type?: (untyped mime) -> bool
+      def self?.prompt_result: (untyped raw, server: String, name: String, ?env: untyped) -> Rho::Runner::Result
+      def self?.resource_result: (untyped contents, server: String, name: String, ?env: untyped) -> Rho::Runner::Result
+    end
+
+    module Mapping
+      TAIL_LINES: Integer
+      TAIL_BYTES: Integer
+      IMAGE_EXTENSIONS: Hash[String, String]
+      def self?.result: (untyped raw, server: String, ?env: untyped) -> Rho::Runner::Result
+      def self?.with_notice: (Rho::Runner::Result result, String? notice) -> Rho::Runner::Result
+      def self?.line: (untyped block, server: String, env: untyped, stem: String?, files: Array[String]) -> String?
+      def self?.capture: (untyped data, untyped mime, String server, untyped env, String? stem, Array[String] files, String kind) -> String
+      def self?.number: (untyped value) -> String
+      def self?.capped_tail: (untyped tail) -> String
+      def self?.tail_clause: (untyped tail) -> String
+    end
+
+    class StdioTransport < MCP::Client::Stdio
+      STDERR_KEEP_BYTES: Integer
+      STOP_STAGE_SECONDS: Float
+      POLL_SECONDS: Float
+      attr_reader exit_status: untyped
+      attr_reader exited_at: Time?
+      attr_reader cwd: String
+      def initialize: (command: String, ?args: Array[String], ?env: Hash[String, String], ?cwd: String, ?read_timeout: Float?, ?stop_stage: Float, ?clock: ^() -> Time) -> void
+      def read_timeout: () -> Float?
+      def read_timeout=: (Float?) -> untyped
+      def pid: () -> Integer?
+      def group_pid: () -> Integer?
+      def exited?: () -> bool
+      def exit_description: () -> String
+      def stderr_tail: () -> String
+      def settle: (Float seconds) -> bool
+      def start: () -> untyped
+      def close: () -> untyped
+      def kill: () -> untyped
+      def send_notification: (notification: untyped) -> nil
+    end
+
+    class HttpTransport < MCP::Client::HTTP
+      attr_reader open_timeout: Float
+      attr_reader timeout: Float
+      def initialize: (url: String, ?headers: Hash[String, String], ?oauth: untyped, open_timeout: Float, timeout: Float, ?max_message_bytes: Integer) -> void
+      def pid: () -> nil
+      def group_pid: () -> nil
+      def exited?: () -> bool
+      def stderr_tail: () -> String
+      def settle: (Float seconds) -> bool
+      def kill: () -> untyped
+      def read_timeout=: (Float?) -> nil
+    end
+
+    class Connection
+      CLIENT_INFO: Hash[Symbol, String]
+      WATCHER_GRACE_SECONDS: Float
+
+      class ExitRecord < ::Data
+        attr_reader kind: Symbol
+        attr_reader description: String
+        attr_reader tail: String
+        attr_reader at: Time
+        attr_reader tool: String?
+        def phrase: () -> String
+        def down: () -> String
+        def login_shaped?: () -> bool
+      end
+
+      attr_reader key: String
+      attr_reader row: untyped
+      attr_reader tools: Array[untyped]
+      attr_reader prompts: Array[untyped]
+      attr_reader resources: Array[untyped]
+      attr_reader connected_at: Time?
+      attr_reader storage: untyped
+      attr_reader challenge: Oauth::Challenge?
+      def initialize: (untyped row, ?log: untyped, ?redact: Rho::Runner::Redact, transport_factory: untyped, ?clock: ^() -> Time, ?storage: untyped) -> void
+      def open!: (?list: bool) -> Connection
+      def auth_status: () -> Oauth::Storage::Status?
+      def connected?: () -> bool
+      def pid: () -> Integer?
+      def group_pid: () -> Integer?
+      def protocol_version: () -> String?
+      def server_name: () -> String?
+      def server_version: () -> String?
+      def instructions: () -> String?
+      def server_capabilities: () -> untyped
+      def exit_record: () -> ExitRecord?
+      def down: () -> String?
+      def call_tool: (String raw_name, untyped arguments, public_name: String, ?env: untyped) -> Rho::Runner::Result?
+      def load_prompt: (String raw_name, name: String, ?env: untyped) -> Rho::Runner::Result?
+      def load_resource: (String uri, name: String, ?env: untyped) -> Rho::Runner::Result?
+      def resource_templates: () -> Array[untyped]
+      def close: () -> untyped
+    end
+
+    module Curation
+      WORST_CASE: Hash[String, untyped]
+      NO_DESCRIPTION: String
+
+      class Announced < ::Data
+        attr_reader public_name: String
+        attr_reader raw_name: String
+        attr_reader bytes: Integer
+        attr_reader profile: Hash[String, untyped]
+        attr_reader profile_source: String
+        attr_reader klass: Class
+        attr_reader description: String
+        attr_reader schema: Hash[String, untyped]
+      end
+
+      class Skipped < ::Data
+        attr_reader raw_name: String
+        attr_reader reason: String
+      end
+
+      class Curated < ::Data
+        attr_reader announced: Array[Announced]
+        attr_reader skipped: Array[Skipped]
+        attr_reader fault: String?
+        def classes: () -> Array[Class]
+        def bytes: () -> Integer
+      end
+
+      def self?.curate: (untyped row, untyped tools, ?caller: untyped) -> Curated
+      def self?.bytes: (String public_name, String description, untyped schema) -> Integer
+    end
+
+    module Commands
+      USAGE: String
+      DESCRIPTION: String
+      OPTIONS: Hash[Symbol, Hash[Symbol, untyped]]
+      NO_DAEMON: String
+      NO_HOME: String
+      OPTIONAL_WORD: String
+      RISKY_SCHEMA_KEYS: Array[String]
+      INVISIBLE: Regexp
+      def self?.run: (untyped cli, Array[String] args, untyped options) -> untyped
+      def self?.list: (untyped cli) -> untyped
+      def self?.list_logins: (untyped cli) -> untyped
+      def self?.disabled_word: (String key) -> String
+      def self?.person_table: (untyped cli) -> untyped
+      def self?.settings_table: (untyped cli) -> untyped
+      def self?.switch: (untyped cli, String name, bool enabled) -> Hash[String, untyped]?
+      def self?.enabled?: (untyped raw) -> bool
+      def self?.connected_word: (Integer? pid, Integer? pgid) -> String
+      def self?.server_line: (Hash[String, untyped] server, ^(untyped) -> String shown) -> String
+      def self?.identity_word: (untyped name, untyped version, ^(untyped) -> String shown) -> String
+      def self?.auth_line: (Hash[String, untyped] auth, ^(untyped) -> String shown) -> String
+      def self?.shown: (Rho::Runner::Redact redact) -> ^(untyped) -> String
+      def self?.probe: (untyped cli, String name) -> untyped
+      def self?.probe_row: (untyped cli, untyped row) -> untyped
+      def self?.login: (untyped cli, String name, untyped options) -> untyped
+      def self?.logout: (untyped cli, String name) -> untyped
+      def self?.underivable: (String public_name, untyped schema) -> Array[String]
+      def self?.escape: (untyped text) -> String
+      def self?.number: (untyped value) -> String
+    end
+
+    # MCP OAUTH: the store, the classifier, the
+    # provider, the listener and the verbs.
+    module Oauth
+      def self?.storage_for: (untyped row, home: untyped, ?log: untyped, ?clock: ^() -> Time) -> Storage?
+
+      class CredentialFile < Rho::Mcp::Error
+      end
+
+      class Storage
+        class Status < ::Data
+          attr_reader state: Symbol
+          attr_reader reason: String?
+          attr_reader issuer: String?
+          attr_reader scope: String?
+          attr_reader issued_at: String?
+          attr_reader refresh_token: bool
+          attr_reader optional: bool
+          def logged_in?: () -> bool
+        end
+        TOKEN_KEYS: Array[String]
+        OBJECT_KEYS: Array[String]
+        STAMP_KEY: String
+        OPTIONAL_KEY: String
+        REFUSAL: String
+        attr_reader row: untyped
+        attr_reader file: untyped
+        def initialize: (file: untyped, row: untyped, ?log: untyped, ?clock: ^() -> Time) -> void
+        def read_only?: () -> bool
+        def tokens: () -> Hash[String, untyped]?
+        def save_tokens: (Hash[String, untyped]? tokens) -> untyped
+        def client_information: () -> Hash[String, untyped]?
+        def save_client_information: (Hash[String, untyped]? info) -> untyped
+        def status: () -> Status
+        def pending_scope: () -> String?
+        def record_pending_scope: (Array[String] scopes) -> untyped
+        def clear_pending_scope!: () -> untyped
+        def record_optional: (bool optional) -> untyped
+        def issued_at: () -> Time?
+        def secret_values: () -> Array[String]
+        def read_only: () -> ReadOnly
+        def delete!: () -> nil
+        def relative_path: () -> String
+      end
+
+      class ReadOnly
+        def initialize: (Storage storage) -> void
+        def read_only?: () -> bool
+        def row: () -> untyped
+        def tokens: () -> Hash[String, untyped]?
+        def client_information: () -> Hash[String, untyped]?
+        def save_tokens: (untyped tokens) -> untyped
+        def save_client_information: (untyped info) -> untyped
+        def status: () -> Storage::Status
+        def pending_scope: () -> String?
+        def record_pending_scope: (Array[String] scopes) -> nil
+        def issued_at: () -> Time?
+        def secret_values: () -> Array[String]
+        def relative_path: () -> String
+        def read_only: () -> ReadOnly
+      end
+
+      class Challenge
+        BEARER: Regexp
+        MAX_DOCUMENT_BYTES: Integer
+        attr_reader kind: Symbol
+        attr_reader params: Hash[String, String]
+        def initialize: (kind: Symbol, params: Hash[String, String], ?optional: bool) -> void
+        def self.unauthorized?: (untyped error) -> bool
+        def self.classify: (untyped error) -> Challenge
+        def self.www_authenticate: (untyped error) -> String?
+        def self.published: (url: String, ?headers: Hash[String, String], seconds: Numeric) -> Challenge?
+        def self.fetch: (untyped client, String url) -> untyped
+        def self.protected_resource_document?: (untyped response) -> bool
+        def oauth?: () -> bool
+        def bearer?: () -> bool
+        def header?: () -> bool
+        def optional?: () -> bool
+        def resource_metadata: () -> String?
+        def scope: () -> String?
+        def sentence: (String key, ?home: bool) -> String
+      end
+
+      class Provider < MCP::Client::OAuth::Provider
+        PORTLESS_REDIRECT_URI: String
+        CLIENT_METADATA: Hash[String, untyped]
+        BROWSER_FALLBACK: String
+        attr_reader refusal: MCP::Client::OAuth::AuthorizationRequest?
+        attr_accessor issuer: String?
+        def self.client_metadata: (String redirect_uri) -> Hash[String, untyped]
+        def self.headless: (row: untyped, storage: untyped, ?authorization_mutex: Mutex) -> Provider
+        def self.interactive: (row: untyped, storage: untyped, callback: Callback, out: untyped, ?browser: untyped, ?no_browser: bool, ?input: untyped, ?redact: Rho::Runner::Redact) -> Provider
+        def self.say: (untyped out, String line) -> void
+        def initialize: (?authorization_mutex: Mutex, **untyped) -> void
+        def synchronize_authorization: [T] () { () -> T } -> T
+        def step_up: () { () -> untyped } -> untyped
+        def stepping_up?: () -> bool
+        def refuse!: (untyped request) -> bool
+      end
+
+      class Callback
+        PATH: String
+        HOST: String
+        DEFAULT_WAIT_SECONDS: Integer
+        MAX_PASTE_BYTES: Integer
+        CLOSE_JOIN_SECONDS: Integer
+        STARTUP_SECONDS: Integer
+        HTML: Hash[String, String]
+        attr_reader port: Integer?
+        attr_reader error: String?
+        attr_reader error_description: String?
+        attr_reader iss: String?
+        def initialize: (?port: Integer?, ?seconds: Numeric) -> void
+        def bind: () -> Callback
+        def redirect_uri: () -> String
+        def wait: (?paste: untyped) -> Array[String?]?
+        def timed_out?: () -> bool
+        def close: () -> nil
+      end
+
+      module Login
+        WAIT_SECONDS: Integer
+        CLIENT_ID_HINT: String
+        OPTIONAL_CLAUSE: String
+        def self?.call: (untyped cli, untyped row, untyped storage, untyped options, ?browser: untyped, ?input: untyped, ?callback: Callback?) -> untyped
+        def self?.harvest_challenge: (untyped cli, untyped row, Rho::Runner::Redact redact) -> Challenge?
+        def self?.published_challenge: (untyped row) -> Challenge?
+        def self?.run_flow: (untyped row, untyped storage, Challenge challenge, untyped out, Rho::Runner::Redact redact, browser: untyped, no_browser: bool, input: untyped, callback: Callback?) -> untyped
+        def self?.flow_failure: (untyped row, Callback listener, Provider provider, String message, Rho::Runner::Redact redact) -> String
+        def self?.issuer_mismatch?: (Callback listener, Provider provider) -> bool
+        def self?.prove: (untyped cli, untyped row, untyped storage, Rho::Runner::Redact redact) -> untyped
+      end
+
+      module Logout
+        def self?.call: (untyped cli, untyped row, untyped storage) -> nil
+      end
+    end
+  end
+end

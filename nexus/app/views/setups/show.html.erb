@@ -1,0 +1,52 @@
+<% content_for :title, "Set up Nexus" %>
+
+<div class="space-y-8">
+  <header class="space-y-1.5 text-center">
+    <h1 class="text-2xl font-semibold tracking-tight">Set up Nexus</h1>
+    <p class="text-sm leading-relaxed text-base-content/60">Create your administrator account to get started.</p>
+  </header>
+
+  <%= render "layouts/shared/flash" %>
+
+  <% if @setup.errors.any? %>
+    <div role="alert" class="alert alert-error">
+      <span class="iconify lucide--circle-alert size-5" aria-hidden="true"></span>
+      <span>Some fields need attention before the installation can be created.</span>
+    </div>
+  <% end %>
+
+  <%= form_with model: @setup, url: setup_path do |form| %>
+    <fieldset class="fieldset">
+      <%= form.label :account_name, "Installation name", class: "label" %>
+      <%= validated_field form, :text_field, :account_name, @setup.errors[:account_name], placeholder: Setup::DEFAULT_ACCOUNT_NAME %>
+
+      <%= form.label :display_name, "Your name", class: "label mt-2" %>
+      <%= validated_field form, :text_field, :display_name, @setup.errors[:display_name], required: true, autofocus: true, autocomplete: "name", placeholder: "Enter your display name" %>
+
+      <%= form.label :email, "Email", class: "label mt-2" %>
+      <%= validated_field form, :email_field, :email, @setup.errors[:email], required: true, autocomplete: "username", placeholder: "Enter your email address" %>
+
+      <%= form.label :password, "Password", class: "label mt-2" %>
+      <%= validated_field form, :password_field, :password, @setup.errors[:password], required: true, autocomplete: "new-password", placeholder: "Enter a password", maxlength: 72 %>
+
+      <%= form.label :password_confirmation, "Repeat password", class: "label mt-2" %>
+      <%= validated_field form, :password_field, :password_confirmation, @setup.errors[:password_confirmation], required: true, autocomplete: "new-password", placeholder: "Repeat the password", maxlength: 72 %>
+
+      <% if setup_secret_required? %>
+        <%= label_tag :setup_secret, "Setup secret", class: "label mt-2" %>
+        <%= password_field_tag :setup_secret, nil, required: true, autocomplete: "off", placeholder: "Enter the deployment setup secret", class: "input w-full" %>
+      <% end %>
+
+      <%= tag.details open: @setup.errors[:cost_unit].any?, class: "mt-4 rounded-box border border-base-300 p-4" do %>
+        <summary class="cursor-pointer text-sm font-medium">Advanced options</summary>
+        <div class="mt-4 space-y-2">
+          <%= form.label :cost_unit, "Cost unit", class: "label" %>
+          <%= validated_field form, :text_field, :cost_unit, @setup.errors[:cost_unit], autocomplete: "off", placeholder: "USD" %>
+          <p class="text-xs leading-relaxed text-base-content/60">Usage costs use USD by default. Choose another unit only if your model pricing uses it. This is set once; Nexus does not convert between units.</p>
+        </div>
+      <% end %>
+
+      <%= form.submit "Create installation", class: "btn btn-primary btn-block mt-4" %>
+    </fieldset>
+  <% end %>
+</div>

@@ -1,0 +1,117 @@
+module Rho
+  class Runner
+    class ExecutionContext
+      class Cancelled < Error
+        attr_reader reason: Symbol?
+
+        def initialize: (?String?, ?reason: Symbol?) -> void
+      end
+
+      CURRENT_KEY: Symbol
+
+      def self.current: () -> ExecutionContext?
+      def self.with: [T] (ExecutionContext) { () -> T } -> T
+      def self.with_cancel_signal: [T] (^() -> void) { () -> T } -> T
+
+      attr_reader deadline: Numeric?
+      attr_reader agent_loop_public_id: String?
+      attr_reader conversation_public_id: String?
+      attr_reader workspace_public_id: String?
+      attr_reader task_key: String?
+      attr_reader extension: DeadlineExtension?
+      attr_reader scope: Hash[String, untyped]?
+      attr_reader claim_token: String?
+      attr_reader progress: Progress?
+      attr_reader attachments: ClaimAttachments?
+      # The placement: the row's env and the
+      # conversation's record, set once by the run; nil outside one.
+      attr_reader tool_env: ToolEnv?
+      attr_reader binding: Environment::Binding?
+
+      def initialize: (
+        ?deadline: Numeric?, ?agent_loop_public_id: String?, ?conversation_public_id: String?, ?task_key: String?,
+        ?clock: ^() -> Numeric, ?extension: DeadlineExtension?, ?scope: Hash[String, untyped]?,
+        ?claim_token: String?, ?progress: Progress?, ?tool_env: ToolEnv?, ?binding: Environment::Binding?,
+        ?ports: (^(String) -> untyped)?, ?claim_poller: ClaimStatusPoller?, ?on_cancel: (^(Symbol) -> void)?,
+        ?workspace_public_id: String?, ?attachments: ClaimAttachments?
+      ) -> void
+      def place: (tool_env: ToolEnv?, binding: Environment::Binding?, ?ports: (^(String) -> untyped)?) -> nil
+      # The editor's port for this row: the resolver
+      # asked with the binding's anchor on every call; an `FsPort` duck
+      # (a host-owned implementation, so untyped) or nil — the disk.
+      def port: () -> untyped
+      def report_progress: (String? text) -> nil
+      def remaining: () -> Numeric?
+      def wait_slice: () -> Numeric?
+      def renew!: () -> void
+      def extend_deadline: (Numeric) -> bool
+      def reason: () -> Symbol?
+      def cancelled?: () -> bool
+      def raise_if_cancelled!: () -> void
+      def cancel: (?Symbol) -> bool
+    end
+
+    # The claimant's timed ask for more time (executor.md "Extend"): due at
+    # half the park, re-armed at each half, stopped by one refusal.
+    class DeadlineExtension
+      attr_reader due_at: Numeric
+      attr_reader deadline_at: String?
+
+      def initialize: (park_seconds: Numeric, deadline_at: String?, clock: ^() -> Numeric) { () -> [Numeric?, String?]? } -> void
+      def stopped?: () -> bool
+      def due?: (?Numeric) -> bool
+      def wait: (?Numeric) -> Numeric?
+      def call: () -> Numeric?
+    end
+
+    class Progress
+      MIN_INTERVAL_MS: Integer
+      attr_reader interval_ms: Numeric
+
+      def initialize: (post: ^(String) -> bool, clock: ^() -> Numeric, ?interval_ms: Numeric) -> void
+      def stopped?: () -> bool
+      def tail: (String? text) -> nil
+      def pending?: () -> bool
+      def wait: (?Numeric) -> Numeric?
+      def due?: (?Numeric) -> bool
+      def flush: (?Numeric) -> bool
+    end
+
+    class ClaimStatusPoller
+      def initialize: (task: untyped, claim_token: String, worker_count: Integer, clock: ^() -> Numeric, log: untyped) -> void
+      def wait: (?Numeric) -> Numeric
+      def poll: (?Numeric) -> bool?
+    end
+
+    class ClaimAttachments
+      POLL_SECONDS: Float
+      Request: untyped
+      def initialize: (task: untyped, claim_token: String) -> void
+      def read: (String public_id, untyped io) -> CybrosAgent::Api::Upload
+      def wait: () -> Numeric
+      def flush: () -> untyped
+    end
+
+    class TaskRun
+      class Failed < ::Data
+        attr_reader message: String
+      end
+
+      SUBMIT_HEADROOM_SECONDS: Float
+      EXTENSION_CAP_MS: Integer
+      QUIET_REFUSALS: Array[String]
+      COMMIT_RETRY_SECONDS: Float
+      COMMIT_RETRY_CAP_SECONDS: Float
+      COMMIT_RETRY_WINDOW_SECONDS: Float
+
+      def initialize: (
+        executor: untyped, pool: Pool, toolsets: (Toolsets | Toolsets::Fixed), log: untyped,
+        ?clock: ^() -> Numeric, ?hooks: Extensions::Hooks::Host?, ?sleeper: (^(Numeric) -> void)?,
+        ?on_cancel: (^(Symbol) -> void)?
+      ) -> void
+      def call: (
+        agent_loop_public_id: String, task_key: String, ?tool_name: String?
+      ) -> Symbol
+    end
+  end
+end

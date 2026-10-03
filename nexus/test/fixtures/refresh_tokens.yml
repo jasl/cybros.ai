@@ -1,0 +1,1 @@
+# Intentionally empty: fixture reloads must clear credentials committed by transaction-exempt tests.

@@ -1,0 +1,10 @@
+module Rho
+  module IngressTelegram
+    module WorkerTracking
+    end
+
+    class Runtime
+      include WorkerTracking
+    end
+  end
+end

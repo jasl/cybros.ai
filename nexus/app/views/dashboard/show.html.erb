@@ -1,0 +1,32 @@
+<% content_for :title, "Dashboard" %>
+
+<div class="space-y-8">
+  <header class="space-y-1">
+    <h1 class="text-xl font-medium tracking-tight">Dashboard</h1>
+    <p class="text-sm text-base-content/60">Signed in as <span class="wrap-anywhere"><%= Current.identity.email %></span></p>
+  </header>
+
+  <% if @needs_model_provider || @needs_agent %>
+    <section aria-labelledby="dashboard-todo-heading" class="space-y-4">
+      <h2 id="dashboard-todo-heading" class="text-sm font-medium">To do</h2>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <% if @needs_model_provider %>
+          <article aria-label="Model provider setup" class="rounded-box border border-base-300 bg-base-200 p-5 sm:p-6">
+            <span class="iconify lucide--plug-zap size-5 text-primary" aria-hidden="true"></span>
+            <h3 class="mt-4 font-medium">Connect a model provider</h3>
+            <p class="mt-2 max-w-prose text-sm leading-relaxed text-base-content/60">Make a text model available for your agents. This task disappears when a usable model is configured.</p>
+            <%= link_to "Configure model providers", admin_model_providers_path, class: "btn btn-primary btn-sm mt-5" %>
+          </article>
+        <% end %>
+        <% if @needs_agent %>
+          <article aria-label="Agent connection" class="rounded-box border border-base-300 bg-base-200 p-5 sm:p-6">
+            <span class="iconify lucide--bot size-5 text-primary" aria-hidden="true"></span>
+            <h3 class="mt-4 font-medium">Connect an agent</h3>
+            <p class="mt-2 max-w-prose text-sm leading-relaxed text-base-content/60">Start your agent program and enter its connection code. You can manage connected programs from Agents.</p>
+            <%= link_to "Connect an agent", oauth_device_path, class: "btn btn-primary btn-sm mt-5" %>
+          </article>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+</div>

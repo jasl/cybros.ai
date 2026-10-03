@@ -1,0 +1,30 @@
+{
+  "contract": "nexus/v1",
+  "files": [
+    "admin_users.json",
+    "agent_loops.json",
+    "content_addressing.json",
+    "conversations.json",
+    "coverage.json",
+    "credentials.json",
+    "errors.json",
+    "executor_inbox.json",
+    "history.json",
+    "memory_documents.json",
+    "meta.json",
+    "models.json",
+    "oauth.json",
+    "one_shots.json",
+    "profiles.json",
+    "prompt_documents.json",
+    "scheduled_jobs.json",
+    "sessions.json",
+    "size_bounds.json",
+    "store_entries.json",
+    "task_executors.json",
+    "tools.json",
+    "uploads.json",
+    "users.json",
+    "workspaces.json"
+  ]
+}

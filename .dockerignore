@@ -1,0 +1,53 @@
+# THE RHO IMAGE'S CONTEXT (install/docker/Dockerfile builds from the repo
+# root so the packaged gem trees and the installer arrive as `--from-checkout`
+# reads them): only those are sent; everything else in the monorepo —
+# nexus and its node_modules, .git, tmp, coverage — stays out. The evals
+# leg (e2e/evals/docker/Dockerfile) builds from the same root. `nexus/`
+# has its own Dockerfile with `nexus/` as its context, which this file
+# never sees.
+*
+!sdks/ruby
+!agents/rho/rho-runner
+!agents/rho/rho-browser
+!agents/rho/rho-mcp
+!agents/rho/rho-web-tools
+!agents/rho/rho-webui
+!agents/rho/rho-ingress-telegram
+!agents/rho/rho-acp
+!agents/rho/rho-acp-client
+!agents/rho/rho
+!install
+!cmctl
+# The evals leg's one extra file: the harbor cell's launcher (ACP design
+# r2 §5.3), COPYed into the derived image's libexec.
+!e2e/evals/docker/rho-acp-launch
+# Local dependencies, package output, caches and reports stay out even
+# when their parent source tree is included above.
+**/.git
+**/tmp
+**/coverage
+**/log
+**/node_modules
+**/vendor/bundle
+**/vendor/cache
+**/.bundle
+**/pkg
+**/*.gem
+**/.yardoc
+**/_yardoc
+**/doc
+**/spec/reports
+**/test-results
+**/playwright-report
+**/blob-report
+**/playwright/.cache
+**/__pycache__
+**/*.py[cod]
+install/test
+install/stack/test
+install/stack/test.sh
+install/stack/wizard_test.py
+install/stack/data
+install/stack/.env
+install/stack/secrets.env
+install/stack/*.env.new

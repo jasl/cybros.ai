@@ -1,0 +1,15 @@
+module Rho
+  module IngressTelegram
+    class TokenFile
+      def initialize: (untyped home) -> void
+      def read: () -> String
+      def write: (String token) -> untyped
+      def inspect: () -> String
+    end
+
+    class Setup
+      def initialize: (home: untyped, prompt: untyped, ?env: untyped, ?clients: untyped) -> void
+      def run: (?finish: bool) -> bool
+    end
+  end
+end

@@ -1,0 +1,18 @@
+module Rho
+  class InputMaterialization
+    class Result < Data
+      attr_reader turn: String?
+      attr_reader loop: String?
+
+      def self.new: (turn: String?, loop: String?) -> instance
+    end
+
+    attr_reader result: Result?
+    attr_reader blocked_reason: String?
+    attr_reader compaction: Result?
+
+    def initialize: (input_public_id: String, position: CybrosAgent::KernelFeed::Position,
+                     replay: ^(String?) -> untyped) -> void
+    def refresh: () -> self
+  end
+end

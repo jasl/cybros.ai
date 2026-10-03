@@ -1,0 +1,498 @@
+{
+  "kinds": [
+    "tool_call",
+    "ask",
+    "approval"
+  ],
+  "content_kinds": [
+    "text",
+    "resource_link"
+  ],
+  "resource_link_uri_prefix": "nexus://uploads/",
+  "resource_link_fields": [
+    "uri",
+    "name",
+    "mimeType",
+    "size",
+    "title",
+    "description"
+  ],
+  "resource_link_required": [
+    "uri",
+    "name"
+  ],
+  "addressed_roles": [
+    "agent_application",
+    "runner",
+    "tools_provider"
+  ],
+  "list_envelope": [
+    "tasks",
+    "pagination"
+  ],
+  "pagination": [
+    "next_after"
+  ],
+  "row_projection": [
+    "kind",
+    "agent_loop_public_id",
+    "workspace_public_id",
+    "task_key",
+    "tool_name",
+    "tool_input",
+    "tool_call_id",
+    "started_at",
+    "deadline_at",
+    "timeout_ms",
+    "claimed",
+    "addressed_to",
+    "conversation_public_id",
+    "parent_public_id",
+    "prompt",
+    "options",
+    "multi",
+    "scope",
+    "tool_alias",
+    "effect_profile"
+  ],
+  "scope_projection": [
+    "workspace_public_id",
+    "conversation_public_id",
+    "user_public_id"
+  ],
+  "memory_scope_projection": [
+    "bindings"
+  ],
+  "claim_envelope": [
+    "task",
+    "claim"
+  ],
+  "claim_projection": [
+    "claim_token",
+    "deadline_at"
+  ],
+  "extend_envelope": [
+    "claim_token",
+    "timeout_ms"
+  ],
+  "extend_bound_ms": 3600000,
+  "commit_envelope": [
+    "claim_token",
+    "content",
+    "structured_content",
+    "result_type",
+    "outcome",
+    "is_error",
+    "title",
+    "metadata"
+  ],
+  "outcomes": [
+    "completed",
+    "failed"
+  ],
+  "list_filters": [
+    "after",
+    "limit"
+  ],
+  "limits": {
+    "default": 50,
+    "max": 200
+  },
+  "error_statuses": {
+    "extension_too_long": 409,
+    "frame_too_large": 422,
+    "invalid_content": 422,
+    "invalid_frame": 422,
+    "invalid_metadata": 422,
+    "invalid_outcome": 422,
+    "invalid_result_type": 422,
+    "invalid_timeout_ms": 422,
+    "invalid_title": 422,
+    "metadata_too_large": 422,
+    "not_authorized": 409,
+    "not_bound": 409,
+    "not_claimant": 409,
+    "not_extendable": 409,
+    "result_too_large": 422,
+    "result_unstorable": 422,
+    "task_not_running": 409,
+    "too_many_content_blocks": 422,
+    "unknown_result_upload": 422,
+    "unsupported_content_kind": 422
+  },
+  "valid_fixture": {
+    "tasks": [
+      {
+        "kind": "tool_call",
+        "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+        "workspace_public_id": "01900000-0000-7000-8000-000000000001",
+        "task_key": "r1t0",
+        "tool_name": "read_file",
+        "tool_input": {
+          "path": "README.md"
+        },
+        "tool_call_id": "call_1",
+        "started_at": "2026-07-30T00:00:00Z",
+        "deadline_at": "2026-07-30T00:10:00Z",
+        "timeout_ms": 600000,
+        "claimed": false,
+        "addressed_to": {
+          "role": "runner",
+          "executor_public_id": "01900000-0000-7000-8000-000000000030"
+        },
+        "conversation_public_id": null,
+        "parent_public_id": null
+      }
+    ],
+    "pagination": {
+      "next_after": "YWx0aToy"
+    }
+  },
+  "claim_fixture": {
+    "task": {
+      "kind": "tool_call",
+      "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+      "workspace_public_id": "01900000-0000-7000-8000-000000000001",
+      "task_key": "r1t0",
+      "tool_name": "read_file",
+      "tool_input": {
+        "path": "README.md"
+      },
+      "tool_call_id": "call_1",
+      "started_at": "2026-07-30T00:00:00Z",
+      "deadline_at": "2026-07-30T00:10:00Z",
+      "timeout_ms": 600000,
+      "claimed": true,
+      "addressed_to": {
+        "role": "runner",
+        "executor_public_id": "01900000-0000-7000-8000-000000000030"
+      },
+      "conversation_public_id": null,
+      "parent_public_id": null
+    },
+    "claim": {
+      "claim_token": "01900000-0000-7000-8000-000000000032",
+      "deadline_at": "2026-07-30T00:10:00Z"
+    }
+  },
+  "extend_request_fixture": {
+    "claim_token": "01900000-0000-7000-8000-000000000032",
+    "timeout_ms": 900000
+  },
+  "extend_fixture": {
+    "task": {
+      "kind": "tool_call",
+      "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+      "workspace_public_id": "01900000-0000-7000-8000-000000000001",
+      "task_key": "r1t0",
+      "tool_name": "read_file",
+      "tool_input": {
+        "path": "README.md"
+      },
+      "tool_call_id": "call_1",
+      "started_at": "2026-07-30T00:00:00Z",
+      "deadline_at": "2026-07-30T00:15:01Z",
+      "timeout_ms": 600000,
+      "claimed": true,
+      "addressed_to": {
+        "role": "runner",
+        "executor_public_id": "01900000-0000-7000-8000-000000000030"
+      },
+      "conversation_public_id": null,
+      "parent_public_id": null
+    },
+    "claim": {
+      "claim_token": "01900000-0000-7000-8000-000000000032",
+      "deadline_at": "2026-07-30T00:15:01Z"
+    }
+  },
+  "ask_fixture": {
+    "kind": "ask",
+    "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+    "workspace_public_id": "01900000-0000-7000-8000-000000000001",
+    "task_key": "r1t0-ask-1",
+    "prompt": "which database?",
+    "options": [
+      "Postgres",
+      "MySQL"
+    ],
+    "multi": false,
+    "started_at": "2026-07-30T00:00:00Z",
+    "deadline_at": "2026-07-31T00:00:00Z",
+    "timeout_ms": 86400000,
+    "claimed": false,
+    "addressed_to": {
+      "role": "agent_application",
+      "executor_public_id": "01900000-0000-7000-8000-000000000030"
+    },
+    "conversation_public_id": null,
+    "parent_public_id": null
+  },
+  "approval_fixture": {
+    "kind": "approval",
+    "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+    "workspace_public_id": "01900000-0000-7000-8000-000000000001",
+    "task_key": "r2t0",
+    "tool_name": "bash",
+    "tool_input": {
+      "command": "rm -rf build"
+    },
+    "effect_profile": {
+      "kind": "write",
+      "destructive": true,
+      "world": "open",
+      "idempotency": "none",
+      "reconciliation": "none",
+      "timeout_ms": 600000
+    },
+    "tool_call_id": "call_2",
+    "deadline_at": "2026-07-31T00:00:00Z",
+    "timeout_ms": 86400000,
+    "claimed": false,
+    "addressed_to": {
+      "role": "agent_application",
+      "executor_public_id": "01900000-0000-7000-8000-000000000030"
+    },
+    "conversation_public_id": null,
+    "parent_public_id": null
+  },
+  "overridden_fixture": {
+    "kind": "tool_call",
+    "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+    "workspace_public_id": "01900000-0000-7000-8000-000000000001",
+    "task_key": "r3t0",
+    "tool_name": "memory_read",
+    "tool_input": {
+      "path": "workspace/notes.md"
+    },
+    "scope": {
+      "bindings": [
+        {
+          "name": "workspace",
+          "scope": "workspace",
+          "access": "read_write",
+          "workspace_public_id": "01900000-0000-7000-8000-000000000001"
+        },
+        {
+          "name": "user",
+          "scope": "user",
+          "access": "read_write",
+          "user_public_id": "01900000-0000-7000-8000-000000000003"
+        }
+      ]
+    },
+    "tool_call_id": "call_3",
+    "started_at": "2026-07-30T00:00:00Z",
+    "deadline_at": "2026-07-30T00:00:30Z",
+    "timeout_ms": 30000,
+    "claimed": false,
+    "addressed_to": {
+      "role": "tools_provider",
+      "executor_public_id": "01900000-0000-7000-8000-000000000030"
+    },
+    "conversation_public_id": null,
+    "parent_public_id": null
+  },
+  "skill_fixture": {
+    "kind": "tool_call",
+    "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+    "workspace_public_id": "01900000-0000-7000-8000-000000000001",
+    "task_key": "r4t0",
+    "tool_name": "skill",
+    "tool_alias": "Skill",
+    "tool_input": {
+      "name": "deploy-notes"
+    },
+    "scope": {
+      "workspace_public_id": "01900000-0000-7000-8000-000000000001",
+      "conversation_public_id": null,
+      "user_public_id": "01900000-0000-7000-8000-000000000003"
+    },
+    "tool_call_id": "call_4",
+    "started_at": "2026-07-30T00:00:00Z",
+    "deadline_at": "2026-07-30T00:00:30Z",
+    "timeout_ms": 30000,
+    "claimed": false,
+    "addressed_to": {
+      "role": "runner",
+      "executor_public_id": "01900000-0000-7000-8000-000000000030"
+    },
+    "conversation_public_id": null,
+    "parent_public_id": null
+  },
+  "commit_link_fixture": {
+    "claim_token": "01900000-0000-7000-8000-000000000032",
+    "content": [
+      {
+        "type": "text",
+        "text": "Saved a screenshot of /sign_in to /tmp/shot.png"
+      },
+      {
+        "type": "resource_link",
+        "uri": "nexus://uploads/01900000-0000-7000-8000-000000000040",
+        "name": "shot.png",
+        "mimeType": "image/png",
+        "size": 184211,
+        "title": "screenshot of /sign_in"
+      }
+    ],
+    "title": "screenshot",
+    "metadata": {
+      "checkpoint": "c1"
+    }
+  },
+  "unknown_content_kind_fixture": {
+    "claim_token": "01900000-0000-7000-8000-000000000032",
+    "content": [
+      {
+        "type": "text",
+        "text": "Saved a screenshot of /sign_in to /tmp/shot.png"
+      },
+      {
+        "type": "zz_unknown_value",
+        "uri": "nexus://uploads/01900000-0000-7000-8000-000000000040",
+        "name": "shot.png",
+        "mimeType": "image/png",
+        "size": 184211,
+        "title": "screenshot of /sign_in"
+      }
+    ],
+    "title": "screenshot",
+    "metadata": {
+      "checkpoint": "c1"
+    }
+  },
+  "unknown_kind_fixture": {
+    "kind": "zz_unknown_value",
+    "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+    "workspace_public_id": "01900000-0000-7000-8000-000000000001",
+    "task_key": "r1t0",
+    "tool_name": "read_file",
+    "tool_input": {
+      "path": "README.md"
+    },
+    "tool_call_id": "call_1",
+    "started_at": "2026-07-30T00:00:00Z",
+    "deadline_at": "2026-07-30T00:10:00Z",
+    "timeout_ms": 600000,
+    "claimed": false,
+    "addressed_to": {
+      "role": "runner",
+      "executor_public_id": "01900000-0000-7000-8000-000000000030"
+    },
+    "conversation_public_id": null,
+    "parent_public_id": null
+  },
+  "unknown_value_fixture": "zz_unknown_value",
+  "unknown_value_behavior": "carry_unknown",
+  "unknown_field_behavior": "ignore",
+  "progress": {
+    "key_kinds": [
+      "task",
+      "process"
+    ],
+    "min_interval_ms": 250,
+    "request_envelope": [
+      "frame"
+    ],
+    "task_key": [
+      "agent_loop_public_id",
+      "task_key",
+      "claim_token"
+    ],
+    "process_key": [
+      "conversation_public_id",
+      "agent_loop_public_id",
+      "process_id"
+    ],
+    "stamps": [
+      "type",
+      "executor_public_id",
+      "at",
+      "tool_name"
+    ],
+    "task_payload": [
+      "text_tail",
+      "structured"
+    ],
+    "process_payload": [
+      "lines",
+      "exit"
+    ],
+    "feed_envelope": [
+      "frame"
+    ],
+    "accepted_status": 202
+  },
+  "progress_task_frame_request_fixture": {
+    "frame": {
+      "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+      "task_key": "r1t0",
+      "claim_token": "01900000-0000-7000-8000-000000000032",
+      "text_tail": "compiling 41/120\n",
+      "structured": {
+        "done": 41,
+        "total": 120
+      }
+    }
+  },
+  "progress_process_frame_request_fixture": {
+    "frame": {
+      "conversation_public_id": "01900000-0000-7000-8000-000000000033",
+      "process_id": "p3",
+      "lines": [
+        "Listening on http://127.0.0.1:4000"
+      ],
+      "exit": null
+    }
+  },
+  "valid_progress_frame_fixture": {
+    "frame": {
+      "type": "executor_progress",
+      "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+      "task_key": "r1t0",
+      "tool_name": "bash",
+      "executor_public_id": "01900000-0000-7000-8000-000000000030",
+      "at": "2026-09-13T10:00:00.250Z",
+      "text_tail": "compiling 41/120\n",
+      "structured": {
+        "done": 41,
+        "total": 120
+      }
+    }
+  },
+  "valid_process_output_frame_fixture": {
+    "frame": {
+      "type": "process_output",
+      "conversation_public_id": "01900000-0000-7000-8000-000000000033",
+      "process_id": "p3",
+      "executor_public_id": "01900000-0000-7000-8000-000000000030",
+      "at": "2026-09-13T10:00:00.250Z",
+      "lines": [
+        "Listening on http://127.0.0.1:4000"
+      ],
+      "exit": null
+    }
+  },
+  "unknown_progress_frame_type_fixture": {
+    "frame": {
+      "type": "zz_unknown_value",
+      "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+      "task_key": "r1t0",
+      "tool_name": "bash",
+      "executor_public_id": "01900000-0000-7000-8000-000000000030",
+      "at": "2026-09-13T10:00:00.250Z",
+      "text_tail": "compiling 41/120\n",
+      "structured": {
+        "done": 41,
+        "total": 120
+      }
+    }
+  },
+  "unknown_progress_key_kind_fixture": {
+    "frame": {
+      "agent_loop_public_id": "01900000-0000-7000-8000-000000000031",
+      "zz_unknown_value": "x"
+    }
+  }
+}

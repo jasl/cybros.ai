@@ -1,0 +1,19 @@
+<% content_for :title, "Edit model" %>
+<div class="space-y-6">
+  <%= render "admin/model_providers/header", provider: @provider, current: :model, description: "Edit this model's context, capabilities and optional cost estimate." %>
+  <h2 class="text-lg font-medium wrap-anywhere"><%= @model.fetch(:model) %></h2>
+  <% if @model.fetch(:removed) %><p class="text-sm text-base-content/60">This model is removed. Saving a definition makes it available again when the provider is ready.</p><% end %>
+  <%= render "form", form: @form, provider: @provider, creating: false %>
+  <section class="flex flex-wrap gap-3 border-t border-base-300 pt-5" aria-label="Model actions">
+    <% if @installation_model && @model.fetch(:source) != "catalog" %>
+      <%= button_to "Restore installation model", admin_model_provider_model_reset_path(@provider.fetch(:id)),
+        params: { model_reset: { model: @model.fetch(:model), expected_lock_version: @provider.fetch(:lock_version) } },
+        class: "btn btn-sm btn-outline", form: { data: { turbo_confirm: "Discard this model's edits and restore its installation definition?" } } %>
+    <% end %>
+    <% unless @model.fetch(:removed) %>
+      <%= button_to "Remove model", admin_model_provider_model_definition_path(@provider.fetch(:id)), method: :delete,
+        params: { model_definition: { model: @model.fetch(:model), expected_lock_version: @provider.fetch(:lock_version) } },
+        class: "btn btn-sm btn-outline", form: { data: { turbo_confirm: "Remove this model? New requests will stop. Custom model settings must be entered again to re-add it." } } %>
+    <% end %>
+  </section>
+</div>

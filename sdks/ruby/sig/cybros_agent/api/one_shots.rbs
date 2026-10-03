@@ -1,0 +1,217 @@
+module CybrosAgent
+  module Api
+    class OneShotModel < Data
+      attr_reader provider_id: String
+      attr_reader model_ref: String
+      attr_reader reasoning_effort: String?
+    end
+
+    class OneShotInputEstimate < Data
+      attr_reader input_tokens: Integer
+      attr_reader tokenizer_exact: bool
+      attr_reader catalog_input_token_limit: Integer?
+      attr_reader advisory_input_token_limit: Integer?
+      attr_reader model: OneShotModel
+
+      def tokenizer_exact?: () -> bool
+    end
+
+    class OneShotUsage < Data
+      attr_reader usage_record_public_id: String
+      attr_reader input_tokens: Integer?
+      attr_reader cache_read_tokens: Integer?
+      attr_reader uncached_input_tokens: Integer?
+      attr_reader cache_creation_tokens: Integer?
+      attr_reader cache_hit_rate: Numeric?
+      attr_reader output_tokens: Integer?
+      attr_reader reasoning_tokens: Integer?
+      attr_reader total_tokens: Integer?
+      attr_reader cost_amount: String?
+      attr_reader cost_unit: String?
+      attr_reader cost_complete: bool
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class OneShotUsageSummary < Data
+      attr_reader request_count: Integer
+      attr_reader input_tokens: Integer
+      attr_reader cache_read_tokens: Integer
+      attr_reader uncached_input_tokens: Integer
+      attr_reader cache_creation_tokens: Integer
+      attr_reader cache_hit_rate: Numeric?
+      attr_reader output_tokens: Integer
+      attr_reader reasoning_tokens: Integer
+      attr_reader total_tokens: Integer
+      attr_reader cost_amount: String
+      attr_reader cost_complete: bool
+    end
+
+    class OneShotFile < Data
+      attr_reader index: Integer
+      attr_reader filename: String
+      attr_reader content_type: String
+      attr_reader byte_size: Integer
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class OneShotTiming < Data
+      attr_reader duration_ms: Integer?
+      attr_reader time_to_first_token_ms: Integer?
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class OneShotError < Data
+      attr_reader code: String
+      attr_reader attempt_budget_spent: bool
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class OneShotReasoning < Data
+      attr_reader available: bool
+      attr_reader text: String?
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class OneShotEmbedding < Data
+      attr_reader index: Integer
+      attr_reader vector: Array[Numeric]
+
+      def self.new: (index: Integer, vector: Array[Numeric]) -> instance
+    end
+
+    class OneShotModelChange < Data
+      attr_reader from: String
+      attr_reader to: String
+      attr_reader reason: String
+      attr_reader category: String?
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class OneShotResult < Data
+      attr_reader status: String
+      attr_reader finish_quality: String?
+      attr_reader output_text: String?
+      attr_reader usage: OneShotUsage?
+      attr_reader timing: OneShotTiming?
+      attr_reader error: OneShotError?
+      attr_reader reasoning: OneShotReasoning?
+      attr_reader output_files: Array[OneShotFile]?
+      attr_reader embeddings: Array[OneShotEmbedding]?
+      attr_reader refusal_category: String?
+      attr_reader model_change: OneShotModelChange?
+
+      def truncated?: () -> bool
+      def refused?: () -> bool
+      def failed?: () -> bool
+      def files: () -> Array[OneShotFile]
+      def vectors: () -> Array[Array[Numeric]]
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class OneShotSummary < Data
+      attr_reader public_id: String
+      attr_reader workload: String
+      attr_reader status: String
+      attr_reader model: OneShotModel
+      attr_reader billing_subject: String?
+      attr_reader created_at: String
+      attr_reader updated_at: String
+    end
+
+    class OneShot < Data
+      attr_reader public_id: String
+      attr_reader workload: String
+      attr_reader status: String
+      attr_reader model: OneShotModel
+      attr_reader billing_subject: String?
+      attr_reader created_at: String
+      attr_reader updated_at: String
+      attr_reader usage_summary: OneShotUsageSummary
+      attr_reader result: OneShotResult?
+
+      def finished?: () -> bool
+      def output_text: () -> String?
+    end
+
+    class OneShotEventPage < Data
+      attr_reader items: Array[OneShotEvent]
+      attr_reader next_after: String?
+      attr_reader watermark: Integer
+
+      def caught_up?: (Integer applied_sequence) -> bool
+    end
+
+    class OneShotEvent < Data
+      attr_reader public_id: String
+      attr_reader sequence: Integer
+      attr_reader cursor: String
+      attr_reader type: String
+      attr_reader resource_type: String
+      attr_reader resource_public_id: String
+      attr_reader occurred_at: String
+      attr_reader payload: untyped
+    end
+
+    class OneShotsContext
+      include Fields
+      attr_reader workspace_public_id: String
+
+      def initialize: (dispatch: _Dispatch, workspace_public_id: String) -> void
+      def list: (?workload: String?, ?after: String?, ?limit: Integer?) -> Page[OneShotSummary]
+      def estimate_input: (
+        workload: String,
+        model: String,
+        input: untyped,
+        ?reasoning_effort: String?,
+        ?configuration: Hash[untyped, untyped],
+        ?upload_public_ids: Array[String]
+      ) -> OneShotInputEstimate
+      def create: (
+        workload: String,
+        model: String,
+        input: untyped,
+        idempotency_key: String,
+        ?reasoning_effort: String?,
+        ?configuration: Hash[untyped, untyped],
+        ?upload_public_ids: Array[String],
+        ?billing_subject: String?
+      ) -> Accepted
+      def fetch: (String public_id) -> OneShot
+      def events: (String public_id, ?after: String?, ?limit: Integer?) -> OneShotEventPage
+      def cancel: (String public_id) -> OneShot
+      def feed: (
+        String public_id,
+        ?position: KernelFeed::Position,
+        ?limit: Integer?,
+        ?realtime: Realtime::Client?,
+        ?items: String?,
+        **untyped
+      ) -> KernelFeed[OneShotEvent]
+      def realtime_opener: (
+        String public_id, Realtime::Client client, ?items: String?
+      ) -> ^() -> Realtime::FeedSubscription[OneShotEvent]
+      def download: (String public_id, Integer index) -> String
+      def delete: (String public_id) -> nil
+
+      class Accepted < Data
+        attr_reader one_shot: OneShot
+        attr_reader replayed: bool
+
+        def replayed?: () -> bool
+        def public_id: () -> String
+        def status: () -> String
+        def workload: () -> String
+        def model: () -> OneShotModel
+        def finished?: () -> bool
+      end
+    end
+
+  end
+
+end

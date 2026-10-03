@@ -1,0 +1,2 @@
+<%# Presence beside the contact sample: "Online" while the address's pong-verified executor socket is open, "Offline · last seen …" from the sampled contact stamp once it is not, "Not yet seen" when the address never contacted Nexus. Display only — never a delivery gate. %>
+<span title="<%= address&.last_seen_at&.iso8601 %>"><%= presence_label(address) %></span>

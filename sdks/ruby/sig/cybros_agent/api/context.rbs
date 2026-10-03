@@ -1,0 +1,184 @@
+module CybrosAgent
+  module Api
+    class TranscriptItem < Data
+      SETTLED_TYPES: Array[String]
+
+      attr_reader type: String
+      attr_reader turn_public_id: String?
+      attr_reader variant_public_id: String?
+      attr_reader agent_loop_public_id: String?
+      attr_reader task_key: String?
+      attr_reader turn: ConversationTurn?
+      attr_reader payload: untyped
+
+      def settled?: () -> bool
+      def round?: () -> bool
+      def call?: () -> bool
+      def reset?: () -> bool
+      def text: () -> untyped
+    end
+
+    class TranscriptAccumulator
+      DEFAULT_BOUND: Integer
+      CONTINUATION_BYTES: Range[Integer]
+      EMPTY: String
+
+      attr_reader length: Integer
+      attr_reader key: String?
+
+      def initialize: (?bound: Integer) -> void
+      def accumulate: (String? text, ?key: String?) -> String?
+      def reset: (?key: String?) -> nil
+      def replace_on_settle: (String? text) -> String
+      def replace_snapshot: (String? text, ?length: Integer?) -> String
+      def replaced?: () -> bool
+      def text: () -> String
+      def empty?: () -> bool
+    end
+
+    class ThreadAccumulator
+      CALL_KEY: Regexp
+
+      def initialize: () -> void
+      def seed: (untyped page) -> Array[Hash[String, untyped]]
+      def settle_round: (untyped item) -> Hash[String, untyped]?
+      def settle_call: (untyped item) -> Hash[String, untyped]?
+      def round_started: (untyped frame) -> Hash[String, untyped]?
+      def step_started: (untyped frame) -> Hash[String, untyped]?
+      def step_claimed: (untyped frame) -> Hash[String, untyped]?
+      def rows: () -> Array[Hash[String, untyped]]
+      def live: () -> Array[String]
+      def snapshot: () -> Hash[String, untyped]
+    end
+
+    class ConversationHistoryEvidence < Data
+      attr_reader selected: Integer
+      attr_reader skipped: Integer
+      attr_reader skipped_reason: String?
+      attr_reader compacted: Integer
+
+      def trimmed?: () -> bool
+      def compacted?: () -> bool
+    end
+
+    class ConversationInputEstimate < Data
+      attr_reader input_tokens: Integer
+      attr_reader tokenizer_exact: bool
+      attr_reader catalog_input_token_limit: Integer?
+      attr_reader advisory_input_token_limit: Integer?
+      attr_reader message_count: Integer
+      attr_reader history: ConversationHistoryEvidence
+      attr_reader rendered: RenderedEstimate?
+
+      def initialize: (
+        input_tokens: Integer, tokenizer_exact: bool, catalog_input_token_limit: Integer?,
+        advisory_input_token_limit: Integer?, message_count: Integer, history: ConversationHistoryEvidence,
+        ?rendered: RenderedEstimate?
+      ) -> void
+      def self.members: () -> [:input_tokens, :tokenizer_exact, :catalog_input_token_limit, :advisory_input_token_limit, :message_count, :history, :rendered]
+      def members: () -> [:input_tokens, :tokenizer_exact, :catalog_input_token_limit, :advisory_input_token_limit, :message_count, :history, :rendered]
+      def tokenizer_exact?: () -> bool
+      def rendered?: () -> bool
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class RenderedEstimate < Data
+      attr_reader mechanism: String
+      attr_reader entries: Array[untyped]
+      attr_reader storage: EstimateStorage
+      attr_reader blocks: Array[ContextBlockEvidence]
+      attr_reader memory: MemoryEvidence
+      attr_reader slots: Hash[String, untyped]
+    end
+
+    class EstimateStorage < Data
+      attr_reader bytes: Integer
+      attr_reader bound: Integer
+      attr_reader within_bound: bool
+      attr_reader refusal: String?
+
+      def within_bound?: () -> bool
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class ContextBlockEvidence < Data
+      attr_reader block: String
+      attr_reader index: Integer
+      attr_reader type: String
+      attr_reader role: String?
+      attr_reader state: String
+      attr_reader tokens: Integer
+      attr_reader allocated_tokens: Integer?
+
+      def selected?: () -> bool
+      def empty?: () -> bool
+      def floor_unmet?: () -> bool
+      def carried?: () -> bool
+    end
+
+    class MemoryEvidence < Data
+      attr_reader included: Integer
+      attr_reader omitted: Integer
+    end
+
+    class MemoryDocument < Data
+      attr_reader public_id: String
+      attr_reader lock_version: Integer
+      attr_reader path: String
+      attr_reader bytesize: Integer
+      attr_reader description: String?
+      attr_reader content: String?
+      attr_reader written_at: String
+
+      def scope: () -> String
+      def skill?: () -> bool
+    end
+
+    class MemoryContext
+      include ConversationProjections
+
+      attr_reader path: String
+
+      def initialize: (dispatch: _Dispatch, path: String) -> void
+      def list: () -> Array[MemoryDocument]
+      def read: (String document_path) -> MemoryDocument
+      def grep: (pattern: String, ?path: String?, ?ignore_case: bool, ?limit: Integer?) -> Hash[String, untyped]
+      def write: (String document_path, String content, expected_public_id: String?, expected_lock_version: Integer?, ?description: String?) -> MemoryDocument
+      def edit: (path: String, old_text: String, new_text: String, expected_public_id: String, expected_lock_version: Integer) -> MemoryDocument
+      def delete: (String document_path, expected_public_id: String, expected_lock_version: Integer) -> nil
+    end
+
+    class PromptDocument < Data
+      attr_reader slot: String
+      attr_reader role: String
+      attr_reader bytesize: Integer
+      attr_reader version: Integer
+      attr_reader content: String?
+      attr_reader written_at: String
+    end
+
+    class SealedRequest < Data
+      attr_reader entries: Array[untyped]
+      attr_reader request_options: Hash[String, untyped]
+    end
+
+    class PromptDocumentsContext
+      include Fields
+      include ConversationProjections
+
+      attr_reader path: String
+
+      def initialize: (dispatch: _Dispatch, path: String) -> void
+      def list: () -> Array[PromptDocument]
+      def read: (String slot) -> PromptDocument
+      def write: (String slot, String content, ?role: untyped) -> PromptDocument
+      def delete: (String slot) -> nil
+
+      private
+
+      def slot_path: (String slot) -> String
+    end
+
+  end
+
+end

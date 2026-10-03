@@ -1,0 +1,274 @@
+module Rho
+  # The Agent Client Protocol, both roles: the framing,
+  # the two-way loop, the names. Stdlib only.
+  module Acp
+    class Error < Rho::Error
+    end
+
+    class Closed < Error
+    end
+
+    class Unanswered < Error
+    end
+
+    class RemoteError < Error
+      attr_reader code: Integer
+      attr_reader data: untyped
+      def self.from: (Hash[String, untyped] error) -> instance
+      def initialize: (Integer code, String message, ?data: untyped) -> void
+    end
+
+    module Methods
+      PROTOCOL_VERSION: Integer
+      JSONRPC: String
+
+      INITIALIZE: String
+      AUTHENTICATE: String
+      LOGOUT: String
+      SESSION_NEW: String
+      SESSION_LOAD: String
+      SESSION_RESUME: String
+      SESSION_CLOSE: String
+      SESSION_LIST: String
+      SESSION_DELETE: String
+      SESSION_SET_MODE: String
+      SESSION_SET_CONFIG_OPTION: String
+      SESSION_PROMPT: String
+      SESSION_CANCEL: String
+      AGENT_REQUESTS: Array[String]
+      AGENT_NOTIFICATIONS: Array[String]
+
+      SESSION_REQUEST_PERMISSION: String
+      SESSION_UPDATE: String
+      FS_READ_TEXT_FILE: String
+      FS_WRITE_TEXT_FILE: String
+      TERMINAL_CREATE: String
+      TERMINAL_OUTPUT: String
+      TERMINAL_WAIT_FOR_EXIT: String
+      TERMINAL_KILL: String
+      TERMINAL_RELEASE: String
+      ELICITATION_CREATE: String
+      ELICITATION_COMPLETE: String
+      CLIENT_REQUESTS: Array[String]
+      CLIENT_NOTIFICATIONS: Array[String]
+
+      CANCEL_REQUEST: String
+      CUSTOM_PREFIX: String
+
+      module ErrorCode
+        PARSE: Integer
+        INVALID_REQUEST: Integer
+        METHOD_NOT_FOUND: Integer
+        INVALID_PARAMS: Integer
+        INTERNAL: Integer
+        AUTH_REQUIRED: Integer
+        RESOURCE_NOT_FOUND: Integer
+        REQUEST_CANCELLED: Integer
+        MESSAGES: Hash[Integer, String]
+      end
+
+      module StopReason
+        END_TURN: String
+        MAX_TOKENS: String
+        MAX_TURN_REQUESTS: String
+        REFUSAL: String
+        CANCELLED: String
+      end
+      STOP_REASONS: Array[String]
+
+      module PermissionOptionKind
+        ALLOW_ONCE: String
+        ALLOW_ALWAYS: String
+        REJECT_ONCE: String
+        REJECT_ALWAYS: String
+      end
+      PERMISSION_OPTION_KINDS: Array[String]
+      module PermissionOutcome
+        SELECTED: String
+        CANCELLED: String
+      end
+      PERMISSION_OUTCOMES: Array[String]
+
+      module ContentBlock
+        TEXT: String
+        IMAGE: String
+        AUDIO: String
+        RESOURCE_LINK: String
+        RESOURCE: String
+      end
+      CONTENT_BLOCK_TYPES: Array[String]
+
+      SESSION_UPDATE_DISCRIMINATOR: String
+      module SessionUpdate
+        USER_MESSAGE_CHUNK: String
+        AGENT_MESSAGE_CHUNK: String
+        AGENT_THOUGHT_CHUNK: String
+        TOOL_CALL: String
+        TOOL_CALL_UPDATE: String
+        PLAN: String
+        AVAILABLE_COMMANDS_UPDATE: String
+        CURRENT_MODE_UPDATE: String
+        CONFIG_OPTION_UPDATE: String
+        SESSION_INFO_UPDATE: String
+        USAGE_UPDATE: String
+      end
+      SESSION_UPDATE_KINDS: Array[String]
+
+      module ToolKind
+        READ: String
+        EDIT: String
+        DELETE: String
+        MOVE: String
+        SEARCH: String
+        EXECUTE: String
+        THINK: String
+        FETCH: String
+        SWITCH_MODE: String
+        OTHER: String
+      end
+      TOOL_KINDS: Array[String]
+      module ToolCallStatus
+        PENDING: String
+        IN_PROGRESS: String
+        COMPLETED: String
+        FAILED: String
+      end
+      TOOL_CALL_STATUSES: Array[String]
+      TOOL_CALL_CONTENT_TYPES: Array[String]
+
+      PLAN_PRIORITIES: Array[String]
+      PLAN_STATUSES: Array[String]
+
+      module AuthMethodType
+        AGENT: String
+        TERMINAL: String
+      end
+      AUTH_METHOD_TYPES: Array[String]
+      ELICITATION_MODES: Array[String]
+      module ElicitationAction
+        ACCEPT: String
+        DECLINE: String
+        CANCEL: String
+      end
+      ELICITATION_ACTIONS: Array[String]
+      CONFIG_OPTION_TYPES: Array[String]
+      CONFIG_OPTION_CATEGORIES: Array[String]
+      MCP_SERVER_TYPES: Array[String]
+
+      CLIENT_CAPABILITY_KEYS: Array[String]
+      FS_CAPABILITY_KEYS: Array[String]
+      ELICITATION_CAPABILITY_KEYS: Array[String]
+      AGENT_CAPABILITY_KEYS: Array[String]
+      PROMPT_CAPABILITY_KEYS: Array[String]
+      MCP_CAPABILITY_KEYS: Array[String]
+      SESSION_CAPABILITY_KEYS: Array[String]
+      BASELINE_CLIENT_CAPABILITIES: Hash[String, untyped]
+      BASELINE_AGENT_CAPABILITIES: Hash[String, untyped]
+    end
+
+    class Wire
+      type id = Integer | String
+      type frame = Request | Notification | Response | Failure
+
+      class Request < ::Data
+        attr_reader id: id
+        attr_reader method: String
+        attr_reader params: untyped
+        def self.new: (id id, String method, untyped params) -> instance
+                    | (id: id, method: String, params: untyped) -> instance
+      end
+
+      class Notification < ::Data
+        attr_reader method: String
+        attr_reader params: untyped
+        def self.new: (String method, untyped params) -> instance
+                    | (method: String, params: untyped) -> instance
+      end
+
+      class Response < ::Data
+        attr_reader id: id?
+        attr_reader result: untyped
+        def self.new: (id? id, untyped result) -> instance
+                    | (id: id?, result: untyped) -> instance
+      end
+
+      class Failure < ::Data
+        attr_reader id: id?
+        attr_reader error: Hash[String, untyped]
+        def self.new: (id? id, Hash[String, untyped] error) -> instance
+                    | (id: id?, error: Hash[String, untyped]) -> instance
+      end
+
+      def self.over_stdio: () -> Wire
+      def initialize: (input: IO, output: IO) -> void
+      def closed?: () -> bool
+      def write_request: (id id, String method, ?untyped params) -> nil
+      def write_notification: (String method, ?untyped params) -> nil
+      def write_result: (id? id, untyped result) -> nil
+      def write_error: (id? id, Integer code, String message, ?data: untyped) -> nil
+      def write: (Hash[String, untyped] message) -> nil
+      def read: () -> frame?
+      def close: () -> nil
+
+      private
+
+      def with_params: (Hash[String, untyped] frame, untyped params) -> Hash[String, untyped]
+      def read_line: () -> String?
+      def classify: (String line) -> frame?
+      def shape: (untyped message) -> frame?
+      def answer: (id? id, Integer code) -> nil
+    end
+
+    class Connection
+      type event = Inbound | Wire::Notification
+      type outcome = [Symbol, untyped]
+
+      CLOSED: Object
+
+      class Pending
+        attr_reader id: Integer
+        def initialize: (Integer id, Connection connection) -> void
+        def wait: (?timeout: (Integer | Float)?) -> untyped
+        def done?: () -> bool
+        def cancel: () -> nil
+        def cancelled?: () -> bool
+        def resolve: (outcome outcome) -> nil
+      end
+
+      class Inbound
+        attr_reader id: Wire::id
+        attr_reader method: String
+        attr_reader params: untyped
+        def initialize: (Wire::id id, String method, untyped params, Wire wire, ^(Wire::id) -> void release) -> void
+        def answered?: () -> bool
+        def cancelled?: () -> bool
+        def on_cancel: () { () -> untyped } -> nil
+        def respond: (untyped result) -> nil
+        def fail: (Integer code, String message, ?data: untyped) -> nil
+        def fail_cancelled: () -> nil
+        def mark_cancelled: () -> nil
+
+        private
+
+        def answer: () { () -> untyped } -> nil
+      end
+
+      def initialize: (Wire wire) -> void
+      def closed?: () -> bool
+      def request: (String method, ?untyped params) -> Pending
+      def notify: (String method, ?untyped params) -> nil
+      def receive: (?timeout: (Integer | Float)?) -> event?
+      def run: () { (event) -> untyped } -> nil
+      def close: () -> nil
+
+      private
+
+      def read_loop: () -> void
+      def enqueue_request: (Wire::Request frame) -> void
+      def notification: (Wire::Notification frame) -> void
+      def resolve: (Wire::id? id, outcome outcome) -> void
+      def release: (Wire::id id) -> void
+      def finish: () -> void
+    end
+  end
+end

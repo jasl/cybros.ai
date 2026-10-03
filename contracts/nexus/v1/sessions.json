@@ -1,0 +1,70 @@
+{
+  "kinds": [
+    "api",
+    "browser"
+  ],
+  "error_statuses": {
+    "invalid_credentials": 401,
+    "local_recovery_required": 403,
+    "password_change_required": 403
+  },
+  "valid_create_fixture": {
+    "session": {
+      "public_id": "01900000-0000-7000-8000-000000000010",
+      "kind": "api",
+      "expires_at": "2026-08-29T00:00:00Z"
+    },
+    "token": "fixture-session-token",
+    "token_type": "Bearer"
+  },
+  "valid_show_fixture": {
+    "session": {
+      "public_id": "01900000-0000-7000-8000-000000000010",
+      "kind": "api",
+      "expires_at": "2026-08-29T00:00:00Z"
+    }
+  },
+  "valid_revoke_fixture": {
+    "revoked": true
+  },
+  "valid_error_fixture": {
+    "status": 401,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "invalid_credentials",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_kind_fixture": {
+    "session": {
+      "public_id": "01900000-0000-7000-8000-000000000010",
+      "kind": "zz_unknown_value",
+      "expires_at": "2026-08-29T00:00:00Z"
+    }
+  },
+  "unknown_token_type_fixture": {
+    "session": {
+      "public_id": "01900000-0000-7000-8000-000000000010",
+      "kind": "api",
+      "expires_at": "2026-08-29T00:00:00Z"
+    },
+    "token": "fixture-session-token",
+    "token_type": "zz_unknown_value"
+  },
+  "unknown_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_value_fixture": "zz_unknown_value",
+  "unknown_kind_behavior": "carry_unknown",
+  "unknown_token_type_behavior": "reject_response",
+  "unknown_field_behavior": "ignore"
+}

@@ -1,0 +1,20 @@
+<section aria-label="API key" class="space-y-5 rounded-box border border-base-300 bg-base-200 p-5 sm:p-6">
+  <div class="flex items-start gap-3">
+    <span class="iconify <%= provider.fetch(:configured) ? "lucide--circle-check text-success" : "lucide--key-round text-base-content/60" %> mt-0.5 size-5 shrink-0" aria-hidden="true"></span>
+    <div class="min-w-0 space-y-2">
+      <h2 class="font-medium" role="status"><%= provider_credential_label(provider) %></h2>
+      <p class="text-sm leading-relaxed text-base-content/60">Encrypted in Nexus and never sent to agents. Saving a key does not make a model request or verify provider billing.</p>
+    </div>
+  </div>
+  <%= form_with url: admin_model_provider_api_key_path(provider.fetch(:id)), method: :patch, scope: :credential, id: "provider-api-key-form", class: "space-y-2" do |form| %>
+    <%= form.label :api_key, "API key", class: "sr-only" %>
+    <%= form.password_field :api_key, required: true, autocomplete: "new-password", spellcheck: false, class: "input input-sm w-full", placeholder: "Enter API key", aria: { describedby: "provider-api-key-help" } %>
+    <p id="provider-api-key-help" class="text-sm text-base-content/60"><%= provider.fetch(:configured) ? "Enter a new key to update this connection." : "Paste the key from your provider account." %></p>
+  <% end %>
+  <div class="flex flex-wrap items-center gap-3">
+    <%= button_tag(provider.fetch(:configured) ? "Update" : "Save", type: :submit, form: "provider-api-key-form", class: "btn btn-primary btn-sm") %>
+    <% if provider.fetch(:configured) %>
+      <%= button_to "Remove", admin_model_provider_api_key_path(provider.fetch(:id)), method: :delete, class: "btn btn-sm btn-outline btn-error", data: { turbo_confirm: "Remove the API key for #{model_provider_name(provider.fetch(:id))}? New requests will need another key. Models and visibility settings are kept." } %>
+    <% end %>
+  </div>
+</section>

@@ -1,0 +1,16 @@
+# TEST-OWNED selector policy. The repository ships none (owner ruling
+# 2026-08-21: routing policy is a deployment decision, taught by the commented
+# `config.d/model_selectors.yml.sample` and one day settable from the console),
+# so the selector walk needs a selector of its own to be exercised at all.
+#
+# Deliberately NOT named `interactive_chat`. That was the shipped name, and a
+# fixture wearing it would read to the next person as a default this repository
+# still defines. The resolver skips the disabled fictional lane and freezes
+# the next eligible candidate.
+schema_version: cybros.model_catalog.v1
+selectors:
+  chat-walk:
+    - model: dev/mock-text
+      reasoning_effort: medium
+    - model: test_api/text
+      reasoning_effort: medium

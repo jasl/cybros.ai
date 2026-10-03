@@ -1,0 +1,7 @@
+module Rho
+  module ExecutionPolicy
+    PROMPT: String
+    def self.context: (kind: String) -> String
+    def self.context_block: () -> Hash[String, String]
+  end
+end

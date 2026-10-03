@@ -1,0 +1,129 @@
+module CybrosAgent
+
+  module Realtime
+    EXECUTOR_INBOX_CHANNEL: String
+    REQUIRED_LIBRARIES: Array[String]
+
+    def self.require_dependencies: (?^(String library) -> untyped) -> void
+
+    class ConnectionLostError < CybrosAgent::Error
+      attr_reader reason: String?
+
+      def initialize: (?String? message, ?reason: String?) -> void
+    end
+
+    class SubscriptionRejectedError < CybrosAgent::Error
+      attr_reader identifier: String?
+      attr_reader reason: String?
+
+      def initialize: (
+        ?String? message, ?identifier: String?, ?reason: String?
+      ) -> void
+    end
+
+    class SubscriptionBackpressureError < ConnectionLostError
+    end
+
+    class TimeoutError < ConnectionLostError
+    end
+
+    module Protocol
+      TYPE_WELCOME: String
+      TYPE_PING: String
+      TYPE_CONFIRM: String
+      TYPE_REJECT: String
+      TYPE_DISCONNECT: String
+      SDK_SUBSCRIPTION_ID_KEY: String
+
+      def self.identifier: (
+        channel: String, ?params: Hash[Symbol | String, untyped]
+      ) -> String
+      def self.wire_identifier: (
+        String identifier, ?nonce: String
+      ) -> String
+      def self.subscribe_command: (String identifier) -> String
+      def self.unsubscribe_command: (String identifier) -> String
+      def self.message_command: (String identifier, Hash[String, untyped] data) -> String
+      def self.parse_frame: (String text) -> Hash[String, untyped]?
+    end
+
+    class Endpoint
+      CABLE_PATH: String
+      PROTOCOLS: Array[String]
+
+      def initialize: (
+        base_url: String, credential: String | ^() -> String, ?cable_path: String
+      ) -> void
+      def url: () -> String
+      def headers: () -> Hash[String, String]
+    end
+
+    class Client
+      DEFAULT_WELCOME_TIMEOUT: Integer
+      DEFAULT_SUBSCRIBE_TIMEOUT: Integer
+      ALPN_PROTOCOLS: Array[String]
+
+      attr_reader last_ping_at: Float?
+
+      def initialize: (endpoint: Endpoint) -> void
+      def connect: (?welcome_timeout: Numeric) -> self
+      def connected?: () -> bool
+      def connect_for_feed: (?welcome_timeout: Numeric) -> self
+      def subscribe: (
+        channel: String, ?params: Hash[Symbol | String, untyped]?, ?timeout: Numeric?
+      ) -> Subscription[untyped]
+      def unsubscribe: (Subscription[untyped] subscription) -> nil
+      def close: () -> nil
+      def rebind: () -> bool
+      def stale?: (threshold: Numeric) -> bool
+      def inspect: () -> String
+    end
+
+    class Subscription[Message]
+      MAX_BUFFERED_MESSAGES: Integer
+
+      attr_reader identifier: String
+      attr_reader wire_identifier: String
+
+      def initialize: (
+        client: Client, identifier: String, wire_identifier: String
+      ) -> void
+      def each: () { (Message message) -> untyped } -> nil
+      def pop: (?timeout: Numeric?) -> Message?
+      def unsubscribe: () -> nil
+      def closed?: () -> bool
+      def pongs?: () -> bool
+      def inspect: () -> String
+      def deliver: (Message payload) -> (:overflow | nil)
+      def confirm: () -> untyped
+      def reject: () -> untyped
+      def finish: (?ConnectionLostError? error) -> untyped
+      def wait_confirmed: (Numeric? timeout) -> self
+    end
+
+    class FeedSubscription[Event]
+      def self.opener: [Event] (
+        client: Client,
+        channel: String,
+        ?params: Hash[Symbol | String, untyped],
+        event: ^(untyped message) -> Event?,
+        ?timeout: Numeric?
+      ) -> ^() -> FeedSubscription[Event]
+      def self.open: [Event] (
+        client: Client,
+        channel: String,
+        ?params: Hash[Symbol | String, untyped],
+        event: ^(untyped message) -> Event?,
+        ?timeout: Numeric?
+      ) -> FeedSubscription[Event]
+      def initialize: (
+        subscription: Subscription[untyped],
+        event: ^(untyped message) -> Event?
+      ) -> void
+      def each: () { (Event event) -> untyped } -> nil
+      def unsubscribe: () -> nil
+    end
+
+  end
+
+end

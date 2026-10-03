@@ -1,0 +1,6 @@
+# Deployment-local catalog overlays (core_matrix-carried design): real
+# overlay files never enter the repository; the .sample templates document
+# the convention.
+*.yml
+!*.yml.sample
+!.gitignore

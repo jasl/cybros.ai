@@ -1,0 +1,110 @@
+# THE ALIAS TABLES (the tables are the pack's, the MECHANISM — the alias entry, the macros, `resolve_call` — stays the kernel's). A preset is a
+# familiar spelling of the kernel's tools as a switch: the canonical stays
+# the kernel's, a call made under the alias runs under the kernel's wire
+# name. No kernel text lives here: a `recut` names ONE anchored edit of
+# the template `GET /tools` serves, rendered at declare and refused loudly
+# when the anchor moved (never a silent fallback to the plain text). The
+# reference for other languages is sdks/ruby/README.md, "Model adaptations".
+format: 1
+# The declaration order of the words; a row's tool_style is a subset.
+words: [nexus, claude, codex, workflow]
+# canonical → the kernel's plain wire name (the harness pins each against
+# the registry). A preset aliases only what the catalog carries under that
+# name, and a plain entry stays while `nexus` is among a row's styles, or
+# while no active preset supersedes it.
+plain:
+  nexus.graph.task: task
+  nexus.graph.wait: wait
+  nexus.human.ask: ask
+  nexus.graph.compose: compose
+  nexus.conversation.spawn: spawn
+  nexus.conversation.send: send
+  nexus.skill.load: skill
+presets:
+  nexus: { supersedes: [], aliases: [] }
+  # `claude` takes task, ask and SKILL (Claude Code's `Skill`); the
+  # `run_in_background` map is the inverted boolean Claude Code trains on
+  # and needs its own sentence, because the kernel's describes `wait`.
+  claude:
+    supersedes: [nexus.graph.task, nexus.human.ask, nexus.skill.load]
+    aliases:
+      - name: Agent
+        canonical: nexus.graph.task
+        params:
+          run_in_background:
+            maps_to: wait
+            invert: true
+            description: "true (the default): the next round continues alongside the task. false: the next round waits and the answer is this call's result. Lifetime independently controls whether final delivery waits."
+        # The kernel's prose would name a parameter `Agent` does not expose: the wait paragraph re-cut.
+        recut:
+          anchor: |-
+            `wait: true` means your next round WAITS for the task: the `<task_result>` is
+            this call's result, and several waited calls in one message answer
+            together, in the order you asked. Use the default for a long test run or
+            build while you do other work; use `wait: true` when you need the answer
+            before you can continue.
+          replacement: |-
+            `run_in_background: false` means your next round WAITS for the task: the
+            `<task_result>` is this call's result, and several waited calls in one
+            message answer together, in the order you asked. Use the default for a
+            long test run or build while you do other work; use
+            `run_in_background: false` when you need the answer before you can
+            continue.
+      # PROMPT-SHAPED, BY DECISION: the
+      # kernel's `ask` carries `options`/`multi` flat; Claude Code's
+      # `AskUserQuestion` nests them (`questions[0].{question,options,
+      # multiSelect}`), and the alias mechanism maps FLAT keys only
+      # (`resolve_call`, `params_refusal`) — a nested-path map means a
+      # path grammar in the resolver, the validator and the render, well
+      # past the thirty lines the cleanup allowed. The alias stays over
+      # the kernel's flat shape (pinned in e2e `kernel_tool_names_test`);
+      # the paid window benches this cell as-is.
+      - { name: AskUserQuestion, canonical: nexus.human.ask }
+      # Claude Code's CURRENT input shape is `{skill: string, args?: string}`
+      # (a preset tracks the reference's current spelling), with the
+      # reference's own sentence on the mapped parameter; `args` has no
+      # kernel counterpart and passes through unread.
+      - name: Skill
+        canonical: nexus.skill.load
+        params:
+          skill: { maps_to: name, description: "The skill name. E.g., \"commit\", \"review-pr\", or \"pdf\"" }
+  # `codex` takes SPAWN and SEND (Codex's `spawn_agent` opens an agent one
+  # keeps talking to — the kernel's `spawn` — and `send_message` addresses
+  # it) and ask (codex declares no ask of its own and the plain one is
+  # nexus's); plain `task` and `skill` stay. `spawn_agent` is always
+  # detached; the return mail follows wake policy. An explicitly exposed
+  # wait tool can observe existing work later, independently of this alias.
+  codex:
+    supersedes: [nexus.conversation.spawn, nexus.conversation.send, nexus.human.ask]
+    aliases:
+      - name: spawn_agent
+        canonical: nexus.conversation.spawn
+        omit: [wait]
+        recut:
+          anchor: |-
+            message that is not from the person; `wait: true`
+            waits for the first reply. Use `{{task}}` for one bounded job that
+            ends with one answer; use `{{spawn}}` when the work needs another
+            agent's tools or memory, or a back-and-forth.
+          replacement: |-
+            message that is not from the person.
+            The reply follows the selected wake policy. If `{{wait}}` is available,
+            it can observe the existing task later. Use `{{task}}` for one
+            bounded job that ends with one answer; use `{{spawn}}` when the work
+            needs another agent's tools or memory, or a back-and-forth.
+      # The Codex reference's CURRENT spelling:
+      # `send_message({target, message})` — `target` is the handle
+      # `spawn_agent` returned, the child conversation, so it is the
+      # kernel's `to` (WHERE), never the kernel's `agent` (WHO), which
+      # passes through under its own name. No map description: the
+      # kernel's `to` sentence rides under `target`.
+      - name: send_message
+        canonical: nexus.conversation.send
+        params: { target: { maps_to: to } }
+  # `workflow` spells the kernel's `compose` as `Workflow` — Claude Code's
+  # closest tool — with the kernel's own text under the alias (the name is
+  # the question; the API style is not imitated).
+  workflow:
+    supersedes: [nexus.graph.compose]
+    aliases:
+      - { name: Workflow, canonical: nexus.graph.compose }

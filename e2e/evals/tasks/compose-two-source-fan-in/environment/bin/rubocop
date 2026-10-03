@@ -1,0 +1,6 @@
+#!/bin/sh
+sleep 3
+echo "Inspecting 4 files"
+echo "app/models/order.rb:9:3: C: Style/GuardClause: Use a guard clause instead of wrapping the code inside a conditional expression."
+echo "app/services/checkout.rb:22:80: C: Layout/LineLength: Line is too long. [96/80]"
+echo "4 files inspected, 2 offenses detected"

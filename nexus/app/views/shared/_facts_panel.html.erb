@@ -1,0 +1,8 @@
+<dl class="rounded-box border border-base-300 bg-base-200">
+  <% facts.each do |label, value| %>
+    <div class="grid min-h-16 min-w-0 gap-1 border-b border-base-300 px-4 py-3 last:border-0 sm:grid-cols-2 sm:items-center sm:gap-6">
+      <dt class="text-sm text-base-content/60"><%= label %></dt>
+      <dd class="text-sm hyphens-none wrap-anywhere"><%= value %></dd>
+    </div>
+  <% end %>
+</dl>

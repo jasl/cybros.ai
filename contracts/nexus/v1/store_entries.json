@@ -1,0 +1,123 @@
+{
+  "hosts": [
+    "workspace",
+    "conversation",
+    "profile"
+  ],
+  "max_entries_per_host": 64,
+  "namespace_max_length": 80,
+  "key_max_length": 160,
+  "list_envelope": [
+    "store_entries",
+    "pagination"
+  ],
+  "singular_envelope": [
+    "store_entry"
+  ],
+  "basic_projection": [
+    "public_id",
+    "namespace",
+    "key",
+    "lock_version",
+    "created_at",
+    "updated_at"
+  ],
+  "full_projection_adds": [
+    "value"
+  ],
+  "error_codes": [
+    "conversation_archived",
+    "entry_limit_reached",
+    "key_taken",
+    "not_authorized",
+    "workspace_agent_identifier_mismatch",
+    "workspace_not_active"
+  ],
+  "error_statuses": {
+    "conversation_archived": 409,
+    "entry_limit_reached": 409,
+    "key_taken": 409,
+    "not_authorized": 403,
+    "workspace_agent_identifier_mismatch": 403,
+    "workspace_not_active": 409
+  },
+  "valid_fixture": {
+    "store_entry": {
+      "public_id": "01900000-0000-7000-8000-000000000002",
+      "namespace": "notes",
+      "key": "pinned",
+      "lock_version": 0,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:00Z",
+      "value": null
+    }
+  },
+  "valid_basic_fixture": {
+    "store_entry": {
+      "public_id": "01900000-0000-7000-8000-000000000002",
+      "namespace": "notes",
+      "key": "pinned",
+      "lock_version": 0,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:00Z"
+    }
+  },
+  "valid_list_fixture": {
+    "store_entries": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000002",
+        "namespace": "notes",
+        "key": "pinned",
+        "lock_version": 0,
+        "created_at": "2026-07-30T00:00:00Z",
+        "updated_at": "2026-07-30T00:00:00Z"
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_create_request": {
+    "store_entry": {
+      "namespace": "notes",
+      "key": "pinned",
+      "value": null
+    }
+  },
+  "valid_update_request": {
+    "store_entry": {
+      "value": {
+        "pinned": true
+      },
+      "lock_version": 0
+    }
+  },
+  "valid_delete_params": {
+    "lock_version": 0
+  },
+  "valid_delete_fixture": {
+    "status": 204,
+    "body": null
+  },
+  "valid_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "key_taken",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_field_behavior": "ignore"
+}

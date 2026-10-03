@@ -1,0 +1,19 @@
+source "https://rubygems.org"
+
+# Specify your gem's dependencies in simple_inference.gemspec
+gemspec
+
+gem "irb"
+gem "rake", "~> 13.0"
+
+gem "minitest", "~> 6.0"
+gem "minitest-mock"
+
+gem "rubocop", "~> 1.21"
+gem "rubocop-rails-omakase"
+
+gem "httpx"
+
+# For HTTPAdapters::AsyncHTTP (optional at runtime, lazily required like
+# httpx above; dev dependency here so the adapter's tests can run).
+gem "async-http"

@@ -1,0 +1,77 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "Dangerous Eval",
+      "warning_code": 13,
+      "fingerprint": "affdd5f7b2eafa089aa83ef75c85b88a26f067bafbf65ea8cddf55cea51a80f4",
+      "check_name": "Evaluation",
+      "message": "Dynamic code evaluation",
+      "file": "lib/nexus/compose/evaluator.rb",
+      "line": 52,
+      "link": "https://brakemanscanner.org/docs/warning_types/dangerous_eval/",
+      "code": "MiniRacer::Context.new(:timeout => (TIMEOUT_MS), :max_memory => (MAX_MEMORY_BYTES)).eval(File.read(LIBRARY), :filename => \"nexus:compose/builder\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Nexus::Compose::Evaluator",
+        "method": "evaluate"
+      },
+      "user_input": null,
+      "confidence": "Weak",
+      "cwe_id": [
+        913,
+        95
+      ],
+      "note": "Reviewed 2026-09-19: false positive. This MiniRacer eval loads only the shipped builder.js at the fixed __dir__-relative LIBRARY path. Model source and params are passed separately through Context.call; the fresh V8 context has no attached Ruby callbacks or host IO. JavaScript graph construction is the compose contract, not Ruby eval. Re-review if library sourcing or context capabilities change, even if the sink fingerprint stays the same. 2026-09-23: loading builder.js from a V8 startup snapshot instead was measured and rejected: mini_racer's Snapshot still evals the source inside the gem, and a context built from a snapshot reinstalls special objects the builder deletes at load, so its lockdown could fail open. See docs/plans/2026-09-19-brakeman-triage.md at repository root."
+    },
+    {
+      "warning_type": "Dangerous Eval",
+      "warning_code": 13,
+      "fingerprint": "12976612bd17fdbe460c5cf777981c5e3803bbc702dce753fbd04b7cc540b33e",
+      "check_name": "Evaluation",
+      "message": "Dynamic code evaluation",
+      "file": "lib/nexus/compose/evaluator.rb",
+      "line": 98,
+      "link": "https://brakemanscanner.org/docs/warning_types/dangerous_eval/",
+      "code": "MiniRacer::Context.new(:timeout => (TIMEOUT_MS), :max_memory => (MAX_MEMORY_BYTES)).eval(File.read(RUN_LIBRARY), :filename => \"nexus:compose/run\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Nexus::Compose::Evaluator",
+        "method": "evaluate"
+      },
+      "user_input": null,
+      "confidence": "Weak",
+      "cwe_id": [
+        913,
+        95
+      ],
+      "note": "Reviewed 2026-09-27: false positive, the builder's sink above split in two. This MiniRacer eval loads only the shipped run.js at the fixed __dir__-relative RUN_LIBRARY path, into the context builder.js was just loaded into: the run that compiles a script and reads it against the builder, cut out of builder.js by concern. Model source and params still pass separately through Context.call, and the context gains no Ruby callbacks or host IO. Re-review with the builder's entry: if library sourcing or context capabilities change, even if the sink fingerprint stays the same."
+    },
+    {
+      "warning_type": "Dangerous Eval",
+      "warning_code": 13,
+      "fingerprint": "721fdb5a3b0006a48237de14d05f33f1705cd7bcc7e70718ab1f810005bba6b0",
+      "check_name": "Evaluation",
+      "message": "Dynamic string evaluated as code",
+      "file": "lib/nexus/compose/evaluator.rb",
+      "line": 151,
+      "link": "https://brakemanscanner.org/docs/warning_types/dangerous_eval/",
+      "code": "context.eval(\"#{reading.prefix}#{script.to_s}#{reading.suffix}\", :filename => \"script\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Nexus::Compose::Evaluator",
+        "method": "reading_failure"
+      },
+      "user_input": null,
+      "confidence": "Weak",
+      "cwe_id": [
+        913,
+        95
+      ],
+      "note": "Reviewed 2026-09-23: false positive. This MiniRacer eval places a compose or g.script source's syntax error for the refusal the model reads; it runs only after the builder's own compile already refused the source. The text it compiles is the model's source inside a fixed wrapper that begins with `throw 0;`, so V8 parses the whole text and throws before any of it runs: a source that closes the wrapper early is parsed, never executed. It runs in the same fresh V8 context the builder was loaded into, with no attached Ruby callbacks or host IO, under the evaluator's time and memory bounds, and every MiniRacer error it raises is rescued inside the refusal. JavaScript parsing is the refusal's contract, not Ruby eval. Re-review if the wrapper stops leading with the throw, or if the context gains capabilities."
+    }
+  ],
+  "brakeman_version": "8.0.6"
+}

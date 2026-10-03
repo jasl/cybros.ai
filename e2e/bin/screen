@@ -1,0 +1,72 @@
+#!/usr/bin/env ruby
+# THE SCREEN LAUNCHER — one tracked definition, two trees as arguments, one process:
+#
+#   bin/screen <definition dir> --fake --with <tree> --without <tree>   the unpaid rehearsal: every job
+#                                                                       through the fake transport
+#   bin/screen <definition dir> --dry --with <tree> --without <tree>    Stage 0 to a rehearsal stamp;
+#                                                                       no smoke, no job
+#   E2E_LIVE=1 RAILS_ENV=development bin/screen <definition dir> --with <tree> --without <tree>
+#                                                                       the paid screen
+#     [--home DIR] [--keys FILE] [--supersedes HOME] [--inject KIND@JOB,…] [--stall-seconds N]
+#
+#   bin/screen watch --home HOME [--observe]                           the watch (the launch starts it)
+#
+# The home defaults to e2e/artifacts/screens/<screen>/<mode>-<time> (scratch, never read as a
+# record); the readout lands in e2e/artifacts/screen-readouts/<screen>/. The keys file (default: this
+# checkout's nexus/.env) is read only for a paid run and only into each paid job's environment.
+# A fake rehearsal's --inject and --stall-seconds reach the screen's jobs, by the job table's
+# index, and never the smoke's.
+ENV["BUNDLE_GEMFILE"] ||= File.expand_path("../Gemfile", __dir__)
+require "bundler/setup"
+require "optparse"
+require "time"
+require_relative "../support/screen/launcher"
+
+E2E_DIR = File.expand_path("..", __dir__)
+
+def launch(argv)
+  options = { mode: "real", inject: {} }
+  OptionParser.new do |parser|
+    parser.on("--fake") { options[:mode] = "fake" }
+    parser.on("--dry") { options[:mode] = "dry" }
+    parser.on("--with TREE") { |tree| options[:with] = File.expand_path(tree) }
+    parser.on("--without TREE") { |tree| options[:without] = File.expand_path(tree) }
+    parser.on("--home DIR") { |dir| options[:home] = File.expand_path(dir) }
+    parser.on("--keys FILE") { |file| options[:keys] = File.expand_path(file) }
+    parser.on("--supersedes HOME") { |home| options[:supersedes] = File.expand_path(home) }
+    parser.on("--stall-seconds N", Float) { |seconds| options[:stall_seconds] = seconds }
+    parser.on("--inject LIST") do |list|
+      options[:inject] = list.split(",").each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |entry, inject|
+        kind, job = entry.split("@", 2)
+        inject[Integer(job)] << kind
+      end
+    end
+  end.parse!(argv)
+  raise ArgumentError, "name one definition directory" unless argv.size == 1
+  raise ArgumentError, "name both trees: --with TREE --without TREE" unless options[:with] && options[:without]
+
+  definition = E2E::Screen::Definition.load(File.expand_path(argv.first))
+  home = options[:home] || File.join(E2E_DIR, "artifacts", "screens", definition.name,
+    "#{options[:mode]}-#{Time.now.utc.strftime("%Y%m%dT%H%M%SZ")}")
+  E2E::Screen::Launcher.new(definition: definition, trees: { "with" => options[:with], "without" => options[:without] },
+    home: home, mode: options[:mode], keys_path: options[:keys] || File.expand_path("../nexus/.env", E2E_DIR),
+    inject: options[:inject], stall_seconds: options[:stall_seconds], supersedes: options[:supersedes]).call
+end
+
+def watch(argv)
+  options = { observe: false }
+  OptionParser.new do |parser|
+    parser.on("--home HOME") { |home| options[:home] = File.expand_path(home) }
+    parser.on("--observe") { options[:observe] = true }
+  end.parse!(argv)
+  home = options.fetch(:home) { raise ArgumentError, "watch --home HOME" }
+  E2E::Screen::Watch.new(home, pricer: E2E::BenchSpend.pricer(home), observe: options[:observe]).run
+end
+
+verb = ARGV.first
+exit(
+  case verb
+  when "watch" then watch(ARGV.drop(1))
+  else launch(ARGV.dup)
+  end
+)

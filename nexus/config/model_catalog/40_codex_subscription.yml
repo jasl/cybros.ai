@@ -1,0 +1,210 @@
+schema_version: cybros.model_catalog.v1
+providers:
+  codex_subscription:
+    # THE WIRE THIS PROVIDER SPEAKS. It decides the route, the request
+    # shape, the option vocabulary, the timeouts and the tokenizer, so a
+    # model under it normally declares nothing at all.
+    api_format: codex_responses
+    credentials: codex
+    base_url: https://chatgpt.com/backend-api/codex
+    # Operator capacity, not a wire fact: the same provider admits
+    # different amounts of concurrent work per deployment and per account
+    # tier. Carried from the predecessor's own providers.yml. A workload
+    # with no entry inherits the ceiling.
+    concurrency_limit: 8
+    workload_concurrency_limits:
+      text_generation: 7
+      image_generation: 1
+models:
+  # The installed Codex models_cache.json (read 2026-09-30) declares
+  # input_modalities [text, image] on gpt-6-astra, gpt-6.1-sol and gpt-6-luna.
+  # The codex_responses format supplies the image preparation and wire facts.
+  # THE gpt ROWS OF THIS LANE share three facts stated once here, from
+  # codex-rs's `codex-rs/models-manager/models.json` — at 883af106 (read
+  # 2026-09-16) for gpt-6-astra, at 10fd75bba7 (read 2026-09-26) for
+  # gpt-6-luna — the CLI is the source for those two older rows:
+  # - `service_tiers`: the ids models.json declares per slug (astra
+  #   `priority` = "Fast, 2x speed"; gpt-6-luna `priority` =
+  #   "Fast, 1.5x speed"). astra states `default_service_tier: null`;
+  #   gpt-6-luna states `default_service_tier: "priority"`,
+  #   which Codex sends when its caller configured no tier (its FastMode
+  #   feature is stable and on by default). This catalog has no
+  #   default-tier field, so here a tier rides only when a caller sends one
+  #   (codex's rule for a null default); the codex routing hint then
+  #   carries `;tier=<t>`. No `tier_multipliers`: a subscription has no
+  #   USD schedule of its own to multiply.
+  # - `text.verbosity`: `support_verbosity: true, default_verbosity:
+  #   low` on every slug — codex sends it on every request — so each row
+  #   states `low` as the control's default; a plain turn carries it.
+  # - `default_effort`: `default_reasoning_level` per slug — astra `low`,
+  #   gpt-6-luna `medium`; `ultra` is codex-only and
+  #   never on the wire, so no row offers it.
+  # CODEX'S PRIORITY-1 MODEL on its own lane: models.json's first slug,
+  # `use_responses_lite: true`, efforts low, medium, high, xhigh, max
+  # (plus the client-side `ultra`), `default_reasoning_level: low`
+  # (Codex's stated default on this lane), `context_window 272000`,
+  # `max_context_window 872000` (a comment-only fact: the convention
+  # below is the same-name API model's hard shared window plus the
+  # subscription's soft cap, as the gpt-6.1-sol row records). The model
+  # page's five efforts carry no `none`.
+  codex_subscription/gpt-6-astra:
+    # The API list rates for the same model (10_openai_api.yml, the model
+    # page read 2026-09-16: 10 / 1 / 12.5 / 50), the 2026-08-17 ruling.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "10"
+          output_per_mtok: "50"
+          cached_input_per_mtok: "1"
+          cache_write_per_mtok: "12.5"
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [text]
+      # The gpt-6.1-sol row's limits convention: the hard shared window,
+      # the subscription's soft input cap, the platform's output cap.
+      limits:
+        combined_input_output_tokens: 1050000
+        effective_input_tokens: 272000
+        output_tokens: 128000
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: low
+        contexts: [all_turns]
+        default_context: all_turns
+        summaries: [none, auto, concise, detailed]
+        budget: none
+      # A codex-captured blob replays only through codex (the gpt-6.1-sol
+      # row's note).
+      reasoning_replay:
+        format: responses_reasoning
+      service_tiers: [priority]
+      generation_parameters:
+        verbosity:
+          kind: string
+          default: low
+          minimum: null
+          maximum: null
+          allowed_values: [low, medium, high]
+  # Sol 6.1 is available on Codex with Standard/Fast modes
+  # (learn.chatgpt.com/docs/models, read 2026-09-30). Ultra is client-side
+  # orchestration, not a wire effort. Keep medium, low verbosity and the
+  # 272K planning cap as deployment defaults; client/plan defaults vary.
+  codex_subscription/gpt-6.1-sol:
+    # Catalog accounting uses the same-name API's Standard list rates
+    # (10_openai_api.yml, read 2026-09-30: 2 / 0.1 / 2.5 / 10).
+    # These are an estimate, not a claim about subscription charges.
+    # No long-context or Fast multiplier is imposed on this lane.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "2"
+          output_per_mtok: "10"
+          cached_input_per_mtok: "0.1"
+          cache_write_per_mtok: "2.5"
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [text]
+      # The same-name API's shared hard window, with this deployment's
+      # existing soft planning cap. The output ceiling is a platform cap
+      # on this subscription lane, not a measured subscription limit.
+      limits:
+        combined_input_output_tokens: 1050000
+        effective_input_tokens: 272000
+        output_tokens: 128000
+      reasoning:
+        # These five efforts reach the provider. Ultra remains client-side
+        # orchestration and is not offered as a wire effort.
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: medium
+        contexts: [all_turns]
+        default_context: all_turns
+        summaries: [none, auto, concise, detailed]
+        budget: none
+      # Same wire family as openai_api but its OWN origin: a codex-captured
+      # blob replays only through codex.
+      reasoning_replay:
+        format: responses_reasoning
+      # The existing wire spelling for an explicitly selected Fast mode.
+      service_tiers: [priority]
+      generation_parameters:
+        verbosity:
+          kind: string
+          default: low
+          minimum: null
+          maximum: null
+          allowed_values: [low, medium, high]
+  codex_subscription/gpt-6-luna:
+    # The API list rates for the same model (10_openai_api.yml, the model
+    # page read 2026-09-26: 0.1 / 0.01 / 0.125 / 0.5): a Codex lane bills
+    # as its API sibling does. No long-context tier: the subscription is
+    # not metered by the page.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0.1"
+          output_per_mtok: "0.5"
+          cached_input_per_mtok: "0.01"
+          cache_write_per_mtok: "0.125"
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [text]
+      # The gpt-6.1-sol row's limits convention (the model page's 1,050,000
+      # window and 128,000 max output; `context_window 272000`).
+      limits:
+        combined_input_output_tokens: 1050000
+        effective_input_tokens: 272000
+        output_tokens: 128000
+      reasoning:
+        # `supported_reasoning_levels` low, medium, high, xhigh, max — no
+        # `ultra` on this slug.
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: medium
+        contexts: [all_turns]
+        default_context: all_turns
+        summaries: [none, auto, concise, detailed]
+        budget: none
+      # A codex-captured blob replays only through codex (the gpt-6.1-sol
+      # row's note).
+      reasoning_replay:
+        format: responses_reasoning
+      # `priority` = "Fast", "1.5x speed" — Codex's default for this slug
+      # (the header).
+      service_tiers: [priority]
+      generation_parameters:
+        verbosity:
+          kind: string
+          default: low
+          minimum: null
+          maximum: null
+          allowed_values: [low, medium, high]
+  # CODEX GENERATES IMAGES ON THE PROVIDER IT CHATS ON:
+  # `ext/image-generation/src/backend.rs` builds its images client on the
+  # active provider, so under ChatGPT auth the POST lands on
+  # `<chatgpt.com/backend-api/codex>/images/generations` (and
+  # `/images/edits`, a JSON body with data-URL images — the `json`
+  # encoding) with the `originator` marker; the model is `tool.rs:59`'s
+  # `gpt-image-2`. The codex base has no /v1 prefix (the responses lane
+  # overrides its path the same way). UNMETERED, a subscription lane. Not
+  # carried: `x-codex-image-turn-id` (per-call telemetry the backend
+  # tolerates absent) and the Free-plan gate (an admission fact, not a wire
+  # fact). The bearer rides from the lane's credential like every other
+  # codex row.
+  codex_subscription/gpt-image-2:
+    api_format: openai_images
+    pricing:
+    wire_options:
+      images_path: /images/generations
+      images_edits_path: /images/edits
+      images_edits_encoding: json
+      originator: codex_cli_rs
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [image]
+      limits:
+        result_count: 1

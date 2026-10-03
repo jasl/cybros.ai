@@ -1,0 +1,27 @@
+---
+synthetic t-after-look model-a:
+  task_one@r2: 1
+synthetic t-after-two-looks model-a:
+  start_process@r3: 1
+synthetic t-empty model-a:
+  none@r1: 1
+synthetic t-fan model-a:
+  task_fan@r1: 1
+synthetic t-one model-a:
+  task_one@r1: 1
+synthetic t-plain model-a:
+  plain@r1: 1
+synthetic t-scout model-a:
+  scout: 1
+synthetic t-spawn model-a:
+  spawn@r1: 1
+synthetic w-flat model-a:
+  compose_flat@r1 members=0: 1
+synthetic w-joined model-a:
+  compose_steps@r1 members=2: 1
+synthetic w-refused model-a:
+  compose_refused@r1: 1
+synthetic w-single model-a:
+  compose_one@r1 members=0: 1
+synthetic w-tool model-a:
+  compose_one@r1 members=0: 1

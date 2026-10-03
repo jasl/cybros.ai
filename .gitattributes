@@ -1,0 +1,39 @@
+# Enforce LF line endings for all text files
+* text=auto eol=lf
+
+# Explicit text files
+*.rb text
+*.rake text
+*.gemspec text
+*.go text
+*.mod text
+*.sum text
+*.js text
+*.ts text
+*.css text
+*.html text
+*.erb text
+*.yml text
+*.yaml text
+*.json text
+*.md text
+*.sh text
+*.sql text
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+
+# Lock files — show diff but don't merge
+*.lockb binary
+bun.lock binary
+Gemfile.lock merge=union
+go.sum merge=union

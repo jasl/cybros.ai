@@ -1,0 +1,9 @@
+<% if form.errors.any? %>
+  <div class="rounded-box border border-error/30 bg-error/5 p-4 text-sm" role="alert">
+    <p class="font-medium">Review these settings</p>
+    <ul class="mt-2 list-inside list-disc space-y-1">
+      <% form.errors.full_messages.each do |message| %><li><%= message %></li><% end %>
+    </ul>
+    <%= link_to "Reload current settings", local_assigns.fetch(:reload_path, request.path), class: "link mt-2 inline-block" if response.status == 409 %>
+  </div>
+<% end %>

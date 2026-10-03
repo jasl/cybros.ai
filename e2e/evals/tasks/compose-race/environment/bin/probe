@@ -1,0 +1,8 @@
+#!/bin/sh
+# A probe that answers after a delay fixed per host: bravo first.
+case "$1" in
+  alpha) sleep 6; echo "alpha: 200 OK (6s)";;
+  bravo) sleep 2; echo "bravo: 200 OK (2s)";;
+  charlie) sleep 4; echo "charlie: 200 OK (4s)";;
+  *) echo "usage: bin/probe <alpha|bravo|charlie>" >&2; exit 2;;
+esac

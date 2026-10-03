@@ -1,0 +1,143 @@
+{
+  "slots": [
+    "system_prompt",
+    "character",
+    "persona",
+    "summarizer"
+  ],
+  "assembly_slots": [
+    "system_prompt",
+    "character",
+    "persona"
+  ],
+  "roles": [
+    "system",
+    "developer",
+    "user"
+  ],
+  "default_role": "system",
+  "anchors": [
+    "workspace",
+    "user"
+  ],
+  "slot_anchors": {
+    "character": "workspace",
+    "system_prompt": "agent",
+    "persona": "human",
+    "summarizer": "agent"
+  },
+  "macros": [
+    "agent",
+    "user",
+    "workspace",
+    "date",
+    "conversation_kind"
+  ],
+  "content_bound": 65536,
+  "list_envelope": [
+    "prompt_documents"
+  ],
+  "singular_envelope": [
+    "prompt_document"
+  ],
+  "basic_projection": [
+    "slot",
+    "role",
+    "bytesize",
+    "version",
+    "written_at"
+  ],
+  "full_projection_adds": [
+    "content"
+  ],
+  "error_codes": [
+    "not_authorized",
+    "prompt_document_not_found",
+    "prompt_slot_unavailable",
+    "prompt_document_too_large",
+    "prompt_document_macro_unknown",
+    "prompt_document_invalid",
+    "workspace_not_active"
+  ],
+  "error_statuses": {
+    "not_authorized": 403,
+    "prompt_document_not_found": 404,
+    "prompt_slot_unavailable": 422,
+    "prompt_document_too_large": 422,
+    "prompt_document_macro_unknown": 422,
+    "prompt_document_invalid": 422,
+    "workspace_not_active": 409
+  },
+  "valid_fixture": {
+    "prompt_document": {
+      "slot": "character",
+      "role": "system",
+      "bytesize": 39,
+      "version": 2,
+      "written_at": "2026-09-08T00:00:00Z",
+      "content": "You are in {{workspace}} with {{user}}."
+    }
+  },
+  "valid_list_fixture": {
+    "prompt_documents": [
+      {
+        "slot": "character",
+        "role": "system",
+        "bytesize": 39,
+        "version": 2,
+        "written_at": "2026-09-08T00:00:00Z"
+      }
+    ]
+  },
+  "valid_put_request": {
+    "prompt_document": {
+      "content": "You are in {{workspace}} with {{user}}.",
+      "role": "system"
+    }
+  },
+  "valid_delete_fixture": {
+    "status": 204,
+    "body": null
+  },
+  "valid_error_fixture": {
+    "status": 422,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "prompt_slot_unavailable",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_slot_fixture": {
+    "prompt_document": {
+      "slot": "mood",
+      "role": "system",
+      "bytesize": 39,
+      "version": 2,
+      "written_at": "2026-09-08T00:00:00Z",
+      "content": "You are in {{workspace}} with {{user}}."
+    }
+  },
+  "unknown_role_fixture": {
+    "prompt_document": {
+      "slot": "character",
+      "role": "tool",
+      "bytesize": 39,
+      "version": 2,
+      "written_at": "2026-09-08T00:00:00Z",
+      "content": "You are in {{workspace}} with {{user}}."
+    }
+  },
+  "unknown_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_field_behavior": "ignore"
+}

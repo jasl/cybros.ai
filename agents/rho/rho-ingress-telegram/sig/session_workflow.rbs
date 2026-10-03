@@ -1,0 +1,9 @@
+module Rho
+  module IngressTelegram
+    module SessionWorkflow
+      SESSION_PAGE_SIZE: Integer
+      def session_list: (Update update, String argument) -> String
+      def resume_session: (Update update, String argument) -> String
+    end
+  end
+end

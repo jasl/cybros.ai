@@ -1,0 +1,101 @@
+schema_version: cybros.model_catalog.v1
+providers:
+  deepseek:
+    # THE WIRE THIS PROVIDER SPEAKS. It decides the route, the request
+    # shape, the option vocabulary, the timeouts and the tokenizer, so a
+    # model under it normally declares nothing at all.
+    api_format: deepseek_responses
+    base_url: https://api.deepseek.com
+    # Operator capacity, not a wire fact: the same provider admits
+    # different amounts of concurrent work per deployment and per account
+    # tier. Carried from the predecessor's own providers.yml. A workload
+    # with no entry inherits the ceiling.
+    concurrency_limit: 8
+    workload_concurrency_limits:
+      text_generation: 8
+models:
+  # THE PROVIDER'S CURRENT ID (api-docs.deepseek.com, re-read 2026-09-14):
+  # `deepseek-flash` is served by DeepSeek-V4.1-Flash and billed at the
+  # Flash price. The page also accepts two legacy names for the same
+  # service; this catalog names the current id alone.
+  deepseek/deepseek-flash:
+    # THE PEAK RATES, deliberately (the page's USD figures, re-read
+    # 2026-09-14). DeepSeek bills peak/off-peak, off-peak at half of peak;
+    # peak = Monday–Friday 01:00–04:00 and 06:00–10:00 UTC (7 of 24 hours).
+    # Off-peak would be 0.003/0.15/0.6. The catalog schedule carries ONE
+    # flat number and this one is the Account-unit provider-cost/debit
+    # FLOOR, so it takes the rate that is never too low; off-peak would
+    # under-state the cost for 7 hours a day and break that property. The
+    # provider reports no cost on the wire (its usage carries token counts
+    # only — verified against the checked-in capture), so
+    # provider_reported_then_catalog_fallback is not available on this lane.
+    #
+    # No CNY conversion: the page is USD-only, so the 0.16 USD/CNY
+    # authoring convention has no input here and no quantization is applied
+    # — these are the published numbers exactly.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_cache_hit_per_mtok: "0.006"
+          input_cache_miss_per_mtok: "0.3"
+          output_per_mtok: "1.2"
+    capabilities:
+      input_modalities: []
+      output_modalities: [text]
+      limits:
+        # SHARED by DeepSeek's own wording: "The total length of input tokens
+        # and generated tokens is limited by the model's context length."
+        # The page lists a 1M context and a 384K max output; recording the
+        # 1M under input_tokens would claim an input window beside an output
+        # ceiling that can never both be spent.
+        combined_input_output_tokens: 1000000
+        output_tokens: 384000
+      reasoning:
+        # Thinking is ON by default on this lane; the probe-frozen closed
+        # effort set includes "none" as the explicit disable value — there
+        # is no separate thinking toggle.
+        efforts: [none, minimal, low, medium, high, xhigh, max]
+        default_enabled: true
+        budget: none
+      # Earlier reasoning rides back as the wire's own plain-text reasoning
+      # item. The thinking guide, with tools: "the reasoning_content of all
+      # previous turns should be passed back to the API", else "the API
+      # will return a 400 error"; the Responses reference's input items:
+      # "Plain-text `content` is merged into the adjacent assistant
+      # message; `summary` and `encrypted_content` are not supported". The
+      # tool-round rule is why another model cannot take over a history of
+      # tool rounds on this lane: none of them carries reasoning it produced.
+      reasoning_replay:
+        format: responses_reasoning_text
+        required_for_tool_rounds: true
+  # THE PRO ID on the same wire: the page's table lists the Responses API
+  # for both ids (api-docs.deepseek.com/quick_start/pricing, read
+  # 2026-09-16 — served by DeepSeek-V4-Pro-0813, kept on the API past
+  # 2026-09-14 by the page's own note). Peak USD rates for the reason the
+  # flash row states (off-peak would be 0.022/0.66/1.98); the same 1M
+  # shared window and 384K ceiling; no vision on this id.
+  deepseek/deepseek-v4-pro:
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_cache_hit_per_mtok: "0.044"
+          input_cache_miss_per_mtok: "1.32"
+          output_per_mtok: "3.96"
+    capabilities:
+      input_modalities: []
+      output_modalities: [text]
+      limits:
+        combined_input_output_tokens: 1000000
+        output_tokens: 384000
+      reasoning:
+        efforts: [none, minimal, low, medium, high, xhigh, max]
+        default_enabled: true
+        budget: none
+      # The flash row's replay note.
+      reasoning_replay:
+        format: responses_reasoning_text
+        required_for_tool_rounds: true

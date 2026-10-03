@@ -1,0 +1,5 @@
+#!/bin/sh
+case "$1" in
+  test) sleep 30; echo "Run options: --seed 1701"; echo "F"; echo "Failure: OrderTest#test_total_applies_the_discount [test/models/order_test.rb:14]"; echo "Expected: 90.0  Actual: 95.0"; echo "12 runs, 30 assertions, 1 failures, 0 errors, 0 skips";;
+  *) echo "usage: bin/rails test" >&2; exit 2;;
+esac

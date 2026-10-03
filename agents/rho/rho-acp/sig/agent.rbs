@@ -1,0 +1,281 @@
+module Rho
+  module Acp
+    # THE AGENT SURFACE: the process an
+    # editor spawns, its sessions, and the pieces of the method table.
+    class Agent
+      # Where the stderr sentences go: `say` writes one line and flushes
+      # it, so `$stderr` and a test's StringIO both qualify.
+      interface _Log
+        def puts: (*untyped) -> untyped
+        def flush: () -> untyped
+      end
+
+      MODES: Array[String]
+      DEFAULT_MODE: String
+      RUNNER_MODE: String
+      PREFIX: String
+
+      attr_reader connection: Connection
+      attr_reader sessions: Sessions
+      attr_reader client: Client
+      attr_reader mode: String
+      attr_reader model: String?
+      attr_reader runner: String?
+      attr_reader home: untyped
+
+      def initialize: (wire: Wire, core: ^() -> untyped, home: untyped, ?mode: String, ?model: String?, ?runner: String?, ?log: _Log) -> void
+      def core: () -> untyped
+      def default_model: () -> String?
+      def say: (String sentence) -> nil
+      def fs_port: () -> FsPort?
+      def serve: () -> nil
+      def stop: () -> nil
+      def shutdown: () -> nil
+
+      class Client
+        DEFAULT_NAME: String
+        attr_reader name: String
+        attr_reader title: String?
+        attr_reader version: String?
+        def remember: (Hash[String, untyped] params) -> self
+        def fs_read?: () -> bool
+        def fs_write?: () -> bool
+        def fs?: () -> bool
+        def elicitation_form?: () -> bool
+        def elicitation_url?: () -> bool
+        def auth_terminal?: () -> bool
+      end
+
+      class ToolCall < ::Struct[untyped]
+        attr_accessor title: String
+        attr_accessor kind: String
+        attr_accessor input: Hash[String, untyped]
+        attr_accessor status: String?
+        attr_accessor tool_name: String
+      end
+
+      class TurnState
+        attr_accessor message: Integer
+        attr_reader transcript: CybrosAgent::Api::TranscriptAccumulator
+        attr_accessor loop: String?
+        attr_reader turn: String
+        attr_reader tasks: Hash[String, ToolCall]
+        def initialize: (turn: String, ?loop: String?) -> void
+        def message_id: () -> String
+      end
+
+      class Hold < ::Data
+        attr_reader loop: String
+        attr_reader key: String
+        attr_reader turn: String
+        def self.new: (loop: String, key: String, turn: String) -> instance
+      end
+
+      class Rearm < ::Data
+        attr_reader loop: String
+        attr_reader key: String
+        attr_reader turn: String
+        def self.new: (loop: String, key: String, turn: String) -> instance
+      end
+
+      class Session
+        attr_reader id: String
+        attr_reader root: String
+        attr_reader directories: Array[String]
+        attr_accessor mode: String
+        attr_accessor model: String?
+        attr_accessor held: Hold?
+        attr_accessor servers: bool
+        attr_accessor ended: bool
+        attr_accessor last_turn: String?
+        attr_accessor last_loop: String?
+        def initialize: (id: String, mode: String, model: String?, root: String, ?directories: Array[String]) -> void
+        def claim_prompt: (Connection::Inbound | Rearm holder) -> bool
+        def release_prompt: () -> void
+        def prompt: () -> (Connection::Inbound | Rearm)?
+        def busy?: () -> bool
+        def request_cancel!: () -> void
+        def cancel_requested?: () -> bool
+        def track: [T] (Connection::Pending pending) { () -> T } -> T
+        def cancel_outstanding: () -> nil
+        def turn_state: (String turn, ?loop: String?) -> TurnState
+        def models: () -> Array[String]
+        def learn_model: (String ref) -> void
+        def holds?: (String path) -> bool
+      end
+
+      class Sessions
+        def add: (Session session) -> Session
+        def []: (String id) -> Session?
+        def delete: (String id) -> Session?
+        def each: () { (Session) -> void } -> void
+        def empty?: () -> bool
+        def for_path: (String path) -> Session?
+      end
+
+      class Refusal < ::StandardError
+        attr_reader code: Integer
+        attr_reader data: untyped
+        def initialize: (Integer code, String message, ?data: untyped) -> void
+        def self.invalid_params: (String message, ?data: untyped) -> instance
+        def self.invalid_request: (String message) -> instance
+        def self.not_found: (String message) -> instance
+        def self.internal: (String message, ?data: untyped) -> instance
+        def self.auth_required: (String message, ?data: untyped) -> instance
+        def self.method_not_found: (String name) -> instance
+        def self.cancelled: () -> instance
+      end
+
+      module Errors
+        INVALID_PARAMS: Array[String]
+        def self?.translate: (Exception error) -> Refusal
+        def self?.from_refusal: (Rho::Core::Refused error) -> Refusal
+      end
+
+      module Methods
+        class Dispatcher
+          TABLE: Hash[String, Symbol]
+          def initialize: (Agent agent) -> void
+          def dispatch: (untyped event) -> untyped
+        end
+      end
+
+      module Content
+        class Rendered < ::Data
+          attr_reader text: String
+          attr_reader attachments: Array[String]
+          def self.new: (text: String, attachments: Array[String]) -> instance
+          def discard: () -> nil
+        end
+        SEPARATOR: String
+        EXTENSIONS: Hash[String, String]
+        def self?.render: (untyped blocks, dir: String) -> Rendered
+      end
+
+      class Mapping
+        KIND: Hash[String, String]
+        STATUS: Hash[String, String]
+        TITLE_KEYS: Array[String]
+        PATH_KEYS: Array[String]
+        def self.kind_of: (untyped tool_name) -> String
+        def self.status_of: (untyped status) -> String
+        attr_reader state: TurnState
+        def initialize: (agent: Agent | untyped, session: Session, core: untyped, state: TurnState) -> void
+        def frame: (String type, Hash[String, untyped] payload) -> untyped
+        def chunk: (String kind, untyped text) -> untyped
+        def question: (untyped text) -> untyped
+      end
+
+      class Permissions
+        OPTIONS: Array[Hash[String, String]]
+        WENT_AWAY: String
+        ANSWER_SCHEMA: Hash[String, untyped]
+        def self.cancel: (Agent agent, Session session, untyped core) -> nil
+        def initialize: (agent: Agent, session: Session, core: untyped, mapping: Mapping) -> void
+        def park: (String loop, Array[String] keys) -> nil
+        def decide: (String loop, String key) -> untyped
+        def ask: (String loop, String key) -> Symbol
+        def ask_held: (String loop, String key) -> Symbol
+      end
+
+      class Turn
+        POLL_SECONDS: Float
+        MATERIALIZATION_POLL_SECONDS: Integer
+        CATCH_UP_SECONDS: Integer
+        BLOCKED: String
+        class Cancelled < ::StandardError
+        end
+        def self.catch_up: (untyped core, Session session, ?bound: Numeric) { (Hash[String, untyped] row) -> boolish } -> nil
+        def self.asking?: (Hash[String, untyped] row, String key) -> bool
+        def initialize: (Agent agent, Session session, Connection::Inbound inbound, untyped core) -> void
+        def call: () -> untyped
+        def follow: (String turn, String? loop_id) -> Hash[String, String]
+      end
+
+      module Auth
+        NEXUS: Hash[String, String]
+        TERMINAL: Hash[String, untyped]
+        POLL_SECONDS: Integer
+        BOOTSTRAP_WAIT: Integer
+        ACTIVE: String
+        def self?.initialize_document: (Agent agent) -> Hash[String, untyped]
+        def self?.methods: (Agent agent) -> Array[Hash[String, untyped]]
+        def self?.method_ids: (Agent agent) -> Array[String]
+        def self?.authenticate: (Agent agent, untyped core, Hash[String, untyped] params) -> Hash[untyped, untyped]
+        def self?.connected?: (untyped core, untyped daemon) -> bool
+        def self?.connected!: (Agent agent, untyped core, untyped daemon) -> nil
+      end
+
+      module Options
+        MODES: Array[Hash[String, String]]
+        MODE_IDS: Array[String]
+        def self?.document: (Agent agent, Session session) -> Hash[String, untyped]
+        def self?.modes: (Session session) -> Hash[String, untyped]
+        def self?.config_options: (Agent agent, Session session) -> Array[Hash[String, untyped]]
+        def self?.set_mode: (Session session, untyped mode_id) -> nil
+        def self?.set_config_option: (Agent agent, untyped core, Session session, untyped config_id, untyped value) -> nil
+      end
+
+      module Commands
+        SURFACE: Hash[String, String]
+        WORD: Regexp
+        def self?.surface_word: (untyped text) -> String?
+        def self?.run: (Agent agent, Session session, untyped core, String word, Turn turn) -> Hash[String, String]
+        def self?.roster: (Agent agent, untyped core) -> Array[Hash[String, String]]
+        def self?.announce: (Agent agent, Session session, untyped core) -> nil
+      end
+
+      module Replay
+        def self?.call: (Agent agent, Session session, untyped core, Connection::Inbound inbound) -> nil
+        def self?.restore: (Session session, untyped core) -> nil
+        def self?.rearm: (Agent agent, Session session, untyped core) -> nil
+      end
+
+      class FsPort
+        BIND: String
+        READ_ROUTE: String
+        WRITE_ROUTE: String
+        READ_WAIT: Integer
+        WRITE_WAIT: Integer
+        attr_reader url: String?
+        attr_accessor read_wait: Numeric
+        attr_accessor write_wait: Numeric
+        def initialize: (Agent agent) -> void
+        def start: () -> self
+        def stop: () -> nil
+        def registration: () -> Hash[String, untyped]
+        def register: (untyped core, Session session) -> bool
+        def drop: (untyped core, Session session) -> nil
+      end
+
+      module Environment
+        ROOT_SET_BYTES: Integer
+        MCP_UNAVAILABLE_CODE: String
+        NOT_FOUND_CODE: String
+        def self?.open: (Agent agent, untyped core, Hash[String, untyped] params) -> Session
+        def self?.load: (Agent agent, untyped core, Hash[String, untyped] params) -> Session
+        def self?.assert: (Agent agent, untyped core, Session session) -> nil
+        def self?.release: (Agent agent, Session session) -> nil
+      end
+
+      class Cli
+        USAGE: String
+        CONNECT: String
+        FLAGS: Array[String]
+        class Options < ::Data
+          attr_reader word: String?
+          attr_reader mode: String
+          attr_reader model: String?
+          attr_reader runner: String?
+          def self.new: (word: String?, mode: String, model: String?, runner: String?) -> instance
+        end
+        class UsageError < ::StandardError
+        end
+        def self.parse: (Array[String] argv) -> Options
+        def self.run: (Array[String] argv, ?env: untyped, ?err: untyped) -> Integer
+        def initialize: (Options options, env: untyped, err: untyped) -> void
+        def call: () -> Integer
+      end
+    end
+  end
+end

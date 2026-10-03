@@ -1,0 +1,201 @@
+{
+  "executor_kinds": [
+    "agent_application",
+    "runner",
+    "tools_provider"
+  ],
+  "statuses": [
+    "active",
+    "revoked"
+  ],
+  "valid_fixture": {
+    "executor": {
+      "public_id": "01900000-0000-7000-8000-000000000030",
+      "kind": "agent_application",
+      "status": "active",
+      "display_name": "Fixture executor",
+      "credential_epoch": 1,
+      "presence": "offline",
+      "last_seen_at": "2026-07-30T00:00:00Z",
+      "connected_at": null
+    },
+    "measured_at": "2026-07-30T00:00:00Z"
+  },
+  "announcement_request_fixture": {
+    "tools": [
+      {
+        "name": "read",
+        "effect_profile": {
+          "kind": "read_only",
+          "destructive": false,
+          "world": "closed",
+          "idempotency": "intrinsic",
+          "reconciliation": "none"
+        },
+        "description": "Read a file under the root.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "name": "skill",
+        "effect_profile": {
+          "kind": "read_only",
+          "destructive": false,
+          "world": "closed",
+          "idempotency": "intrinsic",
+          "reconciliation": "none"
+        }
+      }
+    ],
+    "environment": {
+      "root": "/srv/lab",
+      "platform": "darwin",
+      "fragments": [
+        {
+          "extension": "rho.coding",
+          "text": "Relative paths resolve against /srv/lab."
+        }
+      ]
+    },
+    "documents": [
+      {
+        "name": "deploy-notes",
+        "description": "How this project is deployed. Use before any deploy or release step."
+      }
+    ]
+  },
+  "served_document_keys": [
+    "name",
+    "description"
+  ],
+  "discovery_envelope": [
+    "executors"
+  ],
+  "discovery_singular_envelope": [
+    "executor"
+  ],
+  "discovery_filters": [
+    "kind"
+  ],
+  "discovery_kinds": [
+    "runner",
+    "tools_provider"
+  ],
+  "discovery_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000032",
+    "kind": "runner",
+    "display_name": "lab-mac",
+    "status": "active",
+    "assignment_scope": "user_private",
+    "served_tools": [
+      {
+        "name": "read",
+        "effect_profile": {
+          "kind": "read_only",
+          "destructive": false,
+          "world": "closed",
+          "idempotency": "intrinsic",
+          "reconciliation": "none"
+        },
+        "description": "Read a file under the root.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "name": "skill",
+        "effect_profile": {
+          "kind": "read_only",
+          "destructive": false,
+          "world": "closed",
+          "idempotency": "intrinsic",
+          "reconciliation": "none"
+        }
+      }
+    ],
+    "environment": {
+      "root": "/srv/lab",
+      "platform": "darwin",
+      "fragments": [
+        {
+          "extension": "rho.coding",
+          "text": "Relative paths resolve against /srv/lab."
+        }
+      ]
+    },
+    "served_documents": [
+      {
+        "name": "deploy-notes",
+        "description": "How this project is deployed. Use before any deploy or release step."
+      }
+    ],
+    "presence": "offline",
+    "last_seen_at": "2026-07-30T00:00:00Z",
+    "connected_at": null
+  },
+  "valid_discovery_kind_filter_request": {
+    "kind": "runner"
+  },
+  "unknown_discovery_kind_filter_request": {
+    "kind": "zz_unknown_value"
+  },
+  "unknown_kind_fixture": {
+    "executor": {
+      "public_id": "01900000-0000-7000-8000-000000000030",
+      "kind": "zz_unknown_value",
+      "status": "active",
+      "display_name": "Fixture executor",
+      "credential_epoch": 1,
+      "presence": "offline",
+      "last_seen_at": "2026-07-30T00:00:00Z",
+      "connected_at": null
+    },
+    "measured_at": "2026-07-30T00:00:00Z"
+  },
+  "unknown_status_fixture": {
+    "executor": {
+      "public_id": "01900000-0000-7000-8000-000000000030",
+      "kind": "agent_application",
+      "status": "zz_unknown_value",
+      "display_name": "Fixture executor",
+      "credential_epoch": 1,
+      "presence": "offline",
+      "last_seen_at": "2026-07-30T00:00:00Z",
+      "connected_at": null
+    },
+    "measured_at": "2026-07-30T00:00:00Z"
+  },
+  "terminal_status_fixture": {
+    "executor": {
+      "public_id": "01900000-0000-7000-8000-000000000030",
+      "kind": "agent_application",
+      "status": "revoked",
+      "display_name": "Fixture executor",
+      "credential_epoch": 1,
+      "presence": "offline",
+      "last_seen_at": "2026-07-30T00:00:00Z",
+      "connected_at": null
+    },
+    "measured_at": "2026-07-30T00:00:00Z"
+  },
+  "unknown_value_fixture": "zz_unknown_value",
+  "unknown_value_behavior": "carry_unknown",
+  "unknown_field_behavior": "ignore"
+}

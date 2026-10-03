@@ -1,0 +1,40 @@
+module Rho
+  module Extensions
+    module ScheduledJobs
+      NAME: String
+      def self.member_plane: () -> untyped
+      def self.register: (untyped api) -> untyped
+
+      class Session
+        class Unavailable < Rho::Error
+        end
+        attr_reader context: Rho::Runner::ExecutionContext
+        attr_reader workspace: untyped
+        attr_reader jobs: untyped
+        def initialize: () -> void
+        def creation_fields: () -> Hash[Symbol, untyped]
+      end
+
+      class Read
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        TIMEOUT_MS: Integer
+        def initialize: (env: untyped) -> void
+        def call: (Hash[String, untyped] args) -> Rho::Runner::Result
+      end
+
+      class Manage
+        NAME: String
+        DESCRIPTION: String
+        RULE_SCHEMA: Hash[String, untyped]
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        TIMEOUT_MS: Integer
+        def initialize: (env: untyped) -> void
+        def call: (Hash[String, untyped] args) -> Rho::Runner::Result
+      end
+    end
+  end
+end

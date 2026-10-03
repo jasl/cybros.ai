@@ -1,0 +1,54 @@
+source "https://rubygems.org"
+
+# Specify this gem's dependencies in rho.gemspec.
+gemspec
+
+gem "cmctl", path: "../../../cmctl"
+
+# The SDK rides alongside in this monorepo; released versions come from
+# rubygems once both gems cut releases.
+gem "cybros_agent", path: "../../../sdks/ruby"
+# The runner rides alongside for the same reason: one repo, two gems, and a
+# runner that can be installed without the daemon.
+gem "rho-runner", path: "../rho-runner"
+# The browser extension rides alongside too. In the bundle is not the same
+# as loaded: it registers nothing until `extensions: ["rho/browser"]` names
+# it in settings.json — a gem present as a dependency must never become a
+# tool by itself.
+gem "rho-browser", path: "../rho-browser"
+# The MCP client rides alongside under the same rule: in the bundle, and
+# registering nothing until `extensions: ["rho/mcp"]` names it.
+gem "rho-mcp", path: "../rho-mcp"
+# The web reader rides alongside under the same rule: in the bundle, and
+# registering nothing until `extensions: ["rho/web-tools"]` names it.
+gem "rho-web-tools", path: "../rho-web-tools"
+# Static browser UI, selected by the full/agent daemon defaults.
+gem "rho-webui", path: "../rho-webui"
+# Telegram is installed but only starts when explicitly configured and enabled.
+gem "rho-ingress-telegram", path: "../rho-ingress-telegram"
+
+# The ACP pair: the host gem
+# carries the protocol layer and the `rho-acp` exe an editor spawns; the
+# client gem is the extension with the `delegate_agent` tool. Both ship.
+gem "rho-acp", path: "../rho-acp"
+gem "rho-acp-client", path: "../rho-acp-client"
+
+# THE DEVELOPMENT GROUP: what a checkout runs its
+# suite with and an installed prefix never loads. The installer's
+# `bundle install --without development test` leaves these out, which
+# drops the native-extension set of an install to io-event, json,
+# bigdecimal, msgpack and nokogiri (precompiled for the manifest's four
+# platforms; openssl is the portable Ruby's own — the installer's
+# `bundle install --prefer-local` uses its default gem at the lock's pin,
+# where a plain install builds a second copy beside the bottle's static
+# OpenSSL that cannot verify a certificate).
+group :development do
+  gem "irb"
+  gem "rake", "~> 13.0"
+
+  gem "minitest", "~> 6.0"
+
+  gem "rbs", require: false
+  gem "rubocop", "~> 1.21", require: false
+  gem "rubocop-rails-omakase", require: false
+end

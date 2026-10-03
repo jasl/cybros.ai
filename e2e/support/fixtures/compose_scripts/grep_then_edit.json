@@ -1,0 +1,28 @@
+{
+  "ungrouped-map": {
+    "script": "const steps = params.paths.map(path => g.tool({ name: \"grep\", input: { path, pattern: \"needle\" } }));",
+    "params": {
+      "paths": [
+        "a.txt",
+        "b.txt"
+      ]
+    }
+  },
+  "ungrouped-for": {
+    "script": "for (const path of [\"a.txt\", \"b.txt\"]) { g.tool({ name: \"grep\", input: { path, pattern: \"needle\" } }); }",
+    "params": {}
+  },
+  "ungrouped-helper": {
+    "script": "const search = path => g.tool({ name: \"grep\", input: { path, pattern: \"needle\" } }); [\"a.txt\", \"b.txt\"].map(search);",
+    "params": {}
+  },
+  "grouped-map": {
+    "script": "const steps = params.paths.map(path => g.tool({ name: \"grep\", input: { path, pattern: \"needle\" } })); g.parallel(steps); g.script({ results: steps, script: \"return results.map(result => result.output);\" });",
+    "params": {
+      "paths": [
+        "a.txt",
+        "b.txt"
+      ]
+    }
+  }
+}

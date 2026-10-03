@@ -1,0 +1,32 @@
+<% content_for :title, "Discover models" %>
+<div class="space-y-6">
+  <%= render "admin/model_providers/header", provider: @provider, current: :discovery, description: "Read the model directory from your saved endpoint." %>
+  <%= turbo_frame_tag "model-directory" do %>
+  <section class="space-y-4" aria-label="Model discovery">
+    <h2 class="text-lg font-medium">Discover model IDs</h2>
+    <p class="max-w-prose text-sm text-base-content/60">The directory provides model IDs. It does not verify inference, context limits, capabilities or pricing.</p>
+    <div class="flex flex-wrap gap-3">
+      <%= button_to "Fetch model IDs", admin_model_provider_model_discovery_path(@provider.fetch(:id)), class: "btn btn-primary" %>
+      <%= link_to "Enter a model ID manually", new_admin_model_provider_model_definition_path(@provider.fetch(:id)), class: "btn btn-ghost", data: { turbo_frame: "_top" } %>
+    </div>
+    <% if @discovery %>
+      <% if @discovery.success? %>
+        <% if @discovery.models.empty? %>
+          <p class="text-sm text-base-content/60">This endpoint returned no models. You can still enter a model ID manually.</p>
+        <% else %>
+          <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200">
+            <% @discovery.models.each do |model| %>
+              <li class="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div class="min-w-0 flex-1"><p class="text-sm font-medium wrap-anywhere"><%= model.fetch(:id) %></p><% if model[:display_name].present? %><p class="text-xs text-base-content/60 wrap-anywhere"><%= model[:display_name] %></p><% end %></div>
+                <%= link_to "Add model", new_admin_model_provider_model_definition_path(@provider.fetch(:id), model_id: model.fetch(:id), display_name: model[:display_name]), class: "btn btn-sm", data: { turbo_frame: "_top" }, aria: { label: "Add #{model.fetch(:id)}" } %>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      <% else %>
+        <div class="rounded-box border border-base-300 bg-base-200 p-4 text-sm" role="alert">Model discovery did not complete. Check the saved connection and credentials, or enter a model ID manually.</div>
+      <% end %>
+    <% end %>
+  </section>
+  <% end %>
+</div>

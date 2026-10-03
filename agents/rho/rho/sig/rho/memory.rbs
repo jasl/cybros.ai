@@ -1,0 +1,45 @@
+module Rho
+  class StoreDocument
+    def initialize: (store: ^() -> untyped, namespace: String, key: String, ?initial: (^() -> Hash[String, untyped]?)?) -> void
+    def read: () -> Hash[String, untyped]?
+    def change: () { (Hash[String, untyped]) -> untyped } -> Hash[String, untyped]
+  end
+
+  module MemoryCommands
+    USAGE: String
+    class Action < ::Data
+      attr_reader verb: String
+      attr_reader fields: Hash[Symbol, untyped]
+      def self.new: (verb: String, fields: Hash[Symbol, untyped]) -> instance
+      def writing?: () -> bool
+    end
+    def self.parse: (String text) -> Action
+    def self.execute: (untyped core, String public_id, Action action, ?workspace_public_id: String?) -> untyped
+    def self.render: (Action action, untyped result) -> String
+  end
+
+  class Core
+    module Memory
+      def memory_list: (String public_id, ?path: String?, ?workspace_public_id: String?) -> untyped
+      def memory_read: (String public_id, path: String, ?workspace_public_id: String?) -> untyped
+      def memory_write: (String public_id, path: String, content: String, expected_public_id: String?, expected_lock_version: Integer?, ?workspace_public_id: String?) -> untyped
+      def memory_edit: (String public_id, path: String, old_text: String, new_text: String, expected_public_id: String, expected_lock_version: Integer, ?workspace_public_id: String?) -> untyped
+      def memory_delete: (String public_id, path: String, expected_public_id: String, expected_lock_version: Integer, ?workspace_public_id: String?) -> untyped
+      def memory_grep: (String public_id, pattern: String, ?path: String?, ?ignore_case: bool, ?limit: Integer?, ?workspace_public_id: String?) -> untyped
+      def bind_memory_context: (String public_id, memory_context: Hash[String, untyped]?, ?workspace_public_id: String?) -> untyped
+    end
+    include Memory
+  end
+
+  module Extensions
+    module Ops
+      module Memory
+        def self.register: (untyped api) -> untyped
+        def self.list: (untyped request, untyped ctx) -> untyped
+        def self.operate: (untyped request, untyped ctx, String operation) -> untyped
+        def self.bind: (untyped request, untyped ctx) -> untyped
+        def self.command: (untyped cli, Array[String] args, Hash[Symbol, untyped] options) -> untyped
+      end
+    end
+  end
+end

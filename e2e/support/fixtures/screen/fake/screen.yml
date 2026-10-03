@@ -1,0 +1,106 @@
+# THE LAUNCHER'S REHEARSAL DEFINITION: a small screen of both instruments on three wires (the broker's
+# chat, the direct Responses floor, Anthropic's messages), run through the fake transport by
+# `bin/screen support/fixtures/screen/fake --fake --with <tree> --without <tree>`. Both arms read the
+# SAME row, so a self-pair measures nothing; it exercises the engine end to end. `shipped` names the
+# tree's own shipped row whatever its id, so the rehearsal runs on any tree.
+name: fake-rehearsal
+design:
+  path: e2e/support/fixtures/screen/fake/design.md
+  section: "§1 The rehearsal"
+arms:
+  - id: base
+    tree: without
+    row: shipped
+    base: true
+  - id: candidate
+    tree: with
+    row: shipped
+# The arm's diff against the base may touch only these (a self-pair's diff is empty).
+allowlist:
+  - "docs/**"
+  - nexus/lib/nexus/tool_registry/graph.rb
+# The transport both arms share; any difference between the trees here refuses the launch.
+transport:
+  - e2e/support/manual_client.rb
+  - e2e/support/provider_lanes.rb
+  - e2e/support/output_caps.rb
+  - nexus/vendor/simple_inference/**
+  - nexus/config/model_catalog/**
+  - e2e/support/screen/**
+  - e2e/support/bench_*.rb
+  - e2e/support/fake_bench_adapter.rb
+  - e2e/support/task_bench/**
+  - e2e/bin/screen
+style: nexus
+max_output_tokens: 16384
+# Started first: the slow lanes set the wall.
+floors:
+  - fake/responses
+cells:
+  - instrument: compose
+    models: [fake/chat-a, fake/responses, fake/messages]
+    objectives: [O1, O7]
+    n: 2
+  # G0 and T5 are scored on their first message; SP3A reads its fixture first, then hands out; D1P
+  # reads, then the fake answers a compose door the task bench kinds.
+  - instrument: task
+    models: [fake/chat-b]
+    objectives: [G0, T5, SP3A, D1P]
+    n: 4
+    split: 2
+# In-flight jobs per model-ref prefix; a job counts against every prefix its model starts with.
+caps:
+  "fake/": 14
+  "fake/chat-a": 8
+  "fake/messages": 4
+  "fake/other": 4
+  "fake/responses": 2
+# One draw per (lane, arm) through the real probe; the cache check's lanes draw twice, serially.
+smoke:
+  instrument: compose
+  objective: O1
+  models: [fake/chat-a, fake/messages]
+  cache_check: [fake/messages]
+  timeout_seconds: 600
+watch:
+  spend_stop_usd: 25
+  wall_stop_seconds: 4500
+  stall_flag_seconds: 600
+  stall_stop_seconds: 1500
+  storm_share: 0.10
+  storm_min_events: 3
+  lost_share: 0.05
+  lost_min_draws: 3
+  blind_gap: 3
+  take_error_limit: 3
+  poll_seconds: 15
+  heartbeat_seconds: 600
+  kill_grace_seconds: 30
+# A fake run's clocks are seconds, not minutes.
+fake:
+  wall_stop_seconds: 600
+  stall_flag_seconds: 20
+  stall_stop_seconds: 40
+  poll_seconds: 0.5
+  heartbeat_seconds: 5
+  kill_grace_seconds: 3
+budget:
+  planning_usd: 0.5
+  upper_usd: 1
+relaunch:
+  spend_stop_usd: 25
+  candidate_cap_usd: 50
+  post_storm:
+    caps:
+      "fake/chat-a": 6
+    stagger_seconds: 60
+    merge_splits: true
+stage0:
+  # The held-out check: each primary stimulus against the stems the arm's diff adds.
+  stems:
+    paths: [nexus/lib/nexus/tool_registry/graph.rb]
+    primary:
+      task: [G0]
+    control:
+      task: [T5]
+    list: [verif*, judge*, count*, weigh*, chain, item, panel, lens, review*, brief*, merge, one job, later step, fan, moves on, ship, hold, name*, decid*, answer*, comes back, result, later, long, command, conclusion, dump, plan]

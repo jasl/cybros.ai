@@ -1,0 +1,41 @@
+#!/bin/sh
+# THE CONTAINER'S ONE DOOR: every rho verb through
+# the prefix's wrapper — `server` (the CMD), `connect --nexus-url URL`
+# (prints the pairing code and the verification URL), `status`,
+# `disconnect`, `doctor`. The display name is a flag on `server`, never a
+# config key, so the environment's RHO_DISPLAY_NAME is passed as one.
+#
+# tini is PID 1 in front of this script (`ENTRYPOINT ["/usr/bin/tini",
+# "--", "/opt/rho/libexec/docker-entrypoint"]`): TERM reaches rho alone,
+# rho's trap stops the process groups it owns, tini reaps every orphan a
+# killed group leader leaves. `docker run --init` on top is harmless.
+#
+# The prefix is where this file lives (install.sh copies it into
+# $RHO_PREFIX/libexec), never an environment variable: the wrapper bakes
+# RHO_PREFIX in itself.
+#
+# THE ROOT DOOR (the postgres/redis entrypoint pattern): an operator who
+# runs the container as root (`docker run --user 0`; terminal-bench's
+# images assume it) gets a root-owned state. rho's floor stands — the
+# state directory must be the current user's (`Rho::StateFile`), a
+# security floor, not a nuisance — so the door moves the home's owner to
+# meet it, once, before rho boots. A named volume starts as the image's
+# uid 1000 and is moved the same way; it is a bind mount on native Linux
+# that needed this: Docker Desktop maps a bind mount's owner to the
+# container's user, but on native Linux the host dir keeps its owner (the
+# harness's uid), and rho's boot was refused there at once
+# (`daemon.boot_failed … must be owned by the current user`). uid 1000 —
+# the image's user — sees no change.
+set -e
+
+prefix=$(cd "$(dirname "$0")/.." && pwd)
+rho="$prefix/bin/rho"
+
+if [ "$(id -u)" = "0" ] && [ -n "${RHO_HOME:-}" ] && [ -d "$RHO_HOME" ] && [ "$(stat -c %u "$RHO_HOME")" != "0" ]; then
+  chown -R 0:0 "$RHO_HOME"
+fi
+
+if [ "$1" = "server" ] && [ -n "${RHO_DISPLAY_NAME:-}" ]; then
+  exec "$rho" "$@" --display-name "$RHO_DISPLAY_NAME"
+fi
+exec "$rho" "$@"

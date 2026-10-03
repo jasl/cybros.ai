@@ -1,0 +1,12 @@
+<div class="grid min-w-0 gap-2 border-b border-base-300 px-4 py-4 last:border-0 sm:grid-cols-2 sm:items-center sm:gap-6">
+  <div class="min-w-0">
+    <% row_description = local_assigns.fetch(:description, nil) %>
+    <%= form.label attribute, label, class: "label py-0 text-sm" %>
+    <% if row_description.present? %>
+      <p class="mt-1 text-xs text-base-content/60"><%= row_description %></p>
+    <% end %>
+  </div>
+  <div class="min-w-0">
+    <%= yield %>
+  </div>
+</div>

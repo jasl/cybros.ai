@@ -1,0 +1,13 @@
+<% latest_session = authorization[:session] %>
+<% pending = latest_session && latest_session.fetch(:state) == "pending" %>
+<div class="flex flex-wrap items-center gap-3">
+  <% if authorization.fetch(:state) == "authorized" %>
+    <%= button_to "Disconnect", admin_model_provider_authorization_path(provider.fetch(:id)), method: :delete,
+      class: "btn btn-sm btn-outline btn-error", form: { data: { turbo_frame: "_top", turbo_confirm: "Disconnect this subscription? Agents will lose access through it, and any pending sign-in will stop." } } %>
+  <% else %>
+    <% restart = pending && (latest_session.fetch(:kind) != "device_start" || !latest_session.fetch(:owned_by_current_user)) %>
+    <%= button_to "Connect", admin_model_provider_authorization_path(provider.fetch(:id)),
+      params: { authorization: { restart: restart == true } }, class: "btn btn-primary btn-sm",
+      form: { data: { turbo_confirm: ("Start your own sign-in? The current pending sign-in will stop." if restart) } } %>
+  <% end %>
+</div>

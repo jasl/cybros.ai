@@ -1,0 +1,79 @@
+<% content_for :title, "My runners" %>
+
+<div class="space-y-8">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight">My runners</h1>
+      <p class="text-sm text-base-content/60">
+        Machines you manage as execution capacity — runners and tools providers. Scope controls who can discover them for new work.
+      </p>
+    </div>
+    <%= link_to "Connect runner", oauth_device_path, class: "btn btn-primary btn-sm" %>
+  </header>
+
+  <% if @runners.any? %>
+    <section class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-200">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Machine</th>
+            <th>Scope</th>
+            <th>Credential readiness</th>
+            <th>Registered</th>
+            <th>Presence</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @runners.each do |runner| %>
+            <% readiness = @runner_credential_readiness.fetch(runner.id) %>
+            <tr data-runner-id="<%= runner.public_id %>">
+              <td>
+                <span class="block font-medium wrap-anywhere"><%= runner.display_name %></span>
+                <span class="block text-xs text-base-content/60" data-executor-kind="<%= runner.executor_kind %>"><%= machine_kind_label(runner.executor_kind) %></span>
+              </td>
+              <td>
+                <span class="<%= badge_classes(runner.account_wide?, tone: :info, extra: "whitespace-nowrap") %>">
+                  <%= runner.account_wide? ? "Account-wide" : "Private" %>
+                </span>
+              </td>
+              <td>
+                <span class="<%= badge_classes(readiness == :ready, tone: :success, extra: "whitespace-nowrap") %>">
+                  <%= t("executors.credential_readiness.#{readiness}") %>
+                </span>
+              </td>
+              <td class="text-base-content/60 whitespace-nowrap" title="<%= runner.created_at.iso8601 %>">
+                <%= time_ago_in_words(runner.created_at) %> ago
+              </td>
+              <td class="text-base-content/60 whitespace-nowrap" title="<%= runner.last_seen_at&.iso8601 %>">
+                <%= presence_label(runner) %>
+              </td>
+              <td class="text-end">
+                <div class="flex justify-end gap-1">
+                  <%= button_to "Revoke credentials",
+                    runner_credentials_path(runner),
+                    method: :delete,
+                    class: "btn btn-ghost btn-sm",
+                    aria: { label: "Revoke credentials for #{runner.display_name}" },
+                    data: { turbo_confirm: "Revoke credentials for #{runner.display_name}? It stops working immediately and keeps its registration — starting the same Runner product and connecting again restores it." } %>
+                  <%= button_to "Revoke runner",
+                    runner_path(runner),
+                    method: :delete,
+                    class: "btn btn-error btn-soft btn-sm",
+                    aria: { label: "Revoke #{runner.display_name}" },
+                    data: { turbo_confirm: "Revoke #{runner.display_name}? This cannot be undone: the machine loses this identity and reconnecting registers a new runner." } %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </section>
+
+    <%= render "shared/pagination_footer", pagy: @runners_pagy, noun: "runners", aria_label: "Runner pages" %>
+  <% else %>
+    <%= render "shared/empty_state",
+      title: "No runners connected",
+      description: "A runner connects itself. Start it on the machine you want to connect and follow the link it prints — it opens this installation with the code already filled in." %>
+  <% end %>
+</div>

@@ -1,0 +1,665 @@
+module Rho
+  module Extensions
+    # The refusal for effects no snapshot can undo.
+    module Guard
+      NAME: String
+      RULES: Array[[Regexp, String]]
+      GUARDED_TOOLS: Array[String]
+      EDIT_TOOLS: Array[String]
+      def self.register: (untyped api) -> untyped
+      def self.refusal: (String name, Hash[String, untyped] arguments, Home? home) -> String?
+      def self.refusal_for: (String command) -> String?
+      def self.floor_refusal: (String name, String text, Array[String] roots) { (String) -> boolish } -> String?
+      def self.absolute?: (String path) -> bool
+      def self.excerpt: (String command) -> String
+    end
+
+    # The named sub-agents' verbs and routes.
+    module Agents
+      NAME: String
+      def self.register: (untyped api) -> untyped
+
+      module Routes
+        def self.register: (untyped api) -> untyped
+        def self.list: (Daemon::Context ctx) -> untyped
+        def self.sync: (Daemon::Context ctx) -> untyped
+        def self.publish: (untyped request, Daemon::Context ctx) -> untyped
+        def self.remove: (untyped request, Daemon::Context ctx) -> untyped
+      end
+
+      module Commands
+        USAGE: String
+        NO_MODEL: String
+        NONE: String
+        def self.agents: (Cli::Terminal cli, Array[String?] args, Hash[Symbol, untyped] options) -> untyped
+        def self.list: (Cli::Terminal cli) -> Hash[String, untyped]
+        def self.sync: (Cli::Terminal cli) -> Hash[String, untyped]
+        def self.publish: (Cli::Terminal cli, String? name) -> Hash[String, untyped]
+        def self.remove: (Cli::Terminal cli, String? name) -> Hash[String, untyped]
+      end
+    end
+
+    # The process table's tools, hooks, routes and verbs.
+    module Processes
+      NAME: String
+      ENVIRONMENT_SENTENCE: String
+      TOOLS: Array[untyped]
+      def self.register: (untyped api) -> untyped
+      def self.register_commands: (untyped api) -> untyped
+      def self.with_notices: (untyped result, untyped table) -> untyped
+      def self.list: (untyped ctx, String? runner, untyped table) -> Array[Hash[untyped, untyped]]
+      def self.log: (untyped ctx, String? runner, String id, Integer lines, untyped table) -> Hash[untyped, untyped]?
+
+      # The table on another runner, read through the relay.
+      module Remote
+        TIMEOUT_MS: Integer
+        PATIENCE_SLACK_SECONDS: Float
+        POLL_SECONDS: Float
+
+        class Unreachable < Rho::Error
+          attr_reader runner: String
+          attr_reader key: String
+          def initialize: (String runner, String key) -> void
+        end
+
+        def self.list: (untyped ctx, String runner) -> Array[Hash[String, untyped]]
+        def self.log: (untyped ctx, String runner, String id, Integer lines) -> Hash[String, untyped]?
+      end
+
+      module Routes
+        LOG_LINES: Integer
+        LOG_LINES_MAX: Integer
+        LOG_BYTES_MAX: Integer
+        def self.register: (untyped api, untyped table) -> untyped
+        def self.document: (untyped table, ?untyped ctx, ?runner: String?) -> Hash[Symbol, untyped]
+        def self.remote_runners: (untyped ctx) -> Array[String]
+        def self.stop: (untyped table, untyped request) -> untyped
+        def self.log: (untyped table, untyped request, ?untyped ctx) -> untyped
+        def self.read_log: (untyped table, String id, Integer lines) -> Hash[Symbol, untyped]?
+      end
+
+      module Commands
+        KILL_WAIT: Integer
+        KILL_POLL: Float
+        LOG_TAIL: Integer
+        def self.processes: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+        def self.kill: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+        def self.logs: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      end
+    end
+  end
+
+  # The daemon's half of the extension plane.
+  module Extensions
+    DEFAULT_EXTENSIONS: Array[untyped]
+    DEFAULT_GEMS: Array[String]
+    AGENT_MODE_EXCLUDES: Array[untyped]
+    RUNNER_MODE_EXCLUDES: Array[untyped]
+
+    class MemberPlane < ::Data
+      attr_reader client: untyped
+      attr_reader workspace_public_id: String?
+    end
+
+    class MemberConnection < ::Data
+      attr_reader user_public_id: String
+      attr_reader client: CybrosAgent::Client
+    end
+
+    class Host < ::Data
+      attr_reader home: Home
+      attr_reader log: untyped
+      attr_reader clock: ^() -> Time
+      attr_reader config: Config
+      attr_reader processes: untyped
+      attr_reader member_plane: (^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> MemberPlane?)?
+      attr_reader serving_tools: bool
+      attr_reader checkpoints: untyped
+      attr_reader environments: untyped
+    end
+
+    # The delegate summarizer.
+    module Compaction
+      NAME: String
+      TOOL_NAME: String
+      INSTRUCTIONS: String
+      def self.register: (untyped api) -> untyped
+
+      class NoSummary < Rho::Error
+      end
+
+      class SummarizeHistory
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        TIMEOUT_MS: Integer
+        WORKLOAD: String
+        def self.member_plane: () -> (^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> MemberPlane?)?
+        def self.config: () -> Config?
+        def self.sleeper: () -> ^(Numeric) -> untyped
+        def self.sleeper=: (^(Numeric) -> untyped) -> untyped
+        def self.bind: (member_plane: (^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> MemberPlane?)?, config: Config?, ?sleeper: ^(Numeric) -> untyped) -> untyped
+        def initialize: (env: untyped) -> void
+        def call: (Hash[String, untyped] args) -> Rho::Runner::Result
+      end
+    end
+
+    # The todo tracker.
+    module Todo
+      NAME: String
+      DOCUMENT: String
+      def self.register: (untyped api) -> untyped
+
+      class List
+        class Item < ::Data
+          attr_reader content: String
+          attr_reader status: String
+        end
+        MARKERS: Hash[String, String]
+        COMPLETED: String
+        attr_reader items: Array[Item]
+        def self.of: (untyped todos) -> List
+        def initialize: (Array[Item] items) -> void
+        def render: () -> String
+        def counts: () -> Hash[String, Integer]
+        def empty?: () -> bool
+        def finished?: () -> bool
+      end
+
+      class Write
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        TIMEOUT_MS: Integer
+        NO_CONVERSATION: String
+        NO_PLANE: String
+        WRITE_REFUSED: String
+        CLEARED: String
+        def self.member_plane: () -> (^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> MemberPlane?)?
+        def self.log: () -> untyped
+        def self.bind: (member_plane: (^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> MemberPlane?)?, log: untyped) -> untyped
+        def initialize: (env: untyped) -> void
+        def call: (Hash[String, untyped] args) -> Rho::Runner::Result
+      end
+    end
+
+    # The image tool.
+    module Images
+      NAME: String
+      CODEX: String
+      def self.register: (untyped api) -> untyped
+      def self.boot_styles: (Config config, untyped home) -> Array[String]
+
+      class ImageGenerate
+        PLAIN_NAME: String
+        SPELLINGS: Hash[String, String]
+        NAME: String
+        DESCRIPTION_TEMPLATE: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        TIMEOUT_MS: Integer
+        WORKLOAD: String
+        DIRECTORY: String
+        EXTENSIONS: Hash[String, String]
+        NO_PLANE: String
+        NO_MODEL: String
+        NO_IMAGE: String
+        REFUSED: String
+        FAILED: String
+        def self.member_plane: () -> (^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> MemberPlane?)?
+        def self.config: () -> Config?
+        def self.sleeper: () -> ^(Numeric) -> untyped
+        def self.log: () -> untyped
+        def self.sleeper=: (^(Numeric) -> untyped) -> untyped
+        def self.bind: (member_plane: (^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> MemberPlane?)?, config: Config?, ?sleeper: ^(Numeric) -> untyped, ?log: untyped) -> untyped
+        def self.spelled: (untyped styles) -> singleton(ImageGenerate)
+        def initialize: (env: untyped) -> void
+        def call: (Hash[String, untyped] args) -> Rho::Runner::Result
+      end
+
+      class ReferenceImages
+        TURN_LIMIT: Integer
+        TURN_POSITION_CEILING: Integer
+        def initialize: (plane: MemberPlane, env: untyped, context: Rho::Runner::ExecutionContext?) -> void
+        def resolve: (Hash[String, untyped] arguments) -> Array[String]
+      end
+
+      class Imagegen < ImageGenerate
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        TIMEOUT_MS: Integer
+      end
+    end
+
+    # The one registrar per daemon for an editor's MCP servers: `handler` is `(anchor, entries) -> set`.
+    class Registrar < ::Data
+      attr_reader extension: String
+      attr_reader handler: ^(String, Array[Hash[String, untyped]]) -> untyped
+      def self.new: (extension: String, handler: ^(String, Array[Hash[String, untyped]]) -> untyped) -> instance
+    end
+
+    # Claimed once per load; a second claim is a RegistrationError.
+    class RegistrarSlot
+      attr_reader registrar: Registrar?
+      def claim: (String extension, ^(String, Array[Hash[String, untyped]]) -> untyped handler) -> Registrar
+    end
+
+    class Api < Rho::Runner::Extensions::Api
+      AUTHS: Array[Symbol]
+      DAEMON_EVENTS: Array[Symbol]
+
+      attr_reader routes: Array[Route]
+      attr_reader commands: Array[Command]
+      attr_reader flags: Array[Flags]
+      attr_reader background_tasks: Array[BackgroundTask]
+      attr_reader daemon_hooks: Array[Rho::Runner::Extensions::Hooks::Registration]
+      attr_reader conversation_servers: Registrar?
+      attr_reader webui_root: String?
+      attr_reader agents: Array[Rho::Agents::Definition]
+
+      def initialize: (host: untyped, ?registrar_slot: RegistrarSlot, **untyped) -> void
+      def serves?: (Symbol source) -> bool
+      def register_tool: (untyped klass, ?serves: Symbol) -> Api
+      def register_agent: (Rho::Agents::Definition definition) -> Api
+      def on: (Symbol event) ?{ (*untyped) -> untyped } -> Api
+      def register_webui: (root: untyped) -> Api
+      def register_route: (untyped method, untyped path, ?auth: Symbol) ?{ (*untyped) -> untyped } -> Api
+      def register_command: (
+        untyped name, ?usage: untyped, ?description: untyped, ?long_description: String?,
+        ?options: Hash[untyped, untyped], ?aliases: Array[untyped]
+      ) ?{ (*untyped) -> untyped } -> Api
+      def register_flags: (untyped command, **untyped options) ?{ (*untyped) -> untyped } -> Api
+      def background: (?untyped name) ?{ (*untyped) -> untyped } -> Api
+      def register_conversation_servers: () ?{ (String, Array[Hash[String, untyped]]) -> untyped } -> Api
+    end
+
+    class Route < ::Data
+      attr_reader method: String
+      attr_reader path: String
+      attr_reader auth: Symbol
+      attr_reader extension: String
+      attr_reader handler: untyped
+    end
+
+    class Command < ::Data
+      attr_reader name: String
+      attr_reader usage: String
+      attr_reader description: String
+      attr_reader long_description: String?
+      attr_reader options: Hash[Symbol, untyped]
+      attr_reader aliases: Array[String]
+      attr_reader extension: String
+      attr_reader handler: untyped
+    end
+
+    class Flags < ::Data
+      attr_reader command: String
+      attr_reader options: Hash[Symbol, untyped]
+      attr_reader extension: String
+      attr_reader fold: untyped
+    end
+
+    class BackgroundTask < ::Data
+      attr_reader name: String
+      attr_reader extension: String
+      attr_reader handler: untyped
+    end
+
+    class Extension < ::Data
+      attr_reader name: String
+      attr_reader source: String
+    end
+
+    class Sources < ::Data
+      attr_reader gems: Array[String]
+      attr_reader paths: Array[String]
+    end
+
+    class Loaded < ::Data
+      attr_reader registry: Rho::Runner::Extensions::Registry
+      attr_reader extensions: Array[Extension]
+      attr_reader routes: Array[Route]
+      attr_reader commands: Array[Command]
+      attr_reader flags: Array[Flags]
+      attr_reader background_tasks: Array[BackgroundTask]
+      attr_reader lifecycle: Array[Rho::Runner::Extensions::Hooks::Registration]
+      attr_reader daemon_hooks: Array[Rho::Runner::Extensions::Hooks::Registration]
+      attr_reader conversation_servers: Registrar?
+      attr_reader webui_root: String?
+      attr_reader failures: Array[Rho::Runner::Extensions::Loader::Failure]
+      attr_reader agents: Array[Rho::Agents::Definition]
+
+      def ok?: () -> bool
+      def command: (untyped name) -> Command?
+      def inventory: () -> Array[Hash[String, untyped]]
+    end
+
+    def self?.defaults_for: (untyped mode) -> Array[untyped]
+    def self?.webui_root_of: (Array[Api] committed) -> String?
+    def self?.registered_agents: (Array[Api] committed) -> Array[Rho::Agents::Definition]
+    def self?.sources: (Home home, Config config) -> Sources
+    def self?.load: (
+      host: untyped, ?extensions: Array[untyped], ?gems: Array[String], ?paths: Array[String], ?log: untyped
+    ) -> Loaded
+
+    # AGENTS.md and CLAUDE.md, then the home's AGENTS.md, as an environment
+    # describer; the one port sentence while the lead's anchor has a live
+    # file-system port.
+    module Conventions
+      NAME: String
+      PORT_SENTENCE: String
+      def self.register: (untyped api) -> untyped
+    end
+
+    # The flags `rho do --until/--attempts` fold into the loop request; the
+    # two loop hooks author the paragraph, the check (a bash tool step on
+    # the bound runner) with its hold, and the gate.
+    module Until
+      NAME: String
+      def self.register: (untyped api) -> untyped
+      def self.author: (Daemon::Loops::Draft draft, untyped ctx) -> (Daemon::Loops::Draft | Daemon::Refusal)
+      def self.seed: (Daemon::Loops::Draft draft, Hash[String, untyped] compaction) -> Hash[String, untyped]
+      def self.policy_for: (Hash[String, untyped] body, untyped environment, untyped ctx) -> untyped
+      def self.follow: (String loop_public_id, Hash[String, untyped] note, untyped ctx) -> untyped
+      def self.bind: (String loop_public_id, untyped loops, untyped workspace, untyped ctx) -> untyped
+      def self.first_loop: (untyped hosted) -> String?
+      def self.gate: (String loop_public_id, untyped policy, untyped ctx) -> untyped
+      def self.clamp: (untyped ctx) -> Numeric
+    end
+
+    # `/environment`, `/runner`, `rho env` and `rho runner`.
+    module Environment
+      NAME: String
+      STORE_NAMESPACE: String
+      STORE_KEY: String
+      def self.register: (untyped api) -> untyped
+
+      module Routes
+        def self.document: (EnvironmentStore::Selection selection) -> Hash[Symbol, untyped]
+        def self.set: (untyped request, Daemon::Context ctx) -> untyped
+        def self.runner: (Daemon::Context ctx) -> Hash[Symbol, untyped]
+        def self.conversation: (untyped request, Daemon::Context ctx) -> untyped
+        def self.bind: (untyped request, Daemon::Context ctx) -> untyped
+        def self.environments: (Daemon::Context ctx) -> untyped
+      end
+
+      # The hidden runner tool a host elsewhere relays a conversation's
+      # root set through.
+      module Tools
+        class Bind
+          NAME: String
+          DESCRIPTION: nil
+          SCHEMA: Hash[String, untyped]
+          EFFECT_PROFILE: Hash[String, untyped]
+          UNAVAILABLE: String
+          def self.environments: () -> (^() -> Rho::Environments?)?
+          def self.log: () -> untyped
+          def self.bind: (environments: (^() -> Rho::Environments?)?, log: untyped) -> untyped
+          def initialize: (env: untyped) -> void
+          def call: (Hash[String, untyped] args) -> Rho::Runner::Result
+        end
+      end
+
+      # The door's `fs:` member: the shape validated, the port registered
+      # under the record's anchor.
+      module Port
+        LOOPBACK_HOSTS: Array[String]
+        def self.validate: (untyped fs) -> (Hash[Symbol, untyped] | Daemon::Refusal | nil)
+        def self.register: (Daemon::Context ctx, String public_id, Hash[Symbol, untyped] binding, Rho::Environments::Resolved answer,
+                            Hash[Symbol, untyped]? fs) -> Daemon::Refusal?
+      end
+
+      # The daemon's side of the file-system port: the runner gem's duck
+      # over `Net::HTTP` to the surface's loopback route.
+      class FsPort
+        include Rho::Runner::FsPort
+
+        OPEN_TIMEOUT_SECONDS: Integer
+        READ_TIMEOUT_SECONDS: Integer
+        WRITE_TIMEOUT_SECONDS: Integer
+        READ_ROUTE: String
+        WRITE_ROUTE: String
+        CODES: Hash[String, singleton(Rho::Runner::FsPort::Error)]
+        BROKEN_STATUSES: Array[Integer]
+        attr_reader client: String
+        attr_reader url: String
+        def initialize: (url: String, token: String, read: bool, write: bool, client: String, ?on_drop: (^(String) -> untyped)?,
+                         ?open_timeout: Numeric, ?read_timeout: Numeric, ?write_timeout: Numeric) -> void
+        def serves?: (Symbol need) -> bool
+        def describe: () -> Hash[Symbol, untyped]
+        def same?: (url: String, token: String, read: bool, write: bool, client: String) -> bool
+        def inspect: () -> String
+        def read_text: (String path, line: Integer?, limit: Integer?) -> String
+        def write_text: (String path, String text) -> nil
+        def drop: (String detail) -> nil
+        def dropped?: () -> bool
+      end
+
+      module Commands
+        def self.env: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+        def self.runner: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      end
+    end
+
+    # The two console doors and `rho console`.
+    module ConsoleLink
+      NAME: String
+      CONSOLE_HEADER: String
+      CONSOLE_FRAGMENT: String
+      def self.register: (untyped api) -> untyped
+
+      module Routes
+        def self.mint: (ConsoleCodes codes, Daemon::Context ctx) -> untyped
+        def self.session: (ConsoleCodes codes, untyped request, Daemon::Context ctx) -> untyped
+      end
+
+      module Commands
+        def self.console: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      end
+    end
+
+    # The operator plane's routes — what the page, rho-dev, the harness
+    # and the core's loop primitives call — and the one-shot lane.
+    module Ops
+      NAME: String
+      RELAY_POLL_SECONDS: Float
+
+      class Relayed < ::Data
+        attr_reader public_id: String
+        attr_reader detail: untyped
+        def self.new: (public_id: String, detail: untyped) -> instance
+      end
+
+      class RewoundFacts < ::Data
+        attr_reader conversation: String
+        attr_reader forked_from: String
+        attr_reader position: Integer?
+        attr_reader world: Hash[Symbol, untyped]
+        def self.new: (conversation: String, forked_from: String, position: Integer?, world: Hash[Symbol, untyped]) -> instance
+      end
+
+      class RegeneratedFacts < ::Data
+        attr_reader turn: String
+        attr_reader variant: String?
+        attr_reader world: Hash[Symbol, untyped]
+        def self.new: (turn: String, variant: String?, world: Hash[Symbol, untyped]) -> instance
+      end
+
+      TURN_PAGE: Integer
+      TURN_POSITION_CEILING: Integer
+
+      def self.register: (untyped api) -> untyped
+      def self.relay: (
+        Daemon::Context ctx, String runner, String tool, Hash[String, untyped] input, ?Integer? timeout_ms,
+        ?idempotency_key: String
+      ) -> untyped
+      def self.rewind: (
+        Daemon::Context ctx, String conversation_id, String turn_ref, ?keep_world: bool, ?title: String?,
+        ?idempotency_key: String?, ?workspace_public_id: String?
+      ) -> untyped
+      def self.regenerate: (
+        Daemon::Context ctx, String conversation_id, String turn_ref, ?keep_world: bool, ?model: String?, ?workspace_public_id: String?
+      ) -> untyped
+      def self.local_guard: (Daemon::Context ctx, untyped conversation) -> Daemon::Refusal?
+      def self.restore_guard: (Daemon::Context ctx) -> ^(String?, CybrosAgent::Api::Checkpoint) -> String?
+      def self.regenerate_guard: (Daemon::Context ctx, untyped workspace, untyped chat, untyped conversation, String turn_public_id) -> Daemon::Refusal?
+      def self.needs_attention?: (untyped workspace, untyped active) -> bool
+      def self.restore_before_door: (Daemon::Context ctx, untyped workspace, untyped conversation, untyped world, bool keep_world) -> [Hash[Symbol, untyped]?, Daemon::Refusal?]
+      def self.door: (untyped chat, String turn_public_id, String? model, Hash[Symbol, untyped] outcome) -> untyped
+      def self.store_hash: (untyped workspace, String? runner, String? loop) -> String?
+      def self.restore_relay: (Daemon::Context ctx, untyped workspace, String runner, String hash) -> Hash[Symbol, untyped]
+      def self.task_completed?: (untyped detail) -> bool
+      def self.undo_of: (untyped detail) -> String?
+      def self.reason_word: (untyped output) -> String?
+      def self.world_unavailable: () -> Daemon::Refusal
+      def self.resolve_turn: (untyped turns, String turn_ref) -> [String, Integer]?
+      def self.turn_at: (untyped turns, Integer position) -> untyped
+      def self.turn_by_id: (untyped turns, String public_id) -> untyped
+      def self.newest_turns: (untyped turns, ?limit: Integer) -> untyped
+      def self.turn_not_found: (String turn_ref, String conversation_id) -> Daemon::Refusal
+      def self.local_root: (Daemon::Context ctx, untyped conversation) -> String?
+
+      module ConversationHistory
+        def self.register: (untyped api) -> untyped
+        def self.search: (untyped request, Daemon::Context ctx) -> untyped
+        def self.history: (untyped request, Daemon::Context ctx) -> untyped
+        def self.edit: (untyped request, Daemon::Context ctx) -> untyped
+        def self.delete: (untyped request, Daemon::Context ctx) -> untyped
+        def self.view: (untyped request, Daemon::Context ctx) -> untyped
+        def self.command: (untyped request, Daemon::Context ctx) { (untyped turns, String turn, Hash[String, untyped] body) -> untyped } -> untyped
+      end
+
+      module Models
+        def self.register: (untyped api) -> untyped
+        def self.list: (untyped request, Daemon::Context ctx) -> untyped
+        def self.command: (untyped cli, Array[String] args, Hash[Symbol, untyped] options) -> Array[untyped]
+      end
+
+      module Conversations
+        def self.register: (untyped api) -> untyped
+        def self.list: (untyped request, Daemon::Context ctx) -> untyped
+        def self.summary: (untyped row) -> Hash[Symbol, untyped]
+        def self.detail: (untyped request, Daemon::Context ctx) -> untyped
+        def self.document: (untyped row) -> Hash[Symbol, untyped]
+        def self.update: (untyped request, Daemon::Context ctx) -> untyped
+        def self.archive: (untyped request, Daemon::Context ctx) -> untyped
+        def self.unarchive: (untyped request, Daemon::Context ctx) -> untyped
+        def self.command: (untyped request, Daemon::Context ctx) { (untyped, Hash[String, untyped]) -> untyped } -> untyped
+      end
+
+      # `GET /files/bytes`: the page's reader of what a tool wrote to disk,
+      # here or on a followed host's runner.
+      module Files
+        BYTES_POLICY: String
+        RELAY_TIMEOUT_MS: Integer
+        def self.register: (untyped api) -> untyped
+        def self.bytes: (untyped request, Daemon::Context ctx) -> untyped
+      end
+
+      # `rho skills`' row half: the two kernel rungs
+      # through the two memory doors.
+      module SkillRoutes
+        WORKSPACE_PREFIX: String
+        USER_PREFIX: String
+        def self.register: (untyped api) -> untyped
+        def self.list: (untyped request, Daemon::Context ctx) -> untyped
+        def self.push: (untyped request, Daemon::Context ctx) -> untyped
+        def self.show: (untyped request, Daemon::Context ctx) -> untyped
+        def self.remove: (untyped request, Daemon::Context ctx) -> untyped
+      end
+
+      module Events
+        def self.register: (untyped api) -> untyped
+        def self.read: (untyped request, Daemon::Context ctx) -> untyped
+      end
+
+      module LoopRoutes
+        TRANSCRIPT_LIMIT: Integer
+        LOOP_LIST_LIMIT: Integer
+        ASK_PAGE_LIMIT: Integer
+        PENDING_KINDS: Array[String]
+        NOT_ADDRESSED_HERE: String
+        SIDE_NOTE: String
+        TURNS_PAGE_CAP: Integer
+        CONVERSATION_ARM: String
+        def self.register: (untyped api) -> untyped
+        def self.rewind: (untyped request, Daemon::Context ctx) -> untyped
+        def self.attach_conversation: (Daemon::Context ctx, untyped client, String workspace_public_id, untyped about,
+                                       String public_id, Hash[String, untyped] body) -> untyped
+        def self.turns: (untyped request, Daemon::Context ctx) -> untyped
+        def self.turn_pages: (untyped turns, after: Integer?, limit: Integer?) -> [Array[untyped], bool]
+        def self.turn_window: (untyped turns, before: Integer?, latest: bool, limit: Integer?) -> untyped
+        def self.turn_entry: (untyped turn) -> Hash[Symbol, untyped]
+        def self.regenerate: (untyped request, Daemon::Context ctx) -> untyped
+        def self.activate_variant: (untyped request, Daemon::Context ctx) -> untyped
+        def self.asks: (Daemon::Context ctx) -> untyped
+        def self.pending_row: (untyped row) -> Hash[Symbol, untyped]
+        def self.decide: (untyped request, Daemon::Context ctx, String verb) -> untyped
+        def self.grant_for: (Daemon::Context ctx, untyped loops, String public_id, String task_key,
+                             Hash[String, untyped] body) -> (LoopRequest::Grant | Daemon::Refusal | nil)
+        def self.grant_answer: (untyped outcome, LoopRequest::Grant grant) -> Hash[Symbol, untyped]
+        def self.rules: (Daemon::Context ctx) -> untyped
+        def self.resolve_at_member_door: (untyped loops, String public_id, String task_key, Hash[Symbol, untyped] fields) -> String
+        def self.commit_on_executor_plane: (Daemon::Context ctx, untyped loops, String public_id, String task_key, Hash[Symbol, untyped] fields) -> untyped
+        def self.author: (untyped request, Daemon::Context ctx) -> untyped
+        def self.list: (untyped request, Daemon::Context ctx) -> untyped
+        def self.stream: (untyped request, Daemon::Context ctx) -> untyped
+        def self.attach: (untyped request, Daemon::Context ctx) -> untyped
+        def self.answer: (untyped request, Daemon::Context ctx) -> untyped
+        def self.adjudicate: (untyped request, Daemon::Context ctx, String verb) -> untyped
+        def self.delete: (untyped request, Daemon::Context ctx) -> untyped
+        def self.pause: (untyped request, Daemon::Context ctx) -> untyped
+        def self.resume: (untyped request, Daemon::Context ctx) -> untyped
+        def self.set_live: (untyped request, Daemon::Context ctx, bool live) -> untyped
+        def self.result: (untyped request, Daemon::Context ctx) -> untyped
+        def self.transcript: (untyped request, Daemon::Context ctx) -> untyped
+        def self.task: (untyped request, Daemon::Context ctx) -> untyped
+        def self.graph: (untyped request, Daemon::Context ctx) -> untyped
+        def self.request_read: (untyped request, Daemon::Context ctx) -> untyped
+        def self.inputs: (untyped request, Daemon::Context ctx) -> untyped
+        def self.delete_input: (untyped request, Daemon::Context ctx) -> untyped
+        def self.update_input: (untyped request, Daemon::Context ctx) -> untyped
+        def self.access: (untyped request, Daemon::Context ctx) -> untyped
+        def self.prompt_preview: (untyped request, Daemon::Context ctx) -> untyped
+        def self.prompt_documents: (untyped request, Daemon::Context ctx) -> untyped
+      end
+
+      module OneShots
+        OPTIONAL_CREATE_MEMBERS: Array[Symbol]
+        def self.register: (untyped api) -> untyped
+        def self.start: (untyped request, Daemon::Context ctx) -> untyped
+        def self.adopt: (
+          Daemon::Context ctx, untyped about, untyped lane, String public_id, Hash[String, untyped] body
+        ) -> [untyped, bool]
+        def self.snapshots: (Daemon::Context ctx) -> Array[untyped]
+        def self.set_live: (untyped request, Daemon::Context ctx, bool live) -> untyped
+      end
+    end
+  end
+
+  module Extensions
+    # The handoff: `rho runners`, `rho runners use`, `rho handoff`.
+    module Handoff
+      NAME: String
+      def self.register: (untyped api) -> untyped
+      def self.register_commands: (untyped api) -> untyped
+
+      module Routes
+        def self.register: (untyped api) -> untyped
+        def self.runners: (Daemon::Context ctx) -> untyped
+        def self.handoff: (untyped request, Daemon::Context ctx) -> untyped
+      end
+
+      module Commands
+        LEGEND: String
+        def self.runners: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+        def self.handoff: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      end
+    end
+  end
+end

@@ -1,0 +1,5 @@
+module Rho
+  module MemoryPolicy
+    PROMPT: String
+  end
+end

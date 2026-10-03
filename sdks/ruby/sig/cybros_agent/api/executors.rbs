@@ -1,0 +1,189 @@
+module CybrosAgent
+  module Api
+    # THE EXECUTOR BOUNDARY.
+    class AddressedTo < Data
+      attr_reader role: String
+      attr_reader executor_public_id: String?
+      attr_reader presence: String?
+      attr_reader last_seen_at: String?
+
+      def initialize: (role: String, ?executor_public_id: String?, ?presence: String?, ?last_seen_at: String?) -> void
+    end
+
+    class ClaimedBy < Data
+      attr_reader executor_public_id: String
+    end
+
+    class InboxTask < Data
+      attr_reader kind: String
+      attr_reader agent_loop_public_id: String
+      attr_reader workspace_public_id: String
+      attr_reader conversation_public_id: String?
+      attr_reader parent_public_id: String?
+      attr_reader task_key: String
+      attr_reader prompt: String?
+      attr_reader options: Array[String]?
+      attr_reader multi: bool?
+      attr_reader tool_name: String?
+      attr_reader tool_alias: String?
+      attr_reader tool_input: Hash[untyped, untyped]
+      attr_reader scope: Hash[String, untyped]?
+      attr_reader tool_call_id: String?
+      attr_reader started_at: String?
+      attr_reader deadline_at: String?
+      attr_reader timeout_ms: Integer?
+      attr_reader claimed: bool
+      attr_reader addressed_to: AddressedTo?
+      attr_reader effect_profile: Hash[String, untyped]?
+
+      def initialize: (kind: String, workspace_public_id: String, ?addressed_to: AddressedTo?, ?prompt: String?, ?options: Array[String]?, ?multi: bool?, ?tool_name: String?, ?tool_alias: String?, ?scope: Hash[String, untyped]?, ?effect_profile: Hash[String, untyped]?, ?conversation_public_id: String?, ?parent_public_id: String?, **untyped members) -> void
+      def claimed?: () -> bool
+    end
+
+    class ClaimedTask < Data
+      attr_reader task: InboxTask
+      attr_reader claim_token: String
+      attr_reader deadline_at: String?
+    end
+
+    class ClaimStatus < Data
+      attr_reader active: bool
+
+      def initialize: (active: bool) -> void
+      def active?: () -> bool
+    end
+
+    class ExecutorInboxContext
+      def initialize: (dispatch: _Dispatch) -> void
+      def list: (?after: String?, ?limit: Integer?) -> Page[InboxTask]
+    end
+
+    class ExecutorTaskContext
+      include Fields
+      attr_reader agent_loop_public_id: String
+      attr_reader task_key: String
+
+      def initialize: (dispatch: _Dispatch, agent_loop_public_id: String, task_key: String) -> void
+      def claim: () -> ClaimedTask
+      def claim_status: (claim_token: String) -> ClaimStatus
+      def attachment: (String public_id, claim_token: String) -> Upload
+      def attachment_bytes: (String public_id, untyped io, claim_token: String, ?range: String?) -> AttachmentRead
+      def extend: (claim_token: String, timeout_ms: Integer) -> ClaimedTask
+      def commit: (
+        claim_token: String?,
+        ?content: untyped,
+        ?structured_content: untyped,
+        ?result_type: untyped,
+        ?is_error: untyped,
+        ?outcome: untyped,
+        ?title: untyped,
+        ?metadata: untyped
+      ) -> untyped
+
+      private
+
+      def positive_integer: (untyped value, String name) -> Integer
+      def path: () -> String
+    end
+
+    class ExecutorAddress < Data
+      attr_reader public_id: String
+      attr_reader kind: String
+      attr_reader status: String
+      attr_reader display_name: String?
+      attr_reader credential_epoch: Integer
+      attr_reader presence: String
+      attr_reader last_seen_at: String?
+      attr_reader connected_at: String?
+
+      def self.new: (String public_id, String kind, String status, String? display_name, Integer credential_epoch, String presence, ?String? last_seen_at, ?String? connected_at) -> instance
+                  | (public_id: String, kind: String, status: String, display_name: String?, credential_epoch: Integer, presence: String, ?last_seen_at: String?, ?connected_at: String?) -> instance
+      def self.[]: (String public_id, String kind, String status, String? display_name, Integer credential_epoch, String presence, ?String? last_seen_at, ?String? connected_at) -> instance
+                 | (public_id: String, kind: String, status: String, display_name: String?, credential_epoch: Integer, presence: String, ?last_seen_at: String?, ?connected_at: String?) -> instance
+      def self.members: () -> [:public_id, :kind, :status, :display_name, :credential_epoch, :presence, :last_seen_at, :connected_at]
+
+      def initialize: (?last_seen_at: String?, ?connected_at: String?, **untyped members) -> void
+      def members: () -> [:public_id, :kind, :status, :display_name, :credential_epoch, :presence, :last_seen_at, :connected_at]
+    end
+
+    class ExecutorDescription < Data
+      attr_reader executor: ExecutorAddress
+      attr_reader measured_at: String
+
+      def self.new: (ExecutorAddress executor, String measured_at) -> instance
+                  | (executor: ExecutorAddress, measured_at: String) -> instance
+      def self.[]: (ExecutorAddress executor, String measured_at) -> instance
+                 | (executor: ExecutorAddress, measured_at: String) -> instance
+      def self.members: () -> [:executor, :measured_at]
+
+      def members: () -> [:executor, :measured_at]
+    end
+
+    class RunnerBinding < Data
+      attr_reader executor_public_id: String
+      attr_reader display_name: String?
+      attr_reader presence: String
+      attr_reader last_seen_at: String?
+
+      def initialize: (executor_public_id: String, ?display_name: String?, presence: String, ?last_seen_at: String?) -> void
+      def online?: () -> bool
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class ServedTool < Data
+      attr_reader name: String
+      attr_reader effect_profile: Hash[String, untyped]
+      attr_reader timeout_ms: Integer?
+      attr_reader description: String?
+      attr_reader input_schema: Hash[String, untyped]?
+
+      def initialize: (name: String, effect_profile: Hash[String, untyped], ?timeout_ms: Integer?, ?description: String?, ?input_schema: Hash[String, untyped]?) -> void
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class ServedDocument < Data
+      attr_reader name: String
+      attr_reader description: String
+
+      def initialize: (name: String, description: String) -> void
+    end
+
+    class DiscoveredExecutor < Data
+      attr_reader public_id: String
+      attr_reader kind: String
+      attr_reader display_name: String?
+      attr_reader status: String
+      attr_reader assignment_scope: String
+      attr_reader served_tools: Array[ServedTool]
+      attr_reader environment: Hash[String, untyped]
+      attr_reader served_documents: Array[ServedDocument]
+      attr_reader presence: String
+      attr_reader last_seen_at: String?
+      attr_reader connected_at: String?
+
+      def initialize: (public_id: String, kind: String, display_name: String?, status: String, assignment_scope: String, ?served_tools: Array[ServedTool], ?environment: Hash[String, untyped], ?served_documents: Array[ServedDocument], presence: String, ?last_seen_at: String?, ?connected_at: String?) -> void
+      def runner?: () -> bool
+      def tools_provider?: () -> bool
+      def online?: () -> bool
+      def tool_names: () -> Array[String]
+      def document_names: () -> Array[String]
+    end
+
+    module ExecutorProjections
+      include Parsing
+    end
+
+    class Executors
+      include ExecutorProjections
+      include WorkspaceProjections
+
+      PATH: String
+
+      def initialize: (dispatch: _Dispatch) -> void
+      def list: (?kind: String) -> Array[DiscoveredExecutor]
+      def show: (String public_id) -> DiscoveredExecutor
+    end
+
+  end
+
+end
