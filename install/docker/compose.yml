@@ -1,0 +1,77 @@
+# rho in Docker: a runner beside the project it
+# serves, and the same image as a full-mode rho with its console on the
+# host's loopback. Nexus is wherever RHO_NEXUS_URL points; a Nexus on the
+# host machine is reached at host.docker.internal (Docker Desktop resolves it; on Linux the `extra_hosts` line below maps it to the host gateway).
+#
+# docker compose -f install/docker/compose.yml up -d rho-runner
+# docker compose -f install/docker/compose.yml exec rho-runner rho connect # the pairing code + URL
+# docker compose -f install/docker/compose.yml exec rho-runner rho status
+# docker compose -f install/docker/compose.yml stop # TERM → tini → rho, 30 s grace
+#
+# No port is published for the runner: it dials out and is never dialled
+# into. tini is already PID 1 inside the image; `init: true` on top
+# is harmless (belt and braces), and so is `docker run --init`.
+
+services:
+  rho-runner:
+    # Publish this tag manually or replace it with your own image reference
+    # (install/docker/README.md). To hold a deployment still, pin its digest:
+    #   image: ghcr.io/jasl/rho@sha256:…   (docker image inspect --format '{{index .RepoDigests 0}}' ghcr.io/jasl/rho:release)
+    image: ghcr.io/jasl/rho:release
+    init: true
+    restart: unless-stopped
+    # A stop Nexus could not confirm is deferred and retried by `rho server`;
+    # Docker's 10 s default would kill that.
+    stop_grace_period: 30s
+    environment:
+      RHO_DISPLAY_NAME: "runner on ${HOSTNAME:-docker}"
+      RHO_NEXUS_URL: ${RHO_NEXUS_URL:-http://host.docker.internal:3000}
+      RHO_TOOLS_ROOT: /home/runner
+    working_dir: /home/runner
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # ONE home, ONE instance: a named volume, never a host RHO_HOME.
+      - rho-home:/var/lib/rho
+      # The project the runner serves. On a person's machine mount it at the
+      # SAME absolute path (`-v "$PWD:$PWD" -w "$PWD" -e RHO_TOOLS_ROOT="$PWD"`)
+      # so the paths the model prints hold on both sides; /home/runner is
+      # the default workspace.
+      - ${RHO_PROJECT:-./}:/home/runner
+
+  # The same image as a FULL-mode rho (the agent half is in the gem; mode is
+  # a boot fact): its console published on the host's loopback only. The
+  # bind is 0.0.0.0 INSIDE the container and plaintext is acknowledged
+  # because the path is the host's loopback; TLS in front of it would be
+  # `--expect-external-encryption` instead. A wider bind also needs the
+  # passphrase (`Rho::Daemon.verify_bind` refuses to boot without one), so
+  # the host's RHO_ACCESS_PASSPHRASE is passed through — compose hands a
+  # container nothing it does not list. Not `:?`: interpolation is not
+  # profile-scoped, and a required variable here would refuse
+  # `up rho-runner` too.
+  rho-full:
+    # The WebUI is served by Ruby in the plain image. Use :release-browser
+    # only when enabling the model's Playwright extension (rho/browser).
+    image: ghcr.io/jasl/rho:release
+    init: true
+    profiles: ["full"]
+    stop_grace_period: 30s
+    environment:
+      RHO_MODE: full
+      RHO_NEXUS_URL: ${RHO_NEXUS_URL:-http://host.docker.internal:3000}
+      RHO_ACCESS_PASSPHRASE: ${RHO_ACCESS_PASSPHRASE:-}
+      RHO_TELEGRAM_BOT_TOKEN: "${RHO_TELEGRAM_BOT_TOKEN:-}"
+      RHO_TOOLS_ROOT: /home/runner
+    working_dir: /home/runner
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["server", "--bind", "0.0.0.0", "--port", "7777", "--unsafe-plaintext"]
+    ports:
+      - "127.0.0.1:7777:7777"
+    volumes:
+      - rho-home-full:/var/lib/rho
+      - ${RHO_PROJECT:-./}:/home/runner
+
+volumes:
+  rho-home: {}
+  rho-home-full: {}

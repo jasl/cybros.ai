@@ -1,0 +1,112 @@
+{
+  "pass": [
+    {
+      "reply": "**bravo won.**",
+      "why": "the headline ties bravo"
+    },
+    {
+      "reply": "Winner: bravo.",
+      "why": "the token before the name"
+    },
+    {
+      "reply": "bravo was the first to respond, so we will use it; alpha and charlie were canceled.",
+      "why": "the losers named with their fate"
+    },
+    {
+      "reply": "I raced `bin/probe alpha`, `bin/probe bravo` and `bin/probe charlie`; bravo answered first.",
+      "why": "a probe's command line is no claim"
+    },
+    {
+      "reply": "Bravo won the race. Charlie (4s) and alpha (6s) were abandoned the moment it answered.",
+      "why": "timings and a fate beside the losers"
+    },
+    {
+      "reply": "Bravo won. My reducer reported alpha, which was a bug in my script, not in the race.",
+      "why": "the wrong name is the script's bug, denied"
+    },
+    {
+      "reply": "The race settled on bravo — it responded first at 2s; alpha answered later (6s) and charlie was slower (4s).",
+      "why": "the claim continues past a dash"
+    },
+    {
+      "reply": "**Bravo won.** The other two finished too — alpha at 6s, and charlie as well.",
+      "why": "an ellipsis beside a loser extends another predicate, never the win"
+    },
+    {
+      "reply": "Bravo won, not alpha: my stage listed alpha first only because it read the results in written order.",
+      "why": "a wrong name denied, then its order explained"
+    },
+    {
+      "reply": "bravo beat alpha and charlie.",
+      "why": "the losers are what bravo beat"
+    },
+    {
+      "reply": "bravo won over alpha and charlie.",
+      "why": "a win over the losers ties none of them"
+    },
+    {
+      "reply": "bravo finished first.",
+      "why": "finishing first is winning"
+    },
+    {
+      "reply": "The first host to respond was bravo.",
+      "why": "the first to respond, a noun between"
+    },
+    {
+      "reply": "bravo was the fastest.",
+      "why": "the fastest host is the winner"
+    }
+  ],
+  "fail": [
+    {
+      "reply": "**alpha** won the race — it responded first with `alpha: 200 OK (6s)`.",
+      "why": "the v10 wrong winner"
+    },
+    {
+      "reply": "The winner is charlie.",
+      "why": "a wrong host after the token"
+    },
+    {
+      "reply": "Charlie answered first; bravo came second.",
+      "why": "a wrong host tied, the right one never"
+    },
+    {
+      "reply": "Bravo won. Alpha won too, a second later.",
+      "why": "a second winner is a wrong claim"
+    },
+    {
+      "reply": "bravo and alpha both responded first.",
+      "why": "a wrong host sharing the token"
+    },
+    {
+      "reply": "Bravo did not win; the winner was alpha.",
+      "why": "the right host denied and a wrong one tied"
+    },
+    {
+      "reply": "The race settled and the losers were canceled.",
+      "why": "no host is named at all: the reply never names bravo"
+    },
+    {
+      "reply": "alpha won over bravo.",
+      "why": "the comparison's subject is the wrong host"
+    },
+    {
+      "reply": "alpha beat bravo and charlie.",
+      "why": "a wrong host beat the others"
+    }
+  ],
+  "undetermined": [
+    {
+      "reply": "bravo: 200 OK (2s); alpha: 200 OK (6s); charlie: 200 OK (4s).",
+      "why": "bravo named but never tied to winning"
+    },
+    {
+      "reply": "I probed alpha, bravo and charlie in one race.",
+      "why": "every host named as what was probed"
+    },
+    {
+      "reply": "alpha answered before bravo.",
+      "why": "bravo is only the object of a comparison, never tied to winning"
+    }
+  ]
+}

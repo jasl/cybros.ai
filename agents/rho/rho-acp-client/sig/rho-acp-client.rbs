@@ -1,0 +1,250 @@
+module Rho
+  # THE ACP CLIENT EXTENSION: `delegate_agent` over
+  # the `acp_agents` rows — one resident child per (conversation, agent),
+  # the permission relay through rho's floor, cancel and the wall, the
+  # verbs and `GET /acp`.
+  module AcpClient
+    VERSION: String
+    NAME: String
+
+    class Error < Rho::Error
+    end
+    class Closed < Error
+    end
+    class Unavailable < Error
+    end
+    class Refused < Error
+    end
+
+    def self.settings_table: () -> untyped
+    def self.settings_table=: (untyped) -> untyped
+    def self.settings_env: () -> untyped
+    def self.settings_env=: (untyped) -> untyped
+    def self.rows: () -> Array[untyped]?
+    def self.home: () -> untyped
+    def self.log: () -> untyped
+    def self.clock: () -> (^() -> Time)?
+    def self.enabled_rows: () -> Array[Settings::Row]
+    def self.row: (String key) -> Settings::Row?
+    def self.child_env: (untyped row, ?Hash[String, String] current) -> Hash[String, String]
+    def self.register: (untyped api) -> nil
+    def self.call: (Hash[String, untyped] args, env: untyped) -> Rho::Runner::Result
+    def self.release: (String conversation) -> nil
+    def self.close!: () -> nil
+    def self.sweep!: () -> Integer
+    def self.kill: (String session_id) -> bool
+    def self.reset!: () -> nil
+    def self.report: () -> Hash[String, untyped]
+
+    module Settings
+      class Malformed < Rho::Runner::Extensions::RegistrationError
+      end
+      KEYS: Array[String]
+      KEY_FORMAT: Regexp
+      KEY_MAX_LENGTH: Integer
+      PERMISSIONS: Array[String]
+      DEFAULT_PERMISSIONS: String
+      DEFAULT_TIMEOUT_MS: Integer
+      ENABLED: String
+
+      class Row < ::Data
+        attr_reader key: String
+        attr_reader command: String
+        attr_reader args: Array[String]
+        attr_reader env: Hash[String, String]
+        attr_reader description: String
+        attr_reader permissions: String
+        attr_reader timeout_ms: Integer
+        attr_reader auth_method: String?
+        attr_reader model: String?
+        attr_reader secrets: Array[String]
+        attr_reader enabled: bool
+        def enabled?: () -> bool
+        def allow?: () -> bool
+        def fault?: () -> bool
+        def launch: () -> String
+      end
+
+      class Fault < ::Data
+        attr_reader key: String
+        attr_reader sentence: String
+        def fault?: () -> bool
+        def enabled?: () -> bool
+        def launch: () -> nil
+        def env: () -> Hash[String, String]
+        def description: () -> nil
+        def timeout_ms: () -> nil
+        def permissions: () -> nil
+        def secrets: () -> Array[String]
+      end
+
+      def self?.parse: (untyped table, ?env: untyped) -> Array[Row | Fault]
+      def self?.parse_row: (String key, Hash[String, untyped] raw, untyped env) -> (Row | Fault)
+      def self?.build_row: (String key, Hash[String, untyped] raw, untyped env) -> Row
+      def self?.permissions: (String key, Hash[String, untyped] raw) -> String
+      def self?.timeout: (String key, Hash[String, untyped] raw) -> Integer
+      def self?.optional_string: (String key, Hash[String, untyped] raw, String name) -> String?
+      def self?.enabled_member: (String key, Hash[String, untyped] raw) -> bool
+      def self?.expanded_env: (String key, untyped table, untyped env, Array[String] secrets) -> Hash[String, String]
+      def self?.expand: (String key, String name, String value, untyped env, Array[String] secrets) -> String
+      def self?.fault!: (String key, String sentence) -> bot
+    end
+
+    module Tool
+      NAME: String
+      FRAME: String
+      def self?.build: (untyped rows, ?caller: untyped) -> Class?
+      def self?.description: (untyped rows) -> String
+      def self?.schema: (untyped rows) -> Hash[String, untyped]
+      def self?.tool_class: (String description, Hash[String, untyped] schema, Integer timeout_ms, untyped caller) -> Class
+    end
+
+    class Capture
+      DIRECTORY: String
+      attr_reader path: String
+      def self.path_for: (String artifacts_dir, String agent, String session) -> String
+      def initialize: (String path, redact: untyped, ?clock: ^() -> Time) -> void
+      def line: (Symbol | String direction, untyped message, **untyped fields) -> nil
+      def note: (String event, **untyped fields) -> nil
+      def close: () -> nil
+
+      private
+
+      def write: (Hash[String, untyped] record) -> nil
+    end
+
+    module Policy
+      EXECUTE_KINDS: Array[String]
+      PATH_KINDS: Array[String]
+
+      class Decision < ::Data
+        attr_reader outcome: Hash[String, untyped]
+        attr_reader decision: String
+        attr_reader by: String
+        attr_reader kind: String?
+        attr_reader reason: String?
+      end
+
+      def self?.decide: (Hash[String, untyped] params, tracked: Hash[String, untyped], row: untyped, home: untyped, ?guard: untyped) -> Decision
+      def self?.merged: (Hash[String, untyped] params, Hash[String, untyped] tracked) -> Hash[String, untyped]
+      def self?.synthesized: (Hash[String, untyped] call) -> Array[[String, Hash[String, String]]]
+      def self?.command_text: (Hash[String, untyped] call) -> String?
+      def self?.paths: (Hash[String, untyped] call) -> Array[String]
+      def self?.outcome: (Array[Hash[String, untyped]] options, String kind) -> Hash[String, untyped]
+    end
+
+    module Children
+      LOCK: Mutex
+      EXITS_KEPT: Integer
+      POLL_SECONDS: Float
+      AWAIT_SLICE_SECONDS: Float
+      CLOSE_STAGE_SECONDS: Float
+      SESSION_CLOSE_SECONDS: Float
+      SETTLE_SECONDS: Float
+      STDERR_KEEP_BYTES: Integer
+      CANCEL_ANSWER_SECONDS: Float
+      CLOSE_JOIN_SECONDS: Float
+
+      class Session < ::Struct[untyped]
+        attr_accessor id: String
+        attr_accessor child: Child
+        attr_accessor acp_id: String
+        attr_accessor cwd: String
+        attr_accessor opened_at: Time?
+        attr_accessor last_prompt_at: Time?
+        attr_accessor calls: Integer
+        attr_accessor tool_calls: Hash[String, untyped]
+        def document: () -> Hash[String, untyped]
+      end
+
+      class Child
+        attr_reader row: untyped
+        attr_reader conversation: String?
+        attr_reader capture: Capture?
+        attr_reader redact: untyped
+        attr_reader sessions: Array[String]
+        attr_reader agent_info: Hash[String, untyped]?
+        attr_reader capabilities: Hash[String, untyped]?
+        attr_reader auth_methods: Array[Hash[String, untyped]]?
+        attr_reader spawned_at: Time?
+        attr_reader exit_status: untyped
+        attr_reader exited_at: Time?
+        attr_reader cwd: String?
+        def initialize: (untyped row, conversation: String?, redact: untyped, log: untyped, clock: ^() -> Time, ?capture: Capture?) -> void
+        def spawned?: () -> bool
+        def pid: () -> Integer?
+        def group_pid: () -> Integer?
+        def exited?: () -> bool
+        def closed?: () -> bool
+        def exit_description: () -> String
+        def stderr_tail: () -> String
+        def hold: (untyped env) { () -> untyped } -> untyped
+        def spawn!: (env: Hash[String, String], cwd: String) -> self
+        def handshake!: (deadline: Float, ?env: untyped) -> self
+        def open_session: (cwd: String, deadline: Float, ?env: untyped) -> String
+        def request: (String method, ?untyped params) -> untyped
+        def notify: (String method, ?untyped params) -> nil
+        def await: (untyped pending, deadline: Float, ?env: untyped, ?what: String?) -> untyped
+        def observe_late: (untyped pending, String session_id) -> Thread
+        def receive: (timeout: Float) -> untyped
+        def answer: (untyped inbound, untyped result) -> nil
+        def refuse: (untyped inbound, Integer code, String message) -> nil
+        def settle: (Float seconds) -> bool
+        def stop!: (?session_ids: Array[String]) -> untyped
+        def kill!: () -> untyped
+      end
+
+      def self.closed?: () -> bool
+      def self.acquire: (untyped row, conversation: String, cwd: String, workdir_given: bool, session: String?, env: untyped, artifacts_dir: String?, log: untyped, clock: ^() -> Time, ?current_env: Hash[String, String]) -> Session
+      def self.sessions: () -> Array[Hash[String, untyped]]
+      def self.session_document: (String id) -> Hash[String, untyped]?
+      def self.children_of: (String agent_key) -> Integer
+      def self.retire: (Child child, reason: String, log: untyped, ?kill: bool) -> nil
+      def self.release: (String conversation, log: untyped) -> nil
+      def self.close!: (?log: untyped) -> nil
+      def self.configure: (Array[Settings::Row | Settings::Fault] rows, ?log: untyped) -> nil
+      def self.reset!: () -> nil
+      def self.sweep!: (?log: untyped) -> Integer
+      def self.kill: (String session_id, ?log: untyped) -> bool
+    end
+
+    class Call
+      POLL_SECONDS: Float
+      CANCEL_GRACE_SECONDS: Float
+      PROGRESS_TAIL_BYTES: Integer
+      TRACKED_FIELDS: Array[String]
+      STOP_EXITED: String
+      STOP_TIMED_OUT: String
+      STOP_REFUSED: String
+      def initialize: (session: Children::Session, prompt: String, env: untyped, home: untyped, log: untyped, clock: ^() -> Time) -> void
+      def run: () -> Rho::Runner::Result
+    end
+
+    module Commands
+      USAGE: String
+      DESCRIPTION: String
+      NO_DAEMON: String
+      NOTHING_TO_LIST: String
+      INVISIBLE: Regexp
+      def self?.run: (untyped cli, Array[String] args, untyped options) -> untyped
+      def self?.refuse: (String sentence) -> bot
+      def self?.list: (untyped cli) -> untyped
+      def self?.print_row: (untyped out, untyped row, Array[Hash[String, untyped]] sessions) -> untyped
+      def self?.session_word: (Hash[String, untyped] session) -> String
+      def self?.seconds: (Integer timeout_ms) -> String
+      def self?.person_table: (untyped cli) -> untyped
+      def self?.rows: (untyped cli) -> Array[untyped]
+      def self?.probe: (untyped cli, String name) -> untyped
+      def self?.probe_row: (untyped cli, untyped row) -> untyped
+      def self?.print_probe: (untyped out, untyped row, Children::Child child, ^(untyped) -> String shown) -> untyped
+      def self?.capabilities_word: (Hash[String, untyped] capabilities) -> String
+      def self?.switch: (untyped cli, String name, bool enabled) -> untyped
+      def self?.enabled?: (untyped raw) -> bool
+      def self?.sessions: (untyped cli) -> untyped
+      def self?.kill: (untyped cli, String session) -> untyped
+      def self?.logs: (untyped cli, String session) -> untyped
+      def self?.daemon_document: (untyped cli) -> untyped
+      def self?.escape: (untyped text) -> String
+    end
+  end
+end

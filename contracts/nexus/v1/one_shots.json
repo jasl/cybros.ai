@@ -1,0 +1,1008 @@
+{
+  "workloads": [
+    "embedding",
+    "image_generation",
+    "speech_generation",
+    "text_generation",
+    "transcription"
+  ],
+  "statuses": [
+    "canceled",
+    "completed",
+    "failed",
+    "queued",
+    "running",
+    "timed_out"
+  ],
+  "terminal_statuses": [
+    "canceled",
+    "completed",
+    "failed",
+    "timed_out"
+  ],
+  "event_types": [
+    "provider_output_item_completed",
+    "provider_output_item_delta",
+    "provider_output_item_started",
+    "reasoning_delta",
+    "result",
+    "rollback",
+    "run_status",
+    "text_delta",
+    "usage"
+  ],
+  "retention_period_days": 30,
+  "list_envelope": [
+    "one_shots",
+    "pagination"
+  ],
+  "singular_envelope": [
+    "one_shot"
+  ],
+  "events_envelope": [
+    "events",
+    "pagination"
+  ],
+  "realtime_path": "/agent_api/v1/cable",
+  "realtime_envelope": [
+    "event"
+  ],
+  "realtime_items": [
+    "events",
+    "lifecycle"
+  ],
+  "realtime_default_items": "events",
+  "realtime_lifecycle_event_types": [
+    "run_status",
+    "result"
+  ],
+  "terminal_wake_result_projection": [
+    "status",
+    "one_shot_public_id"
+  ],
+  "input_estimate_envelope": [
+    "input_estimate"
+  ],
+  "pagination": [
+    "next_after"
+  ],
+  "basic_projection": [
+    "public_id",
+    "workload",
+    "status",
+    "model",
+    "billing_subject",
+    "created_at",
+    "updated_at"
+  ],
+  "queued_projection": [
+    "public_id",
+    "workload",
+    "status",
+    "model",
+    "billing_subject",
+    "created_at",
+    "updated_at",
+    "usage_summary"
+  ],
+  "full_projection_adds": [
+    "usage_summary",
+    "result"
+  ],
+  "model_projection": [
+    "provider_id",
+    "model_ref",
+    "reasoning_effort"
+  ],
+  "input_estimate_projection": [
+    "input_tokens",
+    "tokenizer_exact",
+    "catalog_input_token_limit",
+    "advisory_input_token_limit",
+    "model"
+  ],
+  "input_estimate_projection_required": [
+    "input_tokens",
+    "tokenizer_exact",
+    "model"
+  ],
+  "result_projection": [
+    "status",
+    "output_text",
+    "usage",
+    "timing"
+  ],
+  "result_projection_required": [
+    "status"
+  ],
+  "result_projection_optional": [
+    "output_text",
+    "usage",
+    "timing",
+    "finish_quality",
+    "refusal_category",
+    "error",
+    "reasoning",
+    "output_files",
+    "embeddings",
+    "model_change"
+  ],
+  "model_change_projection": [
+    "from",
+    "to",
+    "reason",
+    "category"
+  ],
+  "model_change_projection_required": [
+    "from",
+    "to",
+    "reason"
+  ],
+  "embedding_projection": [
+    "index",
+    "vector"
+  ],
+  "output_file_projection": [
+    "index",
+    "filename",
+    "content_type",
+    "byte_size"
+  ],
+  "usage_projection": [
+    "usage_record_public_id",
+    "input_tokens",
+    "cache_read_tokens",
+    "uncached_input_tokens",
+    "cache_creation_tokens",
+    "cache_hit_rate",
+    "output_tokens",
+    "reasoning_tokens",
+    "total_tokens",
+    "cost_amount",
+    "cost_unit",
+    "cost_complete"
+  ],
+  "usage_projection_required": [
+    "usage_record_public_id",
+    "cost_complete"
+  ],
+  "timing_projection": [
+    "duration_ms",
+    "time_to_first_token_ms"
+  ],
+  "timing_projection_required": [],
+  "usage_summary_projection": [
+    "request_count",
+    "input_tokens",
+    "cache_read_tokens",
+    "uncached_input_tokens",
+    "cache_creation_tokens",
+    "cache_hit_rate",
+    "output_tokens",
+    "reasoning_tokens",
+    "total_tokens",
+    "cost_amount",
+    "cost_complete"
+  ],
+  "usage_summary_projection_required": [
+    "request_count",
+    "input_tokens",
+    "cache_read_tokens",
+    "uncached_input_tokens",
+    "cache_creation_tokens",
+    "output_tokens",
+    "reasoning_tokens",
+    "total_tokens",
+    "cost_amount",
+    "cost_complete"
+  ],
+  "event_projection": [
+    "public_id",
+    "sequence",
+    "cursor",
+    "type",
+    "resource",
+    "occurred_at",
+    "payload"
+  ],
+  "list_filters": [
+    "workload",
+    "order",
+    "after",
+    "limit"
+  ],
+  "list_directions": [
+    "asc",
+    "desc"
+  ],
+  "events_filters": [
+    "after",
+    "limit"
+  ],
+  "events_pagination": [
+    "next_after",
+    "watermark"
+  ],
+  "events_default_limit": 100,
+  "events_max_limit": 200,
+  "error_codes": [
+    "not_authorized",
+    "not_terminal"
+  ],
+  "error_statuses": {
+    "not_authorized": 403,
+    "not_terminal": 409
+  },
+  "refusal_error_status": 422,
+  "refusal_status_exception": "family_codes carry their errors.json status",
+  "refusal_specimen": "unknown_model",
+  "valid_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "text_generation",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z",
+      "usage_summary": {
+        "request_count": 1,
+        "input_tokens": 1200,
+        "cache_read_tokens": 300,
+        "uncached_input_tokens": 900,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.25,
+        "output_tokens": 64,
+        "reasoning_tokens": 16,
+        "total_tokens": 1264,
+        "cost_amount": "0.0042",
+        "cost_complete": true
+      },
+      "result": {
+        "status": "completed",
+        "output_text": "Hi.",
+        "usage": {
+          "usage_record_public_id": "01900000-0000-7000-8000-000000000061",
+          "input_tokens": 1200,
+          "cache_read_tokens": 300,
+          "uncached_input_tokens": 900,
+          "cache_creation_tokens": 0,
+          "cache_hit_rate": 0.25,
+          "output_tokens": 64,
+          "reasoning_tokens": 16,
+          "total_tokens": 1264,
+          "cost_amount": "0.0042",
+          "cost_unit": "USD",
+          "cost_complete": true
+        },
+        "timing": {
+          "duration_ms": 12480,
+          "time_to_first_token_ms": 310
+        }
+      }
+    }
+  },
+  "valid_basic_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "text_generation",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z"
+    }
+  },
+  "valid_queued_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "text_generation",
+      "status": "queued",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z",
+      "usage_summary": {
+        "request_count": 0,
+        "input_tokens": 0,
+        "cache_read_tokens": 0,
+        "uncached_input_tokens": 0,
+        "cache_creation_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_tokens": 0,
+        "total_tokens": 0,
+        "cost_amount": "0.0",
+        "cost_complete": true
+      }
+    }
+  },
+  "valid_truncated_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "text_generation",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z",
+      "usage_summary": {
+        "request_count": 1,
+        "input_tokens": 1200,
+        "cache_read_tokens": 300,
+        "uncached_input_tokens": 900,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.25,
+        "output_tokens": 64,
+        "reasoning_tokens": 16,
+        "total_tokens": 1264,
+        "cost_amount": "0.0042",
+        "cost_complete": true
+      },
+      "result": {
+        "status": "completed",
+        "output_text": "Hi.",
+        "usage": {
+          "usage_record_public_id": "01900000-0000-7000-8000-000000000061",
+          "input_tokens": 1200,
+          "cache_read_tokens": 300,
+          "uncached_input_tokens": 900,
+          "cache_creation_tokens": 0,
+          "cache_hit_rate": 0.25,
+          "output_tokens": 64,
+          "reasoning_tokens": 16,
+          "total_tokens": 1264,
+          "cost_amount": "0.0042",
+          "cost_unit": "USD",
+          "cost_complete": true
+        },
+        "timing": {
+          "duration_ms": 12480,
+          "time_to_first_token_ms": 310
+        },
+        "finish_quality": "output_budget_exhausted"
+      }
+    }
+  },
+  "valid_image_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "image_generation",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z",
+      "usage_summary": {
+        "request_count": 1,
+        "input_tokens": 1200,
+        "cache_read_tokens": 300,
+        "uncached_input_tokens": 900,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.25,
+        "output_tokens": 64,
+        "reasoning_tokens": 16,
+        "total_tokens": 1264,
+        "cost_amount": "0.0042",
+        "cost_complete": true
+      },
+      "result": {
+        "status": "completed",
+        "usage": {
+          "usage_record_public_id": "01900000-0000-7000-8000-000000000061",
+          "input_tokens": 1200,
+          "cache_read_tokens": 300,
+          "uncached_input_tokens": 900,
+          "cache_creation_tokens": 0,
+          "cache_hit_rate": 0.25,
+          "output_tokens": 64,
+          "reasoning_tokens": 16,
+          "total_tokens": 1264,
+          "cost_amount": "0.0042",
+          "cost_unit": "USD",
+          "cost_complete": true
+        },
+        "timing": {
+          "duration_ms": 12480,
+          "time_to_first_token_ms": 310
+        },
+        "output_files": [
+          {
+            "index": 0,
+            "filename": "01900000-0000-7000-8000-000000000060-image-output-1",
+            "content_type": "image/png",
+            "byte_size": 128
+          }
+        ]
+      }
+    }
+  },
+  "valid_embedding_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "embedding",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z",
+      "usage_summary": {
+        "request_count": 1,
+        "input_tokens": 1200,
+        "cache_read_tokens": 300,
+        "uncached_input_tokens": 900,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.25,
+        "output_tokens": 64,
+        "reasoning_tokens": 16,
+        "total_tokens": 1264,
+        "cost_amount": "0.0042",
+        "cost_complete": true
+      },
+      "result": {
+        "status": "completed",
+        "usage": {
+          "usage_record_public_id": "01900000-0000-7000-8000-000000000061",
+          "input_tokens": 1200,
+          "cache_read_tokens": 300,
+          "uncached_input_tokens": 900,
+          "cache_creation_tokens": 0,
+          "cache_hit_rate": 0.25,
+          "output_tokens": 64,
+          "reasoning_tokens": 16,
+          "total_tokens": 1264,
+          "cost_amount": "0.0042",
+          "cost_unit": "USD",
+          "cost_complete": true
+        },
+        "timing": {
+          "duration_ms": 12480,
+          "time_to_first_token_ms": 310
+        },
+        "embeddings": [
+          {
+            "index": 0,
+            "vector": [
+              0.1,
+              0.2,
+              0.3
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "valid_failed_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "text_generation",
+      "status": "failed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z",
+      "usage_summary": {
+        "request_count": 1,
+        "input_tokens": 1200,
+        "cache_read_tokens": 300,
+        "uncached_input_tokens": 900,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.25,
+        "output_tokens": 64,
+        "reasoning_tokens": 16,
+        "total_tokens": 1264,
+        "cost_amount": "0.0042",
+        "cost_complete": true
+      },
+      "result": {
+        "status": "failed",
+        "usage": {
+          "usage_record_public_id": "01900000-0000-7000-8000-000000000061",
+          "input_tokens": 1200,
+          "cache_read_tokens": 300,
+          "uncached_input_tokens": 900,
+          "cache_creation_tokens": 0,
+          "cache_hit_rate": 0.25,
+          "output_tokens": 64,
+          "reasoning_tokens": 16,
+          "total_tokens": 1264,
+          "cost_amount": "0.0042",
+          "cost_unit": "USD",
+          "cost_complete": true
+        },
+        "timing": {
+          "duration_ms": 12480,
+          "time_to_first_token_ms": 310
+        },
+        "error": {
+          "code": "provider_error"
+        }
+      }
+    }
+  },
+  "valid_refused_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "text_generation",
+      "status": "failed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z",
+      "usage_summary": {
+        "request_count": 1,
+        "input_tokens": 1200,
+        "cache_read_tokens": 300,
+        "uncached_input_tokens": 900,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.25,
+        "output_tokens": 64,
+        "reasoning_tokens": 16,
+        "total_tokens": 1264,
+        "cost_amount": "0.0042",
+        "cost_complete": true
+      },
+      "result": {
+        "status": "failed",
+        "finish_quality": "refused",
+        "refusal_category": "cyber",
+        "usage": {
+          "usage_record_public_id": "01900000-0000-7000-8000-000000000061",
+          "input_tokens": 1200,
+          "cache_read_tokens": 300,
+          "uncached_input_tokens": 900,
+          "cache_creation_tokens": 0,
+          "cache_hit_rate": 0.25,
+          "output_tokens": 64,
+          "reasoning_tokens": 16,
+          "total_tokens": 1264,
+          "cost_amount": "0.0042",
+          "cost_unit": "USD",
+          "cost_complete": true
+        },
+        "timing": {
+          "duration_ms": 12480,
+          "time_to_first_token_ms": 310
+        },
+        "error": {
+          "code": "model_refused"
+        }
+      }
+    }
+  },
+  "valid_switched_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "text_generation",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "fallback",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z",
+      "usage_summary": {
+        "request_count": 1,
+        "input_tokens": 1200,
+        "cache_read_tokens": 300,
+        "uncached_input_tokens": 900,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.25,
+        "output_tokens": 64,
+        "reasoning_tokens": 16,
+        "total_tokens": 1264,
+        "cost_amount": "0.0042",
+        "cost_complete": true
+      },
+      "result": {
+        "status": "completed",
+        "output_text": "Hi.",
+        "usage": {
+          "usage_record_public_id": "01900000-0000-7000-8000-000000000061",
+          "input_tokens": 1200,
+          "cache_read_tokens": 300,
+          "uncached_input_tokens": 900,
+          "cache_creation_tokens": 0,
+          "cache_hit_rate": 0.25,
+          "output_tokens": 64,
+          "reasoning_tokens": 16,
+          "total_tokens": 1264,
+          "cost_amount": "0.0042",
+          "cost_unit": "USD",
+          "cost_complete": true
+        },
+        "timing": {
+          "duration_ms": 12480,
+          "time_to_first_token_ms": 310
+        },
+        "model_change": {
+          "from": "dev/primary",
+          "to": "dev/fallback",
+          "reason": "model_refused",
+          "category": "cyber"
+        }
+      }
+    }
+  },
+  "valid_budget_spent_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "text_generation",
+      "status": "failed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z",
+      "usage_summary": {
+        "request_count": 1,
+        "input_tokens": 1200,
+        "cache_read_tokens": 300,
+        "uncached_input_tokens": 900,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.25,
+        "output_tokens": 64,
+        "reasoning_tokens": 16,
+        "total_tokens": 1264,
+        "cost_amount": "0.0042",
+        "cost_complete": true
+      },
+      "result": {
+        "status": "failed",
+        "usage": {
+          "usage_record_public_id": "01900000-0000-7000-8000-000000000061",
+          "input_tokens": 1200,
+          "cache_read_tokens": 300,
+          "uncached_input_tokens": 900,
+          "cache_creation_tokens": 0,
+          "cache_hit_rate": 0.25,
+          "output_tokens": 64,
+          "reasoning_tokens": 16,
+          "total_tokens": 1264,
+          "cost_amount": "0.0042",
+          "cost_unit": "USD",
+          "cost_complete": true
+        },
+        "timing": {
+          "duration_ms": 12480,
+          "time_to_first_token_ms": 310
+        },
+        "error": {
+          "code": "provider_http_error",
+          "attempt_budget_spent": true
+        }
+      }
+    }
+  },
+  "valid_overloaded_fixture": {
+    "one_shot": {
+      "public_id": "01900000-0000-7000-8000-000000000060",
+      "workload": "text_generation",
+      "status": "failed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "billing_subject": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:12Z",
+      "usage_summary": {
+        "request_count": 1,
+        "input_tokens": 1200,
+        "cache_read_tokens": 300,
+        "uncached_input_tokens": 900,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.25,
+        "output_tokens": 64,
+        "reasoning_tokens": 16,
+        "total_tokens": 1264,
+        "cost_amount": "0.0042",
+        "cost_complete": true
+      },
+      "result": {
+        "status": "failed",
+        "usage": {
+          "usage_record_public_id": "01900000-0000-7000-8000-000000000061",
+          "input_tokens": 1200,
+          "cache_read_tokens": 300,
+          "uncached_input_tokens": 900,
+          "cache_creation_tokens": 0,
+          "cache_hit_rate": 0.25,
+          "output_tokens": 64,
+          "reasoning_tokens": 16,
+          "total_tokens": 1264,
+          "cost_amount": "0.0042",
+          "cost_unit": "USD",
+          "cost_complete": true
+        },
+        "timing": {
+          "duration_ms": 12480,
+          "time_to_first_token_ms": 310
+        },
+        "error": {
+          "code": "provider_overloaded",
+          "attempt_budget_spent": true
+        }
+      }
+    }
+  },
+  "valid_list_fixture": {
+    "one_shots": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000060",
+        "workload": "text_generation",
+        "status": "completed",
+        "model": {
+          "provider_id": "dev",
+          "model_ref": "dev/text",
+          "reasoning_effort": "medium"
+        },
+        "billing_subject": null,
+        "created_at": "2026-07-30T00:00:00Z",
+        "updated_at": "2026-07-30T00:00:12Z"
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_events_fixture": {
+    "events": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000062",
+        "sequence": 4,
+        "cursor": "b25lLXNob3QtY3Vyc29yLTE",
+        "type": "text_delta",
+        "resource": {
+          "type": "one_shot",
+          "public_id": "01900000-0000-7000-8000-000000000060"
+        },
+        "occurred_at": "2026-07-30T00:00:03.500Z",
+        "payload": {
+          "text": "Hi."
+        }
+      }
+    ],
+    "pagination": {
+      "next_after": "b25lLXNob3QtY3Vyc29yLTE",
+      "watermark": 4
+    }
+  },
+  "valid_input_estimate_fixture": {
+    "input_estimate": {
+      "input_tokens": 24,
+      "tokenizer_exact": true,
+      "catalog_input_token_limit": 128000,
+      "advisory_input_token_limit": 100000,
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium"
+      }
+    }
+  },
+  "valid_event_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000062",
+    "sequence": 4,
+    "cursor": "b25lLXNob3QtY3Vyc29yLTE",
+    "type": "text_delta",
+    "resource": {
+      "type": "one_shot",
+      "public_id": "01900000-0000-7000-8000-000000000060"
+    },
+    "occurred_at": "2026-07-30T00:00:03.500Z",
+    "payload": {
+      "text": "Hi."
+    }
+  },
+  "valid_realtime_subscription_fixture": {
+    "channel": "AgentAPI::V1::OneShotEventsChannel",
+    "workspace_id": "01900000-0000-7000-8000-000000000001",
+    "one_shot_id": "01900000-0000-7000-8000-000000000060",
+    "items": "events"
+  },
+  "valid_realtime_event_fixture": {
+    "event": {
+      "public_id": "01900000-0000-7000-8000-000000000062",
+      "sequence": 4,
+      "cursor": "b25lLXNob3QtY3Vyc29yLTE",
+      "type": "text_delta",
+      "resource": {
+        "type": "one_shot",
+        "public_id": "01900000-0000-7000-8000-000000000060"
+      },
+      "occurred_at": "2026-07-30T00:00:03.500Z",
+      "payload": {
+        "text": "Hi."
+      }
+    }
+  },
+  "valid_terminal_wake_fixture": {
+    "event": {
+      "public_id": "01900000-0000-7000-8000-000000000062",
+      "sequence": 4,
+      "cursor": "b25lLXNob3QtY3Vyc29yLTE",
+      "type": "result",
+      "resource": {
+        "type": "one_shot",
+        "public_id": "01900000-0000-7000-8000-000000000060"
+      },
+      "occurred_at": "2026-07-30T00:00:03.500Z",
+      "payload": {
+        "result": {
+          "status": "completed",
+          "one_shot_public_id": "01900000-0000-7000-8000-000000000060"
+        }
+      }
+    }
+  },
+  "unknown_realtime_items_fixture": {
+    "channel": "AgentAPI::V1::OneShotEventsChannel",
+    "workspace_id": "01900000-0000-7000-8000-000000000001",
+    "one_shot_id": "01900000-0000-7000-8000-000000000060",
+    "items": "zz_unknown_value"
+  },
+  "valid_create_request": {
+    "one_shot": {
+      "workload": "text_generation",
+      "model": {
+        "model": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "input": "Say hi",
+      "configuration": {
+        "temperature": 0.2
+      },
+      "upload_public_ids": [],
+      "billing_subject": null
+    }
+  },
+  "valid_create_status": 202,
+  "valid_replay_status": 200,
+  "valid_input_estimate_request": {
+    "input_estimate": {
+      "workload": "text_generation",
+      "model": {
+        "model": "dev/text",
+        "reasoning_effort": "medium"
+      },
+      "input": "Say hi",
+      "configuration": {
+        "temperature": 0.2
+      },
+      "upload_public_ids": []
+    }
+  },
+  "valid_workload_filter_request": {
+    "workload": "embedding"
+  },
+  "valid_delete_fixture": {
+    "status": 204,
+    "body": null
+  },
+  "valid_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "not_terminal",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_workload_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000060",
+    "workload": "zz_unknown_value",
+    "status": "completed",
+    "model": {
+      "provider_id": "dev",
+      "model_ref": "dev/text",
+      "reasoning_effort": "medium"
+    },
+    "billing_subject": null,
+    "created_at": "2026-07-30T00:00:00Z",
+    "updated_at": "2026-07-30T00:00:12Z"
+  },
+  "unknown_workload_filter_request": {
+    "workload": "zz_unknown_value"
+  },
+  "unknown_status_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000060",
+    "workload": "text_generation",
+    "status": "zz_unknown_value",
+    "model": {
+      "provider_id": "dev",
+      "model_ref": "dev/text",
+      "reasoning_effort": "medium"
+    },
+    "billing_subject": null,
+    "created_at": "2026-07-30T00:00:00Z",
+    "updated_at": "2026-07-30T00:00:12Z",
+    "usage_summary": {
+      "request_count": 0,
+      "input_tokens": 0,
+      "cache_read_tokens": 0,
+      "uncached_input_tokens": 0,
+      "cache_creation_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "total_tokens": 0,
+      "cost_amount": "0.0",
+      "cost_complete": true
+    }
+  },
+  "unknown_event_type_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000062",
+    "sequence": 4,
+    "cursor": "b25lLXNob3QtY3Vyc29yLTE",
+    "type": "zz_unknown_value",
+    "resource": {
+      "type": "one_shot",
+      "public_id": "01900000-0000-7000-8000-000000000060"
+    },
+    "occurred_at": "2026-07-30T00:00:03.500Z",
+    "payload": {
+      "text": "Hi."
+    }
+  },
+  "unknown_refusal_fixture": {
+    "status": 422,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_value_behavior": "carry_unknown_response",
+  "unknown_field_behavior": "ignore",
+  "terminality_signal": "result_present"
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "nul-literal",
+    "script": "g.script({ script: \"return \\\"\u0000\\\";\" });",
+    "params": {},
+    "tool_names": [
+      "bash",
+      "edit",
+      "grep",
+      "probe_host",
+      "read_file"
+    ]
+  },
+  {
+    "id": "nul-comment",
+    "script": "g.script({ script: \"// \u0000\\nreturn 1;\" });",
+    "params": {},
+    "tool_names": [
+      "bash",
+      "edit",
+      "grep",
+      "probe_host",
+      "read_file"
+    ]
+  }
+]

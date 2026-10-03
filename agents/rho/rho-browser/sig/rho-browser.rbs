@@ -1,0 +1,187 @@
+module Rho
+  module Browser
+    VERSION: String
+    NAME: String
+    TOOLS: Array[Class]
+
+    class Closed < Rho::Runner::Error
+    end
+
+    LOCK: Mutex
+    IDLE_ENV_KEY: String
+
+    def self.idle_after: () -> Float
+
+    def self.driver_factory: () -> ^() -> untyped
+    def self.driver_factory=: (^() -> untyped) -> untyped
+    def self.session: () -> Session
+    def self.close!: () -> untyped
+    def self.reset!: () -> untyped
+    def self.register: (Rho::Runner::Extensions::Api) -> untyped
+
+    class Driver
+      ENV_KEY: String
+      DEFAULT_CLI: String
+      PREFIX_ENV: String
+      PREFIX_CLI: Array[String]
+      START_DEADLINE_SECONDS: Float
+      STOP_STAGE_SECONDS: Float
+      INSTALL_HINT: String
+
+      class Failure < Rho::Runner::Error
+      end
+      class StartTimedOut < Failure
+      end
+      class Exited < Failure
+      end
+      class Missing < Failure
+      end
+
+      STDERR_KEEP_BYTES: Integer
+      CRASH_MARKER: String
+
+      def self.default_cli: (?untyped env) -> String
+
+      def self.quiet_transport: () -> Class
+
+      def initialize: (
+        ?cli: String?, ?headless: bool, ?start_deadline: Float, ?stop_stage: Float, ?log: untyped
+      ) -> void
+      def started?: () -> bool
+      def alive?: () -> bool
+      def start: () -> untyped
+      def new_page: () -> untyped
+      def open_pages: () -> Array[untyped]
+      def stop: () -> untyped
+    end
+
+    class CallTimedOut < Rho::Runner::Error
+    end
+
+    class Deadline < Exception
+    end
+
+    class Session
+      CLOSE_WAIT_SECONDS: Float
+      CALL_DEADLINE_SECONDS: Float
+      START_DEADLINE_SECONDS: Float
+      STOP_DEADLINE_SECONDS: Float
+      REGISTRY_WAIT_SECONDS: Float
+      TAB_WAIT_SECONDS: Float
+      PAGE_CLOSE_SECONDS: Float
+      POLL_SECONDS: Float
+      IDLE_SECONDS: Float
+      REAP_TICK_SECONDS: Float
+      DEFAULT_OWNER: Symbol
+
+      class Tab < ::Struct[untyped]
+        attr_accessor page: untyped
+        attr_accessor lock: Mutex
+        attr_accessor generation: Integer
+        attr_accessor last_used_at: Float
+        attr_accessor fresh: bool
+      end
+
+      def initialize: (
+        driver: untyped, ?log: untyped, ?close_wait: Float, ?call_deadline: Float,
+        ?start_deadline: Float, ?stop_deadline: Float, ?lock_wait: Float,
+        ?tab_wait: Float, ?idle_after: Float, ?clock: ^() -> Float
+      ) -> void
+      def started?: () -> bool
+      def reaping?: () -> bool
+      def tab_count: () -> Integer
+      def with_page: [T] (?untyped owner) { (untyped, bool) -> T } -> T
+      def close: () -> untyped
+    end
+
+    module SnapshotText
+      MAX_BYTES: Integer
+      URL_BYTES: Integer
+      TITLE_BYTES: Integer
+
+      def self.call: (untyped page, ?max_bytes: Integer) -> String
+      def self.clamp: (String text, Integer room) -> String
+    end
+
+    module Tools
+      GUIDELINES: Array[String]
+      READ_ONLY: Hash[String, untyped]
+      ACTS_ON_PAGE: Hash[String, untyped]
+      REF_FORMAT: Regexp
+      ACTION_TIMEOUT_MS: Integer
+
+      module Base
+        NEW_TAB_NOTICE: String
+        def initialize: (env: Rho::Runner::ToolEnv) -> void
+      end
+
+      class Snapshot
+        include Base
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        PROMPT_SNIPPET: String
+        PROMPT_GUIDELINES: Array[String]
+        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+      end
+
+      class Navigate
+        include Base
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        PROMPT_SNIPPET: String
+        PROMPT_GUIDELINES: Array[String]
+        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+      end
+
+      class Click
+        include Base
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        PROMPT_SNIPPET: String
+        PROMPT_GUIDELINES: Array[String]
+        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+      end
+
+      class Type
+        include Base
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        PROMPT_SNIPPET: String
+        PROMPT_GUIDELINES: Array[String]
+        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+      end
+
+      class Screenshot
+        include Base
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        PROMPT_SNIPPET: String
+        PROMPT_GUIDELINES: Array[String]
+        CAPTURE_PREFIX: String
+        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+      end
+
+      class Evaluate
+        include Base
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        PROMPT_SNIPPET: String
+        PROMPT_GUIDELINES: Array[String]
+        MAX_BYTES: Integer
+        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+      end
+    end
+  end
+end

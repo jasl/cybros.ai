@@ -1,0 +1,1112 @@
+{
+  "transcript_envelope": [
+    "rounds",
+    "pagination"
+  ],
+  "thread_row_projection": [
+    "task_key",
+    "spine",
+    "status",
+    "visibility",
+    "text_preview",
+    "text_bytes",
+    "usage",
+    "error",
+    "compacted_before",
+    "pruned_before",
+    "started_at",
+    "completed_at",
+    "calls",
+    "branches"
+  ],
+  "thread_row_projection_required": [
+    "task_key",
+    "spine",
+    "status",
+    "visibility",
+    "calls",
+    "branches"
+  ],
+  "thread_calls_projection": [
+    "count",
+    "items"
+  ],
+  "thread_call_projection": [
+    "task_key",
+    "tool_call_id",
+    "name",
+    "tool",
+    "status",
+    "is_error",
+    "title",
+    "metadata",
+    "output_preview",
+    "output_bytes",
+    "started_at",
+    "completed_at"
+  ],
+  "thread_call_projection_required": [
+    "task_key",
+    "name",
+    "status"
+  ],
+  "valid_thread_page_fixture": {
+    "rounds": [
+      {
+        "task_key": "r1",
+        "spine": true,
+        "status": "completed",
+        "visibility": "visible",
+        "text_preview": "I will read the file, then hand the review to a subagent.",
+        "text_bytes": 57,
+        "usage": {
+          "input_tokens": 812,
+          "output_tokens": 40,
+          "total_tokens": 852
+        },
+        "started_at": "2026-09-14T00:00:01Z",
+        "completed_at": "2026-09-14T00:00:03Z",
+        "calls": {
+          "count": 0,
+          "items": []
+        },
+        "branches": []
+      },
+      {
+        "task_key": "r2",
+        "spine": true,
+        "status": "completed",
+        "visibility": "visible",
+        "text_preview": "The review found one unused method.",
+        "text_bytes": 35,
+        "usage": {
+          "input_tokens": 1204,
+          "output_tokens": 18,
+          "total_tokens": 1222,
+          "cache_read_tokens": 800
+        },
+        "started_at": "2026-09-14T00:00:09Z",
+        "completed_at": "2026-09-14T00:00:11Z",
+        "calls": {
+          "count": 2,
+          "items": [
+            {
+              "task_key": "r2t0",
+              "tool_call_id": "call_1",
+              "name": "read_file",
+              "status": "completed",
+              "is_error": false,
+              "title": "read x.rb",
+              "metadata": {
+                "checkpoint": "c1"
+              },
+              "output_preview": "class Foo",
+              "output_bytes": 9,
+              "started_at": "2026-09-14T00:00:03Z",
+              "completed_at": "2026-09-14T00:00:04Z"
+            },
+            {
+              "task_key": "r2t1",
+              "tool_call_id": "call_2",
+              "name": "Agent",
+              "tool": "task",
+              "status": "completed",
+              "is_error": false,
+              "output_preview": "lib/x.rb — orphan",
+              "output_bytes": 18,
+              "started_at": "2026-09-14T00:00:03Z",
+              "completed_at": "2026-09-14T00:00:08Z"
+            }
+          ]
+        },
+        "branches": [
+          "r2t1"
+        ]
+      },
+      {
+        "task_key": "r3",
+        "spine": true,
+        "status": "waiting",
+        "visibility": "visible",
+        "calls": {
+          "count": 1,
+          "items": [
+            {
+              "task_key": "r3t0",
+              "tool_call_id": "call_3",
+              "name": "bash",
+              "status": "dispatched",
+              "started_at": "2026-09-14T00:00:11Z"
+            }
+          ]
+        },
+        "branches": []
+      }
+    ],
+    "pagination": {
+      "next_before": "MQ",
+      "has_older": true
+    }
+  },
+  "graph_envelope": [
+    "nodes",
+    "edges",
+    "mermaid"
+  ],
+  "node_projection": [
+    "key",
+    "kind",
+    "lifetime",
+    "wake",
+    "status",
+    "visibility",
+    "deliverable",
+    "input_from",
+    "result_from",
+    "spine",
+    "expansion_parent",
+    "join"
+  ],
+  "node_projection_required": [
+    "key",
+    "kind",
+    "status",
+    "visibility",
+    "deliverable",
+    "lifetime",
+    "wake",
+    "input_from",
+    "result_from"
+  ],
+  "edge_projection": [
+    "from",
+    "to",
+    "structural"
+  ],
+  "join_projection": [
+    "until",
+    "losers"
+  ],
+  "node_kinds": [
+    "await_task",
+    "model_task",
+    "tool_task",
+    "script_task",
+    "join_task",
+    "delegation_task"
+  ],
+  "phases_envelope": [
+    "phases",
+    "current",
+    "background",
+    "spend"
+  ],
+  "phase_projection": [
+    "label",
+    "keys",
+    "done",
+    "total",
+    "status"
+  ],
+  "background_projection": [
+    "key",
+    "status",
+    "mailed_at"
+  ],
+  "background_projection_required": [
+    "key",
+    "status"
+  ],
+  "phase_spend_projection": [
+    "input_tokens",
+    "output_tokens",
+    "cache_read_tokens",
+    "cache_hit_rate",
+    "cost_amount",
+    "cost_unit",
+    "by_model"
+  ],
+  "phase_spend_model_projection": [
+    "input_tokens",
+    "output_tokens",
+    "cache_read_tokens",
+    "cost_amount",
+    "cost_unit"
+  ],
+  "phase_statuses": [
+    "waiting",
+    "running",
+    "awaiting_human",
+    "needs_approval",
+    "completed",
+    "failed"
+  ],
+  "attention_reasons": [
+    "halt_failure",
+    "deliverable_unresolved",
+    "awaiting_human",
+    "approval_required"
+  ],
+  "approval_origins": [
+    "mode",
+    "rule",
+    "human",
+    "agent",
+    "author",
+    "kernel"
+  ],
+  "approval_projection": [
+    "origin",
+    "decided_by",
+    "decided_at"
+  ],
+  "task_verbs": [
+    "resolution",
+    "retry",
+    "abandon",
+    "cancel",
+    "compact",
+    "approve",
+    "deny"
+  ],
+  "list_filters": [
+    "status",
+    "attention",
+    "order",
+    "after",
+    "limit"
+  ],
+  "list_directions": [
+    "asc",
+    "desc"
+  ],
+  "loop_statuses": [
+    "pending",
+    "running",
+    "paused",
+    "needs_attention",
+    "canceling",
+    "completed",
+    "canceled"
+  ],
+  "error_codes": [
+    "agent_loop_not_appendable",
+    "agent_loop_settled",
+    "apex_never_conceals",
+    "apex_only",
+    "await_not_resolvable",
+    "branch_required",
+    "conversation_archived",
+    "conversation_busy",
+    "conversation_hosted",
+    "duplicate_task_key",
+    "edge_authoring_refused",
+    "execution_details_pruned",
+    "graph_authoring_not_available",
+    "idempotency_envelope_mismatch",
+    "input_queue_full",
+    "invalid_content",
+    "invalid_metadata",
+    "invalid_outcome",
+    "invalid_result_type",
+    "invalid_steps",
+    "invalid_title",
+    "kernel_authored",
+    "kernel_input_immutable",
+    "loop_live",
+    "loop_needs_attention",
+    "metadata_too_large",
+    "not_authorized",
+    "not_terminal",
+    "queue_changed",
+    "request_not_sealed",
+    "result_too_large",
+    "result_unstorable",
+    "runner_not_eligible",
+    "runner_not_found",
+    "slot_occupied",
+    "stale_context",
+    "stale_revision",
+    "stale_timeline",
+    "steering_held",
+    "steering_holds",
+    "steering_target_changed",
+    "subagent_follows_parent",
+    "task_not_running",
+    "tip_live",
+    "tip_unresolved",
+    "too_many_content_blocks",
+    "turn_already_delivered",
+    "unknown_result_upload",
+    "unsupported_content_kind",
+    "unsupported_turn_type",
+    "variant_active",
+    "variant_not_active",
+    "variant_not_forkable"
+  ],
+  "error_statuses": {
+    "agent_loop_not_appendable": 409,
+    "agent_loop_settled": 409,
+    "apex_never_conceals": 409,
+    "apex_only": 409,
+    "await_not_resolvable": 409,
+    "branch_required": 409,
+    "conversation_archived": 409,
+    "conversation_busy": 409,
+    "conversation_hosted": 409,
+    "duplicate_task_key": 409,
+    "edge_authoring_refused": 422,
+    "execution_details_pruned": 410,
+    "graph_authoring_not_available": 422,
+    "idempotency_envelope_mismatch": 409,
+    "input_queue_full": 409,
+    "invalid_content": 422,
+    "invalid_metadata": 422,
+    "invalid_outcome": 422,
+    "invalid_result_type": 422,
+    "invalid_steps": 422,
+    "invalid_title": 422,
+    "kernel_authored": 409,
+    "kernel_input_immutable": 409,
+    "loop_live": 409,
+    "loop_needs_attention": 409,
+    "metadata_too_large": 422,
+    "not_authorized": 403,
+    "not_terminal": 409,
+    "queue_changed": 409,
+    "request_not_sealed": 404,
+    "result_too_large": 422,
+    "result_unstorable": 422,
+    "runner_not_eligible": 409,
+    "runner_not_found": 404,
+    "slot_occupied": 409,
+    "stale_context": 409,
+    "stale_revision": 409,
+    "stale_timeline": 409,
+    "steering_held": 409,
+    "steering_holds": 409,
+    "steering_target_changed": 409,
+    "subagent_follows_parent": 409,
+    "task_not_running": 409,
+    "tip_live": 409,
+    "tip_unresolved": 409,
+    "too_many_content_blocks": 422,
+    "turn_already_delivered": 409,
+    "unknown_result_upload": 422,
+    "unsupported_content_kind": 422,
+    "unsupported_turn_type": 409,
+    "variant_active": 409,
+    "variant_not_active": 409,
+    "variant_not_forkable": 409
+  },
+  "absence_refusals": [
+    "not_found",
+    "already_tombstoned"
+  ],
+  "refusal_default_status": 422,
+  "lifecycle_refusal_status": 409,
+  "adjudication_refusal_status": 409,
+  "expired_detail_error_fixture": {
+    "status": 410,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "execution_details_pruned",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "retained_loop_detail_fields": [
+    "details_pruned_at"
+  ],
+  "valid_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "agent_loop_not_appendable",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "valid_phases_fixture": {
+    "phases": [
+      {
+        "label": "r1",
+        "keys": [
+          "r1"
+        ],
+        "done": 1,
+        "total": 1,
+        "status": "completed"
+      },
+      {
+        "label": "r1 · r2",
+        "keys": [
+          "r1",
+          "r2",
+          "gate"
+        ],
+        "done": 1,
+        "total": 3,
+        "status": "needs_approval"
+      }
+    ],
+    "current": 1,
+    "background": [
+      {
+        "key": "r2t1-model-1",
+        "status": "running"
+      },
+      {
+        "key": "r2t2-model-1",
+        "status": "completed",
+        "mailed_at": "2026-09-12T00:00:09Z"
+      }
+    ],
+    "spend": {
+      "input_tokens": 41230,
+      "output_tokens": 6120,
+      "cache_read_tokens": 30100,
+      "cache_hit_rate": 0.730051,
+      "cost_amount": null,
+      "cost_unit": null,
+      "by_model": {
+        "dev/mock-text": {
+          "input_tokens": 40000,
+          "output_tokens": 6000,
+          "cache_read_tokens": 30100,
+          "cost_amount": null,
+          "cost_unit": null
+        },
+        "dev/mock-unmetered": {
+          "input_tokens": 1230,
+          "output_tokens": 120,
+          "cache_read_tokens": 0,
+          "cost_amount": null,
+          "cost_unit": null
+        }
+      }
+    }
+  },
+  "valid_task_request_fixture": {
+    "request": {
+      "entries": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "type": "text",
+              "text": "read it"
+            }
+          ]
+        }
+      ],
+      "request_options": {
+        "temperature": 0.2,
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "parameters": {
+                "type": "object"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "valid_task_detail_fixture": {
+    "task": {
+      "key": "r1",
+      "kind": "model_task",
+      "lifetime": "conversation",
+      "wake": "auto",
+      "status": "completed",
+      "on_failure": "halt",
+      "model": {
+        "model": "dev/mock-text",
+        "reasoning_effort": "medium"
+      },
+      "visibility": "visible",
+      "created_at": "2026-09-12T00:00:00Z",
+      "started_at": "2026-09-12T00:00:01Z",
+      "completed_at": "2026-09-12T00:00:02Z",
+      "output": "read it",
+      "prompt": "Read the file and say what it is.",
+      "instructions": "Be brief.",
+      "tool_definitions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "Clarify",
+            "description": "Ask the person one question and wait for the answer. Use it when\nyou cannot proceed without a decision only they can make — which of\ntwo designs, whether to delete something, a credential you do not\nhave. Do not use it to report progress or to confirm something you\ncan check yourself.\n\nThis turn waits. The answer arrives as `<answer task=\"r3t1\">`, a\nmessage that is not the person typing to you anew — read it as the\nanswer to your question and continue the work.\n\nExample: `Clarify({prompt: \"Migrating users.email to citext drops the\nexisting index for ~2 min in production. Proceed, or schedule it\nfor a maintenance window?\"})`",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string",
+                  "description": "The one question."
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The choices, if there are choices: one string each, in the order to show them."
+                }
+              },
+              "required": [
+                "question"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "canonical": "nexus.human.ask",
+          "params": {
+            "question": {
+              "maps_to": "prompt"
+            }
+          },
+          "omit": [
+            "multi"
+          ]
+        }
+      ],
+      "request_bytes": 41230
+    }
+  },
+  "valid_toolless_task_detail_fixture": {
+    "task": {
+      "key": "r2",
+      "kind": "model_task",
+      "lifetime": "conversation",
+      "wake": "auto",
+      "status": "waiting",
+      "on_failure": "halt",
+      "model": {
+        "model": "dev/mock-text"
+      },
+      "visibility": "visible",
+      "created_at": "2026-09-12T00:00:00Z",
+      "tool_definitions": []
+    }
+  },
+  "valid_delegation_task_detail_fixture": {
+    "task": {
+      "key": "r2t0-delegation",
+      "kind": "delegation_task",
+      "lifetime": "turn",
+      "wake": "auto",
+      "status": "completed",
+      "on_failure": "absorb",
+      "result": {
+        "resolved": true
+      },
+      "visibility": "collapsed",
+      "created_at": "2026-09-12T00:00:00Z",
+      "started_at": "2026-09-12T00:00:01Z",
+      "completed_at": "2026-09-12T00:00:02Z",
+      "output": "The child completed its report."
+    }
+  },
+  "valid_ask_task_detail_fixture": {
+    "task": {
+      "key": "r1t0-ask-1",
+      "kind": "await_task",
+      "lifetime": "conversation",
+      "wake": "auto",
+      "status": "awaiting_input",
+      "on_failure": "halt",
+      "visibility": "visible",
+      "created_at": "2026-09-15T00:00:00Z",
+      "started_at": "2026-09-15T00:00:01Z",
+      "prompt": "Which database should I use?",
+      "options": [
+        "Postgres",
+        "MySQL"
+      ],
+      "multi": false
+    }
+  },
+  "valid_tool_task_detail_fixture": {
+    "task": {
+      "key": "r1t0",
+      "kind": "tool_task",
+      "lifetime": "conversation",
+      "wake": "auto",
+      "status": "completed",
+      "on_failure": "absorb",
+      "tool_name": "read_file",
+      "claimed_by": {
+        "executor_public_id": "019f0000-0000-7000-8000-000000000301"
+      },
+      "result": {
+        "resolved": true
+      },
+      "visibility": "visible",
+      "created_at": "2026-09-12T00:00:00Z",
+      "started_at": "2026-09-12T00:00:01Z",
+      "completed_at": "2026-09-12T00:00:02Z",
+      "output": "class Foo",
+      "output_preview": "class Foo",
+      "content": [
+        {
+          "type": "text",
+          "text": "class Foo"
+        },
+        {
+          "type": "resource_link",
+          "uri": "nexus://uploads/01900000-0000-7000-8000-000000000040",
+          "name": "x.rb",
+          "mimeType": "text/plain",
+          "size": 9
+        }
+      ],
+      "structured_content": {
+        "lines": 1
+      },
+      "title": "read x.rb",
+      "metadata": {
+        "checkpoint": "c1"
+      },
+      "tool_input": {
+        "path": "x.rb"
+      }
+    }
+  },
+  "valid_skill_task_detail_fixture": {
+    "task": {
+      "key": "r2t0",
+      "kind": "tool_task",
+      "lifetime": "conversation",
+      "wake": "auto",
+      "status": "completed",
+      "on_failure": "absorb",
+      "tool_name": "skill",
+      "result": {
+        "resolved": true
+      },
+      "visibility": "collapsed",
+      "created_at": "2026-09-15T00:00:00Z",
+      "started_at": "2026-09-15T00:00:01Z",
+      "completed_at": "2026-09-15T00:00:02Z",
+      "output": "# Commits\n\nOne change per commit; the subject names the change.\n",
+      "content": [
+        {
+          "type": "text",
+          "text": "# Commits\n\nOne change per commit; the subject names the change.\n"
+        }
+      ],
+      "title": "read workspace/skills/commit-style",
+      "tool_input": {
+        "name": "commit-style"
+      }
+    }
+  },
+  "valid_announced_skill_task_detail_fixture": {
+    "task": {
+      "key": "r2t1",
+      "kind": "tool_task",
+      "lifetime": "conversation",
+      "wake": "auto",
+      "status": "completed",
+      "on_failure": "absorb",
+      "tool_name": "skill",
+      "tool_alias": "Skill",
+      "claimed_by": {
+        "executor_public_id": "019f0000-0000-7000-8000-000000000301"
+      },
+      "result": {
+        "resolved": true
+      },
+      "visibility": "collapsed",
+      "created_at": "2026-09-15T00:00:00Z",
+      "started_at": "2026-09-15T00:00:01Z",
+      "completed_at": "2026-09-15T00:00:03Z",
+      "output": "# Deploying\n\nRun `bin/deploy` from a clean main.\n\nFiles for this skill are under /work/app/.agents/skills/deploy-notes; relative paths in the instructions are relative to it.",
+      "content": [
+        {
+          "type": "text",
+          "text": "# Deploying\n\nRun `bin/deploy` from a clean main.\n\nFiles for this skill are under /work/app/.agents/skills/deploy-notes; relative paths in the instructions are relative to it."
+        }
+      ],
+      "tool_input": {
+        "name": "deploy-notes"
+      }
+    }
+  },
+  "valid_timed_out_task_detail_fixture": {
+    "task": {
+      "key": "relay",
+      "kind": "tool_task",
+      "lifetime": "conversation",
+      "wake": "auto",
+      "status": "timed_out",
+      "on_failure": "propagate",
+      "tool_name": "files_bytes",
+      "addressed_to": {
+        "role": "runner",
+        "executor_public_id": "019f0000-0000-7000-8000-000000000301",
+        "presence": "offline",
+        "last_seen_at": "2026-09-12T00:00:02Z"
+      },
+      "error": {
+        "key": "tool_timeout"
+      },
+      "visibility": "visible",
+      "created_at": "2026-09-12T00:00:00Z",
+      "started_at": "2026-09-12T00:00:01Z",
+      "completed_at": "2026-09-12T00:00:06Z",
+      "tool_input": {
+        "path": "note.txt"
+      }
+    }
+  },
+  "valid_world_restore_task_detail_fixture": {
+    "task": {
+      "key": "relay",
+      "kind": "tool_task",
+      "lifetime": "conversation",
+      "wake": "auto",
+      "status": "completed",
+      "on_failure": "propagate",
+      "tool_name": "world_restore",
+      "claimed_by": {
+        "executor_public_id": "019f0000-0000-7000-8000-000000000301"
+      },
+      "approval": {
+        "origin": "author",
+        "decided_at": "2026-09-15T00:00:01Z"
+      },
+      "result": {
+        "resolved": true
+      },
+      "visibility": "visible",
+      "created_at": "2026-09-15T00:00:00Z",
+      "started_at": "2026-09-15T00:00:01Z",
+      "completed_at": "2026-09-15T00:00:03Z",
+      "output": "Restored 2 files to 4b825dc642cb6eb9a060e54bf8d69288fbee4904; undo with 9c1f2e3d4b5a69788796a5b4c3d2e1f0a9b8c7d6",
+      "content": [
+        {
+          "type": "text",
+          "text": "Restored 2 files to 4b825dc642cb6eb9a060e54bf8d69288fbee4904; undo with 9c1f2e3d4b5a69788796a5b4c3d2e1f0a9b8c7d6"
+        }
+      ],
+      "structured_content": {
+        "restored": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+        "undo": "9c1f2e3d4b5a69788796a5b4c3d2e1f0a9b8c7d6",
+        "files": 2,
+        "removed": 1,
+        "nested": []
+      },
+      "title": "world restored",
+      "metadata": {
+        "checkpoint": {
+          "hash": "9c1f2e3d4b5a69788796a5b4c3d2e1f0a9b8c7d6",
+          "store": "3f0c9d2a7b1e5c68"
+        }
+      },
+      "tool_input": {
+        "checkpoint": "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+      }
+    }
+  },
+  "valid_checkpoints_task_detail_fixture": {
+    "task": {
+      "key": "relay",
+      "kind": "tool_task",
+      "lifetime": "conversation",
+      "wake": "auto",
+      "status": "completed",
+      "on_failure": "propagate",
+      "tool_name": "checkpoints",
+      "claimed_by": {
+        "executor_public_id": "019f0000-0000-7000-8000-000000000301"
+      },
+      "approval": {
+        "origin": "author",
+        "decided_at": "2026-09-15T00:00:01Z"
+      },
+      "result": {
+        "resolved": true
+      },
+      "visibility": "visible",
+      "created_at": "2026-09-15T00:00:00Z",
+      "started_at": "2026-09-15T00:00:01Z",
+      "completed_at": "2026-09-15T00:00:02Z",
+      "output": "1 checkpoint for 01900000-0000-7000-8000-0000000000b1",
+      "content": [
+        {
+          "type": "text",
+          "text": "1 checkpoint for 01900000-0000-7000-8000-0000000000b1"
+        }
+      ],
+      "structured_content": {
+        "records": [
+          {
+            "loop": "01900000-0000-7000-8000-0000000000b1",
+            "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+            "captured_at": "2026-09-15T00:00:00Z",
+            "files": 2,
+            "skipped": [],
+            "nested": [],
+            "outside": [],
+            "present": true
+          }
+        ]
+      },
+      "tool_input": {
+        "loop": "01900000-0000-7000-8000-0000000000b1"
+      }
+    }
+  },
+  "valid_request_loop_fixture": {
+    "agent_loop": {
+      "public_id": "019f0000-0000-7000-8000-000000000602",
+      "status": "completed",
+      "approval_mode": "bypass",
+      "turn": {
+        "status": "completed"
+      },
+      "deliverable_task_key": "relay",
+      "tasks": [
+        {
+          "key": "relay",
+          "kind": "tool_task",
+          "lifetime": "conversation",
+          "wake": "auto",
+          "status": "completed",
+          "on_failure": "propagate",
+          "tool_name": "files_bytes",
+          "claimed_by": {
+            "executor_public_id": "019f0000-0000-7000-8000-000000000301"
+          },
+          "approval": {
+            "origin": "author",
+            "decided_at": "2026-09-12T00:00:01Z"
+          },
+          "result": {
+            "resolved": true
+          },
+          "visibility": "visible",
+          "created_at": "2026-09-12T00:00:00Z",
+          "started_at": "2026-09-12T00:00:01Z",
+          "completed_at": "2026-09-12T00:00:02Z"
+        }
+      ],
+      "task_progress": {
+        "waiting": 0,
+        "needs_approval": 0,
+        "running": 0,
+        "dispatched": 0,
+        "awaiting_input": 0,
+        "completed": 1,
+        "failed": 0,
+        "canceled": 0,
+        "timed_out": 0,
+        "uncertain": 0,
+        "skipped": 0,
+        "total": 1
+      },
+      "started_at": "2026-09-12T00:00:01Z",
+      "completed_at": "2026-09-12T00:00:02Z",
+      "input_queue": {
+        "limit": 16,
+        "held": 0
+      },
+      "runner": {
+        "executor_public_id": "019f0000-0000-7000-8000-000000000301",
+        "display_name": "Fixture runner",
+        "presence": "offline",
+        "last_seen_at": "2026-09-12T00:00:02Z"
+      },
+      "created_at": "2026-09-12T00:00:00Z",
+      "updated_at": "2026-09-12T00:00:02Z",
+      "prompt_mechanism": null
+    }
+  },
+  "valid_loop_backed_fixture": {
+    "agent_loop": {
+      "public_id": "019f0000-0000-7000-8000-000000000603",
+      "status": "running",
+      "turn": {
+        "status": "running",
+        "public_id": "019f0000-0000-7000-8000-0000000000d1",
+        "conversation_public_id": "019f0000-0000-7000-8000-0000000000c1",
+        "answering_user_public_id": "019f0000-0000-7000-8000-0000000000a2",
+        "model": {
+          "model": "dev/mock-text"
+        }
+      },
+      "created_at": "2026-09-12T00:00:00Z"
+    }
+  },
+  "task_progress_projection": [
+    "waiting",
+    "needs_approval",
+    "running",
+    "dispatched",
+    "awaiting_input",
+    "completed",
+    "failed",
+    "canceled",
+    "timed_out",
+    "uncertain",
+    "skipped",
+    "total"
+  ],
+  "prompt_mechanisms": [
+    "default",
+    "raw"
+  ],
+  "node_statuses": [
+    "awaiting_input",
+    "canceled",
+    "completed",
+    "dispatched",
+    "failed",
+    "needs_approval",
+    "running",
+    "skipped",
+    "timed_out",
+    "uncertain",
+    "waiting"
+  ],
+  "mermaid_header": "flowchart TD",
+  "valid_graph_fixture": {
+    "nodes": [
+      {
+        "key": "r1",
+        "kind": "model_task",
+        "lifetime": "conversation",
+        "wake": "auto",
+        "status": "completed",
+        "visibility": "visible",
+        "deliverable": false,
+        "input_from": [],
+        "result_from": [],
+        "spine": true
+      },
+      {
+        "key": "r2t0",
+        "kind": "tool_task",
+        "lifetime": "conversation",
+        "wake": "auto",
+        "status": "needs_approval",
+        "visibility": "collapsed",
+        "deliverable": false,
+        "input_from": [],
+        "result_from": [],
+        "expansion_parent": "r1"
+      },
+      {
+        "key": "r2",
+        "kind": "model_task",
+        "lifetime": "conversation",
+        "wake": "auto",
+        "status": "waiting",
+        "visibility": "visible",
+        "deliverable": true,
+        "input_from": [
+          "r1",
+          "r2t0"
+        ],
+        "result_from": [],
+        "spine": true,
+        "expansion_parent": "r1"
+      },
+      {
+        "key": "gate",
+        "kind": "join_task",
+        "lifetime": "conversation",
+        "wake": "auto",
+        "status": "waiting",
+        "visibility": "hidden",
+        "deliverable": false,
+        "input_from": [],
+        "result_from": [],
+        "join": {
+          "until": "any",
+          "losers": "cancel"
+        }
+      },
+      {
+        "key": "select",
+        "kind": "script_task",
+        "lifetime": "conversation",
+        "wake": "auto",
+        "status": "waiting",
+        "visibility": "hidden",
+        "deliverable": false,
+        "input_from": [],
+        "result_from": [
+          "r2",
+          "r1"
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "from": "r1",
+        "to": "r2t0",
+        "structural": true
+      },
+      {
+        "from": "r2t0",
+        "to": "r2",
+        "structural": true
+      },
+      {
+        "from": "r1",
+        "to": "gate",
+        "structural": true
+      },
+      {
+        "from": "r2",
+        "to": "gate",
+        "structural": true
+      },
+      {
+        "from": "r1",
+        "to": "select",
+        "structural": false
+      },
+      {
+        "from": "r2",
+        "to": "select",
+        "structural": false
+      },
+      {
+        "from": "gate",
+        "to": "select",
+        "structural": true
+      }
+    ],
+    "mermaid": "flowchart TD\n  n0[\"r1 · model_task · completed\"]:::completed\n  n1[\"r2t0 · tool_task · needs_approval\"]:::needs_approval\n  n2[[\"r2 · model_task · waiting\"]]:::waiting\n  n3[\"gate · join_task (any, cancel) · waiting\"]:::waiting\n  n4[\"select · script_task · waiting\"]:::waiting\n  n0 --> n1\n  n1 --> n2\n  n0 --> n3\n  n2 --> n3\n  n0 --> n4\n  n2 --> n4\n  n3 --> n4"
+  },
+  "unknown_node_status_fixture": {
+    "key": "r1",
+    "kind": "model_task",
+    "lifetime": "conversation",
+    "wake": "auto",
+    "status": "future_status",
+    "visibility": "visible",
+    "deliverable": false,
+    "input_from": [],
+    "result_from": [],
+    "spine": true
+  }
+}

@@ -1,0 +1,5 @@
+#!/bin/sh
+sleep 5
+echo "app/models/order.rb:15: Method total does not exist on NilClass https://srb.help/7003"
+echo "Errors: 1"
+exit 1

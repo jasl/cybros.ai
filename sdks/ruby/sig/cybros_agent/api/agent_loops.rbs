@@ -1,0 +1,376 @@
+module CybrosAgent
+  module Api
+    module ToolLowering
+      EMPTY_SCHEMA: Hash[String, untyped]
+
+      def self?.function_entry: (untyped tool) -> Hash[String, untyped]
+      def self?.function_entries: (untyped tools) -> Array[Hash[String, untyped]]
+      def self?.schema_of: (Hash[String, untyped] hash) -> Hash[String, untyped]
+    end
+
+    # ---- the author half ----
+
+    TASK_TERMINAL_STATUSES: Array[String]
+    TASK_PRE_START_STATUSES: Array[String]
+    LOOP_TERMINAL_STATUSES: Array[String]
+    TURN_TERMINAL_STATUSES: Array[String]
+
+    class LoopTask
+      attr_reader lifetime: String
+      attr_reader wake: String
+      attr_reader key: String
+      attr_reader kind: String
+      attr_reader status: String
+      attr_reader after: Array[String]
+      attr_reader waiting_on: Array[String]
+      attr_reader on_failure: String?
+      attr_reader failure_resolution: String?
+      attr_reader retry_budget: Integer
+      attr_reader tool_name: String?
+      attr_reader result: Hash[String, untyped]?
+      attr_reader error: Hash[String, untyped]?
+      attr_reader visibility: String?
+      attr_reader created_at: String?
+      attr_reader started_at: String?
+      attr_reader completed_at: String?
+      def waiting?: () -> bool
+      def running?: () -> bool
+      def failed?: () -> bool
+      def terminal?: () -> bool
+      def live?: () -> bool
+      def started?: () -> bool
+      attr_reader model: Hash[String, untyped]?
+      attr_reader mailed_at: String?
+      attr_reader addressed_to: AddressedTo?
+      attr_reader claimed_by: ClaimedBy?
+      attr_reader approval: Hash[String, untyped]?
+      def round?: () -> bool
+      def tool_call?: () -> bool
+      def await?: () -> bool
+      def finish_quality: () -> String?
+      def refusal_category: () -> String?
+      def refused?: () -> bool
+      def model_change: () -> Hash[String, untyped]?
+    end
+
+    class LoopTurn < ::Data
+      attr_reader status: String
+      attr_reader failure_reason_key: String?
+      attr_reader public_id: String?
+      attr_reader conversation_public_id: String?
+      attr_reader answering_user_public_id: String?
+      attr_reader model: Hash[String, untyped]?
+      def self.new: (
+        status: String, ?failure_reason_key: String?, ?public_id: String?,
+        ?conversation_public_id: String?, ?answering_user_public_id: String?, ?model: Hash[String, untyped]?
+      ) -> instance
+      def model_ref: () -> String?
+      def loop_backed?: () -> bool
+      def failed?: () -> bool
+      def terminal?: () -> bool
+    end
+
+    class LoopTaskDetail
+      attr_reader declaring_task_key: String?
+      attr_reader wait: Hash[String, untyped]?
+      attr_reader prompt: String?
+      attr_reader tool_input: Hash[String, untyped]?
+      attr_reader request_bytes: Integer?
+      attr_reader instructions: String?
+      attr_reader tool_definitions: Array[Hash[String, untyped]]?
+      attr_reader title: String?
+      attr_reader metadata: Hash[String, untyped]?
+      attr_reader task: LoopTask
+      attr_reader output: String?
+      attr_reader output_preview: String?
+      attr_reader content: untyped
+      attr_reader structured_content: untyped
+    end
+
+    class LoopProgress
+      attr_reader total: Integer
+      attr_reader waiting: Integer
+      attr_reader needs_approval: Integer
+      attr_reader running: Integer
+      attr_reader dispatched: Integer
+      attr_reader awaiting_input: Integer
+      attr_reader completed: Integer
+      attr_reader failed: Integer
+      attr_reader canceled: Integer
+      attr_reader timed_out: Integer
+      attr_reader uncertain: Integer
+      attr_reader skipped: Integer
+    end
+
+    class LoopAttention
+      attr_reader reason: String
+      attr_reader blocked_task_keys: Array[String]
+      attr_reader blocked_task_overflow: untyped
+    end
+
+    class AgentLoop
+      attr_reader approval_mode: String?
+      attr_reader public_id: String
+      attr_reader status: String
+      attr_reader failure_reason: String?
+      attr_reader deliverable_task_key: String?
+      attr_reader tasks: Array[LoopTask]
+      attr_reader task_progress: LoopProgress
+      attr_reader attention: LoopAttention?
+      attr_reader turn: LoopTurn?
+      attr_reader input_queue: ConversationInputQueue?
+      attr_reader started_at: String?
+      attr_reader paused_at: String?
+      attr_reader completed_at: String?
+      attr_reader details_pruned_at: String?
+      attr_reader created_at: String?
+      attr_reader updated_at: String?
+      attr_reader runner: RunnerBinding?
+      attr_reader prompt_mechanism: String?
+      def running?: () -> bool
+      def terminal?: () -> bool
+      def needs_attention?: () -> bool
+      def repairable_tasks: () -> Array[LoopTask]
+      def task: (String key) -> LoopTask?
+      def deliverable: () -> LoopTask?
+    end
+
+    class CompactedRound
+      attr_reader task: LoopTask
+      attr_reader summary_task_key: String
+    end
+
+    class CreatedAgentLoop
+      attr_reader agent_loop: AgentLoop
+      attr_reader receipt: untyped
+      attr_reader replayed: bool
+      def replayed?: () -> bool
+    end
+
+    class AppendedTasks
+      attr_reader accepted_task_keys: Array[String]
+      attr_reader steps: Array[untyped]
+      attr_reader deliverable_task_key: String?
+      attr_reader revision: untyped
+      attr_reader resolution_tokens: Hash[String, untyped]
+      attr_reader replayed: bool
+      def replayed?: () -> bool
+    end
+
+    class LoopPhase
+      attr_reader label: String
+      attr_reader keys: Array[String]
+      attr_reader done: Integer
+      attr_reader total: Integer
+      attr_reader status: String
+      def completed?: () -> bool
+    end
+
+    class BackgroundTask
+      attr_reader key: String
+      attr_reader status: String
+      attr_reader mailed_at: String?
+      def to_h: () -> Hash[Symbol, String]
+    end
+
+    class AgentLoopPhases
+      attr_reader phases: Array[LoopPhase]
+      attr_reader current: Integer?
+      attr_reader background: Array[BackgroundTask]
+      attr_reader spend: Hash[String, untyped]
+      def current_phase: () -> LoopPhase?
+    end
+
+    class ProgressFrame < Data
+      attr_reader type: String
+      attr_reader agent_loop_public_id: String?
+      attr_reader conversation_public_id: String?
+      attr_reader task_key: String?
+      attr_reader tool_name: String?
+      attr_reader process_id: String?
+      attr_reader executor_public_id: String?
+      attr_reader at: String
+      attr_reader payload: Hash[String, untyped]
+      def executor_progress?: () -> bool
+      def process_output?: () -> bool
+      def round_started?: () -> bool
+      def step_started?: () -> bool
+      def step_claimed?: () -> bool
+      def text_tail: () -> String?
+      def lines: () -> Array[String]
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class AgentLoopTranscript
+      include Enumerable[ThreadRow]
+      attr_reader rounds: Array[ThreadRow]
+      attr_reader next_before: String?
+      attr_reader has_older: bool
+      def each: () { (ThreadRow) -> void } -> void
+      def length: () -> Integer
+      def has_older?: () -> bool
+    end
+
+    class ThreadCall < Data
+      attr_reader task_key: String
+      attr_reader tool_call_id: String?
+      attr_reader name: String
+      attr_reader tool: String?
+      attr_reader status: String
+      attr_reader is_error: bool?
+      attr_reader title: String?
+      attr_reader metadata: Hash[String, untyped]?
+      attr_reader output_preview: String?
+      attr_reader output_bytes: Integer?
+      attr_reader started_at: String?
+      attr_reader completed_at: String?
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class ThreadCalls < Data
+      attr_reader count: Integer
+      attr_reader items: Array[ThreadCall]
+      def overflow: () -> Integer
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class ThreadRow < Data
+      attr_reader task_key: String
+      attr_reader spine: bool
+      attr_reader status: String
+      attr_reader visibility: String
+      attr_reader text_preview: String?
+      attr_reader text_bytes: Integer?
+      attr_reader usage: Hash[String, untyped]?
+      attr_reader error: Hash[String, untyped]?
+      attr_reader compacted_before: String?
+      attr_reader pruned_before: String?
+      attr_reader started_at: String?
+      attr_reader completed_at: String?
+      attr_reader calls: ThreadCalls
+      attr_reader branches: Array[String]
+      def spine?: () -> bool
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class GraphNode
+      attr_reader lifetime: String
+      attr_reader wake: String
+      attr_reader key: String
+      attr_reader kind: String
+      attr_reader status: String
+      attr_reader visibility: String
+      attr_reader deliverable: bool
+      attr_reader input_from: Array[String]
+      attr_reader result_from: Array[String]
+      attr_reader spine: bool?
+      attr_reader error_key: String?
+      attr_reader join: Hash[String, untyped]?
+      attr_reader expansion_parent: String?
+      def deliverable?: () -> bool
+      def spine?: () -> bool
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class GraphEdge
+      attr_reader from: String
+      attr_reader to: String
+      attr_reader structural: bool
+      def to_h: () -> Hash[Symbol, String | bool]
+    end
+
+    class AgentLoopGraph
+      attr_reader nodes: Array[GraphNode]
+      attr_reader edges: Array[GraphEdge]
+      attr_reader mermaid: String
+      def node: (String key) -> GraphNode?
+      def deliverable: () -> GraphNode?
+      def after: (String key) -> Array[GraphNode?]
+      def before: (String key) -> Array[GraphNode?]
+    end
+
+    class AgentLoopsContext
+      include Fields
+      attr_reader workspace_public_id: String
+
+      def initialize: (dispatch: _Dispatch, workspace_public_id: String) -> void
+      def list: (?after: String?, ?limit: Integer?, ?status: untyped, ?attention: String?, ?order: String?) -> Page[AgentLoop]
+      def create: (
+        steps: Array[untyped], idempotency_key: String, approval_mode: String,
+        ?billing_subject: untyped, ?prompt_mechanism: untyped, ?approval_rules: untyped,
+        ?runner_executor_public_id: String?
+      ) -> CreatedAgentLoop
+      def request: (
+        runner_executor_public_id: String, tool: String, idempotency_key: String,
+        ?input: Hash[String, untyped], ?timeout_ms: Integer?, ?approval_rules: untyped
+      ) -> AgentLoopContext
+      def fetch: (String public_id) -> AgentLoop
+      def agent_loop: (String public_id) -> AgentLoopContext
+    end
+
+    class AgentLoopContext
+      include Fields
+      attr_reader workspace_public_id: String
+      attr_reader agent_loop_public_id: String
+
+      def initialize: (
+        dispatch: _Dispatch, workspace_public_id: String, agent_loop_public_id: String
+      ) -> void
+      def fetch: () -> AgentLoop
+      def bind_runner: (executor_public_id: String) -> AgentLoop
+      def task: (String task_key) -> LoopTaskDetail
+      def request_result: (?poll: Numeric, ?patience: Numeric?) -> LoopTaskDetail
+      def append: (
+        steps: Array[untyped], idempotency_key: String,
+        ?resolve: untyped, ?expected_revision: untyped
+      ) -> AppendedTasks
+      def events: (?after: String?, ?limit: Integer?) -> ConversationEventPage
+      def transcript: (
+        ?before: String?, ?limit: Integer?, ?prefix: String?
+      ) -> AgentLoopTranscript
+                    | (
+        realtime: Realtime::Client
+      ) -> ^() -> Realtime::FeedSubscription[TranscriptItem]
+      def graph: () -> AgentLoopGraph
+      def phases: () -> AgentLoopPhases
+      def progress: (realtime: Realtime::Client) -> ^() -> Realtime::FeedSubscription[ProgressFrame]
+      def inputs: () -> InputsContext
+      def start: () -> AgentLoop
+      def pause: (?force: bool) -> AgentLoop
+      def resume: () -> AgentLoop
+      def stop: (?force: bool) -> AgentLoop
+      def delete: () -> nil
+      def tasks_context: (String task_key) -> AgentLoopTasksContext
+    end
+
+    class AgentLoopTasksContext
+      include Fields
+      attr_reader workspace_public_id: String
+      attr_reader agent_loop_public_id: String
+      attr_reader task_key: String
+
+      def initialize: (
+        dispatch: _Dispatch,
+        workspace_public_id: String,
+        agent_loop_public_id: String,
+        task_key: String
+      ) -> void
+      def resolve: (
+        ?resolution_token: untyped,
+        ?content: untyped,
+        ?structured_content: untyped,
+        ?result_type: untyped,
+        ?outcome: untyped
+      ) -> untyped
+      def retry: (?model: String?, ?reasoning_effort: String?) -> LoopTask
+      def abandon: () -> LoopTask
+      def cancel: () -> LoopTask
+      def approve: () -> LoopTask
+      def deny: (?reason: String?) -> LoopTask
+      def compact: () -> CompactedRound
+      def request: () -> SealedRequest
+    end
+
+  end
+
+end

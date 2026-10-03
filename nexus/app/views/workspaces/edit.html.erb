@@ -1,0 +1,64 @@
+<% content_for :title, "Edit workspace" %>
+
+<div class="space-y-8">
+  <header class="space-y-1">
+    <%= link_to workspace_path(@workspace), class: "inline-flex items-center gap-1.5 text-sm text-base-content/60 hover:text-base-content" do %>
+      <span class="iconify lucide--arrow-left size-4" aria-hidden="true"></span>
+      <%= @workspace.name %>
+    <% end %>
+    <h1 class="text-xl font-medium tracking-tight">Edit workspace</h1>
+    <p class="text-sm text-base-content/60">
+      Update the name or the small JSON metadata object stored with this workspace.
+    </p>
+  </header>
+
+  <% if @name_errors&.any? || @metadata_errors&.any? %>
+    <div role="alert" class="alert alert-error alert-soft">
+      <span class="iconify lucide--circle-alert size-5" aria-hidden="true"></span>
+      <span>The workspace could not be updated — check the fields below.</span>
+    </div>
+  <% end %>
+
+  <%= form_with url: workspace_path(@workspace), method: :patch, scope: :workspace do |form| %>
+    <div class="rounded-box border border-base-300 bg-base-200">
+      <%= render layout: "shared/form_row", locals: { form:, attribute: :name, label: "Name" } do %>
+        <%= validated_field form, :text_field, :name, Array(@name_errors), size: :sm, value: @submitted_name, required: true, maxlength: Workspace::NAME_MAX_LENGTH %>
+      <% end %>
+      <div class="flex flex-col gap-2 px-4 py-4">
+        <div>
+          <%= form.label :metadata, "Metadata (JSON)", class: "label py-0 text-sm" %>
+          <p id="<%= form.field_id(:metadata, :description) %>" class="mt-1 text-xs text-base-content/60">
+            Enter one JSON object. Its canonical JSON representation may use up to
+            <%= number_to_human_size(Nexus::SizeBounds.fetch(:workspace_metadata_bound)) %>.
+          </p>
+        </div>
+        <div>
+          <% metadata_errors = Array(@metadata_errors) %>
+          <% metadata_error_id = form.field_id(:metadata, :errors) %>
+          <% metadata_describedby = [
+            form.field_id(:metadata, :description),
+            (metadata_error_id if metadata_errors.any?),
+          ].compact.join(" ") %>
+          <%= form.text_area :metadata,
+            value: @submitted_metadata,
+            rows: 10,
+            spellcheck: false,
+            class: class_names(
+              "textarea textarea-sm min-h-40 w-full font-mono",
+              "textarea-error": metadata_errors.any?
+            ),
+            aria: {
+              invalid: metadata_errors.any?.to_s,
+              describedby: metadata_describedby,
+            } %>
+          <%= validator_hints(metadata_errors, id: metadata_error_id) %>
+        </div>
+      </div>
+    </div>
+    <%# A surfaced stale response advances this CAS to the freshly loaded row. Invalid input keeps the attempted version so it cannot silently adopt a concurrent winner while the user corrects the form. %>
+    <%= form.hidden_field :lock_version, value: @submitted_lock_version %>
+    <div class="mt-3 flex justify-end">
+      <%= form.submit "Save changes", class: "btn btn-primary btn-sm" %>
+    </div>
+  <% end %>
+</div>

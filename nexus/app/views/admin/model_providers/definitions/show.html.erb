@@ -1,0 +1,16 @@
+<% content_for :title, "Provider connection" %>
+<div class="space-y-6">
+  <%= render "admin/model_providers/header", provider: @provider, current: :connection, description: "Edit the connection used for this provider's models." %>
+  <% if @configuration.fetch(:source) == "removed" %>
+    <p class="text-sm text-base-content/60">This provider's connection was removed. Save a new connection to use the same provider ID again.</p>
+  <% end %>
+  <%= render "admin/model_providers/definition_form", form: @form, url: admin_model_provider_definition_path(@provider.fetch(:id)), method: :patch, creating: false %>
+  <% if %w[override custom].include?(@configuration.fetch(:source)) %>
+    <section class="space-y-3 border-t border-base-300 pt-5" aria-label="Reset provider connection">
+      <p class="text-sm text-base-content/60"><%= @configuration.fetch(:source) == "custom" ? "Removing this connection disables the custom provider. Its credentials are kept." : "Restore the connection shipped with this installation. Model edits and stored credentials are kept." %></p>
+      <%= button_to @configuration.fetch(:source) == "custom" ? "Remove custom connection" : "Restore installation connection", admin_model_provider_definition_path(@provider.fetch(:id)), method: :delete,
+        params: { provider_definition: { expected_lock_version: @provider.fetch(:lock_version) } }, class: "btn btn-sm btn-outline",
+        form: { data: { turbo_confirm: "Reset this provider connection?" } } %>
+    </section>
+  <% end %>
+</div>

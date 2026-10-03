@@ -1,0 +1,75 @@
+{
+  "compose": {
+    "id": "msg_fake",
+    "type": "message",
+    "role": "assistant",
+    "model": "fake",
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "toolu_fake",
+        "name": "compose",
+        "input": {
+          "script": "g.parallel([\n  g.model({ prompt: \"Read patch.diff and review it for security problems.\" }),\n  g.model({ prompt: \"Read patch.diff and review it for performance problems.\" }),\n  g.model({ prompt: \"Read patch.diff and review it for style.\" }),\n]);\ng.model({ prompt: \"Weigh the three reviews and give one verdict.\" });\n"
+        }
+      }
+    ],
+    "stop_reason": "tool_use",
+    "usage": {
+      "input_tokens": 20,
+      "cache_creation_input_tokens": 6000,
+      "output_tokens": 400
+    }
+  },
+  "task_read": {
+    "id": "msg_fake",
+    "type": "message",
+    "role": "assistant",
+    "model": "fake",
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "toolu_fake",
+        "name": "ls",
+        "input": {}
+      }
+    ],
+    "stop_reason": "tool_use",
+    "usage": {
+      "input_tokens": 20,
+      "cache_creation_input_tokens": 6000,
+      "output_tokens": 400
+    }
+  },
+  "task": {
+    "id": "msg_fake",
+    "type": "message",
+    "role": "assistant",
+    "model": "fake",
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "toolu_fake",
+        "name": "task",
+        "input": {
+          "prompt": "Review lib/ for N+1 queries. Answer file:line and a fix, or none."
+        }
+      }
+    ],
+    "stop_reason": "tool_use",
+    "usage": {
+      "input_tokens": 20,
+      "cache_creation_input_tokens": 6000,
+      "output_tokens": 400
+    }
+  },
+  "spend_usage": {
+    "input_tokens": 6000,
+    "output_tokens": 2000000
+  },
+  "cached_usage": {
+    "input_tokens": 20,
+    "cache_read_input_tokens": 6000,
+    "output_tokens": 400
+  }
+}

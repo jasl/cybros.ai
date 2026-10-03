@@ -1,0 +1,35 @@
+module Rho
+  class Settings
+    class ApplyError < Error
+    end
+
+    DEPLOYMENT_KEYS: Array[String]
+    EDITABLE_KEYS: Array[String]
+    PUBLIC_KEYS: Array[String]
+    def initialize: (home: Home, config: Config::Current, apply: ^(Config, Array[String]) -> untyped,
+      ?validate: ^(Config, Array[String]) -> untyped) -> void
+    def update: (Hash[String, untyped] patch, ?before_save: (^() -> untyped)?) -> Config
+  end
+
+  module Extensions
+    module Settings
+      NAME: String
+      def self.register: (untyped api) -> untyped
+      def self.document: (untyped ctx) -> Hash[Symbol, untyped]
+      def self.update: (untyped request, untyped ctx) -> untyped
+      def self.status: (untyped ctx) -> untyped
+      def self.defaults: (untyped ctx) -> Hash[Symbol, untyped]
+    end
+  end
+
+  class Core
+    module Settings
+      def settings: () -> Hash[String, untyped]
+      def settings_status: () -> Hash[String, untyped]
+      def update_settings: (Hash[String, untyped] changes) -> Hash[String, untyped]
+      def telegram_settings: () -> Hash[String, untyped]
+      def configure_telegram: (Hash[String, untyped] changes) -> Hash[String, untyped]
+      def change_telegram_access: (list: String, action: String, id: String) -> Hash[String, untyped]
+    end
+  end
+end

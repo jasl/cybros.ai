@@ -1,0 +1,22 @@
+module Rho
+  module IngressTelegram
+    def self.store_entries: (untyped host) -> untyped
+    def self.legacy_state: (Rho::Home home) -> Hash[String, untyped]?
+    module MemoryBridge
+      LOCAL_MEMORY: Hash[String, untyped]
+      def open_memory_anchor: (idempotency_key: String, title: String, workspace_public_id: String) -> String
+      def bind_memory: (String conversation_id, memory_context: Hash[String, untyped], workspace_public_id: String) -> untyped
+      def memory: (String conversation_id, action: Rho::MemoryCommands::Action, workspace_public_id: String) -> String
+      def participation_memory: (String conversation_id, model: String, workspace_public_id: String) -> String?
+    end
+    class Bridge
+      include MemoryBridge
+    end
+    module MemoryWorkflow
+      def memory_command: (Update update, String argument) -> String
+    end
+    class Runtime
+      include MemoryWorkflow
+    end
+  end
+end

@@ -1,0 +1,7 @@
+address:
+  account: cybros
+  agent_profile: agent
+  executor_kind: agent_application
+  display_name: Agent app
+  status: active
+  credential_epoch: 1

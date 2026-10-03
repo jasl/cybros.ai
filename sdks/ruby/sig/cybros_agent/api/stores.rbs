@@ -1,0 +1,60 @@
+module CybrosAgent
+  module Api
+    class StoreEntrySummary < Data
+      attr_reader public_id: String
+      attr_reader namespace: String
+      attr_reader key: String
+      attr_reader lock_version: Integer
+      attr_reader created_at: String
+      attr_reader updated_at: String
+
+      def self.new: (String public_id, String namespace, String key, Integer lock_version, String created_at, String updated_at) -> instance
+                  | (public_id: String, namespace: String, key: String, lock_version: Integer, created_at: String, updated_at: String) -> instance
+      def self.[]: (String public_id, String namespace, String key, Integer lock_version, String created_at, String updated_at) -> instance
+                 | (public_id: String, namespace: String, key: String, lock_version: Integer, created_at: String, updated_at: String) -> instance
+      def self.members: () -> [:public_id, :namespace, :key, :lock_version, :created_at, :updated_at]
+
+      def members: () -> [:public_id, :namespace, :key, :lock_version, :created_at, :updated_at]
+    end
+
+    class StoreEntry < Data
+      attr_reader public_id: String
+      attr_reader namespace: String
+      attr_reader key: String
+      attr_reader lock_version: Integer
+      attr_reader created_at: String
+      attr_reader updated_at: String
+      attr_reader value: untyped
+
+      def self.new: (String public_id, String namespace, String key, Integer lock_version, String created_at, String updated_at, untyped value) -> instance
+                  | (public_id: String, namespace: String, key: String, lock_version: Integer, created_at: String, updated_at: String, value: untyped) -> instance
+      def self.[]: (String public_id, String namespace, String key, Integer lock_version, String created_at, String updated_at, untyped value) -> instance
+                 | (public_id: String, namespace: String, key: String, lock_version: Integer, created_at: String, updated_at: String, value: untyped) -> instance
+      def self.members: () -> [:public_id, :namespace, :key, :lock_version, :created_at, :updated_at, :value]
+
+      def members: () -> [:public_id, :namespace, :key, :lock_version, :created_at, :updated_at, :value]
+      def inspect: () -> String
+      def to_s: () -> String
+      def pretty_print: (untyped printer) -> void
+    end
+
+    class StoreEntriesContext
+      include WorkspaceProjections
+
+      attr_reader path: String
+
+      def initialize: (dispatch: _Dispatch, path: String) -> void
+      def list: (?after: String?, ?limit: Integer?) -> Page[StoreEntrySummary]
+      def create: (namespace: String, key: String, value: untyped, idempotency_key: String) -> StoreEntry
+      def fetch: (String public_id) -> StoreEntry
+      def update: (String public_id, value: untyped, lock_version: Integer) -> StoreEntry
+      def delete: (String public_id, lock_version: Integer) -> nil
+
+      private
+
+      def entry_path: (String public_id) -> String
+    end
+
+  end
+
+end

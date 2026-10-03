@@ -1,0 +1,28 @@
+<% content_for :title, "Settings" %>
+
+<%= render layout: "settings/shell", locals: { current: :email } do %>
+  <% if @identity.errors.any? %>
+    <div role="alert" class="alert alert-error alert-soft">
+      <span class="iconify lucide--circle-alert size-5" aria-hidden="true"></span>
+      <span>The email address could not be changed — check the highlighted fields.</span>
+    </div>
+  <% end %>
+
+  <section>
+    <h2 class="mb-1 text-xs font-medium text-base-content/60">Email</h2>
+    <p class="mb-3 text-sm text-base-content/60">Changing the email address used to sign in requires your current password.</p>
+    <%= form_with url: settings_email_path, method: :patch, scope: :email, data: { turbo_frame: "_top" } do |form| %>
+      <div class="rounded-box border border-base-300 bg-base-200">
+        <%= render layout: "shared/form_row", locals: { form:, attribute: :email, label: "Email" } do %>
+          <%= validated_field form, :email_field, :email, @identity.errors.full_messages_for(:email), size: :sm, value: @identity.email, required: true, autocomplete: "email" %>
+        <% end %>
+        <%= render layout: "shared/form_row", locals: { form:, attribute: :current_password, label: "Current password" } do %>
+          <%= validated_field form, :password_field, :current_password, @identity.errors.full_messages_for(:current_password), size: :sm, required: true, autocomplete: "current-password", maxlength: 72 %>
+        <% end %>
+      </div>
+      <div class="mt-3 flex justify-end">
+        <%= form.submit "Change email", class: "btn btn-primary btn-sm" %>
+      </div>
+    <% end %>
+  </section>
+<% end %>

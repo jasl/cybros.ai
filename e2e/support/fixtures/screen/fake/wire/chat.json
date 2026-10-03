@@ -1,0 +1,100 @@
+{
+  "compose": {
+    "id": "gen-fake",
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 6000,
+      "completion_tokens": 400,
+      "total_tokens": 6400,
+      "cost": 0.0021,
+      "is_byok": false
+    },
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "tool_calls",
+        "message": {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "call_fake",
+              "type": "function",
+              "function": {
+                "name": "compose",
+                "arguments": "{\"script\":\"g.parallel([\\n  g.model({ prompt: \\\"Read patch.diff and review it for security problems.\\\" }),\\n  g.model({ prompt: \\\"Read patch.diff and review it for performance problems.\\\" }),\\n  g.model({ prompt: \\\"Read patch.diff and review it for style.\\\" }),\\n]);\\ng.model({ prompt: \\\"Weigh the three reviews and give one verdict.\\\" });\\n\"}"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "task_read": {
+    "id": "gen-fake",
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 6000,
+      "completion_tokens": 400,
+      "total_tokens": 6400,
+      "cost": 0.0021,
+      "is_byok": false
+    },
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "tool_calls",
+        "message": {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "call_fake",
+              "type": "function",
+              "function": {
+                "name": "ls",
+                "arguments": "{}"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "task": {
+    "id": "gen-fake",
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 6000,
+      "completion_tokens": 400,
+      "total_tokens": 6400,
+      "cost": 0.0021,
+      "is_byok": false
+    },
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "tool_calls",
+        "message": {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "call_fake",
+              "type": "function",
+              "function": {
+                "name": "task",
+                "arguments": "{\"prompt\":\"Review lib/ for N+1 queries. Answer file:line and a fix, or none.\"}"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "spend_usage": {
+    "prompt_tokens": 6000,
+    "completion_tokens": 2000000,
+    "total_tokens": 2006000
+  }
+}

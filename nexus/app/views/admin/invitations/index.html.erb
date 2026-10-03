@@ -1,0 +1,117 @@
+<% content_for :title, "Invitations" %>
+
+<div class="space-y-8">
+  <header class="space-y-1">
+    <h1 class="text-xl font-medium tracking-tight">Invitations</h1>
+    <p class="text-sm text-base-content/60">Invite people by email; each address holds one current invitation</p>
+  </header>
+
+  <% mail_configured = ApplicationMailer.delivery_configured? %>
+
+  <section class="rounded-box border border-base-300 bg-base-200 p-4">
+    <% unless mail_configured %>
+      <p class="mb-3 text-sm text-base-content/60">
+        Outbound email is not configured, so invitations are not emailed — share each unexpired
+        invitation's link manually instead.
+      </p>
+    <% end %>
+    <%= form_with url: admin_invitations_path, scope: :invitation do |form| %>
+      <div class="flex flex-wrap items-start gap-2">
+        <div class="min-w-64 grow">
+          <%= form.label :email, "Email", class: "sr-only" %>
+          <%= form.email_field :email, required: true, placeholder: "person@example.com", class: "input input-sm w-full" %>
+        </div>
+        <div>
+          <%= form.label :role, "Role", class: "sr-only" %>
+          <%= form.select :role, Invitation.roles.keys.map { |role| [ role.humanize, role ] }, {}, class: "select select-sm w-32" %>
+        </div>
+        <%= form.submit mail_configured ? "Send invitation" : "Create invitation", class: "btn btn-primary btn-sm" %>
+      </div>
+    <% end %>
+  </section>
+
+  <div class="space-y-4">
+    <div class="flex justify-end">
+      <nav aria-label="Invitation filters" class="tabs tabs-box tabs-sm w-full sm:w-auto">
+        <%= link_to "Pending", admin_invitations_path, class: class_names("tab flex-1 sm:flex-none", "tab-active": @invitation_filter == :pending), aria: { current: ("page" if @invitation_filter == :pending) } %>
+        <%= link_to "All", admin_invitations_path(filter: "all"), class: class_names("tab flex-1 sm:flex-none", "tab-active": @invitation_filter == :all), aria: { current: ("page" if @invitation_filter == :all) } %>
+      </nav>
+    </div>
+
+    <% if @invitations_pagy.count.positive? %>
+      <ul class="list rounded-box border border-base-300 bg-base-200">
+        <% @invitations.each do |invitation| %>
+          <% expired = invitation.expired? %>
+          <li data-invitation-id="<%= invitation.public_id %>" class="list-row">
+            <div class="list-col-grow min-w-0">
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h2 class="min-w-0 font-medium hyphens-none wrap-anywhere"><%= invitation.email %></h2>
+                <span class="badge badge-ghost badge-sm whitespace-nowrap"><%= invitation.role %></span>
+                <% if expired %>
+                  <span class="badge badge-warning badge-sm">Expired</span>
+                <% end %>
+              </div>
+
+              <div class="mt-2 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-xs text-base-content/60">
+                <span class="min-w-0 wrap-anywhere">Invited by <%= invitation.inviter.display_name %></span>
+                <% if invitation.delivery_requested? %>
+                  <span title="<%= invitation.last_delivery_requested_at.to_fs(:long) %>">
+                    Email requested <%= time_ago_in_words(invitation.last_delivery_requested_at) %> ago
+                  </span>
+                <% else %>
+                  <span class="badge badge-ghost badge-sm">Link only</span>
+                <% end %>
+                <% unless expired %>
+                  <span>Expires in <%= distance_of_time_in_words_to_now(invitation.expires_at) %></span>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="list-col-wrap flex flex-wrap justify-start gap-1 sm:justify-end sm:[grid-row-start:1]">
+              <% if !mail_configured %>
+                <%= button_to invitation.delivery_requested? ? "Resend" : "Send email", admin_invitation_resend_path(invitation), disabled: true, class: "btn btn-ghost btn-sm", title: t("admin.invitations.mail_delivery_unavailable") %>
+              <% else %>
+                <% wait = invitation.resend_available_in.ceil %>
+                <% if wait.positive? %>
+                  <div data-controller="countdown" data-countdown-seconds-value="<%= wait %>">
+                    <%= button_to "Resend in #{wait}s", admin_invitation_resend_path(invitation), disabled: true, class: "btn btn-ghost btn-sm", data: { countdown_target: "button", countdown_label: "Resend" } %>
+                  </div>
+                <% else %>
+                  <%= button_to invitation.delivery_requested? ? "Resend" : "Send email", admin_invitation_resend_path(invitation), class: "btn btn-ghost btn-sm" %>
+                <% end %>
+              <% end %>
+              <%= button_to "Revoke", admin_invitation_path(invitation), method: :delete, class: "btn btn-ghost btn-sm text-error", data: { turbo_confirm: "Revoke the invitation for #{invitation.email}? Every shared or emailed link stops working." } %>
+            </div>
+
+            <div class="col-span-full min-w-0 space-y-1.5 [grid-row-start:3] sm:[grid-row-start:2]">
+              <p class="text-xs font-medium text-base-content/70">Invitation link</p>
+              <div class="flex min-w-0 gap-2" data-controller="clipboard">
+                <%= text_field_tag :acceptance_link, join_url(**external_url_options, token: invitation.acceptance_token), readonly: true, class: "input input-sm min-w-0 w-full flex-1 font-mono text-xs", data: { clipboard_target: "source" }, aria: { label: "Invitation link for #{invitation.email}" }, id: nil %>
+                <% if expired %>
+                  <button type="button" class="btn btn-ghost btn-sm shrink-0" data-clipboard-target="button" disabled>Expired</button>
+                <% else %>
+                  <button type="button" class="btn btn-ghost btn-sm shrink-0" data-clipboard-target="button" data-action="clipboard#copy">Copy</button>
+                <% end %>
+              </div>
+              <% if expired %>
+                <p class="text-xs text-base-content/70">
+                  <%= mail_configured ? "Resend before sharing this link." : "Revoke and create a replacement before sharing." %>
+                </p>
+              <% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <section class="rounded-box border border-base-300 bg-base-200 p-6">
+        <% if @invitation_filter == :pending %>
+          <p class="text-sm text-base-content/60">No pending invitations. Expired invitations remain available under All.</p>
+        <% else %>
+          <p class="text-sm text-base-content/60">No invitations. Members appear on the Members page once they accept.</p>
+        <% end %>
+      </section>
+    <% end %>
+
+    <%= render "shared/pagination_footer", pagy: @invitations_pagy, noun: "invitations", aria_label: "Invitations pages" %>
+  </div>
+</div>

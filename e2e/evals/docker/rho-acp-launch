@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+# Launcher that harbor's `local` distribution execs inside a task
+# container built from the evals image (`e2e/evals/docker/Dockerfile`,
+# profile runner) when the job names `acp:rho` — harbor's own
+# `/installed-agent/acp-launch.sh` exports the distribution's env
+# (RHO_MODE=full, RHO_TOOLS_ROOT=/app, RHO_NEXUS_URL) and execs this file
+# with the runner's argv. With no announcement live it starts a FULL-mode
+# daemon in its own session with all three fds redirected — a daemon
+# holding fd 1 keeps harbor's pipe open past the agent's exit — POSTs the
+# daemon's `/device/start` and writes the answer to
+# $RHO_HOME/tmp/acp-ceremony.json for the harness's PAIRING SIDECAR
+# (`E2E::Evals::HarborAcp::Sidecar`: `docker exec <c> cat` it, the steward
+# confirms), waits, bounded, for `/status` to report the workspace
+# adopted, then execs `rho-acp "$@"` — stdin and stdout untouched: they
+# are the wire's. IDEMPOTENT: a second invocation in the same container
+# finds the daemon up and adopted and goes straight to the exec.
+#
+# Nothing here is on the wire: every sentence goes to stderr (harbor's
+# `acp.txt` keeps it), the daemon's stdout to its own log under the home.
+set -eu
+
+: "${RHO_HOME:=/var/lib/rho}"
+: "${RHO_PREFIX:=/opt/rho}"
+# (No apostrophe in this message: bash 3.2 reads one inside ${…:?…} as a quote.)
+: "${RHO_NEXUS_URL:?rho-acp-launch: RHO_NEXUS_URL names the Nexus the cell pairs with (the registry entry env)}"
+export RHO_HOME RHO_PREFIX RHO_NEXUS_URL
+RUBY="$RHO_PREFIX/ruby/current/bin/ruby"
+CEREMONY="$RHO_HOME/tmp/acp-ceremony.json"
+LOG="$RHO_HOME/log/acp-launch.log"
+# The pairing's bound, in seconds: the sidecar polls `docker ps` and clicks
+# within it; past it the launch exits 1 and harbor records the trial red.
+ADOPT_TIMEOUT="${RHO_ACP_LAUNCH_TIMEOUT:-300}"
+# The daemon's boot bound: the announcement appears inside it or the launch
+# exits 1 with the daemon's log tail.
+BOOT_TIMEOUT=60
+
+say() { printf 'rho-acp-launch: %s\n' "$*" >&2; }
+
+# THE ROOT DOOR, the entrypoint's (install/docker-entrypoint, its comment
+# the reason): harbor runs the agent as the image's default user — root on
+# the terminal-bench bases — over a home the image made uid 1000's; rho's
+# floor refuses a state directory another uid owns, so it is moved once,
+# before the boot. uid 1000 sees no change.
+if [ "$(id -u)" = "0" ] && [ -d "$RHO_HOME" ] && [ "$(stat -c %u "$RHO_HOME")" != "0" ]; then
+  chown -R 0:0 "$RHO_HOME"
+fi
+mkdir -p "$RHO_HOME/log" "$RHO_HOME/tmp"
+
+# THE DAEMON'S DOOR, through the announcement (`tmp/announcement.json`:
+# the endpoint and the per-boot bearer), stdlib Ruby and no bundle:
+#   probe             prints `adopted` | `pending` | `error:<code>` | `none`
+#                     (no announcement, or nothing answers at its endpoint)
+#   ceremony FILE     POSTs /device/start — retried through the daemon's
+#                     bootstrapping window (503 connection_bootstrapping)
+#                     — and writes the answer to FILE whole (a temp file
+#                     renamed, so the sidecar never parses half a document);
+#                     409 already_connected is written too (a document with
+#                     no code, which the sidecar never confirms); any other
+#                     refusal exits 1 with the daemon's sentence
+#   await SECONDS     polls /status until the workspace is adopted (exit 0,
+#                     nothing printed); past SECONDS, or on a workspace
+#                     error, exits 1
+# Only `probe` prints, into a substitution; the other two are run with
+# their stdout on stderr too — fd 1 is the wire, and a stray line there
+# is a spec violation the client refuses.
+door() {
+  "$RUBY" - "$@" <<'RUBY'
+require "json"
+require "net/http"
+require "uri"
+
+HOME_DIR = ENV.fetch("RHO_HOME")
+BOOTSTRAP_WAIT = 30
+
+def announcement
+  JSON.parse(File.read(File.join(HOME_DIR, "tmp", "announcement.json")))
+rescue Errno::ENOENT, JSON::ParserError
+  nil
+end
+
+def call(document, verb, path)
+  uri = URI.join(document.fetch("endpoint"), path)
+  request = (verb == :post ? Net::HTTP::Post : Net::HTTP::Get).new(uri)
+  request["Authorization"] = "Bearer #{document.fetch("bearer")}"
+  response = Net::HTTP.start(uri.host, uri.port, open_timeout: 5, read_timeout: 30) { |http| http.request(request) }
+  [response.code.to_i, JSON.parse(response.body)]
+rescue SystemCallError, IOError, SocketError, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError
+  nil
+end
+
+def workspace_state
+  document = announcement
+  return "none" if document.nil?
+
+  answer = call(document, :get, "/status")
+  return "none" if answer.nil?
+
+  workspace = answer.last["workspace"] || {}
+  case workspace["state"]
+  when "adopted" then "adopted"
+  when "error" then "error:#{workspace["code"]}"
+  else "pending"
+  end
+end
+
+def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+verb, argument = ARGV
+case verb
+when "probe"
+  puts workspace_state
+when "ceremony"
+  document = announcement or abort("rho-acp-launch: no announcement to address")
+  deadline = now + BOOTSTRAP_WAIT
+  loop do
+    answer = call(document, :post, "/device/start") or abort("rho-acp-launch: the daemon's /device/start did not answer")
+    code, body = answer
+    error = code >= 400 ? body["error"] : nil
+    if code == 503 && error && error["code"] == "connection_bootstrapping" && now < deadline
+      sleep 1
+      next
+    end
+    abort("rho-acp-launch: /device/start refused: #{error["message"] || error["code"]}") if error && error["code"] != "already_connected"
+
+    File.write("#{argument}.tmp", JSON.pretty_generate(body))
+    File.rename("#{argument}.tmp", argument)
+    break
+  end
+when "await"
+  deadline = now + Integer(argument)
+  loop do
+    state = workspace_state
+    exit 0 if state == "adopted"
+    abort("rho-acp-launch: the daemon's workspace failed: #{state}") if state.start_with?("error:")
+    abort("rho-acp-launch: the workspace was not adopted within #{argument} s (last: #{state}); is the pairing sidecar running?") if now > deadline
+
+    sleep 2
+  end
+else
+  abort("rho-acp-launch: unknown door #{verb.inspect}")
+end
+RUBY
+}
+
+# THE SURFACE: `rho-acp` when a launcher for it is on PATH; else the exe
+# the way `bin/rho` runs the CLI (install.sh's write_wrapper — the
+# installer writes no rho-acp wrapper): the prefix's Ruby, the app bundle,
+# the entry replaced by the agent gem's exe, which the bundle carries as
+# a path gem.
+exec_rho_acp() {
+  if command -v rho-acp >/dev/null 2>&1; then
+    exec rho-acp "$@"
+  fi
+  if [ -z "${LC_ALL:-}${LC_CTYPE:-}${LANG:-}" ]; then export LANG=C.UTF-8; fi
+  export PATH="$RHO_PREFIX/bin:$PATH"
+  export RHO_BOOTSNAP_CACHE_DIR="${RHO_BOOTSNAP_CACHE_DIR:-$RHO_HOME/cache/bootsnap}"
+  unset RUBYOPT RUBYLIB GEM_HOME GEM_PATH BUNDLER_VERSION BUNDLE_BIN_PATH BUNDLER_SETUP
+  # shellcheck disable=SC2046
+  for name in $(compgen -v BUNDLE_ 2>/dev/null); do unset "$name"; done
+  export BUNDLE_GEMFILE="$RHO_PREFIX/current/agents/rho/rho/Gemfile"
+  export BUNDLE_PATH="$RHO_PREFIX/current/vendor/bundle"
+  export BUNDLE_DEPLOYMENT=1
+  export BUNDLE_WITHOUT="development:test"
+  exec "$RUBY" -rbundler/setup "$RHO_PREFIX/current/agents/rho/rho-acp/exe/rho-acp" "$@"
+}
+
+state=$(door probe)
+case "$state" in
+  adopted)
+    say "the daemon is up and its workspace adopted; serving"
+    ;;
+  none)
+    say "no daemon: starting rho server (full mode) for harbor; its log: $LOG"
+    # Redirect all three descriptors: the daemon must hold none of harbor's
+    # pipes, or the pipe stays open past the agent's exit; its own session
+    # (setsid), so the runner's kill of the agent never reaches it.
+    setsid rho server --mode full --display-name harbor-acp </dev/null >"$LOG" 2>&1 &
+    waited=0
+    while [ "$(door probe)" = "none" ]; do
+      if [ "$waited" -ge "$BOOT_TIMEOUT" ]; then
+        say "the daemon never announced itself within ${BOOT_TIMEOUT} s; the tail of $LOG:"
+        tail -n 20 "$LOG" >&2 || true
+        exit 1
+      fi
+      sleep 1
+      waited=$((waited + 1))
+    done
+    door ceremony "$CEREMONY" >&2
+    say "the pairing document is at $CEREMONY; waiting up to ${ADOPT_TIMEOUT} s for the steward"
+    door await "$ADOPT_TIMEOUT" >&2
+    say "adopted; serving"
+    ;;
+  *)
+    # A daemon up whose workspace is not adopted: the ceremony may already
+    # be in flight (a previous launch's); starting one is idempotent on the
+    # daemon (at most one in flight, the same document answered again).
+    say "the daemon is up but not adopted ($state); (re)starting the ceremony"
+    door ceremony "$CEREMONY" >&2
+    door await "$ADOPT_TIMEOUT" >&2
+    say "adopted; serving"
+    ;;
+esac
+
+exec_rho_acp "$@"

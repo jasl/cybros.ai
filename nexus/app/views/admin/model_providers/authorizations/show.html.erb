@@ -1,0 +1,6 @@
+<% content_for :title, "#{model_provider_name(@provider.fetch(:id))} subscription" %>
+
+<div class="max-w-4xl space-y-6">
+  <%= render "admin/model_providers/header", provider: @provider, current: :credentials, description: "Connect a subscription for agents to use through Nexus." %>
+  <%= render "admin/model_providers/authorization", provider: @provider, authorization: @authorization, authorization_session: @authorization[:session] %>
+</div>

@@ -1,0 +1,7 @@
+module Rho
+  module IngressTelegram
+    module ReminderWorkflow
+      def remind: (Update update, expression: String, text: String) -> untyped
+    end
+  end
+end

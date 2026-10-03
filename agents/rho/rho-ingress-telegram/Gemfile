@@ -1,0 +1,17 @@
+source "https://rubygems.org"
+
+gemspec
+
+gem "cmctl", path: "../../../cmctl"
+
+gem "rho", path: "../rho"
+gem "rho-runner", path: "../rho-runner"
+gem "cybros_agent", path: "../../../sdks/ruby"
+
+group :development do
+  gem "rake", "~> 13.0"
+  gem "minitest", "~> 6.0"
+  gem "rbs", require: false
+  gem "rubocop", "~> 1.21", require: false
+  gem "rubocop-rails-omakase", require: false
+end

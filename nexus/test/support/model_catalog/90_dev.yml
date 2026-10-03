@@ -1,0 +1,383 @@
+# The dev/mock provider's catalog data (spec 12 D20): TEST-owned, mounted
+# through the ordinary override seam by test_helper's catalog boot — never a
+# shipped fragment, exactly as D20 scopes the dev provider to E2E/test-
+# managed configuration. E2E mounts its own copy of this data through
+# config.d when it points base_url at the mock_llm process.
+#
+# THIS IS ALSO THE HONEST TEST OF ROUND F: the dev lanes used to be seven
+# rows inside the gem, and the fake provider they describe is the most
+# obviously deployment-specific thing in the whole catalog. What they say
+# now is what any operator writes — a wire, a credential answer, and the
+# handful of facts that are actually this model's.
+#
+# Five models are known-zero; mock-priced is D20's priced fixture model so
+# reservation and cost paths run against real headroom in tests.
+schema_version: cybros.model_catalog.v1
+providers:
+  # A stand-in that mirrors the predecessor's mount (`/mock_llm` on the app
+  # port, plus each profile's own `/v1/...` wire path). Nothing in the Nexus
+  # suite sends, so this value exists to satisfy the declaration and to keep
+  # the override path real: spec 42 D7 has the E2E harness allocate a
+  # loopback port for its own fake-provider process and replace this entry
+  # wholesale through config.d.
+  dev:
+    base_url: http://127.0.0.1:3000/mock_llm
+    api_format: openai_responses
+    # D20's truthfully credentialless lane: no credential row exists and
+    # requests carry no authorization material.
+    credentials: none
+    # The predecessor's dev numbers. A fake provider still gets a ceiling:
+    # the admission caps are what the dev lane exercises them with.
+    concurrency_limit: 8
+    workload_concurrency_limits:
+      text_generation: 4
+      image_generation: 1
+      speech_generation: 1
+      transcription: 1
+      embedding: 1
+models:
+  dev/mock-text:
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0"
+          output_per_mtok: "0"
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [text]
+      limits:
+        input_tokens: 8192
+        output_tokens: 2048
+      reasoning:
+        efforts: [low, medium, high]
+        default_effort: medium
+      # The mock lane speaks responses, so the native replay family is
+      # exercisable end to end without a provider.
+      reasoning_replay:
+        format: responses_reasoning
+      # No `prompt_caching` line here or anywhere: the profile build derives
+      # it from the wire, on for every text lane (owner 2026-09-16). This
+      # lane speaks responses, where caching is implicit on prefix stability
+      # — the discipline the stability laws serve, with nothing for the
+      # kernel to emit; explicit breakpoints are the Anthropic wire's alone.
+      service_tiers: [standard]
+      generation_parameters:
+        temperature:
+          kind: number
+          default: 1.0
+          minimum: 0.0
+          maximum: 2.0
+          allowed_values: null
+        max_output_tokens:
+          kind: integer
+          default: 256
+          minimum: 1
+          maximum: 2048
+          allowed_values: null
+        top_p:
+          kind: number
+          default: 1.0
+          minimum: 0.0
+          maximum: 1.0
+          allowed_values: null
+        output_format:
+          kind: output_format
+          default: text
+          minimum: null
+          maximum: null
+          allowed_values: [text, json_object, json_schema]
+  # THE TEXT-ONLY TWIN (S-G-A): `mock-text`'s profile with no image
+  # ingress on the row, so a lane can read the other branch of placement —
+  # a picture on this row rides as the index line, never a part. The
+  # wire's allowlist reason (HEIC on an OpenAI row) is a stubbed profile in
+  # a unit test, not a row.
+  dev/mock-text-only:
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0"
+          output_per_mtok: "0"
+    capabilities:
+      input_modalities: []
+      output_modalities: [text]
+      limits:
+        input_tokens: 8192
+        output_tokens: 2048
+      reasoning:
+        efforts: [low, medium, high]
+        default_effort: medium
+      reasoning_replay:
+        format: responses_reasoning
+      service_tiers: [standard]
+      generation_parameters:
+        temperature:
+          kind: number
+          default: 1.0
+          minimum: 0.0
+          maximum: 2.0
+          allowed_values: null
+        max_output_tokens:
+          kind: integer
+          default: 256
+          minimum: 1
+          maximum: 2048
+          allowed_values: null
+        top_p:
+          kind: number
+          default: 1.0
+          minimum: 0.0
+          maximum: 1.0
+          allowed_values: null
+        output_format:
+          kind: output_format
+          default: text
+          minimum: null
+          maximum: null
+          allowed_values: [text, json_object, json_schema]
+  # D20's UNMETERED fixture: `pricing:` with nothing under it declares that
+  # this platform does not compute the lane's cost (owner ruling 2026-08-17).
+  # It shares mock-text's profile deliberately — the shape is a pricing fact,
+  # not a wire fact, so nothing about the lane itself differs.
+  # This lane proves the UNMETERED shape: unmetered makes no claim about the
+  # amount, where known-free (an all-zero schedule) claims the amount is
+  # zero. The two must not collapse into one fixture.
+  dev/mock-unmetered:
+    pricing:
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [text]
+      limits:
+        input_tokens: 8192
+        output_tokens: 2048
+      service_tiers: [standard]
+  # A MODEL WITH NO DECLARED WINDOW, which is a real catalog shape and
+  # was represented by no fixture at all. Everything downstream of
+  # `limits.input_tokens` changes when it is absent: the assembly stops
+  # self-fitting (there is nothing to fit TO), the replay ladder stops
+  # budgeting what it carries, and the sealed request's BYTE bound
+  # becomes the only wall left. Every pre-send protection this kernel has
+  # is written against the window, so the lane without one is the lane
+  # those protections do not cover — and it could not be tested. It calls
+  # tools, so a loop-backed turn can reach the byte wall on it too (the
+  # prune arm's request-bytes tail is pinned there).
+  dev/mock-windowless:
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0"
+          output_per_mtok: "0"
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [text]
+      limits:
+        output_tokens: 2048
+      reasoning:
+        efforts: [low, medium, high]
+        default_effort: medium
+      reasoning_replay:
+        format: responses_reasoning
+      service_tiers: [standard]
+  dev/mock-priced:
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0.5"
+          output_per_mtok: "1.5"
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [text]
+      limits:
+        input_tokens: 8192
+        output_tokens: 2048
+      reasoning:
+        efforts: [low, medium, high]
+        default_effort: medium
+      service_tiers: [standard]
+      generation_parameters:
+        temperature:
+          kind: number
+          default: 1.0
+          minimum: 0.0
+          maximum: 2.0
+          allowed_values: null
+        max_output_tokens:
+          kind: integer
+          default: 256
+          minimum: 1
+          maximum: 2048
+          allowed_values: null
+        top_p:
+          kind: number
+          default: 1.0
+          minimum: 0.0
+          maximum: 1.0
+          allowed_values: null
+        output_format:
+          kind: output_format
+          default: text
+          minimum: null
+          maximum: null
+          allowed_values: [text, json_object, json_schema]
+  dev/mock-image:
+    api_format: openai_images
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          per_image: "0"
+    capabilities:
+      input_modalities: []
+      output_modalities: [image]
+      limits:
+        input_bytes: 65536
+        result_count: 4
+      service_tiers: [standard]
+      generation_parameters:
+        result_count:
+          kind: integer
+          default: 1
+          minimum: 1
+          maximum: 4
+          allowed_values: null
+  # THE CACHE-TIERED TWIN of the priced fixture (the alignment audit's F9):
+  # mock-priced's profile with the cache read rate and BOTH write tiers —
+  # the 5-minute rate and the 1-hour rate the wire's
+  # `cache_creation.ephemeral_1h_input_tokens` bills at — so a compiled
+  # schedule carries the second write key. mock-priced itself stays
+  # without them: a schedule WITHOUT the tiers is a shape settlement pins
+  # (every input class at the input rate), and needs its own row.
+  dev/mock-priced-cached:
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0.5"
+          output_per_mtok: "1.5"
+          cached_input_per_mtok: "0.05"
+          cache_write_per_mtok: "0.625"
+          cache_write_1h_per_mtok: "1"
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [text]
+      limits:
+        input_tokens: 8192
+        output_tokens: 2048
+      reasoning:
+        efforts: [low, medium, high]
+        default_effort: medium
+      service_tiers: [standard]
+  # THE IMAGE TOKEN FAMILY's fixture (F17): the gpt-image rows' per-token
+  # schedule — text in, image in, image out per Mtok, the two cached
+  # classes authored — beside mock-image's per-image one, so a compiled
+  # catalog carries both image formulas. Takes an image in (the edits
+  # route) like the shipped rows.
+  dev/mock-image-priced:
+    api_format: openai_images
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          text_input_per_mtok: "5"
+          image_input_per_mtok: "8"
+          image_output_per_mtok: "30"
+          cached_text_input_per_mtok: "1.25"
+          cached_image_input_per_mtok: "2"
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [image]
+      limits:
+        input_bytes: 65536
+        result_count: 1
+      service_tiers: [standard]
+  dev/mock-speech:
+    api_format: openai_audio_speech
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          per_mchar: "0"
+    capabilities:
+      input_modalities: []
+      output_modalities: [audio]
+      limits:
+        input_bytes: 65536
+        result_count: 1
+      service_tiers: [standard]
+      generation_parameters:
+        voice:
+          kind: string
+          default: Kore
+          minimum: null
+          maximum: null
+          allowed_values: [Kore, Puck]
+        format:
+          kind: string
+          default: wav
+          minimum: null
+          maximum: null
+          allowed_values: [wav, mp3]
+  dev/mock-transcription:
+    api_format: openai_audio_transcriptions
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          per_minute: "0"
+    capabilities:
+      input_modalities: [audio]
+      output_modalities: [text]
+      limits:
+        input_bytes: 104857600
+        output_tokens: 4096
+      service_tiers: [standard]
+      generation_parameters:
+        # NO DEFAULT, which is the honest shape for this control: the endpoint
+        # detects the language when none is sent, and `auto` was a value
+        # invented to satisfy a validator that used to demand a default. A
+        # caller who wants detection now sends nothing, and nothing is what
+        # crosses the wire.
+        language:
+          kind: string
+          default: null
+          minimum: null
+          maximum: null
+          allowed_values: [en, zh]
+  dev/mock-embedding:
+    api_format: openai_embeddings
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0"
+    capabilities:
+      input_modalities: []
+      output_modalities: [embedding]
+      limits:
+        input_tokens: 8192
+        embedding_dimensions: [3, 8]
+      service_tiers: [standard]
+      generation_parameters:
+        dimensions:
+          kind: integer
+          default: 3
+          minimum: null
+          maximum: null
+          allowed_values: [3, 8]
+selectors:
+  fast-text:
+    - model: dev/mock-text
+      reasoning_effort: low

@@ -1,0 +1,11 @@
+<% content_for :title, "Add model" %>
+<div class="space-y-6">
+  <%= render "admin/model_providers/header", provider: @provider, current: :model, description: "Add a model using its exact provider ID. Pricing is optional." %>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-lg font-medium">Add model</h2>
+  </div>
+  <%= turbo_frame_tag "model-directory" do %>
+    <%= link_to "Discover model IDs", admin_model_provider_model_discovery_path(@provider.fetch(:id)), class: "btn btn-sm" %>
+  <% end %>
+  <%= render "form", form: @form, provider: @provider, creating: true %>
+</div>

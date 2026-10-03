@@ -1,0 +1,32 @@
+module Rho
+  module IngressTelegram
+    class TokenFile
+      def initialize: (untyped home) -> void
+      def read: () -> String
+      def write: (String token) -> untyped
+      def clear: () -> nil
+      def inspect: () -> String
+    end
+
+    class Configuration
+      EXTENSION: String
+      class Prepared < Data
+        attr_reader patch: document
+        attr_reader token_changed: bool
+        attr_reader saved_token: String?
+        attr_reader token: String
+        attr_reader bot: document?
+        def self.new: (patch: document, token_changed: bool, saved_token: String?, token: String, bot: document?) -> instance
+        def persist_token: (Rho::Home home) -> untyped
+      end
+      def initialize: (home: Rho::Home, config: Rho::Config, ?env: untyped, ?clients: untyped) -> void
+      def prepare: (document input, ?bot_id: String?, ?verify: bool) -> Prepared
+      def identify: (String token, ?bot_id: String?) -> document
+    end
+
+    class Setup
+      def initialize: (home: untyped, prompt: untyped, ?env: untyped, ?clients: untyped) -> void
+      def run: (?finish: bool) -> bool
+    end
+  end
+end

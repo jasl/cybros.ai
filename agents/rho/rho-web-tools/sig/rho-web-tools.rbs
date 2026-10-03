@@ -1,0 +1,167 @@
+module Rho
+  module WebTools
+    VERSION: String
+    NAME: String
+    SETTINGS_KEYS: Array[String]
+
+    class Error < Rho::Runner::Error
+    end
+    class Refused < Error
+      attr_reader reason: Symbol
+      def initialize: (String message, ?reason: Symbol) -> void
+    end
+    class Unreachable < Error
+    end
+    class TooLarge < Error
+      attr_reader bytes: Integer
+      def initialize: (String message, bytes: Integer) -> void
+    end
+    class Redirected < Error
+      attr_reader status: Integer?
+      attr_reader location: String?
+      def initialize: (String message, status: Integer?, location: String?) -> void
+    end
+
+    URL_MAX_BYTES: Integer
+    def self.shorten: (String text, Integer bytes) -> String
+
+    def self.log: () -> untyped
+    def self.settings: () -> Hash[String, bool]
+    def self.settings=: (untyped table) -> Hash[String, bool]
+    def self.allow_private_network?: () -> bool
+    def self.reset!: () -> nil
+    def self.register: (untyped api) -> untyped
+    def self.judge: (untyped table) -> Hash[String, bool]
+    def self.configure_markdown!: () -> untyped
+
+    module UrlRule
+      SCHEMES: Array[String]
+      NOT_A_URL: String
+      SCHEME: String
+      CREDENTIALS: String
+      NUMERIC_LABEL: Regexp
+      def self?.parse: (untyped url) -> untyped
+      def self?.same_site?: (untyped original, untyped location) -> bool
+      def self?.bare: (untyped host) -> String
+      def self?.not_canonical: (String host) -> String
+      def self?.canonical_host!: (String host) -> void
+    end
+
+    class Page < ::Data
+      attr_reader url: String
+      attr_reader final_url: String
+      attr_reader status: Integer
+      attr_reader media_type: String
+      attr_reader charset: String?
+      attr_reader body: String
+      attr_reader bytes: Integer
+      attr_reader redirects: Integer
+      def redirect?: () -> bool
+      def error?: () -> bool
+    end
+
+    module CancelWatch
+      POLL_SECONDS: Float
+      class Interrupted < HTTPX::Error
+      end
+      module InstanceMethods
+      end
+    end
+
+    module NoAltSvc
+      module ResponseMethods
+      end
+    end
+
+    class Client
+      WIRE_CAP: Integer
+      CONNECT_TIMEOUT: Integer
+      TOTAL_TIMEOUT: Integer
+      MAX_REDIRECTS: Integer
+      URL_ACTIONABLE_BYTES: Integer
+      ERROR_BODY_BYTES: Integer
+      REDIRECT_STATUS: Range[Integer]
+      LIFTED_RANGES: Array[untyped]
+      USER_AGENT: String
+      ACCEPT: String
+      attr_reader allow_private_network: bool
+      attr_reader total_timeout: Numeric
+      attr_reader connect_timeout: Numeric
+      def initialize: (?allow_private_network: bool, ?total_timeout: Numeric, ?connect_timeout: Numeric,
+                       ?resolver_options: Hash[Symbol, untyped]?) -> void
+      def get: (untyped url) -> Page
+      def private_sentence: (String host) -> String
+    end
+
+    module Render
+      class Unrenderable < Error
+      end
+      class Rendering < ::Data
+        attr_reader kind: Symbol
+        attr_reader text: String?
+        attr_reader title: String?
+        attr_reader cut: Integer?
+      end
+      RENDER_INPUT_BYTES: Integer
+      HTML_TYPES: Array[String]
+      TEXT_TYPES: Array[String]
+      STRUCTURED_SUFFIXES: Array[String]
+      DROPPED: String
+      INVISIBLE: Regexp
+      BYTE_ORDER_MARKS: Array[String]
+      META_CHARSET: Regexp
+      META_PRESCAN_BYTES: Integer
+      LEGACY_FALLBACK: String
+      def self?.call: (Page page) -> Rendering
+      def self?.html?: (untyped media_type) -> bool
+      def self?.text?: (untyped media_type) -> bool
+      def self?.markdown: (String html, ?charset: String?) -> Rendering
+      def self?.page_encoding: (String bytes, untyped charset) -> String
+      def self?.utf8_but_its_cut_tail?: (String bytes) -> bool
+      def self?.encoding_name: (untyped charset) -> String?
+      def self?.decode: (String bytes, untyped charset) -> String
+      def self?.clean: (untyped text) -> String
+    end
+
+    module Tools
+      class Fetch
+        NAME: String
+        EFFECT_PROFILE: Hash[String, untyped]
+        TIMEOUT_MS: Integer
+        INTERNAL_CLAMP: bool
+        SCHEMA: Hash[String, untyped]
+        DESCRIPTION: String
+        PROMPT_SNIPPET: String
+        PROMPT_GUIDELINES: Array[String]
+        TITLE_MAX_BYTES: Integer
+        IMAGE_SUBTYPES: Array[String]
+        PATH_EXTENSION: Regexp
+        CAPTURE_PREFIX: String
+        def self.status_line: (Page page, Render::Rendering rendering) -> String
+        def self.answered: (Page page) -> String
+        def self.phrase: (Integer status) -> String
+        def self.size: (Integer bytes) -> String
+        def initialize: (env: untyped) -> void
+        def call: (untyped args) -> Rho::Runner::Result
+      end
+    end
+
+    module Commands
+      USAGE: String
+      DESCRIPTION: String
+      OPTIONS: Hash[Symbol, untyped]
+      def self?.run: (untyped cli, Array[String] args, untyped options) -> untyped
+      def self?.refuse: (String sentence) -> bot
+      def self?.fetch: (untyped cli, String url, raw: bool) -> Page
+      def self?.escape: (untyped text) -> String
+    end
+  end
+end
+
+# httpx ships its own signatures; the one class rho-web-tools subclasses is
+# declared here, minimally, so the packaged surface validates without
+# the gem's whole sig tree on the path.
+module HTTPX
+  class Error < StandardError
+  end
+end

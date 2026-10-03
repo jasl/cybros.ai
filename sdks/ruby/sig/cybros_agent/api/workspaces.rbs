@@ -1,0 +1,167 @@
+module CybrosAgent
+  module Api
+    module WorkspaceProjections
+      include Parsing
+
+      private
+
+      def required_string: (untyped value, String name) -> String
+      def required_string_snapshot: (untyped value, String name) -> String
+      def path_segment: (untyped value, String name) -> String
+    end
+
+    class WorkspaceOwnerSummary < Data
+      attr_reader public_id: String
+      attr_reader display_name: String?
+
+      def self.new: (String public_id, String? display_name) -> instance
+                  | (public_id: String, display_name: String?) -> instance
+      def self.[]: (String public_id, String? display_name) -> instance
+                 | (public_id: String, display_name: String?) -> instance
+      def self.members: () -> [:public_id, :display_name]
+
+      def members: () -> [:public_id, :display_name]
+    end
+
+    class ToolProviderOverride < Data
+      attr_reader provider_public_id: String
+      attr_reader display_name: String?
+      attr_reader assignment_scope: String?
+
+      def self.new: (String provider_public_id, String? display_name, String? assignment_scope) -> instance
+                  | (provider_public_id: String, display_name: String?, assignment_scope: String?) -> instance
+      def self.[]: (String provider_public_id, String? display_name, String? assignment_scope) -> instance
+                 | (provider_public_id: String, display_name: String?, assignment_scope: String?) -> instance
+      def self.members: () -> [:provider_public_id, :display_name, :assignment_scope]
+
+      def members: () -> [:provider_public_id, :display_name, :assignment_scope]
+    end
+
+    class WorkspaceCreatorSummary < Data
+      attr_reader public_id: String
+      attr_reader display_name: String?
+      attr_reader kind: String
+
+      def self.new: (String public_id, String? display_name, String kind) -> instance
+                  | (public_id: String, display_name: String?, kind: String) -> instance
+      def self.[]: (String public_id, String? display_name, String kind) -> instance
+                 | (public_id: String, display_name: String?, kind: String) -> instance
+      def self.members: () -> [:public_id, :display_name, :kind]
+
+      def members: () -> [:public_id, :display_name, :kind]
+    end
+
+    class WorkspaceSummary < Data
+      attr_reader public_id: String
+      attr_reader name: String
+      attr_reader access_mode: String
+      attr_reader state: String
+      attr_reader dedicated: bool
+      attr_reader lock_version: Integer
+      attr_reader archived_at: String?
+      attr_reader created_at: String
+      attr_reader updated_at: String
+
+      def self.new: (String public_id, String name, String access_mode, String state, bool dedicated, Integer lock_version, String? archived_at, String created_at, String updated_at) -> instance
+                  | (public_id: String, name: String, access_mode: String, state: String, dedicated: bool, lock_version: Integer, archived_at: String?, created_at: String, updated_at: String) -> instance
+      def self.[]: (String public_id, String name, String access_mode, String state, bool dedicated, Integer lock_version, String? archived_at, String created_at, String updated_at) -> instance
+                 | (public_id: String, name: String, access_mode: String, state: String, dedicated: bool, lock_version: Integer, archived_at: String?, created_at: String, updated_at: String) -> instance
+      def self.members: () -> [:public_id, :name, :access_mode, :state, :dedicated, :lock_version, :archived_at, :created_at, :updated_at]
+
+      def members: () -> [:public_id, :name, :access_mode, :state, :dedicated, :lock_version, :archived_at, :created_at, :updated_at]
+    end
+
+    class Workspace < Data
+      attr_reader public_id: String
+      attr_reader name: String
+      attr_reader access_mode: String
+      attr_reader state: String
+      attr_reader dedicated: bool
+      attr_reader lock_version: Integer
+      attr_reader archived_at: String?
+      attr_reader created_at: String
+      attr_reader updated_at: String
+      attr_reader metadata: Hash[String, untyped]
+      attr_reader tool_provider_overrides: Hash[String, ToolProviderOverride]
+      attr_reader owner: WorkspaceOwnerSummary
+      attr_reader creator: WorkspaceCreatorSummary
+
+      def self.new: (String public_id, String name, String access_mode, String state, bool dedicated, Integer lock_version, String? archived_at, String created_at, String updated_at, Hash[String, untyped] metadata, Hash[String, ToolProviderOverride] tool_provider_overrides, WorkspaceOwnerSummary owner, WorkspaceCreatorSummary creator) -> instance
+                  | (public_id: String, name: String, access_mode: String, state: String, dedicated: bool, lock_version: Integer, archived_at: String?, created_at: String, updated_at: String, metadata: Hash[String, untyped], tool_provider_overrides: Hash[String, ToolProviderOverride], owner: WorkspaceOwnerSummary, creator: WorkspaceCreatorSummary) -> instance
+      def self.[]: (String public_id, String name, String access_mode, String state, bool dedicated, Integer lock_version, String? archived_at, String created_at, String updated_at, Hash[String, untyped] metadata, Hash[String, ToolProviderOverride] tool_provider_overrides, WorkspaceOwnerSummary owner, WorkspaceCreatorSummary creator) -> instance
+                 | (public_id: String, name: String, access_mode: String, state: String, dedicated: bool, lock_version: Integer, archived_at: String?, created_at: String, updated_at: String, metadata: Hash[String, untyped], tool_provider_overrides: Hash[String, ToolProviderOverride], owner: WorkspaceOwnerSummary, creator: WorkspaceCreatorSummary) -> instance
+      def self.members: () -> [:public_id, :name, :access_mode, :state, :dedicated, :lock_version, :archived_at, :created_at, :updated_at, :metadata, :tool_provider_overrides, :owner, :creator]
+
+      def members: () -> [:public_id, :name, :access_mode, :state, :dedicated, :lock_version, :archived_at, :created_at, :updated_at, :metadata, :tool_provider_overrides, :owner, :creator]
+      def inspect: () -> String
+      def to_s: () -> String
+      def pretty_print: (untyped printer) -> void
+    end
+
+    class Workspaces
+      include Fields
+      include WorkspaceProjections
+
+      PATH: String
+
+      def initialize: (dispatch: _Dispatch) -> void
+      def list: (?state: String?, ?dedicated_to_current_agent: bool?, ?after: String?, ?limit: Integer?) -> Page[WorkspaceSummary]
+      def create: (name: String, idempotency_key: String, ?access_mode: String?, ?metadata: Hash[untyped, untyped]?) -> Workspace
+      def fetch: (String public_id) -> Workspace
+    end
+
+    class WorkspaceContext
+      include Fields
+      include WorkspaceProjections
+
+      attr_reader public_id: String
+
+      def initialize: (dispatch: _Dispatch, public_id: String) -> void
+      def update: (?name: String?, ?metadata: Hash[untyped, untyped]?, lock_version: Integer) -> Workspace
+      def update_access_mode: (access_mode: String, lock_version: Integer) -> Workspace
+      def set_tool_provider_overrides: (overrides: Hash[String, String], lock_version: Integer) -> Workspace
+      def transfer_ownership: (target_user_public_id: String, lock_version: Integer) -> Workspace
+      def archive: (lock_version: Integer) -> Workspace
+      def restore: (lock_version: Integer) -> Workspace
+      def delete: (lock_version: Integer) -> Workspace
+      def store_entries: () -> StoreEntriesContext
+      def principals: () -> Array[Principal]
+      def prompt_documents: () -> PromptDocumentsContext
+      def one_shots: () -> OneShotsContext
+      def conversations: () -> ConversationsContext
+      def agent_loops: () -> AgentLoopsContext
+      def agent_loop: (String public_id) -> AgentLoopContext
+      def conversation: (String public_id) -> ConversationContext
+      def agent_loop_task: (
+        agent_loop_public_id: String, task_key: String
+      ) -> AgentLoopTasksContext
+
+      private
+
+      def path: () -> String
+      def lifecycle_command: (String action, Integer lock_version) -> Workspace
+    end
+
+    class Principal < Data
+      include Redacted
+
+      attr_reader public_id: String
+      attr_reader handle: String
+      attr_reader kind: String
+      attr_reader display_name: String?
+      attr_reader agent_identifier: String?
+      attr_reader steward_public_id: String?
+
+      def self.new: (public_id: String, handle: String, kind: String, display_name: String?, agent_identifier: String?, steward_public_id: String?) -> instance
+      def self.[]: (public_id: String, handle: String, kind: String, display_name: String?, agent_identifier: String?, steward_public_id: String?) -> instance
+      def self.members: () -> [:public_id, :handle, :kind, :display_name, :agent_identifier, :steward_public_id]
+
+      def members: () -> [:public_id, :handle, :kind, :display_name, :agent_identifier, :steward_public_id]
+      def agent?: () -> bool
+      def human?: () -> bool
+      def inspect: () -> String
+    end
+
+  end
+
+end

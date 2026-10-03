@@ -1,0 +1,114 @@
+module CybrosAgent
+
+  # THE MODEL-ADAPTATIONS PACK: a documented YAML
+  # data format whose rows are matched to a model by pattern — the alias
+  # TABLES (`presets.yml`) and one row per file (`rows/*.yml`) — its
+  # loader, and the pure set function an application applies at declare.
+  module ModelAdaptations
+    FORMAT: Integer
+    DEFAULT_DIR: String
+    DEFAULT_ROW: String
+    SOURCES: Array[String]
+    COMPOSE_WORDS: Array[String]
+    PLAIN_WORD: String
+    BACKTICKED: Regexp
+
+    type alias_spec = Hash[String, untyped]
+    type entry = Hash[String, untyped]
+    type templates = Hash[String, String]
+
+    class Invalid < Error
+      attr_reader file: String
+      attr_reader path: String
+
+      def initialize: (String file, String path, String message) -> void
+    end
+
+    class AnchorMoved < Error
+    end
+
+    def self.load: (?String dir, ?extra: Array[String]) -> Pack
+    def self.freeze_deep: [T] (T value) -> T
+
+    class Preset < Data
+      attr_reader word: String
+      attr_reader supersedes: Array[String]
+      attr_reader aliases: Array[alias_spec]
+
+      def self.new: (word: String, supersedes: Array[String], aliases: Array[alias_spec]) -> instance
+    end
+
+    class Presets < Data
+      attr_reader words: Array[String]
+      attr_reader plain: Hash[String, String]
+      attr_reader presets: Hash[String, Preset]
+      attr_reader owners: Hash[String, String]
+
+      def self.new: (words: Array[String], plain: Hash[String, String], presets: Hash[String, Preset]) -> instance
+      def preset: (String word) -> Preset
+      def aliases_for: (Array[String] styles) -> Array[alias_spec]
+      def plain_name: (String canonical) -> String
+      def plain_name?: (String name) -> bool
+      def canonical_of: (String name) -> String?
+      def owner: (String name) -> String?
+    end
+
+    class Row < Data
+      attr_reader id: String
+      attr_reader models: Array[String]
+      attr_reader source: String
+      attr_reader tool_style: Array[String]
+      attr_reader tool_descriptions: Array[alias_spec]
+      attr_reader summarizer_prompt: String?
+      attr_reader lead_hints: Array[Hash[String, String]]
+      attr_reader compose: String
+
+      def self.new: (id: String, models: Array[String], source: String, tool_style: Array[String],
+                     tool_descriptions: Array[alias_spec], summarizer_prompt: String?,
+                     lead_hints: Array[Hash[String, String]], compose: String) -> instance
+      def local?: () -> bool
+      def gem?: () -> bool
+      def default?: () -> bool
+      def specificity: (String reference) -> Integer?
+      def compose?: () -> bool
+      def hint_texts: () -> Array[String]
+    end
+
+    class Pack
+      attr_reader presets: Presets
+      attr_reader rows: Array[Row]
+
+      def initialize: (presets: Presets, rows: Array[Row], gem_ids: Array[String]) -> void
+      def row: (untyped id) -> Row?
+      def ids: () -> Array[String]
+      def default: () -> Row
+      def for: (untyped model_ref) -> Row
+      def gem_rows: () -> Array[Row]
+      def local_rows: () -> Array[Row]
+      def apply: (Array[entry] definitions, Row row, ?templates: templates) -> Array[entry]
+      def alias_entries: (Row row, ?templates: templates) -> Array[entry]
+    end
+
+    module Styles
+      def self?.apply: (Array[entry] definitions, Row row, presets: Presets, ?templates: templates) -> Array[entry]
+      def self?.alias_specs: (Row row, presets: Presets) -> Array[alias_spec]
+      def self?.alias_entries: (Row row, presets: Presets, ?templates: templates) -> Array[entry]
+      def self?.entry: (alias_spec spec, ?templates: templates) -> entry
+      def self?.recut: (alias_spec spec, templates templates) -> String?
+      def self?.withheld?: (String? name, Array[String] styles, presets: Presets) -> bool
+      def self?.superseded?: (String? canonical, Array[String] styles, presets: Presets) -> bool
+      def self?.superseded_names: (Array[String] styles, presets: Presets) -> Array[String]
+      def self?.name_of: (entry entry) -> String?
+      def self?.names_of: (untyped entries) -> Array[String?]
+    end
+
+    class Loader
+      attr_reader dir: String
+      attr_reader extra: Array[String]
+
+      def initialize: (String dir, ?extra: Array[String]) -> void
+      def pack: () -> Pack
+    end
+  end
+
+end

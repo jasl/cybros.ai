@@ -1,0 +1,30 @@
+#!/bin/sh
+# The lint stand-in: names the two real offences in app/models/user.rb —
+# trailing whitespace and `== true` — and COUNTS them, so a fixed file reads
+# "no offenses detected" (12a L5: an unconditional "2 offenses detected"
+# left the fixer nothing it could ever see as clean, and a kimi fixer turn
+# re-ran this lint ≈ 70 times). The exit status stays 0 as before.
+file=app/models/user.rb
+offenses=$( {
+  grep -n " $" "$file" | sed 's/^\([0-9]*\):.*$/app\/models\/user.rb:\1:1: C: Layout\/TrailingWhitespace: Trailing whitespace detected./'
+  grep -n "== true" "$file" | sed 's/^\([0-9]*\):.*$/app\/models\/user.rb:\1:1: C: Style\/RedundantCondition: Remove the == true./'
+} )
+count=$(printf '%s\n' "$offenses" | grep -c .)
+echo "Inspecting 1 file"
+if [ "$count" -eq 0 ]; then
+  echo "."
+  echo ""
+  echo "1 file inspected, no offenses detected"
+  exit 0
+fi
+echo "C"
+echo ""
+echo "Offenses:"
+echo ""
+printf '%s\n' "$offenses"
+echo ""
+if [ "$count" -eq 1 ]; then
+  echo "1 file inspected, 1 offense detected"
+else
+  echo "1 file inspected, $count offenses detected"
+fi

@@ -1,0 +1,29 @@
+module Rho
+  module Cli
+    class Setup
+      def initialize: (cli: untyped, ?nexus_url: String?, ?public_url: String?, ?input: untyped, ?output: untyped,
+        ?error: untyped, ?env: untyped, ?prompt: untyped, ?provider_setup: untyped, ?telegram_setup: untyped) -> void
+      def run: (?String? section, ?finish: bool) -> bool
+    end
+  end
+
+  module Extensions
+    module Setup
+      NAME: String
+      def self.register: (untyped api) -> untyped
+
+      module Installation
+        class Projection < ::Data
+          attr_reader nexus_ready: bool
+          attr_reader setup_url: String?
+          attr_reader error: String?
+          def self.new: (nexus_ready: bool, setup_url: String?, error: String?) -> instance
+          def self.from_h: (Hash[String, untyped] document) -> instance
+          def self.setup_link: (untyped value) -> String?
+        end
+
+        def self.read: (untyped ctx) -> untyped
+      end
+    end
+  end
+end

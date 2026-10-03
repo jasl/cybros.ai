@@ -1,0 +1,202 @@
+module Rho
+  # The three-state runner slot a terminal prints.
+  module RunnerSlot
+    NONE: String
+    OFFLINE_HINT: String
+    NOT_YET_SEEN_HINT: String
+    def self?.line: (untyped runner, ?now: Time) -> String?
+    def self?.presence_word: (String? presence, untyped last_seen_at, ?now: Time) -> String
+    def self?.age_of: (untyped last_seen_at, ?now: Time) -> String?
+  end
+
+  # The runners elsewhere this daemon knows, as discovery last listed them.
+  class RemoteRunners
+    def initialize: () -> void
+    def get: (String public_id) -> untyped
+    def put: (untyped document) -> untyped
+    def delete: (String public_id) -> untyped
+    def ids: () -> Array[String]
+  end
+
+  class EnvironmentStore
+    class Selection < ::Data
+      attr_reader root: String?
+      attr_reader source: String
+      def stated?: () -> bool
+    end
+
+    def initialize: (String path) -> void
+    def read: () -> String?
+    def write: (untyped root) -> EnvironmentStore
+    def clear: () -> EnvironmentStore
+    def select: (configured: String?) { () -> String } -> Selection
+  end
+
+  # The conversation's environment tables: the
+  # record memo and store client, the relay's assertions, the received
+  # table, the placements and their stores — one instance the daemon owns.
+  class Environments
+    RECORDS_MAX: Integer
+    RELAY_GATE_SECONDS: Integer
+    RELAY_POLL_SECONDS: Float
+    WALK_DEPTH: Integer
+    TOOL_NOT_SERVED: String
+    SOURCES: Array[String]
+
+    class Record < ::Data
+      attr_reader public_id: String?
+      attr_reader binding: untyped
+      attr_reader source: String
+      def self.new: (public_id: String?, binding: untyped, source: String) -> instance
+    end
+
+    class Miss < ::Data
+      attr_reader loop: String?
+      def self.new: (loop: String?) -> instance
+    end
+
+    class Assertion < ::Data
+      attr_reader digest: String
+      attr_reader boot: String?
+      attr_reader state: String
+      attr_reader booted_at: String?
+      attr_reader resolved: bool?
+      def self.new: (digest: String, boot: String?, state: String, booted_at: String?, resolved: bool?) -> instance
+    end
+
+    class Relayed < ::Data
+      attr_reader runner: String?
+      attr_reader state: String
+      attr_reader booted_at: String?
+      attr_reader resolved: bool?
+      def self.new: (runner: String?, state: String, booted_at: String?, resolved: bool?) -> instance
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class Resolved < ::Data
+      attr_reader binding: untyped
+      attr_reader source: String
+      attr_reader public_id: String?
+      attr_reader lock_version: Integer?
+      attr_reader updated_at: String?
+      def self.new: (binding: untyped, source: String, public_id: String?, lock_version: Integer?,
+                     updated_at: String?) -> instance
+      def self.default: () -> instance
+      def root: () -> String?
+      def directories: () -> Array[String]
+      def anchor: () -> String?
+    end
+
+    # The runner slot's forwarding handle: the `Toolsets` duck the runner
+    # gem reads, over the `Toolsets` of the moment.
+    class Slot < Rho::Runner::Toolsets
+      def initialize: (Environments environments, ?agent: bool) -> void
+      def for: (untyped task) -> Rho::Runner::Placement
+      def names: () -> Array[String]
+      def zero: () -> Rho::Runner::Placement
+      def ports: () -> (^(String?) -> Extensions::Environment::FsPort?)?
+      def extras: () -> Servers?
+    end
+
+    # The editor's MCP servers per anchor, served on the agent slot: the runner's `extras` duck (`call`, `owner_of`, `names`) and the announcement's and declaration's source.
+    class Servers
+      LAUNCH_KEYS: Array[String]
+
+      class Held < ::Data
+        attr_reader set: untyped
+        attr_reader entries: Hash[String, Rho::Runner::Extensions::Registry::Entry]
+        attr_reader digest: String
+        attr_reader faults: Hash[String, String]
+        def self.new: (set: untyped, entries: Hash[String, Rho::Runner::Extensions::Registry::Entry], digest: String,
+                       faults: Hash[String, String]) -> instance
+      end
+
+      class Bound < ::Data
+        attr_reader report: Array[Hash[Symbol, untyped]]
+        attr_reader changed: bool
+        def self.new: (report: Array[Hash[Symbol, untyped]], changed: bool) -> instance
+      end
+
+      def self.digest: (untyped entries) -> String
+      def initialize: (monitor: untyped, log: untyped, registrar: Extensions::Registrar?,
+                       served: Rho::Runner::Extensions::Registry) -> void
+      def registrar?: () -> bool
+      attr_reader registrar: Extensions::Registrar?
+      attr_reader served: Rho::Runner::Extensions::Registry
+      def configure: (registrar: Extensions::Registrar?, served: Rho::Runner::Extensions::Registry) -> Servers
+      def bind: (String anchor, untyped entries) -> (Bound | Daemon::Refusal)
+      def report: (String? anchor) -> Array[Hash[Symbol, untyped]]
+      def call: (String? anchor) -> [Array[untyped], String?]
+      def owner_of: (String name) -> String?
+      def names: () -> Array[String]
+      def names_for: (String? anchor) -> Array[String]
+      def announcement: () -> Array[Hash[String, untyped]]
+      def announcement_for: (String? anchor) -> Array[Hash[String, untyped]]
+      def digest: () -> String
+      def host_ended: (String anchor) -> bool
+      def shutdown: () -> nil
+      def []: (String? anchor) -> Held?
+    end
+
+    # The editor's file-system port per anchor.
+    class Ports
+      def initialize: (monitor: untyped, log: untyped) -> void
+      def register: (String anchor, url: String, token: String, read: bool, write: bool, client: String) -> Extensions::Environment::FsPort
+      def drop: (String anchor, reason: String, ?port: Extensions::Environment::FsPort?, ?detail: String?) -> bool
+      def []: (String? anchor) -> Extensions::Environment::FsPort?
+      def live?: (String? anchor) -> bool
+      def description: (String? anchor) -> Hash[Symbol, untyped]?
+      def resolver: () -> ^(String?) -> Extensions::Environment::FsPort?
+    end
+
+    attr_reader booted_at: String
+    def initialize: (
+      home: Home, config: Config, registry: Rho::Runner::Extensions::Registry, log: untyped, clock: ^() -> Time,
+      booted_at: String, default_root: ^() -> String?, member_plane: ^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> Extensions::MemberPlane?,
+      own_runner: ^(String?) -> bool, learn_runner: ^(untyped) -> untyped, spawn: untyped,
+      ?processes: untyped, ?checkpoints: bool, ?registrar: Extensions::Registrar?,
+      ?served: Rho::Runner::Extensions::Registry?, ?servers_changed: (^() -> untyped)?
+    ) -> void
+    def toolsets: () -> Slot
+    def configure: (config: Config, ?registry: Rho::Runner::Extensions::Registry,
+                    ?agent_registry: Rho::Runner::Extensions::Registry?, ?registrar: Extensions::Registrar?,
+                    ?served: Rho::Runner::Extensions::Registry, ?checkpoints: bool) -> Environments
+    def current_toolsets: () -> Rho::Runner::Toolsets
+    def current_agent_toolsets: () -> Rho::Runner::Toolsets
+    def zero: () -> Rho::Runner::Placement
+    def rebuild_zero: () -> Rho::Runner::Placement
+    def zero_checkpoints: () -> untyped
+    def checkpoint_stores: (?String? id) -> Array[Runner::Checkpoints::Store]
+    def agent_toolsets: (Rho::Runner::Extensions::Registry registry) -> Slot
+    def resolve: (String conversation, ?String? parent) -> Rho::Runner::Environment::Binding?
+    def read: (String conversation, ?plane: Extensions::MemberPlane?, ?loop: String?, ?parent: String?) -> Resolved
+    def binding_for: (String conversation, ?plane: Extensions::MemberPlane?, ?loop: String?, ?parent: String?, ?workspace_public_id: String?) -> Rho::Runner::Environment::Binding?
+    def bind: (String conversation, root: String, directories: Array[String], ?plane: Extensions::MemberPlane?) -> (Resolved | Daemon::Refusal)
+    def clear: (String conversation, ?plane: Extensions::MemberPlane?) -> (Resolved | Daemon::Refusal)
+    def remember_copy: (String conversation, untyped binding) -> untyped
+    def adopt_children: (String parent, Array[String] children) -> void
+    def assert_remote: (String conversation, String? runner, untyped binding, ?plane: Extensions::MemberPlane?,
+                        ?document: untyped, ?wait: bool, ?gate: Numeric) -> Relayed
+    def reassert_stale: (Array[Hash[Symbol, untyped]] rows) -> void
+    def asserted: (String conversation, String runner) -> Assertion?
+    def receive: (String conversation, untyped binding) -> bool
+    def received: (String conversation) -> untyped
+    def refusal_for: (String path, ?local: bool) -> String?
+    def validate: (untyped root, untyped directories, ?local: bool) -> Daemon::Refusal?
+    def resolved?: (untyped binding) -> bool
+    def register_port: (String anchor, url: String, token: String, read: bool, write: bool, client: String) -> Extensions::Environment::FsPort
+    def drop_port: (String anchor, reason: String) -> bool
+    def port_for: (String? anchor) -> Extensions::Environment::FsPort?
+    def port_live?: (String? anchor) -> bool
+    def port_description: (String? anchor) -> Hash[Symbol, untyped]?
+    def describing_lead: [T] (String? anchor) { () -> T } -> T
+    def lead_port?: () -> bool
+    attr_reader servers: Servers
+    def bind_servers: (String anchor, untyped entries) -> (Servers::Bound | Daemon::Refusal)
+    def servers_report: (String? anchor) -> Array[Hash[Symbol, untyped]]
+    def shutdown: () -> nil
+    def listing: (Array[untyped] hosts) -> Array[Hash[Symbol, untyped]]
+    def memo: (String conversation) -> (Record | Miss)?
+    def host_ended: (String conversation) -> bool
+  end
+end

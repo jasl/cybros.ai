@@ -1,0 +1,146 @@
+module CybrosAgent
+  module Api
+    class Member < Data
+      attr_reader public_id: String
+      attr_reader handle: String
+      attr_reader kind: String
+      attr_reader role: String
+      attr_reader display_name: String?
+
+      def self.new: (String public_id, String handle, String kind, String role, String? display_name) -> instance
+                  | (public_id: String, handle: String, kind: String, role: String, display_name: String?) -> instance
+      def self.[]: (String public_id, String handle, String kind, String role, String? display_name) -> instance
+                 | (public_id: String, handle: String, kind: String, role: String, display_name: String?) -> instance
+      def self.members: () -> [:public_id, :handle, :kind, :role, :display_name]
+
+      def members: () -> [:public_id, :handle, :kind, :role, :display_name]
+    end
+
+    class Credential < Data
+      attr_reader plane: String
+      attr_reader expires_at: String?
+
+      def self.new: (String plane, String? expires_at) -> instance
+                  | (plane: String, expires_at: String?) -> instance
+      def self.[]: (String plane, String? expires_at) -> instance
+                 | (plane: String, expires_at: String?) -> instance
+      def self.members: () -> [:plane, :expires_at]
+
+      def members: () -> [:plane, :expires_at]
+    end
+
+    class AgentConfiguration < Data
+      attr_reader tool_definitions: Array[Hash[String, untyped]]
+      attr_reader approval_mode: String?
+      attr_reader approval_rules: Array[Hash[String, untyped]]?
+      attr_reader prompt_mechanism: String?
+      attr_reader prompt_template: Hash[String, untyped]?
+      attr_reader compaction_policy: Hash[String, untyped]?
+      attr_reader lifecycle_hooks: Hash[String, untyped]?
+      attr_reader default_model: String?
+      attr_reader fallback_model: String?
+
+      def self.new: (
+        tool_definitions: Array[Hash[String, untyped]], approval_mode: String?,
+        approval_rules: Array[Hash[String, untyped]]?,
+        prompt_mechanism: String?, prompt_template: Hash[String, untyped]?, compaction_policy: Hash[String, untyped]?,
+        default_model: String?, lifecycle_hooks: Hash[String, untyped]?, fallback_model: String?
+      ) -> instance
+      def self.members: () -> [:tool_definitions, :approval_mode, :approval_rules, :prompt_mechanism, :prompt_template, :compaction_policy, :default_model, :lifecycle_hooks, :fallback_model]
+
+      def members: () -> [:tool_definitions, :approval_mode, :approval_rules, :prompt_mechanism, :prompt_template, :compaction_policy, :default_model, :lifecycle_hooks, :fallback_model]
+    end
+
+    class Profile < Data
+      attr_reader member: Member
+      attr_reader credential: Credential
+      attr_reader configuration: AgentConfiguration?
+      attr_reader measured_at: String
+
+      def self.new: (Member member, Credential credential, AgentConfiguration? configuration, String measured_at) -> instance
+                  | (member: Member, credential: Credential, configuration: AgentConfiguration?, measured_at: String) -> instance
+      def self.[]: (Member member, Credential credential, AgentConfiguration? configuration, String measured_at) -> instance
+                 | (member: Member, credential: Credential, configuration: AgentConfiguration?, measured_at: String) -> instance
+      def self.members: () -> [:member, :credential, :configuration, :measured_at]
+
+      def members: () -> [:member, :credential, :configuration, :measured_at]
+    end
+
+    class NamedAgent < Data
+      attr_reader scope: String
+      attr_reader name: String
+      attr_reader public_id: String
+      attr_reader handle: String
+      attr_reader display_name: String?
+      attr_reader description: String
+      attr_reader agent_identifier: String
+      attr_reader steward_public_id: String
+      attr_reader kind: String
+      attr_reader derived_from_public_id: String
+      attr_reader configuration: AgentConfiguration
+
+      def self.new: (scope: String, name: String, public_id: String, handle: String, display_name: String?, description: String, agent_identifier: String, steward_public_id: String, kind: String, derived_from_public_id: String, configuration: AgentConfiguration) -> instance
+      def self.[]: (scope: String, name: String, public_id: String, handle: String, display_name: String?, description: String, agent_identifier: String, steward_public_id: String, kind: String, derived_from_public_id: String, configuration: AgentConfiguration) -> instance
+      def self.members: () -> [:scope, :name, :public_id, :handle, :display_name, :description, :agent_identifier, :steward_public_id, :kind, :derived_from_public_id, :configuration]
+
+      def members: () -> [:scope, :name, :public_id, :handle, :display_name, :description, :agent_identifier, :steward_public_id, :kind, :derived_from_public_id, :configuration]
+      def instance?: () -> bool
+      def published?: () -> bool
+    end
+
+    class AgentsContext
+      include Parsing
+
+      attr_reader path: String
+
+      def initialize: (dispatch: _Dispatch, path: String) -> void
+      def list: () -> Array[NamedAgent]
+      def declare: (
+        name: String, scope: String, description: String, configuration: Hash[Symbol | String, untyped],
+        ?display_name: String?, ?system_prompt: String?
+      ) -> NamedAgent
+      def remove: (name: String) -> nil
+
+      private
+
+      def name_path: (String name) -> String
+    end
+
+    class IngressActor < Data
+      attr_reader public_id: String
+      attr_reader kind: String
+      attr_reader channel_key: String
+      attr_reader external_id: String
+      attr_reader display_name: String
+      def self.new: (public_id: String, kind: String, channel_key: String, external_id: String, display_name: String) -> instance
+    end
+
+    class ProfileContext
+      include Parsing
+
+      PATH: String
+      CONFIGURATION_PATH: String
+      MEMORY_PATH: String
+      STORE_ENTRIES_PATH: String
+      PROMPT_DOCUMENTS_PATH: String
+      AGENTS_PATH: String
+
+      def initialize: (dispatch: _Dispatch) -> void
+      def register_ingress_actor: (channel_key: String, external_id: String, display_name: String) -> IngressActor
+      def fetch: () -> Profile
+      def declare_configuration: (
+        tool_definitions: Array[Hash[String, untyped]]?, approval_mode: String?,
+        approval_rules: Array[Hash[String, untyped]]?,
+        prompt_mechanism: String?, compaction_policy: Hash[String, untyped]?,
+        ?prompt_template: Hash[String, untyped]?, ?default_model: String?, ?lifecycle_hooks: Hash[String, untyped]?,
+        ?fallback_model: String?
+      ) -> Profile
+      def memory: () -> MemoryContext
+      def store_entries: () -> StoreEntriesContext
+      def prompt_documents: () -> PromptDocumentsContext
+      def agents: () -> AgentsContext
+    end
+
+  end
+
+end

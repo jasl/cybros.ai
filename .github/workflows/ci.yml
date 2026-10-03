@@ -1,0 +1,595 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  RUBY_VERSION: "4.0.7"
+  # Keep dependency installs reproducible and fail if a lockfile would change.
+  BUNDLE_FROZEN: "true"
+
+jobs:
+  nexus_lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUBOCOP_CACHE_ROOT: tmp/rubocop
+    defaults:
+      run:
+        working-directory: nexus
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          working-directory: nexus
+          bundler-cache: true
+
+      - name: Check files end with exactly one newline
+        working-directory: .
+        run: bin/lint-eof
+
+      - name: Scan for common Rails security vulnerabilities using static analysis
+        run: bin/brakeman --no-pager
+
+      - name: Scan for known security vulnerabilities in gems used
+        run: bin/bundler-audit
+
+      - name: Prepare RuboCop cache
+        uses: actions/cache@v6
+        env:
+          DEPENDENCIES_HASH: ${{ hashFiles('.ruby-version', '**/.rubocop.yml', 'nexus/Gemfile.lock') }}
+        with:
+          path: nexus/${{ env.RUBOCOP_CACHE_ROOT }}
+          key: rubocop-${{ runner.os }}-${{ env.DEPENDENCIES_HASH }}-${{ github.ref_name == github.event.repository.default_branch && github.run_id || 'default' }}
+          restore-keys: |
+            rubocop-${{ runner.os }}-${{ env.DEPENDENCIES_HASH }}-
+
+      - name: Lint code for consistent style
+        run: bin/rubocop -f github
+
+      - name: Check architecture boundaries
+        run: bundle exec archspec check
+
+  nexus_lint_js:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: nexus
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install packages
+        run: bun install --frozen-lockfile
+
+      - name: Lint JavaScript
+        run: bun run lint:js
+
+      - name: Test JavaScript
+        run: bun run test:js
+
+      # THE RUNTIME IS BUN, NOT THE NODE ON PATH (B19b): every package
+      # script must start with `bun`, so the child it runs reports
+      # `process.versions.bun` — a script that drifted to a bare `eslint`
+      # would resolve to Node through its shebang and pass CI on a runtime
+      # nothing here targets.
+      - name: Assert the package scripts run under Bun
+        run: |
+          node --version
+          bun -e 'const s = require("./package.json").scripts; for (const [k, v] of Object.entries(s)) { if (!/^bun( |$)/.test(v)) { console.error(k + " does not run under bun: " + v); process.exit(1) } }'
+          bun -e 'if (!process.versions.bun) process.exit(1)'
+
+  nexus_test:
+    name: Nexus key regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: nexus
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq-dev libvips
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          working-directory: nexus
+          bundler-cache: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Prepare Rails credentials
+        run: EDITOR="cat" bin/rails credentials:edit
+
+      - name: Run key API and kernel regressions
+        env:
+          RAILS_ENV: test
+          # The base for every per-role database URL. A bare DATABASE_URL only
+          # reaches the primary role under current Rails main, so the cable
+          # role fell back to a unix socket the service container does not
+          # have; database.yml's own RAILS_DB_URL_BASE covers every role.
+          RAILS_DB_URL_BASE: postgres://postgres:postgres@localhost:5432
+        # Full Rails and manual diagnostic suites are local acceptance gates.
+        run: bin/test-smoke
+
+  nexus_system_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: nexus
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq-dev libvips
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          working-directory: nexus
+          bundler-cache: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Prepare Rails credentials
+        run: EDITOR="cat" bin/rails credentials:edit
+
+      - name: Run System Tests
+        env:
+          RAILS_ENV: test
+          # The base for every per-role database URL. A bare DATABASE_URL only
+          # reaches the primary role under current Rails main, so the cable
+          # role fell back to a unix socket the service container does not
+          # have; database.yml's own RAILS_DB_URL_BASE covers every role.
+          RAILS_DB_URL_BASE: postgres://postgres:postgres@localhost:5432
+        run: bin/rails db:test:prepare test:system
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: screenshots
+          path: ${{ github.workspace }}/nexus/tmp/screenshots
+          if-no-files-found: ignore
+
+  simple_inference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: nexus/vendor/simple_inference
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: nexus/vendor/simple_inference
+          bundler-cache: true
+
+      - name: Run the default task
+        run: bundle exec rake
+
+  agent_sdk_ruby:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: sdks/ruby
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: sdks/ruby
+          bundler-cache: true
+
+      - name: Run the default task
+        run: bundle exec rake
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+  cmctl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: cmctl
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: cmctl
+          bundler-cache: true
+
+      - name: Test and lint
+        run: bundle exec rake
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+  agent_rho:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents/rho/rho
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho
+          bundler-cache: true
+
+      - name: Run smoke and static quality checks
+        run: bundle exec rake smoke rubocop rbs:validate install:check
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+      # The installer's shell tests, offline (the guards, the render/check
+      # pair, the symlink swap on GNU mv); the real install runs in the
+      # e2e install group and on a developer's machine (`rake install:test`).
+      - name: Installer shell tests (offline)
+        run: RHO_INSTALL_TEST_OFFLINE=1 ../../../install/test/run.sh
+
+  agent_rho_runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents/rho/rho-runner
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install runner test tools
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y ripgrep fd-find
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho-runner
+          bundler-cache: true
+
+      - name: Run the default task
+        run: bundle exec rake
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+  agent_rho_browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents/rho/rho-browser
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho-browser
+          bundler-cache: true
+
+      - name: Run the default task
+        run: bundle exec rake
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+  agent_rho_mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents/rho/rho-mcp
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho-mcp
+          bundler-cache: true
+
+      - name: Run the default task
+        run: bundle exec rake
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+  agent_rho_web_tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents/rho/rho-web-tools
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho-web-tools
+          bundler-cache: true
+
+      - name: Run the default task
+        run: bundle exec rake
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+  agent_rho_webui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents/rho/rho-webui
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho-webui
+          bundler-cache: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Run the default task
+        run: bundle exec rake
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+  agent_rho_ingress_telegram:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents/rho/rho-ingress-telegram
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho-ingress-telegram
+          bundler-cache: true
+
+      - name: Run the default task
+        run: bundle exec rake
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+  # rho-dev: the development gem the distribution never carries (rho-dev
+  # design r3 M5) — its suite runs over rho's test support tree, so its
+  # own job, its own bundle.
+  agent_rho_dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents/rho/rho-dev
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho-dev
+          bundler-cache: true
+
+      - name: Run the default task
+        run: bundle exec rake
+
+  # rho-acp has its own executable and bundle; its suite also reads rho's test support.
+  agent_rho_acp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents/rho/rho-acp
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho-acp
+          bundler-cache: true
+
+      - name: Run the default task
+        run: bundle exec rake
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+  # rho-acp-client: the ACP client extension (rho-mcp's shape), over the
+  # same support tree — its own job, its own bundle.
+  agent_rho_acp_client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents/rho/rho-acp-client
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho-acp-client
+          bundler-cache: true
+
+      - name: Run the default task
+        run: bundle exec rake
+
+      - name: Build the gem
+        run: bundle exec rake build
+
+  e2e:
+    name: Product smoke and harness checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install PostgreSQL, image processing and runner search dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libpq-dev libvips ripgrep fd-find
+
+      - name: Set up Ruby and Nexus dependencies
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: nexus
+          bundler-cache: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install e2e dependencies
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: e2e
+          bundler-cache: true
+
+      # The rho journey spawns the executable a person installs, from its own
+      # bundle rather than the harness's, so that bundle has to exist here.
+      - name: Install rho dependencies
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: agents/rho/rho
+          bundler-cache: true
+
+      - name: Run key harness checks, product smoke and RuboCop
+        working-directory: e2e
+        env:
+          # The base for every per-run database URL: the development boot has
+          # three roles (primary/queue/cable), each named per run by the
+          # harness (RAILS_DB_URL_BASE covers them all; DATABASE_URL would
+          # only reach the primary).
+          RAILS_DB_URL_BASE: postgres://postgres:postgres@localhost:5432
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          E2E_WORLDS: "1"
+          E2E_DEADLINE_SECONDS: "300"
+          E2E_TEARDOWN_DEADLINE_SECONDS: "60"
+          A: "-v"
+        run: |
+          set -o pipefail
+          mkdir -p tmp
+          bundle exec rake smoke_harness_test smoke rubocop 2>&1 | tee tmp/ci-smoke.log
+
+      - name: Keep product smoke diagnostics
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-diagnostics
+          path: |
+            ${{ github.workspace }}/e2e/artifacts
+            ${{ github.workspace }}/e2e/tmp/ci-smoke.log
+          if-no-files-found: ignore

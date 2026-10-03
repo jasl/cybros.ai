@@ -1,0 +1,88 @@
+# Deployment-local PROVIDER overlay, merged AFTER the shipped
+# config/model_catalog fragments. An entry here replaces the shipped entry
+# WHOLESALE (never a recursive merge).
+#
+# `config.d` IS FLAT — a subdirectory inside it is refused, not read. One
+# environment tier merges after the generic tier, most specific wins:
+#   config.d/providers.yml              generic
+#   config.d/providers.<env>.yml        only in that environment
+# Recognized environments: development, test, production. A file whose suffix
+# looks like an environment but names none refuses compilation rather than
+# silently running everywhere.
+#
+# COPY THIS FILE AND NOTHING CHANGES. Everything below the schema version is
+# commented out on purpose: a deployment that has no local model server must
+# not acquire one by copying a sample. Delete the leading "# " from the lines
+# you actually want — the examples are written so that stripping that prefix
+# leaves valid YAML, explanatory comments and all.
+schema_version: cybros.model_catalog.v1
+
+# providers:
+#   # A local OpenAI-compatible server, stated in full. Everything else
+#   # follows from `api_format`, and a server on your own machine
+#   # authenticates nothing.
+#   local:
+#     base_url: http://127.0.0.1:11434/v1
+#     api_format: openai_compatible_chat
+#     credentials: none
+#
+#   # The same two required facts, plus every optional one, so you can see
+#   # what each is for. A real entry is almost never this long.
+#   example:
+#     # WHERE the provider is. The only fact with no possible default.
+#     base_url: https://api.example.com
+#
+#     # WHICH WIRE it speaks. This decides the route, the request and
+#     # response shapes, the accepted option vocabulary, the timeouts and the
+#     # tokenizer — which is why a model under this provider normally
+#     # declares nothing at all. A provider serving a SECOND format (an image
+#     # or embedding endpoint beside its text one) does not repeat itself
+#     # here; the few models on that other wire override it themselves.
+#     #
+#     # Recognized formats:
+#     #   openai_responses            openai_compatible_chat
+#     #   anthropic_messages          openrouter_chat
+#     #   gemini_generate_content     gemini_embeddings
+#     #   openai_images               openai_embeddings
+#     #   openai_audio_speech         openai_audio_transcriptions
+#     #   codex_responses             xai_responses
+#     #   deepseek_responses
+#     api_format: openai_responses
+#
+#     # WHICH CREDENTIAL it authenticates with. Three values, and the default
+#     # is api_key:
+#     #
+#     #   api_key   the key itself is NOT written here. It is installed
+#     #             through the console and resolved by provider id, so a
+#     #             config file never holds a secret.
+#     #   none      no authentication at all — a server on your own machine
+#     #             or inside your own network that asks for nothing.
+#     #   codex     the OAuth subscription lane. It needs the program's own
+#     #             device-code ceremony, so it is named here and completed
+#     #             in the console.
+#     credentials: api_key
+#
+#     display_name: An Example Provider
+#
+#     # Operator capacity, not a wire fact: the same provider admits
+#     # different amounts of concurrent work per deployment and per account
+#     # tier. It defaults to 2 — small on purpose, so a deployment that has
+#     # not thought about capacity is still bounded. A workload with no entry
+#     # of its own inherits the ceiling.
+#     concurrency_limit: 4
+#     workload_concurrency_limits:
+#       text_generation: 2
+#
+#     # Provider-wide facts a model may narrow. State these only when they
+#     # are true of everything this provider serves.
+#     service_tiers: [standard, priority]
+#
+#     # A vendor that reports the cost of every call in its own units. With
+#     # this, `kind: provider_reported_only` pricing becomes available and
+#     # the vendor's own number is the authority.
+#     native_cost_contract:
+#       amount_field: cost_in_usd_ticks
+#       unit: USD
+#       scale: "0.0000000001"
+#       maximum_wire_amount: "999999999999999999999999999999"
+#       maximum_fractional_digits: 0

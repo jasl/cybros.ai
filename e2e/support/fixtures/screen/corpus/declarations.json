@@ -1,0 +1,266 @@
+[
+  {
+    "tool_names": [
+      "ask",
+      "bash",
+      "compose",
+      "find",
+      "grep",
+      "ls",
+      "read",
+      "spawn",
+      "start_process",
+      "task"
+    ],
+    "declarations": [
+      {
+        "type": "function",
+        "function": {
+          "name": "task",
+          "description": "Synthetic task tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "start_process",
+          "description": "Synthetic start_process tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "spawn",
+          "description": "Synthetic spawn tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "read",
+          "description": "Synthetic read tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "ls",
+          "description": "Synthetic ls tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "grep",
+          "description": "Synthetic grep tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "find",
+          "description": "Synthetic find tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "compose",
+          "description": "Synthetic compose tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "bash",
+          "description": "Synthetic bash tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "ask",
+          "description": "Synthetic ask tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      }
+    ]
+  },
+  {
+    "tool_names": [
+      "ask",
+      "bash",
+      "compose",
+      "edit",
+      "find",
+      "grep",
+      "ls",
+      "read",
+      "spawn",
+      "start_process",
+      "task"
+    ],
+    "declarations": [
+      {
+        "type": "function",
+        "function": {
+          "name": "task",
+          "description": "Synthetic task tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "start_process",
+          "description": "Synthetic start_process tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "spawn",
+          "description": "Synthetic spawn tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "read",
+          "description": "Synthetic read tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "ls",
+          "description": "Synthetic ls tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "grep",
+          "description": "Synthetic grep tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "find",
+          "description": "Synthetic find tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "edit",
+          "description": "Synthetic edit tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "compose",
+          "description": "Synthetic compose tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "bash",
+          "description": "Synthetic bash tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "ask",
+          "description": "Synthetic ask tool.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      }
+    ]
+  }
+]

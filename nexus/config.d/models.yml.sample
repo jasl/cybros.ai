@@ -1,0 +1,95 @@
+# Deployment-local MODEL overlay, merged AFTER the shipped
+# config/model_catalog fragments. An entry here replaces the shipped entry
+# WHOLESALE (never a recursive merge).
+#
+# `config.d` IS FLAT — a subdirectory inside it is refused, not read. One
+# environment tier merges after the generic tier, most specific wins:
+#   config.d/models.yml                 generic
+#   config.d/models.<env>.yml           only in that environment
+# Recognized environments: development, test, production. A file whose suffix
+# looks like an environment but names none refuses compilation rather than
+# silently running everywhere.
+#
+# COPY THIS FILE AND NOTHING CHANGES. Everything below the schema version is
+# commented out on purpose: a model whose provider you have not configured is
+# a lane that cannot run, and a sample must not add one. Delete the leading
+# "# " from the lines you actually want.
+#
+# The models below live under the `local` provider from providers.yml.sample,
+# so uncomment that one first.
+schema_version: cybros.model_catalog.v1
+
+# models:
+#   # ADDING A MODEL IS ONE LINE. The key is `<provider>/<model>`, the tail
+#   # is what goes on the wire, and everything else comes from the provider's
+#   # `api_format`: the route, the option vocabulary, the timeouts, the
+#   # context default, and whatever tokenizer that wire declares.
+#   #
+#   # REASONING IS THE ONE THING SILENCE DOES NOT INHERIT. A model that says
+#   # nothing about it cannot be asked to reason at all — the wire's effort
+#   # vocabulary is what the wire KNOWS, not what this model has. Declare it
+#   # below to make it selectable.
+#   local/qwen3-14b: {}
+#
+#   # The same model with everything a deployment usually wants to say.
+#   # Every one of these is optional and every one has a default.
+#   local/qwen3-32b:
+#     display_name: Qwen3 32B
+#
+#     # What goes on the wire, when it differs from the key's tail — a pinned
+#     # dated snapshot, or a name with characters a ref cannot carry.
+#     model_id: qwen3-32b-instruct
+#
+#     # The context window. Absent, it defaults to a conservative 128000, so
+#     # a model nobody measured is never assumed to be bigger than it is.
+#     # Declare whichever one the vendor publishes:
+#     #   input_tokens                   a pure input window, input only
+#     #   combined_input_output_tokens   one window input and output share
+#     limits:
+#       input_tokens: 131072
+#       output_tokens: 32768
+#
+#     # What this model accepts BESIDES text. Absent means text only, and the
+#     # wire supplies the mime allowlist and size budget for whatever you
+#     # name.
+#     input_modalities: [image]
+#
+#     # Function tools, streaming and structured output need no line: each
+#     # is the WIRE's fact, on wherever the provider's protocol carries it
+#     # (explicit cache breakpoints are the Anthropic wire's alone). Write
+#     # `false` only for a model known not to have one.
+#     tool_calls: false
+#
+#     # Reasoning, when the model has it. The efforts a caller may ask for
+#     # are narrowed from what the wire accepts; `default_effort` applies
+#     # when a caller names none. A model that declares no reasoning cannot
+#     # be asked to reason at all.
+#     reasoning:
+#       efforts: [low, medium, high]
+#       default_effort: medium
+#
+#     # How long this platform waits for one call before giving up. It
+#     # defaults by workload — text 3600, image and transcription 1800,
+#     # speech 900, embedding 300 — and is a backstop against a hung call,
+#     # not a service promise.
+#     deadline_seconds: 3600
+#
+#     # BILLING IS OPT-IN. With no `pricing` key the lane is simply not
+#     # billed: usage is still recorded, no money is computed, and no budget
+#     # is consulted. Add this when you want spend accounted for.
+#     pricing:
+#       account_unit: USD
+#       schedule:
+#         kind: catalog_only
+#         rates:
+#           input_per_mtok: "0.5"
+#           output_per_mtok: "1.5"
+#
+#   # A model on a DIFFERENT wire from its provider's — an image or embedding
+#   # endpoint beside a text one. This is the only place most deployments
+#   # ever override the format.
+#   local/qwen-image:
+#     api_format: openai_images
+#     output_modalities: [image]
+#     limits:
+#       result_count: 4

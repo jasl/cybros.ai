@@ -1,0 +1,4 @@
+# The installer's Ruby (the manifest renderer, the bump task) is checked
+# with rho's own style, from rho's bundle: `cd agents/rho/rho && bundle exec
+# rubocop ../../../install`.
+inherit_from: ../agents/rho/rho/.rubocop.yml

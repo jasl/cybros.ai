@@ -1,0 +1,413 @@
+module Rho
+  interface _OneShotLane
+    def feed: (String public_id, ?realtime: untyped, ?items: String?) -> untyped
+    def fetch: (String public_id) -> untyped
+    def realtime_opener: (String public_id, untyped realtime, ?items: String?) -> untyped
+  end
+
+  interface _OneShotRealtime
+    def rebind: () -> bool
+    def close: () -> nil
+  end
+
+  class OneShotRun
+    POLL_SECONDS: Float
+    LIFECYCLE_ITEMS: String
+
+    class Snapshot < Data
+      attr_reader public_id: String
+      attr_reader status: String
+      attr_reader text: String
+      attr_reader sequence: Integer
+      attr_reader complete: bool
+      attr_reader result: Hash[Symbol, untyped]?
+      attr_reader live: bool
+      attr_reader until: untyped
+
+      def self.new: (
+        public_id: String, status: String, text: String, sequence: Integer,
+        complete: bool, result: Hash[Symbol, untyped]?, live: bool, until: untyped
+      ) -> instance
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    attr_reader public_id: String
+    attr_reader realtime: _OneShotRealtime?
+    def host?: () -> bool
+    def one_shot?: () -> bool
+    def backs?: (String public_id) -> bool
+
+    def initialize: (
+      one_shots: _OneShotLane,
+      public_id: String,
+      ?realtime: _OneShotRealtime?,
+      ?live: bool,
+      ?logger: untyped,
+      ?sleeper: ^(Numeric seconds) -> untyped
+    ) -> void
+    def start: (untyped spawner) -> self
+    def follow: () -> self
+    def follow_result: () -> self
+    def listen: () { (untyped event) -> void } -> Integer
+    def forget: (Integer token) -> untyped
+    def listeners?: () -> bool
+    def attach_socket: () -> bool
+    def detach_socket: () -> bool
+    def stop: () -> self
+    def snapshot: () -> Snapshot
+  end
+
+  interface _HostContext
+    def feed: (?realtime: untyped, ?items: String?) -> untyped
+    def realtime_opener: (untyped realtime, ?items: String?) -> untyped
+  end
+
+  # The host a follower follows and a verb addresses: a standalone loop
+  # or a conversation; the host picks the context, the kind, the stop.
+  module Host
+    TYPES: Hash[String, untyped]
+
+    class AgentLoop < Data
+      attr_reader public_id: String
+      def self.new: (public_id: String) -> instance
+      def type: () -> String
+      def context: (untyped workspace) -> untyped
+      def own_loop: () -> String?
+      def outlives_turn?: () -> bool
+      def conversation_public_id: () -> String?
+      def input_fields: (String text, mode: String, ?model: String?, ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?attachments: Array[String]?, ?deliver_at: String?, ?deliver_in: String?) -> Hash[Symbol, untyped]
+      def stop: (untyped context, force: bool) -> String
+      def settled?: (untyped context) -> bool
+      def compact_refusal: (String task_key) -> String?
+      def compact: (untyped context, task_key: String) -> Hash[Symbol, untyped]
+    end
+
+    class Conversation < Data
+      attr_reader public_id: String
+      def self.new: (public_id: String) -> instance
+      def type: () -> String
+      def context: (untyped workspace) -> untyped
+      def own_loop: () -> String?
+      def outlives_turn?: () -> bool
+      def conversation_public_id: () -> String?
+      def input_fields: (String text, mode: String, ?model: String?, ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?attachments: Array[String]?, ?deliver_at: String?, ?deliver_in: String?) -> Hash[Symbol, untyped]
+      def stop: (untyped context, force: bool) -> String
+      def settled?: (untyped context) -> bool
+      def compact_refusal: (String task_key) -> String?
+      def compact: (untyped context, task_key: String) -> Hash[Symbol, untyped]
+    end
+
+    def self.from: (String type, String public_id) -> (AgentLoop | Conversation)
+    def self.resolve: (String public_id, rows: Array[HostStore::Row],
+                       fetch_loop: ^(String) -> untyped) -> (AgentLoop | Conversation)
+  end
+
+  class HostRun
+    POLL_SECONDS: Float
+    IDLE_POLL_SECONDS: Float
+    LIFECYCLE_ITEMS: String
+    TEXT_BOUND: Integer
+    BRANCH_ROOT: Regexp
+    TURN_TERMINAL_STATUSES: Array[String]
+    LOOP_TERMINAL_STATUSES: Array[String]
+
+    def self.loop_projection: (untyped loop_row) -> Hash[Symbol, untyped]
+
+    class Task < Data
+      def terminal?: () -> bool
+      def live?: () -> bool
+      def started?: () -> bool
+      attr_reader task_key: String
+      attr_reader kind: String?
+      attr_reader status: String?
+      attr_reader error_key: String?
+      attr_reader failure_resolution: String?
+      attr_reader after: Array[String]
+      attr_reader on_failure: String?
+      attr_reader extension_ms: Integer?
+      attr_reader resolved_by: Hash[String, untyped]?
+      attr_reader model: String?
+      attr_reader finish_quality: String?
+      attr_reader refusal_category: String?
+      attr_reader model_change: Hash[String, untyped]?
+
+      def self.new: (
+        task_key: String, kind: String?, status: String?,
+        error_key: String?, failure_resolution: String?, ?after: Array[String],
+        ?on_failure: String?, ?extension_ms: Integer?, ?resolved_by: Hash[String, untyped]?,
+        ?model: String?, ?finish_quality: String?, ?refusal_category: String?, ?model_change: Hash[String, untyped]?
+      ) -> instance
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class Attention < Data
+      attr_reader reason: String
+      attr_reader blocked_task_keys: Array[String]
+
+      def self.new: (reason: String, blocked_task_keys: Array[String]) -> instance
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class Frame < Data
+      attr_reader type: String
+      attr_reader payload: Hash[String, untyped]
+
+      def self.new: (String, Hash[String, untyped]) -> instance
+                  | (type: String, payload: Hash[String, untyped]) -> instance
+    end
+
+    class Snapshot < Data
+      attr_reader public_id: String
+      attr_reader host_type: String
+      attr_reader status: String
+      attr_reader loop_status: String?
+      attr_reader failure_reason: String?
+      attr_reader failure_reason_key: String?
+      attr_reader loop: String?
+      attr_reader turn: String?
+      attr_reader turn_kind: String?
+      attr_reader loops: Array[String]
+      attr_reader attention: Attention?
+      attr_reader tasks: Array[Task]
+      attr_reader text: String
+      attr_reader text_length: Integer?
+      attr_reader reasoning: String?
+      attr_reader sequence: Integer
+      attr_reader complete: bool
+      attr_reader live: bool
+      attr_reader mailed: Array[Hash[Symbol, untyped]]
+      attr_reader runner: String?
+      attr_reader children: Array[Hash[Symbol, untyped]]?
+      attr_reader frames: Array[Hash[String, untyped]]?
+
+      def self.new: (
+        public_id: String, host_type: String, status: String, loop_status: String?,
+        failure_reason: String?, failure_reason_key: String?, loop: String?, turn: String?,
+        ?turn_kind: String?,
+        loops: Array[String], attention: Attention?, tasks: Array[Task], text: String,
+        ?text_length: Integer?, ?reasoning: String?,
+        sequence: Integer, complete: bool, live: bool, until: untyped, mailed: Array[Hash[Symbol, untyped]],
+        ?runner: String?, ?blocked: Hash[Symbol, untyped]?, ?children: Array[Hash[Symbol, untyped]]?,
+        ?frames: Array[Hash[String, untyped]]?
+      ) -> instance
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    attr_reader host: (Host::AgentLoop | Host::Conversation)
+    attr_reader realtime: _OneShotRealtime?
+    attr_reader context: untyped
+    def event_position: () -> CybrosAgent::KernelFeed::Position
+    def public_id: () -> String
+    def host?: () -> bool
+    def one_shot?: () -> bool
+    def backs?: (String public_id) -> bool
+    def child?: (String public_id) -> bool
+
+    def initialize: (
+      host: (Host::AgentLoop | Host::Conversation),
+      context: _HostContext,
+      ?realtime: _OneShotRealtime?,
+      ?live: bool,
+      ?logger: untyped,
+      ?sleeper: ^(Numeric seconds) -> untyped
+    ,
+      ?gate: untyped, ?spawner: untyped, ?on_complete: untyped, ?on_turn: untyped,
+      ?on_runner_bound: untyped, ?on_attention: untyped, ?on_ended: untyped, ?on_children: untyped,
+      ?loop_context: untyped,
+      ?loop: String?, ?turn: String?,
+      ?stream: bool
+    ) -> void
+    def start: (untyped spawner) -> self
+    def follow: () -> self
+    def follow_recovery: () -> self
+    def follow_transcript: () -> self
+    def follow_progress: () -> self
+    def attach_socket: () -> bool
+    def detach_socket: () -> bool
+    def stop: () -> self
+    def gate=: (untyped gate) -> untyped
+    def gate: () -> untyped
+    def nudge: () -> void
+    def turn_settled?: () -> bool
+    def transcript_settled?: () -> bool
+    def settled?: () -> bool
+    def stopped?: () -> bool
+    def snapshot: () -> Snapshot
+  end
+
+  # THE TERMINAL'S HALF OF THE STREAM: a decorator on the IO `Cli#out`
+  # answers, so every structured line rho prints passes through it.
+  # The acceptance check's grammar the two conversation verbs share: the
+  # one fold of `--until`/`--attempts` into the body.
+  module Until
+    DEFAULT_ATTEMPTS: Integer
+    MAX_ATTEMPTS: Integer
+
+    def self?.fold: (Hash[String, untyped] body, until: String?, ?attempts: Integer?) -> Hash[String, untyped]
+  end
+
+  # What rho sends when it starts a loop, built from what this machine can
+  # actually do.
+  module LoopRequest
+    APPROVAL_MODE: String
+    PROMPT_MECHANISM: String
+    PROMPT_TEMPLATE: Hash[String, untyped]
+    GUARDED_TOOLS: String
+    APPROVAL_RULES: Array[Hash[String, untyped]]
+    INCUBATION: String
+    EDIT_TOOLS: String
+    MCP_PREFIX: String
+    ROSTER_HEADING: String
+    ROSTER_NONE: String
+    def self?.derived_declaration: (Hash[Symbol, untyped] parent, Agents::Definition definition,
+                                    ?agent_names: Array[String], ?log: untyped) -> Hash[Symbol, untyped]
+    def self?.narrow_universe: (Array[Hash[String, untyped]] universe, Agents::Definition definition, untyped log) -> Array[Hash[String, untyped]]
+    def self?.derived_compaction: (untyped policy) -> Hash[String, untyped]
+    def self?.roster: (Array[Hash[Symbol, untyped]] rows) -> String?
+    def self?.guideline_slot: (String? roster) -> String
+
+    class DenyProperties < ::Data
+      attr_reader derivable: Array[String]
+      attr_reader skipped: Array[String]
+    end
+
+    def self.self_modification_rules: (untyped roots, ?entries: untyped) -> Array[Hash[String, untyped]]
+    def self.deny_properties: (untyped entry) -> DenyProperties
+    def self.approval_rules: (?roots: untyped, ?entries: untyped, ?grants: untyped) -> Array[Hash[String, untyped]]
+
+    # The session-scoped approval grant: the record
+    # `rho rules` prints, and the one derivation from a held call.
+    class Grant < ::Data
+      DECLARED_BOUND: Integer
+      TEXT_KEYS: Hash[String, String]
+      SEPARATORS: Hash[String, String]
+      WILDCARD: Regexp
+      VERDICT: String
+
+      class Refusal < ::Data
+        attr_reader message: String
+        def self.new: (message: String) -> instance
+      end
+
+      attr_reader rule: Hash[String, untyped]
+      attr_reader loop: String
+      attr_reader task_key: String
+      attr_reader conversation: String?
+      attr_reader granted_at: String
+      def self.new: (rule: Hash[String, untyped], loop: String, task_key: String, conversation: String?,
+                     granted_at: String) -> instance
+      def self.text_key: (untyped tool_name) -> String?
+      def self.rule: (tool_name: untyped, tool_input: untyped, ?match: untyped) -> (Hash[String, untyped] | Refusal)
+    end
+    ASSEMBLED_MECHANISMS: Array[String]
+    def self?.steps: (
+      prompt: untyped, model: untyped, registry: Rho::Runner::Extensions::Registry,
+      ?environment: Rho::Runner::Environment?, ?instructions: untyped, ?key: String,
+      ?kernel_tools: untyped, ?served: untyped, ?prompt_mechanism: untyped, ?hints: untyped
+    ) -> Array[untyped]
+    def self?.assembled?: (untyped mechanism) -> bool
+    def self?.led: (untyped lead, untyped prompt) -> String
+    def self?.lead: (
+      registry: Rho::Runner::Extensions::Registry, ?environment: Rho::Runner::Environment?,
+      ?instructions: untyped, ?hints: untyped
+    ) -> String
+    def self?.instructions: (
+      registry: Rho::Runner::Extensions::Registry, ?environment: Rho::Runner::Environment?,
+      ?instructions: untyped, ?hints: untyped
+    ) -> String
+    def self?.hint_block: (untyped hints) -> String?
+    BOUND_ROOT: String
+    ADDITIONAL_DIRECTORIES: String
+    def self?.remote_lead: (untyped environment, ?instructions: untyped, ?hints: untyped, ?root: String?,
+                            ?directories: Array[String]) -> String
+    def self?.bound_block: (String? root, Array[String] directories) -> String?
+    def self?.remote_instructions: (untyped environment, ?instructions: untyped, ?hints: untyped) -> String
+    def self?.snapshot_block: (untyped environment) -> String
+    def self?.declaration: (
+      registry: Rho::Runner::Extensions::Registry, ?kernel_tools: untyped, ?compaction: Hash[String, untyped],
+      ?remote: Array[untyped], ?roots: Array[String], ?default_model: String?, ?grants: Array[Hash[String, untyped]],
+      ?extras: Array[Hash[String, untyped]], ?lifecycle_hooks: Hash[String, untyped]?, ?fallback_model: String?
+    ) -> Hash[Symbol, untyped]
+    def self?.tool_entries: (untyped served) -> Array[Hash[String, untyped]]
+    def self?.served_entries: (untyped served) -> Array[Hash[String, untyped]]
+
+    class Union < ::Data
+      attr_reader entries: Array[Hash[String, untyped]]
+      attr_reader conflicts: Array[String]
+      def self.new: (entries: Array[Hash[String, untyped]], conflicts: Array[String]) -> instance
+    end
+
+    def self?.union: (Array[untyped] lists) -> Union
+    def self?.conflicts: (untyped base, untyped candidate) -> Array[String]
+    def self?.digest: (untyped entries) -> String
+    def self?.announcement: (
+      registry: Rho::Runner::Extensions::Registry, ?extras: Array[Hash[String, untyped]]
+    ) -> Array[Hash[String, untyped]]
+    def self?.environment_document: (
+      registry: Rho::Runner::Extensions::Registry, environment: Rho::Runner::Environment, ?booted_at: String?
+    ) -> Hash[String, untyped]
+    def self?.documents: (
+      registry: Rho::Runner::Extensions::Registry, environment: Rho::Runner::Environment
+    ) -> Array[Hash[String, untyped]]
+    def self?.surface: (Hash[String, untyped] task) -> Hash[String, untyped]
+    def self?.environment_block: (
+      Rho::Runner::Extensions::Registry registry, Rho::Runner::Environment environment
+    ) -> String?
+    def self?.tool_lines: (
+      Rho::Runner::Extensions::Registry registry
+    ) -> String?
+  end
+
+  # Which hosts this machine follows, so a restart follows them again.
+  class HostStore
+    MAX_ROWS: Integer
+    KEEP: Object
+
+    class Row < Data
+      attr_reader host_type: String
+      attr_reader host_public_id: String
+      attr_reader workspace: String
+      attr_reader live: bool
+      attr_reader remembered_at: String
+      attr_reader turn: String?
+      attr_reader loop: String?
+      attr_reader model: String?
+      attr_reader compose: bool?
+      attr_reader notes: Hash[String, untyped]
+      attr_reader runner: String?
+      attr_reader answerer: String?
+      def self.new: (host_type: String, host_public_id: String, workspace: String, live: bool,
+                     remembered_at: String, turn: String?, loop: String?, model: String?,
+                     compose: bool?, notes: Hash[String, untyped], ?runner: String?,
+                     ?answerer: String?) -> instance
+      def foreign?: () -> bool
+      def self.from_h: (Hash[String, untyped] hash) -> Row
+      def host: () -> (Host::AgentLoop | Host::Conversation)
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    def initialize: (String path, ?clock: ^() -> Time) -> void
+    def rows: () -> Array[Row]
+    def find: (String public_id) -> Row?
+    def project: ((Host::AgentLoop | Host::Conversation) host, HostPolicy::Snapshot? policy) -> Row?
+    def remember: ((Host::AgentLoop | Host::Conversation) host, workspace: String, ?live: bool,
+                   ?notes: Hash[String, untyped]?, ?turn: untyped, ?loop: untyped,
+                   ?model: String?, ?compose: bool?, ?runner: untyped,
+                   ?answerer: untyped) -> Array[String]?
+    def forget: ((Host::AgentLoop | Host::Conversation) host) -> HostStore
+  end
+
+  # One loop's events, pushed as server-sent events.
+  class LoopStream
+    HEARTBEAT_SECONDS: Integer
+    SETTLE_GRACE_SECONDS: Integer
+    SETTLE_POLL_SECONDS: Float
+    attr_reader body: untyped
+    def initialize: (public_id: String, ?log: untyped, ?sink: untyped) -> void
+    def response: () -> untyped
+    def deliver: (String type, untyped payload) -> bool
+    def heartbeat: () -> bool
+    def close: (?String? reason) -> void
+    def open?: () -> bool
+  end
+end

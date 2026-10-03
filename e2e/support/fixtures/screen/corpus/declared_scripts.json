@@ -1,0 +1,73 @@
+[
+  {
+    "id": "single-model",
+    "script": "g.model({ prompt: \"Summarize the fixture.\" });",
+    "params": {},
+    "tool_names": [
+      "ask",
+      "bash",
+      "compose",
+      "find",
+      "grep",
+      "ls",
+      "read",
+      "spawn",
+      "start_process",
+      "task"
+    ]
+  },
+  {
+    "id": "joined-models",
+    "script": "const a = g.model({ prompt: \"Review alpha.\" }); const b = g.model({ prompt: \"Review beta.\" }); g.parallel([a, b]); g.model({ prompt: \"Summarize both.\", results: [a, b] });",
+    "params": {},
+    "tool_names": [
+      "ask",
+      "bash",
+      "compose",
+      "find",
+      "grep",
+      "ls",
+      "read",
+      "spawn",
+      "start_process",
+      "task"
+    ]
+  },
+  {
+    "id": "malformed-script",
+    "script": "g.model({ prompt: ",
+    "params": {},
+    "tool_names": [
+      "ask",
+      "bash",
+      "compose",
+      "find",
+      "grep",
+      "ls",
+      "read",
+      "spawn",
+      "start_process",
+      "task"
+    ]
+  },
+  {
+    "id": "custom-tool",
+    "script": "g.tool({ name: \"edit\", input: { path: params.path } });",
+    "params": {
+      "path": "fixture.txt"
+    },
+    "tool_names": [
+      "ask",
+      "bash",
+      "compose",
+      "edit",
+      "find",
+      "grep",
+      "ls",
+      "read",
+      "spawn",
+      "start_process",
+      "task"
+    ]
+  }
+]

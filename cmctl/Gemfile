@@ -1,0 +1,8 @@
+source "https://rubygems.org"
+
+gemspec
+gem "cybros_agent", path: "../sdks/ruby"
+gem "rake", "~> 13.0"
+gem "minitest", "~> 6.0"
+gem "rubocop", "~> 1.21", require: false
+gem "rubocop-rails-omakase", require: false

@@ -1,0 +1,24 @@
+module Rho
+  class HostPolicy
+    NAMESPACE: String
+    KEY: String
+    KEEP: Object
+
+    class Snapshot < ::Data
+      attr_reader owner_public_id: String
+      attr_reader host_public_id: String
+      attr_reader model: String?
+      attr_reader compose: bool?
+      attr_reader notes: Hash[String, untyped]
+      def self.new: (owner_public_id: String, host_public_id: String, model: String?, compose: bool?, notes: Hash[String, untyped]) -> instance
+      def self.from_h: (Hash[String, untyped] value) -> instance
+      def with: (?owner_public_id: String, ?host_public_id: String, ?model: String?, ?compose: bool?, ?notes: Hash[String, untyped]) -> instance
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    def initialize: (store: ^() -> untyped, owner_public_id: String, host_public_id: String, ?initial: (^() -> Hash[String, untyped]?)?) -> void
+    def read: () -> Snapshot?
+    def replace: (?model: String?, ?compose: bool?, ?notes: Hash[String, untyped]) -> Snapshot
+    def change: (?model: untyped, ?compose: untyped, ?notes: untyped) -> Snapshot
+  end
+end

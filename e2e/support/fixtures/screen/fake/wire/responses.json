@@ -1,0 +1,64 @@
+{
+  "compose": {
+    "id": "resp_fake",
+    "object": "response",
+    "status": "completed",
+    "output": [
+      {
+        "type": "function_call",
+        "id": "fc_fake",
+        "call_id": "call_fake",
+        "name": "compose",
+        "arguments": "{\"script\":\"g.parallel([\\n  g.model({ prompt: \\\"Read patch.diff and review it for security problems.\\\" }),\\n  g.model({ prompt: \\\"Read patch.diff and review it for performance problems.\\\" }),\\n  g.model({ prompt: \\\"Read patch.diff and review it for style.\\\" }),\\n]);\\ng.model({ prompt: \\\"Weigh the three reviews and give one verdict.\\\" });\\n\"}"
+      }
+    ],
+    "usage": {
+      "input_tokens": 6000,
+      "output_tokens": 400,
+      "total_tokens": 6400
+    }
+  },
+  "task_read": {
+    "id": "resp_fake",
+    "object": "response",
+    "status": "completed",
+    "output": [
+      {
+        "type": "function_call",
+        "id": "fc_fake",
+        "call_id": "call_fake",
+        "name": "ls",
+        "arguments": "{}"
+      }
+    ],
+    "usage": {
+      "input_tokens": 6000,
+      "output_tokens": 400,
+      "total_tokens": 6400
+    }
+  },
+  "task": {
+    "id": "resp_fake",
+    "object": "response",
+    "status": "completed",
+    "output": [
+      {
+        "type": "function_call",
+        "id": "fc_fake",
+        "call_id": "call_fake",
+        "name": "task",
+        "arguments": "{\"prompt\":\"Review lib/ for N+1 queries. Answer file:line and a fix, or none.\"}"
+      }
+    ],
+    "usage": {
+      "input_tokens": 6000,
+      "output_tokens": 400,
+      "total_tokens": 6400
+    }
+  },
+  "spend_usage": {
+    "input_tokens": 6000,
+    "output_tokens": 2000000,
+    "total_tokens": 2006000
+  }
+}

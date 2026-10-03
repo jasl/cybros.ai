@@ -1,0 +1,36 @@
+<ul class="menu w-full gap-0.5 px-0">
+  <% settings_active = controller_path.start_with?("settings/") %>
+  <% workspaces_active = controller_path == "workspaces" || controller_path.start_with?("workspaces/") %>
+  <% agents_active = controller_path == "agents" || controller_path.start_with?("agents/") %>
+  <% runners_active = controller_path == "runners" || controller_path.start_with?("runners/") %>
+  <li>
+    <%= link_to root_path, class: class_names("gap-2.5", "menu-active": current_page?(root_path)), aria: { current: ("page" if current_page?(root_path)) } do %>
+      <span class="iconify lucide--house size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.dashboard") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to workspaces_path, class: class_names("gap-2.5", "menu-active": workspaces_active), aria: { current: ("page" if workspaces_active) } do %>
+      <span class="iconify lucide--folders size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.workspaces") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to agents_path, class: class_names("gap-2.5", "menu-active": agents_active), aria: { current: ("page" if agents_active) } do %>
+      <span class="iconify lucide--bot size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.agents") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to runners_path, class: class_names("gap-2.5", "menu-active": runners_active), aria: { current: ("page" if runners_active) } do %>
+      <span class="iconify lucide--server size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.runners") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to settings_path, class: class_names("gap-2.5", "menu-active": settings_active), aria: { current: ("page" if settings_active) } do %>
+      <span class="iconify lucide--settings-2 size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.settings") %>
+    <% end %>
+  </li>
+</ul>

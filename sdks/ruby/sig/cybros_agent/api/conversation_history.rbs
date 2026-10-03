@@ -1,0 +1,74 @@
+module CybrosAgent
+  module Api
+    class ConversationSearchMatch < Data
+      attr_reader conversation_public_id: String
+      attr_reader title: String?
+      attr_reader turn_public_id: String?
+      attr_reader variant_public_id: String?
+      attr_reader position: Integer?
+      attr_reader field: String
+      attr_reader inherited: bool
+      attr_reader excerpt: String?
+      attr_reader truncated: bool
+      def inherited?: () -> bool
+      def truncated?: () -> bool
+    end
+
+    class ConversationSearchPage < Data
+      include Enumerable[ConversationSearchMatch]
+      attr_reader matches: Array[ConversationSearchMatch]
+      attr_reader next_after: String?
+      def each: () { (ConversationSearchMatch) -> void } -> void
+              | () -> Enumerator[ConversationSearchMatch, void]
+      def length: () -> Integer
+    end
+
+    class ConversationHistoryTitle < Data
+      attr_reader public_id: String
+      attr_reader title: String?
+    end
+
+    class ConversationHistoryTurn < Data
+      attr_reader public_id: String
+      attr_reader position: Integer
+      attr_reader kind: String
+      attr_reader role: String
+      attr_reader created_at: String
+      attr_reader prompt: String?
+      attr_reader content: String?
+      attr_reader steers: String?
+      attr_reader truncated: bool
+      def truncated?: () -> bool
+    end
+
+    class ConversationHistoryPage < Data
+      include Enumerable[ConversationHistoryTurn]
+      attr_reader conversation: ConversationHistoryTitle
+      attr_reader turns: Array[ConversationHistoryTurn]
+      attr_reader before_position: Integer?
+      attr_reader after_position: Integer?
+      attr_reader has_older: bool
+      attr_reader has_newer: bool
+      attr_reader truncated: bool
+      def each: () { (ConversationHistoryTurn) -> void } -> void
+              | () -> Enumerator[ConversationHistoryTurn, void]
+      def length: () -> Integer
+      def has_older?: () -> bool
+      def has_newer?: () -> bool
+      def truncated?: () -> bool
+    end
+
+    module ConversationHistoryProjections
+      include Parsing
+      SHAPES: Hash[singleton(Data), Hash[Symbol, untyped]]
+    end
+
+    class ConversationHistoryContext
+      include ConversationHistoryProjections
+      include Fields
+      def initialize: (dispatch: _Dispatch, path: String) -> void
+      def list: (?around_turn_public_id: String?, ?after_position: Integer?, ?before_position: Integer?,
+                 ?limit: Integer?) -> ConversationHistoryPage
+    end
+  end
+end

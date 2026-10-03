@@ -1,0 +1,228 @@
+{
+  "scopes": [
+    "conversation",
+    "workspace",
+    "user"
+  ],
+  "max_documents_per_anchor": 64,
+  "name_max_length": 128,
+  "content_bound": 65536,
+  "skills_prefix": "skills/",
+  "skill_name_format": "\\A[a-z0-9](?:-?[a-z0-9])*\\z",
+  "skill_name_max_length": 64,
+  "skill_description_max_length": 1024,
+  "skill_anchors": [
+    "workspace",
+    "user"
+  ],
+  "door_scopes": {
+    "profile": [
+      "user"
+    ],
+    "workspace": [
+      "workspace"
+    ],
+    "conversation": [
+      "conversation",
+      "workspace",
+      "user"
+    ]
+  },
+  "binding_name_format": "\\A[a-z][a-z0-9_-]{0,31}\\z",
+  "max_bindings": 16,
+  "binding_access": [
+    "read",
+    "read_write"
+  ],
+  "model_reserved_prefix_refusal": "memory_reserved_prefix",
+  "skill_load_unknown_refusal": "skill_unknown",
+  "list_envelope": [
+    "memory"
+  ],
+  "singular_envelope": [
+    "memory"
+  ],
+  "basic_projection": [
+    "path",
+    "public_id",
+    "lock_version",
+    "bytesize",
+    "description",
+    "written_at"
+  ],
+  "full_projection_adds": [
+    "content"
+  ],
+  "error_codes": [
+    "parameter_missing",
+    "parameter_invalid",
+    "stale_object",
+    "conversation_archived",
+    "memory_content_invalid",
+    "memory_description_invalid",
+    "memory_document_too_large",
+    "memory_full",
+    "memory_not_found",
+    "memory_overridden",
+    "memory_path_invalid",
+    "memory_read_only",
+    "memory_edit_invalid",
+    "memory_edit_not_found",
+    "memory_edit_ambiguous",
+    "memory_pattern_invalid",
+    "memory_pattern_too_costly",
+    "memory_scope_unavailable",
+    "not_authorized",
+    "skill_description_required",
+    "skill_name_invalid",
+    "skill_scope_unavailable"
+  ],
+  "error_statuses": {
+    "parameter_missing": 400,
+    "parameter_invalid": 400,
+    "stale_object": 409,
+    "conversation_archived": 409,
+    "memory_content_invalid": 422,
+    "memory_description_invalid": 422,
+    "memory_document_too_large": 422,
+    "memory_full": 422,
+    "memory_not_found": 404,
+    "memory_overridden": 409,
+    "memory_path_invalid": 422,
+    "memory_read_only": 403,
+    "memory_edit_invalid": 422,
+    "memory_edit_not_found": 422,
+    "memory_edit_ambiguous": 422,
+    "memory_pattern_invalid": 422,
+    "memory_pattern_too_costly": 422,
+    "memory_scope_unavailable": 422,
+    "not_authorized": 403,
+    "skill_description_required": 422,
+    "skill_name_invalid": 422,
+    "skill_scope_unavailable": 422
+  },
+  "valid_fixture": {
+    "memory": {
+      "path": "workspace/notes.md",
+      "public_id": "01995000-0000-7000-8000-000000000001",
+      "lock_version": 2,
+      "bytesize": 8,
+      "description": null,
+      "content": "the plan",
+      "written_at": "2026-09-15T00:00:00Z"
+    }
+  },
+  "valid_skill_fixture": {
+    "memory": {
+      "path": "workspace/skills/commit-style",
+      "public_id": "01995000-0000-7000-8000-000000000002",
+      "lock_version": 0,
+      "bytesize": 33,
+      "description": "How this team writes commit messages. Use before every commit.",
+      "content": "# Commits\n\nOne line, imperative.\n",
+      "written_at": "2026-09-15T00:00:00Z"
+    }
+  },
+  "valid_list_fixture": {
+    "memory": [
+      {
+        "path": "user/skills/review-checklist",
+        "public_id": "01995000-0000-7000-8000-000000000003",
+        "lock_version": 0,
+        "bytesize": 24,
+        "description": "How I review a change. Use before approving a pull request.",
+        "written_at": "2026-09-15T00:00:00Z"
+      },
+      {
+        "path": "workspace/notes.md",
+        "public_id": "01995000-0000-7000-8000-000000000001",
+        "lock_version": 2,
+        "bytesize": 8,
+        "description": null,
+        "written_at": "2026-09-15T00:00:00Z"
+      }
+    ]
+  },
+  "valid_write_request": {
+    "memory": {
+      "path": "workspace/notes.md",
+      "content": "the plan",
+      "expected_public_id": null,
+      "expected_lock_version": null
+    }
+  },
+  "valid_skill_write_request": {
+    "memory": {
+      "path": "workspace/skills/commit-style",
+      "content": "# Commits\n\nOne line, imperative.\n",
+      "description": "How this team writes commit messages. Use before every commit.",
+      "expected_public_id": null,
+      "expected_lock_version": null
+    }
+  },
+  "valid_update_request": {
+    "memory": {
+      "path": "workspace/notes.md",
+      "content": "the revised plan",
+      "expected_public_id": "01995000-0000-7000-8000-000000000001",
+      "expected_lock_version": 2
+    }
+  },
+  "valid_delete_request": {
+    "memory": {
+      "path": "workspace/notes.md",
+      "expected_public_id": "01995000-0000-7000-8000-000000000001",
+      "expected_lock_version": 2
+    }
+  },
+  "valid_edit_request": {
+    "memory": {
+      "path": "workspace/notes.md",
+      "old_text": "the plan",
+      "new_text": "the revised plan",
+      "expected_public_id": "01995000-0000-7000-8000-000000000001",
+      "expected_lock_version": 2
+    }
+  },
+  "valid_grep_request": {
+    "memory": {
+      "pattern": "plan",
+      "path": "workspace/"
+    }
+  },
+  "valid_grep_fixture": {
+    "matches": [
+      {
+        "path": "workspace/notes.md",
+        "line_number": 1,
+        "text": "the plan"
+      }
+    ],
+    "truncated": false
+  },
+  "valid_delete_fixture": {
+    "status": 204,
+    "body": null
+  },
+  "valid_error_fixture": {
+    "status": 422,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "skill_description_required",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_field_behavior": "ignore"
+}

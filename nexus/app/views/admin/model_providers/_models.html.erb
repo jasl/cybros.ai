@@ -1,0 +1,39 @@
+<% if models.empty? %>
+  <div class="rounded-box border border-base-300 bg-base-200 p-6 text-sm text-base-content/60">No models are configured yet. Add a model ID manually or discover IDs from the provider.</div>
+<% else %>
+  <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200">
+    <% models.each do |model| %>
+      <li class="space-y-3 p-4 sm:p-5" data-model-ref="<%= model.fetch(:ref) %>">
+        <div class="flex flex-col items-start justify-between gap-3 sm:flex-row">
+          <div class="min-w-0 flex-1 space-y-2">
+            <% display_name = local_assigns.fetch(:model_names, {})[model.fetch(:ref)].presence %>
+            <h3 class="text-sm font-medium hyphens-none wrap-anywhere"><%= display_name || model.fetch(:ref) %></h3>
+            <% if display_name %><p class="text-xs text-base-content/50 wrap-anywhere"><%= model.fetch(:ref) %></p><% end %>
+            <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+              <span><%= model.fetch(:workload).humanize %></span>
+              <% if model.fetch(:capabilities).fetch(:tool_calls) %><span class="badge badge-outline badge-xs">Tools</span><% end %>
+              <% if model.fetch(:capabilities).fetch(:streaming) %><span class="badge badge-outline badge-xs">Streaming</span><% end %>
+              <span><%= model_availability_label(model) %></span>
+            </div>
+          </div>
+          <% if editable %>
+            <%= link_to "Edit", admin_model_provider_model_definition_path(provider.fetch(:id), model: model.fetch(:ref)), class: "btn btn-ghost btn-sm", aria: { label: "Edit #{model.fetch(:ref)}" } %>
+            <div class="inline-flex shrink-0 items-center gap-1 rounded-full border border-base-300 bg-base-100 p-1" role="group" aria-label="<%= model.fetch(:ref) %> visibility">
+              <% [[true, "Visible"], [false, "Hidden"]].each do |visible, label| %>
+                <% selected = model.fetch(:visible) == visible %>
+                <%= button_to label, admin_model_provider_model_visibility_path(provider.fetch(:id)), method: :patch,
+                  params: { model_visibility: { model: model.fetch(:ref), visible: visible, expected_lock_version: provider.fetch(:lock_version) } },
+                  class: class_names(provider_choice_classes(selected: selected), "opacity-50": provider.fetch(:lock_version).nil?),
+                  disabled: selected || provider.fetch(:lock_version).nil?,
+                  aria: { label: visible ? "Make #{model.fetch(:ref)} visible" : "Hide #{model.fetch(:ref)} from agents", pressed: selected } %>
+              <% end %>
+            </div>
+          <% else %>
+            <span class="<%= badge_classes(model.fetch(:visible), tone: :success) %>"><%= model.fetch(:visible) ? "Visible" : "Hidden" %></span>
+          <% end %>
+        </div>
+        <p class="text-xs leading-relaxed text-base-content/50"><%= model_pricing_label(model.fetch(:pricing)) %></p>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

@@ -1,0 +1,65 @@
+<% content_for :title, "Reassign steward" %>
+
+<div class="space-y-8">
+  <header class="space-y-1">
+    <%= link_to admin_user_path(@member), class: "inline-flex items-center gap-1.5 text-sm text-base-content/60 hover:text-base-content" do %>
+      <span class="iconify lucide--arrow-left size-4" aria-hidden="true"></span>
+      <%= member_display_name(@member) %>
+    <% end %>
+    <h1 class="text-xl font-medium tracking-tight">Reassign steward</h1>
+    <p class="text-sm text-base-content/60">
+      Choose the active human member responsible for <%= member_display_name(@member) %>.
+    </p>
+  </header>
+
+  <% if @member.removed? %>
+    <div role="alert" class="alert alert-warning">
+      <span>
+        Reassignment keeps the profile removed and its old credentials invalid. The new
+        steward can restore it and reconnect the program.
+      </span>
+    </div>
+  <% end %>
+
+  <section>
+    <%= render "shared/member_search_form",
+      search_url: admin_user_steward_path(@member),
+      query: @query,
+      max_length: Admin::Users::StewardsController::SEARCH_QUERY_MAX_LENGTH %>
+  </section>
+
+  <section class="rounded-box border border-base-300 bg-base-200">
+    <% if @steward_candidates.any? %>
+      <ul class="list">
+        <% @steward_candidates.each do |candidate| %>
+          <li class="list-row items-center"
+            data-steward-candidate-id="<%= candidate.public_id %>">
+            <div class="list-col-grow min-w-0">
+              <p class="font-medium wrap-anywhere"><%= candidate.display_name %></p>
+              <p class="text-sm text-base-content/60 hyphens-none wrap-anywhere"><%= candidate.email %></p>
+            </div>
+            <div class="list-col-wrap justify-self-start sm:justify-self-end sm:[grid-row-start:1]">
+              <% if candidate == @member.steward %>
+                <span class="badge badge-ghost badge-sm">Current steward</span>
+              <% else %>
+                <%= button_to "Assign",
+                  admin_user_steward_path(@member),
+                  method: :patch,
+                  params: { steward: { steward_public_id: candidate.public_id } },
+                  class: "btn btn-sm btn-primary",
+                  aria: { label: "Assign #{candidate.display_name} as steward" } %>
+              <% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="px-4 py-10 text-center">
+        <p class="text-sm font-medium">No matching members</p>
+        <p class="mt-1 text-sm text-base-content/60">Try a different name or email address.</p>
+      </div>
+    <% end %>
+  </section>
+
+  <%= render "shared/pagination_footer", pagy: @stewards_pagy, noun: "eligible members", aria_label: "Steward candidates pages" %>
+</div>

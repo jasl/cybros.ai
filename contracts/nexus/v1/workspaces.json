@@ -1,0 +1,340 @@
+{
+  "states": [
+    "active",
+    "archived",
+    "archiving",
+    "deleted",
+    "deleting",
+    "restoring"
+  ],
+  "access_modes": [
+    "account_wide",
+    "private"
+  ],
+  "visibility": {
+    "live": [
+      "active",
+      "restoring"
+    ],
+    "browsable": [
+      "active",
+      "archiving",
+      "archived",
+      "restoring"
+    ],
+    "tombstoned": [
+      "deleting",
+      "deleted"
+    ]
+  },
+  "list_envelope": [
+    "workspaces",
+    "pagination"
+  ],
+  "singular_envelope": [
+    "workspace"
+  ],
+  "pagination": [
+    "next_after"
+  ],
+  "basic_projection": [
+    "public_id",
+    "name",
+    "access_mode",
+    "state",
+    "dedicated",
+    "lock_version",
+    "archived_at",
+    "created_at",
+    "updated_at"
+  ],
+  "full_projection_adds": [
+    "metadata",
+    "tool_provider_overrides",
+    "owner",
+    "creator"
+  ],
+  "list_filters": [
+    "state",
+    "dedicated_to_current_agent",
+    "order",
+    "after",
+    "limit"
+  ],
+  "list_directions": [
+    "asc",
+    "desc"
+  ],
+  "error_codes": [
+    "invalid_access_mode",
+    "not_authorized",
+    "not_workspace_owner",
+    "provider_incomplete",
+    "provider_not_eligible",
+    "reserved_namespace",
+    "target_not_eligible",
+    "transition_in_progress",
+    "workspace_agent_identifier_mismatch",
+    "workspace_not_active"
+  ],
+  "error_statuses": {
+    "invalid_access_mode": 422,
+    "not_authorized": 403,
+    "not_workspace_owner": 403,
+    "provider_incomplete": 422,
+    "provider_not_eligible": 422,
+    "reserved_namespace": 422,
+    "target_not_eligible": 422,
+    "transition_in_progress": 409,
+    "workspace_agent_identifier_mismatch": 403,
+    "workspace_not_active": 409
+  },
+  "valid_fixture": {
+    "workspace": {
+      "public_id": "01900000-0000-7000-8000-000000000001",
+      "name": "Example",
+      "access_mode": "private",
+      "state": "active",
+      "dedicated": false,
+      "lock_version": 0,
+      "archived_at": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:00Z"
+    }
+  },
+  "valid_full_fixture": {
+    "workspace": {
+      "public_id": "01900000-0000-7000-8000-000000000001",
+      "name": "Example",
+      "access_mode": "private",
+      "state": "active",
+      "dedicated": false,
+      "lock_version": 0,
+      "archived_at": null,
+      "created_at": "2026-07-30T00:00:00Z",
+      "updated_at": "2026-07-30T00:00:00Z",
+      "metadata": {
+        "purpose": "fixture"
+      },
+      "tool_provider_overrides": {},
+      "owner": {
+        "public_id": "01900000-0000-7000-8000-000000000003",
+        "display_name": "Fixture owner"
+      },
+      "creator": {
+        "public_id": "01900000-0000-7000-8000-000000000003",
+        "display_name": "Fixture owner",
+        "kind": "human"
+      }
+    }
+  },
+  "valid_list_fixture": {
+    "workspaces": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000001",
+        "name": "Example",
+        "access_mode": "private",
+        "state": "active",
+        "dedicated": false,
+        "lock_version": 0,
+        "archived_at": null,
+        "created_at": "2026-07-30T00:00:00Z",
+        "updated_at": "2026-07-30T00:00:00Z"
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_create_request": {
+    "workspace": {
+      "name": "Example",
+      "access_mode": "private",
+      "metadata": {
+        "purpose": "fixture"
+      }
+    }
+  },
+  "valid_update_request": {
+    "workspace": {
+      "name": "Renamed",
+      "metadata": {
+        "purpose": "updated fixture"
+      },
+      "lock_version": 0
+    }
+  },
+  "valid_access_mode_request": {
+    "access_mode": {
+      "access_mode": "account_wide",
+      "lock_version": 0
+    }
+  },
+  "valid_tool_provider_overrides_request": {
+    "tool_provider_overrides": {
+      "overrides": {
+        "nexus.memory": "01900000-0000-7000-8000-000000000030"
+      },
+      "lock_version": 0
+    }
+  },
+  "overridable_namespaces": [
+    "nexus.memory"
+  ],
+  "valid_state_filter_request": {
+    "state": "archived"
+  },
+  "valid_order_request": {
+    "order": "desc"
+  },
+  "unknown_order_request": {
+    "order": "zz_unknown_value"
+  },
+  "valid_transfer_request": {
+    "ownership_transfer": {
+      "target_user_public_id": "01900000-0000-7000-8000-000000000004",
+      "lock_version": 0
+    }
+  },
+  "valid_lifecycle_request": {
+    "command": {
+      "lock_version": 0
+    }
+  },
+  "valid_delete_params": {
+    "lock_version": 0
+  },
+  "principals_envelope": [
+    "principals"
+  ],
+  "principal_projection": [
+    "public_id",
+    "handle",
+    "kind",
+    "display_name",
+    "agent_identifier",
+    "steward_public_id"
+  ],
+  "valid_principals_fixture": {
+    "principals": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000003",
+        "handle": "fixture-owner",
+        "kind": "human",
+        "display_name": "Fixture owner",
+        "agent_identifier": null,
+        "steward_public_id": null
+      },
+      {
+        "public_id": "01900000-0000-7000-8000-000000000005",
+        "handle": "lark",
+        "kind": "agent",
+        "display_name": "Fixture agent",
+        "agent_identifier": "fixture-agent",
+        "steward_public_id": "01900000-0000-7000-8000-000000000003"
+      }
+    ]
+  },
+  "valid_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "transition_in_progress",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_state_fixture": "zz_unknown_value",
+  "unknown_state_filter_request": {
+    "state": "zz_unknown_value"
+  },
+  "unknown_state_response_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000001",
+    "name": "Example",
+    "access_mode": "private",
+    "state": "zz_unknown_value",
+    "dedicated": false,
+    "lock_version": 0,
+    "archived_at": null,
+    "created_at": "2026-07-30T00:00:00Z",
+    "updated_at": "2026-07-30T00:00:00Z"
+  },
+  "unknown_access_mode_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000001",
+    "name": "Example",
+    "access_mode": "zz_unknown_value",
+    "state": "active",
+    "dedicated": false,
+    "lock_version": 0,
+    "archived_at": null,
+    "created_at": "2026-07-30T00:00:00Z",
+    "updated_at": "2026-07-30T00:00:00Z",
+    "metadata": {
+      "purpose": "fixture"
+    },
+    "tool_provider_overrides": {},
+    "owner": {
+      "public_id": "01900000-0000-7000-8000-000000000003",
+      "display_name": "Fixture owner"
+    },
+    "creator": {
+      "public_id": "01900000-0000-7000-8000-000000000003",
+      "display_name": "Fixture owner",
+      "kind": "human"
+    }
+  },
+  "unknown_access_mode_request": {
+    "access_mode": {
+      "access_mode": "zz_unknown_value",
+      "lock_version": 0
+    }
+  },
+  "unknown_creator_kind_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000001",
+    "name": "Example",
+    "access_mode": "private",
+    "state": "active",
+    "dedicated": false,
+    "lock_version": 0,
+    "archived_at": null,
+    "created_at": "2026-07-30T00:00:00Z",
+    "updated_at": "2026-07-30T00:00:00Z",
+    "metadata": {
+      "purpose": "fixture"
+    },
+    "tool_provider_overrides": {},
+    "owner": {
+      "public_id": "01900000-0000-7000-8000-000000000003",
+      "display_name": "Fixture owner"
+    },
+    "creator": {
+      "public_id": "01900000-0000-7000-8000-000000000003",
+      "display_name": "Fixture owner",
+      "kind": "zz_unknown_value"
+    }
+  },
+  "terminal_state_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000001",
+    "name": "Example",
+    "access_mode": "private",
+    "state": "deleted",
+    "dedicated": false,
+    "lock_version": 0,
+    "archived_at": null,
+    "created_at": "2026-07-30T00:00:00Z",
+    "updated_at": "2026-07-30T00:00:00Z"
+  },
+  "unknown_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_value_behavior": "carry_unknown_response",
+  "unknown_field_behavior": "ignore"
+}

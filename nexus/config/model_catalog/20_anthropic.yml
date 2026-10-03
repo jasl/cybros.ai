@@ -1,0 +1,350 @@
+schema_version: cybros.model_catalog.v1
+providers:
+  anthropic:
+    # THE WIRE THIS PROVIDER SPEAKS. It decides the route, the request
+    # shape, the option vocabulary, the timeouts and the tokenizer, so a
+    # model under it normally declares nothing at all.
+    api_format: anthropic_messages
+    # Two of this wire's features no row writes: PROMPT CACHING (every
+    # text wire's default; on THIS wire the kernel is the sole placer of
+    # the explicit breakpoints — a stable marker on the last system block,
+    # a rolling one on the last input entry — where every other family
+    # caches implicitly on prefix stability) and STRUCTURED OUTPUT, which
+    # the Messages protocol accepts as json_schema alone and never by
+    # default. Both are derived from the wire at profile build; a row
+    # writes `prompt_caching: false` or `output_format: false` only for a
+    # model known not to.
+    base_url: https://api.anthropic.com
+    # Operator capacity, not a wire fact: the same provider admits
+    # different amounts of concurrent work per deployment and per account
+    # tier. Carried from the predecessor's own providers.yml. A workload
+    # with no entry inherits the ceiling.
+    concurrency_limit: 6
+    workload_concurrency_limits:
+      text_generation: 6
+models:
+  # THE OUTPUT CEILING RIDES AS `max_tokens` on every row:
+  # the Messages wire requires it, the protocol refuses a
+  # request without `max_output_tokens`, and both references send the
+  # model's limit (opencode: the model's output limit; claude-code: the
+  # same) — never an invented 1,024. So each row states the vendor's
+  # 128,000 max output as the control's DEFAULT: a plain turn carries it,
+  # a caller may lower it. `generation_parameters` is otherwise the wire's.
+  #
+  # MID-CONVERSATION `role: system`
+  # (platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages,
+  # read 2026-09-26): GA with no beta header on Fable 5.1, Mythos 5.1,
+  # Fable 5, Mythos 5, Opus 5.5, Opus 4.8 and Opus 5 — a wire message
+  # inside messages[] that must follow a user turn — and NOT on Sonnet 5.
+  # The rows that have it state `wire_options.mid_conversation_system`;
+  # the protocol keeps a non-leading system entry in place under it and
+  # lowers one to user text without it.
+  #
+  # CLAUDE OPUS 5.5, the Opus row. Facts from the vendor's pages, all read
+  # 2026-09-26 — platform.claude.com/docs/en/models/opus-5-5/overview,
+  # …/models/opus-5-5/whats-new-opus-5-5, …/models/opus-5-5/migration-guide,
+  # …/models/overview, …/about-claude/pricing, …/build-with-claude/effort,
+  # …/build-with-claude/thinking, …/api/service-tiers and
+  # …/manage-claude/api-and-data-retention — the ones no key can carry
+  # stated here:
+  # - `claude-opus-5-5` is a fixed id with no date suffix and no separate
+  #   alias; Bedrock spells it `anthropic.claude-opus-5-5`; released
+  #   2026-09-22; knowledge cutoff June 2026. The models overview now lists
+  #   Opus 5 under legacy models.
+  # - Adaptive thinking is ALWAYS ON, unlike Opus 5: `thinking: {type:
+  #   disabled}` and a manual `budget_tokens` both return 400 (omitting
+  #   `thinking` means adaptive) — the row offers no `none`, so the
+  #   protocol's none → disabled lowering is never reached here.
+  # - `tool_choice` `any` and `tool` return 400 invalid_request_error
+  #   (`auto` / `none` only; token counting applies the same rule). The
+  #   protocol still builds them on request; this is a row comment, not a
+  #   vocabulary.
+  # - `temperature`, `top_p` and `top_k` at any non-default value are
+  #   rejected; prefill returns 400 (the protocol refuses it pre-IO on
+  #   every row).
+  # - Thinking blocks are bound to the exact system/tools/message prefix
+  #   as on Fable 5.1 — enforced by default for accounts created on or
+  #   after 2026-08-31 00:00 UTC; on older accounts setting the field opts
+  #   the request in. `wire_options.thinking_binding: drop_block` lowers
+  #   to `thinking.block_binding.prefix_mismatch_behavior` under the
+  #   `thinking-binding-controls-2026-08-01` beta the field implies. It
+  #   rides every request here: the row's default effort always selects
+  #   one, and an effort lowers to an adaptive `thinking` object.
+  # - Text between tool calls now arrives as progress-update `thinking`
+  #   blocks, not `text`: empty under the wire's default display
+  #   `omitted`, and under the protocol's `summarized` capture default
+  #   mixed into the reasoning summaries, indistinguishable from them.
+  #   `thinking.display` `updates` (only those blocks) is beta only; the
+  #   row offers the two GA words.
+  # - Priority Tier is unsupported: `service_tiers: []`.
+  # - NOT a Covered Model: no 30-day retention requirement, eligible for
+  #   zero data retention.
+  # - A classifier refusal answers `stop_reason: refusal` with a
+  #   `stop_details.category`, now `bio` and `reasoning_extraction` beside
+  #   `cyber` (the finish lands REFUSED with its category). `fallbacks`
+  #   stays OFF: the kernel re-runs a refused step itself, once, on the
+  #   model the answering profile declared (`fallback_model`), so the wire
+  #   never switches silently, the trio stays the invocation's and the
+  #   receipt prices one attempt. Fallback credit is NOT redeemed — a
+  #   departure from the provider's advice for a retry you build yourself:
+  #   redemption needs the byte-exact body, and a requeued step re-composes
+  #   for the new model; one cold cache write per switch is the cost.
+  # - `computer_20251124` returns 400 on the Claude API; only
+  #   `computer_toolset_20260801` is accepted there.
+  # - Prompt caching (512-token minimum) and structured outputs are
+  #   supported, so neither is written false; images up to 2,576 px on
+  #   the long edge, which the wire's image register bounds lower.
+  anthropic/claude-opus-5-5:
+    # USD/MTok list rates: platform.claude.com/docs/en/about-claude/pricing,
+    # "Model pricing", read 2026-09-26 — base input $4, output $20, cache
+    # hits and refreshes $0.20 (0.05x — the page's footnote; the family's
+    # rate is 0.1x, Fable 5.1's 0.025x), 5-minute cache writes $5 (1.25x),
+    # 1-hour cache writes $8 (2x). Fast mode ($8 / $40, `speed: "fast"`
+    # under its beta, Claude API only) is a request option, not the row's
+    # rate; Batch ($2 / $10) has no schedule column; no long-context
+    # premium (the full 1M window at standard pricing).
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "4"
+          output_per_mtok: "20"
+          cached_input_per_mtok: "0.2"
+          cache_write_per_mtok: "5"
+          # The wire's `cache_creation.ephemeral_1h_input_tokens` bills at
+          # the 1-hour tier; settlement splits the breakdown.
+          cache_write_1h_per_mtok: "8"
+    wire_options:
+      thinking_binding: drop_block
+      mid_conversation_system: true
+    capabilities:
+      # Text and images in, text out (the overview). The feature list's PDF
+      # support has no media contract on this wire's register.
+      input_modalities: [image]
+      output_modalities: [text]
+      # 1M context by default with no beta header, 128K max output on the
+      # synchronous Messages API (the overview; 300K on Batch under the
+      # `output-300k-2026-03-24` beta is not a row field).
+      limits:
+        input_tokens: 1000000
+        output_tokens: 128000
+      # Adaptive thinking steered by `effort` — low, medium, high, xhigh,
+      # max — and the default is `medium` (the overview and the effort
+      # page: a request that omits `effort` runs at `medium`; Opus 5 ran at
+      # `high`). Always on (see above).
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: medium
+        modes: [adaptive]
+        summaries: [summarized, omitted]
+        budget: manual_mode_only
+      # Signed thinking blocks replay on the producer model and one way
+      # across (what's new): Opus 5.5 reads Opus 5 and earlier Opus, Sonnet
+      # and Haiku blocks but not Fable or Mythos ones, and Fable 5.1 and
+      # Mythos 5.1 read its blocks; a block the model cannot read is dropped
+      # silently and not billed. Blocks return unmodified — an edited,
+      # reordered or partially dropped block answers 400 (the migration
+      # guide). So the kernel sends every block back unchanged to every
+      # model of the family and lets the API drop what the current model
+      # cannot read ("Keep sending the full history … let the API drop what
+      # the current model can't read", the thinking guide's model-switch
+      # note, read 2026-09-26). Every row here keeps ALL prior turns' thinking in
+      # context (…/build-with-claude/thinking, "Thinking block preservation
+      # by model", read 2026-09-26: Opus 4.5 and later Opus, Sonnet 4.6 and
+      # later Sonnet, Fable and Mythos), so a later turn replays every
+      # round's blocks the request before carried — the kernel's default
+      # on every row.
+      reasoning_replay:
+        format: anthropic_thinking
+      service_tiers: []
+      generation_parameters:
+        max_output_tokens:
+          kind: integer
+          default: 128000
+          minimum: 1
+          maximum: 128000
+          allowed_values: null
+  # The fable-5 and sonnet-5 rows' thinking vocabulary and modalities are
+  # the vendor's model pages (platform.claude.com/docs/en/models/<model>/
+  # overview, read 2026-09-16): adaptive thinking steered by `effort`,
+  # default `high`, text and images in.
+  anthropic/claude-fable-5:
+    # USD/MTok list rates: platform.claude.com/docs/en/about-claude/pricing,
+    # "Model pricing", read 2026-09-16 — base input $10, output $50, cache
+    # hits $1 (0.1x), 5-minute cache writes $12.50 (1.25x), 1-hour cache
+    # writes $20 (2x); the two write tiers are the wire's own
+    # `cache_creation.ephemeral_5m_input_tokens` / `ephemeral_1h_input_tokens`
+    # classes, and settlement bills each at its rate.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "10"
+          output_per_mtok: "50"
+          cached_input_per_mtok: "1"
+          cache_write_per_mtok: "12.5"
+          cache_write_1h_per_mtok: "20"
+    wire_options:
+      mid_conversation_system: true
+    capabilities:
+      # Text and images in (the vendor's Fable 5 page); the wire's image
+      # register bounds the upload.
+      input_modalities: [image]
+      output_modalities: [text]
+      # Reviewed 2026-08-13; limits mirror the lane's reviewed ceiling.
+      limits:
+        input_tokens: 1000000
+        output_tokens: 128000
+      # The family vocabulary: adaptive thinking (always on for this model)
+      # steered by `effort`, default `high`, per the vendor's page.
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: high
+        modes: [adaptive]
+        summaries: [summarized, omitted]
+        budget: manual_mode_only
+      reasoning_replay:
+        format: anthropic_thinking
+      generation_parameters:
+        max_output_tokens:
+          kind: integer
+          default: 128000
+          minimum: 1
+          maximum: 128000
+          allowed_values: null
+  # THE REFERENCES' DEFAULT FABLE MODEL:
+  # claude-code's default Fable model; opencode treats every claude-5.x id
+  # as modern adaptive. Facts from the vendor's overview and migration
+  # guide (platform.claude.com/docs/en/models/fable-5-1/migration-guide,
+  # read 2026-09-16), the ones no key can carry stated here:
+  # - `claude-fable-5-1` has no dated snapshot; Bedrock spells it
+  #   `anthropic.claude-fable-5-1`; released 2026-09-01. Its sibling
+  #   claude-mythos-5-1 is Glasswing-only and is NOT authored (no
+  #   authorization here).
+  # - Adaptive thinking is ALWAYS ON: `thinking: {type: disabled}` and
+  #   manual `budget_tokens` both return 400 — the row offers no `none`, so
+  #   the protocol's none → disabled lowering is never reached here.
+  # - `tool_choice` `any` and `tool` return 400 invalid_request_error
+  #   (`auto` / `none` only; `strict: true` plus an instruction is the
+  #   vendor's forced-choice replacement). The protocol still builds them on
+  #   request; this is a row comment, not a vocabulary.
+  # - Prefill returns 400 (the protocol refuses it pre-IO on every row).
+  # - Thinking blocks are bound to the producer model AND, on 5.1, to the
+  #   exact system/tools/message prefix — enforced for accounts created on
+  #   or after 2026-08-31; `wire_options.thinking_binding: drop_block`
+  #   lowers to `thinking.block_binding.prefix_mismatch_behavior`
+  #   under the `thinking-binding-controls-2026-08-01` beta the field
+  #   implies, and responses then carry `input_transformations`.
+  # - Priority Tier is unsupported (Fable 5 is): `service_tiers: []`.
+  # - 30-day data retention is required; not available under ZDR.
+  # - A classifier refusal answers `stop_reason: refusal` with a
+  #   `stop_details.category` (the finish lands REFUSED with its category).
+  # - `fallbacks` stays OFF: the kernel re-runs a refused step itself,
+  #   once, on the answering profile's declared `fallback_model`, so the
+  #   wire never switches silently and the receipt prices one attempt.
+  #   Fallback credit is not redeemed: a requeued step re-composes for the
+  #   new model, so no byte-exact body exists to redeem it with.
+  # - `thinking.display` `updates` is beta only; the row offers the two GA
+  #   words.
+  anthropic/claude-fable-5-1:
+    # USD/MTok list rates: platform.claude.com/docs/en/about-claude/pricing,
+    # "Model pricing", read 2026-09-16 — base input $10, output $50 (the
+    # same as Fable 5), cache hits $0.25 (0.025x — a quarter of Fable 5's;
+    # every other row is 0.1x), 5-minute cache writes $12.50 (1.25x),
+    # 1-hour cache writes $20 (2x). Batch $5 / $25 has no schedule column.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "10"
+          output_per_mtok: "50"
+          cached_input_per_mtok: "0.25"
+          cache_write_per_mtok: "12.5"
+          cache_write_1h_per_mtok: "20"
+    wire_options:
+      thinking_binding: drop_block
+      mid_conversation_system: true
+    capabilities:
+      # Text and images in, text out (the overview).
+      input_modalities: [image]
+      output_modalities: [text]
+      # 1M context by default, up to 128k output tokens per request (the
+      # migration guide); the 512-token cache minimum and the Fable 5
+      # tokenizer are the wire's, not the row's.
+      limits:
+        input_tokens: 1000000
+        output_tokens: 128000
+      # Adaptive thinking steered by `effort` — low, medium, high, xhigh,
+      # max, default `high` (the overview); always on (see above).
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: high
+        modes: [adaptive]
+        summaries: [summarized, omitted]
+        budget: manual_mode_only
+      # Signed thinking blocks replay on the producer model or a newer one
+      # (one-way: 5.1 reads Opus 5.5 / Opus 5 / Fable 5 / Mythos 5 blocks —
+      # Opus 5.5 per its what's-new page, read 2026-09-26; none read its)
+      # and, on 5.1, only in the conversation that produced them; every
+      # block rides back unchanged and the API drops what the model cannot
+      # read (the Opus 5.5 row's note).
+      reasoning_replay:
+        format: anthropic_thinking
+      service_tiers: []
+      generation_parameters:
+        max_output_tokens:
+          kind: integer
+          default: 128000
+          minimum: 1
+          maximum: 128000
+          allowed_values: null
+  anthropic/claude-sonnet-5:
+    # USD/MTok list rates: platform.claude.com/docs/en/about-claude/pricing,
+    # "Model pricing", read 2026-09-16 — base input $2, output $10, cache
+    # hits $0.20 (0.1x), 5-minute cache writes $2.50 (1.25x), 1-hour cache
+    # writes $4 (2x). The $2/$10 launch price, announced as introductory
+    # through 2026-08-31, is the STANDARD price now: the vendor's note
+    # states the scheduled 2026-09-01 increase to $3/$15 will not occur.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "2"
+          output_per_mtok: "10"
+          cached_input_per_mtok: "0.2"
+          cache_write_per_mtok: "2.5"
+          cache_write_1h_per_mtok: "4"
+    capabilities:
+      # Text and images in (the vendor's Sonnet 5 page); the wire's image
+      # register bounds the upload.
+      input_modalities: [image]
+      output_modalities: [text]
+      limits:
+        input_tokens: 1000000
+        output_tokens: 128000
+      # The family vocabulary: adaptive thinking (on by default for this
+      # model) steered by `effort`, default `high`, per the vendor's page.
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: high
+        modes: [adaptive]
+        summaries: [summarized, omitted]
+        budget: manual_mode_only
+      # Signed thinking blocks are model-bound: the blocks of another model
+      # ride back unchanged and the API drops them unread and unbilled (the
+      # Opus 5.5 row's note).
+      reasoning_replay:
+        format: anthropic_thinking
+      # No `mid_conversation_system`: the vendor's guide lists the models
+      # with the feature and Sonnet 5 is not among them.
+      generation_parameters:
+        max_output_tokens:
+          kind: integer
+          default: 128000
+          minimum: 1
+          maximum: 128000
+          allowed_values: null

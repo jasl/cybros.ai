@@ -1,0 +1,26 @@
+<% content_for :title, "Settings" %>
+
+<%= render layout: "settings/shell", locals: { current: :tokens } do %>
+  <section class="space-y-4">
+    <div>
+      <h2 class="text-xs font-medium text-base-content/60">Token created</h2>
+      <p class="mt-1 text-sm text-base-content/60">
+        Save <strong><%= @token.name %></strong> now — you won't be able to see it again.
+      </p>
+      <p class="mt-1 text-sm text-base-content/60">
+        Token ID <code class="break-all font-mono text-xs"><%= @token.lookup_id %></code>
+      </p>
+    </div>
+
+    <div class="rounded-box border border-base-300 bg-base-200 px-4 py-4">
+      <div class="flex min-w-0 gap-2" data-controller="clipboard">
+        <%= text_field_tag :access_token_secret, @secret, readonly: true, class: "input input-sm min-w-0 w-full flex-1 font-mono text-xs", data: { clipboard_target: "source" }, aria: { label: "New access token" }, id: nil %>
+        <button type="button" class="btn btn-primary btn-sm shrink-0" data-clipboard-target="button" data-action="clipboard#copy">Copy</button>
+      </div>
+    </div>
+
+    <div class="flex justify-end">
+      <%= link_to "Done", settings_tokens_path, class: "btn btn-ghost btn-sm" %>
+    </div>
+  </section>
+<% end %>

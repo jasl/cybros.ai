@@ -1,0 +1,18 @@
+{
+  "kinds": [
+    "agent",
+    "human"
+  ],
+  "roles": [
+    "admin",
+    "member",
+    "owner"
+  ],
+  "statuses": [
+    "active",
+    "removed",
+    "suspended"
+  ],
+  "unknown_value_fixture": "zz_unknown_value",
+  "unknown_value_behavior": "carry_unknown"
+}

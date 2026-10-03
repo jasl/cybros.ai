@@ -1,0 +1,23 @@
+shared:
+  account: cybros
+  creator: owner
+  owner: owner
+  name: Shared
+  access_mode: account_wide
+
+personal:
+  account: cybros
+  creator: curator
+  owner: curator
+  name: Curator Private
+  access_mode: private
+
+# The canonical Agent-created dedicated Workspace: creator tags its own
+# identifier, ownership sits with the creating Agent's steward (spec 02 D6).
+dedicated:
+  account: cybros
+  creator: agent
+  owner: owner
+  name: Fixture Agent Home
+  access_mode: private
+  agent_identifier: fixture-agent-installation

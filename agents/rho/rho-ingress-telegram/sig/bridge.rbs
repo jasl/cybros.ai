@@ -1,0 +1,72 @@
+module Rho
+  module IngressTelegram
+    module GroupProfile
+      NAME: String
+      TOOLS: Array[String]
+      READ_ONLY_TOOLS: Array[String]
+      READ_ONLY_CANONICAL: Array[String]
+      TEMPLATE: Hash[String, untyped]
+      PROMPT: String
+      def self.register: (untyped api) -> untyped
+      def self.read_only_names: (Array[Hash[String, untyped]] definitions) -> Array[String]
+    end
+
+    class Bridge
+      include ScheduledJobBridge
+      ATTENTION_LIMIT: Integer
+      QUESTION_LIMIT: Integer
+      def initialize: (host: untyped, ?core: untyped) -> void
+      def open: (idempotency_key: String, ?group: bool, ?isolated: bool, ?workspace_public_id: String?, ?memory_context: Hash[String, untyped]?) -> String
+      def open_side: (parent: String) -> String
+      def read_only_tool_names: (group: bool) -> Array[String]
+      def read_only_execution?: (String loop_id, workspace_public_id: String) -> bool
+      def workspace_state: () -> Hash[String, untyped]
+      def workspaces: () -> Array[Hash[String, untyped]]
+      def workspace: (String public_id) -> Hash[String, untyped]
+      def create_workspace: (name: String, idempotency_key: String) -> Hash[String, untyped]
+      def default_workspace: () -> Hash[String, untyped]
+      def conversation_workspace: (String conversation_id) -> Hash[String, untyped]
+      def conversation_workspace_id: (String conversation_id) -> String
+      def conversation: (String conversation_id, ?workspace_public_id: String?) -> Hash[String, untyped]
+      def attach: (String conversation_id, workspace_public_id: String) -> untyped
+      def inputs: (String conversation_id, ?workspace_public_id: String?) -> Array[Hash[String, untyped]]
+      def update_input: (String conversation_id, String input_id, ?text: String?, ?schedule: Hash[String, String], workspace_public_id: String) -> untyped
+      def delete_input: (String conversation_id, String input_id, workspace_public_id: String) -> untyped
+      def submit: (String conversation_id, text: String, speaker: String, idempotency_key: String,
+                   ?mode: String, ?observe: bool, ?model: String?, ?approval_mode: String?, ?tool_names: Array[String]?,
+                   ?workspace_public_id: String?, ?upload_public_ids: Array[String],
+                   ?expected_steering_loop_public_id: String?, ?inline: Array[Hash[String, untyped]]?, ?isolated: bool, ?side: bool, ?deliver_at: String?) -> untyped
+      def observation: (String conversation_id, workspace_public_id: String) -> String?
+      def participation_model: () -> String?
+      def participation_context: (String conversation_id, latest_input_id: String, position: Hash[String, untyped], workspace_public_id: String) -> String?
+      def participation_start: (prompt: String, model: String, configuration: Hash[String, untyped], idempotency_key: String, workspace_public_id: String) -> Hash[String, untyped]
+      def participation: (id: String, workspace_public_id: String) -> Hash[String, untyped]
+      def cancel_participation: (id: String, workspace_public_id: String) -> nil
+      def record_participation: (String conversation_id, text: String, idempotency_key: String, workspace_public_id: String) -> String
+      def register_speaker: (bot_id: String | Integer, user: Hash[String, untyped]) -> String
+      def turns: (String conversation_id, ?after_position: Integer?, ?workspace_public_id: String?) -> Array[Hash[String, untyped]]
+      def turn_source: (String conversation_id, position: Integer, ?workspace_public_id: String?) -> Hash[String, untyped]?
+      def worker_request: (String conversation_id, workspace_public_id: String) -> Hash[String, untyped]?
+      def worker_result: (Hash[String, untyped] source, workspace_public_id: String) -> Hash[String, untyped]?
+      def turn_media: (Hash[String, untyped] turn, workspace_public_id: String) -> Array[Hash[String, untyped]]
+      def stage_media: (bytes: String, filename: String, content_type: String, idempotency_key: String, workspace_public_id: String) -> String
+      def transcribe: (upload_public_id: String, model: String, idempotency_key: String, workspace_public_id: String) -> Hash[String, untyped]
+      def transcription: (id: String, workspace_public_id: String) -> Hash[String, untyped]
+      def speech_start: (text: String, model: String, idempotency_key: String, workspace_public_id: String) -> Hash[String, untyped]
+      def speech: (id: String, workspace_public_id: String) -> Hash[String, untyped]
+      def cancel_media: (id: String, workspace_public_id: String) -> nil
+      def media_bytes: (Hash[String, untyped] descriptor, workspace_public_id: String) -> String
+      def runs: () -> Hash[String, Hash[String, untyped]]
+      def progress: (Hash[String, untyped] run) -> Hash[String, untyped]
+      def snapshot: (String conversation_id, ?workspace_public_id: String?, ?run: Hash[String, untyped]?, ?inputs: Array[Hash[String, untyped]]?) -> Hash[String, untyped]
+      def task_execution: (String loop_id, workspace_public_id: String) -> Hash[String, untyped]
+      def events: (String conversation_id, ?after: String?, ?workspace_public_id: String?) -> Hash[String, untyped]
+      def pending: (String conversation_id, ?workspace_public_id: String?, ?reads: Hash[Symbol, untyped]?) -> Array[Hash[String, untyped]]
+      def models: () -> Array[String]
+      def stop: (String id, ?host_type: String, ?workspace_public_id: String?) -> untyped
+      def approve: (String loop_id, String key, ?workspace_public_id: String?) -> untyped
+      def deny: (String loop_id, String key, ?reason: String?, ?workspace_public_id: String?) -> untyped
+      def answer: (String loop_id, String key, String text, ?workspace_public_id: String?) -> untyped
+    end
+  end
+end

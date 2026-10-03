@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>"<% if explicit_theme %> data-theme="<%= explicit_theme %>"<% end %>>
+  <%= render "layouts/shared/head", turbo_cache: false %>
+
+  <% sidebar_collapsed = cookies[:sidebar_collapsed] == "1" %>
+  <body class="bg-base-100">
+    <div class="drawer <%= sidebar_collapsed ? "is-collapsed" : "lg:drawer-open" %>" data-controller="sidebar" data-sidebar-collapsed-value="<%= sidebar_collapsed %>">
+      <input id="sidebar" type="checkbox" class="drawer-toggle lg:hidden" tabindex="-1" aria-hidden="true" data-sidebar-target="drawer" data-action="change->sidebar#syncDrawer">
+
+      <div class="drawer-content flex min-h-dvh flex-col" data-sidebar-target="content">
+        <a href="#main" class="btn btn-sm btn-primary fixed start-4 top-4 z-50 -translate-y-20 focus:translate-y-0" data-turbo="false"><%= t(".skip_to_main") %></a>
+
+        <button type="button" class="btn btn-ghost btn-square btn-sm fixed start-3 top-3 z-40 hidden <%= "lg:inline-flex" if sidebar_collapsed %>" aria-label="<%= t(".expand_sidebar") %>" data-sidebar-target="expander" data-action="sidebar#toggle">
+          <span class="iconify lucide--panel-left-open size-4" aria-hidden="true"></span>
+        </button>
+
+        <header class="navbar border-b border-base-300 bg-base-100 lg:hidden">
+          <button type="button" aria-label="<%= t(".open_sidebar") %>" aria-controls="sidebar-panel" aria-expanded="false" class="btn btn-ghost btn-square drawer-button" data-sidebar-target="opener" data-action="sidebar#openDrawer">
+            <span class="iconify lucide--menu size-5" aria-hidden="true"></span>
+          </button>
+          <span class="px-2 text-base font-semibold tracking-tight">Nexus</span>
+        </header>
+
+        <div class="mx-auto w-full max-w-6xl grow px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+          <%= render "layouts/shared/flash" unless content_for?(:page_owned_flash) %>
+
+          <main id="main" class="mt-4 first:mt-0">
+            <%= yield %>
+          </main>
+        </div>
+      </div>
+
+      <%# lg:in-[.is-collapsed]:hidden keeps a drawer checkbox left checked below
+          lg from re-presenting the sidebar as an overlay after growing past lg
+          while the shell is collapsed %>
+      <div class="drawer-side lg:in-[.is-collapsed]:hidden" data-sidebar-target="side">
+        <label for="sidebar" aria-label="<%= t(".close_sidebar") %>" class="drawer-overlay"></label>
+
+        <aside id="sidebar-panel" class="flex min-h-full w-72 flex-col border-e border-base-300 bg-base-100">
+          <div class="flex items-center justify-between px-4 py-3">
+            <%= link_to root_path, class: "px-1 text-base font-semibold tracking-tight" do %>Nexus<% end %>
+            <button type="button" class="btn btn-ghost btn-square btn-sm lg:hidden" aria-label="<%= t(".close_sidebar") %>" aria-controls="sidebar-panel" data-sidebar-target="closer" data-action="sidebar#closeDrawer">
+              <span class="iconify lucide--x size-4" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="btn btn-ghost btn-square btn-sm hidden lg:inline-flex" aria-label="<%= t(".collapse_sidebar") %>" data-sidebar-target="collapser" data-action="sidebar#toggle">
+              <span class="iconify lucide--panel-left-close size-4" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <nav class="grow overflow-y-auto scrollbar-auto-hide px-3 py-2" aria-label="<%= t(".primary_navigation") %>">
+            <%= render sidebar_nav_partial %>
+          </nav>
+
+          <div class="border-t border-base-300 p-2">
+            <details class="dropdown dropdown-top w-full" data-controller="dropdown" data-action="click@document->dropdown#close keydown.esc@document->dropdown#close">
+              <summary class="btn btn-ghost h-auto w-full justify-start gap-2.5 px-2 py-2 font-normal">
+                <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-base-300 text-xs font-semibold uppercase" aria-hidden="true"><%= Current.user&.display_name&.first %></span>
+                <span class="min-w-0 flex-1 truncate text-start text-sm"><%= Current.user&.display_name %></span>
+                <span class="iconify lucide--ellipsis size-4 shrink-0 opacity-60" aria-hidden="true"></span>
+              </summary>
+
+              <div class="dropdown-content z-50 mb-2 w-full rounded-box border border-base-300 bg-base-200 p-1 shadow-lg">
+                <div class="border-b border-base-300 px-2.5 pb-2 pt-1.5">
+                  <p class="truncate text-sm font-medium"><%= Current.user&.display_name %></p>
+                  <p class="truncate text-xs text-base-content/60"><%= Current.identity&.email %></p>
+                </div>
+                <div class="flex items-center justify-between px-2.5 py-2" data-controller="theme">
+                  <span class="text-sm"><%= t(".appearance") %></span>
+                  <div class="join" role="group" aria-label="<%= t(".appearance") %>">
+                    <% current_theme = explicit_theme || "system" %>
+                    <% { "light" => t(".theme_light"), "dark" => t(".theme_dark"), "system" => t(".theme_system") }.each do |value, label| %>
+                      <button type="button" class="btn btn-xs join-item <%= current_theme == value ? "bg-base-300 border-base-300" : "btn-ghost" %>" aria-pressed="<%= current_theme == value %>" data-theme-target="choice" data-theme-value-param="<%= value %>" data-action="theme#choose"><%= label %></button>
+                    <% end %>
+                  </div>
+                </div>
+                <% if Current.user&.admin? %>
+                  <div class="border-b border-base-300 py-1">
+                    <%= link_to admin_users_path, class: "btn btn-ghost btn-sm btn-block justify-start gap-2.5 font-normal" do %>
+                      <span class="iconify lucide--shield size-4" aria-hidden="true"></span>
+                      <%= t(".administration") %>
+                    <% end %>
+                  </div>
+                <% end %>
+                <div class="border-t border-base-300 pt-1">
+                  <%= button_to session_path,
+                        method: :delete,
+                        params: (request.path.start_with?(oauth_device_path) ? { return_to: request.fullpath } : {}),
+                        class: "btn btn-ghost btn-sm btn-block justify-start gap-2.5 font-normal" do %>
+                    <span class="iconify lucide--log-out size-4" aria-hidden="true"></span>
+                    <%= t(".sign_out") %>
+                  <% end %>
+                </div>
+              </div>
+            </details>
+          </div>
+        </aside>
+      </div>
+    </div>
+    <%= render "layouts/shared/confirm_dialog" %>
+  </body>
+</html>

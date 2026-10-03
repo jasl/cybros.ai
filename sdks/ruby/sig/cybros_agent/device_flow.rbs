@@ -1,0 +1,162 @@
+module CybrosAgent
+
+  module DeviceFlow
+    type request_params = Hash[Symbol, String]
+    type branch = :agent | :runner | :combined
+    type runner_claims = { identifier: String, display_name: String }
+    type cancellation_outcome = :canceled | :consumed
+    type plane = "member" | "executor_transport"
+    type poll_outcome = Pending | SlowDown | Throttled | Credentials
+
+
+
+    LOST: Array[String]
+    INVALID: Array[String]
+
+    def self.for_oauth_error: (String? code) -> Error
+
+    class Error < CybrosAgent::Error
+      attr_reader oauth_error: String?
+
+      def initialize: (?String? message, ?oauth_error: String?) -> void
+    end
+
+    class AuthorizationLostError < Error
+    end
+
+    class DeadlineExceeded < Error
+    end
+
+    class InvalidRequest < Error
+    end
+
+    class RateLimited < Error
+      attr_reader retry_after: Integer
+
+      def initialize: (retry_after: Integer) -> void
+    end
+
+    class ServerError < Error
+    end
+
+
+
+    class Authorization < Data
+      attr_reader device_code: String
+      attr_reader user_code: String
+      attr_reader verification_uri: String
+      attr_reader verification_uri_complete: String
+      attr_reader interval: Integer
+      attr_reader expires_in: Integer
+      attr_reader deadline_monotonic: Numeric
+      attr_reader branch: branch
+      attr_reader executor_kind: String
+
+      def self.new: (String device_code, String user_code, String verification_uri, String verification_uri_complete, Integer interval, Integer expires_in, Numeric deadline_monotonic, branch branch, String executor_kind) -> instance
+                  | (device_code: String, user_code: String, verification_uri: String, verification_uri_complete: String, interval: Integer, expires_in: Integer, deadline_monotonic: Numeric, branch: branch, executor_kind: String) -> instance
+      def self.[]: (String device_code, String user_code, String verification_uri, String verification_uri_complete, Integer interval, Integer expires_in, Numeric deadline_monotonic, branch branch, String executor_kind) -> instance
+                 | (device_code: String, user_code: String, verification_uri: String, verification_uri_complete: String, interval: Integer, expires_in: Integer, deadline_monotonic: Numeric, branch: branch, executor_kind: String) -> instance
+      def self.members: () -> [:device_code, :user_code, :verification_uri, :verification_uri_complete, :interval, :expires_in, :deadline_monotonic, :branch, :executor_kind]
+
+      def members: () -> [:device_code, :user_code, :verification_uri, :verification_uri_complete, :interval, :expires_in, :deadline_monotonic, :branch, :executor_kind]
+      def inspect: () -> String
+      def to_s: () -> String
+      def pretty_print: (untyped printer) -> void
+    end
+
+    class Credentials < Data
+      attr_reader access_token: String?
+      attr_reader refresh_token: String
+      attr_reader token_type: String
+      attr_reader expires_in: Integer
+      attr_reader executor_access_token: String?
+      attr_reader runner_access_token: String?
+      attr_reader runner_refresh_token: String?
+
+      def self.new: (String? access_token, String refresh_token, String token_type, Integer expires_in, String? executor_access_token, ?String? runner_access_token, ?String? runner_refresh_token) -> instance
+                  | (access_token: String?, refresh_token: String, token_type: String, expires_in: Integer, executor_access_token: String?, ?runner_access_token: String?, ?runner_refresh_token: String?) -> instance
+      def self.[]: (String? access_token, String refresh_token, String token_type, Integer expires_in, String? executor_access_token, ?String? runner_access_token, ?String? runner_refresh_token) -> instance
+                 | (access_token: String?, refresh_token: String, token_type: String, expires_in: Integer, executor_access_token: String?, ?runner_access_token: String?, ?runner_refresh_token: String?) -> instance
+      def self.members: () -> [:access_token, :refresh_token, :token_type, :expires_in, :executor_access_token, :runner_access_token, :runner_refresh_token]
+
+      def initialize: (access_token: String?, refresh_token: String, token_type: String, expires_in: Integer, executor_access_token: String?, ?runner_access_token: String?, ?runner_refresh_token: String?) -> void
+      def members: () -> [:access_token, :refresh_token, :token_type, :expires_in, :executor_access_token, :runner_access_token, :runner_refresh_token]
+      def member_plane?: () -> bool
+      def executor_plane?: () -> bool
+      def runner_plane?: () -> bool
+      def runner_half: () -> Credentials?
+      def inspect: () -> String
+      def to_s: () -> String
+      def pretty_print: (untyped printer) -> void
+    end
+
+    class Pending < Data
+      def self.new: () -> instance
+      def self.[]: () -> instance
+      def self.members: () -> []
+
+      def members: () -> []
+    end
+
+    class SlowDown < Data
+      def self.new: () -> instance
+      def self.[]: () -> instance
+      def self.members: () -> []
+
+      def members: () -> []
+    end
+
+    class Throttled < Data
+      attr_reader retry_after: Integer
+
+      def self.new: (Integer retry_after) -> instance
+                  | (retry_after: Integer) -> instance
+      def self.[]: (Integer retry_after) -> instance
+                 | (retry_after: Integer) -> instance
+      def self.members: () -> [:retry_after]
+
+      def members: () -> [:retry_after]
+    end
+
+    class Client
+      CLIENT_ID: String
+      DEVICE_GRANT: String
+      REFRESH_GRANT: String
+      AGENT_APPLICATION_KIND: String
+      RUNNER_KIND: String
+      TRANSIENT_RETRY_DELAY: Integer
+      TRANSIENT_RETRY_LIMIT: Integer
+      SLOW_DOWN_STEP: Integer
+      DEFAULT_REQUEST_TIMEOUT: Integer
+
+      def initialize: (
+        base_url: String,
+        ?transport: _Transport?,
+        ?clock: ^() -> Numeric,
+        ?sleeper: ^(Numeric seconds) -> void,
+        ?request_timeout: Numeric
+      ) -> void
+
+      def request_authorization: (
+        agent_identifier: String,
+        agent_display_name: String,
+        executor_display_name: String,
+        ?runner: runner_claims?
+      ) -> Authorization
+
+      def request_runner_authorization: (
+        runner_identifier: String,
+        runner_display_name: String,
+        ?executor_kind: String
+      ) -> Authorization
+
+      def poll: (Authorization authorization) -> poll_outcome
+      def await_credentials: (Authorization authorization) -> Credentials
+      def cancel_authorization: (Authorization authorization) -> cancellation_outcome
+      def rotate: (refresh_token: String) -> Credentials
+      def revoke: (token: String) -> nil
+    end
+
+  end
+
+end

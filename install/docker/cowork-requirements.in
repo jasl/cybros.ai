@@ -1,0 +1,9 @@
+# Image-only libraries; the host installer and rho gem do not install these.
+python-docx
+openpyxl
+python-pptx
+pypdf
+reportlab
+Pillow
+pandas
+matplotlib

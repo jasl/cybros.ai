@@ -1,0 +1,606 @@
+{
+  "protocol_versions": {
+    "contract_pack": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "meta.json#/contract",
+      "unknown_fixture": "meta.json#/unknown_version_fixture",
+      "unknown_behavior": "reject"
+    }
+  },
+  "closed_discriminators": {
+    "oauth.client_id": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "oauth.json#/agent_authorization_request/client_id",
+      "unknown_fixture": "oauth.json#/unknown_client_request",
+      "unknown_behavior": "reject_as_invalid_client"
+    },
+    "oauth.grant_type": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "oauth.json#/device_token_request/grant_type",
+      "unknown_fixture": "oauth.json#/unknown_grant_request",
+      "unknown_behavior": "reject_as_unsupported_grant_type"
+    },
+    "oauth.token_response.plane": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "oauth.json#/valid_agent_token_fixture/plane",
+      "unknown_fixture": "oauth.json#/unknown_plane_fixture",
+      "unknown_behavior": "reject_response"
+    },
+    "oauth.token_type": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "oauth.json#/valid_agent_token_fixture/token_type",
+      "unknown_fixture": "oauth.json#/unknown_token_type_fixture",
+      "unknown_behavior": "reject_response"
+    },
+    "platform.session.kind": {
+      "consumers": [
+        "e2e",
+        "nexus"
+      ],
+      "valid_fixture": "sessions.json#/valid_show_fixture/session/kind",
+      "unknown_fixture": "sessions.json#/unknown_kind_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "platform.session.token_type": {
+      "consumers": [
+        "e2e",
+        "nexus"
+      ],
+      "valid_fixture": "sessions.json#/valid_create_fixture/token_type",
+      "unknown_fixture": "sessions.json#/unknown_token_type_fixture",
+      "unknown_behavior": "reject_response"
+    },
+    "profile.member.kind": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "profiles.json#/agent_api/member/kind",
+      "unknown_fixture": "profiles.json#/unknown_member_kind_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "profile.member.role": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "profiles.json#/agent_api/member/role",
+      "unknown_fixture": "profiles.json#/unknown_member_role_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "agent_profile.credential.plane": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "profiles.json#/agent_api/credential/plane",
+      "unknown_fixture": "profiles.json#/unknown_credential_plane_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "named_agent.scope": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "profiles.json#/named_agents_fixture/agents/0/scope",
+      "unknown_fixture": "profiles.json#/unknown_named_agent_scope_fixture/agents/0/scope",
+      "unknown_behavior": "carry_unknown"
+    },
+    "platform_profile.credential_plane": {
+      "consumers": [
+        "e2e",
+        "nexus"
+      ],
+      "valid_fixture": "profiles.json#/platform_api_token/credential_plane",
+      "unknown_fixture": "profiles.json#/unknown_platform_credential_plane_fixture",
+      "unknown_behavior": "carry_unknown_without_granting_authority"
+    },
+    "executor.kind": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "task_executors.json#/valid_fixture/executor/kind",
+      "unknown_fixture": "task_executors.json#/unknown_kind_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "executor.status": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "task_executors.json#/valid_fixture/executor/status",
+      "unknown_fixture": "task_executors.json#/unknown_status_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "executor.discovery.kind.filter": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "task_executors.json#/valid_discovery_kind_filter_request",
+      "unknown_fixture": "task_executors.json#/unknown_discovery_kind_filter_request",
+      "unknown_behavior": "reject_as_parameter_invalid"
+    },
+    "model.unavailable_reason": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "models.json#/unavailable_fixture/unavailable_reason",
+      "unknown_fixture": "models.json#/unknown_unavailable_reason_fixture/unavailable_reason",
+      "unknown_behavior": "carry_unknown"
+    },
+    "model.pricing.state": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "models.json#/valid_fixture/models/0/pricing/state",
+      "unknown_fixture": "models.json#/unknown_pricing_state_fixture/pricing/state",
+      "unknown_behavior": "carry_unknown"
+    },
+    "model_provider.credentials": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "models.json#/valid_provider_fixture/model_provider/credentials",
+      "unknown_fixture": "models.json#/unknown_credentials_fixture/credentials",
+      "unknown_behavior": "carry_unknown"
+    },
+    "inbox_task.kind": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "executor_inbox.json#/valid_fixture/tasks/0/kind",
+      "unknown_fixture": "executor_inbox.json#/unknown_kind_fixture",
+      "unknown_behavior": "carry_unknown",
+      "ask_fixture": "executor_inbox.json#/ask_fixture"
+    },
+    "executor_inbox.content.kind": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "executor_inbox.json#/commit_link_fixture/content/1/type",
+      "unknown_fixture": "executor_inbox.json#/unknown_content_kind_fixture/content/1/type",
+      "unknown_behavior": "reject_as_unsupported_content_kind"
+    },
+    "inbox_task.scope": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "executor_inbox.json#/overridden_fixture/scope",
+      "unknown_fixture": "executor_inbox.json#/valid_fixture/tasks/0",
+      "unknown_behavior": "absent_is_nil"
+    },
+    "progress.key_kind": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "executor_inbox.json#/progress/key_kinds/0",
+      "unknown_fixture": "executor_inbox.json#/unknown_progress_key_kind_fixture",
+      "unknown_behavior": "reject_as_invalid_frame"
+    },
+    "progress.frame_type": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "conversations.json#/progress_frame_types/0",
+      "unknown_fixture": "executor_inbox.json#/unknown_progress_frame_type_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "workspace.state.response": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "workspaces.json#/valid_fixture/workspace/state",
+      "unknown_fixture": "workspaces.json#/unknown_state_response_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "workspace.state.filter": {
+      "consumers": [
+        "nexus"
+      ],
+      "valid_fixture": "workspaces.json#/valid_state_filter_request",
+      "unknown_fixture": "workspaces.json#/unknown_state_filter_request",
+      "unknown_behavior": "reject_as_parameter_invalid"
+    },
+    "list.order.filter": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "workspaces.json#/valid_order_request",
+      "unknown_fixture": "workspaces.json#/unknown_order_request",
+      "unknown_behavior": "reject_as_parameter_invalid"
+    },
+    "workspace.access_mode.response": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "workspaces.json#/valid_fixture/workspace/access_mode",
+      "unknown_fixture": "workspaces.json#/unknown_access_mode_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "workspace.access_mode.command": {
+      "consumers": [
+        "nexus"
+      ],
+      "valid_fixture": "workspaces.json#/valid_access_mode_request",
+      "unknown_fixture": "workspaces.json#/unknown_access_mode_request",
+      "unknown_behavior": "reject_as_invalid_access_mode"
+    },
+    "workspace.creator.kind": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "workspaces.json#/valid_full_fixture/workspace/creator/kind",
+      "unknown_fixture": "workspaces.json#/unknown_creator_kind_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "one_shot.workload.response": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "one_shots.json#/valid_fixture/one_shot/workload",
+      "unknown_fixture": "one_shots.json#/unknown_workload_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "one_shot.workload.filter": {
+      "consumers": [
+        "nexus"
+      ],
+      "valid_fixture": "one_shots.json#/valid_workload_filter_request",
+      "unknown_fixture": "one_shots.json#/unknown_workload_filter_request",
+      "unknown_behavior": "reject_as_parameter_invalid"
+    },
+    "one_shot.status": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "one_shots.json#/valid_fixture/one_shot/status",
+      "unknown_fixture": "one_shots.json#/unknown_status_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "one_shot.event.type": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "one_shots.json#/valid_event_fixture/type",
+      "unknown_fixture": "one_shots.json#/unknown_event_type_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "one_shot.realtime.items": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "one_shots.json#/valid_realtime_subscription_fixture/items",
+      "unknown_fixture": "one_shots.json#/unknown_realtime_items_fixture/items",
+      "unknown_behavior": "reject_subscription"
+    },
+    "conversation.turn.kind": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "conversations.json#/valid_turns_fixture/turns/0/kind",
+      "unknown_fixture": "conversations.json#/unknown_turn_kind_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "conversation.turn.status": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "conversations.json#/valid_turns_fixture/turns/0/status",
+      "unknown_fixture": "conversations.json#/unknown_status_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "scheduled_job.status": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "scheduled_jobs.json#/valid_fixture/scheduled_job/status",
+      "unknown_fixture": "scheduled_jobs.json#/unknown_status_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "scheduled_job.rule.response": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "scheduled_jobs.json#/valid_fixture/scheduled_job/rule/kind",
+      "unknown_fixture": "scheduled_jobs.json#/unknown_rule_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "conversation.event.type": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "conversations.json#/valid_events_fixture/events/0/type",
+      "unknown_fixture": "conversations.json#/unknown_event_type_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "conversation.transcript.type": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "conversations.json#/valid_transcript_delta_fixture/event/type",
+      "unknown_fixture": "conversations.json#/unknown_transcript_item_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "conversation.realtime.items": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "conversations.json#/valid_realtime_subscription_fixture/items",
+      "unknown_fixture": "conversations.json#/unknown_realtime_items_fixture/items",
+      "unknown_behavior": "reject_subscription"
+    },
+    "agent_loop.graph.node.status": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "agent_loops.json#/valid_graph_fixture/nodes/0/status",
+      "unknown_fixture": "agent_loops.json#/unknown_node_status_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "admin_user.kind": {
+      "consumers": [
+        "e2e",
+        "nexus"
+      ],
+      "valid_fixture": "admin_users.json#/valid_removal_fixture/user/kind",
+      "unknown_fixture": "admin_users.json#/unknown_kind_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "admin_user.role": {
+      "consumers": [
+        "e2e",
+        "nexus"
+      ],
+      "valid_fixture": "admin_users.json#/valid_removal_fixture/user/role",
+      "unknown_fixture": "admin_users.json#/unknown_role_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "admin_user.status": {
+      "consumers": [
+        "e2e",
+        "nexus"
+      ],
+      "valid_fixture": "admin_users.json#/valid_removal_fixture/user/status",
+      "unknown_fixture": "admin_users.json#/unknown_status_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "prompt_document.slot": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "prompt_documents.json#/valid_fixture/prompt_document/slot",
+      "unknown_fixture": "prompt_documents.json#/unknown_slot_fixture",
+      "unknown_behavior": "carry_unknown"
+    },
+    "prompt_document.role": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "prompt_documents.json#/valid_fixture/prompt_document/role",
+      "unknown_fixture": "prompt_documents.json#/unknown_role_fixture",
+      "unknown_behavior": "carry_unknown"
+    }
+  },
+  "terminal_classes": {
+    "oauth.authorization_loss": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "oauth.json#/terminal_error_fixture",
+      "unknown_fixture": "oauth.json#/unknown_error_fixture",
+      "unknown_behavior": "known_terminal_errors_end_authorization_unknown_error_is_server_failure"
+    },
+    "oauth.cancellation_consumed": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "oauth.json#/consumed_cancellation_fixture",
+      "unknown_fixture": "oauth.json#/unknown_error_fixture",
+      "unknown_behavior": "too_late_maps_to_consumed_unknown_response_raises"
+    },
+    "executor.revoked": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "task_executors.json#/terminal_status_fixture",
+      "unknown_fixture": "task_executors.json#/unknown_status_fixture",
+      "unknown_behavior": "carry_terminal_or_unknown_status_without_inventing_authority"
+    },
+    "workspace.deleted": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "workspaces.json#/terminal_state_fixture",
+      "unknown_fixture": "workspaces.json#/unknown_state_response_fixture",
+      "unknown_behavior": "carry_terminal_or_unknown_state_without_inventing_browsability"
+    }
+  },
+  "stable_error_families": {
+    "api.common": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "errors.json#/valid_fixture",
+      "unknown_fixture": "errors.json#/unknown_code_fixture",
+      "unknown_behavior": "classify_by_http_status_and_carry_unknown_code"
+    },
+    "oauth.machine": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "oauth.json#/valid_error_fixture",
+      "unknown_fixture": "oauth.json#/unknown_error_fixture",
+      "unknown_behavior": "unknown_error_is_server_failure"
+    },
+    "platform.session": {
+      "consumers": [
+        "e2e",
+        "nexus"
+      ],
+      "valid_fixture": "sessions.json#/valid_error_fixture",
+      "unknown_fixture": "sessions.json#/unknown_error_fixture",
+      "unknown_behavior": "classify_by_http_status_and_carry_unknown_code"
+    },
+    "agent.workspaces": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "workspaces.json#/valid_error_fixture",
+      "unknown_fixture": "workspaces.json#/unknown_error_fixture",
+      "unknown_behavior": "classify_by_http_status_and_carry_unknown_code"
+    },
+    "agent.store_entries": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "store_entries.json#/valid_error_fixture",
+      "unknown_fixture": "store_entries.json#/unknown_error_fixture",
+      "unknown_behavior": "classify_by_http_status_and_carry_unknown_code"
+    },
+    "agent.memory": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "memory_documents.json#/valid_error_fixture",
+      "unknown_fixture": "memory_documents.json#/unknown_error_fixture",
+      "unknown_behavior": "classify_by_http_status_and_carry_unknown_code"
+    },
+    "agent.conversations": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "conversations.json#/valid_error_fixture",
+      "unknown_fixture": "conversations.json#/unknown_error_fixture",
+      "unknown_behavior": "classify_by_http_status_and_carry_unknown_code"
+    },
+    "agent.agent_loops": {
+      "consumers": [
+        "e2e",
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "agent_loops.json#/valid_error_fixture",
+      "unknown_fixture": "agent_loops.json#/unknown_error_fixture",
+      "unknown_behavior": "classify_by_http_status_and_carry_unknown_code"
+    },
+    "agent.models": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "models.json#/valid_error_fixture",
+      "unknown_fixture": "models.json#/unknown_error_fixture",
+      "unknown_behavior": "classify_by_http_status_and_carry_unknown_code"
+    },
+    "api.extended_envelope": {
+      "consumers": [
+        "nexus",
+        "sdk"
+      ],
+      "valid_fixture": "errors.json#/extended_fixture",
+      "unknown_fixture": "errors.json#/unknown_code_fixture",
+      "unknown_behavior": "classify_by_http_status_and_carry_details"
+    },
+    "platform.admin_user_removal": {
+      "consumers": [
+        "e2e",
+        "nexus"
+      ],
+      "valid_fixture": "admin_users.json#/valid_error_fixture",
+      "unknown_fixture": "admin_users.json#/unknown_error_fixture",
+      "unknown_behavior": "classify_by_http_status_and_carry_unknown_code"
+    }
+  }
+}

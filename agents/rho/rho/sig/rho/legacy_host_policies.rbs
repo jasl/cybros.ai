@@ -1,0 +1,17 @@
+module Rho
+  class LegacyHostPolicies
+    POLICY_KEYS: Array[String]
+
+    def initialize: (home: Home, user_public_id: String) -> void
+    def rows: () -> Array[Hash[String, untyped]]
+    def policy: (String host_public_id) -> Hash[String, untyped]?
+    def complete: (String host_public_id) -> void
+
+    private
+
+    def claim: () -> void
+    def read_rows: (Hash[String, untyped] document) -> Array[Hash[String, untyped]]
+    def retire: () -> void
+    def flush: () -> void
+  end
+end

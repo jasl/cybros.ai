@@ -1,0 +1,513 @@
+# Copy convention: model, controller,
+# and layout strings live here — full explicit keys in controllers, lazy lookup
+# in layouts/partials. Page templates under app/views keep their text inline.
+en:
+  setups:
+    create:
+      rate_limited: "Try again later."
+      invalid_setup_secret: "The setup secret is incorrect."
+  sessions:
+    password_change_required: "Set your own password to continue."
+    create:
+      invalid_credentials: "Try another email address or password."
+      rate_limited: "Try again later."
+      local_recovery_required: "Password sign-in is locked pending local recovery. Ask your installation operator."
+  passwords:
+    invalid_token: "Password reset link is invalid or has expired."
+    create:
+      rate_limited: "Try again later."
+      sent: "Password reset instructions sent (if user with that email address exists)."
+    update:
+      reset: "Password has been reset."
+  passwords_mailer:
+    reset:
+      subject: "Reset your password"
+  invitation_mailer:
+    acceptance:
+      subject: "You have been invited to Nexus"
+  agents:
+    credentials:
+      destroy:
+        revoked: "Credentials revoked. The program stops authenticating immediately."
+    handles:
+      update:
+        updated: "Handle changed."
+    removals:
+      create:
+        removed: "Profile removed."
+        unavailable: "This profile cannot be removed right now."
+    restorations:
+      create:
+        restored: "Profile restored."
+        unavailable: "This profile cannot be restored right now."
+  runners:
+    destroy:
+      revoked: "Runner revoked."
+    credentials:
+      destroy:
+        revoked: "Credentials revoked. The machine keeps its identity."
+  executors:
+    credential_readiness:
+      ready: "Ready"
+      no_credential: "No credential"
+  workspaces:
+    not_owner: "Only the workspace owner can manage it."
+    changed_elsewhere: "This workspace changed elsewhere. Review its current state and try again."
+    not_active: "This workspace is not active right now, so that change did not run."
+    transition_in_progress: "Another lifecycle change is still completing. Refresh to see the current state."
+    create:
+      created: "Workspace created."
+      invalid_access_mode: "Choose Private or Account-wide."
+    update:
+      updated: "Workspace updated."
+      metadata_invalid_json: "Metadata must be a valid JSON object."
+    access_modes:
+      update:
+        updated: "Access updated."
+        invalid: "The access mode could not be updated — choose one of the listed options."
+    archivals:
+      create:
+        accepted: "Archive accepted. The workspace is leaving the live list; its data stays readable in the archive."
+        already_archived: "This workspace is already archived."
+    restorations:
+      create:
+        accepted: "Restore accepted. The workspace is returning to the live list."
+        already_active: "This workspace is already live."
+    deletions:
+      destroy:
+        accepted: "Deletion accepted. The workspace and its data are no longer available."
+    ownership_transfers:
+      create:
+        transferred: "Ownership transferred."
+        target_not_eligible: "The transfer target must be another active human member of this installation."
+  settings:
+    current_password_rate_limited: "Too many password attempts. Try again later."
+    profiles:
+      update:
+        updated: "Profile updated."
+    emails:
+      update:
+        updated: "Email address changed."
+    passwords:
+      update:
+        updated: "Password changed. Other devices have been signed out."
+    sessions:
+      destroy:
+        revoked: "Session revoked."
+    tokens:
+      create:
+        invalid: "The token could not be created — check the fields below."
+      revocations:
+        create:
+          revoked: "Token revoked."
+  admin:
+    users:
+      created: "Member created. Convey the temporary password out of band; they must change it at first sign-in."
+      role_changed: "Role updated."
+      suspended: "Member suspended. Their sessions are no longer valid."
+      reactivated: "Member reactivated. Previous sessions stay revoked; they sign in again."
+      removed: "Member removed. Their own access ended immediately; managed Agent Profiles and Runners are shutting down. The email address stays reserved."
+      restored: "Member restored. They can sign in again and previous credentials stay revoked; managed resources still finish the accepted shutdown episode."
+      agent_removed: "Agent removed. Its access and credentials are revoked immediately; related conversations are force-stopped in the background. Its registration is retained for reconnecting."
+      agent_restored: "Agent profile restored. Old credentials remain invalid; reconnect the program to resume access."
+      agent_restore_shutdown_pending: "This Agent Profile cannot be restored until its steward is active and the previous steward shutdown has converged."
+      transferred: "Ownership transferred."
+      not_administrable: "This membership cannot be administered."
+      owner_protected: "The owner cannot be changed. Transfer ownership first."
+      last_admin: "At least one active administrator is required."
+      not_active: "This member is not active."
+      not_suspended: "This member is not suspended."
+      not_removed: "This member is not removed."
+      not_agent: "Steward attribution applies to agent members only."
+      invalid_steward: "The steward must be an active human member of this installation."
+      steward_shutdown_pending: "The previous steward's resource shutdown is still being completed. Try the transfer again after convergence finishes."
+      steward_changed: "Steward updated."
+      owner_required: "Only the owner can transfer ownership."
+      target_not_eligible: "Ownership can only be transferred to an active human administrator."
+      workspace_ownership_transfer_required: "Removal is blocked while this member owns workspaces. The member must sign in and transfer or delete those workspaces first — an administrator cannot transfer them on their behalf. If the member is suspended, reactivate them only when it is safe and they can cooperate. If they may be compromised or cannot cooperate, keep the suspension as the security fence; removal remains blocked because there is no administrator bypass."
+      invitation_already_exists: "An open invitation holds this email address. Revoke it before creating the member directly."
+    invitations:
+      mail_delivery_unavailable: "Outbound email is not configured for this installation, so invitations cannot be sent."
+      member_already_exists: "That email address already belongs to a member."
+      create:
+        requested: "Invitation email requested."
+        link_only: "Invitation created. Share its link to invite this person."
+      destroy:
+        revoked: "Invitation revoked."
+      resend:
+        requested: "Invitation email requested."
+        too_soon: "An email for this invitation was requested moments ago. Try again in %{seconds} seconds."
+  oauth:
+    device:
+      member_required: "Device connection requires a signed-in human member. Sign in to continue."
+      rate_limited: "Too many attempts. Wait a moment and try again."
+      unknown_code: "That code cannot be used. Check it against the agent program, or start a new connection there and enter the new code."
+      unknown_grant: "That connection is no longer available here. Return to the agent program and enter its current code, starting a new connection there if needed."
+      connected: "Connection ready. Waiting for the %{subject} to finish connecting."
+      canceled: "Connection canceled. No credential was shared with the %{subject}."
+      connection_unavailable: "This connection is no longer available. Check its current status or start a new connection from the %{subject}."
+      shutdown_pending: "This %{subject} is still completing shutdown from a previous member removal. Try connecting again after it finishes."
+      runner_registration_changed: "This Runner registration changed after the page loaded. Review its current assignment scope and connect again."
+      administrator_required: "Sharing a Runner with the installation needs an administrator. Connect it without sharing to serve the Agent Profiles you manage."
+  invitation_acceptances:
+    create:
+      rate_limited: "Try again later."
+      member_already_exists: "This email address already belongs to a member. Sign in instead."
+  layouts:
+    public:
+      skip_to_main: "Skip to main content"
+    application:
+      skip_to_main: "Skip to main content"
+      open_sidebar: "Open sidebar"
+      close_sidebar: "Close sidebar"
+      collapse_sidebar: "Collapse sidebar"
+      expand_sidebar: "Expand sidebar"
+      primary_navigation: "Primary"
+      dashboard: "Dashboard"
+      workspaces: "Workspaces"
+      settings: "Settings"
+      administration: "Administration"
+      model_providers: "Model providers"
+      cost_unit: "Cost unit"
+      back_to_console: "Back to console"
+      appearance: "Appearance"
+      theme_light: "Light"
+      theme_dark: "Dark"
+      theme_system: "System"
+      members: "Members"
+      invitations: "Invitations"
+      agents: "Agents"
+      runners: "Runners"
+      sign_out: "Sign out"
+  activerecord:
+    errors:
+      models:
+        conversation_input:
+          attributes:
+            host:
+              not_found: "is gone"
+              conversation_archived: "is archived; unarchive it to send new messages"
+              conversation_hosted: "is a loop-backed loop; its door is its conversation's"
+              agent_loop_settled: "is settled; a loop with no next boundary takes no input"
+            tool_names:
+              not_declared: "includes %{name}, which is not one of the declaring profile's tools"
+            approval_mode:
+              not_tightening: "only tightens the declaring profile's approval mode (bypass → ask → rules)"
+            context_options:
+              macro_unknown: "names a macro outside the registry ({{%{name}}}) in an inline slot override; the registry is agent, user, workspace, date, and the addressee's declared variables on system_prompt"
+              variable_undeclared: "names a variable the addressee's template does not declare (%{name})"
+              inline_position_unplaced: "places an inline entry at %{position}, which the addressee's template does not place"
+              inline_role_unplaced: "places a %{role}-role inline entry by position; a positioned entry is user or developer"
+        task_executor:
+          attributes:
+            agent_profile:
+              not_agent_member: "must be an agent member"
+              not_eligible: "must be an active agent member with an active steward"
+            manager:
+              not_eligible: "must be an active human member of this account"
+        access_token:
+          attributes:
+            source:
+              personal_requires_human: "must be OAuth-issued for an Agent User"
+            task_executor:
+              incomplete_binding: "binding requires both the executor and its epoch snapshot"
+              foreign_executor: "must act for the credential's own member"
+            credential_plane:
+              platform_requires_human: "is mintable only by a human member"
+              platform_requires_personal: "is never OAuth-issued"
+            refresh_token_family:
+              unexpected: "is carried only by an OAuth-issued token"
+              incoherent: "must share this token's account, member, name, executor binding, and authority generation"
+        invitation:
+          attributes:
+            email:
+              member_already_exists: "already belongs to a member"
+        identity:
+          attributes:
+            email:
+              held_by_invitation: "is held by an invitation"
+            base:
+              not_changeable: "Password cannot be changed from this session"
+              session_no_longer_valid: "Session is no longer valid"
+        user:
+          attributes:
+            role:
+              owner_must_be_human: "owner must be a human member"
+              system_must_be_agent: "system must be an agent member"
+              agent_must_be_member: "must be member for an Agent User"
+            steward:
+              not_eligible: "must be an active human member of this installation"
+            handle:
+              reserved: "was released by another member less than %{days} days ago and is reserved until the cooldown ends"
+            tool_definitions:
+              invalid: "must be a non-empty list of function declarations"
+              kernel_tool_redefined: "declares a kernel tool in other bytes than the catalog's"
+              duplicate_tool_name: "declares one tool name twice"
+              alias_canonical_unknown: "aliases a canonical the kernel does not run"
+              alias_name_reserved: "aliases under a kernel spelling; a kernel name is never re-pointed"
+              alias_param_unknown: "maps or omits a parameter the kernel tool does not have, or shadows one it keeps"
+              alias_invert_needs_boolean: "inverts a parameter that is not a boolean"
+              alias_param_description_required: "inverts a parameter without its own description"
+              content_too_large: "exceeds the envelope size bound"
+              unsupported_number: "contains an unsupported number; encode exponent-form values as strings"
+              unsupported_text: "contains text this store cannot carry; remove U+0000 and use valid UTF-8"
+            prompt_template:
+              blank: "is required under the assembly mechanism"
+              invalid: "must be a JSON object"
+              invalid_template: "is outside the template grammar (%{detail}) at %{path}"
+              variable_in_use: "drops {{%{name}}}, which the profile's %{slot} still uses"
+              content_too_large: "exceeds the prompt document size bound"
+              unsupported_number: "contains an unsupported number; encode exponent-form values as strings"
+              unsupported_text: "contains text this store cannot carry; remove U+0000 and use valid UTF-8"
+            compaction_policy:
+              invalid: "must name a mode of kernel, delegate (with a tool_name) or off"
+              content_too_large: "exceeds the envelope size bound"
+              unsupported_number: "contains an unsupported number; encode exponent-form values as strings"
+              unsupported_text: "contains text this store cannot carry; remove U+0000 and use valid UTF-8"
+            default_model:
+              not_authorized: "is not a model this account may run (%{refusal})"
+            fallback_model:
+              not_authorized: "is not a model this account may run (%{refusal})"
+        workspace:
+          attributes:
+            owner:
+              not_eligible: "must be a Human member of this account"
+            creator:
+              not_eligible: "must be a Human or an Agent member of this account"
+            agent_identifier:
+              not_allowed: "can be claimed only by the creating Agent for itself"
+            metadata:
+              invalid: "must be a JSON object"
+              content_too_large: "exceeds the Workspace metadata size bound"
+              unsupported_number: "contains an unsupported number; encode exponent-form values as strings"
+              unsupported_text: "contains text this store cannot carry; remove U+0000 and use valid UTF-8"
+            tool_provider_overrides:
+              invalid: "must be a JSON object"
+              content_too_large: "exceeds the tool provider overrides size bound"
+              unsupported_number: "contains an unsupported number; encode exponent-form values as strings"
+              unsupported_text: "contains text this store cannot carry; remove U+0000 and use valid UTF-8"
+              namespace_not_overridable: "names a namespace no provider may serve (%{namespace})"
+              provider_unknown: "names no live tools provider of this account (%{provider})"
+        content_upload:
+          attributes:
+            base:
+              exactly_one_creator: "must be staged by exactly one of a member or an executor"
+        prompt_document:
+          attributes:
+            base:
+              exactly_one_anchor: "must belong to exactly one of a workspace or a user"
+            slot:
+              anchor_mismatch: "%{slot} belongs on a %{anchor}"
+            content:
+              content_too_large: "exceeds the prompt document size bound"
+              macro_unknown: "names a macro outside the registry ({{%{name}}}); the registry is agent, user, workspace, date"
+              unsupported_text: "contains text this store cannot carry; remove U+0000 and use valid UTF-8"
+        store_entry:
+          attributes:
+            base:
+              exactly_one_anchor: "must belong to exactly one of a workspace, a conversation or a user"
+            value:
+              content_too_large: "exceeds the envelope size bound"
+              unsupported_number: "contains an unsupported number; encode exponent-form values as strings"
+              unsupported_text: "contains text this store cannot carry; remove U+0000 and use valid UTF-8"
+        agent_loop_node:
+          attributes:
+            base:
+              model_change_requires_new_execution: "a model change requires a new queued execution generation"
+            status:
+              undeclared_transition: "%{kind}: %{from} => %{to} is not a declared transition"
+            claimed_at:
+              required_for_uncertain: "uncertain is the word for a claimed call that expired"
+              partial_claim: "a claim is its token, its time and its claimant's snapshot together, on a tool call"
+            resolution_token:
+              contradicts_status: "an await's park word is a function of its token"
+              not_an_await: "only an await carries a resolution token"
+            mailed_at:
+              unmailable: "mail stamps a detached, settled answer"
+            failure_resolution:
+              contradicts_status: "the resolution names the status it resolved"
+            started_at:
+              contradicts_status: "started_at follows the status"
+            completed_at:
+              contradicts_status: "completed_at follows the status"
+            addressed_role:
+              contradicts_status: "a queued row names no addressee"
+            await_started_at:
+              unclocked: "only a clocked type sits on the park clock"
+            selected_model_invocation:
+              not_a_round: "only a round holds an invocation"
+            error_key:
+              contradicts_status: "an error key rides a failure or a cancel"
+            approval_origin:
+              partial_fact: "the approval fact is its origin and its time together"
+              contradicts_status: "a decided row never rests at the stage"
+            approved_by_user:
+              not_a_principals_grant: "only a human or agent grant names its approver"
+            delegated_input_public_id:
+              readonly: "is set once when the delegated input is published"
+        billing_subject:
+          attributes:
+            owning_user:
+              other_account: "must belong to the same Account"
+        content_body:
+          readonly: "cannot change once the body is sealed"
+          attributes:
+            base:
+              not_exactly_one_owner: "a content body carries exactly one owner"
+            sealed_at:
+              readonly: "is set once and never changes"
+        content_body_entry:
+          attributes:
+            content_body:
+              sealed: "is sealed"
+        conversation_turn:
+          attributes:
+            active_variant:
+              readonly: "cannot change while another conversation inherits this turn"
+            base:
+              active_turn_holds_the_top: "a new turn waits for the active one; the queue holds arrivals"
+              frozen_by_successor: "a turn with a successor is frozen"
+        conversation_turn_variant:
+          attributes:
+            base:
+              frozen_turn: "a variant of a frozen turn takes no new work"
+        model_invocation:
+          attributes:
+            base:
+              not_exactly_one_purpose_owner: "a model invocation carries exactly one purpose owner"
+        model_provider_credential:
+          attributes:
+            refresh_secret:
+              oauth_only: "is oauth-only"
+              pair_incomplete: "the pair requires both tokens"
+            authorization_lineage_id:
+              oauth_only: "is oauth-only"
+              unminted: "device start mints the lineage"
+            expires_at:
+              pair_requires_expiry: "the pair carries its canonical expiry"
+        model_provider_oauth_session:
+          attributes:
+            progress:
+              not_for_kind: "is not a %{kind} progress value"
+            semantic_exchange_kind:
+              unreachable_from_kind: "is not reachable from %{kind}"
+            authorization_deadline_at:
+              torn_window: "and poll_started_at are set together or not at all"
+              off_formula: "must be poll_started_at plus %{seconds} seconds"
+            semantic_exchange_ordinal:
+              beyond_interval_ceiling: "exceeds the %{ceiling} polls a %{interval}-second interval leaves in the window"
+            source_credential_public_id:
+              required_for_refresh: "is required for a token_refresh"
+            base:
+              refresh_has_no_window: "a token_refresh has no polling window"
+              torn_grant: "the code-exchange grant is stored whole or not at all"
+              grant_outside_code_exchange: "a code-exchange grant exists only for a pending device_start at exchanging_code"
+              torn_source_triple: "the source credential triple is frozen whole or not at all"
+        model_provider_oauth_task:
+          attributes:
+            base:
+              torn_result: "the result is recorded whole, and exactly when the state is terminal"
+        model_provider_policy:
+          attributes:
+            model_overrides:
+              not_a_mapping: "must be a mapping"
+              schema_version: "schema_version must be %{version}"
+              unknown_keys: "unknown keys %{keys}"
+              entries_not_a_mapping: "entries must be a mapping"
+              too_many_refs: "holds more than %{limit} model refs"
+              invalid_hidden_models: "hidden_models must contain unique model refs from this provider"
+              not_canonical: "must contain only canonical JSON values"
+              too_many_bytes: "exceeds %{limit} canonical bytes"
+              entry_outside_lane: "entry %{ref} is outside this provider lane"
+              entry_not_a_mapping: "entry %{ref} must be a mapping"
+              entry_unknown_keys: "entry %{ref} has unknown keys"
+              entry_upsert_without_model: "entry %{ref} upsert requires one complete model mapping"
+              entry_remove_with_payload: "entry %{ref} remove carries no payload"
+              entry_unknown_op: "entry %{ref} op must be one of %{ops}"
+        usage_budget:
+          attributes:
+            user:
+              system_user: "the system User cannot own a budget in either role"
+            user_kind:
+              stale_snapshot: "must be the live User's kind"
+            user_public_id:
+              stale_snapshot: "must be the live User's public id"
+            account_id:
+              not_the_owners: "must be the owner's Account"
+            expires_at:
+              not_after_starts_at: "must fall strictly after starts_at (half-open window)"
+            starts_at:
+              overlaps_usable_window: "overlaps another usable window for this User"
+            base:
+              torn_revoke: "a revoke freezes its instant, actor, and operation identity together — never partially"
+        usage_budget_entry:
+          attributes:
+            base:
+              human_authored_carries_receipt: "a Human-authored entry carries no receipt identity"
+        usage_record:
+          attributes:
+            cost_amount:
+              unmetered_carries_money: "an unmetered receipt records tokens with money blank"
+              free_not_zero: "a known-free receipt records exact zero"
+        device_authorization:
+          attributes:
+            selected_assignment_scope:
+              readonly: "is chosen when the grant connects and cleared only by cancellation"
+            expected_task_executor_public_id:
+              incomplete: "must be given together with the other pairing preconditions"
+            expected_credential_epoch:
+              incomplete: "must be given together with the other pairing preconditions"
+            expected_task_executor_status:
+              incomplete: "must be given together with the other pairing preconditions"
+            connected_by:
+              incomplete: "must be set with its authority generation on connect and cleared with it on expiry"
+            connected_by_authority_generation:
+              incomplete: "must be set with the connector on connect and cleared with it on expiry"
+        device_grant_verification:
+          attributes:
+            account:
+              authorization_mismatch: "must be the authorization's account"
+        memory_document:
+          attributes:
+            base:
+              exactly_one_anchor: "must belong to exactly one of a conversation or a workspace"
+        one_shot:
+          attributes:
+            creating_user:
+              cross_account: "must belong to the workspace's account"
+        refresh_token:
+          attributes:
+            account:
+              family_mismatch: "must be the family's account"
+            user:
+              family_mismatch: "must be the family's member"
+            access_token:
+              family_mismatch: "must belong to the same family"
+        refresh_token_family:
+          attributes:
+            user:
+              foreign_account: "must belong to this account"
+              not_agent_member: "must be an agent member"
+            task_executor:
+              foreign_executor: "must be an address of this family's member in this account"
+  errors:
+    attributes:
+      # The one rule grammar (Executors::Rules), on the profile's fifth
+      # column and the standalone loop's shell alike.
+      approval_rules:
+        not_a_list: "must be a list of rules"
+        not_an_object: "has a rule that is not an object"
+        unknown_key: "has a rule with the unknown key %{key} (tool, path, match, verdict, reason, origin)"
+        tool_required: "has a rule without a tool glob"
+        verdict_invalid: "has a rule whose verdict is not allow, ask or deny"
+        origin_invalid: "has a rule whose origin is not model, author or kernel"
+        match_without_path: "has a rule with a match and no path"
+        path_invalid: "has a rule whose path is not a dotted key path"
+        glob_invalid: "has a rule whose glob cannot be compiled"
+        reason_invalid: "has a rule whose reason is not text"
+    messages:
+      content_too_large: "exceeds its size bound"
+      not_admitted: "is not admitted on this host"
+      unsupported_number: "contains an unsupported number; encode exponent-form values as strings"
+      unsupported_text: "contains text this store cannot carry; remove U+0000 and use valid UTF-8"
+      unsupported_value: "cannot be stored as JSON; use objects with string keys, lists, strings, finite numbers, booleans and null, nested no deeper than the store allows"

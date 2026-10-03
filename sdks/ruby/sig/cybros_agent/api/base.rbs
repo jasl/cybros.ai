@@ -1,0 +1,142 @@
+module CybrosAgent
+  module Api
+    interface _FormPart
+      def read: (*untyped) -> untyped
+      def filename: () -> String
+      def content_type: () -> String
+      def size: () -> Integer
+    end
+
+
+    # Internal typed-resource collaborator. Public Client classes do not
+    # expose either of these raw path methods.
+    interface _Dispatch
+      def call: (
+        String path,
+        ?method: Symbol,
+        ?body: Hash[String, untyped]?,
+        ?form: Hash[Symbol, untyped]?,
+        ?params: Hash[String, untyped]?,
+        ?headers: Hash[String, String],
+        ?success: Integer | Array[Integer]
+      ) -> untyped
+      def call_accepting: (
+        String path,
+        ?method: Symbol,
+        ?body: Hash[String, untyped]?,
+        ?form: Hash[Symbol, untyped]?,
+        ?params: Hash[String, untyped]?,
+        ?headers: Hash[String, String],
+        ?success: Integer | Array[Integer]
+      ) -> untyped
+      def download: (String path, ?headers: Hash[String, String], ?sink: untyped, ?success: Integer | Array[Integer]) -> (String | Response)
+    end
+
+    class Error < CybrosAgent::Error
+      attr_reader code: String?
+      attr_reader details: Hash[String, untyped]
+
+      def initialize: (?String? message, ?code: String?, ?details: Hash[String, untyped]) -> void
+    end
+
+    class Unauthorized < Error
+    end
+
+    class Forbidden < Error
+    end
+
+    class NotFound < Error
+    end
+
+    class InvalidRequest < Error
+    end
+
+    class Conflict < Error
+    end
+
+    class ContentTooLarge < Error
+    end
+
+    class RateLimited < Error
+      attr_reader retry_after: Integer
+
+      def initialize: (retry_after: Integer, ?code: String, ?details: Hash[String, untyped]) -> void
+    end
+
+    class ServerError < Error
+    end
+
+    class MalformedResponse < Error
+    end
+
+
+    module Fields
+      private
+
+      def fields: (**untyped given) -> Hash[String, untyped]
+      def field: (untyped value) { (untyped) -> untyped } -> untyped
+      def query: (**untyped given) -> Hash[String, untyped]?
+    end
+
+    # The one value builder (idiom #13): a Data from its typed map —
+    # `member => reader` over the readers below — found through the
+    # including class's ancestors' `SHAPES`.
+    module Parsing
+      private
+
+      def shape: (Class klass, untyped hash, ?String? key) -> untyped
+      def optional_shape: (Class klass, Hash[String, untyped] hash, String key) -> untyped
+      def shape_or_empty: (Class klass, Hash[String, untyped] hash, String key) -> untyped
+      def shapes: (Class klass, untyped hash, String key) -> Array[untyped]
+      def optional_shapes: (Class klass, Hash[String, untyped] hash, String key) -> Array[untyped]?
+      def shapes_or_empty: (Class klass, Hash[String, untyped] hash, String key) -> Array[untyped]
+      def page: (Class klass, untyped body, String key) -> Page[untyped]
+      def shape_map: (Class klass) -> Hash[Symbol, untyped]
+      def member_value: (Hash[String, untyped] hash, Symbol member, untyped reader) -> untyped
+      def located: (Hash[String, untyped] hash, Array[String] path) -> [Hash[String, untyped], String]
+      def fetch_hash: (untyped body, String key) -> Hash[String, untyped]
+      def optional_hash: (Hash[String, untyped] hash, String key) -> Hash[String, untyped]?
+      def hash_item: (untyped item, String key) -> Hash[String, untyped]
+      def fetch_array: (untyped body, String key) -> Array[untyped]
+      def string: (Hash[String, untyped] hash, String key) -> String
+      def optional_string: (Hash[String, untyped] hash, String key) -> String?
+      def nullable_string: (Hash[String, untyped] hash, String key) -> String?
+      def string_list: (Hash[String, untyped] hash, String key) -> Array[String]
+      def optional_string_list: (Hash[String, untyped] hash, String key) -> Array[String]?
+      def names: (Hash[String, untyped] hash, String key) -> Array[String]
+      def numbers: (Hash[String, untyped] hash, String key) -> Array[Numeric]
+      def integer: (Hash[String, untyped] hash, String key) -> Integer
+      def optional_integer: (Hash[String, untyped] hash, String key) -> Integer?
+      def count: (Hash[String, untyped] hash, String key) -> Integer
+      def optional_number: (Hash[String, untyped] hash, String key) -> Numeric?
+      def boolean: (Hash[String, untyped] hash, String key) -> bool
+      def optional_boolean: (Hash[String, untyped] hash, String key) -> bool?
+      def flag: (Hash[String, untyped] hash, String key) -> bool
+      def raw: (Hash[String, untyped] hash, String key) -> untyped
+      def json: (Hash[String, untyped] hash, String key) -> untyped
+      def nullable_json: (Hash[String, untyped] hash, String key) -> untyped
+      def json_object: (Hash[String, untyped] hash, String key) -> Hash[String, untyped]
+      def optional_json_object: (Hash[String, untyped] hash, String key) -> Hash[String, untyped]?
+      def json_object_or_empty: (Hash[String, untyped] hash, String key) -> Hash[String, untyped]
+      def json_array: (Hash[String, untyped] hash, String key) -> Array[untyped]
+      def optional_json_array: (Hash[String, untyped] hash, String key) -> Array[untyped]?
+      def json_array_or_empty: (Hash[String, untyped] hash, String key) -> Array[untyped]
+      def json_snapshot: (untyped value) -> untyped
+    end
+
+    class Page[Item] < Data
+      attr_reader items: Array[Item]
+      attr_reader next_after: String?
+
+      def self.new: [Item] (Array[Item] items, String? next_after) -> Page[Item]
+                  | [Item] (items: Array[Item], next_after: String?) -> Page[Item]
+      def self.[]: [Item] (Array[Item] items, String? next_after) -> Page[Item]
+                 | [Item] (items: Array[Item], next_after: String?) -> Page[Item]
+      def self.members: () -> [:items, :next_after]
+
+      def members: () -> [:items, :next_after]
+    end
+
+  end
+
+end

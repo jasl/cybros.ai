@@ -1,0 +1,90 @@
+<%# One browser ceremony, three consequence shapes: a machine — a Runner or a Tools provider — has no Agent principal, so the page names its kind and browser-selected ACL without exposing product identifiers or program-supplied names. The scope block is the same for both machine kinds: a provider's admission IS the runner's ACL. A combined grant is the agent's page plus one facts row: its runner is always private, so there is no scope block and no runner precondition. %>
+<% runner = @grant.runner_only_connection? %>
+<% subject = device_grant_subject(@grant) %>
+<% machine = device_grant_machine_label(@grant) %>
+<% content_for :title, "Connect #{subject}" %>
+
+<div class="mx-auto max-w-xl space-y-8">
+  <header class="space-y-1">
+    <h1 class="text-2xl font-semibold tracking-tight">Connect <%= subject %></h1>
+    <p class="text-sm text-base-content/60">
+      Compare the code below with the <%= subject %>. Connect only when it matches exactly.
+    </p>
+  </header>
+
+  <div class="rounded-box border border-base-300 bg-base-200 px-6 py-4 text-center">
+    <p class="text-xs text-base-content/60">Code shown by the <%= subject %></p>
+    <p class="mt-1 font-mono text-2xl tracking-widest"><%= @grant.formatted_user_code %></p>
+  </div>
+
+  <section>
+    <h2 class="mb-3 text-sm font-medium text-base-content/70"><%= runner ? machine : "Agent program" %></h2>
+    <div class="rounded-box border border-base-300 bg-base-200">
+      <% device_grant_facts(@grant).each do |label, value| %>
+        <div class="flex flex-col gap-1 border-b border-base-300 px-6 py-3 last:border-0 sm:flex-row sm:items-center sm:gap-6">
+          <div class="sm:w-1/2"><p class="text-sm text-base-content/70"><%= label %></p></div>
+          <div class="sm:w-1/2"><p class="text-sm hyphens-none wrap-anywhere"><%= value %></p></div>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <div role="alert" class="alert alert-warning alert-soft">
+    <span class="iconify lucide--shield-alert size-5" aria-hidden="true"></span>
+    <span class="text-sm">
+      Connect this only if you started it yourself, just now, on a machine you control. Completing
+      this connection grants the <%= subject %> the access described above. If the same
+      <%= subject %> is already connected, then once this connection finishes it replaces the old
+      device immediately and its credentials stop working. Work already running there cannot move
+      and may fail, time out, or require reconciliation; work not yet started can continue on the
+      new device. If someone sent you this code or this link, close this page.
+    </span>
+  </div>
+
+  <div class="flex flex-wrap items-center justify-end gap-3">
+    <%= form_with url: oauth_device_grant_cancellation_path(@grant) do |form| %>
+      <%= hidden_field_tag :return_to, oauth_device_grant_path(@grant) %>
+      <%= form.submit "Cancel", name: nil, class: "btn btn-ghost btn-sm" %>
+    <% end %>
+
+    <%= form_with url: oauth_device_grant_connection_path(@grant),
+      class: "flex flex-wrap items-center justify-end gap-3" do |form| %>
+      <%= hidden_field_tag :return_to, oauth_device_grant_path(@grant) %>
+      <% if runner %>
+        <%= hidden_field_tag "connection[expected_live_runner]", @expected_live_runner %>
+        <% if @existing_runner %>
+          <div class="max-w-sm space-y-1 text-sm text-base-content/70">
+            <p>
+              Assignment scope:
+              <span class="badge badge-sm whitespace-nowrap">
+                <%= @existing_runner.account_wide? ? "Account-wide" : "Private" %>
+              </span>
+            </p>
+            <p class="text-xs text-base-content/60">
+              Reconnecting keeps this registration's existing scope. Revoke the <%= machine %> first to
+              register it again with a different scope.
+            </p>
+          </div>
+        <% elsif Current.user.admin? %>
+          <fieldset class="fieldset max-w-md rounded-box border border-base-300 px-4 py-3 text-start">
+            <legend class="fieldset-legend">Assignment scope</legend>
+            <label class="label cursor-pointer items-start justify-start gap-3">
+              <%= check_box_tag "connection[account_wide]", "1", false, class: "checkbox checkbox-sm mt-0.5" %>
+              <span class="font-medium">Make this <%= subject %> available account-wide</span>
+            </label>
+            <p class="text-xs text-base-content/60">
+              Leave this unchecked to keep discovery and new work private to Agent Profiles you
+              manage. Account-wide <%= subject %>s can be discovered by every eligible Agent Profile in
+              this installation.
+            </p>
+          </fieldset>
+        <% else %>
+          <p class="max-w-sm text-sm text-base-content/60">
+            This <%= machine %> will be private to the Agent Profiles you manage.
+          </p>
+        <% end %>
+      <% end %>
+      <%= form.submit "Connect", name: nil, class: "btn btn-primary btn-sm" %>
+    <% end %>
+  </div>
+</div>

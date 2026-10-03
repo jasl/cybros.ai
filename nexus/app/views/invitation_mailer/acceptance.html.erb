@@ -1,0 +1,9 @@
+<p>
+  You have been invited to join <%= @invitation.account.name %> on Nexus as
+  <%= @invitation.role %>.
+</p>
+<p>
+  <%= link_to "Accept your invitation", @acceptance_url %> before
+  <%= @invitation.expires_at.to_fs(:long) %>. A later invitation email carries
+  the same reusable link and may renew its expiry.
+</p>

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Three sources with different latencies, each one raw record.
+case "$1" in
+  a) sleep 1; echo "a|2026-09-01|q7f3k";;
+  b) sleep 4; echo "b|2026-09-02|m2z9p";;
+  c) sleep 7; echo "c|2026-09-03|x5c1r";;
+  *) echo "usage: sh bin/fetch <a|b|c>" >&2; exit 2;;
+esac

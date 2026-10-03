@@ -1,0 +1,344 @@
+module Rho
+  # THE CORE: the primitives every surface
+  # consumes — one capability over one route, a document or a
+  # `Rho::Error`; nothing printed, nothing polled.
+  class Core
+    class Deadline < Error
+    end
+
+    # The daemon's refusal: the sentence as the message, the envelope's
+    # code word (nil without an envelope) and the HTTP status beside it.
+    class Refused < Error
+      attr_reader code: String?
+      attr_reader status: Integer
+      def initialize: (String message, code: String?, status: Integer) -> void
+    end
+
+    # How long a request may take, stated by the caller.
+    class Budget < ::Data
+      attr_reader open: Integer
+      attr_reader read: Integer
+      def self.new: (open: Integer, read: Integer) -> instance
+      def self.for_relay: (Integer timeout_ms) -> Budget
+
+      LOCAL: Budget
+      KERNEL_ROUND_TRIP: Budget
+      DEVICE_START: Budget
+      DEVICE_CANCEL: Budget
+      ENVIRONMENT: Budget
+    end
+
+    # The row a model resolves to, from the files alone.
+    class Resolution < ::Data
+      attr_reader subject: String?
+      attr_reader resolver: Adaptations
+      attr_reader choice: Adaptations::Choice
+      def self.new: (subject: String?, resolver: Adaptations, choice: Adaptations::Choice) -> instance
+    end
+
+    LOCAL_OPEN_TIMEOUT: Integer
+    LOCAL_RESPONSE_SLACK: Integer
+    SWEEP_SECONDS: Integer
+    OFFSET_SHAPE: Regexp
+
+    attr_reader home: Home
+
+    def initialize: (home: Home, ?display_name: String?, ?config: Config?) -> void
+    def config: () -> Config
+
+    def self.schedule_fields: (?deliver_at: String?, ?deliver_in: String?) -> Hash[String, String]
+    def self.deliver_at_wire: (String value) -> String
+
+    def running_daemon: () -> Hash[String, untyped]?
+    def require_daemon: () -> Hash[String, untyped]
+    def get: (Hash[String, untyped] daemon, String path, ?budget: Budget) -> untyped
+    def post: (Hash[String, untyped] daemon, String path, ?untyped body, budget: Budget) -> untyped
+    def put: (Hash[String, untyped] daemon, String path, ?untyped body, budget: Budget) -> untyped
+    def patch: (Hash[String, untyped] daemon, String path, ?untyped body, budget: Budget) -> untyped
+    def parse: (untyped response) -> untyped
+    def failure_message: (untyped document) -> String
+
+    def start_ceremony: (Hash[String, untyped] daemon) -> untyped
+    def status_document: (Hash[String, untyped] daemon) -> untyped
+    def disconnect: (?runner: bool) -> untyped
+    def connect_in_process: () ?{ (Hash[String, untyped]) -> void } -> Identity
+
+    def stored_connection: () -> untyped
+    def stored_identity: (Hash[String, untyped] pointer) -> Identity
+    def stored_facts: () -> untyped
+
+    def providers: () -> Array[untyped]
+    def models: (?workload: String?) -> Array[untyped]
+    def model_facts: (String model) -> untyped
+    def adaptation_choice: (?model: String?) -> Resolution
+    def environment: () -> untyped
+    def repoint_environment: (String? root) -> untyped
+
+    module Workspaces
+      def workspaces: () -> untyped
+      def workspace: (String public_id) -> untyped
+      def create_workspace: (name: String, ?idempotency_key: String?) -> untyped
+      def select_workspace: (String public_id) -> untyped
+    end
+
+    # The conversation primitives.
+    module Conversations
+      KEEP: Object
+      def open_conversation: (
+        ?prompt: untyped, ?model: untyped, ?instructions: untyped, ?directory: untyped, ?directories: Array[String],
+        ?compose: bool?, ?runner: String?, ?restricted: bool, ?agent: String?, ?attachments: Array[String],
+        ?upload_public_ids: Array[String], ?title: String?, ?memory_context: Hash[String, untyped]?,
+        ?idempotency_key: String?, ?workspace_public_id: String?
+      ) ?{ (Hash[String, untyped]) -> Hash[String, untyped] } -> untyped
+      def conversations: (?after: String?, ?limit: Integer?, ?archived: bool) -> untyped
+      def conversation: (String public_id, ?workspace_public_id: String?) -> untyped
+      def update_conversation: (String public_id, title: String?, ?workspace_public_id: String?) -> untyped
+      def archive_conversation: (String public_id, ?workspace_public_id: String?) -> untyped
+      def unarchive_conversation: (String public_id, ?workspace_public_id: String?) -> untyped
+      def conversation_environment: (String public_id) -> untyped
+      def bind_environment: (String public_id, ?root: untyped, ?directories: untyped, ?fs: untyped, ?mcp: untyped) -> untyped
+      def environments: () -> Array[untyped]
+      def say: (String public_id, String text, ?mode: String, ?to: String?, ?attachments: Array[String], ?upload_public_ids: Array[String],
+                ?deliver_at: String?, ?deliver_in: String?, ?model: String?, ?approval_mode: String?, ?tool_names: Array[String]?,
+                ?idempotency_key: String?, ?speaker_actor_public_id: String?, ?kind: String?, ?wait: bool, ?workspace_public_id: String?,
+                ?expected_steering_loop_public_id: String?, ?inline: Array[untyped]?) -> untyped
+      def stop: (String public_id, ?String? task_key, ?force: bool, ?host_type: String, ?workspace_public_id: String?) -> untyped
+      def compact: (String public_id, ?String? task_key, ?workspace_public_id: String?) -> untyped
+      def open_side: (?parent: String?, ?tools: String, ?text: String?) -> untyped
+    end
+    include Conversations
+
+    module Events
+      def host_events: (String public_id, ?after: String?, ?limit: Integer?, ?workspace_public_id: String?) -> CybrosAgent::Api::ConversationEventPage
+    end
+    include Events
+
+    # The loop primitives: the Ops routes as capabilities.
+    module Loops
+      def loop_row: (String public_id) -> untyped
+      def loops: (?scope: String?, ?status: untyped, ?attention: String?, ?side: bool) -> Array[untyped]
+      def loop_events: (String public_id, ?deadline: Numeric?) { (String, untyped) -> void } -> void
+      def result: (String public_id) -> untyped
+      def attach: (String public_id, ?live: bool, ?host_type: String?, ?workspace_public_id: String?) -> untyped
+      def retry: (String public_id, ?String? task_key, ?model: String?, ?reasoning_effort: String?, ?workspace_public_id: String?) -> untyped
+      def abandon: (String public_id, ?String? task_key, ?workspace_public_id: String?) -> untyped
+      def approve: (String public_id, String task_key, ?always: bool?, ?match: String?, ?workspace_public_id: String?) -> untyped
+      def deny: (String public_id, String task_key, ?reason: String?, ?workspace_public_id: String?) -> untyped
+      def answer: (String public_id, String task_key, untyped content, ?outcome: String?, ?token: String?, ?workspace_public_id: String?) -> untyped
+      def asks: () -> Array[untyped]
+      def rules: () -> untyped
+      def pause: (String public_id, ?force: bool?, ?workspace_public_id: String?) -> untyped
+      def resume: (String public_id, ?workspace_public_id: String?) -> untyped
+      def subscribe: (String public_id) -> untyped
+      def unsubscribe: (String public_id) -> untyped
+      def delete_loop: (String public_id) -> untyped
+      def task: (String public_id, String task_key) -> untyped
+      def transcript: (String public_id, ?limit: untyped, ?before: String?, ?prefix: String?, ?workspace_public_id: String?) -> untyped
+      def graph: (String public_id) -> untyped
+      def request_bytes: (String public_id, String selector, String value) -> untyped
+      def append: (String public_id, steps: untyped) -> untyped
+      def phases: (String public_id) -> untyped
+      def relay: (String runner, String tool, untyped input, timeout_ms: Integer) -> untyped
+    end
+    include Loops
+
+    # The record primitives: inputs, access, prompts, checkpoints, skills, uploads.
+    module Records
+      REWIND_CEILING_MS: Integer
+
+      def search_conversations: (query: String, ?after: String?, ?limit: Integer?, ?archived: String?, ?workspace_public_id: String?) -> untyped
+      def history: (String public_id, ?before_position: Integer?, ?after_position: Integer?, ?limit: Integer?, ?workspace_public_id: String?) -> untyped
+      def edit_turn: (String public_id, String turn, text: String, ?workspace_public_id: String?) -> untyped
+      def delete_turn: (String public_id, String turn, ?workspace_public_id: String?) -> untyped
+      def turn_view_state: (String public_id, String turn, ?visibility: String?, ?concealed: bool?, ?workspace_public_id: String?) -> untyped
+
+      def inputs: (String public_id, ?host_type: String?, ?workspace_public_id: String?) -> Array[untyped]
+      def delete_input: (String public_id, String input_public_id, ?host_type: String?, ?workspace_public_id: String?) -> untyped
+      def update_input: (String public_id, String input_public_id, ?text: String?, ?schedule: Hash[String, String], ?host_type: String?, ?workspace_public_id: String?) -> untyped
+      def access: (String public_id) -> untyped
+      def replace_access: (String public_id, untyped change) -> untyped
+      def prompt_preview: (String public_id, ?model: String?, ?prompt: String?, ?to: String?,
+                           ?variables: Hash[String, String], ?template: untyped, ?workspace_public_id: String?) -> untyped
+      def prompt_documents: (?slot: String?) -> untyped
+      def rewind: (String public_id, untyped turn, ?keep_world: bool, ?title: String?, ?idempotency_key: String?, ?workspace_public_id: String?) -> untyped
+      def regenerate: (String public_id, untyped turn, ?keep_world: bool, ?model: String?, ?workspace_public_id: String?) -> untyped
+      def turns: (String public_id, ?after_position: Integer?, ?before_position: Integer?, ?latest: bool, ?limit: Integer?, ?workspace_public_id: String?) -> untyped
+      def variants: (String public_id, String turn, ?workspace_public_id: String?) -> Array[untyped]
+      def activate_variant: (String public_id, String turn, String variant_id, ?workspace_public_id: String?) -> untyped
+      def variant: (String public_id, String turn, String variant_id, concealed: bool, ?workspace_public_id: String?) -> untyped
+      def skills: () -> untyped
+      def push_skill: (name: String, description: String, content: String, scope: String,
+                      expected_public_id: String?, expected_lock_version: Integer?) -> untyped
+      def show_skill: (String name, scope: String) -> untyped
+      def remove_skill: (String name, scope: String, expected_public_id: String, expected_lock_version: Integer) -> untyped
+      def upload_bytes: (String public_id, ?kind: String) -> String
+    end
+    include Records
+    include Workspaces
+  end
+
+  # THE TERMINAL SURFACE: what `exe/rho` and the extension verbs hold over
+  # the core — the printer, the renderers, the ceremony's wait.
+  module Cli
+    module Browser
+      DARWIN: Regexp
+      URL_SLOT: String
+      def self?.launch: (String url, ?env: untyped, ?out: untyped) -> bool
+      def self?.command: (String url, ?env: untyped, ?host_os: String) -> Array[String]
+    end
+
+    # The renderers (B30): documents in, lines out; reads only through
+    # named core primitives.
+    module Reporting
+      SIGNED_WORDS: Hash[String, String]
+      DECLINED: Array[String]
+      DECLINED_KEY: String
+
+      def report_tasks: (Hash[String, untyped] row, Hash[untyped, untyped] seen) -> untyped
+      def report_attention: (Hash[String, untyped] row) -> untyped
+      def report_asks: () -> untyped
+      def report_asks_once: (Hash[untyped, untyped] seen) -> untyped
+      def report_todo: (Hash[String, untyped] row, Hash[untyped, untyped] seen) -> untyped
+      def report_runner_waits: (Hash[String, untyped] row, Hash[untyped, untyped] seen) -> untyped
+      def report_checks: (Hash[String, untyped] row, Hash[untyped, untyped] seen) -> untyped
+      def report_frames: (Hash[String, untyped] row, Hash[untyped, untyped] seen) -> untyped
+      def bounded: (untyped text) -> String
+      def unbounded: (untyped text) -> String
+      def report_turn: (Hash[String, untyped] answer, ?pending_hint: String?) -> untyped
+      def report_said: (Hash[String, untyped] document) -> untyped
+      def report_stopped: (Hash[String, untyped] stopped) -> untyped
+      def report_status: () -> untyped
+      def report_disconnect: (untyped document) -> untyped
+      def print_task: (Hash[String, untyped] row) -> untyped
+      def input_state: (Hash[String, untyped] input) -> String
+      def attachment_line: (Hash[String, untyped] upload) -> String
+      def human_size: (Integer bytes) -> String
+    end
+
+    # The ceremony's wait-and-print over the core's three primitives.
+    module Connect
+      POLL_INTERVAL: Integer
+      BOOTSTRAP_WAIT: Integer
+
+      def connect: (?public_url: String?) -> untyped
+      def disconnect: (?runner: bool) -> untyped
+    end
+
+    # The settle machine over `Core#loop_events`: the frames to a callback,
+    # the turn's word to a verdict (`Run` and the ACP surface read it).
+    class TurnFollow
+      LOOP_TERMINAL: Array[String]
+      VERDICTS: Array[Symbol]
+      LOOP_UNKNOWN: String
+      STREAM_ENDED: String
+      CATCH_UP_POLL_SECONDS: Float
+
+      class Failure
+        attr_reader reason: String?
+        attr_reader key: String?
+      end
+
+      attr_reader turn: String?
+      attr_reader loop: String?
+      attr_reader status: String?
+      attr_reader loop_status: String?
+      attr_reader attention: [String?, Array[String]]?
+      attr_reader reason: String?
+      attr_reader settled_row: Hash[String, untyped]?
+      attr_reader decided: Array[String]
+      attr_reader verdict: Symbol?
+
+      def initialize: (
+        core: Core, conversation: String, ?turn: String?, ?loop: String?, ?deadline: Numeric?,
+        ?on_frame: untyped, ?on_loop: untyped, ?on_park: untyped
+      ) -> void
+      def follow: () -> Symbol
+      def failure: () -> Failure?
+    end
+
+    # The one conversation verb's composition over the core's primitives.
+    module Run
+      FORMATS: Array[String]
+      DENY_REASON: String
+      NO_DELIVERABLE: String
+      EXIT: Hash[Symbol, Integer]
+      SUBTYPE: Hash[Symbol, String]
+
+      class Outcome
+        attr_reader exit_status: Integer
+        attr_reader subtype: String
+        attr_reader status: String?
+        attr_reader reason: String?
+        attr_reader duration_ms: Integer
+        attr_reader denied_calls: Integer
+        attr_reader conversation_id: String?
+        attr_reader turn_id: String?
+        attr_reader loop_id: String?
+        attr_reader result: String?
+        attr_reader model_switches: Array[Hash[String, untyped]]
+        attr_reader refusals: Array[Hash[String, untyped]]
+        def is_error: () -> bool
+        def to_h: () -> Hash[String, untyped]
+      end
+
+      def self.call: (Terminal cli, String prompt, Hash[Symbol, untyped] options, ?err: untyped) ?{ (Hash[String, untyped]) -> Hash[String, untyped] } -> Outcome
+
+      class Session
+        def initialize: (Terminal cli, Hash[Symbol, untyped] options, err: untyped) -> void
+        def call: (String prompt) ?{ (Hash[String, untyped]) -> Hash[String, untyped] } -> Outcome
+      end
+    end
+
+    # The object a verb handler receives.
+    class Terminal
+      include Reporting
+      include Connect
+
+      attr_reader core: Core
+      attr_reader out: untyped
+      attr_reader home: Home
+
+      def initialize: (home: Home, ?display_name: String?, ?out: untyped, ?config: Config?) -> void
+      def config: () -> Config
+    end
+  end
+
+  class StreamPrinter
+    INDENT: String
+    RESET_LINE: String
+    DIM: String
+    UNDIM: String
+    BOUND: Integer
+
+    def initialize: (untyped io) -> void
+    def puts: (?untyped line) -> void
+    def print: (*untyped) -> void
+    def write: (*untyped) -> untyped
+    def flush: () -> untyped
+    def mid_line?: () -> bool
+    def tty?: () -> bool
+    def text: (untyped delta) -> void
+    def reasoning: (untyped delta) -> void
+    def reset: () -> void
+    def partial: (untyped text, ?length: Integer?, ?channel: Symbol) -> void
+  end
+
+  class ConsoleCodes
+    TTL_SECONDS: Integer
+    MAX_OUTSTANDING: Integer
+
+    class Entry < Data
+      attr_reader digest: String
+      attr_reader expires_at: Numeric
+      attr_reader spent: bool
+
+      def self.new: (digest: String, expires_at: Numeric, spent: bool) -> instance
+    end
+
+    def initialize: (?clock: ^() -> Numeric) -> void
+    def mint: () -> String
+    def redeem: (untyped candidate) -> Symbol
+    def self.digest: (untyped code) -> String
+    def self.fingerprint: (untyped code) -> String
+  end
+end
