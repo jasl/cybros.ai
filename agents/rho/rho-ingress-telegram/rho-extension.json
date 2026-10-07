@@ -1,0 +1,55 @@
+{
+  "id": "rho.ingress_telegram",
+  "display_name": "Telegram",
+  "description": "Connect a Telegram bot and configure its owner.",
+  "configuration_version": 1,
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "token": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "writeOnly": true,
+        "title": "Bot token"
+      },
+      "token_env": {
+        "type": "string",
+        "default": "RHO_TELEGRAM_BOT_TOKEN",
+        "minLength": 1,
+        "title": "Token environment variable"
+      },
+      "owner_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[1-9][0-9]*$",
+        "title": "Owner user ID"
+      },
+      "stale_after": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 600,
+        "title": "Stale message age in seconds"
+      },
+      "transcription_model": {
+        "type": "string",
+        "default": ""
+      },
+      "speech_model": {
+        "type": "string",
+        "default": ""
+      }
+    },
+    "additionalProperties": false
+  },
+  "default_enabled": false,
+  "modes": [
+    "full",
+    "agent"
+  ],
+  "requires": [],
+  "restart_only": false
+}

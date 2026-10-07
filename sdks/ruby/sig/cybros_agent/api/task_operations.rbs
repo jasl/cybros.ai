@@ -1,0 +1,68 @@
+module CybrosAgent
+  module Api
+    class OperationContext < Data
+      attr_reader environment: Hash[String, untyped]?
+      attr_reader tools: Array[untyped]
+      attr_reader model_defaults: Hash[String, untyped]
+
+      def initialize: (tools: Array[untyped], model_defaults: Hash[String, untyped], ?environment: Hash[String, untyped]?) -> void
+    end
+
+    class OperationRefusal < Data
+      attr_reader code: String
+      attr_reader message: String
+
+      def initialize: (code: String, message: String) -> void
+    end
+
+    class OperationEvent < Data
+      attr_reader type: String
+      attr_reader position: Integer
+      attr_reader key: String
+      attr_reader request: Hash[String, untyped]?
+      attr_reader receipt: Hash[String, untyped]?
+      attr_reader outcome: untyped
+      attr_reader refusal: OperationRefusal?
+
+      def initialize: (?request: Hash[String, untyped]?, ?receipt: Hash[String, untyped]?, ?outcome: untyped, ?refusal: OperationRefusal?, **untyped members) -> void
+      def operation?: () -> bool
+      def observation?: () -> bool
+      def refused?: () -> bool
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class TaskOperations < Data
+      attr_reader context: OperationContext
+      attr_reader trace: Array[OperationEvent]
+      attr_reader position: Integer
+      attr_reader next_after: Integer?
+
+      def initialize: (context: OperationContext, trace: Array[OperationEvent], position: Integer, ?next_after: Integer?) -> void
+    end
+
+    class OperationRead < Data
+      attr_reader observation: OperationEvent?
+      attr_reader position: Integer
+
+      def initialize: (observation: OperationEvent?, position: Integer) -> void
+      def waiting?: () -> bool
+    end
+
+    module OperationProjections
+      include Parsing
+    end
+
+    module ExecutorTaskOperations
+      include OperationProjections
+
+      def operations: (claim_token: String, ?after: Integer?, ?limit: Integer?) -> TaskOperations
+      def submit: (claim_token: String, key: String, request: Hash[untyped, untyped]) -> OperationEvent
+      def observe: (claim_token: String, after: Integer) -> OperationRead
+
+      private
+
+      def operation_position: (String claim_token, Integer after) -> Hash[String, untyped]
+      def operation_integer: (Integer value, String name, minimum: Integer) -> Integer
+    end
+  end
+end

@@ -1,0 +1,101 @@
+source "https://rubygems.org"
+
+# Use main development branch of Rails
+gem "rails", github: "rails/rails", branch: "main"
+gem "rails-i18n"
+
+# Use postgresql as the database for Active Record
+gem "pg", "~> 1.1"
+# Chinese segmentation; PostgreSQL owns English lexeme normalization.
+gem "cppjieba_rb", "0.4.4", require: false
+# Use the Puma web server [https://github.com/puma/puma]
+gem "puma", ">= 7.1"
+
+# Load local .env* files early enough for config/database.yml and app boot.
+# Deliberately loaded in every environment: bare-metal/self-managed production
+# deployments may supply configuration through a local .env file.
+gem "dotenv-rails"
+
+# The modern asset pipeline for Rails [https://github.com/rails/propshaft]
+gem "propshaft"
+# Bundle and transpile JavaScript [https://github.com/rails/jsbundling-rails]
+gem "jsbundling-rails"
+# Bundle and process CSS [https://github.com/rails/cssbundling-rails]
+gem "cssbundling-rails"
+# Hotwire's SPA-like page accelerator [https://turbo.hotwired.dev]
+gem "turbo-rails"
+# Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
+gem "stimulus-rails"
+
+# Pagination
+gem "pagy"
+# Postgres advisory lock
+gem "with_advisory_lock"
+# Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
+gem "bcrypt", "~> 3.1.7"
+
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+# MIME detection
+gem "marcel"
+
+# Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
+gem "solid_cache"
+gem "solid_queue"
+gem "solid_cable"
+
+# Reduces boot times through caching; required in config/boot.rb
+gem "bootsnap", ">= 1.24.1", require: false
+
+# Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
+gem "thruster", require: false
+
+# Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
+gem "image_processing", "~> 2.0"
+gem "ruby-vips", "~> 2.3", require: false
+
+gem "httpx"
+# Reactor for bin/model_runner: fiber-per-invocation provider IO; async-http
+# backs SimpleInference::HTTPAdapters::AsyncHTTP there and is lazily required
+# by that adapter only in the reactor process.
+gem "async", require: false
+gem "async-http", require: false
+
+gem "simple_inference", path: "vendor/simple_inference"
+
+gem "tokenizers"
+gem "tiktoken_ruby"
+
+group :development, :test do
+  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+
+  # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
+  gem "bundler-audit", require: false
+
+  # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
+  gem "brakeman", require: false
+
+  # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
+  gem "rubocop-rails-omakase", require: false
+
+  gem "archspec", require: false
+
+  gem "simplecov", require: false
+end
+
+group :development do
+  # Use console on exceptions pages [https://github.com/rails/web-console]
+  gem "web-console"
+
+  gem "letter_opener"
+end
+
+group :test do
+  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
+  gem "capybara"
+  gem "selenium-webdriver"
+
+  gem "minitest-mock"
+end

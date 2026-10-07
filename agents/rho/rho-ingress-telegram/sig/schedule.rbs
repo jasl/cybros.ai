@@ -1,0 +1,18 @@
+module Rho
+  module IngressTelegram
+    module ScheduleWorkflow
+      def job_command: (Update update, String argument) -> untyped
+    end
+
+    module ScheduleBridge
+      def schedule_command: (String conversation_id, command: Rho::ScheduleCommands::Command,
+        workspace_public_id: String, ?model: String?, ?to: String?, ?speaker_public_id: String?,
+        ?tool_names: Array[String]?, ?idempotency_key: String?) -> document
+      def schedules: (String conversation_id, ?after: String?, workspace_public_id: String) -> document
+      def schedule: (String conversation_id, String job_id, workspace_public_id: String) -> document
+      def schedule_executions: (String conversation_id, String job_id, ?after: String?, workspace_public_id: String) -> document
+      def schedule_answerer: (isolated: bool) -> String?
+      def read_only_schedule?: (document row, conversation_id: String, workspace_public_id: String) -> bool?
+    end
+  end
+end

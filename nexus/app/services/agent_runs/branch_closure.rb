@@ -1,0 +1,154 @@
+module AgentRuns
+  # THE BRANCH-TIP FINDER: ONE descendant-closure walk along outgoing edges
+  # from the call key the model saw (`r3t1`, whose branch hangs off it) or
+  # any branch node, never crossing a round-marked node or a barrier — a
+  # blocking task's mainline consumer, the wake and a barrier's follower are
+  # the mainline's. The person-side cancel takes the members; a later reader
+  # of history takes the TIP, the branch's last word, to pair a `task` call
+  # with.
+  module BranchClosure
+    # A member with the branch consumers the walk found beyond it.
+    Member = Data.define(:row, :consumers)
+
+    module_function
+
+    # The target itself when it is branch work, else — for a `task`/`ask`
+    # call — the branch it started; then every descendant that is branch
+    # work, never crossing a round-marked node or a barrier.
+    def members(node)
+      return [node, *ExpansionOwnership.descendants(node)] if node.operation_owner?
+
+      # A directly named spawn wait is only the finite pause, even when its
+      # consumer is itself a detached branch. Its caller must resume and its
+      # separate completion obligation must survive.
+      if node.await? && node.incoming_edges.includes(:from_node).any? { |edge| spawn_call?(edge.from_node) }
+        [node]
+      else
+        rows = closure(node).values.map(&:row)
+        rows.flat_map { |row| row.operation_owner? ? [row, *ExpansionOwnership.descendants(row)] : [row] }.uniq(&:id)
+      end
+    end
+
+    # The branch's last round: the round-marked member with no round
+    # downstream of it inside the branch — where the chain ends today,
+    # settled or not. A continuation is consumed through its fan (the
+    # round it reads rides `input_from`), so "no round consumer" would
+    # name the root. Nil off a branch.
+    def tip_of(call)
+      if call.tool_name == "tool_call"
+        # Replacements (including ask and waited graph work) supply the
+        # result. An operation owner's internally authored work stays behind
+        # its final-value boundary under the same standing rule.
+        keys = ExpansionOwnership.standing(call.agent_run, [call.node_key]).fetch(call.node_key, [])
+        return nil if keys.empty? || keys == [call.node_key]
+
+        return call.agent_run.agent_run_tasks.find_by(node_key: keys.sole)
+      end
+
+      # A waited spawn's tip is its await: the child runs elsewhere; the
+      # await is the branch's whole word here.
+      if spawn_call?(call)
+        completion = call.spawn_delegation
+        # Only a consumer of this original fan can have substituted completion
+        # for its paired wait. A later wake carries its own message and must
+        # not retroactively replace the launch acknowledgement in history.
+        paired = completion && call.agent_run.agent_run_tasks
+          .where("? = ANY(input_from_node_keys) AND ? = ANY(input_from_node_keys)",
+            call.node_key, completion.node_key).exists?
+        return paired ? completion : call.spawn_await
+      end
+
+      closed = closure(call)
+      closed.values.map(&:row).select(&:model_task?).find { |round| !round_below?(closed, round) }
+    end
+
+    # The `task`/`spawn` calls whose tip a reader renders as the call's paired
+    # result, by the loop and call's key: the tip is settled and NOT mailed — a
+    # mailed tip's delivery is the mail, and rendering it at the call too would
+    # put one result in history twice. An ask's answer is read material the await
+    # delivers, never a paired result.
+    def tips_by_call_key(calls)
+      calls.select { |call| BranchTools::PAIRED_VERBS.include?(call.tool_name) }
+        .to_h { |call| [[call.agent_run_id, call.node_key], tip_of(call)] }
+        .compact
+        .select do |(loop_id, call_key), tip|
+          # A later wake delivers its own material. Only the original fan's
+          # consumer can replace this call's launch acknowledgement.
+          tip.terminal? && tip.result_delivered_at.nil? && AgentRunTask.where(agent_run_id: loop_id)
+            .where("? = ANY(input_from_node_keys) AND ? = ANY(input_from_node_keys)", call_key, tip.node_key).exists?
+        end
+    end
+
+    # Discovery order from the roots, keyed by row id; every consumer a
+    # member names is itself a member, so the closure is walkable offline.
+    # A waited nested branch returns to another branch, so its caller's
+    # continuation is a boundary even though both carry the same mark.
+    def closure(node)
+      excluded = caller_consumers(node)
+      roots = branch?(node) ? [node] : (flat_call?(node) ? branch_consumers(node, excluded: excluded) : [])
+      closed = {}
+      frontier = roots.dup
+      until frontier.empty?
+        row = frontier.shift
+        next if closed.key?(row.id)
+
+        consumers = branch_consumers(row, excluded: excluded)
+        closed[row.id] = Member.new(row: row, consumers: consumers)
+        frontier.concat(consumers)
+      end
+      closed
+    end
+
+    # The nearest launching call owns this branch. Its generated children
+    # belong to the walk; its other structural consumers receive the result.
+    # Walking a regular tool call still follows its enclosing branch, while
+    # directly naming a nested launcher keeps that caller outside the closure.
+    def caller_consumers(node)
+      launcher = node
+      launcher = launcher.expansion_parent while launcher && !flat_call?(launcher)
+      return [] unless launcher
+
+      launcher.outgoing_edges.where(structural: true).includes(:to_node).map(&:to_node)
+        .reject { |row| row.expansion_parent_id == launcher.id }.map(&:id)
+    end
+
+    def round_below?(closed, row)
+      seen = Set.new
+      frontier = closed.fetch(row.id).consumers.dup
+      until frontier.empty?
+        below = frontier.shift
+        next unless seen.add?(below.id)
+        return true if below.model_task?
+
+        frontier.concat(closed.fetch(below.id).consumers)
+      end
+      false
+    end
+
+    # A spawn call owns its finite await and, for turn lifetime, completion.
+    # Naming the await itself cancels only the short wait; naming the call
+    # includes its completion obligation and therefore the original child work.
+    def branch_consumers(node, excluded:)
+      node.outgoing_edges.where(structural: true).includes(:to_node).order(:id).map(&:to_node)
+        .select { |row| !excluded.include?(row.id) && (branch?(row) || (row.await? && spawn_call?(node))) }
+    end
+
+    # Branch work: a detached row, a branch-marked round, or a call or
+    # await a branch-marked round emitted. A barrier is the mainline's.
+    def branch?(row)
+      return false if row.join_mode.present?
+      return true if row.detached?
+      return row.continuation_source == Tasks::Compile::BRANCH if row.model_task?
+
+      if row.expansion_parent_id
+        parent = row.expansion_parent
+        return parent.operation_owner? || parent.tool_name == "tool_call" || branch?(parent)
+      end
+
+      KernelTool.round_of(row)&.continuation_source == Tasks::Compile::BRANCH
+    end
+
+    def flat_call?(row) = row.tool_call? && BranchTools::FLAT_VERBS.include?(row.tool_name)
+    def spawn_call?(row) = row.tool_call? && row.tool_name == "spawn"
+  end
+end

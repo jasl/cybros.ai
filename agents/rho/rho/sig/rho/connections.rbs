@@ -1,0 +1,151 @@
+module Rho
+  class Identity
+    SESSION_VERSION: Integer
+    MODES: Array[String]
+
+    attr_reader root: String
+    attr_reader user_public_id: String?
+    attr_reader executor_public_id: String
+    attr_reader mode: String
+    attr_reader runner_executor_public_id: String?
+
+    def self.agent: (
+      home: Home, user_public_id: String, executor_public_id: String, mode: String,
+      ?runner_executor_public_id: String?
+    ) -> Identity
+    def self.runner: (home: Home, executor_public_id: String) -> Identity
+    def self.from_pointer: (home: Home, pointer: Hash[String, untyped]) -> Identity
+    def self.validate_public_id!: (
+      untyped public_id, label: String, error_class: untyped
+    ) -> String
+    def self.validate_mode!: (untyped mode, Array[String] words) -> String
+
+    def initialize: (
+      home: Home, root: String, mode: String,
+      user_public_id: String?, executor_public_id: String, runner_executor_public_id: String?
+    ) -> void
+    def vault: () -> StateFile
+    def runner_vault: () -> StateFile
+    def session: () -> StateFile
+    def public_id: () -> String
+    def runner_mode?: () -> bool
+    def work_root: () -> String
+    def with_runner: (String runner_executor_public_id) -> Identity
+    def without_runner: () -> Identity
+    def pointer_document: () -> Hash[String, untyped]
+    def prepare: () -> Identity
+    def record: (clock: ^() -> Time) -> Identity
+    def verify_belongs_here: () -> Identity
+    def verify_installable: () -> Identity
+    def inspect: () -> String
+    def to_s: () -> String
+  end
+
+  # One object carrying up to three planes: the agent lineage and the
+  # runner lineage, each an SDK OAuth.
+  class Credentials
+    include CybrosAgent::Redacted
+
+    # `untyped`: the daemon's edges hold whatever a test installed as a
+    # lineage, the way the Lineage's own `about` is typed.
+    attr_reader agent: untyped
+    attr_reader runner: untyped
+
+    def initialize: (?agent: untyped, ?runner: untyped) -> void
+    def agent?: () -> bool
+    def runner?: () -> bool
+    def lineages: () -> Array[untyped]
+    def member_credential: () -> String
+    def executor_credential: () -> String
+    def runner_credential: () -> String
+    def member_plane?: () -> bool
+    def executor_plane?: () -> bool
+    def runner_plane?: () -> bool
+    def rotation: (Symbol plane) -> Integer?
+    def attach_runner: (untyped oauth) -> Credentials
+    def drop_runner: () -> untyped
+    def inspect: () -> String
+    def to_s: () -> String
+  end
+
+  # `rho disconnect`: the revoke-and-forget flow the daemon route and the
+  # daemon-less CLI share.
+  module Disconnect
+    class Result < ::Data
+      attr_reader revoked: Array[String]
+      attr_reader unclaimed: Integer
+      attr_reader runner_executor_public_id: String?
+      attr_reader identity: Identity
+      attr_reader mode: String
+      def self.new: (revoked: Array[String], unclaimed: Integer, runner_executor_public_id: String?,
+                     identity: Identity, mode: String) -> instance
+    end
+
+    def self?.call: (
+      home: Home, identity: Identity, credentials: Credentials, runner_only: bool,
+      executor_client: ^(String) -> untyped, ?log: untyped
+    ) -> Result
+    def self?.unclaimed_count: (Credentials credentials, ^(String) -> untyped executor_client, untyped log) -> Integer
+  end
+
+  class Connection
+    STAGING_VERSION: Integer
+    REQUESTS: Array[Symbol]
+    PENDING_PHASES: Array[Symbol]
+
+    attr_reader phase: Symbol
+    attr_reader identity: Identity?
+    attr_reader oauth: Credentials?
+    attr_reader runner_oauth: CybrosAgent::Credentials::OAuth?
+    attr_reader authority_report: { planes: Hash[Symbol, Symbol], lost: bool, member_handle: String? }?
+    attr_reader user_code: String?
+    attr_reader verification_uri: String?
+    attr_reader verification_uri_complete: String?
+    attr_reader error_message: String?
+    attr_reader request: Symbol
+    attr_reader mode: String
+
+    def self.idle_request: (String mode) -> Symbol
+    def self.recovery_request: (String mode, Array[Symbol] lost) -> Symbol
+    def self.staged_branch: (Home home) -> String?
+    def initialize: (
+      home: Home, device_flow: untyped, mode: String, ?api_transport: untyped,
+      ?clock: ^() -> Time, ?on_phase: (^(Symbol phase) -> void)?,
+      ?display_name: String?, ?request: Symbol?, ?existing: Credentials?, ?existing_identity: Identity?
+    ) -> void
+    def receive: (CybrosAgent::DeviceFlow::Credentials credentials) -> Connection
+    def start: () -> Connection
+    def await: () -> Connection
+    def resume: () -> bool
+    def reserve: (?notify: bool) -> bool
+    def continue_reserved: () -> (:resumed | :started)
+    def publish_pending: (?notify: bool) -> Connection
+    def cancellation_outcome: () -> CybrosAgent::DeviceFlow::cancellation_outcome
+    def adopts_runner?: () -> bool
+    def to_h: () -> Hash[String, untyped]
+    def inspect: () -> String
+    def to_s: () -> String
+  end
+
+  class Authority
+    PLANES: Array[Symbol]
+    PLANES_BY_MODE: Hash[String, Array[Symbol]]
+
+    def initialize: (
+      oauth: untyped, base_url: String, ?transport: untyped,
+      ?expected_identity: untyped, ?mode: String
+    ) -> void
+    def check: () -> { planes: Hash[Symbol, Symbol], lost: bool?, runner_lost: bool?, member_handle: String? }
+  end
+
+  class Renewal
+    RENEWAL_LEAD: Integer
+    DEFAULT_INTERVAL: Integer
+
+    def initialize: (
+      oauth: CybrosAgent::Credentials::OAuth, ?clock: ^() -> Time, ?on_event: untyped
+    ) -> void
+    def due?: () -> bool
+    def run_once: (?verify: bool) -> Symbol
+  end
+end

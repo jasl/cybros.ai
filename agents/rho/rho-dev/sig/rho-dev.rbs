@@ -1,0 +1,130 @@
+module Rho
+  # THE DEVELOPMENT EXTENSION: the verbs that operate a conversation from a
+  # terminal, each a thin formatter over `Rho::Core`'s primitives through
+  # the terminal it is handed.
+  module Dev
+    VERSION: String
+    NAME: String
+    STREAM_OPTIONS: Hash[Symbol, Hash[Symbol, untyped]]
+
+    def self.register: (untyped api) -> untyped
+    def self.terminal: (Cli::Terminal cli) -> Cli::Terminal
+
+    # The verb-bearing renderers: the hooks the shared renderers leave
+    # verb-free, answered with this gem's verbs on a terminal it extends.
+    module Hints
+      UNCERTAIN_HINT: String
+    end
+
+    module Conversation
+      PENDING_HINT: String
+      MODEL_DESC: String
+      DO_OPTIONS: Hash[Symbol, Hash[Symbol, untyped]]
+      SAY_OPTIONS: Hash[Symbol, Hash[Symbol, untyped]]
+      SAY_PENDING: String
+      SAY_STEERING: String
+      def self.register: (untyped api) -> untyped
+      def self.do_turn: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.report_opened: (Cli::Terminal cli, Hash[String, untyped] answer) -> Hash[String, untyped]
+      def self.report_environment: (Cli::Terminal cli, Hash[String, untyped] answer) -> void
+      def self.report_turn_ids: (Cli::Terminal cli, Hash[String, untyped] document, String public_id) -> void
+      def self.fold: (Hash[String, untyped] body, Hash[Symbol, untyped] options) -> Hash[String, untyped]
+      def self.say: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.stop: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.adaptations: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.report_adaptation: (Cli::Terminal cli, ?model: String?) -> Adaptations::Choice
+    end
+
+    # The conversation's environment: the record read or bound, the live table.
+    module Environment
+      ALSO_DESC: String
+      def self.register: (untyped api) -> untyped
+      def self.environment: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.environments: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> Array[untyped]
+      def self.root_set: (untyped root, untyped directories) -> String
+      def self.relayed_line: (untyped relayed) -> String?
+    end
+
+    module Watch
+      WATCH_INTERVAL: Float
+      def self.register: (untyped api) -> untyped
+      def self.watch: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.poll: (Cli::Terminal cli, String public_id, ?interval: Numeric, ?deadline: Numeric?,
+                      ?reasoning: bool, ?stream: bool, ?clock: ^() -> Numeric) -> String?
+    end
+
+    module Follow
+      def self.register: (untyped api) -> untyped
+      def self.follow: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+    end
+
+    module Runs
+      DOORS: Hash[String, String]
+      NO_GRANTS: String
+      def self.register: (untyped api) -> untyped
+      def self.runs: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.followers: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.result: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.pause: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.resume: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.answer: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.task: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.append: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.phases: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.attach: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.retry: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.abandon: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.approve: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.deny: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.rules: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.delete: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.run_line: (Hash[String, untyped] row) -> String
+    end
+
+    module Inspect
+      UUID: Regexp
+      def self.register: (untyped api) -> untyped
+      def self.providers: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.transcript: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.fetch: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.graph: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.request: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+    end
+
+    module Prompt
+      PROMPT_USAGE: String
+      BLOCK_COLUMNS: Array[String]
+      def self.register: (untyped api) -> untyped
+      def self.prompt: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+    end
+
+    module CallTool
+      TOOL_CALL_TIMEOUT_MS: Integer
+      def self.register: (untyped api) -> untyped
+      def self.call_tool: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+    end
+
+    module Conversations
+      QUEUE_VERBS: Array[String]
+      ACCESS_VERBS: Array[String]
+      ACCESS_USAGE: String
+      def self.register: (untyped api) -> untyped
+      def self.compact: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.side: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.inputs: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.conversation: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.rewind: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.regenerate: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.activate: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.variant: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+      def self.turns: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+    end
+
+    module Skills
+      SKILLS_USAGE: String
+      SKILL_SCOPES: Array[String]
+      def self.register: (untyped api) -> untyped
+      def self.skills: (Cli::Terminal cli, Array[untyped] args, Hash[Symbol, untyped] options) -> untyped
+    end
+  end
+end

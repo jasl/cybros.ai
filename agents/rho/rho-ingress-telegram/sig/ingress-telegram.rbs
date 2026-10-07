@@ -1,0 +1,226 @@
+module Rho
+  module IngressTelegram
+    VERSION: String
+    NAME: String
+
+    type document = Hash[String, untyped]
+
+    def self.register: (Rho::Extensions::Api api) -> untyped
+    def self.configure: (untyped request, untyped context, Coordinator coordinator) -> untyped
+    def self.change_access: (untyped request, Coordinator coordinator) -> untyped
+
+    class Coordinator
+      def initialize: (host: Rho::Extensions::Host, settings: Settings) -> void
+      def start: () -> void
+      def connection_changed: (Rho::Extensions::MemberConnection? connection) -> void
+      def configure: (Rho::Config config) -> untyped
+      def change_access: (list: String, action: String, id: String | Integer) -> String
+      def remember_bot: (String token, document? bot) -> untyped
+      def bot_id: () -> String?
+      def close: () -> void
+      def status: () -> document
+      def binding: (String conversation_id) -> document?
+    end
+
+    class Client
+      class Refused < StandardError
+        attr_reader code: Integer
+        attr_reader retry_after: Integer?
+        attr_reader description: String
+        def initialize: (code: Integer, description: String, ?retry_after: Integer?) -> void
+      end
+
+      class Unavailable < StandardError
+        attr_reader reason: Symbol
+        attr_reader ambiguous: bool
+        def initialize: (reason: Symbol, ambiguous: bool) -> void
+      end
+
+      def initialize: (token: String, ?url: String, ?timeout: Numeric, ?poll_timeout: Numeric, ?open_timeout: Numeric) -> void
+      def call: (String method, ?Hash[untyped, untyped] params, ?poll: bool) -> untyped
+      def close: () -> nil
+      def inspect: () -> String
+    end
+
+    module Render
+      TEXT_LIMIT: Integer
+      PREVIEW_LIMIT: Integer
+
+      class Chunk < Data
+        attr_reader text: String
+        attr_reader html: String
+        def self.new: (text: String, html: String) -> instance
+        def formatted: () -> Hash[Symbol, untyped]
+        def plain: () -> Hash[Symbol, String]
+      end
+
+      def self.chunks: (String text, ?limit: Integer, ?plain: bool) -> Array[Chunk]
+      def self.escape: (String text) -> String
+      def self.preview: (String text, ?limit: Integer) -> String
+      def self.utf16_length: (String text) -> Integer
+    end
+
+    class RateLimit
+      def initialize: (?clock: ^() -> Float) -> void
+      def ready?: (chat_id: String | Integer, group: bool, ?progress: bool, ?now: Numeric) -> bool
+      def next_at: (chat_id: String | Integer, group: bool, ?progress: bool, ?now: Numeric) -> Numeric
+      def sent: (chat_id: String | Integer, group: bool, ?progress: bool, ?now: Numeric) -> nil
+      def retry_after: (Numeric seconds, ?now: Numeric) -> nil
+    end
+
+    class Settings
+      KEYS: Array[String]
+      attr_reader owner_id: String?
+      attr_reader stale_after: Integer
+      attr_reader transcription_model: String
+      attr_reader speech_model: String
+      attr_reader token_env: String
+      attr_reader token_source: String
+      def initialize: (document settings, ?env: untyped) -> void
+      def token: () -> String
+      def enabled?: () -> bool
+      def owner?: (String | Integer user_id) -> bool
+      def to_h: () -> document
+      def inspect: () -> String
+    end
+
+    class Access
+      USAGE: String
+      LABELS: Hash[String, String]
+      def initialize: (settings: Settings, state: State) -> void
+      def owner?: (String | Integer user_id) -> bool
+      def ignored?: (String | Integer user_id) -> bool
+      def allowed?: (String | Integer user_id) -> bool
+      def allowed_chat?: (String | Integer chat_id) -> bool
+      def document: () -> document
+      def change: (list: String, action: String, id: String | Integer) ?{ (document, String) -> untyped } -> String
+      def command: (Update update, String name, String argument) -> String
+    end
+
+    class State
+      def initialize: (store: Rho::StoreDocument) -> void
+      def read: () -> document
+      def status: () -> document
+      def binding: (String conversation_id) -> document?
+      def change: () { (document) -> untyped } -> document
+      def bind: (String | Integer bot_id) -> document
+      def stage: (document update) -> document
+      def consumed: (Integer update_id) -> document
+      def enqueue: (String key, route: document, text: String, **untyped) -> document
+    end
+
+    class Update
+      attr_reader id: Integer
+      attr_reader message: document
+      attr_reader user: document
+      attr_reader callback: document?
+      attr_reader stopped: document?
+      def initialize: (document update, ?String? route_key) -> void
+      def supported?: () -> bool
+      def chat_id: () -> String
+      def user_id: () -> String
+      def topic_id: () -> Integer?
+      def group?: () -> bool
+      def route_key: () -> String
+      def room_key: () -> String
+      def text: () -> String
+      def media: () -> document?
+      def unsupported_media?: () -> bool
+      def reply_id: () -> Integer?
+      def stale?: (Numeric now, Numeric seconds) -> bool
+      def route: () -> document
+      def command: (String bot_name) -> [String, String]?
+      def triggers?: (document bot) -> bool
+    end
+
+    class Delivery
+      def initialize: (client: untyped, state: State, ?bridge: untyped, ?limits: RateLimit, ?clock: ^() -> Numeric) -> void
+      def flush: () ?{ (document) -> bool } -> untyped
+      def throttle: (Numeric seconds) -> untyped
+      def progress: (document route, String conversation_id, document snapshot) -> untyped
+    end
+
+    class Commands < Rho::Gateway::Commands
+      HELP: String
+      MENU: Array[{ command: String, description: String }]
+      def answer_reply: (Update update) -> bool
+    end
+
+    module MediaWorkflow
+      DOWNLOAD_LIMIT: Integer
+      PENDING_LIMIT: Integer
+      def discard_media: (String route_key, ?request_id: String?) -> untyped
+    end
+
+    module SpeechWorkflow
+    end
+
+    module TaskRouting
+      def owner?: (Update update) -> bool
+      def observed?: (Update update) -> bool
+      def set_observe: (Update update, bool enabled, result: String) -> String
+      def access_command: (Update update, String name, String argument) -> String
+      def request_control_refusal: (Update update, document request) -> String?
+      def question_refusal: (Update update, document question, ?approval: bool) -> String?
+      def task_status: (Update update, String task_id) -> String
+      def task_target: (Update update, ?task_id: String?, ?allow_pending_media: bool) -> document
+    end
+
+    module ParticipationWorkflow
+      SETTLE_SECONDS: Integer
+      JUDGMENT_INTERVAL: Integer
+      SPEECH_COOLDOWN: Integer
+      RECEIPT_WINDOW: Integer
+      REPLY_LIMIT: Integer
+      RESULT_BYTES: Integer
+      BUSY_STATUSES: Array[String]
+      PROMPT: String
+      def participation_mode: (Update update) -> String
+      def set_participation: (Update update, String mode, result: String) -> String
+    end
+
+    class Runtime
+      include MediaWorkflow
+      include SpeechWorkflow
+      include SessionWorkflow
+      include QueueWorkflow
+      include TaskRouting
+      include ParticipationWorkflow
+      include ReminderWorkflow
+      include ScheduleWorkflow
+      RECONCILE_INTERVAL: Integer
+      HISTORY_REFRESH_INTERVAL: Integer
+      class HistoryRead < ::Data
+        attr_reader run: document?
+        attr_reader voice_inputs: Array[String]
+        attr_reader at: Numeric
+        def self.new: (run: document?, voice_inputs: Array[String], at: Numeric) -> HistoryRead
+      end
+      attr_reader settings: Settings
+      attr_reader state: State
+      attr_reader bridge: untyped
+      def initialize: (settings: Settings, state: State, bridge: untyped, client: untyped, log: untyped,
+                       ?default_model: String?, ?clock: ^() -> Numeric) -> void
+      def start: () -> void
+      def close: () -> void
+      def configure: (settings: Settings, default_model: String?) -> untyped
+      def bot: () -> document?
+      def identify: (document bot) -> document
+      def consume: (document update) -> untyped
+      def submit: (Update update, text: String, ?mode: String, ?observe: bool, ?task_id: String?, ?deliver_at: String?) -> untyped
+      def stop_conversation: (Update update, ?task_id: String?) -> untyped
+      def tick: () -> untyped
+      def room: (Update update) -> document
+      def edit_room: (Update update) { (document) -> untyped } -> document
+      def open_route: (Update update, ?fresh: bool, ?workspace_public_id: String?) -> String
+      def workspace_for: (document route, String conversation_id) -> String
+      def current_workspace: (Update update) -> document
+      def update_key: (Update update, String purpose) -> String
+      def reply: (Update update, String text, ?guidance: bool, ?request_id: String?) -> document
+      def question_reply_id: (Update update) -> String?
+      def control: [T] () { () -> T } -> T
+      def can_observe?: (Update update) -> bool
+      def status: () -> document
+    end
+  end
+end

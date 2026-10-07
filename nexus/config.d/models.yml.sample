@@ -1,0 +1,188 @@
+# Deployment-local MODEL overlay, merged AFTER the shipped
+# config/model_catalog fragments. An entry here replaces the shipped entry
+# WHOLESALE (never a recursive merge).
+#
+# `config.d` IS FLAT — a subdirectory inside it is refused, not read. One
+# environment tier merges after the generic tier, most specific wins:
+#   config.d/models.yml                 generic
+#   config.d/models.<env>.yml           only in that environment
+# Recognized environments: development, test, production. A file whose suffix
+# looks like an environment but names none refuses compilation rather than
+# silently running everywhere.
+#
+# COPY THIS FILE AND NOTHING CHANGES. Everything below the schema version is
+# commented out on purpose: a model whose provider you have not configured is
+# a lane that cannot run, and a sample must not add one. Delete the leading
+# "# " from the lines you actually want.
+#
+# The models below live under the `local` provider from providers.yml.sample,
+# so uncomment that one first.
+schema_version: cybros.model_catalog.v1
+
+# models:
+#   # LOCAL QWEN DEPLOYMENT EXAMPLES. These uses are an operator's selection
+#   # policy, not benchmark results or new protocol capabilities:
+#   # Flash-Next for conversation; 27B as a limited conversation alternative;
+#   # 35B-A3B for simple agent-driven scheduled work; 9B for low-cost vision.
+#   #
+#   # These rows assume a server configured for a 32768-token SHARED window
+#   # and a 4096-token output limit. Set each bound to that server's actual
+#   # configuration (for example llama.cpp --ctx-size), not the model card's
+#   # maximum or OpenRouter's window. Nexus does not resize the server.
+#   # `model_id` is the exact id returned by that endpoint's GET /v1/models.
+#   # The HF ids below suit a server exposing those names; Lemonade/GGUF
+#   # installations may instead expose aliases such as a quantization's
+#   # registered name. Replace model_id with that id; keep the local ref.
+#   #
+#   # The explicit prompt format adapts the instruction roles required by
+#   # these Qwen templates only when compiling a request: leading system /
+#   # developer text becomes one system message; later instructions keep
+#   # their position as user messages. Original history stays unchanged.
+#   # This does not select a server template or control thinking. Verify
+#   # tools and images against the deployed model; see
+#   # docs/nexus-model-settings.md, "Model prompt adaptation".
+#   # The separate reasoning_control binding assumes this endpoint accepts
+#   # chat_template_kwargs.enable_thinking, as the official Qwen templates do.
+#   # Confirm that its serving backend forwards this option. The Qwen3.8
+#   # weights also accept low/medium/xhigh effort; earlier rows are switch-only.
+#   local/qwen3.8-flash-next:
+#     model_id: Qwen/Qwen3.8-Flash-Next
+#     wire_options:
+#       prompt_format: qwen3_5
+#       reasoning_control: chat_template_kwargs
+#     reasoning:
+#       efforts: [low, medium, xhigh]
+#       default_effort: low
+#       default_enabled: true
+#       disable_supported: true
+#     limits:
+#       combined_input_output_tokens: 32768
+#       output_tokens: 4096
+#   local/qwen3.8-27b:
+#     model_id: Qwen/Qwen3.8-27B
+#     wire_options:
+#       prompt_format: qwen3_5
+#       reasoning_control: chat_template_kwargs
+#     reasoning:
+#       efforts: [low, medium, xhigh]
+#       default_effort: low
+#       default_enabled: true
+#       disable_supported: true
+#     limits:
+#       combined_input_output_tokens: 32768
+#       output_tokens: 4096
+#   local/qwen3.6-35b-a3b:
+#     model_id: Qwen/Qwen3.6-35B-A3B
+#     wire_options:
+#       prompt_format: qwen3_5
+#       reasoning_control: chat_template_kwargs
+#     reasoning:
+#       default_enabled: true
+#       disable_supported: true
+#     limits:
+#       combined_input_output_tokens: 32768
+#       output_tokens: 4096
+#   local/qwen3.5-9b:
+#     model_id: Qwen/Qwen3.5-9B
+#     wire_options:
+#       prompt_format: qwen3_5
+#       reasoning_control: chat_template_kwargs
+#     reasoning:
+#       default_enabled: false
+#       disable_supported: true
+#     limits:
+#       combined_input_output_tokens: 32768
+#       output_tokens: 4096
+#     # Enable images only when this server loads the vision components
+#     # (including the matching projector when its GGUF backend needs one).
+#     input_modalities: [image]
+#
+#   # GENERIC GRAMMAR EXAMPLES, not additional Qwen model claims. Replace
+#   # these invented ids before using them; their purpose is to show options.
+#   # ADDING A MODEL IS ONE LINE. The key is `<provider>/<model>`, the tail
+#   # is what goes on the wire, and everything else comes from the provider's
+#   # `api_format`: the route, the option vocabulary, the timeouts, the
+#   # context default, and whatever tokenizer that wire declares.
+#   #
+#   # REASONING IS THE ONE THING SILENCE DOES NOT INHERIT. A model that says
+#   # nothing about it cannot be asked to reason at all — the wire's effort
+#   # vocabulary is what the wire KNOWS, not what this model has. Declare it
+#   # below to make it selectable.
+#   local/example-text: {}
+#
+#   # The same model with everything a deployment usually wants to say.
+#   # Every one of these is optional and every one has a default.
+#   local/example-options:
+#     display_name: Example Text Model
+#
+#     # What goes on the wire, when it differs from the key's tail — a pinned
+#     # dated snapshot, or a name with characters a ref cannot carry.
+#     model_id: example-text-model
+#
+#     # The context window. Absent, the generic default is 128000; that is
+#     # NOT evidence of the capacity of a particular local server. State
+#     # the deployed limit, as the Qwen examples above do:
+#     #   input_tokens                   a pure input window, input only
+#     #   combined_input_output_tokens   one window input and output share
+#     limits:
+#       input_tokens: 131072
+#       output_tokens: 32768
+#
+#     # What this model accepts BESIDES text. Absent means text only, and the
+#     # wire supplies the mime allowlist and size budget for whatever you
+#     # name.
+#     input_modalities: [image]
+#
+#     # Output modalities already follow the wire: text for text generation
+#     # and transcription, image for images, audio for speech, and embedding
+#     # for embeddings. Declare them only when this model differs.
+#
+#     # Function tools, streaming and structured output need no line: each
+#     # is the WIRE's fact, on wherever the provider's protocol carries it
+#     # (explicit cache breakpoints are the Anthropic wire's alone). Write
+#     # `false` only for a model known not to have one.
+#     tool_calls: false
+#
+#     # Reasoning, when the model has it. Enablement defaults true for a
+#     # declared capability; disable_supported defaults false. A supported
+#     # off request sends no active effort. The effort vocabulary and its
+#     # default are independent; `none` is not a public effort.
+#     reasoning:
+#       efforts: [low, medium, high]
+#       default_effort: medium
+#       default_enabled: true
+#       disable_supported: true
+#
+#     # Declare supported generation controls with only their differences.
+#     # max_output_tokens is an integer with minimum 1; its default, maximum,
+#     # and allowed_values are null unless supplied. There is no universal
+#     # output ceiling. `{}` selects that preset without adding a ceiling;
+#     # omitting the parameter does not declare support for it.
+#     generation_parameters:
+#       max_output_tokens:
+#         maximum: 32768
+#
+#     # How long this platform waits for one call before giving up. It
+#     # defaults by workload — text 3600, image and transcription 1800,
+#     # speech 900, embedding 300 — and is a backstop against a hung call,
+#     # not a service promise.
+#     deadline_seconds: 3600
+#
+#     # BILLING IS OPT-IN. With no `pricing` key the lane is simply not
+#     # billed: usage is still recorded, no money is computed, and no budget
+#     # is consulted. Add this when you want spend accounted for.
+#     pricing:
+#       account_unit: USD
+#       schedule:
+#         kind: catalog_only
+#         rates:
+#           input_per_mtok: "0.5"
+#           output_per_mtok: "1.5"
+#
+#   # A model on a DIFFERENT wire from its provider's — an image or embedding
+#   # endpoint beside a text one. This is the only place most deployments
+#   # ever override the format.
+#   local/example-image:
+#     api_format: openai_images
+#     limits:
+#       result_count: 4

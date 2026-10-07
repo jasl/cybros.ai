@@ -1,0 +1,14 @@
+/.bundle/
+/.env
+/.env.*
+!/.env*.sample
+/.yardoc
+/_yardoc/
+/coverage/
+/doc/
+/pkg/
+/spec/reports/
+/artifacts/
+/log/
+/tmp/
+/harnesses/**/node_modules/

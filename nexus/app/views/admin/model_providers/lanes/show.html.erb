@@ -1,0 +1,6 @@
+<% content_for :title, "#{model_provider_name(@provider.fetch(:id))} availability" %>
+
+<div class="space-y-8">
+  <%= render "admin/model_providers/header", provider: @provider, title: "Provider access", current: :availability, description: "Control whether agents can use this provider." %>
+  <%= render "admin/model_providers/availability", provider: @provider %>
+</div>

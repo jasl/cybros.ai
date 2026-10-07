@@ -1,0 +1,127 @@
+<% content_for :title, @workspace.name %>
+<% manageable = @workspace.manageable_by?(Current.user) %>
+
+<div class="space-y-8">
+  <header class="space-y-4">
+    <%= render "shared/back_navigation", path: workspaces_path, label: "Workspaces" %>
+    <div class="space-y-1">
+      <div class="flex flex-wrap items-center gap-2">
+        <h1 class="text-xl font-medium tracking-tight wrap-anywhere"><%= @workspace.name %></h1>
+        <%= render "workspaces/state_badge", workspace: @workspace %>
+        <% if @workspace.agent_identifier %>
+          <%= render "workspaces/agent_badge" %>
+        <% end %>
+      </div>
+      <p class="text-sm text-base-content/60">Workspace</p>
+    </div>
+  </header>
+
+  <section>
+    <h2 class="mb-2 text-xs font-medium text-base-content/60">Details</h2>
+    <%= render "shared/facts_panel", facts: {
+      "Access" => @workspace.account_wide? ? "Account-wide" : "Private",
+      "Owner" => @workspace.owner == Current.user ? "You" : @workspace.owner.display_name,
+      "Created" => @workspace.created_at.to_date.to_fs(:long),
+    } %>
+    <% if @workspace.agent_identifier %>
+      <p class="mt-2 text-sm text-base-content/60">
+        An agent program created this workspace for its own data and is the only agent that writes
+        to it. As a reader you always see its current contents; the owner can manage it like any
+        other workspace.
+      </p>
+    <% end %>
+  </section>
+
+  <% if manageable %>
+    <% if @workspace.active? %>
+      <section>
+        <h2 class="mb-2 text-xs font-medium text-base-content/60">Access</h2>
+        <%= form_with url: workspace_access_mode_path(@workspace), method: :patch, scope: :access_mode do |form| %>
+          <div class="rounded-box border border-base-300 bg-base-200">
+            <%= render layout: "shared/form_row", locals: {
+              form:,
+              attribute: :access_mode,
+              label: "Access",
+              description: "Private keeps the data to you and your agents. Account-wide shares it with every active member; switching back to private cuts their access immediately.",
+            } do %>
+              <%= form.select :access_mode, [["Private", "private"], ["Account-wide", "account_wide"]], { selected: @access_mode_selection || @workspace.access_mode }, class: "select select-sm w-full" %>
+            <% end %>
+          </div>
+          <%= form.hidden_field :lock_version, value: @workspace.lock_version %>
+          <div class="mt-3 flex justify-end">
+            <%= form.submit "Update access", class: "btn btn-primary btn-sm" %>
+          </div>
+        <% end %>
+      </section>
+
+      <section>
+        <h2 class="mb-2 text-xs font-medium text-base-content/60">Ownership</h2>
+        <div class="rounded-box border border-base-300 bg-base-200">
+          <%= render layout: "shared/action_row", locals: {
+            title: "Edit details",
+            description: "Change the name or update the small JSON metadata object.",
+          } do %>
+            <%= link_to "Edit details", edit_workspace_path(@workspace), class: "btn btn-ghost btn-sm" %>
+          <% end %>
+          <%= render layout: "shared/action_row", locals: {
+            title: "Transfer ownership",
+            description: "Hand this workspace to another active member. You stop managing it immediately.",
+          } do %>
+            <%= link_to "Transfer ownership", workspace_ownership_transfer_path(@workspace), class: "btn btn-ghost btn-sm" %>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <% if @workspace.active? || @workspace.archived? %>
+      <section>
+        <h2 class="mb-2 text-xs font-medium text-base-content/60">Lifecycle</h2>
+        <div class="rounded-box border border-base-300 bg-base-200">
+          <% if @workspace.active? %>
+            <%= render layout: "shared/action_row", locals: {
+              title: "Archive",
+              description: "Takes the workspace out of the live list and blocks new writes. Its data stays readable, and restoring brings it back.",
+            } do %>
+              <%= button_to "Archive",
+                workspace_archival_path(@workspace),
+                method: :post,
+                params: { command: { lock_version: @workspace.lock_version } },
+                class: "btn btn-ghost btn-sm",
+                data: { turbo_confirm: "Archive #{@workspace.name}? New writes stop and it leaves the live list; its data stays readable and you can restore it later." } %>
+            <% end %>
+          <% elsif @workspace.archived? %>
+            <%= render layout: "shared/action_row", locals: {
+              title: "Restore",
+              description: "Brings the workspace back to the live list and reopens writes.",
+            } do %>
+              <%= button_to "Restore",
+                workspace_restoration_path(@workspace),
+                method: :post,
+                params: { command: { lock_version: @workspace.lock_version } },
+                class: "btn btn-ghost btn-sm" %>
+            <% end %>
+          <% end %>
+          <%= render layout: "shared/action_row", locals: {
+            title: "Delete",
+            description: "Removes the workspace and its data from every list immediately. This cannot be undone from the console.",
+          } do %>
+            <%= button_to "Delete",
+              workspace_deletion_path(@workspace),
+              method: :delete,
+              params: { command: { lock_version: @workspace.lock_version } },
+              class: "btn btn-error btn-soft btn-sm",
+              data: { turbo_confirm: "Delete #{@workspace.name}? It disappears from every list immediately, its data becomes unreachable, and the console cannot bring it back." } %>
+          <% end %>
+        </div>
+      </section>
+    <% else %>
+      <p class="text-sm text-base-content/60">
+        A lifecycle change is completing. The state above is current; refresh to see it settle.
+      </p>
+    <% end %>
+  <% else %>
+    <p class="text-sm text-base-content/60">
+      Only the workspace owner can manage it. You can read and use its data while your access lasts.
+    </p>
+  <% end %>
+</div>

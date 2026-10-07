@@ -1,0 +1,12 @@
+{
+  "name": "personal-greeting",
+  "id": "personal-greeting",
+  "description": "A configured personal greeting used by the managed package journey.",
+  "state_schema": "greeting-v1",
+  "dependencies": {},
+  "configuration_version": 1,
+  "configuration_schema": {
+    "type": "object",
+    "properties": { "person": { "type": "string", "default": "friend" } }
+  }
+}

@@ -1,0 +1,31 @@
+<%= form_with model: form, scope: :provider_definition, url: url, method: method, class: "space-y-5" do |f| %>
+  <%= render "admin/model_providers/form_errors", form: form %>
+  <%= f.hidden_field :expected_lock_version %>
+  <section class="overflow-hidden rounded-box border border-base-300 bg-base-200" aria-label="Connection settings">
+    <%= render "shared/form_row", form: f, attribute: :provider_id, label: "Provider ID", description: "A stable short identifier, such as local or my-provider." do %>
+      <%= validated_field f, :text_field, :provider_id, form.errors[:provider_id], required: true, readonly: !creating, autocomplete: "off", spellcheck: false, size: :sm %>
+    <% end %>
+    <%= render "shared/form_row", form: f, attribute: :display_name, label: "Display name", description: "Optional name shown in settings." do %>
+      <%= validated_field f, :text_field, :display_name, form.errors[:display_name], autocomplete: "off", size: :sm %>
+    <% end %>
+    <%= render "shared/form_row", form: f, attribute: :api_format, label: "Protocol", description: "Choose the API supported by this endpoint." do %>
+      <%= f.select :api_format, provider_protocol_options(current: form.api_format), {}, class: "select select-sm w-full", required: true %>
+    <% end %>
+    <%= render "shared/form_row", form: f, attribute: :base_url, label: "Base URL", description: "The provider's HTTP or HTTPS endpoint, including its API prefix when required." do %>
+      <%= validated_field f, :url_field, :base_url, form.errors[:base_url], required: true, autocomplete: "url", placeholder: "http://localhost:11434/v1", spellcheck: false, size: :sm %>
+    <% end %>
+    <%= render "shared/form_row", form: f, attribute: :credentials, label: "Authentication", description: "Save or rotate the API key separately on the provider overview." do %>
+      <%= f.select :credentials, form.credentials == "codex" ? [["Subscription sign-in", "codex"]] : [["API key", "api_key"], ["No authentication", "none"]], {}, class: "select select-sm w-full" %>
+    <% end %>
+  </section>
+  <details class="rounded-box border border-base-300 bg-base-200">
+    <summary class="cursor-pointer p-4 text-sm font-medium">Advanced connection settings</summary>
+    <%= render "shared/form_row", form: f, attribute: :concurrency_limit, label: "Concurrent requests", description: "Optional maximum number of simultaneous requests to this provider." do %>
+      <%= validated_field f, :number_field, :concurrency_limit, form.errors[:concurrency_limit], min: 1, step: 1, size: :sm %>
+    <% end %>
+  </details>
+  <div class="flex flex-wrap items-center justify-end gap-2">
+    <%= link_to "Cancel", creating ? admin_model_providers_path : admin_model_provider_path(form.provider_id), class: "btn btn-ghost btn-sm" %>
+    <%= f.submit creating ? "Add provider" : "Save connection", class: "btn btn-primary btn-sm" %>
+  </div>
+<% end %>

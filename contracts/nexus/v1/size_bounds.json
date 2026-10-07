@@ -1,0 +1,87 @@
+{
+  "bounds": {
+    "workspace_metadata_bound": {
+      "unit": "bytes",
+      "value": 2048
+    },
+    "tool_provider_overrides_bound": {
+      "unit": "bytes",
+      "value": 2048
+    },
+    "conversation_metadata_bound": {
+      "unit": "bytes",
+      "value": 2048
+    },
+    "speaker_metadata_bound": {
+      "unit": "bytes",
+      "value": 2048
+    },
+    "envelope_bound": {
+      "unit": "bytes",
+      "value": 65536
+    },
+    "tool_definitions_bound": {
+      "unit": "bytes",
+      "value": 1048576
+    },
+    "model_output_schema_bound": {
+      "unit": "bytes",
+      "value": 16384
+    },
+    "workspace_command_response_bound": {
+      "unit": "bytes",
+      "value": 1081344
+    },
+    "snapshot_bound": {
+      "unit": "bytes",
+      "value": 1048576
+    },
+    "upload_bound": {
+      "unit": "bytes",
+      "value": 104857600
+    },
+    "inline_binary_bound": {
+      "unit": "bytes",
+      "value": 8388608
+    },
+    "body_upload_bytes_bound": {
+      "unit": "bytes",
+      "value": 536870912
+    },
+    "oauth_exchange_response_bound": {
+      "unit": "bytes",
+      "value": 65536
+    },
+    "oauth_exchange_field_bound": {
+      "unit": "bytes",
+      "value": 4096
+    },
+    "memory_document_bound": {
+      "unit": "bytes",
+      "value": 65536
+    },
+    "prompt_document_bound": {
+      "unit": "bytes",
+      "value": 65536
+    },
+    "executor_environment_bound": {
+      "unit": "bytes",
+      "value": 65536
+    },
+    "skill_catalog_bound": {
+      "unit": "bytes",
+      "value": 16384
+    },
+    "body_entry_count_bound": {
+      "unit": "items",
+      "value": 32768
+    },
+    "body_upload_count_bound": {
+      "unit": "items",
+      "value": 32768
+    }
+  },
+  "rejection_code": "content_too_large",
+  "count_rejection_code": "content_items_too_many",
+  "progress_min_interval_ms": 250
+}

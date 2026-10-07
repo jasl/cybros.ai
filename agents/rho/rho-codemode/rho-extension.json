@@ -1,0 +1,28 @@
+{
+  "id": "rho.codemode",
+  "display_name": "rho-codemode",
+  "description": "",
+  "configuration_version": 1,
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "default": {
+        "type": "string",
+        "enum": [
+          "on",
+          "off"
+        ],
+        "default": "on"
+      }
+    },
+    "additionalProperties": false
+  },
+  "default_enabled": true,
+  "modes": [
+    "full",
+    "agent",
+    "runner"
+  ],
+  "requires": [],
+  "restart_only": false
+}

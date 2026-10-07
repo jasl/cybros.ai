@@ -1,0 +1,783 @@
+module Rho
+  class Runner
+    VERSION: String
+    SWEEP_SECONDS: Float
+    def self.root: () -> String
+    PAGE_LIMIT: Integer
+    TOOL_CALL_KIND: String
+
+    class Error < StandardError
+    end
+
+    # The file-system port's duck: the errors an
+    # implementation raises, the routing predicate and the shared rows.
+    module FsPort
+      class Error < Runner::Error
+      end
+
+      class Unavailable < Error
+      end
+
+      class NotFound < Error
+      end
+
+      class BeyondEof < Error
+      end
+
+      class Cancelled < Error
+      end
+
+      class Refused < Error
+        EDITOR_REFUSED: String
+
+        attr_reader code: String
+
+        def initialize: (?String?, ?code: String) -> void
+      end
+
+      DEFAULT_CLIENT: String
+
+      def client: () -> String
+
+      def self.routed: (ToolEnv env, String path, *Symbol needs) -> untyped
+      def self.ask: [T] (untyped port) { () -> T } -> T
+    end
+
+    class Result < ::Data
+      attr_reader content: (String | Array[Hash[String, untyped]])
+      attr_reader structured_content_present: bool
+      attr_reader structured_content: untyped
+      attr_reader is_error: bool
+      attr_reader title: String?
+      attr_reader files: Array[String]
+      attr_reader files_required: bool
+      # The model-invisible carrier (one reserved key, `checkpoint`); nil
+      # when the tool answered none.
+      attr_reader metadata: Hash[String, untyped]?
+
+      def self.ok: ((String | Array[Hash[String, untyped]]), ?untyped, ?title: String?, ?files: Array[String], ?metadata: Hash[String, untyped]?, ?files_required: bool, ?structured_content_present: bool) -> Result
+      def self.error: ((String | Array[Hash[String, untyped]]), ?untyped, ?title: String?, ?files: Array[String], ?metadata: Hash[String, untyped]?, ?files_required: bool, ?structured_content_present: bool) -> Result
+    end
+
+    # THE SHADOW STORE: whole-tree captures of a root under
+    # the home's work root, one per loop, restored undo-first.
+    module Checkpoints
+      RECORD_FIELDS: Array[String]
+      FINAL_SKIPS: Array[String]
+
+      class Record < ::Data
+        attr_reader run_public_id: String
+        attr_reader hash: String
+        attr_reader store: String
+        attr_reader root: String
+        attr_reader captured_at: String
+        attr_reader files: Integer
+        attr_reader skipped: Array[String]
+        attr_reader nested: Array[String]
+        attr_reader outside: Array[String]
+        attr_reader ignored: Array[String]
+        attr_reader present: bool
+
+        def self.parse: (untyped message, ?present: bool) -> Record?
+        def skip?: () -> bool
+        def message: () -> String
+        def key: () -> Hash[String, untyped]
+        def to_row: () -> Hash[String, untyped]
+      end
+
+      class Skip < ::Data
+        attr_reader reason: String
+        attr_reader bytes: Integer
+        attr_reader files: Integer
+        attr_reader detail: String?
+
+        def skip?: () -> bool
+        def final?: () -> bool
+        def key: () -> Hash[String, untyped]
+      end
+
+      class Restored < ::Data
+        attr_reader restored: String
+        attr_reader record: Record
+        attr_reader files: Integer
+        attr_reader removed: Integer
+        attr_reader nested: Array[String]
+
+        def undo: () -> String
+      end
+
+      class Refusal < ::Data
+        attr_reader code: String
+        attr_reader detail: String
+        attr_reader record: Record?
+
+        def undo: () -> String?
+        def message: () -> String
+      end
+
+      class Git
+        class Failed < Error
+          attr_reader arguments: Array[untyped]
+          attr_reader status: Process::Status
+          attr_reader stderr: String
+          def initialize: (Array[untyped], Process::Status, String) -> void
+        end
+
+        class TimedOut < Error
+          attr_reader arguments: Array[untyped]
+          def initialize: (Array[untyped]) -> void
+        end
+
+        class Outcome < ::Data
+          attr_reader stdout: String
+          attr_reader stderr: String
+          attr_reader status: Process::Status
+          def ok?: () -> bool
+        end
+
+        DROPPED: Array[String]
+        IDENTITY: Hash[String, String]
+        NEUTRAL: Hash[String, String]
+        POLL_SECONDS: Float
+        DRAIN_SECONDS: Float
+
+        attr_reader binary: String
+        attr_reader git_dir: String
+        attr_reader work_tree: String
+
+        def initialize: (binary: String, git_dir: String, work_tree: String, ?clock: (^() -> Numeric)?) -> void
+        def read: (*untyped, deadline: Numeric, ?stdin: String?, ?index: String?, ?redirect: bool) -> String
+        def call: (*untyped, deadline: Numeric, ?stdin: String?, ?index: String?, ?redirect: bool) -> Outcome
+      end
+
+      class Store
+        DIRECTORY: String
+        DEFAULT_MAX_FILE_BYTES: Integer
+        DEFAULT_MAX_TREE_BYTES: Integer
+        DEFAULT_CAPTURE_TIMEOUT_SECONDS: Integer
+        DEFAULT_RETENTION_DAYS: Integer
+        PRUNE_TIMEOUT_FACTOR: Integer
+        REF_PREFIX: String
+        GITLINK: String
+        INDEX_FILE: String
+        RESTORE_INDEX_FILE: String
+        LOCK_FILE: String
+        CONFIG: Hash[String, String]
+        LOOP_NAME: Regexp
+        STORE_ID: Regexp
+        SEED_EVENT: String
+
+        attr_reader id: String
+        attr_reader path: String
+        attr_reader root: String
+        attr_reader dir: String
+        attr_reader protected_roots: Array[String]
+        attr_reader max_file_bytes: Integer
+        attr_reader max_tree_bytes: Integer
+        attr_reader capture_timeout_seconds: Float
+        attr_reader retention_days: Integer
+
+        def self.open: (
+          dir: String, root: String, ?protected_roots: Array[String], ?excluded: Array[String], ?log: untyped,
+          ?git: String, ?clock: (^() -> Numeric)?, ?max_file_bytes: Integer, ?max_tree_bytes: Integer,
+          ?capture_timeout_seconds: Numeric, ?retention_days: Integer
+        ) -> Store
+        def self.digest: (String root) -> String
+        def self.roots: (dir: String, ?id: String?) -> Array[String]
+        def self.record_count: (String path, ?git: String, ?clock: (^() -> Numeric)?) -> Integer
+        def capture: (run_public_id: untyped, ?outside: Array[String], ?ignored: Array[String]) -> (Record | Skip)
+        def ignored: (untyped) -> Array[String]
+        def restore: (untyped hash, undo_loop: untyped) -> (Restored | Refusal)
+        def records: (?run_public_id: untyped) -> Array[Record]
+        def changed: (from: untyped, to: untyped) -> Array[Hash[String, String]]
+        def changed_since: (untyped hash) -> (Array[Hash[String, String]] | Skip)
+        def tree?: (untyped hash) -> bool
+        def prune: (?retention_days: Integer, ?now: Time) -> Integer
+        def size_bytes: () -> Integer
+      end
+    end
+
+    # A file on this machine, located and classified for a person's read.
+    module Files
+      INLINE_MAX_BYTES: Integer
+      INLINE_TYPES: Hash[String, String]
+      ATTACHMENT_TYPE: String
+
+      class Located < ::Data
+        attr_reader path: String
+        attr_reader size: Integer
+        attr_reader type: String
+        def self.new: (path: String, size: Integer, type: String) -> instance
+      end
+
+      class Refusal < ::Data
+        attr_reader status: Integer
+        attr_reader code: String
+        attr_reader message: String
+        def self.new: (status: Integer, code: String, message: String) -> instance
+      end
+
+      class Answer < ::Data
+        attr_reader status: Integer
+        attr_reader headers: Hash[String, String]?
+        attr_reader body: untyped
+        def self.new: (status: Integer, headers: Hash[String, String]?, body: untyped) -> instance
+        def ok?: () -> bool
+      end
+
+      def self?.locate: (root: String, path: untyped) -> (Located | Refusal)
+      def self?.classify: (String file) -> String
+      def self?.bytes: (root: String, path: untyped, ?download: bool) -> Answer
+      def self?.refusal: (Refusal refused) -> Answer
+      def self?.headers_for: (Located located, bool inline) -> Hash[String, String]
+    end
+
+    # A checkout's `SKILL.md` files, read the one way.
+    module Skills
+      NAME_FORMAT: Regexp
+      NAME_MAX_LENGTH: Integer
+      DESCRIPTION_MAX_LENGTH: Integer
+      DIRECTORIES: Array[String]
+      FILE_NAME: String
+      FENCE: String
+
+      class Skill < ::Data
+        attr_reader name: String
+        attr_reader description: String
+        attr_reader body: String
+        attr_reader dir: String
+        attr_reader body_line: Integer
+        def self.new: (name: String, description: String, body: String, dir: String, body_line: Integer) -> instance
+        def path: () -> String
+      end
+
+      class Skipped < ::Data
+        attr_reader path: String
+        attr_reader reason: String
+        def self.new: (path: String, reason: String) -> instance
+        def skipped?: () -> bool
+      end
+
+      def self.scan: (root: String, ?log: untyped) -> Array[Skill]
+      def self.frontmatter: (String text) -> [Hash[untyped, untyped] | String, String, Integer]
+      def self.read: (String dir) -> (Skill | Skipped)
+      def self.parse: (String path) -> (Skill | Skipped)
+    end
+
+    module StorableText
+      UNSTORABLE: String
+      ESCAPE: String
+      NOTE: String
+
+      def self.text: (untyped) -> String
+      def self.value: (untyped) -> untyped
+    end
+
+    class Pool
+      class Stopped < Error
+      end
+
+      BACKLOG_PER_WORKER: Integer
+      CANCELLATION_GRACE_SECONDS: Integer
+
+      attr_reader worker_count: Integer
+
+      def initialize: (worker_threads: Integer, ?grace_seconds: Numeric) -> void
+      def reserve: () -> Object?
+      def release: (Object?) -> nil
+      def run: [T] (Object?, ExecutionContext) { () -> T } -> T
+      def stop: () -> nil
+      def cancel: (run_public_id: String?, task_key: String?) -> bool
+      def in_flight: () -> Integer
+    end
+
+    # The row-secrets rule shared by every protocol table (rho-mcp, the
+    # ACP client): expansion, the credential shape, redaction by value,
+    # and the scrub a third party's child is spawned under.
+    module Secrets
+      EXPANSION: Regexp
+      CREDENTIAL_SHAPED: Regexp
+
+      class Unset < Error
+        attr_reader variable: String
+        def initialize: (String variable) -> void
+      end
+
+      def self?.expand: (String value, untyped env) -> [String, Array[String]]
+      def self?.literal_credential?: (untyped name, String value) -> bool
+    end
+
+    class Redact
+      MASK: String
+      MIN_BYTES: Integer
+      attr_reader secrets: Array[String]
+      def initialize: (?untyped secrets, ?live: untyped) -> void
+      def call: (untyped text) -> String
+      def secrets_only: (untyped text) -> String
+      def structure: (untyped value) -> untyped
+      def self.masked: (untyped table) -> Hash[String, String]
+    end
+
+    module ChildEnv
+      BUNDLER_KEYS: Regexp
+      LOCALE_KEYS: Array[String]
+      ADDITIONS: Hash[String, String]
+      RHO_PREFIX: String
+      BUNDLER_PREFIX: String
+      def self?.call: (?Hash[String, String] current) -> Hash[String, String]
+      def self?.scrubbed: (?Hash[String, String] current) -> Hash[String, String]
+    end
+
+    # The execution environment a tool handler closes over. Public, and
+    # untyped until now — a host composing a runner passes one on every
+    # path, so it was the one public shape the conformance run could not
+    # check.
+    class ToolEnv
+      ARTIFACTS_DIRECTORY: String
+      CAPTURE_DIGEST_CHARS: Integer
+
+      # `<work_dir>/artifacts/<digest of root>` — the captures of one root,
+      # under the host's work dir, never under the root.
+      def self.artifacts_dir_for: (root: String, work_dir: String) -> String
+      # The real path of the existing prefix, the rest as written.
+      def self.spelled: (String path) -> String
+
+      attr_reader root: String
+      # The rest of the root set; where announced skills load from.
+      attr_reader directories: Array[String]
+      attr_reader documents_root: String?
+      attr_reader artifacts_dir: String
+      # The queue is an internal collaborator with no signature of its own;
+      # typing it here would claim a shape this file does not describe.
+      attr_reader mutation_queue: untyped
+      attr_reader bash_timeout_seconds: Numeric
+      # The host's process table; a shape the daemon's gem owns, nil here.
+      attr_reader processes: untyped
+      # The host's checkpoint store (`Checkpoints::Store`), nil for a
+      # runner with no home; host-owned, so untyped as the table is.
+      attr_reader checkpoints: untyped
+      attr_reader checkpoint_resolver: (^(String?) -> Array[Checkpoints::Store])?
+
+      def checkpoint_stores: (?String? id) -> Array[Checkpoints::Store]
+
+      def initialize: (
+        root: String, artifacts_dir: String, ?subdir: String?, ?directories: Array[String], ?documents_root: String?,
+        ?mutation_queue: untyped, ?bash_timeout_seconds: Numeric, ?processes: untyped,
+        ?checkpoints: untyped, ?checkpoint_resolver: (^(String?) -> Array[Checkpoints::Store])?
+      ) -> void
+      def resolve: (String path) -> String
+      def in_roots?: (String path) -> bool
+      def ensure_artifacts_dir!: () -> String
+      def keep_capture: (String path, String prefix) -> String
+      def cancelled?: () -> bool
+      def raise_if_cancelled!: () -> void
+      def report_progress: (String? text) -> nil
+    end
+
+    class Environment < ::Data
+      attr_reader root: String
+      attr_reader directories: Array[String]
+      attr_reader working_directory: String?
+      attr_reader branch: String?
+      attr_reader worktree: bool?
+      attr_reader platform: String?
+
+      def self.local: (
+        root: String, ?directories: Array[String], ?working_directory: String?, ?git: untyped
+      ) -> Environment
+      def root_is_working_directory?: () -> bool
+      def known?: () -> bool
+
+      # The record's value: rho's store row at the
+      # conversation scope, parsed; the runner receives it, never reads it.
+      class Binding < ::Data
+        ROOT: String
+        DIRECTORIES: String
+        ANCHOR: String
+
+        attr_reader root: String
+        attr_reader directories: Array[String]
+        attr_reader anchor: String?
+
+        def self.parse: (untyped value) -> Binding?
+        def to_h: () -> Hash[String, untyped]
+      end
+    end
+
+    # One conversation's placement: the env, its toolset, the record (nil at zero).
+    class Placement < ::Data
+      attr_reader env: ToolEnv?
+      attr_reader toolset: Toolset
+      attr_reader binding: Environment::Binding?
+    end
+
+    # The placements: the host resolves a row's
+    # binding, the runner memoizes one env + toolset per root set.
+    class Toolsets
+      UNRESOLVED_EVENT: String
+      REFUSED_EVENT: String
+      MISSES_MAX: Integer
+      NOTICES_MAX: Integer
+      EXTENDED_MAX: Integer
+
+      # The constant placement: the harness, a standalone runner, a test.
+      class Fixed
+        attr_reader zero: Placement
+
+        def initialize: (Placement) -> void
+        def for: (untyped task) -> Placement
+        def names: () -> Array[String]
+        def ports: () -> nil
+      end
+
+      def self.fixed: (?env: ToolEnv?, ?toolset: Toolset?) -> Fixed
+
+      attr_reader zero: Placement
+      # The host's editor-port lookup by anchor, placed
+      # on every context by the run; nil for a host with none.
+      attr_reader ports: (^(String) -> untyped)?
+
+      # The host's table of per-conversation extras:
+      # `call(anchor)` answers the anchor's `[entries, digest]`,
+      # `owner_of(name)` the anchor serving a name, `names` every anchor's;
+      # nil for a host with none.
+      attr_reader extras: untyped
+
+      def initialize: (
+        registry: Extensions::Registry, zero: ToolEnv, resolver: ^(String, String?) -> Environment::Binding?,
+        work_dir: String, ?log: untyped, ?checkpoints: (^(String) -> untyped)?, ?protected_roots: Array[String],
+        ?ports: (^(String) -> untyped)?, ?extras: untyped
+      ) -> void
+      def for: (untyped task) -> Placement
+      def names: () -> Array[String]
+    end
+
+    module Git
+      TIMEOUT_SECONDS: Integer
+
+      def self?.branch: (String directory) -> String?
+      def self?.linked_worktree?: (String directory) -> bool?
+      def self?.capture: (String directory, *String arguments) -> String?
+    end
+
+    # The compiled `inputSchema` a call is validated against before its
+    # handler runs; json_schemer ships no signatures, so its schema object
+    # is untyped here.
+    module InputSchema
+      MAX_ERRORS: Integer
+      MAX_BYTES: Integer
+
+      def self.compile: (untyped) -> untyped
+      def self.refusal: (untyped, untyped) -> String?
+      def self.bounded: (String) -> String
+    end
+
+    class Toolset
+      class Tool < ::Data
+        attr_reader name: String
+        attr_reader description: String
+        attr_reader parameters: Hash[String, untyped]
+        attr_reader handler: ^(Hash[String, untyped], ExecutionContext) -> untyped
+        attr_reader validator: untyped
+        attr_reader timeout_ms: Integer?
+        attr_reader internal_clamp: bool
+        attr_reader effect_profile: Hash[String, untyped]?
+        attr_reader owner: Extensions::Resources?
+
+        def initialize: (
+          name: String, description: String, parameters: Hash[String, untyped],
+          handler: ^(Hash[String, untyped], ExecutionContext) -> untyped, ?validator: untyped,
+          ?timeout_ms: Integer?, ?internal_clamp: bool, ?effect_profile: Hash[String, untyped]?, ?owner: Extensions::Resources?
+        ) -> void
+        def to_declaration: () -> Hash[String, untyped]
+      end
+
+      def initialize: (?Hash[String, Tool], ?(^(String) -> Tool?)? missing) -> void
+      def fetch: (String) -> Tool
+      def names: () -> Array[String]
+      def to_h: () -> Hash[String, Tool]
+      def declarations: () -> Array[Hash[String, untyped]]
+    end
+
+    # THE EXTENSION PLANE. The seam `Toolset` said it was standing in for.
+    module Extensions
+      class RegistrationError < Error
+      end
+
+      class Resources
+        attr_writer dispatch: untyped
+        attr_reader failures: Array[String]
+        def initialize: (extension: String, ?log: untyped) -> void
+        def own: (?on_retire: bool) { () -> untyped } -> Resources
+        def acquire: () -> Resources
+        def release: () -> untyped
+        def retire: () -> bool
+        def disposed?: () -> bool
+      end
+
+      module Tool
+        NAME_FORMAT: Regexp
+        REQUIRED_CONSTANTS: Array[Symbol]
+        MAX_TIMEOUT_MS: Integer
+        EFFECT_KEYS: Array[String]
+        EFFECT_KINDS: Array[String]
+        EFFECT_SCOPES: Array[String]
+        IDEMPOTENCY_KINDS: Array[String]
+        RECONCILIATION_KINDS: Array[String]
+        DESTRUCTIVE: Array[bool]
+        EFFECT_VALUES: Hash[String, Array[untyped]]
+
+        def self?.validate: (untyped klass, extension: String) -> untyped
+        def self?.effect_profile_fault: (untyped value) -> String?
+        def self?.validate_name: (untyped klass, String extension) -> void
+        def self?.compile_schema: (untyped klass, String extension) -> untyped
+        def self?.validate_effect_profile: (untyped klass, String extension) -> void
+        def self?.validate_timeout: (untyped klass, String extension) -> void
+        def self?.timeout_ms: (untyped klass) -> untyped
+        def self?.undescribed?: (untyped klass) -> bool
+        def self?.announcement: (untyped klass, name: String) -> Hash[String, untyped]
+        def self?.internal_clamp?: (untyped klass) -> bool
+        def self?.prompt_snippet: (untyped klass) -> String?
+        def self?.prompt_guidelines: (untyped klass) -> Array[untyped]
+      end
+
+      module Hooks
+        EVENTS: Array[Symbol]
+
+        class Registration < ::Data
+          attr_reader event: Symbol
+          attr_reader extension: String
+          attr_reader handler: untyped
+          attr_reader owner: Resources?
+          def call: (*untyped) -> untyped
+        end
+
+        class Veto < ::Data
+          attr_reader extension: String
+          attr_reader reason: String
+        end
+
+        class Rewrite < ::Data
+          attr_reader arguments: Hash[String, untyped]
+        end
+
+        class Host
+          attr_reader owners: Array[Resources]
+          def initialize: (?Array[Registration], ?log: untyped) -> void
+          def any?: (Symbol) -> bool
+          def names: (Symbol) -> Array[String]
+          def before_call: (String, Hash[String, untyped], ?Toolset::Tool?) -> untyped
+          def after_result: (String, Result, ?Toolset::Tool?) -> Result
+        end
+      end
+
+      class Api
+        class Description < ::Data
+          attr_reader extension: String
+          attr_reader handler: untyped
+          attr_reader serves: Symbol
+          attr_reader owner: Resources?
+          def self.new: (extension: String, handler: untyped, serves: Symbol, ?owner: Resources?) -> instance
+        end
+
+        class Registration < ::Data
+          attr_reader klass: untyped
+          attr_reader serves: Symbol
+          attr_reader name: String?
+          attr_reader validator: untyped
+          def self.new: (klass: untyped, serves: Symbol, validator: untyped, ?name: String?) -> instance
+        end
+
+        LIFECYCLE_EVENTS: Array[Symbol]
+        def serves?: (Symbol source) -> bool
+        DAEMON_EVENTS: Array[Symbol]
+        SERVES: Array[Symbol]
+
+        attr_reader extension_name: String
+        attr_reader source: String
+        attr_reader resources: Resources
+        attr_reader configuration: Hash[String, untyped]
+        attr_reader tools: Array[Registration]
+        attr_reader hooks: Array[Hooks::Registration]
+        attr_reader lifecycle: Array[Hooks::Registration]
+        attr_reader environment_descriptions: Array[Description]
+        attr_reader document_descriptions: Array[Description]
+        attr_reader document_loaders: Array[Description]
+        attr_reader log: untyped
+        attr_reader host: untyped
+        attr_reader announced: Hash[Symbol, Array[Hash[String, untyped]]]
+
+        def initialize: (extension_name: untyped, source: untyped, ?log: untyped, ?host: untyped, ?announced: untyped,
+          ?configuration: Hash[String, untyped], ?tool_suffix: String?) -> void
+        def register_tool: (untyped klass, ?serves: Symbol) -> Api
+        def describe_status: () -> bot
+                           | () { () -> Hash[Symbol, untyped] } -> untyped
+        def readiness: () -> Hash[Symbol, untyped]
+        def restart_only: () -> Api
+        def restart_only?: () -> bool
+        def tool_name: (String) -> String
+        def describe_environment: () { (Environment) -> untyped } -> Api
+        def describe_documents: (?serves: Symbol) { (Environment) -> untyped } -> Api
+        def load_document: (?serves: Symbol) { (String, ToolEnv) -> untyped } -> Api
+        def on: (Symbol) { (*untyped) -> untyped } -> Api
+        def register_command: (untyped, **untyped) ?{ (*untyped) -> untyped } -> Api
+        def background: (?untyped) ?{ (*untyped) -> untyped } -> Api
+        def register_webui: (root: untyped) -> Api
+        def register_route: (untyped, untyped, **untyped) ?{ (*untyped) -> untyped } -> Api
+        def register_flags: (untyped, **untyped) ?{ (*untyped) -> untyped } -> Api
+        def register_conversation_servers: () ?{ (String, Array[Hash[String, untyped]]) -> untyped } -> Api
+      end
+
+      class Registry
+        class Entry < ::Data
+          attr_reader name: String
+          attr_reader klass: untyped
+          attr_reader extension: String
+          attr_reader source: String
+          attr_reader serves: Symbol
+          attr_reader owner: Resources?
+          # The schema compiled once, at registration, shared by every placement.
+          attr_reader validator: untyped
+
+          def description: () -> String?
+          def schema: () -> Hash[String, untyped]
+          def effect_profile: () -> Hash[String, untyped]
+          def timeout_ms: () -> Integer?
+          def undescribed?: () -> bool
+          def declaration: () -> Hash[String, untyped]
+          def announcement: () -> Hash[String, untyped]
+        end
+
+        def initialize: (?log: untyped) -> void
+        def commit: (Api) -> Registry
+        def serving: (Symbol source) -> Registry
+        def names: () -> Array[String]
+        def entries: () -> Array[Entry]
+        def extension_names: () -> Array[String]
+        def declarations: () -> Array[Hash[String, untyped]]
+        def prompt_fragments: () -> Array[Hash[String, untyped]]
+        def environment_fragments: (Environment) -> Array[Hash[String, untyped]]
+        def documents: (Environment) -> Array[Hash[String, untyped]]
+        def load_document: (String name, ToolEnv env) -> Result?
+        def effect_profile: (String) -> Hash[String, untyped]?
+        def announcement: () -> Array[Hash[String, untyped]]
+        def hooks: () -> Hooks::Host
+        def toolset: (env: ToolEnv) -> Toolset
+      end
+
+      module Loader
+        GEM_METADATA_KEY: String
+
+        class Failure < ::Data
+          attr_reader source: String
+          attr_reader error_class: String
+          attr_reader message: String
+        end
+
+        class Result < ::Data
+          attr_reader registry: Registry
+          attr_reader failures: Array[Failure]
+          attr_reader committed: Array[Api]
+
+          def ok?: () -> bool
+        end
+
+        class Load < ::Data
+          attr_reader reusable: Hash[Array[String?], Api]
+          attr_reader registry: Registry
+          attr_reader failures: Array[Failure]
+          attr_reader committed: Array[Api]
+          attr_reader api_class: untyped
+          attr_reader api_options: Hash[Symbol, untyped]
+          attr_reader log: untyped
+        end
+
+        def self?.call: (
+          ?builtin: Array[untyped], ?gems: Array[untyped], ?paths: Array[String],
+          ?api_class: untyped, ?api_options: Hash[Symbol, untyped], ?log: untyped, ?reuse: Array[Api]
+        ) -> Result
+        def self?.available: () -> Array[Hash[String, untyped]]
+        def self?.load_file: (String) -> untyped
+        def self?.require_feature: (untyped) -> untyped
+        def self?.load_one: (Load, source: String, name: String) { () -> untyped } -> untyped
+        def self?.extension_name_of: (untyped) -> String
+        def self?.module_in: (Module) -> untyped
+        def self?.module_named: (untyped) -> untyped
+        def self?.camelize: (String) -> String
+      end
+
+      module Coding
+        NAME: String
+        TOOLS: Array[untyped]
+        FILES_LINE: String
+        WORKSPACE_TOOLS_PATH: String
+        WORKSPACE_TOOLS_NAME: String
+        WORKSPACE_TOOLS_DESCRIPTION: String
+
+        def self.register: (Api) -> untyped
+        def self.documents: (Environment environment, ?log: untyped, ?guide_path: String) -> Array[Hash[String, String]]
+        def self.load: (String name, ToolEnv env, ?guide_path: String) -> Result?
+        def self?.load_workspace_tools: (String name, ToolEnv env, String path) -> Result?
+
+        module Report
+          def self?.call: (Environment) -> String
+        end
+      end
+
+      # The checkpoints extension: a module on host state — the
+      # two hidden tools, the capture hook and its correlation, the flags.
+      module Checkpoints
+        NAME: String
+        TOOLS: Array[untyped]
+        ENVIRONMENT_BIND: String
+        EXEMPT: Array[String]
+        WRITE_KIND: String
+        PATH_ARGUMENT: String
+        RESERVED_KEY: String
+        SKIPPED_EVENT: String
+
+        class Flags
+          def initialize: () -> void
+          def captured?: (String) -> bool
+          def capture!: (String, Hash[String, untyped]) -> nil
+          def take_key: (String) -> Hash[String, untyped]?
+        end
+
+        def self.register: (Api) -> untyped
+        def self.store_of: (Api) -> untyped
+        def self.current: (untyped) -> untyped
+        def self.placed_store: (untyped) -> untyped
+        def self.capture: (untyped, Flags, String, untyped, untyped, untyped) -> nil
+        def self.correlate: (Flags, String, untyped, untyped) -> Result?
+        def self.captures?: (untyped, untyped) -> bool
+        def self.targets: (untyped, String) -> [Array[String], Array[String]]
+      end
+    end
+
+    class Snapshot < ::Data
+      attr_reader running: bool
+      attr_reader in_flight: Integer
+      attr_reader claimed: Integer
+      attr_reader swept: Integer
+      attr_reader nudged: Integer
+      attr_reader canceled: Integer
+      attr_reader tools: Array[String]
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    def initialize: (
+      executor: untyped, toolsets: (Toolsets | Toolsets::Fixed), log: untyped, ?pool: Pool?,
+      ?sleeper: (^(Numeric) -> void)?, ?hooks: Extensions::Hooks::Host?
+    ) -> void
+    def snapshot: () -> Snapshot
+    def configure: (hooks: Extensions::Hooks::Host) -> untyped
+    def follow: () -> void
+    def report_progress: (Hash[String, untyped] frame) -> untyped
+    def nudged: (run_public_id: String?, task_key: String?, ?tool_name: String?) -> untyped
+    def cancel: (run_public_id: String?, task_key: String?) -> bool
+    ANSWER_WAIT_SECONDS: Float
+    def stop: (?answer_wait: Float) -> nil
+    def answering?: () -> bool
+  end
+end

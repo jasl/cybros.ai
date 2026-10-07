@@ -1,0 +1,68 @@
+schema_version: cybros.model_catalog.v1
+providers:
+  gemini:
+    # THE WIRE THIS PROVIDER SPEAKS. It decides the route, the request
+    # shape, the option vocabulary, the timeouts and the tokenizer, so a
+    # model under it normally declares nothing at all.
+    api_format: gemini_generate_content
+    base_url: https://generativelanguage.googleapis.com
+    # Operator capacity, not a wire fact: the same provider admits
+    # different amounts of concurrent work per deployment and per account
+    # tier. Carried from the predecessor's own providers.yml. A workload
+    # with no entry inherits the ceiling.
+    concurrency_limit: 6
+    workload_concurrency_limits:
+      text_generation: 3
+      embedding: 1
+models:
+  # Native Gemini 3.8 Flash uses the existing GenerateContent wire. Its model
+  # page lists images/PDFs, 1,048,576 input and 65,536 output tokens, and
+  # low/medium/high thinking only; minimal is rejected on this model.
+  # https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash
+  # Read 2026-10-05. Video/audio have no native input surface here.
+  gemini/gemini-3.8-flash:
+    # Standard USD/Mtok rates through 2026-12-31, from Google's pricing page
+    # (read 2026-10-05): https://ai.google.dev/gemini-api/docs/pricing
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0.75"
+          output_per_mtok: "3.75"
+    capabilities:
+      input_modalities: [image, file]
+      generation_parameters:
+        max_output_tokens:
+          maximum: 65536
+      limits:
+        input_tokens: 1048576
+        output_tokens: 65536
+      # Authored 2026-08-29 from the vendor's thinking documentation
+      # (ai.google.dev): thought summaries ride multi-step work and stay
+      # absent on trivial prompts. Unsigned thought replay only — a foreign
+      # signature is a 400 from Google, so the signed rung is a same-model
+      # replay (agent_runs/round_replay.rb), not a claim.
+      reasoning:
+        efforts: [low, medium, high]
+        default_effort: low
+      reasoning_replay:
+        format: gemini_thought
+  gemini/gemini-embedding-001:
+    # A model on a DIFFERENT wire from its provider's — the only place
+    # most deployments ever override the format.
+    api_format: gemini_embeddings
+    # UNMETERED: a `pricing:` key with nothing under
+    # it declares that this platform does not compute cost for the lane. It is
+    # not the same as free, and it is deliberately not the same as leaving the
+    # key out — an ABSENT key is nobody having authored a rate, which still
+    # loses the candidate, and only this explicit null admits.
+    #
+    # No rate is published for this model anywhere the repository can cite: the
+    # predecessor authored gemini-embedding-2, which is a different model.
+    pricing:
+    capabilities:
+      limits:
+        input_tokens: 2048
+        input_bytes: 2048
+        embedding_dimensions: [3072]

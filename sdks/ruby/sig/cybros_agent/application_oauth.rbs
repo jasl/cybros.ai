@@ -1,0 +1,53 @@
+module CybrosAgent
+  module ApplicationOAuth
+    class User < Data
+      attr_reader public_id: String
+      attr_reader display_name: String
+      attr_reader role: String
+      def self.new: (public_id: String, display_name: String, role: String) -> instance
+    end
+
+    class Credentials < Data
+      attr_reader access_token: String
+      attr_reader refresh_token: String
+      attr_reader expires_in: Integer
+      attr_reader token_type: String
+      attr_reader user: User
+      attr_reader agent_public_id: String?
+      attr_reader agent: DeviceFlow::Credentials?
+      attr_reader runner: DeviceFlow::Credentials?
+      def self.new: (access_token: String, refresh_token: String, expires_in: Integer, token_type: String,
+        user: User, agent_public_id: String?, agent: DeviceFlow::Credentials?, runner: DeviceFlow::Credentials?) -> instance
+      def member_plane?: () -> false
+      def executor_plane?: () -> false
+      def platform_plane?: () -> true
+      def platform_access_token: () -> String
+      def executor_access_token: () -> nil
+      include Redacted
+      def inspect: () -> String
+    end
+
+    class InitializationRequired < DeviceFlow::Error
+      attr_reader initialization_uri: String
+      def initialize: (initialization_uri: String) -> void
+    end
+
+    class Client < DeviceFlow::Client
+      CLIENT_ID: String
+      SCOPE: String
+      def initialize: (base_url: String, ?public_url: String, ?transport: _Transport?,
+        ?clock: ^() -> Numeric, ?sleeper: ^(Numeric) -> void, ?request_timeout: Numeric) -> void
+      def authorization_url: (redirect_uri: String, state: String, code_challenge: String,
+        claims: Hash[Symbol, String], ?connection_mode: String) -> String
+      def request_authorization: (agent_identifier: String, agent_display_name: String,
+        executor_display_name: String, ?runner: DeviceFlow::runner_claims?, ?connection_mode: String) -> DeviceFlow::Authorization
+      def request_runner_authorization: (registration_identifier: String, runner_display_name: String,
+        ?executor_kind: String, ?connection_mode: String) -> DeviceFlow::Authorization
+      def request_device_authorization: (claims: Hash[Symbol, String], ?connection_mode: String) -> DeviceFlow::Authorization
+      def exchange_code: (code: String, redirect_uri: String, code_verifier: String) -> Credentials
+      def poll: (DeviceFlow::Authorization) -> (DeviceFlow::Pending | DeviceFlow::SlowDown | DeviceFlow::Throttled | Credentials)
+      def await_credentials: (DeviceFlow::Authorization) -> Credentials
+      def rotate: (refresh_token: String) -> Credentials
+    end
+  end
+end

@@ -1,0 +1,164 @@
+# examples:
+#   periodic_cleanup:
+#     class: CleanSoftDeletedRecordsJob
+#     queue: background
+#     args: [ 1000, { batch_size: 500 } ]
+#     schedule: every hour
+#   periodic_cleanup_with_command:
+#     command: "SoftDeletedRecord.due.delete_all"
+#     priority: 2
+#     schedule: at 5am every day
+
+production: &schedules
+  reap_dead_sessions:
+    class: Sessions::ReapJob
+    schedule: every day at 4am
+  reap_member_recovery_authorizations:
+    class: MemberRecoveryAuthorizations::ReapJob
+    schedule: every day at 4:10am
+  reap_expired_device_authorizations:
+    class: DeviceAuthorizations::ReapJob
+    schedule: "20,50 * * * *"
+  converge_refresh_token_families:
+    class: RefreshTokenFamilies::ConvergeJob
+    schedule: "0,30 * * * *"
+  converge_access_tokens:
+    class: AccessTokens::ConvergeJob
+    schedule: "5,35 * * * *"
+  converge_refresh_tokens:
+    class: RefreshTokens::ConvergeJob
+    schedule: "10,40 * * * *"
+  converge_users:
+    class: Users::ConvergeJob
+    schedule: "12,42 * * * *"
+  stop_removed_agent_work:
+    class: Users::StopAgentWorkJob
+    schedule: every minute
+  converge_task_executors:
+    class: TaskExecutors::ConvergeJob
+    schedule: "15,45 * * * *"
+  advance_due_authorization_sessions:
+    class: ModelProviderOAuthSessions::AdvanceDueJob
+    schedule: every minute
+  sweep_authorization_sessions:
+    class: ModelProviderOAuthSessions::SweepJob
+    schedule: every minute
+  refresh_due_provider_credentials:
+    class: ModelProviderOAuthSessions::RefreshDueJob
+    schedule: "*/5 * * * *"
+  sweep_workspace_transitions:
+    class: Workspaces::SweepTransitionsJob
+    schedule: every minute
+  sweep_unattached_blobs:
+    class: ActiveStorageMaintenance::SweepUnattachedBlobsJob
+    schedule: every day at 4am
+  sweep_unbound_content_uploads:
+    class: ContentUploads::SweepUnboundJob
+    schedule: every day at 4am
+  sweep_model_invocation_deadlines:
+    class: ModelInvocations::DeadlineSweepJob
+    schedule: every minute
+  settle_usage_record_spend:
+    class: UsageRecords::SettleSpendJob
+    schedule: every minute
+  roll_up_model_usage_hourly:
+    class: ModelUsageRollups::HourlyJob
+    schedule: every 5 minutes
+  converge_inference_request_terminal_events:
+    class: InferenceRequests::ConvergeTerminalEventsJob
+    schedule: every minute
+  admit_queued_model_invocations:
+    class: ModelInvocations::AdmitQueuedWorkJob
+    schedule: every minute
+  converge_post_cut_model_invocation_attempts:
+    class: ModelInvocations::ConvergePostCutJob
+    schedule: every minute
+  redrive_stalled_model_invocation_attempts:
+    class: ModelInvocations::RedriveStalledJob
+    schedule: every minute
+  reap_dead_nexus_servers:
+    class: NexusServers::ReapJob
+    schedule: every minute
+  close_abandoned_attempt_settlements:
+    class: ModelInvocations::CloseAbandonedSettlementsJob
+    schedule: every hour at minute 50
+  collect_workspaces:
+    class: Workspaces::CollectJob
+    schedule: every day at 4:20am
+  reap_workspace_command_receipts:
+    class: WorkspaceCommandReceipts::ReapJob
+    schedule: every hour at minute 35
+  reap_inference_request_create_receipts:
+    class: InferenceRequestCreateReceipts::ReapJob
+    schedule: every hour at minute 40
+  reap_conversation_command_receipts:
+    class: ConversationCommandReceipts::ReapJob
+    schedule: every hour at minute 45
+  reap_tombstoned_inference_requests:
+    class: InferenceRequests::ReapJob
+    schedule: every day at 4:25am
+  reap_tombstoned_conversations:
+    class: Conversations::ReapJob
+    schedule: every day at 4:35am
+  reap_tombstoned_agent_runs:
+    class: AgentRuns::ReapJob
+    schedule: every day at 4:40am
+  reclaim_memory_document_versions:
+    class: MemoryDocuments::ReclaimVersionsJob
+    schedule: every hour
+  prune_conversation_execution_details:
+    class: Conversations::PruneExecutionDetailsJob
+    schedule: every day at 4:20am
+  reap_conversation_event_items:
+    class: ConversationEventItems::ReapJob
+    schedule: every day at 4:43am
+  reap_agent_run_append_receipts:
+    class: AgentRunAppendReceipts::ReapJob
+    schedule: every hour at minute 50
+  reap_agent_run_create_receipts:
+    class: AgentRunCreateReceipts::ReapJob
+    schedule: every hour at minute 55
+  converge_conversation_turns:
+    class: Conversations::Turns::ConvergeJob
+    schedule: every minute
+  wake_due_conversation_inputs:
+    class: Conversations::Inputs::WakeDueJob
+    schedule: every minute
+  dispatch_due_schedules:
+    class: Schedules::DispatchDueJob
+    schedule: every minute
+  converge_agent_run_terminal_steps:
+    class: AgentRuns::ConvergeTerminalStepsJob
+    schedule: every minute
+  sweep_agent_run_schedules:
+    class: AgentRuns::ScheduleSweepJob
+    schedule: every minute
+  sweep_agent_run_park_timeouts:
+    class: AgentRuns::Parks::TimeoutSweepJob
+    schedule: every minute
+  sweep_agent_run_drains:
+    class: AgentRuns::DrainSweepJob
+    schedule: every minute
+  relay_spawned_replies:
+    class: AgentRuns::Spawn::RelayJob
+    schedule: every minute
+  reap_content_fragments:
+    class: ContentFragments::ReapJob
+    schedule: every day at 4:30am
+  # Every minute, because the producer writes about ten rows a second per
+  # streaming turn. See the job for why the gem's own single-batch trim is not
+  # enough on its own.
+  trim_solid_cable_messages:
+    class: SolidCableMessages::TrimJob
+    schedule: every minute
+  clear_solid_queue_finished_jobs:
+    command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    schedule: every hour at minute 12
+
+# Development runs the same schedule for parity, exactly as the predecessor
+# did. Without it Solid Queue registers ZERO recurring tasks in development —
+# so admission never ticks, no deadline is ever swept, no cut is ever
+# converged, and no stalled attempt is ever re-driven. Every recovery path
+# this checkpoint built would exist only inside the Rails suite, and the
+# first place anyone would notice is production.
+development: *schedules

@@ -1,0 +1,59 @@
+<% subject = device_grant_subject(@grant) %>
+<% content_for :title, "Device connection" %>
+<% content_for :page_owned_flash, "oauth-device-grant" %>
+
+<div class="mx-auto max-w-xl space-y-6">
+  <header class="space-y-1">
+    <h1 class="text-2xl font-semibold tracking-tight">Device connection</h1>
+  </header>
+
+  <section aria-label="Connection status" class="rounded-box border border-base-300 bg-base-200">
+    <div class="space-y-3 px-5 py-5 text-sm leading-relaxed sm:px-6">
+      <% if flash[:alert].present? %>
+        <div role="alert" class="alert alert-error alert-soft">
+          <span class="iconify lucide--circle-alert size-5" aria-hidden="true"></span>
+          <span class="hyphens-none"><%= flash[:alert] %></span>
+        </div>
+      <% end %>
+
+      <% case @grant.status %>
+      <% when "connected" %>
+        <p class="hyphens-none font-medium">Connection ready. Waiting for the <%= subject %> to finish connecting.</p>
+        <% if @grant.runner_only_connection? %>
+          <% machine = device_grant_machine_label(@grant) %>
+          <p class="hyphens-none text-base-content/60">
+            <%= @grant.selects_account_wide? ?
+              "This #{machine} will be available account-wide for authorized discovery and new work." :
+              "This #{machine} will be private to Agents managed by the member who connected it." %>
+          </p>
+        <% elsif @grant.combined_connection? %>
+          <p class="hyphens-none text-base-content/60"><%= combined_runner_sentence(@grant, existing_runner: @existing_runner) %></p>
+        <% end %>
+        <p class="hyphens-none text-base-content/60">
+          Nothing is saved until the program finishes. You can still cancel; the
+          program is refused on its next check.
+        </p>
+      <% when "canceled" %>
+        <p class="hyphens-none">This connection was canceled. No credential was shared with the <%= subject %>.</p>
+      <% when "expired" %>
+        <p class="hyphens-none">This request expired. Return to the <%= subject %> and start a new connection.</p>
+      <% when "consumed" %>
+        <p class="hyphens-none">This connection is complete: the <%= subject %> collected its credential.</p>
+      <% when "invalidated" %>
+        <p class="hyphens-none">This request became invalid before the <%= subject %> finished connecting. Return to the <%= subject %> and start a new connection.</p>
+      <% else %>
+        <p class="hyphens-none">This connection is no longer pending.</p>
+      <% end %>
+    </div>
+
+    <footer class="flex flex-col gap-3 border-t border-base-300 px-5 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:px-6">
+      <% if @grant.connected? %>
+        <%= form_with url: oauth_device_grant_cancellation_path(@grant) do |form| %>
+          <%= hidden_field_tag :return_to, oauth_device_grant_path(@grant) %>
+          <%= form.submit "Cancel connection", name: nil, class: "btn btn-ghost btn-sm w-full sm:w-auto" %>
+        <% end %>
+      <% end %>
+      <%= link_to "Back to code entry", oauth_device_path, class: "btn btn-ghost btn-sm" %>
+    </footer>
+  </section>
+</div>

@@ -1,0 +1,9 @@
+module Rho
+  module CodeMode
+    def self?.valid?: (untyped value) -> bool
+    def self?.enabled?: (config config, ?bool? override) -> bool
+    def self?.tools: (Array[Hash[String, untyped]] entries, bool enabled) -> Array[Hash[String, untyped]]
+    def self?.code?: (Hash[String, untyped] entry) -> bool
+    def self?.names: (Array[String] names, bool enabled, code_names: Array[String]) -> Array[String]
+  end
+end

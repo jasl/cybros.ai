@@ -1,0 +1,330 @@
+{
+  "id": "rho.mcp",
+  "display_name": "MCP servers",
+  "description": "Connect named MCP servers and select their tools.",
+  "configuration_version": 1,
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "servers": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "transport": {
+              "type": "string",
+              "enum": [
+                "stdio",
+                "http"
+              ]
+            },
+            "command": {
+              "type": "string"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "writeOnly": true
+              },
+              "default": {}
+            },
+            "cwd": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "url": {
+              "type": "string"
+            },
+            "headers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "writeOnly": true
+              },
+              "default": {}
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1,
+              "description": "Tool names to expose; [\"*\"] exposes every tool."
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 604800000
+            },
+            "startup_timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 604800000,
+              "default": 30000
+            },
+            "serves": {
+              "type": "string",
+              "enum": [
+                "agent",
+                "runner"
+              ]
+            },
+            "effect_profiles": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "pure",
+                      "read_only",
+                      "write"
+                    ]
+                  },
+                  "destructive": {
+                    "type": "boolean"
+                  },
+                  "effect_scope": {
+                    "type": "string",
+                    "enum": [
+                      "closed",
+                      "open"
+                    ]
+                  },
+                  "idempotency": {
+                    "type": "string",
+                    "enum": [
+                      "intrinsic",
+                      "keyed",
+                      "none"
+                    ]
+                  },
+                  "reconciliation": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "lookup"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "destructive",
+                  "effect_scope",
+                  "idempotency",
+                  "reconciliation"
+                ]
+              },
+              "default": {}
+            },
+            "oauth": {
+              "type": "object",
+              "properties": {
+                "client_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1
+                },
+                "callback_port": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              },
+              "additionalProperties": false
+            },
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "properties": {
+          "context7": {
+            "type": "object",
+            "properties": {
+              "transport": {
+                "type": "string",
+                "enum": [
+                  "stdio",
+                  "http"
+                ],
+                "default": "http"
+              },
+              "command": {
+                "type": "string"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "writeOnly": true
+                },
+                "default": {}
+              },
+              "cwd": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "type": "string",
+                "default": "https://mcp.context7.com/mcp"
+              },
+              "headers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "writeOnly": true
+                },
+                "default": {}
+              },
+              "tools": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1,
+                "description": "Tool names to expose; [\"*\"] exposes every tool.",
+                "default": [
+                  "*"
+                ]
+              },
+              "timeout_ms": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 604800000
+              },
+              "startup_timeout_ms": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 604800000,
+                "default": 30000
+              },
+              "serves": {
+                "type": "string",
+                "enum": [
+                  "agent",
+                  "runner"
+                ]
+              },
+              "effect_profiles": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "pure",
+                        "read_only",
+                        "write"
+                      ]
+                    },
+                    "destructive": {
+                      "type": "boolean"
+                    },
+                    "effect_scope": {
+                      "type": "string",
+                      "enum": [
+                        "closed",
+                        "open"
+                      ]
+                    },
+                    "idempotency": {
+                      "type": "string",
+                      "enum": [
+                        "intrinsic",
+                        "keyed",
+                        "none"
+                      ]
+                    },
+                    "reconciliation": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "lookup"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "destructive",
+                    "effect_scope",
+                    "idempotency",
+                    "reconciliation"
+                  ]
+                },
+                "default": {}
+              },
+              "oauth": {
+                "type": "object",
+                "properties": {
+                  "client_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "callback_port": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 1,
+                    "maximum": 65535
+                  }
+                },
+                "additionalProperties": false
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "additionalProperties": false
+  },
+  "default_enabled": false,
+  "modes": [
+    "full",
+    "agent",
+    "runner"
+  ],
+  "requires": [],
+  "restart_only": false
+}

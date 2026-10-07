@@ -1,0 +1,25 @@
+{
+  "id": "rho.web_tools",
+  "display_name": "Web reader",
+  "description": "Fetch and render public web pages.",
+  "configuration_version": 1,
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "allow_private_network": {
+        "type": "boolean",
+        "default": false,
+        "title": "Allow private networks",
+        "description": "Allow fetching loopback and private network URLs."
+      }
+    },
+    "additionalProperties": false
+  },
+  "default_enabled": false,
+  "modes": [
+    "full",
+    "runner"
+  ],
+  "requires": [],
+  "restart_only": false
+}

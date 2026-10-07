@@ -1,0 +1,99 @@
+module Rho
+  module T3
+    VERSION: String
+    NAME: String
+    class Error < Rho::Error
+    end
+    class Uncertain < Error
+    end
+    def self.register: (Rho::Extensions::Api) -> nil
+    class Settings < ::Data
+      attr_reader server: String
+      attr_reader listen_port: Integer?
+      attr_reader url: String
+      attr_reader token: String
+      attr_reader project_id: String
+      attr_reader default_agent: String?
+      attr_reader workspace: Hash[String, untyped]
+      def self.parse: (Hash[String, untyped] raw, ?env: untyped) -> Settings
+      def environment: () -> Hash[String, untyped]
+      def local?: () -> bool
+      def configured?: () -> bool
+      def issues: () -> Array[String]
+      def require_connection: () -> void
+    end
+    class NativeEnvironment < ::Data
+      attr_reader root: String
+      attr_reader work_root: String
+      def self.for: (untyped home) -> NativeEnvironment
+      def server_root: () -> String
+      def codex_root: () -> String
+      def claude_root: () -> String
+      def environment_path: () -> String
+      def environment: (?Hash[String, String]) -> Hash[String, String]
+      def prepare: () -> NativeEnvironment
+      def installed: () -> Hash[String, bool]
+    end
+    class LocalServer
+      def initialize: (settings: Settings, native: NativeEnvironment) -> void
+      def start: () -> void
+      def stop: () -> void
+      def running?: () -> bool?
+    end
+    class Setup
+      def self.register: (Rho::Extensions::Api, settings: Settings, native: NativeEnvironment) -> void
+      def initialize: (cli: untyped, settings: Settings, native: NativeEnvironment, ?bridge: untyped) -> void
+      def run: (?String, ?String?, ?api_key: bool) -> untyped
+      def status: () -> Hash[String, untyped]
+      def check: () -> Hash[String, untyped]
+      def projects: () -> Array[Hash[String, String]]
+      def select_project: (String?) -> untyped
+      def create_project: (String?) -> untyped
+      def issue_token: () -> nil
+      def login: (String?, ?api_key: bool) -> void
+    end
+    class Selection < ::Data
+      attr_reader instance_id: String
+      attr_reader agent: String
+      attr_reader harness: String
+      attr_reader model: String
+      def native: () -> Hash[String, String]
+      def report: () -> Hash[String, String]
+    end
+    class Catalog < ::Data
+      attr_reader providers: Array[Provider]
+      def initialize: (providers: Array[Hash[String, untyped]]) -> void
+      def report: () -> Array[Hash[String, untyped]]
+      def select: (?agent: String?, ?model: String?) -> Selection
+      class Model < ::Data
+        attr_reader id: String
+        attr_reader name: String
+        attr_reader aliases: Array[String]
+        attr_reader default: bool
+        attr_reader custom: bool
+        def self.parse: (Hash[String, untyped]) -> Model
+        def report: () -> Hash[String, untyped]
+      end
+      class Provider < ::Data
+        attr_reader instance_id: String
+        attr_reader driver: String
+        attr_reader name: String
+        attr_reader harness: String
+        attr_reader available: bool
+        attr_reader reason: String?
+        attr_reader models: Array[Model]
+        def self.parse: (Hash[String, untyped]) -> Provider
+        def default_model: () -> Model?
+        def matches?: (String) -> bool
+        def report: () -> Hash[String, untyped]
+        def select_model: (String?) -> String
+      end
+    end
+    class Bridge
+      def initialize: (untyped settings) -> void
+      def projects: () -> Array[Hash[String, untyped]]
+      def create_project: (path: String, title: String) -> Hash[String, untyped]
+      def call: (String method, Hash[String, untyped] params, ?cancelled: bool) -> untyped
+    end
+  end
+end

@@ -1,0 +1,37 @@
+module Rho
+  module ScheduleCommands
+    USAGE: String
+    class Command < Data
+      attr_reader action: String
+      attr_reader id: String?
+      attr_reader fields: Hash[Symbol, untyped]
+    end
+    def self.parse: (String argument, now: Numeric | Time) -> Command
+    def self.execute: (Core core, String conversation_id, Command command, ?workspace_public_id: String?,
+      ?model: String?, ?approval_mode: String?, ?tool_names: Array[String]?, ?to: String?,
+      ?speaker_public_id: String?, ?idempotency_key: String?) -> Hash[String, untyped]
+    def self.render: (Command command, Hash[String, untyped] result) -> String
+  end
+
+  class Core
+    module Schedules
+      UNSET: Object
+      def schedules: (String public_id, ?after: String?, ?limit: Integer?, ?workspace_public_id: String?) -> Hash[String, untyped]
+      def schedule: (String public_id, String job_public_id, ?workspace_public_id: String?) -> Hash[String, untyped]
+      def schedule_executions: (String public_id, String job_public_id, ?after: String?, ?limit: Integer?,
+        ?workspace_public_id: String?) -> Hash[String, untyped]
+      def create_schedule: (String public_id, prompt: String, rule: Hash[untyped, untyped], idempotency_key: String,
+        ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?, ?configuration: Hash[untyped, untyped]?,
+        ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?speaker_public_id: String?,
+        ?workspace_public_id: String?) -> Hash[String, untyped]
+      def update_schedule: (String public_id, String job_public_id, expected_lock_version: Integer,
+        ?prompt: String, ?rule: Hash[untyped, untyped], ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?,
+        ?configuration: Hash[untyped, untyped]?, ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?,
+        ?speaker_public_id: String?, ?workspace_public_id: String?) -> Hash[String, untyped]
+      def pause_schedule: (String public_id, String job_public_id, ?workspace_public_id: String?) -> Hash[String, untyped]
+      def resume_schedule: (String public_id, String job_public_id, ?workspace_public_id: String?) -> Hash[String, untyped]
+      def cancel_schedule: (String public_id, String job_public_id, ?workspace_public_id: String?) -> Hash[String, untyped]
+    end
+    include Schedules
+  end
+end

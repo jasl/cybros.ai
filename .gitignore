@@ -1,0 +1,63 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and Editors
+.idea/
+.vscode/
+.cursor/
+.claude/*
+!.claude/skills/
+.superpowers/
+.ruby-lsp/
+*.swp
+*.swo
+*~
+
+# Dependencies and Ruby package output (all projects and rho plugins)
+node_modules/
+.bundle/
+**/vendor/bundle/
+**/vendor/cache/
+pkg/
+*.gem
+
+# Generated Ruby documentation and reports
+.yardoc
+_yardoc/
+/agents/rho/*/doc/
+/agents/rho/*/spec/reports/
+
+# Temp files
+/tmp/
+/agents/rho/*/tmp/
+
+# Local environment files
+/.env
+/.env.*
+!/.env*.sample
+
+# MCP temp files
+.playwright-mcp/
+
+# Vibe coding memory
+/memory/
+
+# Reference materials (never committed)
+/references/
+
+# Test output (all projects)
+coverage/
+test-results/
+playwright-report/
+blob-report/
+**/playwright/.cache/
+
+# Python bytecode
+__pycache__/
+*.py[cod]

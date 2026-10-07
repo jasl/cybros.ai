@@ -1,0 +1,246 @@
+#!/bin/sh
+# Local management for the installed stack. Configuration is Compose dotenv,
+# never shell code: this script does not source an operator's environment file.
+set -eu
+umask 077
+
+fail() { printf 'cybros: %s\n' "$*" >&2; exit 1; }
+stack_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+cd "$stack_dir"
+
+compose() { docker compose --env-file .env --env-file secrets.env -f compose.yaml "$@"; }
+
+container_exec() {
+  if [ -t 0 ] && [ -t 1 ]; then
+    compose exec "$@"
+  else
+    compose exec -T "$@"
+  fi
+}
+
+prerequisites() {
+  command -v docker >/dev/null 2>&1 || fail 'Docker is required. Install Docker Engine with Compose, or Docker Desktop, then retry.'
+  docker compose version >/dev/null 2>&1 || fail 'Docker Compose v2 is required.'
+  docker info >/dev/null 2>&1 || fail 'The Docker daemon is unavailable. Start Docker or select a working Docker context, then retry.'
+  docker compose up --help | grep -q -- --wait-timeout || fail 'Update Docker Compose: up --wait-timeout is required.'
+}
+
+setting() {
+  # Generated values use single-quoted dotenv literals, including dollar signs.
+  # This reader is for display only; Docker Compose parses the actual settings.
+  sed -n "s/^$1='\(.*\)'$/\1/p" "${2:-.env}" | tail -n 1
+}
+
+write_setting() {
+  case "$2" in *"'"*|*'
+'*) fail "$1 must be a single line without single quotes" ;; esac
+  printf "%s='%s'\n" "$1" "$2"
+}
+
+secret() {
+  generated_secret=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')
+  [ "${#generated_secret}" -eq 64 ] || fail 'Could not read randomness from /dev/urandom'
+  printf '%s' "$generated_secret"
+}
+
+initialize() {
+  if [ ! -e secrets.env ] && [ -d data ]; then
+    # Inspect only the top level: restored PostgreSQL children may belong to
+    # its container user. An empty, pre-created data directory is a fresh install.
+    for entry in data/* data/.[!.]* data/..?*; do
+      if [ -e "$entry" ] || [ -L "$entry" ]; then
+        fail 'Existing data has no secrets.env. Restore the original configuration from backup; new secrets cannot unlock this data.'
+      fi
+    done
+  fi
+  if { [ -e .env ] && [ ! -e secrets.env ]; } || { [ -e secrets.env ] && [ ! -e .env ]; }; then
+    fail 'Only one configuration file exists. Restore the missing file from backup; secrets are never regenerated for an existing installation.'
+  fi
+  if [ ! -e .env ]; then
+    nexus_public_url=$(printf '%s' "${CYBROS_NEXUS_URL:-http://localhost:${CYBROS_NEXUS_PORT:-3300}}" | sed 's:/*$::')
+    rho_public_url=$(printf '%s' "${CYBROS_RHO_URL:-http://localhost:${CYBROS_RHO_PORT:-7777}}" | sed 's:/*$::')
+    case "$nexus_public_url $rho_public_url" in
+      http://*|*' http://'*) oauth_http_default=true ;;
+      *) oauth_http_default=false ;;
+    esac
+    {
+      printf '# Compose configuration. Preserve secrets.env and the complete data/ directory.\n'
+      write_setting CYBROS_PROJECT_NAME "${CYBROS_PROJECT_NAME:-cybros}"
+      write_setting CYBROS_IMAGE_NAMESPACE "${CYBROS_IMAGE_NAMESPACE:-jasl123}"
+      write_setting CYBROS_IMAGE_TAG "${CYBROS_IMAGE_TAG:-latest}"
+      write_setting CYBROS_BIND "${CYBROS_BIND:-127.0.0.1}"
+      write_setting CYBROS_NEXUS_PORT "${CYBROS_NEXUS_PORT:-3300}"
+      write_setting CYBROS_RHO_PORT "${CYBROS_RHO_PORT:-7777}"
+      write_setting CYBROS_NEXUS_URL "$nexus_public_url"
+      write_setting CYBROS_RHO_URL "$rho_public_url"
+      write_setting CYBROS_OAUTH_ALLOW_HTTP "${CYBROS_OAUTH_ALLOW_HTTP:-$oauth_http_default}"
+    } > .env.new
+    mv .env.new .env
+  fi
+  if [ ! -e secrets.env ]; then
+    {
+      printf '# Private deployment secrets. Back up with the database; never rotate encryption keys by reinstalling.\n'
+      for key in POSTGRES_PASSWORD SECRET_KEY_BASE ACTIVE_RECORD_ENCRYPTION__PRIMARY_KEY ACTIVE_RECORD_ENCRYPTION__DETERMINISTIC_KEY ACTIVE_RECORD_ENCRYPTION__KEY_DERIVATION_SALT; do
+        value=$(secret) || exit 1
+        write_setting "$key" "$value"
+      done
+    } > secrets.env.new
+    mv secrets.env.new secrets.env
+  fi
+  chmod 600 .env secrets.env
+}
+
+configured() {
+  [ -f .env ] && [ -f secrets.env ] || fail 'Configuration is missing. Run the installer first; do not regenerate secrets for an existing database.'
+  # Keep installation-file settings authoritative, even when this command is
+  # launched from a shell used to install another stack.
+  unset CYBROS_PROJECT_NAME CYBROS_IMAGE_NAMESPACE CYBROS_IMAGE_TAG CYBROS_BIND CYBROS_NEXUS_PORT CYBROS_RHO_PORT CYBROS_NEXUS_URL CYBROS_RHO_URL CYBROS_OAUTH_ALLOW_HTTP
+  unset POSTGRES_PASSWORD SECRET_KEY_BASE ACTIVE_RECORD_ENCRYPTION__PRIMARY_KEY ACTIVE_RECORD_ENCRYPTION__DETERMINISTIC_KEY ACTIVE_RECORD_ENCRYPTION__KEY_DERIVATION_SALT NEXUS_SETUP_SECRET RHO_TELEGRAM_BOT_TOKEN
+  compose config --quiet
+}
+
+start() {
+  if ! compose up -d --wait --wait-timeout "${CYBROS_WAIT_TIMEOUT:-240}"; then
+    compose ps --all >&2 || true
+    fail 'Startup did not become healthy. Run ./cybros logs; configuration and data were retained.'
+  fi
+}
+
+shell_quote() {
+  printf "'"
+  printf '%s' "$1" | sed "s/'/'\\\\''/g"
+  printf "'"
+}
+
+working_directory() {
+  printf '  cd '
+  shell_quote "$stack_dir"
+  printf '\n'
+}
+
+instructions() {
+  [ -f .env ] && [ -f secrets.env ] || fail 'Configuration is missing. Run the installer first.'
+  console_url=$(setting CYBROS_RHO_URL)
+  setup_secret=$(setting NEXUS_SETUP_SECRET secrets.env)
+  printf '\nNext steps\n'
+  working_directory
+  printf '\n1. Open rho and choose Connect to Nexus:\n   %s\n' "$console_url"
+  printf '\n2. Create your administrator account, then approve rho in the same browser tab.\n'
+  printf '%s\n' '   Nexus returns you to rho automatically.'
+  if [ -n "$setup_secret" ]; then
+    encoded_secret=$(printf '%s' "$setup_secret" | od -An -v -tx1 | tr -d ' \n' | sed 's/../%&/g')
+    setup_url="$(setting CYBROS_NEXUS_URL)/setup#setup_secret=$encoded_secret"
+    printf '\n   This deployment has an optional setup secret configured:\n   Setup secret: %s\n' "$setup_secret"
+    printf '\n   Private setup link: %s\n' "$setup_url"
+    printf '%s\n' '   If you create the account using this separate link, return to rho and start Connect to Nexus again.'
+  fi
+  printf '\n3. Continue in rho Settings to configure models and optional Telegram.\n'
+  printf '%s\n' '   Later visits use Connect to Nexus with your Nexus account; no separate rho password is needed.'
+  printf '\nDevice login is also available from rho, or with ./cybros connect in a terminal.\n'
+  printf '\nOptional terminal setup: ./cybros setup model or ./cybros setup telegram.\n'
+  printf '\nUse ./cybros status to check services, or ./cybros instructions to see these steps again.\n'
+  if [ "${1:-}" = open ] && [ -t 1 ] && [ -z "${SSH_CONNECTION:-}${SSH_TTY:-}" ]; then
+    case "$(uname -s)" in
+      Darwin) if command -v open >/dev/null 2>&1; then open "$console_url" >/dev/null 2>&1 || true; fi ;;
+      Linux) if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && command -v xdg-open >/dev/null 2>&1; then xdg-open "$console_url" >/dev/null 2>&1 || true; fi ;;
+      *) ;;
+    esac
+  fi
+}
+
+setup() {
+  configured
+  # The installer source may occupy stdin (curl | sh). The wizard must own a
+  # real terminal, including Docker's TTY, without consuming shell source.
+  if ! (exec 3<> /dev/tty) 2>/dev/null; then
+    fail 'Setup needs an interactive terminal. Run ./cybros setup from a terminal; installed services and configuration were retained.'
+  fi
+  instructions
+  if ! compose exec -e CMCTL_HOME=/var/lib/rho/cmctl rho rho setup \
+    --nexus-url http://nexus --public-url "$(setting CYBROS_NEXUS_URL)" "$@" \
+    </dev/tty >/dev/tty 2>&1; then
+    fail 'Setup did not finish. Saved settings were retained; run ./cybros setup to continue.'
+  fi
+  # The running daemon applies Telegram configuration and owns its only poller.
+  if ! compose exec -e CMCTL_HOME=/var/lib/rho/cmctl rho rho setup telegram --finish \
+    </dev/tty >/dev/tty 2>&1; then
+    fail 'Telegram setup did not finish. rho is running; use ./cybros setup telegram to continue.'
+  fi
+  printf '\nSetup complete. rho has applied the saved settings.\n'
+}
+
+usage() {
+  printf '%s\n' 'Usage: ./cybros init|install|setup [model|telegram]|t3 [ARGS...]|instructions|up|status|logs [SERVICE]|stop|update [TAG]|connect|rho [ARGS...]|cmctl [ARGS...]|compose [ARGS...]'
+  printf '%s\n' 'init initializes configuration only; it never pulls images or starts services.'
+  printf '%s\n' 'install initializes missing configuration, pulls images and starts; reruns preserve existing files.'
+  printf '%s\n' 'update pulls the configured tag, or selects latest/a Unix timestamp, then starts and checks health.'
+  printf '%s\n' 'instructions prints the rho URL and first-account setup steps without starting services.'
+  printf '%s\n' 'setup configures Telegram, providers and the default model; saved settings apply immediately.'
+  printf '%s\n' 'stop preserves containers and data. compose exposes normal Docker Compose commands.'
+}
+
+action=${1:-help}
+[ "$#" -eq 0 ] || shift
+case "$action" in
+  help|--help|-h) usage; exit 0 ;;
+esac
+prerequisites
+case "$action" in
+  init)
+    initialize
+    configured
+    printf '\nConfiguration ready. Services have not been started.\n'
+    working_directory
+    printf '%s\n' '  ./cybros install' 'Use ./cybros up instead if the images are already available locally.'
+    printf '\nrho: %s\n' "$(setting CYBROS_RHO_URL)"
+    printf '%s\n' 'After services start, open rho and choose Connect to Nexus. Run ./cybros instructions for first-account setup.'
+    ;;
+  install)
+    [ "$#" -eq 0 ] || fail 'install takes no arguments'
+    initialize
+    configured
+    compose pull
+    start
+    printf '\nCybros services are healthy.\n'
+    instructions open
+    ;;
+  up) configured; start; instructions ;;
+  instructions) configured; instructions ;;
+  setup) setup "$@" ;;
+  t3)
+    configured
+    [ "$#" -gt 0 ] || set -- status
+    case "${1:-status}" in
+      local|host|secret)
+        container_exec rho /opt/rho/libexec/t3-setup "$@"
+        compose restart rho
+        ;;
+      project|create)
+        container_exec rho /opt/rho/libexec/docker-entrypoint t3 "$@"
+        compose restart rho
+        ;;
+      *) container_exec rho /opt/rho/libexec/docker-entrypoint t3 "$@" ;;
+    esac
+    ;;
+  status) configured; compose ps --all ;;
+  logs) configured; compose logs --tail 100 "$@" ;;
+  stop) configured; compose stop ;;
+  update)
+    [ "$#" -le 1 ] || fail 'update accepts one tag'
+    configured
+    if [ "$#" -eq 1 ]; then
+      case "$1" in latest) ;; ''|*[!0-9]*) fail 'tag must be latest or a Unix timestamp' ;; esac
+      CYBROS_IMAGE_TAG=$1 compose pull
+      awk -v tag="$1" '/^CYBROS_IMAGE_TAG=/{print "CYBROS_IMAGE_TAG=\047" tag "\047"; next} {print}' .env > .env.new
+      mv .env.new .env
+    else
+      compose pull
+    fi
+    start
+    ;;
+  connect) configured; compose exec -T rho rho connect ;;
+  rho) configured; compose exec -T rho rho "$@" ;;
+  cmctl) configured; container_exec -e CMCTL_HOME=/var/lib/rho/cmctl rho cmctl "$@" ;;
+  compose) configured; compose "$@" ;;
+  *) usage >&2; fail "unknown command: $action" ;;
+esac

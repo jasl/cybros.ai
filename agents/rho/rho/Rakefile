@@ -1,0 +1,94 @@
+require "bundler/gem_tasks"
+require "minitest/test_task"
+
+Minitest::TestTask.create
+
+# Keep the control/auth boundary, credential ownership and the core turn /
+# tool-result path in the short gate. The default task still runs every file.
+Minitest::TestTask.create(:smoke) do |task|
+  task.test_globs = %w[
+    test/authority_test.rb
+    test/connection_test.rb
+    test/control_server_body_test.rb
+    test/core_test.rb
+    test/core_controls_test.rb
+    test/credentials_test.rb
+    test/daemon/executor_plane_test.rb
+    test/daemon/lineage_test.rb
+    test/daemon/run_inputs_test.rb
+    test/daemon/routes_test.rb
+    test/extensions_test.rb
+    test/guard_test.rb
+    test/host_follower_test.rb
+    test/core_host_events_test.rb
+    test/cli/turn_follow_fallback_test.rb
+    test/cli/turn_follow_identity_test.rb
+    test/run_declaration_test.rb
+    test/run_declaration_declaration_test.rb
+    test/run_declaration_derived_test.rb
+  ]
+end
+
+require "rubocop/rake_task"
+
+RuboCop::RakeTask.new
+
+# The gem rho consumes is a path dependency in this monorepo, so its signatures
+# are checked alongside rho's own: a drift in cybros_agent's surface should fail
+# here rather than at runtime in a daemon.
+SDK_SIG = File.expand_path("../../../sdks/ruby/sig", __dir__)
+# rho-runner is a path dependency in this monorepo for the same reason the
+# SDK is, and rho's own signatures now REFERENCE its types — the daemon's
+# extension handle subclasses the runner's. Without it here, a drift in
+# the runner's public surface reads as "unknown type" in rho rather than
+# as the incompatibility it is.
+RUNNER_SIG = File.expand_path("../rho-runner/sig", __dir__)
+
+namespace :rbs do
+  desc "Validate the packaged RBS surface"
+  task :validate do
+    sh "bundle", "exec", "rbs", "-I", "sig", "-I", SDK_SIG, "-I", RUNNER_SIG, "validate"
+  end
+
+  # THE WHOLE NAMESPACE, UNDER THE WHOLE SUITE. `rbs validate` is structural —
+  # it says the sig parses and its references resolve, never that a method
+  # returns what it promises. Narrowed to two constants and one file, drift in
+  # Daemon, Connection, Authority, Cli, Lock, Log or ControlServer shipped
+  # green; the pinned rbs raises on a type error unconditionally, so every
+  # call the behavior suite already makes is a conformance check for free.
+  #
+  # Driven through RUBYOPT rather than `rbs test`, because that CLI cannot
+  # report failure: it exits with Process::Status#to_i — the raw wait status,
+  # 256 for a child that exited 1 — and POSIX truncates that to 0. Every inner
+  # code 1..255 is erased, so the one thing this step uniquely produces could
+  # never fail the build. Setting the env directly lets `sh` see minitest's
+  # own status.
+  desc "Check runtime RBS conformance over the full test suite"
+  task :conformance do
+    sh(
+      {
+        "RUBYOPT" => "-rrbs/test/setup",
+        # The installer announces every hook it sets at INFO, on stdout, which
+        # lands inside any test that captures output. Its chatter is not the
+        # subject of any assertion here.
+        "RBS_TEST_LOGLEVEL" => "error",
+        "RBS_TEST_TARGET" => "Rho::*",
+        "RBS_TEST_DOUBLE_SUITE" => "minitest",
+        "RBS_TEST_OPT" => "-I sig -I #{SDK_SIG} -I #{RUNNER_SIG}",
+      },
+      "bundle", "exec", "ruby", "-Itest", "-Ilib", "-e",
+      'files = Dir["test/**/*_test.rb"] + Dir["test/test_*.rb"]; files.uniq.sort.each { |file| require_relative file }'
+    )
+  end
+end
+
+desc "Validate signatures and check runtime RBS conformance over the full suite"
+task rbs: %w[rbs:validate rbs:conformance]
+
+# THE INSTALLER'S TASKS live at the repo root under
+# `install/` — outside this gem, because the installer is one product's
+# deployment story, not gem contents. `install:check` is cheap and
+# joins the default; `install:bump` needs the network and never does.
+load File.expand_path("../../../install/tasks.rake", __dir__)
+
+task default: %i[test rubocop rbs install:check]

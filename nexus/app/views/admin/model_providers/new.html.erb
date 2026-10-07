@@ -1,0 +1,11 @@
+<% content_for :title, "Add provider" %>
+<div class="space-y-8">
+  <header class="space-y-4">
+    <%= render "shared/back_navigation", path: admin_model_providers_path, label: "Model providers" %>
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight">Add provider</h1>
+      <p class="max-w-prose text-sm text-base-content/60">Connect a hosted or local model endpoint. After saving, add its models and enable the provider.</p>
+    </div>
+  </header>
+  <%= render "definition_form", form: @form, url: admin_model_providers_path, method: :post, creating: true %>
+</div>

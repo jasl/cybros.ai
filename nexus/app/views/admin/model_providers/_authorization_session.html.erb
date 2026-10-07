@@ -1,0 +1,29 @@
+<% pending = authorization_session.fetch(:state) == "pending" %>
+<% status_path = admin_model_provider_authorization_session_path(provider.fetch(:id), authorization_session.fetch(:public_id)) %>
+<div class="space-y-3"
+         <%= tag.attributes(data: { controller: "provider-authorization", provider_authorization_url_value: status_path }) if pending %>>
+  <div class="flex items-start gap-2">
+    <% if pending %><span class="loading loading-spinner loading-xs mt-1 shrink-0 text-base-content/50" aria-hidden="true"></span><% end %>
+    <p class="text-sm leading-relaxed text-base-content/70"><%= provider_sign_in_description(authorization_session) %></p>
+  </div>
+  <% if pending && authorization_session[:user_code].present? && authorization_session[:verification_uri].present? %>
+    <div class="mt-5 space-y-3" data-controller="clipboard">
+      <%= label_tag :provider_authorization_code, "Authorization code", class: "block text-sm font-medium" %>
+      <div class="flex max-w-sm items-center gap-2">
+        <%= text_field_tag :provider_authorization_code, authorization_session.fetch(:user_code), readonly: true, autocomplete: "off", spellcheck: false, class: "input input-sm min-w-0 w-full font-mono tracking-widest", data: { clipboard_target: "source" } %>
+        <button type="button" class="btn btn-sm shrink-0" data-action="clipboard#copy" data-clipboard-target="button">Copy</button>
+      </div>
+      <%= link_to authorization_session.fetch(:verification_uri), target: "_blank", rel: "noopener noreferrer", class: "btn btn-primary btn-sm" do %>
+        Open authorization page
+        <span class="iconify lucide--external-link size-4" aria-hidden="true"></span>
+      <% end %>
+      <p class="text-xs leading-relaxed text-base-content/60">Return here after approving. This page will update when the connection is ready.</p>
+    </div>
+  <% end %>
+  <% if pending %>
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-base-300 pt-4 text-xs text-base-content/60">
+      <span>Checking progress automatically.</span>
+      <%= link_to "Refresh status", status_path, class: "link" %>
+    </div>
+  <% end %>
+</div>

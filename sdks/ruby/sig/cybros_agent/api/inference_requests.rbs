@@ -1,0 +1,218 @@
+module CybrosAgent
+  module Api
+    class InferenceRequestModel < Data
+      attr_reader provider_id: String
+      attr_reader model_ref: String
+      attr_reader reasoning_effort: String?
+      attr_reader reasoning_enabled: bool?
+    end
+
+    class InferenceRequestInputEstimate < Data
+      attr_reader input_tokens: Integer
+      attr_reader tokenizer_exact: bool
+      attr_reader catalog_input_token_limit: Integer?
+      attr_reader advisory_input_token_limit: Integer?
+      attr_reader model: InferenceRequestModel
+
+      def tokenizer_exact?: () -> bool
+    end
+
+    class InferenceRequestUsage < Data
+      attr_reader usage_record_public_id: String
+      attr_reader input_tokens: Integer?
+      attr_reader cache_read_tokens: Integer?
+      attr_reader uncached_input_tokens: Integer?
+      attr_reader cache_creation_tokens: Integer?
+      attr_reader cache_hit_rate: Numeric?
+      attr_reader output_tokens: Integer?
+      attr_reader reasoning_tokens: Integer?
+      attr_reader total_tokens: Integer?
+      attr_reader cost_amount: String?
+      attr_reader cost_unit: String?
+      attr_reader cost_complete: bool
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class InferenceRequestUsageSummary < Data
+      attr_reader request_count: Integer
+      attr_reader input_tokens: Integer
+      attr_reader cache_read_tokens: Integer
+      attr_reader uncached_input_tokens: Integer
+      attr_reader cache_creation_tokens: Integer
+      attr_reader cache_hit_rate: Numeric?
+      attr_reader output_tokens: Integer
+      attr_reader reasoning_tokens: Integer
+      attr_reader total_tokens: Integer
+      attr_reader cost_amount: String
+      attr_reader cost_complete: bool
+    end
+
+    class InferenceRequestFile < Data
+      attr_reader index: Integer
+      attr_reader filename: String
+      attr_reader content_type: String
+      attr_reader byte_size: Integer
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class InferenceRequestTiming < Data
+      attr_reader duration_ms: Integer?
+      attr_reader time_to_first_token_ms: Integer?
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class InferenceRequestError < Data
+      attr_reader code: String
+      attr_reader attempt_budget_spent: bool
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class InferenceRequestReasoning < Data
+      attr_reader available: bool
+      attr_reader text: String?
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class InferenceRequestEmbedding < Data
+      attr_reader index: Integer
+      attr_reader vector: Array[Numeric]
+
+      def self.new: (index: Integer, vector: Array[Numeric]) -> instance
+    end
+
+    class InferenceRequestModelChange < Data
+      attr_reader from: String
+      attr_reader to: String
+      attr_reader reason: String
+      attr_reader category: String?
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class InferenceRequestResult < Data
+      attr_reader status: String
+      attr_reader finish_quality: String?
+      attr_reader output_text: String?
+      attr_reader usage: InferenceRequestUsage?
+      attr_reader timing: InferenceRequestTiming?
+      attr_reader error: InferenceRequestError?
+      attr_reader reasoning: InferenceRequestReasoning?
+      attr_reader output_files: Array[InferenceRequestFile]?
+      attr_reader embeddings: Array[InferenceRequestEmbedding]?
+      attr_reader refusal_category: String?
+      attr_reader model_change: InferenceRequestModelChange?
+
+      def truncated?: () -> bool
+      def refused?: () -> bool
+      def failed?: () -> bool
+      def files: () -> Array[InferenceRequestFile]
+      def vectors: () -> Array[Array[Numeric]]
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class InferenceRequestSummary < Data
+      attr_reader public_id: String
+      attr_reader workload: String
+      attr_reader status: String
+      attr_reader model: InferenceRequestModel
+      attr_reader billing_subject: String?
+      attr_reader created_at: String
+      attr_reader updated_at: String
+    end
+
+    class InferenceRequest < Data
+      attr_reader public_id: String
+      attr_reader workload: String
+      attr_reader status: String
+      attr_reader model: InferenceRequestModel
+      attr_reader billing_subject: String?
+      attr_reader created_at: String
+      attr_reader updated_at: String
+      attr_reader usage_summary: InferenceRequestUsageSummary
+      attr_reader result: InferenceRequestResult?
+
+      def finished?: () -> bool
+      def output_text: () -> String?
+    end
+
+    class InferenceRequestEventPage < Data
+      attr_reader items: Array[InferenceRequestEvent]
+      attr_reader next_after: String?
+      attr_reader watermark: Integer
+
+      def caught_up?: (Integer applied_sequence) -> bool
+    end
+
+    class InferenceRequestEvent < Data
+      attr_reader public_id: String
+      attr_reader sequence: Integer
+      attr_reader cursor: String
+      attr_reader type: String
+      attr_reader resource_type: String
+      attr_reader resource_public_id: String
+      attr_reader occurred_at: String
+      attr_reader payload: untyped
+    end
+
+    class InferenceRequestsContext
+      include Fields
+      attr_reader workspace_public_id: String
+
+      def initialize: (dispatch: _Dispatch, workspace_public_id: String) -> void
+      def list: (?workload: String?, ?after: String?, ?limit: Integer?) -> Page[InferenceRequestSummary]
+      def estimate_input: (
+        workload: String,
+        model: String,
+        input: untyped,
+        ?reasoning_effort: String?, ?reasoning_enabled: bool?,
+        ?configuration: Hash[untyped, untyped],
+        ?upload_public_ids: Array[String]
+      ) -> InferenceRequestInputEstimate
+      def create: (
+        workload: String,
+        model: String,
+        input: untyped,
+        idempotency_key: String,
+        ?reasoning_effort: String?, ?reasoning_enabled: bool?,
+        ?configuration: Hash[untyped, untyped],
+        ?upload_public_ids: Array[String],
+        ?billing_subject: String?
+      ) -> Accepted
+      def fetch: (String public_id) -> InferenceRequest
+      def events: (String public_id, ?after: String?, ?limit: Integer?) -> InferenceRequestEventPage
+      def cancel: (String public_id) -> InferenceRequest
+      def feed: (
+        String public_id,
+        ?position: KernelFeed::Position,
+        ?limit: Integer?,
+        ?realtime: Realtime::Client?,
+        ?items: String?,
+        **untyped
+      ) -> KernelFeed[InferenceRequestEvent]
+      def realtime_opener: (
+        String public_id, Realtime::Client client, ?items: String?
+      ) -> ^() -> Realtime::FeedSubscription[InferenceRequestEvent]
+      def download: (String public_id, Integer index) -> String
+      def delete: (String public_id) -> nil
+
+      class Accepted < Data
+        attr_reader inference_request: InferenceRequest
+        attr_reader replayed: bool
+
+        def replayed?: () -> bool
+        def public_id: () -> String
+        def status: () -> String
+        def workload: () -> String
+        def model: () -> InferenceRequestModel
+        def finished?: () -> bool
+      end
+    end
+
+  end
+
+end

@@ -1,0 +1,88 @@
+{
+  "id": "rho.acp-client",
+  "display_name": "ACP agents",
+  "description": "Delegate work to named ACP coding agents.",
+  "configuration_version": 1,
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "agents": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "writeOnly": true
+              },
+              "default": {}
+            },
+            "permissions": {
+              "type": "string",
+              "enum": [
+                "allow",
+                "reject"
+              ],
+              "default": "allow"
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 604800000,
+              "default": 600000
+            },
+            "auth_method": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "model": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "command",
+            "description"
+          ]
+        },
+        "default": {}
+      }
+    },
+    "additionalProperties": false
+  },
+  "default_enabled": false,
+  "modes": [
+    "full",
+    "agent"
+  ],
+  "requires": [],
+  "restart_only": true
+}

@@ -1,0 +1,104 @@
+module CybrosAgent
+
+  module Steps
+    VERBS: Array[String]
+
+    class Tool
+      attr_reader route: Hash[String, untyped]?
+      attr_reader model_defaults: Hash[String, untyped]?
+      attr_reader after: Array[String]?
+      attr_reader name: String
+      attr_reader input: untyped
+      attr_reader key: String?
+      attr_reader timeout_ms: Integer?
+      attr_reader detached: bool
+      attr_reader lifetime: String?
+      attr_reader wake: String?
+      attr_reader on_failure: String?
+      attr_reader visibility: String?
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    class Model
+      attr_reader environment: Hash[String, untyped]?
+      attr_reader kernel_tools: Array[String]?
+      attr_reader runner_executor_public_ids: Array[String]?
+      attr_reader runner_tool_names: Array[String]?
+      attr_reader after: Array[String]?
+      attr_reader results: Array[String]?
+      attr_reader prompt: String
+      attr_reader key: String?
+      attr_reader model: untyped
+      attr_reader tools: untyped
+      attr_reader instructions: String?
+      attr_reader configuration: untyped
+      attr_reader compaction: untyped
+      attr_reader fan_on_failure: String?
+      attr_reader detached: bool
+      attr_reader lifetime: String?
+      attr_reader wake: String?
+      attr_reader retries: Integer?
+      attr_reader on_failure: String?
+      attr_reader visibility: String?
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    class Ask
+      attr_reader after: Array[String]?
+      attr_reader prompt: String
+      attr_reader key: String?
+      attr_reader timeout_ms: Integer?
+      attr_reader detached: bool
+      attr_reader lifetime: String?
+      attr_reader wake: String?
+      attr_reader on_failure: String?
+      attr_reader visibility: String?
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    class Wait
+      attr_reader task: String
+      attr_reader run_public_id: String?
+      attr_reader key: String?
+      attr_reader timeout_ms: Integer?
+      attr_reader detached: bool
+      attr_reader lifetime: String?
+      attr_reader wake: String?
+      attr_reader on_failure: String?
+      attr_reader visibility: String?
+      attr_reader after: Array[String]?
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    class Parallel
+      attr_reader members: Array[untyped]
+      attr_reader lifetime: String?
+      attr_reader wake: String?
+      attr_reader until: untyped
+      attr_reader losers: String?
+      attr_reader key: String?
+      attr_reader on_failure: String?
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    def self.build: () { (Sequence) -> void } -> Array[untyped]
+    def self.envelope: (untyped steps) -> Array[untyped]
+    def self.wire: (Hash[Symbol, untyped] members) -> Hash[String, untyped]
+    def self.wire_tree: (untyped member) -> untyped
+
+    class Sequence
+      attr_reader steps: Array[untyped]
+      def initialize: () -> void
+      def tool: (String name, ?input: untyped, **untyped) -> Tool
+      def model: (String prompt, **untyped) -> Model
+      def ask: (String prompt, **untyped) -> Ask
+      def wait: (task: String, **untyped) -> Wait
+      def parallel: (?until: untyped, ?losers: String?, ?key: String?, ?on_failure: String?, ?lifetime: String?, ?wake: String?) { (Group) -> void } -> Parallel
+    end
+
+    class Group < Sequence
+      def sequence: () { (Sequence) -> void } -> Array[untyped]
+    end
+  end
+
+end

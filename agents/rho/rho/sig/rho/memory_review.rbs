@@ -1,0 +1,131 @@
+module Rho
+  class TurnSettlement < ::Data
+    attr_reader workspace_public_id: String
+    attr_reader conversation_public_id: String
+    attr_reader turn_public_id: String
+    attr_reader run_public_id: String?
+    attr_reader status: String
+    attr_reader model: String?
+    attr_reader memory_context: Hash[String, untyped]?
+    def self.new: (workspace_public_id: String, conversation_public_id: String, turn_public_id: String,
+      run_public_id: String?, status: String, model: String?, memory_context: Hash[String, untyped]?) -> instance
+  end
+
+  class MemoryReview
+    NAMESPACE: String
+    KEY: String
+    SOURCE_KEY: String
+    DOCUMENT_BYTES: Integer
+    SOURCE_BYTES: Integer
+    SUBMISSION_SECONDS: Integer
+    INITIAL_CONTENT: String
+
+    class Submission < ::Data
+      attr_reader idempotency_key: String
+      attr_reader input_idempotency_key: String
+      attr_reader prepared_at: String
+      attr_reader input: Hash[String, untyped]
+      attr_reader review_conversation_public_id: String?
+      attr_reader input_public_id: String?
+      def self.new: (idempotency_key: String, input_idempotency_key: String, prepared_at: String, input: Hash[String, untyped],
+        review_conversation_public_id: String?, input_public_id: String?) -> instance
+      def self.from_h: (Hash[String, untyped] value) -> instance
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    class Source < ::Data
+      attr_reader conversation_public_id: String
+      attr_reader review_conversation_public_id: String
+      attr_reader idempotency_key: String
+      def self.new: (conversation_public_id: String, review_conversation_public_id: String, idempotency_key: String) -> instance
+      def self.from_h: (Hash[String, untyped] value) -> instance
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    class State < ::Data
+      attr_reader conversation_public_id: String
+      attr_reader enabled: bool
+      attr_reader path: String?
+      attr_reader document_public_id: String?
+      attr_reader model: String?
+      attr_reader after_position: Integer
+      attr_reader pending: Submission?
+      attr_reader last_run_public_id: String?
+      attr_reader last_review_conversation_public_id: String?
+      attr_reader outcome: String?
+      def self.new: (conversation_public_id: String, enabled: bool, path: String?, document_public_id: String?,
+        model: String?, after_position: Integer, pending: Submission?, last_run_public_id: String?,
+        last_review_conversation_public_id: String?, outcome: String?) -> instance
+      def self.empty: (String conversation_public_id) -> instance
+      def self.from_h: (Hash[String, untyped] value) -> instance
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    def self.source_for: (workspace: untyped, conversation_public_id: String) -> String
+    def initialize: (workspace: untyped, conversation_public_id: String, ?clock: ^() -> Time,
+      ?follow: (^(String) -> untyped)?, ?forget: (^(String) -> untyped)?) -> void
+    def status: () -> Hash[String, untyped]
+    def enable: (path: String, ?model: String?) -> Hash[String, untyped]
+    def disable: () -> Hash[String, untyped]
+    def resume: () -> Hash[String, untyped]
+    def settled: (TurnSettlement settlement) -> untyped
+    def state: () -> State
+
+    class Review
+      INSTRUCTIONS: String
+      SUMMARY_BYTES: Integer
+      OUTPUT_TOKENS: Integer
+
+      class Proposal < ::Data
+        attr_reader content: String
+        attr_reader summary: String
+        def self.new: (content: String, summary: String) -> instance
+        def self.parse: (String text) -> instance
+      end
+
+      def self.prompt: (Hash[String, untyped] input) -> String
+      def initialize: (workspace: untyped, input: Hash[String, untyped], ?clock: ^() -> Time) -> void
+      def current?: () -> bool
+      def apply: (String output) -> String
+    end
+  end
+
+  class Core
+    module MemoryReview
+      def memory_review: (String public_id, ?workspace_public_id: String?) -> Hash[String, untyped]
+      def enable_memory_review: (String public_id, path: String, ?model: String?, ?workspace_public_id: String?) -> Hash[String, untyped]
+      def disable_memory_review: (String public_id, ?workspace_public_id: String?) -> Hash[String, untyped]
+      def resume_memory_review: (String public_id, ?workspace_public_id: String?) -> Hash[String, untyped]
+    end
+    include MemoryReview
+  end
+
+  module Extensions
+    module MemoryReview
+      NAME: String
+      def self.register: (untyped api) -> untyped
+
+      class Observer
+        def initialize: (resources: Runner::Extensions::Resources, log: untyped) -> void
+        def settled: (TurnSettlement settlement, untyped ctx) -> untyped
+        def service: (untyped ctx, untyped workspace, String conversation_public_id, untyped about) -> Rho::MemoryReview
+        def close: () -> void
+      end
+
+      module Routes
+        def self.register: (untyped api, observer: Observer) -> untyped
+        def self.show: (untyped request, untyped ctx) -> untyped
+        def self.write: (untyped request, untyped ctx, String operation, Observer observer) -> untyped
+        def self.command: (untyped cli, Array[String] args, Hash[Symbol, untyped] options) -> Hash[String, untyped]
+      end
+    end
+  end
+
+  class Daemon
+    class HostFollowers
+      module Settlement
+      end
+      include Settlement
+    end
+  end
+end

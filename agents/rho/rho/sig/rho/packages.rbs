@@ -1,0 +1,112 @@
+module Rho
+  class Packages
+    class Source < Data
+      attr_reader path: String
+      attr_reader revision: String
+      attr_reader configuration: Hash[String, untyped]
+      attr_reader id: String
+      attr_reader configuration_version: Integer
+      def self.new: (path: String, revision: String, configuration: Hash[String, untyped], id: String, configuration_version: Integer) -> instance
+    end
+    class Selection < Data
+      attr_reader name: String
+      attr_reader version: String
+      attr_reader configuration_version: Integer
+      attr_reader configuration: Hash[String, untyped]
+      attr_reader state_schema: String
+      def self.new: (name: String, version: String, configuration_version: Integer, configuration: Hash[String, untyped], state_schema: String) -> instance
+      def self.from_h: (untyped value) -> instance
+      def to_h: () -> Hash[String, untyped]
+    end
+    class Entry < Data
+      attr_reader enabled: bool?
+      attr_reader selection: Selection
+      attr_reader previous: Selection?
+      def self.new: (enabled: bool?, selection: Selection, previous: Selection?) -> instance
+      def self.from_h: (untyped value) -> instance
+      def enabled?: (default: bool) -> bool
+      def to_h: () -> Hash[String, untyped]
+    end
+    class Manifest < Data
+      attr_reader name: String
+      attr_reader id: String
+      attr_reader display_name: String
+      attr_reader description: String
+      attr_reader state_schema: String
+      attr_reader dependencies: Hash[String, String]
+      attr_reader configuration_version: Integer
+      attr_reader schema: Configuration::Schema
+      attr_reader default_enabled: bool
+      attr_reader modes: Array[String]
+      attr_reader requires: Array[String]
+      attr_reader restart_only: bool
+      attr_reader configuration_migrations: String?
+      attr_reader directory: String
+      def self.new: (name: String, id: String, display_name: String, description: String, state_schema: String, dependencies: Hash[String, String], configuration_version: Integer, schema: Configuration::Schema, default_enabled: bool, modes: Array[String], requires: Array[String], restart_only: bool, configuration_migrations: String?, directory: String) -> instance
+      def self.read: (String directory) -> instance
+      def descriptor: () -> Hash[String, untyped]
+      def migrate: (Hash[String, untyped] configuration, from: Integer) -> Configuration::Resolved
+      def validate_dependencies: (?activate: bool) -> Hash[String, String]
+    end
+    module Check
+      TIMEOUT: Integer
+      OUTPUT_BYTES: Integer
+      SCRIPT: String
+      def self.run: (String directory, ?timeout: Numeric) -> Hash[Symbol, untyped]
+    end
+    def self.package_name: (untyped value) -> String
+    def self.version: (untyped value) -> String
+    def self.import_legacy: (Home home, Hash[String, untyped] plugins) -> Hash[String, untyped]
+    def initialize: (home: Home) -> void
+    def sources: (?plugins: Hash[String, untyped]) -> Array[Source]
+    def list: () -> Hash[Symbol, untyped]
+    def install: (path: String) -> Hash[Symbol, untyped]
+    def check: (name: String, ?version: String?) -> Hash[Symbol, untyped]
+    def activate: (name: String, ?version: String?, ?configuration: Hash[String, untyped]?) { (Array[Source], ^() -> untyped, Hash[String, untyped]) -> untyped } -> Hash[Symbol, untyped]
+    def disable: (name: String) { (Array[Source], ^() -> untyped, Hash[String, untyped]) -> untyped } -> Hash[Symbol, untyped]
+    def rollback: (name: String) { (Array[Source], ^() -> untyped, Hash[String, untyped]) -> untyped } -> Hash[Symbol, untyped]
+  end
+
+  class Core
+    include Packages
+    module Packages
+      def packages: () -> Hash[String, untyped]
+      def manage_package: (action: String, ?name: String?, ?version: String?, ?path: String?, ?configuration: Hash[String, untyped]?) -> Hash[String, untyped]
+    end
+  end
+
+  module Extensions
+    module Packages
+      NAME: String
+      USAGE: String
+      def self.register: (untyped api) -> untyped
+      def self.command: (Cli::Terminal cli, Array[String] arguments, Hash[Symbol, untyped] options) -> untyped
+      module Tool
+        def self.included: (untyped base) -> untyped
+        module Factory
+          def for_home: (Home home) -> untyped
+        end
+        def initialize: (env: untyped, core: Core) -> void
+      end
+      class Read
+        include Tool
+        extend Tool::Factory
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        def call: (Hash[String, untyped] args) -> Runner::Result
+      end
+      class Manage
+        include Tool
+        extend Tool::Factory
+        NAME: String
+        DESCRIPTION: String
+        SCHEMA: Hash[String, untyped]
+        EFFECT_PROFILE: Hash[String, untyped]
+        TIMEOUT_MS: Integer
+        def call: (Hash[String, untyped] args) -> Runner::Result
+      end
+    end
+  end
+end

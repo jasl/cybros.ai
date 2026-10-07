@@ -1,0 +1,30 @@
+test:
+  service: Disk
+  root: <%= Rails.root.join("tmp/storage") %>
+
+# RAILS_STORAGE_ROOT roots the local service elsewhere: the e2e harness
+# gives each world its own root under the run's tmp dir (removed with it),
+# so worlds never share blobs with each other or a developer's dev server.
+local:
+  service: Disk
+  root: <%= ENV.fetch("RAILS_STORAGE_ROOT") { Rails.root.join("storage") } %>
+
+# Use bin/rails credentials:edit to set the AWS secrets (as aws:access_key_id|secret_access_key)
+# amazon:
+#   service: S3
+#   access_key_id: <%= Rails.app.credentials.dig(:aws, :access_key_id) %>
+#   secret_access_key: <%= Rails.app.credentials.dig(:aws, :secret_access_key) %>
+#   region: us-east-1
+#   bucket: your_own_bucket-<%= Rails.env %>
+
+# Remember not to check in your GCS keyfile to a repository
+# google:
+#   service: GCS
+#   project: your_project
+#   credentials: <%= Rails.root.join("path/to/gcs.keyfile") %>
+#   bucket: your_own_bucket-<%= Rails.env %>
+
+# mirror:
+#   service: Mirror
+#   primary: local
+#   mirrors: [ amazon, google, microsoft ]

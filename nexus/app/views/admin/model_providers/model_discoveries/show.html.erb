@@ -1,0 +1,52 @@
+<% content_for :title, "Discover models" %>
+<div class="space-y-8">
+  <%= render "admin/model_providers/header", provider: @provider, title: "Discover model IDs", current: :discovery, description: "Read the model directory from your saved endpoint." %>
+  <%= turbo_frame_tag "model-directory" do %>
+  <section class="space-y-4" aria-label="Model discovery">
+    <p class="max-w-prose text-sm text-base-content/60">A complete, successful fetch marks configured models missing from the directory invalid and hides them from agents. Listed models have their invalid mark cleared; manual hiding is kept. Definitions and pricing are retained.</p>
+    <p class="max-w-prose text-sm text-base-content/60">Some providers do not offer a directory. A failed or incomplete fetch leaves your models unchanged. You can add model IDs manually or clear an invalid mark from the provider page. The directory does not verify inference, capabilities or pricing.</p>
+    <div class="flex flex-wrap gap-2">
+      <%= button_to "Fetch model IDs", admin_model_provider_model_discovery_path(@provider.fetch(:id)), params: { model_discovery: { expected_lock_version: @provider.fetch(:lock_version) } }, class: "btn btn-primary btn-sm", data: { turbo_submits_with: "Fetching…" } %>
+      <%= link_to "Enter a model ID manually", new_admin_model_provider_model_definition_path(@provider.fetch(:id)), class: "btn btn-ghost btn-sm", data: { turbo_frame: "_top" } %>
+    </div>
+    <% if @discovery %>
+      <% if @discovery.success? %>
+        <p class="text-sm" role="status">Model directory synced. Review availability on the provider page.</p>
+        <% if @discovery.models.empty? %>
+          <p class="text-sm text-base-content/60">This endpoint returned an empty directory. All configured models are now marked invalid. You can still enter a model ID manually.</p>
+        <% else %>
+          <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200">
+            <% @discovery.models.each do |model| %>
+              <% configured_models = @models_by_id.fetch(model.fetch(:id), []) %>
+              <% occupied_model = @models_by_ref["#{@provider.fetch(:id)}/#{model.fetch(:id)}"] %>
+              <li class="flex flex-wrap items-center justify-between gap-3 p-4" data-model-id="<%= model.fetch(:id) %>">
+                <div class="min-w-0 flex-1 basis-full sm:basis-0"><p class="text-sm font-medium wrap-anywhere"><%= model.fetch(:id) %></p><% if model[:display_name].present? %><p class="text-xs text-base-content/60 wrap-anywhere"><%= model[:display_name] %></p><% end %></div>
+                <% if configured_models.any? %>
+                  <div class="flex flex-col items-end gap-2 min-w-0 max-w-full ml-auto">
+                    <% configured_models.each do |configured| %>
+                      <div class="flex flex-wrap items-center justify-end gap-2 max-w-full">
+                        <% if configured.fetch(:model) != "#{@provider.fetch(:id)}/#{model.fetch(:id)}" || configured_models.many? %>
+                          <span class="text-xs text-base-content/60 wrap-anywhere"><%= configured.fetch(:model) %></span>
+                        <% end %>
+                        <span class="badge badge-sm badge-ghost"><%= configured.fetch(:removed) ? "Removed" : "Added" %></span>
+                        <%= link_to configured.fetch(:removed) ? "Review model" : "Edit model", admin_model_provider_model_definition_path(@provider.fetch(:id), model: configured.fetch(:model)), class: "btn btn-ghost btn-sm", data: { turbo_frame: "_top" }, aria: { label: "#{configured.fetch(:removed) ? 'Review' : 'Edit'} #{configured.fetch(:model)}" } %>
+                      </div>
+                    <% end %>
+                  </div>
+                <% elsif occupied_model %>
+                  <span class="badge badge-sm badge-ghost">Model ID in use</span>
+                  <%= link_to "Edit model", admin_model_provider_model_definition_path(@provider.fetch(:id), model: occupied_model.fetch(:model)), class: "btn btn-ghost btn-sm ml-auto", data: { turbo_frame: "_top" }, aria: { label: "Edit #{occupied_model.fetch(:model)}" } %>
+                <% else %>
+                  <%= link_to "Add model", new_admin_model_provider_model_definition_path(@provider.fetch(:id), model_id: model.fetch(:id), display_name: model[:display_name]), class: "btn btn-sm ml-auto", data: { turbo_frame: "_top" }, aria: { label: "Add #{model.fetch(:id)}" } %>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      <% else %>
+        <div class="rounded-box border border-base-300 bg-base-200 p-4 text-sm" role="alert"><%= model_discovery_message(@discovery.outcome) %> Your existing models are unchanged.</div>
+      <% end %>
+    <% end %>
+  </section>
+  <% end %>
+</div>

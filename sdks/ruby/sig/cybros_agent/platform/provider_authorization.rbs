@@ -1,0 +1,46 @@
+module CybrosAgent
+  module Platform
+    class Authorization < Data
+      attr_reader provider_id: String
+      attr_reader state: String
+      attr_reader expires_at: String?
+      attr_reader session: AuthorizationSession?
+      def self.new: (provider_id: String, state: String, expires_at: String?, session: AuthorizationSession?) -> instance
+    end
+
+    class AuthorizationSession < Data
+      include Redacted
+      attr_reader public_id: String
+      attr_reader kind: String
+      attr_reader state: String
+      attr_reader progress: String
+      attr_reader outcome: String?
+      attr_reader expires_at: String?
+      attr_reader verification_uri: String?
+      attr_reader user_code: String?
+      attr_reader owned_by_current_user: bool
+      def self.new: (public_id: String, kind: String, state: String, progress: String,
+        outcome: String?, expires_at: String?, verification_uri: String?, user_code: String?, owned_by_current_user: bool) -> instance
+      def inspect: () -> String
+    end
+
+    module ProviderAuthorizationProjections
+      include Api::Parsing
+    end
+
+    class ProviderAuthorizationContext
+      include ProviderAuthorizationProjections
+      def initialize: (dispatch: Api::_Dispatch, path: String) -> void
+      def session: (String public_id) -> AuthorizationSessionContext
+      def fetch: () -> Authorization
+      def start: (?restart: bool) -> AuthorizationSession
+      def clear: () -> Authorization
+    end
+
+    class AuthorizationSessionContext
+      include ProviderAuthorizationProjections
+      def initialize: (dispatch: Api::_Dispatch, path: String) -> void
+      def fetch: () -> AuthorizationSession
+    end
+  end
+end

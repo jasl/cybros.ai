@@ -1,0 +1,59 @@
+<% content_for :title, "Transfer ownership" %>
+
+<div class="space-y-8">
+  <header class="space-y-4">
+    <%= render "shared/back_navigation", path: workspace_path(@workspace), label: @workspace.name %>
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight">Transfer ownership</h1>
+      <p class="text-sm text-base-content/60">
+        Hand <span class="font-medium wrap-anywhere"><%= @workspace.name %></span> to another active
+        member. You stop managing it immediately; if it is private, your data access moves with it.
+      </p>
+    </div>
+  </header>
+
+  <section>
+    <%= render "shared/member_search_form",
+      search_url: workspace_ownership_transfer_path(@workspace),
+      query: @query,
+      max_length: Workspaces::OwnershipTransfersController::SEARCH_QUERY_MAX_LENGTH %>
+  </section>
+
+  <section class="rounded-box border border-base-300 bg-base-200">
+    <% if @candidates.any? %>
+      <ul class="list">
+        <% @candidates.each do |candidate| %>
+          <li class="list-row items-center"
+            data-transfer-candidate-id="<%= candidate.public_id %>">
+            <div class="list-col-grow min-w-0">
+              <p class="font-medium wrap-anywhere"><%= candidate.display_name %></p>
+              <p class="text-sm text-base-content/60 hyphens-none wrap-anywhere"><%= candidate.email %></p>
+            </div>
+            <div class="list-col-wrap justify-self-start sm:justify-self-end sm:[grid-row-start:1]">
+              <%= button_to "Transfer",
+                workspace_ownership_transfer_path(@workspace),
+                method: :post,
+                params: {
+                  ownership_transfer: {
+                    target_user_public_id: candidate.public_id,
+                    lock_version: @workspace.lock_version,
+                    query: @query,
+                  },
+                },
+                class: "btn btn-sm btn-primary",
+                aria: { label: "Transfer to #{candidate.display_name}" },
+                data: { turbo_confirm: "Transfer #{@workspace.name} to #{candidate.display_name}? They become the owner immediately and you stop managing it." } %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="px-4 py-10 text-center">
+        <p class="text-sm font-medium">No matching members</p>
+        <p class="mt-1 text-sm text-base-content/60">Try a different name or email address.</p>
+      </div>
+    <% end %>
+  </section>
+
+  <%= render "shared/pagination_footer", pagy: @candidates_pagy, noun: "eligible members", aria_label: "Transfer candidates pages" %>
+</div>

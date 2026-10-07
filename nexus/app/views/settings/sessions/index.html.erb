@@ -1,0 +1,50 @@
+<% content_for :title, "Settings" %>
+
+<%= render layout: "settings/shell", locals: { current: :sessions } do %>
+  <section class="space-y-4">
+    <div>
+      <h2 class="text-xs font-medium text-base-content/60">Active sessions</h2>
+      <p class="mt-1 text-sm text-base-content/60">Review browser and API sessions signed in to your account and revoke access you no longer need.</p>
+    </div>
+
+    <div class="overflow-x-auto rounded-box border border-base-300 bg-base-200">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Device</th>
+            <th>Signed in</th>
+            <th class="text-end">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @sessions.each do |session_record| %>
+            <% session_target = session_record.api? ? "API session #{session_record.public_id}" : session_record.device_description %>
+            <tr data-session-id="<%= session_record.public_id %>">
+              <td>
+                <span class="font-medium"><%= session_record.device_description %></span>
+                <% if session_record.api? %>
+                  <span class="mt-1 block text-xs font-normal text-base-content/60">Session ID <code class="break-all font-mono"><%= session_record.public_id %></code></span>
+                <% end %>
+                <% if session_record == Current.session %>
+                  <span class="badge badge-ghost badge-sm ms-1 whitespace-nowrap">This device</span>
+                <% end %>
+              </td>
+              <td class="text-base-content/60" title="<%= session_record.created_at.iso8601 %>">
+                <%= time_ago_in_words(session_record.created_at) %> ago
+              </td>
+              <td class="text-end">
+                <% if session_record == Current.session %>
+                  <%= button_to "Log out", session_path, method: :delete, class: "btn btn-ghost btn-sm whitespace-nowrap", form: { data: { turbo_frame: "_top" } } %>
+                <% else %>
+                  <%= button_to "Revoke", settings_session_path(session_record), method: :delete, class: "btn btn-ghost btn-sm", aria: { label: "Revoke #{session_target}" }, data: { turbo_confirm: "Revoke #{session_target}? Clients using this session lose access immediately." }, form: { data: { turbo_frame: "_top" } } %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <%= render "shared/pagination_footer", pagy: @sessions_pagy, noun: "sessions", aria_label: "Active sessions pages" %>
+  </section>
+<% end %>

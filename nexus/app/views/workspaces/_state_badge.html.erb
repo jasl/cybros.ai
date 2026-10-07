@@ -1,0 +1,10 @@
+<%# Transition states render honestly: archiving and restoring are shown as themselves, never rounded to their destination. %>
+<% styles = {
+  "active" => "badge-success badge-soft",
+  "restoring" => "badge-info badge-soft",
+  "archiving" => "badge-warning badge-soft",
+  "archived" => "badge-ghost",
+} %>
+<span class="badge badge-sm whitespace-nowrap <%= styles.fetch(workspace.state) %>">
+  <%= workspace.state.capitalize %>
+</span>

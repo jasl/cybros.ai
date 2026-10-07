@@ -1,0 +1,6 @@
+<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <p class="text-sm text-base-content/60">
+    Showing <%= pagy.from %>–<%= pagy.to %> of <%= pagy.count %> <%= noun %>
+  </p>
+  <%= pagy_daisy_ui_nav(pagy, aria_label:) %>
+</div>

@@ -1,0 +1,2270 @@
+{
+  "valid_materialization_fixture": {
+    "materialization": {
+      "input_public_id": "01900000-0000-7000-8000-000000000080",
+      "turn_public_id": "01900000-0000-7000-8000-000000000071",
+      "variant_public_id": "01900000-0000-7000-8000-000000000091",
+      "run_public_id": null
+    }
+  },
+  "valid_fallback_variant_fixture": {
+    "variant": {
+      "public_id": "01900000-0000-7000-8000-000000000092",
+      "source": "fallback",
+      "origin_variant_public_id": "01900000-0000-7000-8000-000000000091",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "content": "The fallback's answer.",
+      "memory_context": null,
+      "active": true
+    }
+  },
+  "kinds": [
+    "compaction_summary",
+    "direct_reply",
+    "message"
+  ],
+  "input_kinds": [
+    "direct_reply",
+    "message"
+  ],
+  "valid_guarded_input_fixture": {
+    "input": {
+      "public_id": "01900000-0000-7000-8000-000000000080",
+      "queue_position": 0,
+      "state": "steering",
+      "kind": "direct_reply",
+      "role": "user",
+      "delivery_mode": "steer",
+      "expected_steering_run_public_id": "01900000-0000-7000-8000-000000000091",
+      "origin": "person",
+      "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "speaker": {
+        "user_public_id": "01900000-0000-7000-8000-0000000000a1",
+        "handle": "ada",
+        "kind": "human",
+        "display_name": "Ada"
+      },
+      "context_mode": "assembled",
+      "context_options": {
+        "history": {
+          "max_entries": 20
+        },
+        "inline": [
+          {
+            "slot": "character",
+            "text": "For this turn: be terse."
+          }
+        ]
+      },
+      "tool_names": [
+        "read_file"
+      ],
+      "approval_mode": "ask",
+      "text": "What is next?",
+      "lock_version": 0,
+      "created_at": "2026-08-31T00:00:04Z"
+    }
+  },
+  "valid_steps_input_fixture": {
+    "input": {
+      "public_id": "01900000-0000-7000-8000-000000000080",
+      "queue_position": 0,
+      "state": "pending",
+      "kind": "direct_reply",
+      "role": "user",
+      "delivery_mode": "queue",
+      "origin": "person",
+      "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "speaker": {
+        "user_public_id": "01900000-0000-7000-8000-0000000000a1",
+        "handle": "ada",
+        "kind": "human",
+        "display_name": "Ada"
+      },
+      "context_mode": "assembled",
+      "context_options": {
+        "history": {
+          "max_entries": 20
+        },
+        "inline": [
+          {
+            "slot": "character",
+            "text": "For this turn: be terse."
+          }
+        ]
+      },
+      "tool_names": [
+        "read_file"
+      ],
+      "approval_mode": "ask",
+      "steps": [
+        {
+          "tool": {
+            "key": "check",
+            "name": "read_file",
+            "input": {
+              "path": "result.txt"
+            }
+          }
+        },
+        {
+          "ask": {
+            "key": "hold",
+            "prompt": "Review the result"
+          }
+        }
+      ],
+      "text": "What is next?",
+      "attachments": [
+        {
+          "public_id": "01900000-0000-7000-8000-0000000000c1",
+          "filename": "diagram.png",
+          "content_type": "image/png",
+          "byte_size": 184213
+        }
+      ],
+      "lock_version": 0,
+      "created_at": "2026-08-31T00:00:04Z"
+    }
+  },
+  "valid_ingress_input_fixture": {
+    "input": {
+      "public_id": "01900000-0000-7000-8000-000000000080",
+      "queue_position": 0,
+      "state": "pending",
+      "kind": "direct_reply",
+      "role": "user",
+      "delivery_mode": "queue",
+      "origin": "agent",
+      "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "speaker": {
+        "speaker_public_id": "01900000-0000-7000-8000-0000000000a8",
+        "kind": "ingress",
+        "display_name": "External Ada"
+      },
+      "context_mode": "assembled",
+      "context_options": {
+        "history": {
+          "max_entries": 20
+        },
+        "inline": [
+          {
+            "slot": "character",
+            "text": "For this turn: be terse."
+          }
+        ]
+      },
+      "tool_names": [
+        "read_file"
+      ],
+      "approval_mode": "ask",
+      "text": "What is next?",
+      "attachments": [
+        {
+          "public_id": "01900000-0000-7000-8000-0000000000c1",
+          "filename": "diagram.png",
+          "content_type": "image/png",
+          "byte_size": 184213
+        }
+      ],
+      "lock_version": 0,
+      "created_at": "2026-08-31T00:00:04Z"
+    }
+  },
+  "valid_ingress_turn_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000071",
+    "callback_sources": [],
+    "position": 4,
+    "kind": "message",
+    "role": "user",
+    "status": "completed",
+    "visibility": "visible",
+    "inherited": false,
+    "origin": "person",
+    "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+    "speaker": {
+      "speaker_public_id": "01900000-0000-7000-8000-0000000000a8",
+      "kind": "ingress",
+      "display_name": "External Ada"
+    },
+    "active_variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "run",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "content": "Here is the plan.",
+      "prompt_text": "What is next?",
+      "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+      "rounds": [
+        {
+          "task_key": "r1",
+          "status": "completed",
+          "visibility": "visible",
+          "text_preview": "Here is the plan.",
+          "text_bytes": 17,
+          "usage": {
+            "input_tokens": 812,
+            "output_tokens": 40,
+            "total_tokens": 852
+          },
+          "started_at": "2026-08-31T00:00:02Z",
+          "completed_at": "2026-08-31T00:00:11Z"
+        }
+      ],
+      "runner_effects": {
+        "status": "touched",
+        "runners": [
+          {
+            "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+            "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+            "task_key": "r2t0",
+            "checkpoint": {
+              "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+              "store": "3f0c9d2a7b1e5c68"
+            }
+          }
+        ]
+      },
+      "memory_context": null
+    },
+    "created_at": "2026-08-31T00:00:12Z"
+  },
+  "roles": [
+    "assistant",
+    "system",
+    "tool",
+    "user"
+  ],
+  "statuses": [
+    "canceled",
+    "completed",
+    "failed",
+    "pending",
+    "running",
+    "timed_out"
+  ],
+  "terminal_statuses": [
+    "canceled",
+    "completed",
+    "failed",
+    "timed_out"
+  ],
+  "visibilities": [
+    "excluded_from_context",
+    "hidden",
+    "visible"
+  ],
+  "variant_sources": [
+    "edit",
+    "fallback",
+    "fork",
+    "import",
+    "inference",
+    "manual",
+    "run"
+  ],
+  "input_states": [
+    "blocked",
+    "pending",
+    "steering"
+  ],
+  "delivery_modes": [
+    "queue",
+    "steer"
+  ],
+  "context_modes": [
+    "assembled",
+    "raw"
+  ],
+  "event_types": [
+    "access_changed",
+    "attention_required",
+    "context_compacted",
+    "context_trimmed",
+    "conversation_ended",
+    "default_runner_changed",
+    "fork_created",
+    "handle_changed",
+    "input_accepted",
+    "input_blocked",
+    "input_deleted",
+    "input_edited",
+    "input_materialized",
+    "reasoning_replay_downgraded",
+    "round_result",
+    "soft_delete",
+    "task_deadline_extended",
+    "task_readdressed",
+    "task_status",
+    "turn_created",
+    "turn_deleted",
+    "turn_status",
+    "turn_variant",
+    "usage",
+    "visibility"
+  ],
+  "event_retention_days": 30,
+  "list_envelope": [
+    "conversations",
+    "pagination"
+  ],
+  "singular_envelope": [
+    "conversation"
+  ],
+  "turns_envelope": [
+    "turns",
+    "pagination"
+  ],
+  "inputs_envelope": [
+    "inputs",
+    "input_queue"
+  ],
+  "events_envelope": [
+    "events",
+    "pagination"
+  ],
+  "estimate_envelope": [
+    "context_estimate"
+  ],
+  "realtime_path": "/agent_api/v1/cable",
+  "realtime_envelope": [
+    "event"
+  ],
+  "realtime_items": [
+    "events",
+    "lifecycle",
+    "transcript",
+    "progress"
+  ],
+  "realtime_default_items": "events",
+  "realtime_lifecycle_event_types": [
+    "turn_status",
+    "attention_required",
+    "conversation_ended"
+  ],
+  "transcript_items": [
+    "text_delta",
+    "reasoning_delta",
+    "tool_call_started",
+    "tool_call_arguments_delta",
+    "stream_reset",
+    "turn",
+    "round",
+    "call"
+  ],
+  "progress_frame_types": [
+    "executor_progress",
+    "process_output",
+    "round_started",
+    "step_started",
+    "step_claimed"
+  ],
+  "progress_frame_envelope": [
+    "frame"
+  ],
+  "transcript_delta_envelope": [
+    "type",
+    "turn_public_id",
+    "variant_public_id",
+    "text"
+  ],
+  "transcript_settled_envelope": [
+    "type",
+    "turn_public_id",
+    "turn"
+  ],
+  "transcript_routing_key": "turn_public_id",
+  "pagination": [
+    "next_after"
+  ],
+  "basic_projection": [
+    "public_id",
+    "title",
+    "answering_user_public_id",
+    "archived_at",
+    "billing_subject",
+    "parent",
+    "forked_from_turn_public_id",
+    "forked_from_variant_public_id",
+    "side",
+    "active_turn_public_id",
+    "context_revision",
+    "last_activity_at",
+    "created_at",
+    "updated_at"
+  ],
+  "full_projection_adds": [
+    "metadata",
+    "memory_context",
+    "input_queue",
+    "latest_event_cursor",
+    "default_runner",
+    "context",
+    "usage_summary",
+    "access"
+  ],
+  "input_projection": [
+    "public_id",
+    "queue_position",
+    "state",
+    "kind",
+    "role",
+    "delivery_mode",
+    "origin",
+    "answering_user_public_id",
+    "speaker",
+    "context_mode",
+    "context_options",
+    "tool_names",
+    "approval_mode",
+    "text",
+    "attachments",
+    "lock_version",
+    "created_at",
+    "instructions",
+    "sender_conversation_public_id",
+    "blocked_reason",
+    "deliver_at",
+    "expected_steering_run_public_id",
+    "callback_result",
+    "steps"
+  ],
+  "input_projection_required": [
+    "public_id",
+    "queue_position",
+    "state",
+    "kind",
+    "role",
+    "delivery_mode",
+    "origin",
+    "lock_version",
+    "created_at"
+  ],
+  "turn_projection": [
+    "public_id",
+    "callback_sources",
+    "position",
+    "kind",
+    "role",
+    "status",
+    "visibility",
+    "inherited",
+    "origin",
+    "answering_user_public_id",
+    "speaker",
+    "active_variant",
+    "created_at",
+    "sender_conversation_public_id",
+    "sender_run_public_id",
+    "sender_task_key",
+    "input_public_id",
+    "reference"
+  ],
+  "valid_reference_turn_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000071",
+    "callback_sources": [],
+    "position": 4,
+    "kind": "direct_reply",
+    "role": "assistant",
+    "status": "completed",
+    "visibility": "visible",
+    "inherited": false,
+    "reference": true,
+    "origin": "person",
+    "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+    "speaker": {
+      "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "handle": "lark",
+      "kind": "agent",
+      "display_name": "Lark"
+    },
+    "active_variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "fork",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "content": "Here is the plan.",
+      "prompt_text": "What is next?",
+      "memory_context": null
+    },
+    "created_at": "2026-08-31T00:00:12Z"
+  },
+  "turn_projection_required": [
+    "public_id",
+    "position",
+    "kind",
+    "role",
+    "status",
+    "visibility",
+    "created_at"
+  ],
+  "variant_projection": [
+    "public_id",
+    "source",
+    "status",
+    "model",
+    "content_preview",
+    "content",
+    "prompt_text",
+    "run_public_id",
+    "rounds",
+    "runner_effects",
+    "memory_context",
+    "active",
+    "attachments",
+    "details_pruned_at"
+  ],
+  "variant_projection_required": [
+    "public_id",
+    "source",
+    "status",
+    "memory_context"
+  ],
+  "runner_effects_projection": [
+    "status",
+    "runners",
+    "reason"
+  ],
+  "runner_effects_projection_required": [
+    "status",
+    "runners"
+  ],
+  "runner_effects_statuses": [
+    "untouched",
+    "touched",
+    "unavailable"
+  ],
+  "runner_effects_fixtures": {
+    "untouched": {
+      "status": "untouched",
+      "runners": []
+    },
+    "unavailable": {
+      "status": "unavailable",
+      "runners": [],
+      "reason": "execution_details_pruned"
+    },
+    "touched": {
+      "status": "touched",
+      "runners": [
+        {
+          "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+          "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+          "task_key": "r2t0",
+          "checkpoint": {
+            "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+            "store": "3f0c9d2a7b1e5c68"
+          }
+        }
+      ]
+    },
+    "skipped": {
+      "status": "touched",
+      "runners": [
+        {
+          "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+          "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+          "task_key": "r2t0",
+          "checkpoint": {
+            "skipped": "tree_too_large",
+            "bytes": 402653184,
+            "files": 12047
+          }
+        }
+      ]
+    },
+    "placeholder": {
+      "status": "touched",
+      "runners": [
+        {
+          "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+          "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+          "task_key": "r2t0",
+          "checkpoint": "c1"
+        }
+      ]
+    },
+    "missing_checkpoint": {
+      "status": "touched",
+      "runners": [
+        {
+          "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+          "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+          "task_key": "r2t0"
+        }
+      ]
+    },
+    "multiple_runners": {
+      "status": "touched",
+      "runners": [
+        {
+          "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+          "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+          "task_key": "r2t0",
+          "checkpoint": {
+            "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+            "store": "3f0c9d2a7b1e5c68"
+          }
+        },
+        {
+          "runner_executor_public_id": "019f0000-0000-7000-8000-000000000302",
+          "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+          "task_key": "r2t1"
+        }
+      ]
+    }
+  },
+  "variant_round_projection": [
+    "task_key",
+    "status",
+    "visibility",
+    "text_preview",
+    "text_bytes",
+    "usage",
+    "started_at",
+    "completed_at"
+  ],
+  "context_projection": [
+    "used_tokens",
+    "input_tokens",
+    "output_tokens",
+    "cache_read_tokens",
+    "window_tokens",
+    "used_percent",
+    "as_of_model"
+  ],
+  "usage_summary_projection": [
+    "request_count",
+    "input_tokens",
+    "cache_read_tokens",
+    "uncached_input_tokens",
+    "cache_creation_tokens",
+    "cache_hit_rate",
+    "output_tokens",
+    "reasoning_tokens",
+    "total_tokens",
+    "cost_amount",
+    "cost_unit",
+    "cost_complete"
+  ],
+  "usage_summary_projection_required": [
+    "request_count",
+    "input_tokens",
+    "cache_read_tokens",
+    "uncached_input_tokens",
+    "cache_creation_tokens",
+    "output_tokens",
+    "reasoning_tokens",
+    "total_tokens",
+    "cost_amount",
+    "cost_unit",
+    "cost_complete"
+  ],
+  "input_queue_projection": [
+    "limit",
+    "held"
+  ],
+  "estimate_projection": [
+    "input_tokens",
+    "tokenizer_exact",
+    "catalog_input_token_limit",
+    "advisory_input_token_limit",
+    "message_count",
+    "history"
+  ],
+  "estimate_history_projection": [
+    "selected",
+    "skipped",
+    "skipped_reason",
+    "compacted"
+  ],
+  "estimate_history_projection_required": [
+    "selected",
+    "skipped"
+  ],
+  "rendered_estimate_projection": [
+    "input_tokens",
+    "tokenizer_exact",
+    "catalog_input_token_limit",
+    "advisory_input_token_limit",
+    "message_count",
+    "history",
+    "mechanism",
+    "entries",
+    "storage",
+    "blocks",
+    "memory",
+    "slots"
+  ],
+  "rendered_estimate_storage_projection": [
+    "bytes",
+    "bound",
+    "within_bound"
+  ],
+  "rendered_estimate_storage_projection_required": [
+    "bytes",
+    "bound",
+    "within_bound"
+  ],
+  "rendered_estimate_block_projection": [
+    "block",
+    "index",
+    "type",
+    "role",
+    "state",
+    "tokens",
+    "allocated_tokens"
+  ],
+  "rendered_estimate_block_states": [
+    "selected",
+    "empty",
+    "floor_unmet",
+    "carried"
+  ],
+  "rendered_estimate_mechanisms": [
+    "assembly",
+    "default"
+  ],
+  "event_projection": [
+    "public_id",
+    "sequence",
+    "cursor",
+    "type",
+    "resource",
+    "occurred_at",
+    "payload"
+  ],
+  "list_filters": [
+    "order",
+    "after",
+    "limit",
+    "side"
+  ],
+  "list_directions": [
+    "asc",
+    "desc"
+  ],
+  "error_codes": [
+    "already_compacted",
+    "apex_never_conceals",
+    "apex_only",
+    "arm_failed",
+    "attachments_not_steerable",
+    "branch_required",
+    "compaction_disabled",
+    "compaction_unavailable_under_raw",
+    "conversation_archived",
+    "conversation_busy",
+    "conversation_hosted",
+    "deliver_at_ambiguous",
+    "deliver_at_in_past",
+    "deliver_at_not_steerable",
+    "deliver_at_too_far",
+    "descendant_pinned",
+    "execution_details_pruned",
+    "input_queue_full",
+    "kernel_authored",
+    "kernel_input_immutable",
+    "not_authorized",
+    "not_running",
+    "not_terminal",
+    "nothing_to_compact",
+    "principal_not_eligible",
+    "prompt_template_invalid",
+    "queue_changed",
+    "request_not_sealed",
+    "run_live",
+    "run_needs_attention",
+    "run_settled",
+    "runner_not_eligible",
+    "runner_not_found",
+    "slot_occupied",
+    "stale_context",
+    "stale_timeline",
+    "steering_held",
+    "steering_holds",
+    "steering_target_changed",
+    "subagent_follows_parent",
+    "task_not_queued",
+    "unsupported_turn_type",
+    "variant_active",
+    "variant_not_active",
+    "variant_not_forkable"
+  ],
+  "error_statuses": {
+    "already_compacted": 409,
+    "apex_never_conceals": 409,
+    "apex_only": 409,
+    "arm_failed": 500,
+    "attachments_not_steerable": 422,
+    "branch_required": 409,
+    "compaction_disabled": 409,
+    "compaction_unavailable_under_raw": 422,
+    "conversation_archived": 409,
+    "conversation_busy": 409,
+    "conversation_hosted": 409,
+    "deliver_at_ambiguous": 422,
+    "deliver_at_in_past": 422,
+    "deliver_at_not_steerable": 422,
+    "deliver_at_too_far": 422,
+    "descendant_pinned": 409,
+    "execution_details_pruned": 409,
+    "input_queue_full": 409,
+    "kernel_authored": 409,
+    "kernel_input_immutable": 409,
+    "not_authorized": 403,
+    "not_running": 409,
+    "not_terminal": 409,
+    "nothing_to_compact": 422,
+    "principal_not_eligible": 422,
+    "prompt_template_invalid": 422,
+    "queue_changed": 409,
+    "request_not_sealed": 404,
+    "run_live": 409,
+    "run_needs_attention": 409,
+    "run_settled": 409,
+    "runner_not_eligible": 409,
+    "runner_not_found": 404,
+    "slot_occupied": 409,
+    "stale_context": 409,
+    "stale_timeline": 409,
+    "steering_held": 409,
+    "steering_holds": 409,
+    "steering_target_changed": 409,
+    "subagent_follows_parent": 409,
+    "task_not_queued": 409,
+    "unsupported_turn_type": 409,
+    "variant_active": 409,
+    "variant_not_active": 409,
+    "variant_not_forkable": 409
+  },
+  "absence_refusals": [
+    "not_found",
+    "already_tombstoned"
+  ],
+  "refusal_default_status": 422,
+  "turns_filters": [
+    "after_position",
+    "before_position",
+    "limit"
+  ],
+  "events_filters": [
+    "after",
+    "limit"
+  ],
+  "events_pagination": [
+    "next_after",
+    "watermark"
+  ],
+  "events_default_limit": 100,
+  "events_max_limit": 200,
+  "turns_default_limit": 20,
+  "turns_max_limit": 100,
+  "valid_list_fixture": {
+    "conversations": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000070",
+        "title": "Planning",
+        "answering_user_public_id": "01900000-0000-7000-8000-000000000003",
+        "archived_at": null,
+        "billing_subject": null,
+        "parent": null,
+        "forked_from_turn_public_id": null,
+        "forked_from_variant_public_id": null,
+        "side": false,
+        "active_turn_public_id": "01900000-0000-7000-8000-000000000071",
+        "context_revision": 4,
+        "last_activity_at": "2026-08-31T00:00:12Z",
+        "created_at": "2026-08-31T00:00:00Z",
+        "updated_at": "2026-08-31T00:00:12Z"
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_fixture": {
+    "conversation": {
+      "public_id": "01900000-0000-7000-8000-000000000070",
+      "title": "Planning",
+      "answering_user_public_id": "01900000-0000-7000-8000-000000000003",
+      "archived_at": null,
+      "billing_subject": null,
+      "parent": null,
+      "forked_from_turn_public_id": null,
+      "forked_from_variant_public_id": null,
+      "side": false,
+      "active_turn_public_id": "01900000-0000-7000-8000-000000000071",
+      "context_revision": 4,
+      "last_activity_at": "2026-08-31T00:00:12Z",
+      "created_at": "2026-08-31T00:00:00Z",
+      "updated_at": "2026-08-31T00:00:12Z",
+      "metadata": {
+        "topic": "planning"
+      },
+      "memory_context": null,
+      "input_queue": {
+        "limit": 32,
+        "held": 1
+      },
+      "latest_event_cursor": "Y3ZlaS03",
+      "default_runner": null,
+      "context": {
+        "used_tokens": 3120,
+        "input_tokens": 2900,
+        "output_tokens": 220,
+        "cache_read_tokens": 2100,
+        "window_tokens": 128000,
+        "used_percent": 2.4,
+        "as_of_model": {
+          "provider_id": "dev",
+          "model_ref": "text"
+        }
+      },
+      "usage_summary": {
+        "request_count": 5,
+        "input_tokens": 8000,
+        "cache_read_tokens": 5000,
+        "uncached_input_tokens": 3000,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.625,
+        "output_tokens": 900,
+        "reasoning_tokens": 200,
+        "total_tokens": 8900,
+        "cost_amount": "0.00485",
+        "cost_unit": "USD",
+        "cost_complete": false
+      },
+      "access": {
+        "default": "read",
+        "entries": [
+          {
+            "user_public_id": "01900000-0000-7000-8000-000000000004",
+            "handle": "reviewer",
+            "kind": "human",
+            "display_name": "Reviewer",
+            "level": "full"
+          }
+        ]
+      }
+    }
+  },
+  "spawned_child_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000072",
+    "title": null,
+    "answering_user_public_id": "01900000-0000-7000-8000-000000000005",
+    "archived_at": null,
+    "billing_subject": null,
+    "parent": {
+      "public_id": "01900000-0000-7000-8000-000000000070",
+      "spawn_node_key": "r2t0",
+      "label": "reviewer"
+    },
+    "forked_from_turn_public_id": null,
+    "forked_from_variant_public_id": null,
+    "side": false,
+    "active_turn_public_id": null,
+    "context_revision": 1,
+    "last_activity_at": "2026-08-31T00:00:12Z",
+    "created_at": "2026-08-31T00:00:00Z",
+    "updated_at": "2026-08-31T00:00:12Z"
+  },
+  "parent_projection": [
+    "public_id",
+    "spawn_node_key",
+    "label"
+  ],
+  "valid_turns_fixture": {
+    "turns": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000071",
+        "callback_sources": [],
+        "position": 4,
+        "kind": "direct_reply",
+        "role": "assistant",
+        "status": "completed",
+        "visibility": "visible",
+        "inherited": false,
+        "origin": "person",
+        "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+        "speaker": {
+          "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+          "handle": "lark",
+          "kind": "agent",
+          "display_name": "Lark"
+        },
+        "active_variant": {
+          "public_id": "01900000-0000-7000-8000-000000000091",
+          "source": "run",
+          "status": "completed",
+          "model": {
+            "provider_id": "dev",
+            "model_ref": "text",
+            "reasoning_effort": "medium",
+            "reasoning_enabled": true
+          },
+          "content_preview": "Here is the plan.",
+          "content": "Here is the plan.",
+          "prompt_text": "What is next?",
+          "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+          "rounds": [
+            {
+              "task_key": "r1",
+              "status": "completed",
+              "visibility": "visible",
+              "text_preview": "Here is the plan.",
+              "text_bytes": 17,
+              "usage": {
+                "input_tokens": 812,
+                "output_tokens": 40,
+                "total_tokens": 852
+              },
+              "started_at": "2026-08-31T00:00:02Z",
+              "completed_at": "2026-08-31T00:00:11Z"
+            }
+          ],
+          "runner_effects": {
+            "status": "touched",
+            "runners": [
+              {
+                "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+                "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+                "task_key": "r2t0",
+                "checkpoint": {
+                  "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+                  "store": "3f0c9d2a7b1e5c68"
+                }
+              }
+            ]
+          },
+          "memory_context": null
+        },
+        "created_at": "2026-08-31T00:00:12Z"
+      }
+    ],
+    "pagination": {
+      "before_position": 0,
+      "after_position": 4
+    }
+  },
+  "valid_inputs_fixture": {
+    "inputs": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000080",
+        "queue_position": 0,
+        "state": "pending",
+        "kind": "direct_reply",
+        "role": "user",
+        "delivery_mode": "queue",
+        "origin": "person",
+        "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+        "speaker": {
+          "user_public_id": "01900000-0000-7000-8000-0000000000a1",
+          "handle": "ada",
+          "kind": "human",
+          "display_name": "Ada"
+        },
+        "context_mode": "assembled",
+        "context_options": {
+          "history": {
+            "max_entries": 20
+          },
+          "inline": [
+            {
+              "slot": "character",
+              "text": "For this turn: be terse."
+            }
+          ]
+        },
+        "tool_names": [
+          "read_file"
+        ],
+        "approval_mode": "ask",
+        "text": "What is next?",
+        "attachments": [
+          {
+            "public_id": "01900000-0000-7000-8000-0000000000c1",
+            "filename": "diagram.png",
+            "content_type": "image/png",
+            "byte_size": 184213
+          }
+        ],
+        "lock_version": 0,
+        "created_at": "2026-08-31T00:00:04Z"
+      }
+    ],
+    "input_queue": {
+      "limit": 32,
+      "held": 1
+    }
+  },
+  "valid_raw_input_fixture": {
+    "input": {
+      "public_id": "01900000-0000-7000-8000-000000000081",
+      "queue_position": 1,
+      "state": "pending",
+      "kind": "direct_reply",
+      "role": "user",
+      "delivery_mode": "queue",
+      "origin": "person",
+      "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "speaker": {
+        "user_public_id": "01900000-0000-7000-8000-0000000000a1",
+        "handle": "ada",
+        "kind": "human",
+        "display_name": "Ada"
+      },
+      "context_mode": "raw",
+      "instructions": "Be brief.",
+      "lock_version": 0,
+      "created_at": "2026-08-31T00:00:05Z"
+    }
+  },
+  "valid_input_fixture": {
+    "input": {
+      "public_id": "01900000-0000-7000-8000-000000000080",
+      "queue_position": 0,
+      "state": "pending",
+      "kind": "direct_reply",
+      "role": "user",
+      "delivery_mode": "queue",
+      "origin": "person",
+      "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "speaker": {
+        "user_public_id": "01900000-0000-7000-8000-0000000000a1",
+        "handle": "ada",
+        "kind": "human",
+        "display_name": "Ada"
+      },
+      "context_mode": "assembled",
+      "context_options": {
+        "history": {
+          "max_entries": 20
+        },
+        "inline": [
+          {
+            "slot": "character",
+            "text": "For this turn: be terse."
+          }
+        ]
+      },
+      "tool_names": [
+        "read_file"
+      ],
+      "approval_mode": "ask",
+      "text": "What is next?",
+      "attachments": [
+        {
+          "public_id": "01900000-0000-7000-8000-0000000000c1",
+          "filename": "diagram.png",
+          "content_type": "image/png",
+          "byte_size": 184213
+        }
+      ],
+      "lock_version": 0,
+      "created_at": "2026-08-31T00:00:04Z"
+    }
+  },
+  "valid_callback_input_fixture": {
+    "input": {
+      "public_id": "01900000-0000-7000-8000-000000000080",
+      "queue_position": 0,
+      "state": "pending",
+      "kind": "direct_reply",
+      "role": "user",
+      "delivery_mode": "queue",
+      "origin": "child",
+      "sender_conversation_public_id": "01900000-0000-7000-8000-000000000110",
+      "callback_result": {
+        "conversation_public_id": "01900000-0000-7000-8000-000000000110",
+        "input_public_id": "01900000-0000-7000-8000-000000000111",
+        "turn_public_id": "01900000-0000-7000-8000-000000000112",
+        "variant_public_id": "01900000-0000-7000-8000-000000000113",
+        "requester_speaker_public_id": "01900000-0000-7000-8000-0000000000a1"
+      },
+      "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "speaker": {
+        "user_public_id": "01900000-0000-7000-8000-0000000000a1",
+        "handle": "ada",
+        "kind": "human",
+        "display_name": "Ada"
+      },
+      "context_mode": "assembled",
+      "context_options": {
+        "history": {
+          "max_entries": 20
+        },
+        "inline": [
+          {
+            "slot": "character",
+            "text": "For this turn: be terse."
+          }
+        ]
+      },
+      "tool_names": [
+        "read_file"
+      ],
+      "approval_mode": "ask",
+      "text": "What is next?",
+      "attachments": [
+        {
+          "public_id": "01900000-0000-7000-8000-0000000000c1",
+          "filename": "diagram.png",
+          "content_type": "image/png",
+          "byte_size": 184213
+        }
+      ],
+      "lock_version": 0,
+      "created_at": "2026-08-31T00:00:04Z"
+    }
+  },
+  "valid_callback_turn_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000074",
+    "input_public_id": "01900000-0000-7000-8000-000000000114",
+    "callback_sources": [
+      {
+        "input_public_id": "01900000-0000-7000-8000-000000000114",
+        "origin": "child",
+        "sender_conversation_public_id": "01900000-0000-7000-8000-000000000110",
+        "sender_run_public_id": "01900000-0000-7000-8000-000000000115",
+        "sender_task_key": "01900000-0000-7000-8000-000000000116",
+        "result": {
+          "conversation_public_id": "01900000-0000-7000-8000-000000000110",
+          "input_public_id": "01900000-0000-7000-8000-000000000111",
+          "turn_public_id": "01900000-0000-7000-8000-000000000112",
+          "variant_public_id": "01900000-0000-7000-8000-000000000113",
+          "requester_speaker_public_id": "01900000-0000-7000-8000-0000000000a1"
+        }
+      }
+    ],
+    "position": 6,
+    "kind": "direct_reply",
+    "role": "assistant",
+    "status": "completed",
+    "visibility": "visible",
+    "inherited": false,
+    "origin": "child",
+    "sender_conversation_public_id": "01900000-0000-7000-8000-000000000110",
+    "sender_run_public_id": "01900000-0000-7000-8000-000000000115",
+    "sender_task_key": "01900000-0000-7000-8000-000000000116",
+    "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+    "speaker": {
+      "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "handle": "lark",
+      "kind": "agent",
+      "display_name": "Lark"
+    },
+    "active_variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "run",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "content": "The independent work is complete.",
+      "memory_context": null
+    },
+    "created_at": "2026-10-02T00:00:00Z"
+  },
+  "valid_callback_batch_turn_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000074",
+    "input_public_id": "01900000-0000-7000-8000-000000000124",
+    "callback_sources": [
+      {
+        "input_public_id": "01900000-0000-7000-8000-000000000114",
+        "origin": "child",
+        "sender_conversation_public_id": "01900000-0000-7000-8000-000000000110",
+        "sender_run_public_id": "01900000-0000-7000-8000-000000000115",
+        "sender_task_key": "01900000-0000-7000-8000-000000000116",
+        "result": {
+          "conversation_public_id": "01900000-0000-7000-8000-000000000110",
+          "input_public_id": "01900000-0000-7000-8000-000000000111",
+          "turn_public_id": "01900000-0000-7000-8000-000000000112",
+          "variant_public_id": "01900000-0000-7000-8000-000000000113",
+          "requester_speaker_public_id": "01900000-0000-7000-8000-0000000000a1"
+        }
+      },
+      {
+        "input_public_id": "01900000-0000-7000-8000-000000000124",
+        "origin": "child",
+        "sender_conversation_public_id": "01900000-0000-7000-8000-000000000120",
+        "sender_run_public_id": "01900000-0000-7000-8000-000000000125",
+        "sender_task_key": "01900000-0000-7000-8000-000000000126",
+        "result": {
+          "conversation_public_id": "01900000-0000-7000-8000-000000000120",
+          "input_public_id": "01900000-0000-7000-8000-000000000121",
+          "turn_public_id": "01900000-0000-7000-8000-000000000122",
+          "variant_public_id": "01900000-0000-7000-8000-000000000123",
+          "requester_speaker_public_id": "01900000-0000-7000-8000-0000000000a1"
+        }
+      }
+    ],
+    "position": 6,
+    "kind": "direct_reply",
+    "role": "assistant",
+    "status": "completed",
+    "visibility": "visible",
+    "inherited": false,
+    "origin": "child",
+    "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+    "speaker": {
+      "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "handle": "lark",
+      "kind": "agent",
+      "display_name": "Lark"
+    },
+    "active_variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "run",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "content": "The independent work is complete.",
+      "memory_context": null
+    },
+    "created_at": "2026-10-02T00:00:00Z"
+  },
+  "valid_stamped_input_fixture": {
+    "input": {
+      "public_id": "01900000-0000-7000-8000-000000000082",
+      "queue_position": 2,
+      "state": "blocked",
+      "kind": "message",
+      "role": "user",
+      "delivery_mode": "queue",
+      "origin": "agent",
+      "sender_conversation_public_id": "01900000-0000-7000-8000-000000000072",
+      "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "speaker": {
+        "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+        "handle": "lark",
+        "kind": "agent",
+        "display_name": "Lark"
+      },
+      "context_mode": "assembled",
+      "blocked_reason": "run_held",
+      "text": "Review is done; one orphan method in lib/x.rb.",
+      "lock_version": 0,
+      "created_at": "2026-08-31T00:00:06Z"
+    }
+  },
+  "scheduled_input_fixture": {
+    "input": {
+      "public_id": "01900000-0000-7000-8000-000000000083",
+      "queue_position": 3,
+      "state": "pending",
+      "kind": "direct_reply",
+      "role": "user",
+      "delivery_mode": "queue",
+      "origin": "person",
+      "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "speaker": {
+        "user_public_id": "01900000-0000-7000-8000-0000000000a1",
+        "handle": "ada",
+        "kind": "human",
+        "display_name": "Ada"
+      },
+      "context_mode": "assembled",
+      "text": "Check the deploy.",
+      "lock_version": 0,
+      "created_at": "2026-08-31T00:00:07Z",
+      "deliver_at": "2026-08-31T00:20:00Z"
+    }
+  },
+  "valid_stamped_turn_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000073",
+    "callback_sources": [],
+    "position": 5,
+    "kind": "message",
+    "role": "user",
+    "status": "completed",
+    "visibility": "visible",
+    "inherited": false,
+    "origin": "agent",
+    "sender_conversation_public_id": "01900000-0000-7000-8000-000000000072",
+    "sender_run_public_id": "01900000-0000-7000-8000-0000000000b1",
+    "sender_task_key": "r2t0",
+    "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+    "speaker": {
+      "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "handle": "lark",
+      "kind": "agent",
+      "display_name": "Lark"
+    },
+    "created_at": "2026-08-31T00:00:14Z"
+  },
+  "valid_pruned_variant_fixture": {
+    "variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "run",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "content": "Here is the plan.",
+      "prompt_text": "What is next?",
+      "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+      "rounds": [],
+      "runner_effects": {
+        "status": "unavailable",
+        "runners": [],
+        "reason": "execution_details_pruned"
+      },
+      "details_pruned_at": "2026-09-29T00:00:00Z",
+      "memory_context": null,
+      "active": true
+    }
+  },
+  "expired_request_error_fixture": {
+    "status": 410,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "execution_details_pruned",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "valid_attached_variant_fixture": {
+    "variant": {
+      "public_id": "01900000-0000-7000-8000-000000000093",
+      "source": "inference",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "The diagram shows two services.",
+      "content": "The diagram shows two services.",
+      "attachments": [
+        {
+          "public_id": "01900000-0000-7000-8000-0000000000c1",
+          "filename": "diagram.png",
+          "content_type": "image/png",
+          "byte_size": 184213
+        }
+      ],
+      "memory_context": null,
+      "active": true
+    }
+  },
+  "valid_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "conversation_busy",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "valid_variants_fixture": {
+    "variants": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000091",
+        "source": "run",
+        "status": "completed",
+        "model": {
+          "provider_id": "dev",
+          "model_ref": "text",
+          "reasoning_effort": "medium",
+          "reasoning_enabled": true
+        },
+        "content_preview": "Here is the plan.",
+        "content": "Here is the plan.",
+        "prompt_text": "What is next?",
+        "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+        "rounds": [
+          {
+            "task_key": "r1",
+            "status": "completed",
+            "visibility": "visible",
+            "text_preview": "Here is the plan.",
+            "text_bytes": 17,
+            "usage": {
+              "input_tokens": 812,
+              "output_tokens": 40,
+              "total_tokens": 852
+            },
+            "started_at": "2026-08-31T00:00:02Z",
+            "completed_at": "2026-08-31T00:00:11Z"
+          }
+        ],
+        "runner_effects": {
+          "status": "touched",
+          "runners": [
+            {
+              "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+              "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+              "task_key": "r2t0",
+              "checkpoint": {
+                "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+                "store": "3f0c9d2a7b1e5c68"
+              }
+            }
+          ]
+        },
+        "memory_context": null,
+        "active": true
+      }
+    ],
+    "turn": {
+      "public_id": "01900000-0000-7000-8000-000000000071",
+      "inherited": false
+    }
+  },
+  "valid_variant_fixture": {
+    "variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "run",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "content": "Here is the plan.",
+      "prompt_text": "What is next?",
+      "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+      "rounds": [
+        {
+          "task_key": "r1",
+          "status": "completed",
+          "visibility": "visible",
+          "text_preview": "Here is the plan.",
+          "text_bytes": 17,
+          "usage": {
+            "input_tokens": 812,
+            "output_tokens": 40,
+            "total_tokens": 852
+          },
+          "started_at": "2026-08-31T00:00:02Z",
+          "completed_at": "2026-08-31T00:00:11Z"
+        }
+      ],
+      "runner_effects": {
+        "status": "touched",
+        "runners": [
+          {
+            "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+            "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+            "task_key": "r2t0",
+            "checkpoint": {
+              "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+              "store": "3f0c9d2a7b1e5c68"
+            }
+          }
+        ]
+      },
+      "memory_context": null,
+      "active": true
+    }
+  },
+  "bound_memory_variant_fixture": {
+    "variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "run",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "memory_context": {
+        "bindings": [
+          {
+            "name": "conversation",
+            "scope": "conversation",
+            "access": "read_write"
+          },
+          {
+            "name": "group",
+            "scope": "conversation",
+            "access": "read",
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072"
+          }
+        ]
+      },
+      "active": true
+    }
+  },
+  "disabled_memory_variant_fixture": {
+    "variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "run",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "memory_context": {
+        "bindings": []
+      },
+      "active": true
+    }
+  },
+  "memory_context_request": {
+    "memory_context": {
+      "bindings": [
+        {
+          "name": "conversation",
+          "scope": "conversation",
+          "access": "read_write"
+        },
+        {
+          "name": "group",
+          "scope": "conversation",
+          "access": "read",
+          "conversation_public_id": "01900000-0000-7000-8000-000000000072"
+        }
+      ]
+    }
+  },
+  "memory_context_disabled_request": {
+    "memory_context": {
+      "bindings": []
+    }
+  },
+  "memory_context_default_request": {
+    "memory_context": null
+  },
+  "access_levels": [
+    "full",
+    "none",
+    "read"
+  ],
+  "valid_access_request": {
+    "access": {
+      "default": "none",
+      "entries": [
+        {
+          "user_public_id": "01900000-0000-7000-8000-000000000004",
+          "level": "full"
+        }
+      ]
+    }
+  },
+  "valid_request_fixture": {
+    "request": {
+      "entries": [
+        {
+          "role": "system",
+          "parts": [
+            {
+              "type": "text",
+              "text": "You are in Shared with Ada."
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "type": "text",
+              "text": "What is next?"
+            }
+          ]
+        }
+      ],
+      "request_options": {
+        "temperature": 0.2
+      }
+    }
+  },
+  "valid_regeneration_fixture": {
+    "turn": {
+      "public_id": "01900000-0000-7000-8000-000000000071",
+      "status": "running"
+    },
+    "variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "inference",
+      "status": "running",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "prompt_text": "What is next?",
+      "memory_context": null,
+      "active": false
+    }
+  },
+  "valid_run_backed_regeneration_fixture": {
+    "turn": {
+      "public_id": "01900000-0000-7000-8000-000000000071",
+      "status": "running"
+    },
+    "variant": {
+      "public_id": "01900000-0000-7000-8000-000000000092",
+      "source": "run",
+      "status": "running",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "prompt_text": "What is next?",
+      "run_public_id": "01900000-0000-7000-8000-0000000000b2",
+      "rounds": [
+        {
+          "task_key": "r1",
+          "status": "waiting",
+          "visibility": "visible"
+        }
+      ],
+      "runner_effects": {
+        "status": "untouched",
+        "runners": []
+      },
+      "memory_context": null,
+      "active": false
+    }
+  },
+  "valid_fork_fixture": {
+    "conversation": {
+      "public_id": "01900000-0000-7000-8000-000000000070",
+      "title": "Planning",
+      "answering_user_public_id": "01900000-0000-7000-8000-000000000003",
+      "archived_at": null,
+      "billing_subject": null,
+      "parent": null,
+      "forked_from_turn_public_id": null,
+      "forked_from_variant_public_id": null,
+      "side": false,
+      "active_turn_public_id": "01900000-0000-7000-8000-000000000071",
+      "context_revision": 4,
+      "last_activity_at": "2026-08-31T00:00:12Z",
+      "created_at": "2026-08-31T00:00:00Z",
+      "updated_at": "2026-08-31T00:00:12Z",
+      "metadata": {
+        "topic": "planning"
+      },
+      "memory_context": null,
+      "input_queue": {
+        "limit": 32,
+        "held": 1
+      },
+      "latest_event_cursor": "Y3ZlaS03",
+      "default_runner": null,
+      "context": {
+        "used_tokens": 3120,
+        "input_tokens": 2900,
+        "output_tokens": 220,
+        "cache_read_tokens": 2100,
+        "window_tokens": 128000,
+        "used_percent": 2.4,
+        "as_of_model": {
+          "provider_id": "dev",
+          "model_ref": "text"
+        }
+      },
+      "usage_summary": {
+        "request_count": 5,
+        "input_tokens": 8000,
+        "cache_read_tokens": 5000,
+        "uncached_input_tokens": 3000,
+        "cache_creation_tokens": 0,
+        "cache_hit_rate": 0.625,
+        "output_tokens": 900,
+        "reasoning_tokens": 200,
+        "total_tokens": 8900,
+        "cost_amount": "0.00485",
+        "cost_unit": "USD",
+        "cost_complete": false
+      },
+      "access": {
+        "default": "read",
+        "entries": [
+          {
+            "user_public_id": "01900000-0000-7000-8000-000000000004",
+            "handle": "reviewer",
+            "kind": "human",
+            "display_name": "Reviewer",
+            "level": "full"
+          }
+        ]
+      }
+    },
+    "runner_effects": {
+      "status": "touched",
+      "runners": [
+        {
+          "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+          "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+          "task_key": "r2t0",
+          "checkpoint": {
+            "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+            "store": "3f0c9d2a7b1e5c68"
+          }
+        }
+      ]
+    }
+  },
+  "valid_events_fixture": {
+    "events": [
+      {
+        "public_id": "01900000-0000-7000-8000-0000000000a1",
+        "sequence": 7,
+        "cursor": "Y3ZlaS03",
+        "type": "turn_status",
+        "resource": {
+          "type": "conversation",
+          "public_id": "01900000-0000-7000-8000-000000000070"
+        },
+        "occurred_at": "2026-08-31T00:00:12.000Z",
+        "payload": {
+          "turn_public_id": "01900000-0000-7000-8000-000000000071",
+          "turn_kind": "direct_reply",
+          "variant_public_id": "01900000-0000-7000-8000-000000000091",
+          "status": "completed",
+          "variant_status": "completed"
+        }
+      }
+    ],
+    "pagination": {
+      "next_after": "Y3ZlaS0x",
+      "watermark": 7
+    }
+  },
+  "valid_estimate_fixture": {
+    "context_estimate": {
+      "input_tokens": 812,
+      "tokenizer_exact": true,
+      "catalog_input_token_limit": 128000,
+      "advisory_input_token_limit": 100000,
+      "message_count": 5,
+      "history": {
+        "selected": 4,
+        "skipped": 12,
+        "skipped_reason": "budget_exceeded",
+        "compacted": 9
+      }
+    }
+  },
+  "valid_rendered_estimate_fixture": {
+    "context_estimate": {
+      "input_tokens": 812,
+      "tokenizer_exact": true,
+      "catalog_input_token_limit": 128000,
+      "advisory_input_token_limit": 100000,
+      "message_count": 2,
+      "history": {
+        "selected": 4,
+        "skipped": 12,
+        "skipped_reason": "budget_exceeded",
+        "compacted": 9
+      },
+      "mechanism": "assembly",
+      "entries": [
+        {
+          "role": "system",
+          "parts": [
+            {
+              "type": "text",
+              "text": "You are the room's narrator."
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "type": "text",
+              "text": "first\n\nand this question"
+            }
+          ]
+        }
+      ],
+      "storage": {
+        "bytes": 158,
+        "bound": 1048576,
+        "within_bound": true
+      },
+      "blocks": [
+        {
+          "block": "slot:system_prompt",
+          "index": 0,
+          "type": "slot",
+          "role": "system",
+          "state": "selected",
+          "tokens": 6,
+          "allocated_tokens": 6
+        },
+        {
+          "block": "memory",
+          "index": 1,
+          "type": "memory",
+          "role": null,
+          "state": "empty",
+          "tokens": 0,
+          "allocated_tokens": 0
+        },
+        {
+          "block": "skills",
+          "index": 2,
+          "type": "skills",
+          "role": null,
+          "state": "empty",
+          "tokens": 0,
+          "allocated_tokens": 0
+        },
+        {
+          "block": "history",
+          "index": 3,
+          "type": "history",
+          "role": "user",
+          "state": "selected",
+          "tokens": 3,
+          "allocated_tokens": 99991
+        },
+        {
+          "block": "input",
+          "index": 4,
+          "type": "input",
+          "role": "user",
+          "state": "selected",
+          "tokens": 4,
+          "allocated_tokens": 4
+        }
+      ],
+      "memory": {
+        "included": 0,
+        "omitted": 0
+      },
+      "slots": {
+        "system_prompt": 4
+      }
+    }
+  },
+  "valid_transcript_delta_fixture": {
+    "event": {
+      "type": "text_delta",
+      "turn_public_id": "01900000-0000-7000-8000-000000000071",
+      "variant_public_id": "01900000-0000-7000-8000-000000000091",
+      "text": "Here is "
+    }
+  },
+  "valid_transcript_settled_fixture": {
+    "event": {
+      "type": "turn",
+      "turn_public_id": "01900000-0000-7000-8000-000000000071",
+      "turn": {
+        "public_id": "01900000-0000-7000-8000-000000000071",
+        "callback_sources": [],
+        "position": 4,
+        "kind": "direct_reply",
+        "role": "assistant",
+        "status": "completed",
+        "visibility": "visible",
+        "inherited": false,
+        "origin": "person",
+        "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+        "speaker": {
+          "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+          "handle": "lark",
+          "kind": "agent",
+          "display_name": "Lark"
+        },
+        "active_variant": {
+          "public_id": "01900000-0000-7000-8000-000000000091",
+          "source": "run",
+          "status": "completed",
+          "model": {
+            "provider_id": "dev",
+            "model_ref": "text",
+            "reasoning_effort": "medium",
+            "reasoning_enabled": true
+          },
+          "content_preview": "Here is the plan.",
+          "content": "Here is the plan.",
+          "prompt_text": "What is next?",
+          "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+          "rounds": [
+            {
+              "task_key": "r1",
+              "status": "completed",
+              "visibility": "visible",
+              "text_preview": "Here is the plan.",
+              "text_bytes": 17,
+              "usage": {
+                "input_tokens": 812,
+                "output_tokens": 40,
+                "total_tokens": 852
+              },
+              "started_at": "2026-08-31T00:00:02Z",
+              "completed_at": "2026-08-31T00:00:11Z"
+            }
+          ],
+          "runner_effects": {
+            "status": "touched",
+            "runners": [
+              {
+                "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+                "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+                "task_key": "r2t0",
+                "checkpoint": {
+                  "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+                  "store": "3f0c9d2a7b1e5c68"
+                }
+              }
+            ]
+          },
+          "memory_context": null
+        },
+        "created_at": "2026-08-31T00:00:12Z"
+      }
+    }
+  },
+  "valid_round_started_frame_fixture": {
+    "frame": {
+      "type": "round_started",
+      "run_public_id": "01900000-0000-7000-8000-000000000031",
+      "task_key": "r3",
+      "mainline": true,
+      "attempt": 1,
+      "model": "dev/mock-text",
+      "request_bytes": 41208,
+      "at": "2026-09-14T10:00:00.250Z"
+    }
+  },
+  "valid_step_started_frame_fixture": {
+    "frame": {
+      "type": "step_started",
+      "run_public_id": "01900000-0000-7000-8000-000000000031",
+      "task_key": "r4t0",
+      "tool_name": "read_file",
+      "status": "dispatched",
+      "at": "2026-09-14T10:00:00.250Z"
+    }
+  },
+  "valid_step_claimed_frame_fixture": {
+    "frame": {
+      "type": "step_claimed",
+      "run_public_id": "01900000-0000-7000-8000-000000000031",
+      "task_key": "r4t0",
+      "tool_name": "read_file",
+      "executor_public_id": "01900000-0000-7000-8000-000000000030",
+      "at": "2026-09-14T10:00:00.250Z"
+    }
+  },
+  "valid_realtime_subscription_fixture": {
+    "channel": "AgentAPI::V1::ConversationEventsChannel",
+    "workspace_id": "01900000-0000-7000-8000-000000000001",
+    "conversation_id": "01900000-0000-7000-8000-000000000070",
+    "items": "events"
+  },
+  "unknown_turn_kind_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000071",
+    "callback_sources": [],
+    "position": 4,
+    "kind": "future_kind",
+    "role": "assistant",
+    "status": "completed",
+    "visibility": "visible",
+    "inherited": false,
+    "origin": "person",
+    "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+    "speaker": {
+      "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "handle": "lark",
+      "kind": "agent",
+      "display_name": "Lark"
+    },
+    "active_variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "run",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "content": "Here is the plan.",
+      "prompt_text": "What is next?",
+      "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+      "rounds": [
+        {
+          "task_key": "r1",
+          "status": "completed",
+          "visibility": "visible",
+          "text_preview": "Here is the plan.",
+          "text_bytes": 17,
+          "usage": {
+            "input_tokens": 812,
+            "output_tokens": 40,
+            "total_tokens": 852
+          },
+          "started_at": "2026-08-31T00:00:02Z",
+          "completed_at": "2026-08-31T00:00:11Z"
+        }
+      ],
+      "runner_effects": {
+        "status": "touched",
+        "runners": [
+          {
+            "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+            "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+            "task_key": "r2t0",
+            "checkpoint": {
+              "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+              "store": "3f0c9d2a7b1e5c68"
+            }
+          }
+        ]
+      },
+      "memory_context": null
+    },
+    "created_at": "2026-08-31T00:00:12Z"
+  },
+  "unknown_status_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000071",
+    "callback_sources": [],
+    "position": 4,
+    "kind": "direct_reply",
+    "role": "assistant",
+    "status": "future_status",
+    "visibility": "visible",
+    "inherited": false,
+    "origin": "person",
+    "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+    "speaker": {
+      "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+      "handle": "lark",
+      "kind": "agent",
+      "display_name": "Lark"
+    },
+    "active_variant": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "source": "run",
+      "status": "completed",
+      "model": {
+        "provider_id": "dev",
+        "model_ref": "text",
+        "reasoning_effort": "medium",
+        "reasoning_enabled": true
+      },
+      "content_preview": "Here is the plan.",
+      "content": "Here is the plan.",
+      "prompt_text": "What is next?",
+      "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+      "rounds": [
+        {
+          "task_key": "r1",
+          "status": "completed",
+          "visibility": "visible",
+          "text_preview": "Here is the plan.",
+          "text_bytes": 17,
+          "usage": {
+            "input_tokens": 812,
+            "output_tokens": 40,
+            "total_tokens": 852
+          },
+          "started_at": "2026-08-31T00:00:02Z",
+          "completed_at": "2026-08-31T00:00:11Z"
+        }
+      ],
+      "runner_effects": {
+        "status": "touched",
+        "runners": [
+          {
+            "runner_executor_public_id": "019f0000-0000-7000-8000-000000000301",
+            "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+            "task_key": "r2t0",
+            "checkpoint": {
+              "hash": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+              "store": "3f0c9d2a7b1e5c68"
+            }
+          }
+        ]
+      },
+      "memory_context": null
+    },
+    "created_at": "2026-08-31T00:00:12Z"
+  },
+  "unknown_event_type_fixture": {
+    "public_id": "01900000-0000-7000-8000-0000000000a1",
+    "sequence": 7,
+    "cursor": "Y3ZlaS03",
+    "type": "future_item",
+    "resource": {
+      "type": "conversation",
+      "public_id": "01900000-0000-7000-8000-000000000070"
+    },
+    "occurred_at": "2026-08-31T00:00:12.000Z",
+    "payload": {
+      "turn_public_id": "01900000-0000-7000-8000-000000000071",
+      "turn_kind": "direct_reply",
+      "variant_public_id": "01900000-0000-7000-8000-000000000091",
+      "status": "completed",
+      "variant_status": "completed"
+    }
+  },
+  "unknown_transcript_item_fixture": {
+    "type": "future_delta",
+    "turn_public_id": "01900000-0000-7000-8000-000000000071",
+    "variant_public_id": "01900000-0000-7000-8000-000000000091",
+    "future_field": "carried through"
+  },
+  "unknown_realtime_items_fixture": {
+    "channel": "AgentAPI::V1::ConversationEventsChannel",
+    "workspace_id": "01900000-0000-7000-8000-000000000001",
+    "conversation_id": "01900000-0000-7000-8000-000000000070",
+    "items": "future_feed"
+  }
+}

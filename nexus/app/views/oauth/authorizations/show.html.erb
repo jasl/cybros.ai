@@ -1,0 +1,33 @@
+<% content_for :title, "Sign in to your application" %>
+<% turbo_page_requires_reload %>
+<div class="space-y-6">
+  <header class="space-y-2">
+    <h1 class="text-2xl font-semibold">Sign in to your application</h1>
+    <p>Continue as <strong><%= Current.user.display_name %></strong>.</p>
+  </header>
+  <p>The application can use your personal Nexus settings. If you are an administrator, it can also manage this installation on your behalf.</p>
+  <% if @authorization_request.connection_mode == "connect" %>
+    <p>This also connects the application to your Agent or Runner. Reconnecting replaces its previous credentials; work already running on that connection may need attention.</p>
+  <% else %>
+    <p>Your existing Agent and Runner connection will keep running.</p>
+  <% end %>
+  <%= form_with url: oauth_authorize_path, data: { turbo: false }, class: "space-y-4" do %>
+    <% @authorization_request.form_attributes.each do |name, value| %>
+      <%= hidden_field_tag name, value %>
+    <% end %>
+    <%= hidden_field_tag :return_to, request.fullpath %>
+    <% if @expected_live_runner %>
+      <%= hidden_field_tag :expected_live_runner, @expected_live_runner %>
+      <% if @existing_runner.nil? && Current.user.admin? %>
+        <label class="label gap-3">
+          <%= check_box_tag :account_wide, "1", false, class: "checkbox checkbox-sm" %>
+          <span>Make this Runner available to this installation's Agents</span>
+        </label>
+      <% end %>
+    <% end %>
+    <div class="flex flex-wrap justify-end gap-3">
+      <button type="submit" name="decision" value="deny" class="btn btn-ghost">Cancel</button>
+      <button type="submit" name="decision" value="allow" class="btn btn-primary">Continue</button>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,69 @@
+{
+  "task_read": {
+    "id": "gen-fake",
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 6000,
+      "completion_tokens": 400,
+      "total_tokens": 6400,
+      "cost": 0.0021,
+      "is_byok": false
+    },
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "tool_calls",
+        "message": {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "call_fake",
+              "type": "function",
+              "function": {
+                "name": "ls",
+                "arguments": "{}"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "task": {
+    "id": "gen-fake",
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 6000,
+      "completion_tokens": 400,
+      "total_tokens": 6400,
+      "cost": 0.0021,
+      "is_byok": false
+    },
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "tool_calls",
+        "message": {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "call_fake",
+              "type": "function",
+              "function": {
+                "name": "delegate_task",
+                "arguments": "{\"prompt\":\"Review lib/ for N+1 queries. Answer file:line and a fix, or none.\"}"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "spend_usage": {
+    "prompt_tokens": 6000,
+    "completion_tokens": 2000000,
+    "total_tokens": 2006000
+  }
+}

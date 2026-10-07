@@ -1,0 +1,13 @@
+# THE CLAUDE PRESET ROW: Claude Code's spellings, kept for their
+# familiarity and applied under `adaptations: auto`, never read on the bench. It carries no text.
+format: 1
+row: claude
+models:
+  - claude-opus-5-5
+  - claude-fable-5
+  - claude-fable-5-1
+  - claude-sonnet-5
+tool_style: [claude]
+tool_descriptions: []
+summarizer_prompt: null
+lead_hints: []

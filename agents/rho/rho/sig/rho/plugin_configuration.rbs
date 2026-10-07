@@ -1,0 +1,38 @@
+module Rho
+  module Extensions
+    class Catalog
+      class Descriptor < ::Data
+        attr_reader id: String
+        attr_reader name: String
+        attr_reader description: String
+        attr_reader version: Integer
+        attr_reader schema: Configuration::Schema
+        attr_reader default_enabled: bool
+        attr_reader modes: Array[String]
+        attr_reader requires: Array[String]
+        attr_reader restart_only: bool
+        attr_reader source: Hash[String, untyped]
+        attr_reader directory: String
+        attr_reader migration_file: String?
+        def self.from_h: (Hash[String, untyped] row, source: Hash[String, untyped], directory: String) -> instance
+        def migrate: (Hash[String, untyped] configuration, from: Integer) -> Configuration::Resolved
+      end
+      attr_reader descriptors: Hash[String, Descriptor]
+      attr_reader failures: Hash[String, String]
+      def initialize: (?home: Home?, ?entries: Hash[String, untyped]) -> void
+      def fetch: (String id) -> Descriptor
+    end
+
+    module LifecycleHooks
+      NAME: String
+      def self.register: (untyped api) -> void
+    end
+
+    module Manager
+      def self.register: (Api api) -> untyped
+      def self.document: (home: Home, config: config, loaded: Loaded) -> Hash[Symbol, untyped]
+      def self.runtime_source: (Catalog::Descriptor descriptor) -> String?
+      def self.save: (Daemon::Context ctx, String id, **untyped options) -> untyped
+    end
+  end
+end

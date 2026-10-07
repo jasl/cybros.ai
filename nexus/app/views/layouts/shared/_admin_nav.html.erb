@@ -1,0 +1,40 @@
+<ul class="menu w-full gap-0.5 px-0">
+  <li class="mb-2">
+    <%= link_to root_path, class: "gap-2.5 text-base-content/70" do %>
+      <span class="iconify lucide--arrow-left size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.back_to_console") %>
+    <% end %>
+  </li>
+  <li>
+    <% providers_current = controller_path.start_with?("admin/model_providers") %>
+    <%= link_to admin_model_providers_path, class: class_names("gap-2.5", "menu-active": providers_current), aria: { current: ("page" if providers_current) } do %>
+      <span class="iconify lucide--plug-zap size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.model_providers") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to admin_cost_unit_path, class: class_names("gap-2.5", "menu-active": current_page?(admin_cost_unit_path)), aria: { current: ("page" if current_page?(admin_cost_unit_path)) } do %>
+      <span class="iconify lucide--circle-dollar-sign size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.cost_unit") %>
+    <% end %>
+  </li>
+  <li>
+    <% members_current = controller_path == "admin/users" || controller_path.start_with?("admin/users/") %>
+    <%= link_to admin_users_path, class: class_names("gap-2.5", "menu-active": members_current), aria: { current: ("page" if members_current) } do %>
+      <span class="iconify lucide--users size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.members") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to admin_invitations_path, class: class_names("gap-2.5", "menu-active": current_page?(admin_invitations_path)), aria: { current: ("page" if current_page?(admin_invitations_path)) } do %>
+      <span class="iconify lucide--mail-plus size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.invitations") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to admin_retention_path, class: class_names("gap-2.5", "menu-active": current_page?(admin_retention_path)), aria: { current: ("page" if current_page?(admin_retention_path)) } do %>
+      <span class="iconify lucide--archive size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.retention") %>
+    <% end %>
+  </li>
+</ul>

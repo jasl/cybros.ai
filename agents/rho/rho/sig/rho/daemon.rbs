@@ -1,0 +1,588 @@
+module Rho
+  class Daemon
+    ANNOUNCEMENT_VERSION: Integer
+    LOOPBACK: String
+    TRANSPORT_ASSERTIONS: Array[Symbol]
+    WILDCARD_BINDS: Array[String]
+    LOCAL_BEARER_PREFIX: String
+    STOP_CONTROL_DRAIN_DEADLINE: Integer
+
+    attr_reader home: Home
+    attr_reader endpoint: String?
+    attr_reader bearer: String?
+    attr_reader host: Extensions::Host
+    attr_reader context: Context
+    attr_reader routes: Routes
+    attr_reader lineage: Lineage
+    attr_reader wire: Wire
+    attr_reader ceremony: Ceremony
+    attr_reader maintenance: Maintenance
+    attr_reader host_followers: HostFollowers?
+    attr_reader executor_plane: ExecutorPlane
+    def phase: () -> Symbol
+    def connection: () -> Connection?
+    def identity: () -> Identity?
+    def mode: () -> String
+    def runner_mode?: () -> bool
+
+    # The executor plane's two verbs, out of HostFollowers: an address's
+    # announcement and its nudge stream, for every mode.
+    class ExecutorPlane
+      EXECUTOR_INBOX_CHANNEL: String
+      WORK_AVAILABLE: String
+      WORK_CANCELED: String
+      TOOL_CALL_KIND: String
+      ASK_KIND: String
+      APPROVAL_KIND: String
+      ADDRESSES: Hash[Symbol, String]
+      RECONNECT_SECONDS: Float
+
+      def initialize: (wire: Wire, lineage: Lineage, context: Context, log: untyped, ?booted_at: String?) -> void
+      def announced: () -> Hash[String, Integer?]
+      def announce_tools: (
+        untyped credential, registry: Rho::Runner::Extensions::Registry, environment: Hash[String, untyped]?,
+        ?documents: Array[Hash[String, untyped]]?, ?slot: Symbol, ?extras: Array[Hash[String, untyped]]
+      ) -> void
+      def environment_document: (Rho::Runner::Extensions::Registry registry) -> Hash[String, untyped]
+      def documents: (Rho::Runner::Extensions::Registry registry) -> Array[Hash[String, untyped]]
+      def nudge_stream: (untyped about, ?Symbol slot) -> void
+    end
+
+    # The one owner of the transport, read at call time by every collaborator.
+    class Wire
+      attr_accessor api_transport: untyped
+      def initialize: (base_url: String, ?api_transport: untyped) -> void
+      def client: (?untyped credential, ?credential_provider: untyped) -> CybrosAgent::Client
+      def executor_client: (?untyped credential, ?credential_provider: untyped) -> CybrosAgent::ExecutorClient
+    end
+
+    # Every fact that moves together when a credential lineage begins, rotates
+    # or dies, behind the one non-leaf lock in the core.
+    class Lineage
+      AUTHORITY_OBSERVATION_INTERVAL: Integer
+      VERIFY_WINDOW: Integer
+      LOST_REPORT: Hash[Symbol, untyped]
+      NOT_DURABLE: String
+      JOINABLE_PHASES: Array[Symbol]
+      SLOTS: Array[Symbol]
+      UNCHECKED: Object
+
+      class Workspace < ::Data
+        attr_reader state: String
+        attr_reader public_id: String?
+        attr_reader name: String?
+        attr_reader kind: String?
+        attr_reader code: String?
+        def self.pending: () -> instance
+        def self.adopted: (public_id: String, name: String?, ?kind: String) -> instance
+        def self.error: (code: String) -> instance
+        def adopted?: () -> bool
+        def document: () -> Hash[Symbol, untyped]
+      end
+
+      class Observation < ::Data
+        attr_reader about: untyped
+        attr_reader report: Hash[Symbol, untyped]
+        attr_reader measured_at: Time
+      end
+
+      class Retired < ::Data
+        attr_reader followers: Array[untyped]
+        attr_reader realtime: untyped
+        attr_reader executor_realtimes: Array[untyped]
+        attr_reader runners: Array[untyped]
+        def self.none: () -> instance
+        def clients: () -> Array[untyped]
+      end
+
+      class Adoption < ::Data
+        attr_reader changed: bool
+        attr_reader from: Symbol
+        attr_reader retired: Retired
+      end
+
+      class Joined < ::Data
+        attr_reader connection: untyped
+      end
+
+      class Slot < ::Data
+        attr_reader connection: untyped
+        attr_reader poller: Thread?
+        attr_reader last_cancel_succeeded: bool
+        attr_reader phase: Symbol
+        attr_reader bootstrapping: bool
+        attr_reader credentials: untyped
+      end
+
+      class Facts < ::Data
+        attr_reader state: String
+        attr_reader connection_document: Hash[String, untyped]?
+        attr_reader identity: untyped
+        attr_reader generation: Integer
+      end
+
+      class Snapshot < ::Data
+        attr_reader phase: Symbol
+        attr_reader credentials: untyped
+        attr_reader identity: untyped
+        attr_reader lost: bool
+        attr_reader observation: Observation?
+        attr_reader workspace: Workspace
+        attr_reader connection_document: Hash[String, untyped]?
+        attr_reader connection_error: String?
+      end
+
+      # The read projection: pure functions over one snapshot.
+      module Status
+        def self?.document: (Snapshot snapshot) -> Hash[Symbol, untyped]
+        def self?.identity_facts: (untyped identity, ?untyped observation) -> Hash[Symbol, untyped]
+        def self?.authority: (Snapshot snapshot) -> Hash[Symbol, untyped]?
+        def self?.signed_state: (Hash[Symbol, untyped] report) -> String
+        def self?.with_measured_at: (Hash[Symbol, untyped] authority, Observation? observation) -> Hash[Symbol, untyped]
+      end
+
+      def initialize: (clock: ^() -> Time, realtime_factory: untyped) -> void
+      def phase: () -> Symbol
+      def stopping?: () -> bool
+      def bootstrapping?: () -> bool
+      def identity: () -> untyped
+      def credentials: () -> untyped
+      def workspace: () -> Workspace
+      def connection: () -> untyped
+      def followers: () -> Array[untyped]
+      def follower: (String public_id) -> untyped
+      def runner: (?Symbol slot) -> untyped
+      def runners: () -> Array[untyped]
+      def tool_env: (?Symbol slot) -> untyped
+      def realtime: () -> untyped
+      def executor_realtime: (?Symbol slot) -> untyped
+      def maintenance_running?: () -> bool
+      def holds?: (untyped about) -> bool
+      def current?: (untyped about) -> bool
+      def observation_fresh?: (untyped about) -> bool
+      def status_document: () -> Hash[Symbol, untyped]
+      def snapshot: () -> Snapshot
+      def member_plane_snapshot: () -> [Workspace, untyped]
+      def slot_snapshot: () -> Slot
+      def joinable: () -> untyped
+      def announcement_facts: () -> Facts
+      def adopt: (identity: untyped, credentials: untyped, ?authority_report: Hash[Symbol, untyped]?) -> Adoption
+      def adopt_lost: (identity: untyped, credentials: untyped, report: Hash[Symbol, untyped]) -> Adoption
+      def lose: (?about: untyped, ?unless_stopping: bool, ?report: Hash[Symbol, untyped]?) -> Adoption?
+      def commit_workspace: (untyped about, Workspace workspace) -> bool
+      def observe: (untyped about, Hash[Symbol, untyped] report) -> bool
+      def record_not_durable: (untyped about, unless_stopping: bool) -> bool
+      def record_connection_error: (String message) -> String
+      def request_probe: () -> void
+      def mark_verified: (Time now) -> untyped
+      def transition: (Symbol phase) -> Symbol
+      def begin_bootstrap: () -> bool
+      def finish_bootstrap: () -> bool
+      def claim_slot: (untyped candidate, ?expected: untyped) -> (Symbol | Joined)
+      def publish_pending: (untyped connection) { () -> void } -> Hash[String, untyped]
+      def release_slot: (untyped connection, ?canceled: bool) -> bool
+      def release_poller: (Thread thread) -> void
+      def realtime_for: (untyped about) -> untyped
+      def executor_realtime_for: (untyped about, ?slot: Symbol) -> untyped
+      def install_follower: (untyped about, untyped run) -> [untyped, bool]
+      def drop_follower: (String public_id) -> untyped
+      def rebind_runs: () -> Array[untyped]
+      def retire_runs: () -> Retired
+      def reserve_runner: (untyped about, ?slot: Symbol) -> bool
+      def release_runner: (untyped about, ?slot: Symbol) -> bool
+      def install_runner: (untyped about, untyped runner, untyped tool_env, ?slot: Symbol) -> bool
+      def take_runner: (untyped about, ?slot: Symbol) -> [untyped, untyped]?
+      def adopt_runner: (untyped about, identity: untyped, runner: untyped, ?authority_report: Hash[Symbol, untyped]?) -> bool
+      def lose_agent: (untyped about, ?unless_stopping: bool, ?report: Hash[Symbol, untyped]?) -> Retired?
+      def lose_runner: (untyped about, ?identity: untyped) -> Retired?
+      def admit: () -> bool
+      def release: () -> void
+      def begin_stop: () -> bool
+      def abort_stop: () -> bool
+      def quiesce: (deadline: Numeric) -> void
+      def maintenance_wait: (Numeric interval) -> [bool, untyped, bool]
+      def maintenance_done: () -> bool
+      def stop_maintenance: () -> void
+    end
+
+    # The device flow: /device/start, /device/cancel, the boot-time resume,
+    # the poller and the ceremony half of an orderly stop. No lock of its own.
+    class Ceremony
+      ACTIONABLE_KEYS: Array[String]
+      ACTIONABLE_WAIT: Integer
+      ACTIONABLE_POLL: Float
+      LOST_PLANE_STATES: Array[Symbol]
+      STOP_CEREMONY_DRAIN_DEADLINE: Integer
+
+      def initialize: (
+        lineage: Lineage, home: Home, device_flow: untyped, wire: Wire, clock: ^() -> Time,
+        display_name: String, log: untyped, maintenance: Maintenance,
+        announce: Proc, adopt: Proc, settle: Proc, lose: Proc, transition: Proc,
+        ?mode: String, ?adopt_runner: Proc, ?lose_runner: Proc
+      ) -> void
+      class LoginPlan < Data
+        attr_reader request: Symbol
+        attr_reader credentials: Credentials?
+        attr_reader identity: Identity?
+        def self.new: (request: Symbol, credentials: Credentials?, identity: Identity?) -> instance
+      end
+      def login_plan: () -> (LoginPlan | Refusal)
+      def complete_login: (LoginPlan plan) { () -> CybrosAgent::ApplicationOAuth::Credentials? } -> (CybrosAgent::ApplicationOAuth::Credentials | Refusal)?
+      def operator_credential: () -> String
+      def start: () -> untyped
+      def cancel: () -> untyped
+      def disconnect: (runner_only: bool) -> untyped
+      def resume_stored: () -> void
+      def prepare_for_stop: () -> void
+      def drain_poller: () -> void
+      def build_connection: (?request: Symbol?, ?existing: untyped, ?existing_identity: untyped) -> Connection
+    end
+
+    # Renewal and the authority probe on the one worker thread, started once
+    # by Daemon#start and ended only by stop.
+    class Maintenance
+      class Probe < ::Data
+        attr_reader about: untyped
+        attr_reader report: Hash[Symbol, untyped]
+        def self.new: (about: untyped, report: Hash[Symbol, untyped]) -> instance
+      end
+
+      RENEWAL_DRAIN_DEADLINE: Integer
+
+      def initialize: (
+        lineage: Lineage, home: Home, wire: Wire, clock: ^() -> Time, interval: Numeric,
+        log: untyped, announce: Proc, lose: Proc, member_credential: Proc,
+        on_workspace_adopted: Proc, spawn: Proc, ?mode: String, ?workspace: String?, ?workspace_selection: (^() -> String?)?, ?lose_runner: Proc,
+        ?sweep: Proc
+      ) -> void
+      def start: () -> Thread
+      def stop: () -> void
+      def running?: () -> bool
+      def run_once: (untyped about, verify: bool) -> untyped
+      def refresh_workspace: (untyped about) -> untyped
+      def renewal_event: (Symbol event, untyped about, ?unless_stopping: bool, ?lineage: Symbol) -> untyped
+      def authority_snapshot: (?about: untyped) -> Probe?
+    end
+
+    # The SDK-wrapping verbs: author, say, answer, lifecycle, list, follow,
+    # the run store and re-adoption; fires the two run hooks.
+    class HostFollowers
+      DELIVERY_MODES: Array[String]
+      SCHEDULE_FIELDS: Array[String]
+      MATERIALIZATION_WAIT: Integer
+      MATERIALIZATION_POLL: Float
+      COMPACTION_SUMMARY: String
+      APPROVAL_MODES: Array[String?]
+      ACCESS_DEFAULTS: Array[String?]
+
+      class Draft < ::Data
+        attr_reader body: Hash[String, untyped]
+        attr_reader environment: untyped
+        attr_reader lead: String
+        attr_reader notes: Hash[String, untyped]
+        attr_reader tools: Array[Hash[String, untyped]]
+        attr_reader steps: Array[untyped]?
+        def self.new: (body: Hash[String, untyped], environment: untyped,
+                       lead: String, notes: Hash[String, untyped], tools: Array[Hash[String, untyped]],
+                       ?steps: Array[untyped]?) -> instance
+      end
+
+      class ToolSelection < ::Data
+        attr_reader tools: Array[Hash[String, untyped]]
+        attr_reader tool_names: Array[String]?
+        attr_reader code_names: Array[String]
+        def self.new: (tools: Array[Hash[String, untyped]],
+                       tool_names: Array[String]?, code_names: Array[String]) -> instance
+      end
+
+      class Catalog < ::Data
+        attr_reader names: Array[String]
+        attr_reader wire_names: Hash[String, String]
+        attr_reader templates: Hash[String, String]
+        def self.new: (names: Array[String], templates: Hash[String, String], wire_names: Hash[String, String]) -> instance
+        def self.none: () -> instance
+      end
+
+      def initialize: (
+        lineage: Lineage, home: Home, config: config, wire: Wire, loaded: Extensions::Loaded,
+        log: untyped, context: Context, environments: Rho::Environments, ?clock: ^() -> Time,
+        ?sleeper: ^(Numeric seconds) -> untyped,
+        ?on_host_ended: (^((Host::Run | Host::Conversation) host) -> untyped)?
+      ) -> void
+      def register: (Extensions::Api api) -> untyped
+      def open: (untyped request, Context ctx) -> untyped
+      def say: (untyped request, Context ctx) -> untyped
+      def code_mode: (untyped request, Context ctx, ?write: bool) -> untyped
+      def stop: (untyped request, Context ctx) -> untyped
+      def compact: (untyped request, Context ctx) -> untyped
+      def remember: ((Host::Run | Host::Conversation) host, workspace: String, ?live: bool,
+                     ?notes: Hash[String, untyped]?, ?turn: untyped, ?run_public_id: untyped, ?model: String?,
+                     ?runner: untyped, ?answerer: untyped) -> void
+      def forget: ((Host::Run | Host::Conversation) host, ?retain_snapshot: bool) -> void
+      def notes: (String public_id) -> Hash[String, untyped]
+      def listed_followers: () -> Array[untyped]
+      def restore_policy: ((Host::Run | Host::Conversation) host, untyped hosted, ?live: bool, ?document: untyped) -> HostStore::Row?
+      def backing_run: (String public_id) -> String
+      def conversation_tool_names: (String public_id, untyped workspace, client: untyped, ?to: String?, ?tool_names: untyped) -> (Array[String]? | Refusal)
+      def conversation_model: (String public_id, untyped workspace) -> String?
+      def current_conversation_public_id: () -> String?
+      def followed: (String public_id) -> untyped
+      def host_of: (String public_id, untyped runs) -> (Host::Run | Host::Conversation)
+      # The declaration's refusal, beside
+      # `:declared` and `:unchanged`.
+      class Refused < ::Data
+        attr_reader code: String
+        def self.new: (code: String) -> instance
+      end
+
+      def declare_configuration: (untyped credential) -> untyped
+      def configure: (config: config, ?loaded: Extensions::Loaded) -> untyped
+      def revoke_grants: (untyped credential) -> Integer
+      def kernel_tool_configuration: (?untyped client) -> Hash[Symbol, Array[untyped]]
+      def adaptations: () -> Adaptations
+      def declared_models: () -> Hash[Symbol, String?]?
+      def lead_hints: (String? model) -> Array[String]
+      def model_facts: (untyped request, Context ctx) -> untyped
+      def readopt: (untyped credential, String? workspace_public_id, ?credential_provider: untyped) -> void
+
+      # The turn author's reading of the binding, mixed in.
+      module Bindings
+        class Surface < ::Data
+          attr_reader runner: String?
+          attr_reader remote: bool
+          attr_reader lead: String
+          attr_reader environment: untyped
+          attr_reader own_names: Array[String]
+          def self.new: (runner: String?, remote: bool, lead: String, environment: untyped,
+                         own_names: Array[String]) -> instance
+          def remote?: () -> bool
+        end
+
+        def remote_runners: () -> RemoteRunners
+        def remote_runner: (String? public_id, ?client: untyped) -> untyped
+        def learn_runner: (untyped document) -> untyped
+        def host_binding: (String public_id) -> Hash[Symbol, untyped]?
+        def host_bindings: () -> Array[Hash[Symbol, untyped]]
+        def host_workspace: (String public_id) -> String?
+        def declare_profile: () -> untyped
+        # The session grants: the list, the add under
+        # the mutex, the one rule list as it stands, the stop edge.
+        def grants: () -> Array[RunDeclaration::Grant]
+        def grant: (RunDeclaration::Grant grant, untyped client) -> untyped
+        def approval_rules: () -> Array[Hash[String, untyped]]
+        def revoke_grants_and_declare: (untyped client) -> Integer
+      end
+      include Bindings
+
+      # The named definitions' half of the declare edge, mixed in.
+      module NamedDefinitions
+        INSTANCE: String
+        STEWARD: String
+        NO_ROOT: String
+
+        class Plan < ::Data
+          attr_reader root: String?
+          attr_reader scan: Agents::Scan
+          attr_reader listing: Array[untyped]
+          attr_reader own: Hash[String, untyped]
+          attr_reader siblings: Array[untyped]
+          attr_reader derived: Array[Hash[Symbol, untyped]]
+          attr_reader stale: Array[String]
+          attr_reader kept: Array[untyped]
+          attr_reader digest: String?
+          def self.new: (root: String?, scan: Agents::Scan, listing: Array[untyped], own: Hash[String, untyped],
+                         siblings: Array[untyped], derived: Array[Hash[Symbol, untyped]], stale: Array[String],
+                         kept: Array[untyped], digest: String?) -> instance
+          def self.none: () -> instance
+        end
+
+        class Edge < ::Data
+          attr_reader plan: Plan
+          attr_reader declared: Array[String]
+          attr_reader removed: Array[String]
+          attr_reader failed: Array[String]
+          attr_reader rows: Array[Hash[Symbol, untyped]]
+          attr_reader answers: Hash[String, untyped]
+          attr_reader digest: String
+          def self.new: (plan: Plan, declared: Array[String], removed: Array[String], failed: Array[String],
+                         rows: Array[Hash[Symbol, untyped]], answers: Hash[String, untyped], digest: String) -> instance
+          def self.none: (Plan plan) -> instance
+          def skipped: () -> Array[Agents::Skipped]
+          def roster: () -> String?
+        end
+
+        def named_edge: () -> Edge?
+        def sync_named: (untyped client, ?publish: String?) -> (Edge | Refused)
+        def named_listing: (untyped client, String workspace_public_id) -> Hash[Symbol, untyped]
+        def remove_named: (untyped client, String workspace_public_id, String name) -> (Hash[Symbol, untyped] | Refusal)
+      end
+      include NamedDefinitions
+
+      # The side conversation, rho's bookkeeping over the kernel's side fork, mixed in.
+      module Sides
+        SIDE_NOTE: String
+        SIDE_TOOLS: Array[String]
+        READ_ONLY_SUBSET: Array[String]
+        SIDE_IDLE_TTL: Integer
+        SIDE_LEADS: Hash[String, String]
+        def side: (untyped request, Context ctx) -> untyped
+        def follow_attention: (HostFollower run, HostFollower::Attention attention, untyped runs, String? source_run_public_id, hosted: untyped) -> void
+        def sweep_sides: (Time now) -> Array[String]
+        def side_fields: ((Host::Run | Host::Conversation) host, HostStore::Row row, String text,
+                          mode: String, model: String, selection: ToolSelection, ?attachments: Array[String]?,
+                          ?schedule: Hash[Symbol, String], ?tool_names: untyped, ?approval_mode: String?) -> (Hash[Symbol, untyped] | Refusal)
+        def side_row?: (HostStore::Row row) -> bool
+        def touch_side: ((Host::Run | Host::Conversation) host, HostStore::Row row, untyped hosted) -> void
+      end
+      include Sides
+      def adopt_follower: ((Host::Run | Host::Conversation) host, untyped hosted,
+                      Hash[String, untyped] body, ?gate: untyped, ?runs: untyped,
+                      ?turn: String?, ?run_public_id: String?, ?about: untyped) -> untyped
+    end
+
+    # One shape for every refusal the control surface answers.
+    class Refusal < ::Data
+      attr_reader status: Integer
+      attr_reader code: String
+      attr_reader message: String
+      attr_reader extra: Hash[Symbol, untyped]
+
+      def self.new: (
+        status: Integer, code: String, message: String, ?extra: Hash[Symbol, untyped]
+      ) -> instance
+      def to_ary: () -> [Integer, Hash[Symbol, untyped]]
+      def to_a: () -> [Integer, Hash[Symbol, untyped]]
+      def self.malformed: (String message) -> instance
+      def self.parameter_missing: (untyped key) -> instance
+      def self.unauthorized: () -> instance
+      def self.stopping: () -> instance
+      def self.bootstrapping: () -> instance
+      def self.workspace_unavailable: (?Lineage::Workspace? workspace) -> instance
+      def self.principal_unknown: (String address, Array[String?] handles) -> instance
+      def self.executor_plane_unavailable: () -> instance
+      def self.member_plane_unavailable: () -> instance
+      def self.not_followed: (String public_id, lane: Symbol, ?hint: String?) -> instance
+      def self.from_api_error: (CybrosAgent::Api::Error error) -> instance
+      def self.extension_failed: (String extension, Exception error) -> instance
+    end
+
+    # The facade a route handler sees; its public surface is pinned by
+    # test/code_style/context_surface_test.rb.
+    class Context
+      def initialize: (
+        host: Extensions::Host, bearer: String, page: bool, lineage: Lineage, wire: Wire,
+        loaded: Extensions::Loaded, environment_store: EnvironmentStore,
+        endpoint: ^() -> String?, member_credential: (^(untyped) -> untyped)?, tool_env: ^() -> untyped,
+        host_followers: ^() -> HostFollowers?, spawn: untyped, repointed: ^() -> untyped, environments: ^() -> Rho::Environments,
+        ?executor_credential: (^(untyped) -> untyped)?, ?announcements: ^() -> Hash[String, Integer?], ?settings: Settings?,
+        ?refresh_extension: untyped, ?manage_packages: untyped
+      ) -> void
+      attr_reader bearer: String
+      def home: () -> Home
+      def log: () -> untyped
+      def clock: () -> ^() -> Time
+      def config: () -> config
+      def plugin_inventory: () -> Hash[Symbol, untyped]
+      def configure_plugin: (String id, **untyped options) -> Config::Current
+      def update_settings: (Hash[String, untyped] patch, ?before_save: (^() -> untyped)?) -> config
+      def refresh_extension: (String) -> Hash[String, untyped]
+      def manage_packages: (**untyped) -> untyped
+      def configure: (host: Extensions::Host, loaded: Extensions::Loaded, page: bool) -> untyped
+      def clear_environment_override: () -> untyped
+      def endpoint: () -> String?
+      def page?: () -> bool
+      def stopping?: () -> bool
+      def member_plane: (?untyped request, ?body: bool, ?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) { (untyped, String?, untyped, untyped) -> untyped } -> untyped
+      def executor_plane: () { (untyped) -> untyped } -> untyped
+      def runs_for: (untyped client, String workspace_public_id) -> untyped
+      def backing_run: (String public_id) -> String
+      def conversation_tool_names: (String public_id, untyped workspace, client: untyped, ?to: String?, ?tool_names: untyped) -> (Array[String]? | Refusal)
+      def conversation_model: (String public_id, untyped workspace) -> String?
+      def conversation_code_mode: (untyped request, ?write: bool) -> untyped
+      def current_conversation_public_id: () -> String?
+      def run_command: (untyped request) { (untyped, String, untyped, String, untyped) -> untyped } -> untyped
+      def runner_selection: (Hash[String, untyped] body) -> String?
+      def settings_runner: () -> String?
+      def own_runner?: (String? public_id) -> bool
+      def own_user_public_id: () -> String?
+      def remote_runner: (String? public_id) -> untyped
+      def learn_runner: (untyped document) -> untyped
+      def declare_profile: () -> untyped
+      def agent_roster: () -> String?
+      def approval_rules: () -> Array[Hash[String, untyped]]
+      def grants: () -> Array[RunDeclaration::Grant]
+      def grant: (RunDeclaration::Grant grant) -> untyped
+      def list_named_definitions: () -> untyped
+      def sync_named_definitions: (?publish: String?) -> untyped
+      def remove_named_definition: (String name) -> untyped
+      def host_binding: (String public_id) -> Hash[Symbol, untyped]?
+      def host_bindings: () -> Array[Hash[Symbol, untyped]]
+      def conversation_bindings: (String public_id) -> Array[Hash[String, untyped]]
+      # `untyped`: the lineage holds whatever a test installed as a run.
+      def follower: (String public_id) -> untyped
+      def followers: () -> Array[untyped]
+      def follow: (untyped about, String public_id) { (untyped realtime) -> untyped } -> [untyped, bool]
+      def adopt_follower: (untyped about, (Host::Run | Host::Conversation) host, untyped hosted,
+                      Hash[String, untyped] body, runs: untyped, ?document: untyped) -> untyped
+      def notes: (String public_id) -> Hash[String, untyped]
+      def listed_followers: () -> Array[untyped]
+      def live_process_in: (String? root) -> String?
+      def remember: ((Host::Run | Host::Conversation) host, workspace: String, ?live: bool,
+                     ?notes: Hash[String, untyped]?, ?turn: untyped, ?run_public_id: untyped, ?model: String?,
+                     ?runner: untyped) -> void
+      def forget: ((Host::Run | Host::Conversation) host) -> void
+      def host_of: (String public_id, untyped runs) -> (Host::Run | Host::Conversation)
+      def registry: () -> Rho::Runner::Extensions::Registry
+      def compaction_policy: () -> Hash[String, untyped]
+      def kernel_tool_configuration: (?untyped client) -> Hash[Symbol, Array[untyped]]
+      def lead_hints: (String? model) -> Array[String]
+      def adaptations: () -> Adaptations
+      def tool_env: () -> untyped
+      def environments: () -> Rho::Environments
+      def environment: () -> EnvironmentStore::Selection
+      def repoint_tools: (String? root) -> (EnvironmentStore::Selection | Refusal)
+      def runner_snapshot: () -> Hash[Symbol, Hash[Symbol, untyped]?]
+      def inventory: () -> Array[Hash[String, untyped]]
+      def failures: () -> Array[Rho::Runner::Extensions::Loader::Failure]
+      def spawn: () { () -> untyped } -> untyped
+    end
+
+    # The registry behind the control surface: one owner per [method, path].
+    class Routes
+      def initialize: (
+        routes: Array[Extensions::Route], context: Context, lineage: Lineage, bearer: String, ?browser_login: OAuthLogin?
+      ) -> void
+      def table: () -> Hash[[String, String], untyped]
+      def entries: () -> Array[Extensions::Route]
+    end
+
+    def self.boot: (
+      home: Home, ?bind: String, ?port: Integer,
+      ?on_phase: (^(Symbol phase) -> void)?, ?clock: ^() -> Time,
+      ?sleeper: ^(Numeric seconds) -> untyped, ?server_class: untyped,
+      ?device_flow: untyped, ?api_transport: untyped, ?display_name: String?,
+      ?renewal_interval: Numeric, ?webui_root: String?, ?transport_assertion: Symbol?,
+      ?log: Log?, ?config: config?, ?realtime_factory: untyped, ?extensions: Array[untyped]?, ?flags: Hash[String | Symbol, untyped]
+    ) -> Daemon
+
+    def page?: () -> bool
+
+    def self.verify_bind: (
+      String bind, ?transport_assertion: Symbol?
+    ) -> void
+
+    def initialize: (
+      home: Home, bind: String, port: Integer,
+      on_phase: (^(Symbol phase) -> void)?, clock: ^() -> Time,
+      ?sleeper: ^(Numeric seconds) -> untyped, ?server_class: untyped,
+      ?device_flow: untyped, ?api_transport: untyped, ?display_name: String?,
+      ?renewal_interval: Numeric, ?webui_root: String?, ?transport_assertion: Symbol?,
+      ?log: Log?, ?config: config?, ?realtime_factory: untyped, ?extensions: Array[untyped]?, ?lock: Lock?
+    ) -> void
+    def log: () -> Log
+    def running?: () -> bool
+    def stop: () -> Daemon
+    def inspect: () -> String
+    def to_s: () -> String
+  end
+end

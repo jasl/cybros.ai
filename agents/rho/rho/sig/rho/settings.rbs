@@ -1,0 +1,51 @@
+module Rho
+  class Settings
+    class ApplyError < Error
+      attr_reader restart_required: bool
+      attr_reader applied: bool
+      attr_reader published: bool
+      def initialize: (String message, ?restart_required: bool, ?applied: bool, ?published: bool) -> void
+    end
+    class PreparationError < Error
+    end
+    class RestartRequired < PreparationError
+    end
+    class AnnouncementError < Error
+    end
+
+    DEPLOYMENT_KEYS: Array[String]
+    EDITABLE_KEYS: Array[String]
+    PUBLIC_KEYS: Array[String]
+    def self.prepare: (Home home, ?flags: Hash[untyped, untyped]) -> Hash[String, untyped]
+    def initialize: (home: Home, config: Config::Current, apply: ^(Config, Array[String]) -> untyped,
+      ?validate: ^(Config, Array[String]) -> untyped) -> void
+    def update: (Hash[String, untyped] patch, ?before_save: (^() -> untyped)?) -> Config::Current
+    def update_plugin: (String id, operations: Array[Hash[String, untyped]], ?enabled: bool?,
+      ?dependents: Array[String], ?before_save: (^() -> untyped)?) -> Config::Current
+    def validate_plugins: (config config) -> untyped
+    def synchronize: () { () -> untyped } -> untyped
+
+    module Control
+      def self.register: (untyped api) -> untyped
+      def self.document: (untyped ctx) -> Hash[Symbol, untyped]
+      def self.update: (untyped request, untyped ctx) -> untyped
+      def self.status: (untyped ctx) -> untyped
+      def self.defaults: (untyped ctx) -> Hash[Symbol, untyped]
+    end
+  end
+
+  class Core
+    module Settings
+      def settings: () -> Hash[String, untyped]
+      def settings_status: () -> Hash[String, untyped]
+      def update_settings: (Hash[String, untyped] changes) -> Hash[String, untyped]
+      def extensions: () -> Hash[String, untyped]
+      def configure_extension: (String id, operations: Array[Hash[String, untyped]], ?enabled: bool?) -> Hash[String, untyped]
+      def enable_extension: (String id, ?dependents: Array[String]) -> Hash[String, untyped]
+      def disable_extension: (String id, ?dependents: Array[String]) -> Hash[String, untyped]
+      def telegram_settings: () -> Hash[String, untyped]
+      def configure_telegram: (Hash[String, untyped] changes) -> Hash[String, untyped]
+      def change_telegram_access: (list: String, action: String, id: String) -> Hash[String, untyped]
+    end
+  end
+end

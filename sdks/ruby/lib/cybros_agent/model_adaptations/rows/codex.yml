@@ -1,0 +1,14 @@
+# THE CODEX PRESET ROW (the codex preset tracks the reference's current spelling, familiar to OpenAI's models), applied
+# under `adaptations: auto`, never read on the bench; it
+# carries no text. Its exact entries cover both lanes — `openai_api`
+# and `codex_subscription` reach the same three ids.
+format: 1
+row: codex
+models:
+  - gpt-6-astra
+  - gpt-6.1-sol
+  - gpt-6-luna
+tool_style: [codex]
+tool_descriptions: []
+summarizer_prompt: null
+lead_hints: []

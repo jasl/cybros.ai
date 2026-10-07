@@ -1,0 +1,79 @@
+#!/bin/sh
+# Run inside the rho container as its ordinary runtime user. Configuration
+# goes through rho's daemon API; native secrets have one persisted owner.
+set -eu
+umask 077
+prefix=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+rho="$prefix/bin/rho"
+fail() { printf 'T3 setup: %s\n' "$*" >&2; exit 1; }
+private_dir="${RHO_HOME:-/var/lib/rho}/plugins/rho.t3"
+
+verify_environment() {
+  target="$private_dir/rho.env"
+  [ -f "$target" ] || return 0
+  metadata=$(stat -c '%u %a' "$target" 2>/dev/null || stat -f '%u %Lp' "$target")
+  [ "${metadata%% *}" = "$(id -u)" ] || fail 'rho.env must be owned by the current user'
+  mode=${metadata#* }
+  [ "$((0$mode & 077))" -eq 0 ] || fail 'rho.env must be private to its owner; inspect the exposure, then chmod 600 the file'
+}
+
+save_secret() {
+  mkdir -p "$private_dir"
+  chmod 700 "$private_dir"
+  target="$private_dir/rho.env"
+  temporary=$(mktemp "$private_dir/.rho.env.XXXXXX")
+  trap 'rm -f "$temporary"' EXIT HUP INT TERM
+  if [ -f "$target" ]; then
+    # The key is from the closed allowlist below; values never become code.
+    awk -v key="$1" 'index($0, key "=") != 1 { print }' "$target" > "$temporary"
+  fi
+  printf '%s=%s\n' "$1" "$2" >> "$temporary"
+  chmod 600 "$temporary"
+  mv "$temporary" "$target"
+  trap - EXIT HUP INT TERM
+}
+
+read_secret() {
+  [ ! -t 0 ] || printf 'Enter %s (input hidden): ' "$1" >&2
+  if [ -t 0 ]; then stty -echo; trap 'stty echo' EXIT HUP INT TERM; fi
+  IFS= read -r value || [ -n "$value" ]
+  if [ -t 0 ]; then stty echo; trap - EXIT HUP INT TERM; printf '\n' >&2; fi
+  [ -n "$value" ] || fail 'A nonempty credential is required'
+  save_secret "$1" "$value"
+  unset value
+}
+
+# Check before even looking for an existing bearer or issuing its replacement.
+# The entrypoint uses the same check before importing literal values.
+verify_environment
+case "${1:-}" in
+  check-environment) [ "$#" -eq 1 ] || fail 'Usage: t3-setup check-environment'; exit 0 ;;
+  local)
+    [ "$#" -eq 1 ] || fail 'Usage: t3-setup local'
+    "$rho" extensions configure rho.t3 '[{"op":"set","path":["server"],"value":"local"}]'
+    "$rho" extensions enable rho.t3
+    # Native issuance is offline and shares the exact base directory used by
+    # the foreground service. Keep an existing bearer when rerunning setup.
+    if [ ! -f "$private_dir/rho.env" ] || ! grep -q '^RHO_T3_TOKEN=.' "$private_dir/rho.env"; then
+      bearer=$("$rho" t3 token)
+      save_secret RHO_T3_TOKEN "$bearer"
+      unset bearer
+    fi
+    ;;
+  host)
+    [ "$#" -eq 2 ] || fail 'Usage: t3-setup host URL (bearer on stdin)'
+    operations=$(jq -cn --arg url "$2" '[{op:"set",path:["server"],value:"host"},{op:"set",path:["url"],value:$url}]')
+    "$rho" extensions configure rho.t3 "$operations"
+    "$rho" extensions enable rho.t3
+    read_secret RHO_T3_TOKEN
+    ;;
+  secret)
+    [ "$#" -eq 2 ] || fail 'Usage: t3-setup secret NAME (value on stdin)'
+    case "$2" in RHO_T3_TOKEN|OPENAI_API_KEY|CODEX_API_KEY|ANTHROPIC_API_KEY|CLAUDE_CODE_OAUTH_TOKEN) ;;
+      *) fail 'Unsupported native credential variable' ;;
+    esac
+    read_secret "$2"
+    ;;
+  *) fail 'Usage: t3-setup local|host URL|secret NAME' ;;
+esac
+printf '%s\n' 'T3 configuration saved. Restart the rho container, then select a project and sign in with rho t3.'

@@ -1,0 +1,116 @@
+module CybrosAgent
+  module Api
+    class ToolAssembly < Data
+      attr_reader tool_definitions: Array[Hash[String, untyped]]
+      attr_reader environment: Hash[String, untyped]
+
+      def self.new: (tool_definitions: Array[Hash[String, untyped]], environment: Hash[String, untyped]) -> instance
+      def self.members: () -> [:tool_definitions, :environment]
+      def members: () -> [:tool_definitions, :environment]
+    end
+
+    class ToolCatalog
+      class Entry < Data
+        attr_reader canonical_name: String
+        attr_reader name: String
+        attr_reader effect_profile: Hash[String, untyped]
+        attr_reader definition: Hash[String, untyped]
+        attr_reader template: String?
+
+        def self.new: (
+          canonical_name: String, name: String,
+          effect_profile: Hash[String, untyped], definition: Hash[String, untyped], ?template: String?
+        ) -> instance
+      end
+
+      # `dispatch: nil` builds the alias shape alone (`alias`) for a caller
+      # that fetches nothing — a pack's `Styles.entry`.
+      def initialize: (dispatch: _Dispatch?) -> void
+      def list: () -> Array[Entry]
+      def definitions_for: (Array[String]) -> Array[Hash[String, untyped]]
+      def assemble: (?default_runner_executor_public_id: String?, ?configuration: Hash[Symbol | String, untyped]?) -> ToolAssembly
+      def alias: (name: String | Symbol, canonical: String | Symbol,
+                  ?params: Hash[String | Symbol, Hash[String | Symbol, untyped]],
+                  ?omit: Array[String | Symbol], ?description: String?, ?defer_loading: bool?) -> Hash[String, untyped]
+    end
+
+    class UnknownKernelTool < Error
+    end
+
+    module ModelProviderProjections
+      include Parsing
+    end
+
+    class ModelProviders
+      PATH: String
+
+      class Lane < Data
+        attr_reader id: String
+        attr_reader display_name: String?
+        attr_reader credentials: String?
+        attr_reader enabled: bool
+        attr_reader lock_version: Integer?
+        attr_reader configured: bool
+        attr_reader material_kind: String?
+        attr_reader reauthorization_required: bool
+        attr_reader models: Integer
+        attr_reader unavailable_until: String?
+
+        def self.new: (id: String, ?display_name: String?, credentials: String?, enabled: bool, ?lock_version: Integer?,
+                       configured: bool, ?material_kind: String?,
+                       ?reauthorization_required: bool, ?models: Integer,
+                       ?unavailable_until: String?) -> instance
+        def enabled?: () -> bool
+        def configured?: () -> bool
+        def ready?: () -> bool
+        def api_key?: () -> bool
+      end
+
+      def initialize: (dispatch: _Dispatch) -> void
+      def list: () -> Array[Lane]
+    end
+
+    class ModelCatalog
+      PATH: String
+
+      class Pricing < Data
+        attr_reader state: String
+        attr_reader unit: String?
+        attr_reader input_per_mtok: String?
+        attr_reader output_per_mtok: String?
+
+        def self.new: (state: String, ?unit: String?, ?input_per_mtok: String?,
+                       ?output_per_mtok: String?) -> instance
+        def priced?: () -> bool
+        def free?: () -> bool
+      end
+
+      class Model < Data
+        attr_reader ref: String
+        attr_reader provider: String
+        attr_reader workload: String
+        attr_reader visible: bool
+        attr_reader available: bool
+        attr_reader unavailable_reason: String?
+        attr_reader capabilities: Hash[String, untyped]
+        attr_reader pricing: Pricing
+
+        def self.new: (ref: String, provider: String, workload: String, visible: bool, available: bool,
+                       ?unavailable_reason: String?, ?capabilities: Hash[String, untyped],
+                       pricing: Pricing) -> instance
+        def available?: () -> bool
+        def visible?: () -> bool
+        def tool_calls?: () -> bool
+      end
+
+      def initialize: (dispatch: _Dispatch) -> void
+      def list: (?workload: String?) -> Array[Model]
+
+      private
+
+      def read_models: (Hash[String, untyped]? params) -> Array[Model]
+    end
+
+  end
+
+end

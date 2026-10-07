@@ -1,0 +1,75 @@
+<% content_for :title, "My agents" %>
+
+<div class="space-y-8">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight">My agents</h1>
+      <p class="text-sm text-base-content/60">Agents you manage. Each Agent has at most one current registration.</p>
+    </div>
+    <%= link_to "Connect agent", oauth_device_path, class: "btn btn-primary btn-sm" %>
+  </header>
+
+  <% if @agents.any? %>
+    <section class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-200">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Program</th>
+            <th>Defined by</th>
+            <th>Status</th>
+            <th>Registration</th>
+            <th>Credential readiness</th>
+            <th class="text-end">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @agents.each do |agent| %>
+            <% address = @agent_addresses[agent.id] %>
+            <% readiness = @agent_credential_readiness.fetch(address&.id, :no_credential) %>
+            <tr data-agent-id="<%= agent.public_id %>">
+              <td>
+                <span class="block font-medium wrap-anywhere"><%= agent.display_name %></span>
+                <% if agent.description.present? %>
+                  <span class="block text-sm text-base-content/60 wrap-anywhere"><%= agent.description %></span>
+                <% end %>
+              </td>
+              <td class="text-sm text-base-content/60" data-defined-by>
+                <%# A named definition: the paired program that declared it and how long it lives. %>
+                <% if agent.named_definition? %>
+                  <span class="block wrap-anywhere"><%= agent.derived_from&.display_name || "a removed program" %></span>
+                  <span class="whitespace-nowrap"><%= agent.definition_scope %></span>
+                <% else %>
+                  &mdash;
+                <% end %>
+              </td>
+              <td>
+                <span class="<%= badge_classes(agent.active?, tone: :success, extra: "whitespace-nowrap") %>">
+                  <%= agent.active? ? "Active" : "Removed" %>
+                </span>
+              </td>
+              <td>
+                <span class="<%= badge_classes(address, tone: :info, extra: "whitespace-nowrap") %>">
+                  <%= address ? "Registered" : "Not registered" %>
+                </span>
+              </td>
+              <td>
+                <span class="<%= badge_classes(readiness == :ready, tone: :success, extra: "whitespace-nowrap") %>">
+                  <%= t("executors.credential_readiness.#{readiness}") %>
+                </span>
+              </td>
+              <td class="text-end">
+                <%= link_to "Manage", agent_path(agent), class: "btn btn-ghost btn-sm", aria: { label: "Manage #{agent.display_name}" } %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </section>
+
+    <%= render "shared/pagination_footer", pagy: @agents_pagy, noun: "agents", aria_label: "Agent pages" %>
+  <% else %>
+    <%= render "shared/empty_state",
+      title: "No agents",
+      description: "An agent program connects itself. Start it on the machine you want to connect and follow the link it prints — it opens this installation with the code already filled in." %>
+  <% end %>
+</div>

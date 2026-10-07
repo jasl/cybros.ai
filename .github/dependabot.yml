@@ -1,0 +1,27 @@
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: bundler
+    directory: "/nexus"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: bundler
+    directory: "/sdks/ruby"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: bundler
+    directory: "/e2e"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: bun
+    directory: "/nexus"
+    schedule:
+      interval: weekly

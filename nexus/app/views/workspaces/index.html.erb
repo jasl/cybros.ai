@@ -1,0 +1,68 @@
+<% content_for :title, "Workspaces" %>
+
+<div class="space-y-8">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight">Workspaces</h1>
+      <p class="text-sm text-base-content/60">Shared homes for the data you and your agents work on.</p>
+    </div>
+    <%= link_to "New workspace", new_workspace_path, class: "btn btn-primary btn-sm" %>
+  </header>
+
+  <nav class="tabs tabs-border tabs-sm" aria-label="Workspace lists">
+    <%= link_to "Live", workspaces_path,
+      class: class_names("tab", "tab-active": !@archived_tab),
+      aria: { current: (@archived_tab ? nil : "page") } %>
+    <%= link_to "Archived", workspaces_path(tab: "archived"),
+      class: class_names("tab", "tab-active": @archived_tab),
+      aria: { current: ("page" if @archived_tab) } %>
+  </nav>
+
+  <% if @workspaces.any? %>
+    <section class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-200">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Access</th>
+            <th>State</th>
+            <th>Owner</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @workspaces.each do |workspace| %>
+            <tr data-workspace-id="<%= workspace.public_id %>">
+              <td>
+                <%= link_to workspace.name, workspace_path(workspace), class: "link link-hover font-medium wrap-anywhere" %>
+                <% if workspace.agent_identifier %>
+                  <span class="ml-1 align-middle"><%= render "workspaces/agent_badge" %></span>
+                <% end %>
+              </td>
+              <td>
+                <span class="<%= badge_classes(workspace.account_wide?, tone: :info, extra: "whitespace-nowrap") %>">
+                  <%= workspace.account_wide? ? "Account-wide" : "Private" %>
+                </span>
+              </td>
+              <td><%= render "workspaces/state_badge", workspace: workspace %></td>
+              <td class="text-base-content/70 hyphens-none wrap-anywhere">
+                <%= workspace.owner == Current.user ? "You" : workspace.owner.display_name %>
+              </td>
+              <td class="text-base-content/60 whitespace-nowrap"><%= workspace.created_at.to_date.to_fs(:long) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </section>
+
+    <%= render "shared/pagination_footer", pagy: @workspaces_pagy, noun: "workspaces", aria_label: "Workspace pages" %>
+  <% elsif @archived_tab %>
+    <%= render "shared/empty_state",
+      title: "The archive is empty",
+      description: "Archived workspaces rest here with their data readable until you restore or delete them." %>
+  <% else %>
+    <%= render "shared/empty_state",
+      title: "No workspaces yet",
+      description: "Create a workspace for your data, or let an agent program create its own dedicated workspace when it needs one." %>
+  <% end %>
+</div>

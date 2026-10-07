@@ -1,0 +1,100 @@
+module CybrosAgent
+  module Api
+    class ScheduleRule < Data
+      attr_reader kind: String
+      attr_reader run_at: String?
+      attr_reader every_seconds: Integer?
+      attr_reader starts_at: String?
+      attr_reader local_time: String?
+      attr_reader time_zone: String?
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class ScheduleModel < Data
+      attr_reader model: String
+      attr_reader reasoning_effort: String?
+      attr_reader reasoning_enabled: bool?
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class ScheduleExecution < Data
+      attr_reader child_conversation_public_id: String
+      attr_reader input_public_id: String?
+      attr_reader turn_public_id: String?
+      attr_reader run_public_id: String?
+      attr_reader scheduled_for: String
+      attr_reader status: String
+      attr_reader created_at: String
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class Schedule < Data
+      attr_reader public_id: String
+      attr_reader name: String?
+      attr_reader prompt: String
+      attr_reader rule: ScheduleRule
+      attr_reader model: ScheduleModel?
+      attr_reader configuration: Hash[String, untyped]?
+      attr_reader tool_names: Array[String]?
+      attr_reader approval_mode: String?
+      attr_reader answering_user_public_id: String?
+      attr_reader speaker_public_id: String?
+      attr_reader status: String
+      attr_reader lock_version: Integer
+      attr_reader next_run_at: String?
+      attr_reader last_enqueued_at: String?
+      attr_reader last_input_public_id: String?
+      attr_reader last_error_code: String?
+      attr_reader last_execution: ScheduleExecution?
+      attr_reader source_run_public_id: String?
+      attr_reader source_task_key: String?
+      attr_reader conversation_public_id: String?
+      attr_reader creating_user_public_id: String?
+      attr_reader created_at: String?
+      attr_reader updated_at: String?
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class ScheduleExecutionPage < Data
+      attr_reader items: Array[ScheduleExecution]
+      attr_reader next_after: String?
+      attr_reader last_cursor: String?
+    end
+
+    module ScheduleProjections
+      include WorkspaceProjections
+      SHAPES: Hash[Class, Hash[Symbol, untyped]]
+    end
+
+    class SchedulesContext
+      include Fields
+      include ScheduleProjections
+      attr_reader path: String
+      def initialize: (dispatch: _Dispatch, path: String) -> void
+      def list: (?after: String?, ?limit: Integer?) -> Page[Schedule]
+      def fetch: (String public_id) -> Schedule
+      def create: (prompt: String, rule: Hash[untyped, untyped], idempotency_key: String,
+        ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?, ?configuration: Hash[untyped, untyped]?,
+        ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?speaker_public_id: String?,
+        ?source_run_public_id: String?, ?source_task_key: String?) -> Created
+      def update: (String public_id, expected_lock_version: Integer, ?prompt: String, ?rule: Hash[untyped, untyped],
+        ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?, ?configuration: Hash[untyped, untyped]?,
+        ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?speaker_public_id: String?) -> Schedule
+      def pause: (String public_id) -> Schedule
+      def resume: (String public_id) -> Schedule
+      def cancel: (String public_id) -> Schedule
+      def executions: (String public_id, ?after: String?, ?limit: Integer?) -> ScheduleExecutionPage
+
+      private
+      def command: (String public_id, String operation) -> Schedule
+      def job_path: (String public_id) -> String
+
+      class Created < Data
+        attr_reader schedule: Schedule
+        attr_reader replayed: bool
+        def public_id: () -> String
+        def replayed?: () -> bool
+      end
+    end
+  end
+end

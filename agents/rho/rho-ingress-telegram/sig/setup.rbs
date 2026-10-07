@@ -1,0 +1,21 @@
+module Rho
+  module IngressTelegram
+    class Configuration
+      class Prepared < Data
+        attr_reader operations: Array[document]
+        attr_reader enabled: bool
+        attr_reader token: String
+        attr_reader bot: document?
+        def self.new: (operations: Array[document], enabled: bool, token: String, bot: document?) -> instance
+      end
+      def initialize: (config: Rho::Config, ?env: untyped, ?clients: untyped) -> void
+      def prepare: (document input, ?bot_id: String?, ?verify: bool) -> Prepared
+      def identify: (String token, ?bot_id: String?) -> document
+    end
+
+    class Setup
+      def initialize: (home: untyped, prompt: untyped, ?env: untyped, ?clients: untyped) -> void
+      def run: (?finish: bool) -> bool
+    end
+  end
+end

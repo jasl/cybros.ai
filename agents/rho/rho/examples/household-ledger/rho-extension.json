@@ -1,0 +1,27 @@
+{
+  "name": "household-ledger",
+  "id": "personal.household-ledger",
+  "display_name": "Household ledger",
+  "description": "Fixture household coordination with Nexus state, durable reminders and explicit evidence.",
+  "state_schema": "household-cleaning-v1",
+  "dependencies": { "rho": ">= 0", "rho-runner": ">= 0", "minitest": ">= 6" },
+  "default_enabled": false,
+  "modes": ["full", "agent"],
+  "requires": ["rho.schedules"],
+  "configuration_version": 1,
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "enabled": { "type": "boolean", "default": false, "description": "Allow fixture notifications during the configured working period." },
+      "public_rooms": { "type": "object", "minProperties": 1, "maxProperties": 16, "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 100 } },
+      "sources": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "maxLength": 100 } },
+      "working_days": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 0, "maximum": 6 } },
+      "starts_at": { "type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$" },
+      "ends_at": { "type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$" },
+      "utc_offset": { "type": "string" },
+      "fresh_for_seconds": { "type": "integer", "minimum": 60, "maximum": 86400, "default": 900 },
+      "remind_every_seconds": { "type": "integer", "minimum": 60, "maximum": 604800, "default": 3600 }
+    },
+    "required": ["public_rooms", "sources", "working_days", "starts_at", "ends_at", "utc_offset"]
+  }
+}

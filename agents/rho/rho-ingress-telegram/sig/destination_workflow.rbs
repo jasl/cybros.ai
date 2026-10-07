@@ -1,0 +1,14 @@
+module Rho
+  module IngressTelegram
+    module DestinationWorkflow
+      def destination_list: (Update update, String argument) -> String
+      def deliver_task: (Update update, String argument) -> String
+    end
+    class Runtime
+      include DestinationWorkflow
+    end
+    class Bridge
+      def recent_turns: (String conversation_id, ?before_position: Integer?, workspace_public_id: String) -> document
+    end
+  end
+end

@@ -1,0 +1,548 @@
+module Rho
+  type config = Config | Config::Current
+  VERSION: String
+
+  AGENT_IDENTIFIER: String
+
+  REGISTRATION_IDENTIFIER: String
+
+  STANDALONE_REGISTRATION_IDENTIFIER: String
+
+  def self.default_display_name: () -> String
+
+  def self.root: () -> String
+
+  def self.protected_roots: (Home? home) -> Array[String]
+
+  def self.under?: (String path, String root) -> bool
+
+  def self.spelled: (String path) -> String
+
+  # The named sub-agent definitions on disk.
+  module Agents
+    NAME_FORMAT: Regexp
+    NAME_RULE: String
+    DIRECTORIES: Array[String]
+    DESCRIPTION_MAX_LENGTH: Integer
+    KEYS: Array[String]
+    INHERIT: String
+    EXTENSION: String
+
+    class Definition < ::Data
+      attr_reader name: String
+      attr_reader description: String
+      attr_reader tools: Array[String]?
+      attr_reader model: String?
+      attr_reader fallback_model: String?
+      attr_reader body: String?
+      attr_reader path: String
+      attr_reader ignored_keys: Array[String]
+      attr_reader prompt_template: Hash[untyped, untyped]?
+      def self.new: (name: String, description: String, tools: Array[String]?, model: String?, ?fallback_model: String?,
+                     body: String?, path: String, ignored_keys: Array[String], ?prompt_template: Hash[untyped, untyped]?) -> instance
+    end
+
+    class Skipped < ::Data
+      attr_reader path: String
+      attr_reader reason: String
+      def self.new: (path: String, reason: String) -> instance
+      def skipped?: () -> bool
+    end
+
+    class Scan < ::Data
+      attr_reader definitions: Array[Definition]
+      attr_reader skipped: Array[Skipped]
+      def self.new: (definitions: Array[Definition], skipped: Array[Skipped]) -> instance
+      def self.none: () -> instance
+      def empty?: () -> bool
+      def names: () -> Array[String]
+      def find: (String name) -> Definition?
+    end
+
+    def self.scan: (root: String?, ?log: untyped, ?definitions: Array[Definition]) -> Scan
+    def self.parse: (String path) -> (Definition | Skipped)
+  end
+
+  class Error < StandardError
+  end
+
+  class ConfigurationError < Error
+  end
+
+  class ConnectionError < Error
+  end
+
+  class StoredConnectionError < Error
+  end
+
+  class AlreadyRunning < Error
+  end
+
+  class StateError < Error
+  end
+
+  class StateFile
+    class PublishedError < StateError
+      include CybrosAgent::Credentials::Store::Published
+    end
+
+    PRIVATE_DIRECTORY_MODE: Integer
+    PRIVATE_FILE_MODE: Integer
+    DIRECTORY_FSYNC_UNSUPPORTED: Array[untyped]
+
+    attr_reader path: String
+
+    def initialize: (String path) -> void
+    def description: () -> String
+    def read: () -> Hash[String, untyped]?
+    def write: (Hash[String | Symbol, untyped] document) -> Hash[String, untyped]
+    def with_lock: [T] () { (StateFile) -> T } -> T
+    def create_once: (Hash[String | Symbol, untyped] document) -> bool
+    def delete: () -> nil
+    def inspect: () -> String
+    def to_s: () -> String
+    def pretty_print: (untyped printer) -> void
+  end
+
+  class Log
+    LEVELS: Hash[Symbol, Integer]
+    NIL_VALUE: String
+    FILE_MODE: Integer
+
+    def self.to_file: (String path, ?level: Symbol, ?clock: ^() -> Time) -> Log
+    def initialize: (io: untyped, ?level: Symbol, ?clock: ^() -> Time) -> void
+    def debug: (String | Symbol event, **untyped fields) -> nil
+    def info: (String | Symbol event, **untyped fields) -> nil
+    def warn: (String | Symbol event, **untyped fields) -> nil
+    def error: (String | Symbol event, **untyped fields) -> nil
+    def tagged: (**untyped fields) -> Tagged
+    def close: () -> nil
+    def inspect: () -> String
+    def to_s: () -> String
+
+    # The same stream with standing fields on every line.
+    class Tagged
+      def initialize: (Log log, Hash[Symbol, untyped] fields) -> void
+      def debug: (String | Symbol event, **untyped fields) -> nil
+      def info: (String | Symbol event, **untyped fields) -> nil
+      def warn: (String | Symbol event, **untyped fields) -> nil
+      def error: (String | Symbol event, **untyped fields) -> nil
+      def tagged: (**untyped fields) -> Tagged
+      def inspect: () -> String
+      def to_s: () -> String
+    end
+  end
+
+  class Lock
+    class AlreadyHeld < Error
+    end
+
+    PRIVATE_DIRECTORY_MODE: Integer
+    PRIVATE_FILE_MODE: Integer
+
+    def self.acquire: (String path) -> Lock
+    def initialize: (String path, File file) -> void
+    def held?: () -> bool
+    def release: () -> nil
+    def inspect: () -> String
+    def to_s: () -> String
+  end
+
+  class Home
+    DEFAULT_ROOT: String
+    DEFAULT_NEXUS_URL: String
+    BINDING_VERSION: Integer
+    INSTANCE_VERSION: Integer
+    INSTANCE_ID: Regexp
+    DEFAULT_WORK_DIRECTORY: String
+    TMP_DIRECTORY: String
+    LOG_DIRECTORY: String
+    PRIVATE_DIRECTORY_MODE: Integer
+    DEFAULT_PORTS: Hash[String, Integer]
+    SAFE_SEGMENT: Regexp
+
+    attr_reader root: String
+    attr_reader work_root: String
+    attr_reader base_url: String
+
+    def self.default_root: () -> String
+    def self.bound_address: (?root: String) -> String?
+    def self.default_work_root: (String root) -> String
+    def self.configured: (String? value) -> String?
+    def self.resolve: (base_url: String, ?root: String, ?work_root: String?) -> Home
+    def self.canonical_base_url: (untyped value) -> String
+    def initialize: (base_url: String, root: String, work_root: String) -> void
+    def tmp_root: () -> String
+    def log_root: () -> String
+    def log_path: () -> String
+    def cache_root: () -> String
+    def users_root: () -> String
+    def runners_root: () -> String
+    def conventions_path: () -> String
+    def protected_members: () -> Array[String]
+    def mcp_root: () -> String
+    def identity_work_root: (String user_public_id) -> String
+    def runner_work_root: (String executor_public_id) -> String
+    def boot_lock_path: () -> String
+    def announcement_path: () -> String
+    def host_cache_path: (String user_public_id) -> String
+    def connections_root: () -> String
+    def browser_sessions_root: () -> String
+    def operator_credentials_path: () -> String
+    def pending_connection_path: () -> String
+    def connection_pointer_path: () -> String
+    def binding_path: () -> String
+    def instance_path: () -> String
+    def mcp_credentials_dir: () -> String
+    def instance_id: () -> String?
+    def settings_path: () -> String
+    def adaptations_path: () -> String
+    def settings_runner: () -> String?
+    def settings_workspace: () -> String?
+    def write_setting: (String key, untyped value) -> Hash[String, untyped]
+    def write_settings: (Hash[String, untyped] settings) -> Hash[String, untyped]
+    def plugins_root: () -> String
+    def plugin_root: (String id) -> String
+    def extensions_root: () -> String
+    def environment_path: () -> String
+    def identity_root: (String user_public_id) -> String
+    def runner_identity_root: (String executor_public_id) -> String
+    def prepare: () -> Home
+    def inspect: () -> String
+    def to_s: () -> String
+  end
+
+  class StaticFiles
+    CONTENT_TYPES: Hash[String, String]
+    DEFAULT_CONTENT_TYPE: String
+    ASSET_CACHE: String
+    FINGERPRINTED_PREFIX: String
+    PLAIN_CACHE: String
+
+    class Asset < Data
+      attr_reader body: String
+      attr_reader content_type: String
+      attr_reader cache_control: String
+
+      def self.new: (body: String, content_type: String, cache_control: String) -> instance
+    end
+
+    def self.available?: (String root) -> bool
+    def initialize: (root: String) -> void
+    def resolve: (String path) -> Asset?
+  end
+
+  class ControlServer
+    DEFAULT_SERVER: untyped
+    STARTUP_GRACE: Float
+    JSON_TYPE: String
+    LOOPBACK_HOSTS: Array[String]
+    DRAIN_DEADLINE: Integer
+    STARTUP_POLL: Float
+
+    # A route table maps [method, path] to a handler answering [status, body],
+    # a Daemon::Refusal, or a Protocol::HTTP::Response of its own.
+    def initialize: (
+      bind: String, port: Integer,
+      routes: Hash[[String, String], ^(untyped request) -> untyped],
+      ?static_root: StaticFiles?, ?server_class: untyped
+    ) -> void
+    def port: () -> Integer
+    def configure: (routes: Hash[[String, String], ^(untyped request) -> untyped], static_root: StaticFiles?) -> untyped
+    def spawn: () { () -> untyped } -> self
+    def run: () -> ControlServer
+    def stop: () -> nil
+  end
+
+  # A UTF-8 locale for every process the daemon spawns, when none was set.
+  module Locale
+    DEFAULT: String
+    GOVERNING: Array[String]
+
+    def self.ensure_utf8!: (?untyped env) -> Hash[String, String]
+  end
+
+  # The boot accelerator.
+  module Boot
+    OFF_SWITCH: String
+    CACHE_DIR_ENV: String
+    HOME_ENV: String
+    DEFAULT_HOME: String
+    PRIVATE_MODE: Integer
+    KEY_LENGTH: Integer
+
+    def self.setup!: (?untyped env, ?root: String) -> String?
+    def self.off?: (untyped env) -> bool
+    def self.cache_directory: (untyped env, ?root: String) -> String
+    def self.cache_root: (untyped env) -> String
+    def self.key: (?root: String) -> String
+    def self.code_root: () -> String
+    def self.development?: (untyped env, ?root: String) -> bool
+    def self.lock_digest: (String root) -> String
+    def self.coverage_running?: () -> bool
+    def self.prepare: (String directory) -> bool
+  end
+
+  # The installed prefix: the receipt, the manifest, the installer's copy.
+  module Install
+    PREFIX_ENV: String
+    RECEIPT: String
+    MANIFEST: String
+    INSTALLER: String
+    BASH: String
+
+    def self.prefix: (?untyped env) -> String?
+    def self.installed?: (?untyped env) -> bool
+    def self.receipt_path: (?untyped env) -> String
+    def self.manifest_path: (?untyped env) -> String
+    def self.installer_path: (?untyped env) -> String
+    def self.receipt: (?untyped env) -> Hash[String, untyped]?
+    def self.manifest: (?untyped env) -> Hash[String, untyped]?
+    def self.document: (String path, untyped env) -> Hash[String, untyped]?
+    def self.protected_root: (?untyped env) -> String?
+    def self.exec_installer: (String mode, *String arguments, ?env: untyped) -> bot
+  end
+
+  # `rho doctor`: one table for a host, the image and the install lane.
+  module Doctor
+    STATUSES: Array[Symbol]
+    CHECKS: Array[untyped]
+
+    class Row
+      attr_reader section: String
+      attr_reader name: String
+      attr_reader status: Symbol
+      attr_reader detail: String
+
+      def self.new: (String section, String name, Symbol status, String detail) -> Row
+                  | (section: String, name: String, status: Symbol, detail: String) -> Row
+      def failed?: () -> bool
+      def label: () -> String
+    end
+
+    class Context
+      attr_reader env: untyped
+      attr_reader prefix: String?
+      attr_reader receipt: Hash[String, untyped]?
+      attr_reader home: Home?
+
+      def self.new: (env: untyped, prefix: String?, receipt: Hash[String, untyped]?, home: Home?) -> Context
+      def installed?: () -> bool
+      def tool: (String name) -> Hash[String, untyped]?
+      def path: (*String segments) -> String
+    end
+
+    class Report
+      attr_reader context: Context
+      attr_reader rows: Array[Row]
+
+      def self.new: (context: Context, rows: Array[Row]) -> Report
+      def failed?: () -> bool
+      def render: () -> String
+      def heading: () -> String
+      def summary: () -> String
+    end
+
+    def self.run: (?env: untyped, ?home: Home?) -> Report
+    def self.version_line: (*String command) -> String?
+    def self.on_path: (String name, String? path) -> String?
+
+    module Prerequisites
+      GIT_MINIMUM: Gem::Version
+      BASH: String
+
+      def self.call: (Context context) -> Array[Row]
+      def self.git: () -> Row
+      def self.bash: () -> Row
+      def self.fetcher: () -> Row
+      def self.tar: () -> Row
+      def self.compiler: (Context context) -> Row
+      def self.hint: (Context context) -> String
+    end
+
+    module Runtime
+      TRUST_FILE_ENV: String
+      TRUST_DIR_ENV: String
+      ROOTS_TRIED: Integer
+
+      def self.call: (Context context) -> Array[Row]
+      def self.tls: (Context context) -> Row
+      def self.openssl_own?: () -> bool
+      def self.openssl_extension: () -> String
+      def self.roots_word: (Array[untyped] roots) -> String
+      def self.trust_store: (untyped env) -> [String, String, Array[untyped]]
+      def self.prefix_ruby?: (Context context) -> bool
+      def self.checkpoints: (Home home) -> Row
+      def self.ruby: (Context context) -> Row
+      def self.bundler: () -> Row
+      def self.locked_bundler: () -> String?
+      def self.gems: () -> Row
+      def self.pair: (Context context) -> Row
+      def self.bootsnap: (Context context) -> Row
+      def self.size_of: (String root) -> String
+      def self.real: (String path) -> String
+      def self.link_target: (String path) -> String?
+    end
+
+    module Tools
+      def self.call: (Context context) -> Array[Row]
+      def self.binary: (Context context, String name, Hash[String, untyped] row) -> Row
+      def self.node: (Context context, Hash[String, untyped] row) -> Row
+      def self.playwright: (Context context, Hash[String, untyped] row) -> Row
+      def self.gem_playwright_version: () -> String?
+      def self.chromium: (Context context) -> Row
+    end
+
+    module Environment
+      LAUNCHER: String
+
+      def self.call: (Context context) -> Array[Row]
+      def self.locale: (untyped env) -> Row
+      def self.home: (Home? home) -> Row
+      def self.launcher: (Context context) -> Row
+      def self.on_path: (untyped env) -> String?
+      def self.same?: (String left, String right) -> bool
+      def self.daemon: (Home? home) -> Row
+    end
+  end
+
+  # Repository conventions (AGENTS.md / CLAUDE.md) and the home's AGENTS.md
+  # delivered to the model.
+  module Conventions
+    FILENAMES: Array[String]
+    HOME_FILENAME: String
+    BUDGET_BYTES: Integer
+    MAX_DEPTH: Integer
+
+    class Found < ::Data
+      attr_reader path: String
+      attr_reader text: String
+      def self.new: (path: String, text: String) -> instance
+    end
+
+    def self.files: (working_directory: untyped, root: untyped, ?home: untyped) -> Array[Found]
+    def self.read: (String path) -> Found?
+    def self.block: (working_directory: untyped, root: untyped, ?home: untyped, ?budget: Integer) -> String?
+    def self.fit: (Array[Found] found, Integer budget) -> Array[String]
+    def self.notice: (Integer omitted, Found file, Integer budget) -> String
+    def self.ancestors: (untyped working_directory, stop: untyped) -> Array[String]
+  end
+
+  # rho's policy over the SDK's model-adaptations pack:
+  # one knob, local rows, the boot row as the universe.
+  class Adaptations
+    OFF: String
+    AUTO: String
+    MODES: Array[String]
+    ROW_ID: Regexp
+    Pack: singleton(CybrosAgent::ModelAdaptations)
+
+    class Choice < ::Data
+      attr_reader row: CybrosAgent::ModelAdaptations::Row
+      attr_reader off: bool
+      attr_reader path: String?
+      def self.new: (row: CybrosAgent::ModelAdaptations::Row, off: bool, path: String?) -> instance
+      def off?: () -> bool
+      def id: () -> String
+      def source: () -> String
+      def label: () -> String
+      def long_label: () -> String
+      def hint_texts: () -> Array[String]
+    end
+
+    def self.load: (config config, home: Home) -> Adaptations
+    def self.describe: (untyped facts) -> String
+    def self.knob: (untyped value) -> String
+
+    attr_reader pack: CybrosAgent::ModelAdaptations::Pack
+    attr_reader knob: String
+    attr_reader dir: String
+
+    def initialize: (pack: CybrosAgent::ModelAdaptations::Pack, knob: String, dir: String,
+                     ?default_model: String?, ?compaction_model: String?) -> void
+    def off?: () -> bool
+    def auto?: () -> bool
+    def pinned?: () -> bool
+    def for: (String? model) -> Choice
+    def boot: () -> Choice
+    def summarizer: () -> Choice
+    def boot_differs?: (String? model) -> bool
+    def kernel_configuration: (names: Array[String], ?templates: Hash[String, String], ?wire_names: Hash[String, String]) -> Hash[Symbol, Array[untyped]]
+    def facts: (?String? model) -> Hash[Symbol, String]
+    def path_of: (CybrosAgent::ModelAdaptations::Row row) -> String?
+  end
+
+  class Config < ::Data
+    SETTINGS_VERSION: Integer
+    KEYS: Array[String]
+    ENV_KEYS: Hash[String, String]
+    DEFAULTS: Hash[String, untyped]
+    SWITCHES: Array[String]
+    MODES: Array[String]
+    attr_reader bind: String?
+    attr_reader api_only: bool
+    attr_reader tools_root: String?
+    attr_reader webui_root: String?
+    attr_reader kernel_tools: Array[String]
+    attr_reader default_model: String?
+    attr_reader adaptations: String
+    attr_reader adaptations_dir: String?
+    attr_reader executor_socket: bool
+    attr_reader mode: String
+    attr_reader runner: String?
+    attr_reader workspace: String?
+    attr_reader fallback_model: String?
+    attr_reader nexus_public_url: String?
+    attr_reader public_url: String?
+    attr_reader workspace_override: bool
+    attr_reader plugins: Hash[String, untyped]
+    attr_reader catalog: Extensions::Catalog
+    attr_reader plugin_errors: Hash[String, String]
+    def workspace_selection: (Home home) -> String?
+    def to_h: () -> Hash[String, untyped]
+    def with: (Hash[String, untyped] changes, ?home: Home?) -> Config
+    def plugin_enabled?: (String id) -> bool
+    def plugin_requested?: (String id) -> bool
+    def plugin_configuration: (String id) -> Hash[String, untyped]
+    def plugin_resolution: (String id) -> Configuration::Resolved
+
+    def self.load: (String? path, ?env: untyped, ?flags: Hash[untyped, untyped], ?home: Home?) -> Config
+    def self.from_hash: (Hash[untyped, untyped] hash, ?home: Home?) -> Config
+    def self.read: (String? path) -> Hash[String, untyped]
+    def self.new: (values: Hash[String, untyped], plugins: Hash[String, untyped], catalog: Extensions::Catalog,
+      workspace_override: bool, ?home: Home?) -> instance
+    def initialize: (values: Hash[String, untyped], plugins: Hash[String, untyped], catalog: Extensions::Catalog,
+      workspace_override: bool, ?home: Home?) -> void
+
+    class Current
+      def initialize: (Config config) -> void
+      def apply: (Config config) -> self
+      attr_reader bind: String?
+      attr_reader api_only: bool
+      attr_reader tools_root: String?
+      attr_reader webui_root: String?
+      attr_reader kernel_tools: Array[String]
+      attr_reader default_model: String?
+      attr_reader adaptations: String
+      attr_reader adaptations_dir: String?
+      attr_reader executor_socket: bool
+      attr_reader mode: String
+      attr_reader runner: String?
+      attr_reader workspace: String?
+      attr_reader fallback_model: String?
+      attr_reader nexus_public_url: String?
+      attr_reader public_url: String?
+      attr_reader workspace_override: bool
+      attr_reader plugins: Hash[String, untyped]
+      attr_reader catalog: Extensions::Catalog
+      attr_reader plugin_errors: Hash[String, String]
+      def workspace_selection: (Home home) -> String?
+      def to_h: () -> Hash[String, untyped]
+      def with: (Hash[String, untyped] changes, ?home: Home?) -> Config
+      def plugin_enabled?: (String id) -> bool
+    def plugin_requested?: (String id) -> bool
+      def plugin_configuration: (String id) -> Hash[String, untyped]
+      def plugin_resolution: (String id) -> Configuration::Resolved
+    end
+  end
+end

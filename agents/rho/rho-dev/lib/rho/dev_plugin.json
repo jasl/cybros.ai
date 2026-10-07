@@ -1,0 +1,8 @@
+{
+  "id": "rho.dev",
+  "display_name": "Development commands",
+  "description": "Terminal commands for testing and debugging conversations through rho Core.",
+  "default_enabled": false,
+  "configuration_version": 1,
+  "configuration_schema": { "type": "object", "properties": {} }
+}

@@ -1,0 +1,27 @@
+<%= turbo_frame_tag "provider_authorization", class: "block" do %>
+  <div class="space-y-5">
+    <%= render "layouts/shared/flash" if turbo_frame_request? %>
+    <section aria-label="Subscription" class="space-y-5 rounded-box border border-base-300 bg-base-200 p-5 sm:p-6">
+      <div class="flex items-start gap-3">
+        <span class="iconify <%= authorization.fetch(:state) == "authorized" ? "lucide--circle-check text-success" : "lucide--key-round text-base-content/60" %> mt-0.5 size-5 shrink-0" aria-hidden="true"></span>
+        <div class="min-w-0 space-y-2">
+          <h2 class="font-medium" role="status"><%= provider_authorization_label(authorization) %></h2>
+          <p class="text-sm leading-relaxed text-base-content/60">Subscription credentials are stored in Nexus. Agents use the connection without receiving its tokens.</p>
+          <% unless provider.fetch(:enabled) %>
+            <p class="text-sm text-base-content/70">Connecting successfully will enable this provider.</p>
+          <% end %>
+        </div>
+      </div>
+
+      <% if authorization_session && !latest_provider_sign_in_completed?(authorization, authorization_session) %>
+        <%= render "admin/model_providers/authorization_session", provider: provider, authorization_session: authorization_session %>
+      <% end %>
+
+      <%= render "admin/model_providers/authorization_actions", provider: provider, authorization: authorization %>
+      <% if authorization.fetch(:state) == "authorized" && local_assigns.fetch(:show_models_link, !turbo_frame_request?) %>
+        <%= link_to "Manage models", admin_model_provider_path(provider.fetch(:id), anchor: "provider-models"), class: "link text-sm", data: { turbo_frame: "_top" } %>
+      <% end %>
+    </section>
+  </div>
+  <%= turbo_stream.refresh(request_id: nil) if local_assigns.fetch(:refresh_provider, false) %>
+<% end %>

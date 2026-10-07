@@ -1,0 +1,8 @@
+module Rho
+  module Webui
+    VERSION: String
+    NAME: String
+
+    def self.register: (untyped api) -> untyped
+  end
+end

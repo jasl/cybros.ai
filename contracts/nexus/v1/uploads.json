@@ -1,0 +1,69 @@
+{
+  "ingest_paths": {
+    "member": "/agent_api/v1/uploads",
+    "session": "/uploads",
+    "executor": "/agent_api/v1/executor/uploads"
+  },
+  "ingest_part": "upload[file]",
+  "ingest_status": 201,
+  "descriptor_projection": [
+    "public_id",
+    "filename",
+    "content_type",
+    "byte_size",
+    "created_at"
+  ],
+  "creators": [
+    "creating_user",
+    "creating_executor"
+  ],
+  "bytes_path": "/agent_api/v1/uploads/{public_id}/bytes",
+  "bytes_statuses": {
+    "whole": 200,
+    "range": 206,
+    "fresh": 304,
+    "absent": 404
+  },
+  "executor_attachment": {
+    "descriptor_path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/attachments/{public_id}",
+    "bytes_path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/attachments/{public_id}/bytes",
+    "claim_header": "Claim-Token",
+    "cache_control": "no-store",
+    "statuses": {
+      "whole": 200,
+      "range": 206,
+      "absent": 404,
+      "not_claimant": 409,
+      "claim_inactive": 409
+    }
+  },
+  "representation_paths": {
+    "thumbnail": "/agent_api/v1/uploads/{public_id}/thumbnail",
+    "preview": "/agent_api/v1/uploads/{public_id}/preview"
+  },
+  "representation_bounds": {
+    "thumbnail": 256,
+    "preview": 1600
+  },
+  "representation_statuses": {
+    "whole": 200,
+    "fresh": 304,
+    "unavailable": 404
+  },
+  "attachment_cache_control": "max-age=31556952, private",
+  "error_statuses": {
+    "content_too_large": 413,
+    "parameter_invalid": 400,
+    "representation_unavailable": 404
+  },
+  "valid_fixture": {
+    "upload": {
+      "public_id": "01900000-0000-7000-8000-000000000040",
+      "filename": "shot.png",
+      "content_type": "image/png",
+      "byte_size": 184211,
+      "created_at": "2026-09-13T00:00:00Z"
+    }
+  },
+  "unknown_field_behavior": "ignore"
+}

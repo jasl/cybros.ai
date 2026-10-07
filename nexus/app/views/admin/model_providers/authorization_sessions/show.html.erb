@@ -1,0 +1,7 @@
+<% content_for :title, "#{model_provider_name(@provider.fetch(:id))} sign-in" %>
+
+<div class="space-y-8">
+  <%= render "admin/model_providers/header", provider: @provider, title: "Subscription sign-in", current: :credentials, description: "Finish signing in with your provider account." %>
+  <%= render "admin/model_providers/authorization", provider: @provider, authorization: @authorization, authorization_session: @authorization_session,
+    refresh_provider: turbo_frame_request? && @authorization.fetch(:state) == "authorized" && latest_provider_sign_in_completed?(@authorization, @authorization_session) %>
+</div>

@@ -1,0 +1,84 @@
+module CybrosAgent
+  module Api
+    class Upload
+      attr_reader public_id: String
+      attr_reader filename: String
+      attr_reader content_type: String
+      attr_reader byte_size: Integer
+      attr_reader created_at: String
+    end
+
+    class AttachmentRead < Data
+      attr_reader status: Integer
+      attr_reader etag: String?
+
+      def self.new: (status: Integer, etag: String?) -> instance
+      def unchanged?: () -> bool
+    end
+
+    module UploadStaging
+      NEUTRAL_MEDIA: String
+
+      class Part < Data
+        attr_reader io: untyped
+        attr_reader filename: String
+        attr_reader byte_size: Integer
+
+        def self.new: (io: untyped, filename: String, byte_size: Integer) -> instance
+        def read: (*untyped) -> untyped
+        def content_type: () -> String
+        def size: () -> Integer
+      end
+
+      def create: (String path) -> Upload
+      def create_io: (untyped io, filename: String) -> Upload
+    end
+
+    class UploadsContext
+      include UploadStaging
+
+      PATH: String
+
+      def initialize: (dispatch: _Dispatch) -> void
+      def fetch: (String public_id) -> Upload
+      def bytes: (String public_id, untyped io, ?range: String?, ?etag: String?) -> AttachmentRead
+      def thumbnail: (String public_id, untyped io, ?etag: String?) -> AttachmentRead
+      def preview: (String public_id, untyped io, ?etag: String?) -> AttachmentRead
+    end
+
+    class ExecutorUploadsContext
+      include UploadStaging
+
+      PATH: String
+
+      def initialize: (dispatch: _Dispatch) -> void
+    end
+
+    class ResourceLink < Data
+      TYPE: String
+      URI_PREFIX: String
+
+      attr_reader uri: String
+      attr_reader name: String
+      attr_reader mime_type: String?
+      attr_reader size: Integer?
+      attr_reader title: String?
+      attr_reader description: String?
+
+      def self.new: (uri: String, name: String, ?mime_type: String?, ?size: Integer?, ?title: String?, ?description: String?) -> instance
+      def self.to_upload: (String public_id, name: String, ?mime_type: String?, ?size: Integer?, ?title: String?, ?description: String?) -> instance
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    class UploadRef < Data
+      attr_reader public_id: String
+      attr_reader filename: String
+      attr_reader content_type: String
+      attr_reader byte_size: Integer
+
+      def self.new: (public_id: String, filename: String, content_type: String, byte_size: Integer) -> instance
+    end
+
+  end
+
+end

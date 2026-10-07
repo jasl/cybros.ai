@@ -1,0 +1,11 @@
+module Rho
+  module IngressTelegram
+    module QueueWorkflow
+      def queue_list: (Update update) -> String
+      def queue_edit: (Update update, Integer number, String text) -> String
+      def queue_cancel: (Update update, Integer number) -> String
+      def queue_reschedule: (Update update, Integer number, String expression) -> String
+      def work_status: (Update update) -> String
+    end
+  end
+end

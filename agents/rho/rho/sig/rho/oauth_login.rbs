@@ -1,0 +1,86 @@
+module Rho
+  class ApplicationConnection
+    def self.runtime_credentials: (CybrosAgent::ApplicationOAuth::Credentials grant) -> CybrosAgent::DeviceFlow::Credentials
+    def initialize: (home: Home, ?public_url: String, ?transport: untyped, ?clock: ^() -> Time) -> void
+    def request_authorization: (**untyped claims) -> CybrosAgent::DeviceFlow::Authorization
+    def request_runner_authorization: (**untyped claims) -> CybrosAgent::DeviceFlow::Authorization
+    def cancel_authorization: (CybrosAgent::DeviceFlow::Authorization authorization) -> CybrosAgent::DeviceFlow::cancellation_outcome
+    def rotate: (refresh_token: String) -> CybrosAgent::DeviceFlow::Credentials
+    def revoke: (token: String) -> untyped
+    def human_credential: () -> String
+    def await_credentials: (CybrosAgent::DeviceFlow::Authorization authorization) -> CybrosAgent::ApplicationOAuth::Credentials
+    def accept_human: (CybrosAgent::ApplicationOAuth::Credentials grant) -> CybrosAgent::Credentials::OAuth
+  end
+
+  class OAuthLogin
+    TRANSACTION_TTL: Integer
+    MAX_PENDING: Integer
+    BEARER_PREFIX: String
+    BEARER: Regexp
+    METHODS: Array[String]
+    REQUEST_HEADERS: Array[String]
+    RESPONSE_HEADERS: Array[String]
+
+    class Transaction < ::Struct[untyped]
+      attr_reader state: String
+      attr_reader secret_digest: String
+      attr_reader verifier: String
+      attr_reader redirect_uri: String?
+      attr_reader plan: Daemon::Ceremony::LoginPlan
+      attr_reader deadline: Time
+      attr_accessor authorization: CybrosAgent::DeviceFlow::Authorization?
+      attr_accessor interval: Integer?
+      attr_accessor next_poll_at: Time?
+      def self.new: (state: String, secret_digest: String, verifier: String, redirect_uri: String?,
+        plan: Daemon::Ceremony::LoginPlan, deadline: Time) -> instance
+      def connection_mode: () -> String
+    end
+
+    class Session < Data
+      attr_reader oauth: CybrosAgent::Credentials::OAuth
+      attr_reader user: CybrosAgent::ApplicationOAuth::User
+      attr_reader agent_public_id: String?
+      def self.new: (oauth: CybrosAgent::Credentials::OAuth, user: CybrosAgent::ApplicationOAuth::User,
+        agent_public_id: String?) -> instance
+    end
+
+    class SessionStore
+      attr_reader file: StateFile
+      attr_reader user: CybrosAgent::ApplicationOAuth::User
+      attr_reader agent_public_id: String?
+      def initialize: (file: StateFile, user: CybrosAgent::ApplicationOAuth::User, agent_public_id: String?) -> void
+      def read: () -> Hash[String, untyped]?
+      def write: (Hash[String, untyped] document) -> Hash[String, untyped]
+      def delete: () -> nil
+      def description: () -> String
+      def with_lock: [T] () { (StateFile) -> T } -> T
+    end
+
+    def initialize: (home: Home, config: config, endpoint: ^() -> String?, wire: untyped,
+      ceremony: Daemon::Ceremony,
+      ?clock: ^() -> Time, ?display_name: String, ?authority: untyped,
+      ?operator_bearer: String?, ?operator_credential: (^() -> String)?) -> void
+    def register: (untyped api) -> untyped
+    def authorized?: (untyped request) -> bool
+    def status: (untyped request) -> untyped
+    def start: (untyped request) -> untyped
+    def complete: (untyped request) -> untyped
+    def start_device: (untyped request) -> untyped
+    def poll_device: (untyped request) -> untyped
+    def logout: (untyped request) -> untyped
+    def platform_request: (untyped request) -> untyped
+  end
+
+  class Core
+    module Platform
+      def with_platform_client: [T] () { (CybrosAgent::PlatformClient) -> T } -> T
+    end
+    include Platform
+
+    class PlatformTransport
+      def initialize: (core: Core, daemon: Hash[String, untyped]) -> void
+      def call: (String path, ?method: Symbol, ?credential: String?, ?body: untyped,
+        ?params: untyped, ?headers: Hash[String, untyped], timeout: Numeric, ?accept: String) -> CybrosAgent::Response
+    end
+  end
+end

@@ -1,0 +1,443 @@
+{
+  "workloads": [
+    "embedding",
+    "image_generation",
+    "speech_generation",
+    "text_generation",
+    "transcription"
+  ],
+  "listing_envelope": [
+    "models"
+  ],
+  "list_filters": [
+    "workload"
+  ],
+  "admin_list_filters": [
+    "workload",
+    "available"
+  ],
+  "row_projection": [
+    "ref",
+    "provider",
+    "workload",
+    "visible",
+    "available",
+    "unavailable_reason",
+    "capabilities",
+    "pricing"
+  ],
+  "capabilities_projection": [
+    "tool_calls",
+    "streaming",
+    "prompt_caching",
+    "input_modalities",
+    "output_modalities",
+    "reasoning_modes"
+  ],
+  "pricing_projection": [
+    "state",
+    "unit",
+    "input_per_mtok",
+    "output_per_mtok"
+  ],
+  "pricing_projection_required": [
+    "state"
+  ],
+  "pricing_states": [
+    "priced",
+    "known_free_candidate",
+    "unmetered",
+    "cost_unknown"
+  ],
+  "unavailable_reasons": [
+    "credential_unusable",
+    "missing_credential",
+    "model_hidden",
+    "model_unavailable",
+    "provider_disabled",
+    "reauthorization_required"
+  ],
+  "credentials": [
+    "api_key",
+    "none",
+    "oauth_tokens"
+  ],
+  "providers_envelope": [
+    "model_providers"
+  ],
+  "provider_singular_envelope": [
+    "model_provider"
+  ],
+  "provider_projection": [
+    "id",
+    "display_name",
+    "credentials",
+    "enabled",
+    "lock_version",
+    "configured",
+    "material_kind",
+    "reauthorization_required",
+    "models",
+    "unavailable_until"
+  ],
+  "error_codes": [
+    "material_kind_conflict",
+    "model_plane_unavailable"
+  ],
+  "error_statuses": {
+    "material_kind_conflict": 409,
+    "model_plane_unavailable": 503
+  },
+  "valid_fixture": {
+    "models": [
+      {
+        "ref": "openrouter/fixture/priced",
+        "provider": "openrouter",
+        "workload": "text_generation",
+        "visible": true,
+        "available": true,
+        "unavailable_reason": null,
+        "capabilities": {
+          "tool_calls": true,
+          "streaming": true,
+          "prompt_caching": true,
+          "input_modalities": [
+            "image"
+          ],
+          "output_modalities": [
+            "text"
+          ],
+          "reasoning_modes": []
+        },
+        "pricing": {
+          "state": "priced",
+          "unit": "USD",
+          "input_per_mtok": "0.3",
+          "output_per_mtok": "1.2"
+        }
+      }
+    ]
+  },
+  "unavailable_fixture": {
+    "ref": "openrouter/fixture/priced",
+    "provider": "openrouter",
+    "workload": "text_generation",
+    "visible": true,
+    "available": false,
+    "unavailable_reason": "missing_credential",
+    "capabilities": {
+      "tool_calls": true,
+      "streaming": true,
+      "prompt_caching": true,
+      "input_modalities": [
+        "image"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "reasoning_modes": []
+    },
+    "pricing": {
+      "state": "priced",
+      "unit": "USD",
+      "input_per_mtok": "0.3",
+      "output_per_mtok": "1.2"
+    }
+  },
+  "hidden_fixture": {
+    "ref": "openrouter/fixture/priced",
+    "provider": "openrouter",
+    "workload": "text_generation",
+    "visible": false,
+    "available": false,
+    "unavailable_reason": "model_hidden",
+    "capabilities": {
+      "tool_calls": true,
+      "streaming": true,
+      "prompt_caching": true,
+      "input_modalities": [
+        "image"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "reasoning_modes": []
+    },
+    "pricing": {
+      "state": "priced",
+      "unit": "USD",
+      "input_per_mtok": "0.3",
+      "output_per_mtok": "1.2"
+    }
+  },
+  "model_unavailable_fixture": {
+    "ref": "openrouter/fixture/priced",
+    "provider": "openrouter",
+    "workload": "text_generation",
+    "visible": false,
+    "available": false,
+    "unavailable_reason": "model_unavailable",
+    "capabilities": {
+      "tool_calls": true,
+      "streaming": true,
+      "prompt_caching": true,
+      "input_modalities": [
+        "image"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "reasoning_modes": []
+    },
+    "pricing": {
+      "state": "priced",
+      "unit": "USD",
+      "input_per_mtok": "0.3",
+      "output_per_mtok": "1.2"
+    }
+  },
+  "known_free_fixture": {
+    "ref": "openrouter/fixture/free",
+    "provider": "openrouter",
+    "workload": "text_generation",
+    "visible": true,
+    "available": true,
+    "unavailable_reason": null,
+    "capabilities": {
+      "tool_calls": true,
+      "streaming": true,
+      "prompt_caching": true,
+      "input_modalities": [],
+      "output_modalities": [
+        "text"
+      ],
+      "reasoning_modes": []
+    },
+    "pricing": {
+      "state": "known_free_candidate",
+      "unit": "USD",
+      "input_per_mtok": "0.0",
+      "output_per_mtok": "0.0"
+    }
+  },
+  "unmetered_fixture": {
+    "ref": "openrouter/fixture/unmetered",
+    "provider": "openrouter",
+    "workload": "text_generation",
+    "visible": true,
+    "available": true,
+    "unavailable_reason": null,
+    "capabilities": {
+      "tool_calls": true,
+      "streaming": true,
+      "prompt_caching": true,
+      "input_modalities": [],
+      "output_modalities": [
+        "text"
+      ],
+      "reasoning_modes": []
+    },
+    "pricing": {
+      "state": "unmetered"
+    }
+  },
+  "cost_unknown_fixture": {
+    "ref": "openrouter/fixture/priced",
+    "provider": "openrouter",
+    "workload": "text_generation",
+    "visible": true,
+    "available": true,
+    "unavailable_reason": null,
+    "capabilities": {
+      "tool_calls": true,
+      "streaming": true,
+      "prompt_caching": true,
+      "input_modalities": [
+        "image"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "reasoning_modes": []
+    },
+    "pricing": {
+      "state": "cost_unknown"
+    }
+  },
+  "valid_providers_fixture": {
+    "model_providers": [
+      {
+        "id": "openrouter",
+        "display_name": null,
+        "credentials": "api_key",
+        "enabled": true,
+        "lock_version": 3,
+        "configured": true,
+        "material_kind": "api_key",
+        "reauthorization_required": false,
+        "models": 12,
+        "unavailable_until": null
+      },
+      {
+        "id": "dev",
+        "display_name": null,
+        "credentials": "none",
+        "enabled": false,
+        "lock_version": null,
+        "configured": true,
+        "material_kind": null,
+        "reauthorization_required": false,
+        "models": 2,
+        "unavailable_until": null
+      },
+      {
+        "id": "openrouter",
+        "display_name": null,
+        "credentials": "api_key",
+        "enabled": true,
+        "lock_version": 3,
+        "configured": true,
+        "material_kind": "api_key",
+        "reauthorization_required": false,
+        "models": 12,
+        "unavailable_until": "2026-08-31T00:01:00Z"
+      }
+    ]
+  },
+  "valid_provider_fixture": {
+    "model_provider": {
+      "id": "openrouter",
+      "display_name": null,
+      "credentials": "api_key",
+      "enabled": true,
+      "lock_version": 3,
+      "configured": true,
+      "material_kind": "api_key",
+      "reauthorization_required": false,
+      "models": 12,
+      "unavailable_until": null
+    }
+  },
+  "floored_provider_fixture": {
+    "model_provider": {
+      "id": "openrouter",
+      "display_name": null,
+      "credentials": "api_key",
+      "enabled": true,
+      "lock_version": 3,
+      "configured": true,
+      "material_kind": "api_key",
+      "reauthorization_required": false,
+      "models": 12,
+      "unavailable_until": "2026-08-31T00:01:00Z"
+    }
+  },
+  "authorization_session_fixture": {
+    "authorization_session": {
+      "public_id": "01900000-0000-7000-8000-000000000071",
+      "kind": "device_start",
+      "state": "pending",
+      "progress": "awaiting_user",
+      "outcome": null,
+      "expires_at": "2026-09-29T00:15:00Z",
+      "verification_uri": "https://auth.openai.com/codex/device",
+      "user_code": "TEST-CODE",
+      "owned_by_current_user": true
+    }
+  },
+  "valid_lane_request": {
+    "command": {
+      "enabled": true,
+      "expected_lock_version": null
+    }
+  },
+  "valid_api_key_request": {
+    "command": {
+      "api_key": "fixture-provider-key"
+    }
+  },
+  "valid_error_fixture": {
+    "status": 503,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "model_plane_unavailable",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_unavailable_reason_fixture": {
+    "ref": "openrouter/fixture/priced",
+    "provider": "openrouter",
+    "workload": "text_generation",
+    "visible": true,
+    "available": false,
+    "unavailable_reason": "zz_unknown_value",
+    "capabilities": {
+      "tool_calls": true,
+      "streaming": true,
+      "prompt_caching": true,
+      "input_modalities": [
+        "image"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "reasoning_modes": []
+    },
+    "pricing": {
+      "state": "priced",
+      "unit": "USD",
+      "input_per_mtok": "0.3",
+      "output_per_mtok": "1.2"
+    }
+  },
+  "unknown_pricing_state_fixture": {
+    "ref": "openrouter/fixture/priced",
+    "provider": "openrouter",
+    "workload": "text_generation",
+    "visible": true,
+    "available": true,
+    "unavailable_reason": null,
+    "capabilities": {
+      "tool_calls": true,
+      "streaming": true,
+      "prompt_caching": true,
+      "input_modalities": [
+        "image"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "reasoning_modes": []
+    },
+    "pricing": {
+      "state": "zz_unknown_value"
+    }
+  },
+  "unknown_credentials_fixture": {
+    "id": "openrouter",
+    "display_name": null,
+    "credentials": "zz_unknown_value",
+    "enabled": true,
+    "lock_version": 3,
+    "configured": true,
+    "material_kind": "api_key",
+    "reauthorization_required": false,
+    "models": 12,
+    "unavailable_until": null
+  },
+  "unknown_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_value_fixture": "zz_unknown_value",
+  "unknown_value_behavior": "carry_unknown",
+  "unknown_field_behavior": "ignore"
+}

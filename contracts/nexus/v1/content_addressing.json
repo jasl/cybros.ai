@@ -1,0 +1,167 @@
+{
+  "encoding": "canonical_json",
+  "digest_algorithm": "sha256",
+  "digest_input": "{account_id}\n{canonical_payload}",
+  "digest_separator_hex": "0a",
+  "vectors": [
+    {
+      "name": "empty_object",
+      "account_id": 1,
+      "payload": {},
+      "canonical_payload": "{}",
+      "byte_size": 2,
+      "digest": "2abb749635de1a7f1d45ce3a27636ef330ff16dee7fdaa274fc681af89860e52"
+    },
+    {
+      "name": "empty_array",
+      "account_id": 1,
+      "payload": [],
+      "canonical_payload": "[]",
+      "byte_size": 2,
+      "digest": "e3b2dafa57530e68811acd7b74eb6926b98e5ff7440c72afb3176826875fb4e5"
+    },
+    {
+      "name": "scalar_string",
+      "account_id": 1,
+      "payload": "text",
+      "canonical_payload": "\"text\"",
+      "byte_size": 6,
+      "digest": "872eb7f360f733005fffb8533ce195137248fbcb7e28366e9cea5860612d9e39"
+    },
+    {
+      "name": "key_order_is_normalized",
+      "account_id": 1,
+      "payload": {
+        "b": 1,
+        "a": 2,
+        "C": 3,
+        "0": 4
+      },
+      "canonical_payload": "{\"0\":4,\"C\":3,\"a\":2,\"b\":1}",
+      "byte_size": 25,
+      "digest": "cbed330464416e1bc88498b9fb0651f1f5fb4818ce4da6ed2313f72b39e582c6"
+    },
+    {
+      "name": "account_salt_changes_the_digest",
+      "account_id": 2,
+      "payload": {
+        "b": 1,
+        "a": 2,
+        "C": 3,
+        "0": 4
+      },
+      "canonical_payload": "{\"0\":4,\"C\":3,\"a\":2,\"b\":1}",
+      "byte_size": 25,
+      "digest": "2d9587ebe447f1093d2598cdbae3d5d6b1ff84f3ec70b9c9032af3197b9a12b6"
+    },
+    {
+      "name": "nested_containers",
+      "account_id": 1,
+      "payload": {
+        "z": [
+          1,
+          {
+            "y": [],
+            "x": {}
+          }
+        ],
+        "a": {
+          "n": null
+        }
+      },
+      "canonical_payload": "{\"a\":{\"n\":null},\"z\":[1,{\"x\":{},\"y\":[]}]}",
+      "byte_size": 40,
+      "digest": "a3e71f3030068ab41cb06bc986ee39204597be43db70501ad7b548a502194053"
+    },
+    {
+      "name": "number_forms",
+      "account_id": 1,
+      "payload": {
+        "i": 0,
+        "neg": -17,
+        "big": 9007199254740991
+      },
+      "canonical_payload": "{\"big\":9007199254740991,\"i\":0,\"neg\":-17}",
+      "byte_size": 40,
+      "digest": "087e366a7bd0e8cbeeca163563de69b20af6c91012872797799c109ca48745a1"
+    },
+    {
+      "name": "ordinary_decimal_float",
+      "account_id": 1,
+      "payload": {
+        "n": 1.5
+      },
+      "canonical_payload": "{\"n\":1.5}",
+      "byte_size": 9,
+      "digest": "91650c78e8baad4552cc25f763b0c01502955e7c1fcdd7d94918caa876afd197"
+    },
+    {
+      "name": "positive_zero_float",
+      "account_id": 1,
+      "payload": {
+        "n": 0.0
+      },
+      "canonical_payload": "{\"n\":0.0}",
+      "byte_size": 9,
+      "digest": "dc1da32bf681d1d2dadd4431dfb711bd3f17fb02bbcd57f044f306f1fd43349b"
+    },
+    {
+      "name": "negative_zero_float",
+      "account_id": 1,
+      "payload": {
+        "n": -0.0
+      },
+      "canonical_payload": "{\"n\":0.0}",
+      "byte_size": 9,
+      "digest": "dc1da32bf681d1d2dadd4431dfb711bd3f17fb02bbcd57f044f306f1fd43349b"
+    },
+    {
+      "name": "text_escapes_and_non_ascii",
+      "account_id": 1,
+      "payload": {
+        "quote": "a\"b",
+        "backslash": "a\\b",
+        "tab": "a\tb",
+        "newline": "a\nb",
+        "unicode": "日本語 · émoji 🙂"
+      },
+      "canonical_payload": "{\"backslash\":\"a\\\\b\",\"newline\":\"a\\nb\",\"quote\":\"a\\\"b\",\"tab\":\"a\\tb\",\"unicode\":\"日本語 · émoji 🙂\"}",
+      "byte_size": 102,
+      "digest": "352fd67d017049c2eb47c1b9250f8a2319b3d732a891e43340f0138bd9d0c441"
+    },
+    {
+      "name": "html_sensitive_text",
+      "account_id": 1,
+      "payload": {
+        "html": "<tag>&value>"
+      },
+      "canonical_payload": "{\"html\":\"<tag>&value>\"}",
+      "byte_size": 23,
+      "digest": "e1dc3ea8a13107c8176f0f7ca60bef1e3f148283f9639c2c7c4230b94b1f71e8"
+    },
+    {
+      "name": "booleans",
+      "account_id": 1,
+      "payload": {
+        "t": true,
+        "f": false
+      },
+      "canonical_payload": "{\"f\":false,\"t\":true}",
+      "byte_size": 20,
+      "digest": "dd34b06d803fc144170f381ced7e0bb2a19642c793f90a303a8561cd4e208a05"
+    }
+  ],
+  "rejections": {
+    "unsupported_number": [
+      "NaN",
+      "Infinity",
+      "-Infinity",
+      "finite_exponent_form_float"
+    ],
+    "unsupported_text": [
+      "u0000_in_value",
+      "u0000_in_key",
+      "invalid_utf8"
+    ]
+  }
+}

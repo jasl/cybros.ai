@@ -1,0 +1,22 @@
+en:
+  admin:
+    model_providers:
+      lane_updated: "Provider availability saved."
+      key_saved: "API key saved."
+      key_removed: "API key removed."
+      visibility_updated: "Model visibility saved."
+      availability_updated: "Model availability saved."
+      invalid_availability: "Model availability could not be changed. Configure this provider first."
+      test_rate_limited: "Too many model tests. Please wait a few minutes and try again."
+      authorization_cleared: "Subscription authorization cleared."
+      authorization_rate_limited: "Too many authorization attempts. Please wait a few minutes and try again."
+      stale: "This provider changed since you opened the form. Review the current settings before submitting again."
+      invalid_lane: "Provider availability could not be changed."
+      invalid_key: "Enter a valid API key for this provider."
+      invalid_visibility: "Model visibility could not be changed. Enable this provider before changing its models."
+      provider_disabled: "Enable this provider before starting authorization."
+      oauth_session_in_progress: "Another authorization is in progress. Restart only if you intend to replace it."
+    cost_units:
+      updated: "Account cost unit configured."
+      conflict: "The account cost unit is already configured and cannot be changed."
+      invalid: "Enter a cost unit between 1 and 64 characters."

@@ -1,0 +1,9 @@
+# Generated evaluation material belongs under e2e/artifacts/evals/.
+/runs/
+/analysis/**/logs/
+/analysis/**/*.jsonl
+/analysis/**/*.log
+/analysis/**/*.out
+/analysis/**/*.txt
+/analysis/**/*.patch
+/analysis/**/dryrun*.md

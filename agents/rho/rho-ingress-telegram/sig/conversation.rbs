@@ -1,0 +1,43 @@
+module Rho
+  module IngressTelegram
+    module ConversationBridge
+      def search_conversations: (query: String, ?after: String?, workspace_public_id: String) -> document
+      def history: (String id, ?before_position: Integer?, workspace_public_id: String) -> document
+      def history_turn: (String id, ?reference: String?, workspace_public_id: String) -> document?
+      def isolated_history_turn?: (document turn) -> bool
+      def rename_conversation: (String id, title: String, workspace_public_id: String) -> document
+      def conversation_code_mode: (String id, workspace_public_id: String) -> document
+      def update_conversation_code_mode: (String id, code_mode: bool?, workspace_public_id: String) -> document
+      def archive_conversation: (String id, workspace_public_id: String) -> document
+      def restore_conversation: (String id, workspace_public_id: String) -> document
+      def fork_conversation: (String id, String turn, idempotency_key: String, workspace_public_id: String) -> document
+      def regenerate: (String id, String turn, idempotency_key: String, workspace_public_id: String) -> document
+      def variants: (String id, String turn, workspace_public_id: String) -> Array[document]
+      def activate_variant: (String id, String turn, String variant, workspace_public_id: String) -> document
+      def candidate_view_state: (String id, String turn, String variant, concealed: bool, workspace_public_id: String) -> document
+      def edit_turn: (String id, String turn, text: String, workspace_public_id: String) -> document
+      def delete_turn: (String id, String turn, workspace_public_id: String) -> document
+      def turn_view_state: (String id, String turn, workspace_public_id: String, **untyped) -> document
+      def execution_control: (String action, String run_id, ?task_key: String?, workspace_public_id: String) -> document
+      def transcript: (String run_id, ?before: String?, ?prefix: String?, workspace_public_id: String) -> document
+      def context_preview: (String id, model: String?, ?isolated: bool, workspace_public_id: String) -> document
+      def compact: (String id, workspace_public_id: String) -> document
+    end
+    class Bridge
+      include ConversationBridge
+    end
+    module ConversationWorkflow
+      def conversation_command: (Update update, String action, String argument) -> String
+      def conversation_code_mode: (String id, String workspace_id, String argument) -> String
+      def execution_command: (Update update, String argument) -> String
+      def execution_transcript: (Update update, String argument) -> String
+      def search_sessions: (Update update, String argument) -> String
+    end
+    module CandidateWorkflow
+    end
+    class Runtime
+      include ConversationWorkflow
+      include CandidateWorkflow
+    end
+  end
+end

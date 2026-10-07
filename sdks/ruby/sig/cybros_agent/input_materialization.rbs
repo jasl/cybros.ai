@@ -1,0 +1,21 @@
+module CybrosAgent
+  class InputMaterialization
+    class Result < Data
+      attr_reader turn: String?
+      attr_reader variant: String?
+      attr_reader run_public_id: String?
+
+      def self.new: (turn: String?, variant: String?, run_public_id: String?) -> instance
+      def self.from_materialization: (Api::InputMaterialization?) -> instance?
+    end
+
+    attr_reader result: Result?
+    attr_reader blocked_reason: String?
+    attr_reader compaction: Result?
+
+    def initialize: (input_public_id: String, replay: ^(String?) -> untyped,
+                     ?position: KernelFeed::Position, ?recover: (^(String) -> Result?)?) -> void
+    def position: () -> KernelFeed::Position
+    def refresh: () -> self
+  end
+end

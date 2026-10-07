@@ -1,0 +1,390 @@
+# OpenAI API Catalog entries. Wire defaults live with each vendored adapter;
+# this fragment owns provider and model choices. Optional values stay absent
+# until the Catalog deliberately supports them.
+schema_version: cybros.model_catalog.v1
+providers:
+  openai_api:
+    # THE WIRE THIS PROVIDER SPEAKS. It decides the route, the request
+    # shape, the option vocabulary, the timeouts and the tokenizer, so a
+    # model under it normally declares nothing at all.
+    api_format: openai_responses
+    base_url: https://api.openai.com
+    # Operator capacity, not a wire fact: the same provider admits
+    # different amounts of concurrent work per deployment and per account
+    # tier. Carried from the predecessor's own providers.yml. A workload
+    # with no entry inherits the ceiling.
+    concurrency_limit: 8
+    workload_concurrency_limits:
+      text_generation: 4
+      image_generation: 1
+      speech_generation: 1
+      transcription: 1
+      embedding: 1
+models:
+  # Native PDF input on the three GPT text rows is the public API's vision
+  # capability, not a property inherited by subscription or broker lanes.
+  # developers.openai.com/api/docs/guides/file-inputs (read 2026-10-04)
+  # documents inline PDF files for vision-capable GPT-4o and later models.
+  # The local file MIME contract currently exposes PDF alone.
+  # THE gpt ROWS OF THIS LANE share four facts stated once here, each
+  # from the vendor's model pages (developers.openai.com/api/docs/models/
+  # <model>) and pricing page (…/api/docs/pricing) — read 2026-09-16 for
+  # gpt-6-astra, 2026-09-26 for gpt-6-luna, 2026-09-30 for gpt-6.1-sol:
+  # - `service_tiers: [flex, priority]`: the pricing page read 2026-09-30
+  #   lists gpt-6-astra, gpt-6.1-sol and gpt-6-luna under both Flex
+  #   processing (50% of Standard) and Fast mode (2x Standard). Priority
+  #   processing was renamed Fast mode on 2026-07-30 and a request may send
+  #   either `priority` or `fast`. Which id the RESPONSE echoes is stated
+  #   for GPT-5.6 and earlier only: the Fast mode guide (…/api/docs/guides/
+  #   fast-mode, read 2026-09-26) says those models return `priority`
+  #   whichever id the request sent. The API reference's `ServiceTier`
+  #   (github.com/openai/openai-openapi, openapi.yaml at c17afe0214, read
+  #   2026-09-26) states the same echo with no model scope and lists `fast`
+  #   among the values; no GPT-6 echo has been captured. So every row
+  #   prices both ids at its page's "Fast mode is priced at 2x the
+  #   applicable rates" (the gpt-6-astra, gpt-6.1-sol and gpt-6-luna pages,
+  #   read 2026-09-30). A tier rides only when a caller sends one
+  #   (codex's rule: nil or `default` sends nothing; an undeclared id
+  #   refuses), and the schedule's `tier_multipliers` price the tier the
+  #   RESPONSE echoes, never the requested one — an id the schedule does
+  #   not name bills at 1x.
+  # - The long-context tier, each page's own sentence — "Prompts with more
+  #   than 272K input tokens are priced at 2x input and cache rates and
+  #   1.5x output for the full request" — authored as the vendor states it,
+  #   a threshold and two multipliers over the base rates.
+  # - Cache writes "are billed at 1.25x the uncached input token rate"
+  #   (the gpt-6.1-sol and gpt-6-luna pages); astra's page states $12.50
+  #   outright.
+  # - `text.verbosity`: this deployment defaults to `low`; a caller may
+  #   raise it. The older astra/luna rows follow codex-rs's models.json,
+  #   while Sol 6.1 retains that deployment choice. The model pages state
+  #   nothing about verbosity; allowed values are the API reference's
+  #   `Verbosity`.
+  # CODEX'S PRIORITY-1 MODEL on the API lane (the model page
+  # developers.openai.com/api/docs/models/gpt-6-astra read 2026-09-16):
+  # single snapshot `gpt-6-astra` (no dated alias; Bedrock
+  # `openai.gpt-6-astra`); 1,050,000 context, 922,000 max input, 128,000
+  # max output; text and image in, including the inline PDF processing
+  # documented above; text out; Chat Completions, Responses and Batch;
+  # knowledge cutoff 2026-04-30. `reasoning.effort` low, medium,
+  # high, xhigh, max — NO `none` or `minimal` (the reasoning guide: "GPT-6
+  # Astra does not support `none`"). Sol 6.1 has the same vocabulary;
+  # gpt-6-luna also accepts `none`.
+  # DEFAULT EFFORT (the vendor's API default): the model page and the
+  # guides state none for astra; the API reference's `ReasoningEffort`
+  # schema states `default: medium` (github.com/openai/openai-openapi,
+  # openapi.yaml, read 2026-09-16), so `medium` is the API's own default.
+  # Both direct lanes select `medium` as the catalog default.
+  openai_api/gpt-6-astra:
+    # USD/MTok list rates, the model page read 2026-09-16: input $10,
+    # cached input $1, cache writes $12.50, output $50; "Batch and Flex are
+    # priced at 50% of Standard rates. Fast mode is priced at 2x the
+    # applicable rates." (the tier multipliers); "Prompts with more than
+    # 272K input tokens are priced at 2x input and cache rates and 1.5x
+    # output for the full request" (the long-context tier).
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "10"
+          output_per_mtok: "50"
+          cached_input_per_mtok: "1"
+          cache_write_per_mtok: "12.5"
+          long_context_threshold_tokens: "272000"
+          long_context_input_multiplier: "2"
+          long_context_output_multiplier: "1.5"
+        tier_multipliers:
+          flex: "0.5"
+          priority: "2"
+          fast: "2"
+    capabilities:
+      input_modalities: [image, file]
+      limits:
+        # The shared window, the price step as the planning bound, and the
+        # output ceiling (the gpt-6.1-sol row's notes).
+        combined_input_output_tokens: 1050000
+        effective_input_tokens: 272000
+        output_tokens: 128000
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: medium
+        # The kernel's own request (the family note above).
+        contexts: [all_turns]
+        default_context: all_turns
+        summaries: [auto, concise, detailed]
+        budget: none
+      # Encrypted reasoning items replay on the same model only (the
+      # gpt-6.1-sol row's note).
+      reasoning_replay:
+        format: responses_reasoning
+      service_tiers: [flex, priority]
+      generation_parameters:
+        max_output_tokens:
+          minimum: 16
+          maximum: 128000
+        verbosity: {}
+  # THE IMAGE ROWS. All three bill
+  # PER TOKEN in the same five classes — the pricing page
+  # (developers.openai.com/api/docs/pricing, "Image models", read
+  # 2026-09-16) lists gpt-image-2, gpt-image-2.5-sunburst and
+  # gpt-image-2.5-flare at identical rates: text input $5 / cached $1.25,
+  # image input $8 / cached $2, image output $30 per 1M tokens; the 2.5
+  # pages add "token rates match GPT Image 2" and "Text output is not
+  # billed because this model outputs images, not text." The wire's usage
+  # carries exactly these classes (`input_tokens_details.{text,image}_tokens`,
+  # `output_tokens_details`), which the protocol flattens for settlement.
+  # The cached classes are authored and unbilled until a wire reports a
+  # cached count. Every row takes an image in through the images/edits
+  # route (the protocol retargets the compile when `images` is bound)
+  # and answers one image (`result_count: 1`, the platform cap).
+  #
+  # gpt-image-2 STAYS: Codex's image tool names it (`codex-rs/ext/image-generation/src/tool.rs:59`, `const IMAGE_MODEL: &str =
+  # "gpt-image-2"`, at 883af106; no `gpt-image-2.5` string in that tree),
+  # and the images endpoint's `model` still defaults to dall-e-2, so no
+  # row claims to be the endpoint's default. The gpt-image-2 model page
+  # itself carries no pricing lines; its rates are the pricing page's row.
+  openai_api/gpt-image-2-2026-04-21:
+    # A model on a DIFFERENT wire from its provider's — the only place
+    # most deployments ever override the format.
+    api_format: openai_images
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          text_input_per_mtok: "5"
+          image_input_per_mtok: "8"
+          image_output_per_mtok: "30"
+          cached_text_input_per_mtok: "1.25"
+          cached_image_input_per_mtok: "2"
+    capabilities:
+      input_modalities: [image]
+      limits:
+        result_count: 1
+  # The two GPT Image 2.5 snapshots, the dated ids the pages name as the
+  # default snapshots (aliases `gpt-image-2.5-sunburst` / `-flare`), read
+  # 2026-09-16. Both: text and image in, image out; quality low, medium,
+  # high, xhigh, max, auto; inpainting; images/generations AND images/
+  # edits. Sunburst — "most capable, editing precision" — is NOT supported
+  # on the Responses image_generation tool; flare — "fast, high-quality
+  # everyday" — is (the kernel owns the model call and builds neither
+  # hosted tool). Neither id appears in any reference.
+  openai_api/gpt-image-2.5-sunburst-2026-09-08:
+    api_format: openai_images
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          text_input_per_mtok: "5"
+          image_input_per_mtok: "8"
+          image_output_per_mtok: "30"
+          cached_text_input_per_mtok: "1.25"
+          cached_image_input_per_mtok: "2"
+    capabilities:
+      input_modalities: [image]
+      limits:
+        result_count: 1
+  openai_api/gpt-image-2.5-flare-2026-09-08:
+    api_format: openai_images
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          text_input_per_mtok: "5"
+          image_input_per_mtok: "8"
+          image_output_per_mtok: "30"
+          cached_text_input_per_mtok: "1.25"
+          cached_image_input_per_mtok: "2"
+    capabilities:
+      input_modalities: [image]
+      limits:
+        result_count: 1
+  openai_api/gpt-4o-mini-tts-2025-12-15:
+    # A model on a DIFFERENT wire from its provider's — the only place
+    # most deployments ever override the format.
+    api_format: openai_audio_speech
+    # UNMETERED: a `pricing:` key with nothing under
+    # it declares that this platform does not compute cost for the lane. It is
+    # not the same as free, and it is deliberately not the same as leaving the
+    # key out — an ABSENT key is nobody having authored a rate, which still
+    # loses the candidate, and only this explicit null admits.
+    #
+    # Speech bills per million characters and no `per_mchar` rate is authored
+    # here; the predecessor priced this lane per token.
+    pricing:
+    capabilities:
+      limits:
+        input_bytes: 2000
+        # The Create Speech API's character bound, restated from the
+        # profile's local_safety_limits (its single home — fix 1b). The one
+        # SELECTABLE input control remains input_bytes: equal caps make the
+        # byte limit enforce the character bound from above, and the gem
+        # enforces both pre-IO from the profile facts.
+        input_characters: 4096
+  openai_api/gpt-4o-mini-transcribe-2025-12-15:
+    # A model on a DIFFERENT wire from its provider's — the only place
+    # most deployments ever override the format.
+    api_format: openai_audio_transcriptions
+    # UNMETERED: a `pricing:` key with nothing under
+    # it declares that this platform does not compute cost for the lane. It is
+    # not the same as free, and it is deliberately not the same as leaving the
+    # key out — an ABSENT key is nobody having authored a rate, which still
+    # loses the candidate, and only this explicit null admits.
+    #
+    # UNMETERED, and the reason is not the one this comment used to give. It
+    # said transcription "bills per minute of audio"; a real turn against this
+    # model answers `usage: {type: "tokens", input_token_details:
+    # {audio_tokens: N}, output_tokens: N}`. It is a TOKEN lane whose input
+    # tokens happen to be audio. No published per-token rate for it is pinned
+    # anywhere this repository can cite, so the rate stays unauthored and the
+    # platform makes no claim about the amount.
+    pricing:
+    capabilities:
+      input_modalities: [audio]
+      # NO BYTE CEILING IS AUTHORED, because none has been observed. The
+      # widely-repeated 25 MB figure for this endpoint is not what it does: a
+      # 26 MiB WAV was accepted with 200. Authoring 25 MiB would have refused
+      # what the provider takes, which is worse than having no entry — the
+      # platform's own `upload_bound` already bounds what can be staged.
+      # `language` IS CARRIABLE AND STILL UNAUTHORED, for a smaller reason
+      # than before. A descriptor may now offer an enumerated control with NO
+      # default, so declaring this one no longer forces a language on callers
+      # who want the endpoint to detect theirs. What is missing is the
+      # enumeration: a string contract must list its allowed values — "a
+      # free-text generation control is not a reviewable contract" — and no
+      # source in this repository states which languages this endpoint takes.
+      # Authoring that list from memory is how a catalog starts lying.
+  openai_api/text-embedding-3-large:
+    # A model on a DIFFERENT wire from its provider's — the only place
+    # most deployments ever override the format.
+    api_format: openai_embeddings
+    # USD/Mtok list rate, from the predecessor's developers.openai.com
+    # snapshot. An embedding formula takes input only: there are no
+    # output tokens to charge for.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0.13"
+    capabilities:
+      limits:
+        input_tokens: 8191
+        input_bytes: 8191
+  # Sol 6.1: developers.openai.com/api/docs/models/gpt-6.1-sol and
+  # /api/docs/pricing, read 2026-09-30. A 1,050,000 shared context,
+  # 922,000 max input and 128,000 max output; text and image in, text out.
+  # Responses supports tools. Reasoning efforts are low through max;
+  # neither none nor minimal is supported. Medium is the API default.
+  # The kernel requests all_turns so its replayed reasoning remains part
+  # of the rendered prefix; this is our request, not a vendor default.
+  openai_api/gpt-6.1-sol:
+    # USD/MTok Standard list rates: input $2, cached input $0.10,
+    # cache write $2.50, output $10. Flex is 50%; Fast is 2x.
+    # Past 272K input, input/cache rates double and output is 1.5x
+    # for the full request. The existing formula represents these tiers.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "2"
+          output_per_mtok: "10"
+          cached_input_per_mtok: "0.1"
+          cache_write_per_mtok: "2.5"
+          long_context_threshold_tokens: "272000"
+          long_context_input_multiplier: "2"
+          long_context_output_multiplier: "1.5"
+        tier_multipliers:
+          flex: "0.5"
+          priority: "2"
+          fast: "2"
+    capabilities:
+      input_modalities: [image, file]
+      limits:
+        # The hard window includes input and output. The documented
+        # 922,000 max input is the difference at maximum output, so it
+        # needs no separate copy. Keep the existing 272K planning bound
+        # at the long-context price step; it is a soft cap, not max input.
+        combined_input_output_tokens: 1050000
+        effective_input_tokens: 272000
+        output_tokens: 128000
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: medium
+        modes: [standard, pro]
+        # The kernel's own request (the family note above).
+        contexts: [all_turns]
+        default_context: all_turns
+        summaries: [auto, concise, detailed]
+        budget: none
+      # Encrypted reasoning items (a `store: false` response's
+      # `encrypted_content`) re-insert id-less before their message and
+      # replay on the same model only — inside the vendor's own bound,
+      # "Persisted reasoning can be reused only within the same model
+      # family" (the reasoning guide, read 2026-09-26); the openai lane
+      # never crosses with codex's.
+      reasoning_replay:
+        format: responses_reasoning
+      service_tiers: [flex, priority]
+      generation_parameters:
+        max_output_tokens:
+          minimum: 16
+          maximum: 128000
+        # Keep the deployment's explicit low-verbosity default.
+        verbosity: {}
+  openai_api/gpt-6-luna:
+    # USD/MTok list rates, the model page read 2026-09-26: input $0.10,
+    # cached input $0.01 (10% of input), cache writes $0.125 (1.25x
+    # input), output $0.50; Batch and Flex at 50% of Standard, Fast mode at
+    # 2x (the tier multipliers); past 272K input tokens, 2x input and cache
+    # rates and 1.5x output for the full request (the long-context tier).
+    # Knowledge cutoff 2026-05-18.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0.1"
+          output_per_mtok: "0.5"
+          cached_input_per_mtok: "0.01"
+          cache_write_per_mtok: "0.125"
+          long_context_threshold_tokens: "272000"
+          long_context_input_multiplier: "2"
+          long_context_output_multiplier: "1.5"
+        tier_multipliers:
+          flex: "0.5"
+          priority: "2"
+          fast: "2"
+    capabilities:
+      input_modalities: [image, file]
+      limits:
+        # The shared window, the price step as the planning bound, and the
+        # output ceiling (the gpt-6.1-sol row's notes).
+        combined_input_output_tokens: 1050000
+        effective_input_tokens: 272000
+        output_tokens: 128000
+      reasoning:
+        disable_supported: true
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: medium
+        modes: [standard, pro]
+        # The kernel's own request (the family note above).
+        contexts: [all_turns]
+        default_context: all_turns
+        summaries: [auto, concise, detailed]
+        budget: none
+      # Encrypted reasoning items replay on the same model only (the
+      # gpt-6.1-sol row's note).
+      reasoning_replay:
+        format: responses_reasoning
+      service_tiers: [flex, priority]
+      generation_parameters:
+        max_output_tokens:
+          minimum: 16
+          maximum: 128000
+        # Codex's models.json `default_verbosity: low` for gpt-6-luna.
+        verbosity: {}

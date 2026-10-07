@@ -1,0 +1,487 @@
+[
+  {
+    "id": "rho.agents",
+    "display_name": "Agents",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.checkpoints",
+    "display_name": "Checkpoints",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 7
+        },
+        "max_file_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2097152
+        },
+        "max_tree_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 268435456
+        },
+        "capture_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.coding",
+    "display_name": "Coding",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "bash_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 540,
+          "default": 120
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.compaction",
+    "display_name": "Compaction",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "kernel",
+            "delegate"
+          ],
+          "default": "kernel"
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.console_link",
+    "display_name": "Console Link",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.conventions",
+    "display_name": "Conventions",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.default_runner",
+    "display_name": "Default Runner",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.environment",
+    "display_name": "Environment",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.guard",
+    "display_name": "Guard",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.images",
+    "display_name": "Images",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.lifecycle_hooks",
+    "display_name": "Lifecycle Hooks",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "turn_start": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300000
+            }
+          },
+          "required": [
+            "tool",
+            "timeout_ms"
+          ],
+          "additionalProperties": false,
+          "x-rho-atomic": true
+        },
+        "pre_compact": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300000
+            }
+          },
+          "required": [
+            "tool",
+            "timeout_ms"
+          ],
+          "additionalProperties": false,
+          "x-rho-atomic": true
+        },
+        "post_compact": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300000
+            }
+          },
+          "required": [
+            "tool",
+            "timeout_ms"
+          ],
+          "additionalProperties": false,
+          "x-rho-atomic": true
+        },
+        "stop": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300000
+            },
+            "max_continuations": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            }
+          },
+          "required": [
+            "tool",
+            "timeout_ms",
+            "max_continuations"
+          ],
+          "additionalProperties": false,
+          "x-rho-atomic": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.memory_review",
+    "display_name": "Memory review",
+    "description": "Review reusable knowledge from completed work",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.ops",
+    "display_name": "Ops",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.packages",
+    "display_name": "Packages",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.processes",
+    "display_name": "Processes",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.schedules",
+    "display_name": "Schedules",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.setup",
+    "display_name": "Setup",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.todo",
+    "display_name": "Todo",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.until",
+    "display_name": "Until",
+    "description": "",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  }
+]

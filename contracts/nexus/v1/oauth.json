@@ -1,0 +1,157 @@
+{
+  "client_id": "cybros-first-party-connector",
+  "grant_types": [
+    "refresh_token",
+    "urn:ietf:params:oauth:grant-type:device_code"
+  ],
+  "token_planes": [
+    "executor_transport",
+    "member"
+  ],
+  "token_type": "Bearer",
+  "error_envelope": [
+    "error"
+  ],
+  "error_statuses": {
+    "access_denied": 400,
+    "authorization_pending": 400,
+    "expired_token": 400,
+    "invalid_client": 400,
+    "invalid_grant": 400,
+    "invalid_request": 400,
+    "slow_down": 400,
+    "temporarily_unavailable": 429,
+    "too_late": 409,
+    "unsupported_grant_type": 400
+  },
+  "terminal_error_codes": [
+    "access_denied",
+    "expired_token",
+    "invalid_grant"
+  ],
+  "agent_authorization_request": {
+    "client_id": "cybros-first-party-connector",
+    "agent_identifier": "fixture-agent",
+    "agent_display_name": "Fixture agent",
+    "executor_display_name": "Fixture executor"
+  },
+  "runner_authorization_request": {
+    "client_id": "cybros-first-party-connector",
+    "registration_identifier": "fixture-runner",
+    "runner_display_name": "Fixture runner",
+    "executor_kind": "runner"
+  },
+  "device_token_request": {
+    "client_id": "cybros-first-party-connector",
+    "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+    "device_code": "fixture-device-code"
+  },
+  "refresh_token_request": {
+    "client_id": "cybros-first-party-connector",
+    "grant_type": "refresh_token",
+    "refresh_token": "fixture-refresh-token"
+  },
+  "cancellation_request": {
+    "client_id": "cybros-first-party-connector",
+    "device_code": "fixture-device-code"
+  },
+  "revocation_request": {
+    "client_id": "cybros-first-party-connector",
+    "token": "fixture-access-token"
+  },
+  "valid_device_authorization_fixture": {
+    "device_code": "fixture-device-code",
+    "user_code": "BCDF-GHJK",
+    "verification_uri": "https://nexus.example/oauth/device",
+    "verification_uri_complete": "https://nexus.example/oauth/device?user_code=BCDF-GHJK",
+    "expires_in": 900,
+    "interval": 5
+  },
+  "valid_agent_token_fixture": {
+    "access_token": "fixture-member-token",
+    "plane": "member",
+    "executor_access_token": "fixture-executor-token",
+    "refresh_token": "fixture-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600
+  },
+  "valid_runner_token_fixture": {
+    "access_token": "fixture-executor-token",
+    "plane": "executor_transport",
+    "refresh_token": "fixture-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600
+  },
+  "valid_combined_token_fixture": {
+    "access_token": "fixture-member-token",
+    "plane": "member",
+    "executor_access_token": "fixture-executor-token",
+    "refresh_token": "fixture-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600,
+    "runner": {
+      "access_token": "fixture-runner-token",
+      "refresh_token": "fixture-runner-refresh-token"
+    }
+  },
+  "valid_cancellation_fixture": {
+    "status": 200,
+    "body": null
+  },
+  "consumed_cancellation_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": "too_late"
+    }
+  },
+  "valid_revocation_fixture": {
+    "status": 200,
+    "body": null
+  },
+  "valid_error_fixture": {
+    "status": 400,
+    "headers": {},
+    "body": {
+      "error": "authorization_pending"
+    }
+  },
+  "terminal_error_fixture": {
+    "status": 400,
+    "headers": {},
+    "body": {
+      "error": "access_denied"
+    }
+  },
+  "unknown_client_request": {
+    "client_id": "zz_unknown_value"
+  },
+  "unknown_grant_request": {
+    "client_id": "cybros-first-party-connector",
+    "grant_type": "zz_unknown_value"
+  },
+  "unknown_plane_fixture": {
+    "access_token": "fixture-member-token",
+    "plane": "zz_unknown_value",
+    "executor_access_token": "fixture-executor-token",
+    "refresh_token": "fixture-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600
+  },
+  "unknown_token_type_fixture": {
+    "access_token": "fixture-member-token",
+    "plane": "member",
+    "executor_access_token": "fixture-executor-token",
+    "refresh_token": "fixture-refresh-token",
+    "token_type": "zz_unknown_value",
+    "expires_in": 1209600
+  },
+  "unknown_error_fixture": {
+    "status": 400,
+    "headers": {},
+    "body": {
+      "error": "zz_unknown_value"
+    }
+  },
+  "unknown_field_behavior": "ignore"
+}

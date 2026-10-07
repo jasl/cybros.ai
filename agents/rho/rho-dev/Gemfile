@@ -1,0 +1,36 @@
+source "https://rubygems.org"
+
+# Specify this gem's dependencies in rho-dev.gemspec.
+gemspec
+
+gem "cmctl", path: "../../../cmctl"
+
+# rho rides alongside in this monorepo, and its own gemspec resolves the
+# SDK and the runner by path; the extension gems and the ACP pair ride
+# the same way so this bundle is rho's own, less nothing. rho's Gemfile
+# never names this gem back: the product's bundle carries no development
+# extension.
+gem "rho", path: "../rho"
+gem "cybros_agent", path: "../../../sdks/ruby"
+gem "rho-runner", path: "../rho-runner"
+gem "rho-browser", path: "../rho-browser"
+gem "rho-mcp", path: "../rho-mcp"
+gem "rho-web-tools", path: "../rho-web-tools"
+gem "rho-codemode", path: "../rho-codemode"
+# Static browser UI, selected by the full/agent daemon defaults.
+gem "rho-webui", path: "../rho-webui"
+gem "rho-ingress-telegram", path: "../rho-ingress-telegram"
+gem "rho-acp", path: "../rho-acp"
+gem "rho-acp-client", path: "../rho-acp-client"
+
+# The development group: this gem's suite runs over rho's test support
+# tree (`test/test_helper.rb` requires it by relative path).
+group :development do
+  gem "rake", "~> 13.0"
+
+  gem "minitest", "~> 6.0"
+
+  gem "rbs", require: false
+  gem "rubocop", "~> 1.21", require: false
+  gem "rubocop-rails-omakase", require: false
+end

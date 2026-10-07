@@ -1,0 +1,192 @@
+schema_version: cybros.model_catalog.v1
+providers:
+  xai:
+    # THE WIRE THIS PROVIDER SPEAKS. It decides the route, the request
+    # shape, the option vocabulary, the timeouts and the tokenizer, so a
+    # model under it normally declares nothing at all.
+    api_format: xai_responses
+    # xAI reports cost on the wire in its own integer ticks rather than a
+    # decimal amount, on BOTH its lanes — a provider fact, not a model one.
+    # The published and wire-verified scale is 1 USD = 10^10 ticks; the
+    # ceiling is the largest integer whose scaled value stays strictly inside
+    # numeric(38,18), and larger evidence is retained as overflow evidence
+    # rather than money.
+    native_cost_contract:
+      amount_field: cost_in_usd_ticks
+      unit: USD
+      scale: "0.0000000001"
+      maximum_wire_amount: "999999999999999999999999999999"
+      maximum_fractional_digits: 0
+    base_url: https://api.x.ai
+    # Operator capacity, not a wire fact: the same provider admits
+    # different amounts of concurrent work per deployment and per account
+    # tier. Carried from the predecessor's own providers.yml. A workload
+    # with no entry inherits the ceiling.
+    concurrency_limit: 6
+    workload_concurrency_limits:
+      image_generation: 1
+models:
+  # ONE ROW PER MODEL ID, and neither text id has an alias: xAI's model
+  # listing (`GET /v1/language-models`, read 2026-09-27) answers
+  # `aliases: []` for grok-4.6 and grok-4.7 alike. grok-4.6 was reviewed on
+  # 2026-08-13 for the smallest shape, the continuation replay and the
+  # image variant. Its own page (docs.x.ai/developers/models/grok-4.6, read
+  # 2026-09-27) states the cached rate, the long-context tier and the
+  # priority factor the grok-4.7 row carries, at the same figures; its row
+  # does not carry them yet, so a grok-4.6 answer without xAI's own amount
+  # settles cached reads at the input rate and a long prompt at the base
+  # rates. Nothing retires grok-4.6: the models, pricing and US-endpoint
+  # pages still list it.
+  xai/grok-4.6:
+    # USD/Mtok list rates. Source: the pinned xAI models listing, which quotes
+    # 20000/60000 at the published 10^10 scale this file already records for
+    # the image lane below. The unit is not inferred: the same listing quotes
+    # grok-4.5 at 20000/60000, and the predecessor authored that model from
+    # vendor docs as 2.00/6.00 per Mtok. Its detail page
+    # (docs.x.ai/developers/models/grok-4.6, read 2026-09-27) states the
+    # grok-4.7 row's figures: $0.50 cached input, a prompt that reaches 200k
+    # tokens billed at 2x on every class (the threshold 199,999, the
+    # grok-4.7 row's note), and priority at 2x on every token type, billed
+    # only when the answer echoes it. xAI's own amount still wins whenever
+    # the answer carries it.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: provider_reported_then_catalog_fallback
+        rates:
+          input_per_mtok: "2"
+          output_per_mtok: "6"
+          cached_input_per_mtok: "0.5"
+          long_context_threshold_tokens: "199999"
+          long_context_input_multiplier: "2"
+          long_context_output_multiplier: "2"
+        tier_multipliers:
+          priority: "2"
+    capabilities:
+      input_modalities: [image]
+      # The Responses reference (read 2026-10-05) accepts max_output_tokens
+      # above its omitted-value default of 128,000; it is not a hard maximum.
+      # This cap counts visible output, excluding reasoning and tool calls.
+      # https://docs.x.ai/developers/rest-api-reference/inference/responses
+      # The shared context window and the price-step planning bound remain
+      # separate facts; settlement prices reported usage, without a reservation.
+      generation_parameters:
+        max_output_tokens: {}
+      limits:
+        combined_input_output_tokens: 500000
+        effective_input_tokens: 199999
+      # The four levels the vendor page names, with its stated default
+      # (read 2026-08-21): "Grok 4.6 supports four effort levels: xhigh,
+      # high (default), medium, and low." The lane could not be asked to
+      # reason at all until this was written down — a profile row used to
+      # carry the wire's whole effort vocabulary, but selection has always
+      # read the CATALOG, and the catalog said nothing.
+      reasoning:
+        efforts: [low, medium, high, xhigh]
+        default_effort: high
+      # This lane pins store:false + encrypted include on every request —
+      # encrypted-reasoning replay IS its continuation mechanism.
+      reasoning_replay:
+        format: responses_reasoning
+  # GROK 4.7 (docs.x.ai/developers/models/grok-4.7, docs.x.ai/developers/
+  # pricing and docs.x.ai/developers/model-capabilities/text/reasoning, all
+  # read 2026-09-27): announced 2026-09-21 (x.ai/news/grok-4-7), "Served at
+  # the same price and speed as Grok 4.6" — every fact below matches
+  # grok-4.6's page except the id. "Batch API: Not supported". The Fast
+  # variant is priced "(Cursor and Grok Build only)", not on the API, so it
+  # has no row.
+  xai/grok-4.7:
+    # USD/Mtok, the model page's table: below 200k prompt tokens $2.00
+    # input, $0.50 cached input, $6.00 output; at 200k and above $4.00 /
+    # $1.00 / $12.00 — "Requests whose prompt reaches 200k tokens are billed
+    # at the higher rate for all tokens in the request." — 2x on every class,
+    # stated as a threshold and two multipliers. The formula's threshold is
+    # EXCLUSIVE (a prompt of more than it bills at the tier) and xAI's is
+    # inclusive ("reaches", "≥ 200k"), so the threshold is 199,999: a prompt
+    # of exactly 200,000 tokens bills at 2x. No cache-write price exists (the
+    # prompt-caching page lists non-cached and cached prompt tokens only),
+    # and reasoning tokens bill at the completion rate.
+    # The pricing page: "Priority requests are billed at a 2x premium over
+    # standard rates", "The 2x multiplier applies to all token types", and
+    # "You are only billed at the priority rate when the response confirms
+    # `"service_tier": "priority"`" — the factor prices that echo. The row
+    # declares no `service_tiers`, so no caller asks for a tier; the `fast`
+    # request tier has no stated API price and is not priced.
+    # xAI's own amount (`cost_in_usd_ticks`) wins whenever the answer
+    # carries it; these rates settle an answer without one.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: provider_reported_then_catalog_fallback
+        rates:
+          input_per_mtok: "2"
+          output_per_mtok: "6"
+          cached_input_per_mtok: "0.5"
+          long_context_threshold_tokens: "199999"
+          long_context_input_multiplier: "2"
+          long_context_output_multiplier: "2"
+        tier_multipliers:
+          priority: "2"
+    capabilities:
+      # "Modalities: text, image → text"; jpg/jpeg or png, which the wire's
+      # image register bounds.
+      input_modalities: [image]
+      # The model page states no text output limit; the Responses reference
+      # accepts values above its 128,000 default. The shared 500,000 window
+      # and price-step planning bound do not impose a generation-control cap.
+      # https://docs.x.ai/developers/grok-4-7 (read 2026-10-05)
+      generation_parameters:
+        max_output_tokens: {}
+      limits:
+        combined_input_output_tokens: 500000
+        effective_input_tokens: 199999
+      # "Reasoning efforts (supported): low, medium, high, xhigh" and
+      # "(default): high"; the reasoning guide: "Reasoning cannot be
+      # disabled", so `none` is not offered. Summaries stream on their own
+      # ("For grok-4.7, we expose summarizations of the model's internal
+      # reasoning"), and the request's `reasoning.summary` is "Only included
+      # for compatibility", so the row states no summary vocabulary.
+      reasoning:
+        efforts: [low, medium, high, xhigh]
+        default_effort: high
+      # The lane pins store:false with the explicit encrypted include on
+      # every request (grok-4.6's note). The model page adds that grok-4.7
+      # returns `reasoning.encrypted_content` "even when `include` does not
+      # list it"; the explicit include is still what keeps xAI from storing
+      # the trace server-side, which that default does not.
+      reasoning_replay:
+        format: responses_reasoning
+  # Image lane under the OpenAI-images-compatible hypothesis; the dated pin
+  # is confirmed live in the archived 2026-08-13 listing (image_price
+  # 600000000 ticks = 0.06 USD per image at the published 10^10 scale).
+  xai/grok-imagine-image-2.0:
+    # A model on a DIFFERENT wire from its provider's — the only place
+    # most deployments ever override the format.
+    api_format: openai_images
+    # xAI's Images endpoint defaults to URL delivery. Its Image Generation
+    # guide (read 2026-08-25) documents `b64_json` for inline output. Nexus
+    # deliberately owns provider output as bytes and does not add a remote-
+    # download subsystem, so request that form explicitly.
+    wire_options:
+      image_response_format: b64_json
+    # USD per generated image, which is how image generation bills. Source:
+    # the models and pricing pages (docs.x.ai/developers/models, …/pricing,
+    # read 2026-09-27): "| grok-imagine-image-2.0 | $0.04 / image |". The
+    # pages also say "Images are billed at the quality they are served at"
+    # with the default quality now `auto`; no per-quality price is stated,
+    # so the one rate settles an answer without xAI's own amount.
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: provider_reported_then_catalog_fallback
+        rates:
+          per_image: "0.04"
+    capabilities:
+      # RESULT COUNT IS A PLATFORM CAP, on the same reading as the output
+      # ceilings above: image generation bills per image, so the conservative
+      # maximum needs a bound on how many one call may produce. Nothing can
+      # currently ask for more — no shipped lane declares a generation control,
+      # so no caller can set a count and the provider default of one stands —
+      # which makes this the tightest honest number rather than a guess.
+      limits:
+        result_count: 1

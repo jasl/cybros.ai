@@ -1,0 +1,18 @@
+<%# The DOM replacement for native window.confirm: Turbo opens this dialog
+    for every data-turbo-confirm submission (confirm_dialog.js). The
+    method="dialog" buttons close it natively — Escape and the backdrop
+    cancel — and the confirm branch repeats the verb of the button that
+    opened it. Cancel sits first in tree order, so showModal() focuses the
+    safe branch of a destructive question. %>
+<dialog id="turbo-confirm" class="modal" aria-labelledby="turbo-confirm-message">
+  <form method="dialog" class="modal-box max-w-sm">
+    <p id="turbo-confirm-message" class="text-sm"></p>
+    <div class="modal-action">
+      <button value="cancel" class="btn btn-ghost btn-sm">Cancel</button>
+      <button value="confirm" class="btn btn-error btn-soft btn-sm">Confirm</button>
+    </div>
+  </form>
+  <form method="dialog" class="modal-backdrop">
+    <button value="cancel" tabindex="-1" aria-label="Dismiss">close</button>
+  </form>
+</dialog>

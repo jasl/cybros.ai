@@ -1,0 +1,672 @@
+module CybrosAgent
+  module Api
+    class ConversationModel < Data
+      attr_reader provider_id: String?
+      attr_reader model_ref: String?
+      attr_reader reasoning_effort: String?
+      attr_reader reasoning_enabled: bool?
+    end
+
+    class ConversationReasoning < Data
+      attr_reader task_key: String?
+      attr_reader model: ConversationModel
+      attr_reader available: bool
+      attr_reader text: String?
+      def available?: () -> bool
+    end
+
+    class ConversationReasoningPage < Data
+      attr_reader items: Array[ConversationReasoning]
+      attr_reader next_before: String?
+      attr_reader has_older: bool
+      def has_older?: () -> bool
+    end
+
+    class ConversationContextReport < Data
+      attr_reader used_tokens: Integer?
+      attr_reader input_tokens: Integer?
+      attr_reader output_tokens: Integer?
+      attr_reader cache_read_tokens: Integer?
+      attr_reader window_tokens: Integer?
+      attr_reader used_percent: Numeric?
+      attr_reader as_of_model: ConversationModel?
+    end
+
+    class ConversationUsageSummary < Data
+      attr_reader request_count: Integer
+      attr_reader input_tokens: Integer
+      attr_reader cache_read_tokens: Integer
+      attr_reader uncached_input_tokens: Integer
+      attr_reader cache_creation_tokens: Integer
+      attr_reader cache_hit_rate: Numeric?
+      attr_reader output_tokens: Integer
+      attr_reader reasoning_tokens: Integer
+      attr_reader total_tokens: Integer
+      attr_reader cost_amount: String
+      attr_reader cost_complete: bool
+      attr_reader cost_unit: String?
+    end
+
+    class ConversationInputQueue < Data
+      attr_reader limit: Integer
+      attr_reader held: Integer
+
+      def full?: () -> bool
+    end
+
+    class ConversationParent < Data
+      attr_reader public_id: String
+      attr_reader spawn_node_key: String?
+      attr_reader label: String?
+    end
+
+    class ConversationSummary < Data
+      attr_reader public_id: String
+      attr_reader title: String?
+      attr_reader answering_user_public_id: String
+      attr_reader archived_at: String?
+      attr_reader billing_subject: String?
+      attr_reader parent: ConversationParent?
+      attr_reader forked_from_turn_public_id: String?
+      attr_reader forked_from_variant_public_id: String?
+      attr_reader side: bool
+      attr_reader active_turn_public_id: String?
+      attr_reader context_revision: Integer
+      attr_reader last_activity_at: String?
+      attr_reader created_at: String
+      attr_reader updated_at: String
+
+      def archived?: () -> bool
+      def busy?: () -> bool
+      def subagent?: () -> bool
+      def forked?: () -> bool
+      def side?: () -> bool
+    end
+
+    class ConversationAccessEntry < Data
+      attr_reader user_public_id: String
+      attr_reader handle: String
+      attr_reader kind: String
+      attr_reader display_name: String?
+      attr_reader level: String
+
+      def self.new: (user_public_id: String, handle: String, kind: String, display_name: String?, level: String) -> instance
+      def self.[]: (user_public_id: String, handle: String, kind: String, display_name: String?, level: String) -> instance
+      def self.members: () -> [:user_public_id, :handle, :kind, :display_name, :level]
+
+      def members: () -> [:user_public_id, :handle, :kind, :display_name, :level]
+    end
+
+    class ConversationAccess < Data
+      attr_reader default: String
+      attr_reader entries: Array[ConversationAccessEntry]
+
+      def self.new: (default: String, entries: Array[ConversationAccessEntry]) -> instance
+      def self.[]: (default: String, entries: Array[ConversationAccessEntry]) -> instance
+      def self.members: () -> [:default, :entries]
+
+      def members: () -> [:default, :entries]
+      def level_for: (String user_public_id) -> String
+    end
+
+    class Conversation < Data
+      attr_reader public_id: String
+      attr_reader title: String?
+      attr_reader answering_user_public_id: String
+      attr_reader archived_at: String?
+      attr_reader billing_subject: String?
+      attr_reader parent: ConversationParent?
+      attr_reader forked_from_turn_public_id: String?
+      attr_reader forked_from_variant_public_id: String?
+      attr_reader side: bool
+      attr_reader active_turn_public_id: String?
+      attr_reader context_revision: Integer
+      attr_reader last_activity_at: String?
+      attr_reader created_at: String
+      attr_reader updated_at: String
+      attr_reader metadata: Hash[String, untyped]
+      attr_reader input_queue: ConversationInputQueue
+      attr_reader latest_event_cursor: String?
+      attr_reader context: ConversationContextReport?
+      attr_reader usage_summary: ConversationUsageSummary
+      attr_reader default_runner: DefaultRunner?
+      attr_reader access: ConversationAccess
+      attr_reader memory_context: Hash[String, untyped]?
+
+      def archived?: () -> bool
+      def busy?: () -> bool
+      def subagent?: () -> bool
+      def forked?: () -> bool
+      def side?: () -> bool
+    end
+
+    class CallbackResult < Data
+      attr_reader conversation_public_id: String
+      attr_reader input_public_id: String
+      attr_reader turn_public_id: String
+      attr_reader variant_public_id: String
+      attr_reader requester_speaker_public_id: String?
+    end
+
+    class CallbackSource < Data
+      attr_reader input_public_id: String
+      attr_reader origin: String
+      attr_reader sender_conversation_public_id: String?
+      attr_reader sender_run_public_id: String?
+      attr_reader sender_task_key: String?
+      attr_reader result: CallbackResult
+    end
+
+    class ConversationInput < Data
+      attr_reader public_id: String
+      attr_reader queue_position: Integer
+      attr_reader state: String
+      attr_reader kind: String
+      attr_reader role: String
+      attr_reader delivery_mode: String
+      attr_reader expected_steering_run_public_id: String?
+      attr_reader context_mode: String?
+      attr_reader context_options: untyped
+      attr_reader tool_names: Array[String]?
+      attr_reader approval_mode: String?
+      attr_reader instructions: String?
+      attr_reader blocked_reason: String?
+      attr_reader text: String?
+      attr_reader attachments: Array[UploadRef]?
+      attr_reader steps: Array[untyped]?
+      attr_reader lock_version: Integer
+      attr_reader created_at: String
+      attr_reader origin: String
+      attr_reader sender_conversation_public_id: String?
+      attr_reader answering_user_public_id: String
+      attr_reader speaker: ConversationSpeaker | ConversationIngressSpeaker
+      attr_reader deliver_at: String?
+      attr_reader callback_result: CallbackResult?
+
+      def blocked?: () -> bool
+      def reply?: () -> bool
+      def task_result?: () -> bool
+    end
+
+    class ConversationIngressSpeaker < Data
+      attr_reader speaker_public_id: String
+      attr_reader kind: String
+      attr_reader display_name: String
+      def self.new: (speaker_public_id: String, kind: String, display_name: String) -> instance
+      def agent?: () -> bool
+    end
+
+    class ConversationSpeaker < Data
+      attr_reader user_public_id: String
+      attr_reader handle: String
+      attr_reader kind: String
+      attr_reader display_name: String?
+
+      def self.new: (user_public_id: String, handle: String, kind: String, display_name: String?) -> instance
+      def self.[]: (user_public_id: String, handle: String, kind: String, display_name: String?) -> instance
+      def agent?: () -> bool
+    end
+
+    class ConversationInputList < Data
+      include Enumerable[ConversationInput]
+
+      attr_reader items: Array[ConversationInput]
+      attr_reader input_queue: ConversationInputQueue
+
+      def each: () { (ConversationInput) -> void } -> void
+              | () -> Enumerator[ConversationInput, void]
+      def length: () -> Integer
+    end
+
+    class RunnerEffects < Data
+      attr_reader status: String
+      attr_reader runners: Array[RunnerEffect]
+      attr_reader reason: String?
+      def self.new: (status: String, ?runners: Array[RunnerEffect], ?reason: String?) -> instance
+      def touched?: () -> bool
+      def untouched?: () -> bool
+      def unavailable?: () -> bool
+    end
+
+    class RunnerEffect < Data
+      attr_reader runner_executor_public_id: String
+      attr_reader run_public_id: String
+      attr_reader task_key: String
+      attr_reader checkpoint: Checkpoint?
+      attr_reader checkpoint_present: bool
+      def self.new: (runner_executor_public_id: String, run_public_id: String, task_key: String,
+                     ?checkpoint: Checkpoint?, ?checkpoint_present: bool) -> instance
+      def checkpoint_hash: () -> String?
+      def skipped: () -> untyped
+    end
+
+    # The runner's checkpoint: `raw` verbatim, the facts as members.
+    class Checkpoint < Data
+      attr_reader hash: String?
+      attr_reader store: String?
+      attr_reader skipped: untyped
+      attr_reader outside: Array[String]
+      attr_reader ignored: Array[String]
+      attr_reader raw: untyped
+
+      def self.new: (?hash: String?, ?store: String?, ?skipped: untyped, ?outside: Array[String],
+                     ?ignored: Array[String], ?raw: untyped) -> instance
+      def restorable?: () -> bool
+    end
+
+    class ConversationVariant < Data
+      attr_reader public_id: String
+      attr_reader origin_variant_public_id: String?
+      attr_reader source: String
+      attr_reader status: String
+      attr_reader model: ConversationModel?
+      attr_reader content_preview: String?
+      attr_reader content: String?
+      attr_reader prompt_text: String?
+      attr_reader active: bool
+      attr_reader run_public_id: String?
+      attr_reader rounds: Array[untyped]?
+      attr_reader attachments: Array[UploadRef]?
+      attr_reader runner_effects: RunnerEffects?
+      attr_reader details_pruned_at: String?
+      attr_reader memory_context: Hash[String, untyped]?
+
+      def active?: () -> bool
+      def run_backed?: () -> bool
+    end
+
+    class InputMaterialization < Data
+      attr_reader input_public_id: String
+      attr_reader turn_public_id: String
+      attr_reader variant_public_id: String
+      attr_reader run_public_id: String?
+    end
+
+    class ConversationTurn < Data
+      attr_reader input_public_id: String?
+      attr_reader callback_sources: Array[CallbackSource]
+      attr_reader sender_run_public_id: String?
+      attr_reader sender_task_key: String?
+      attr_reader public_id: String
+      attr_reader position: Integer
+      attr_reader kind: String
+      attr_reader role: String
+      attr_reader status: String
+      attr_reader visibility: String
+      attr_reader inherited: bool
+      attr_reader reference: bool
+      attr_reader origin: String?
+      attr_reader sender_conversation_public_id: String?
+      attr_reader active_variant: ConversationVariant?
+      attr_reader running_variant: ConversationVariant?
+      attr_reader created_at: String
+      attr_reader answering_user_public_id: String
+      attr_reader speaker: (ConversationSpeaker | ConversationIngressSpeaker)?
+
+      def inherited?: () -> bool
+      def reference?: () -> bool
+      def task_result?: () -> bool
+      def compaction_summary?: () -> bool
+      def text: () -> String?
+    end
+
+    class ConversationTurnPage < Data
+      include Enumerable[ConversationTurn]
+
+      attr_reader items: Array[ConversationTurn]
+      attr_reader before_position: Integer?
+      attr_reader after_position: Integer?
+
+      def each: () { (ConversationTurn) -> void } -> void
+              | () -> Enumerator[ConversationTurn, void]
+      def length: () -> Integer
+    end
+
+    class ConversationVariantDeck < Data
+      include Enumerable[ConversationVariant]
+
+      attr_reader items: Array[ConversationVariant]
+      attr_reader turn_public_id: String
+      attr_reader turn_inherited: bool
+
+      def each: () { (ConversationVariant) -> void } -> void
+              | () -> Enumerator[ConversationVariant, void]
+      def active: () -> ConversationVariant?
+      def length: () -> Integer
+    end
+
+    class ConversationRegeneration < Data
+      attr_reader turn_public_id: String
+      attr_reader turn_status: String
+      attr_reader variant: ConversationVariant
+      attr_reader replayed: bool
+      def replayed?: () -> bool
+    end
+
+    class ConversationCompaction < Data
+      attr_reader turn_public_id: String
+      attr_reader position: Integer
+      attr_reader kind: String
+      attr_reader turn_status: String
+      attr_reader task_key: String?
+      attr_reader summary_task_key: String?
+      def mid_turn?: () -> bool
+    end
+
+    class ConversationEvent < Data
+      attr_reader public_id: String
+      attr_reader sequence: Integer
+      attr_reader cursor: String
+      attr_reader type: String
+      attr_reader resource_type: String
+      attr_reader resource_public_id: String
+      attr_reader occurred_at: String
+      attr_reader payload: untyped
+    end
+
+    class ConversationEventPage < Data
+      include Enumerable[ConversationEvent]
+
+      attr_reader items: Array[ConversationEvent]
+      attr_reader next_after: String?
+      attr_reader watermark: Integer
+
+      def each: () { (ConversationEvent) -> void } -> void
+              | () -> Enumerator[ConversationEvent, void]
+      def length: () -> Integer
+      def empty?: () -> bool
+      def gap_after?: (untyped sequence) -> bool
+      def caught_up?: () -> bool
+      def last_sequence: () -> Integer
+    end
+
+    module ConversationProjections
+      include WorkspaceProjections
+    end
+
+    class ConversationsContext
+      include Fields
+      include ConversationProjections
+      include ConversationHistoryProjections
+
+      SIDE_FLAG: String
+
+      attr_reader workspace_public_id: String
+
+      def initialize: (dispatch: _Dispatch, workspace_public_id: String) -> void
+      def list: (?after: String?, ?limit: Integer?, ?side: bool?) -> Page[ConversationSummary]
+      def archived: (?after: String?, ?limit: Integer?) -> Page[ConversationSummary]
+      def search: (query: String, ?archived: String?, ?include_auxiliary: bool?,
+                   ?limit: Integer?, ?after: String?) -> ConversationSearchPage
+      def create: (
+        idempotency_key: String,
+        ?title: String?,
+        ?metadata: Hash[untyped, untyped],
+        ?billing_subject: String?,
+        ?default_runner_executor_public_id: String?,
+        ?answering_user_public_id: String?,
+        ?access: Hash[untyped, untyped],
+        ?memory_context: Hash[untyped, untyped]?
+      ) -> Created
+      def fetch: (String public_id) -> Conversation
+      def conversation: (String public_id) -> ConversationContext
+
+      class Created < Data
+        attr_reader conversation: Conversation
+        attr_reader replayed: bool
+
+        def replayed?: () -> bool
+        def public_id: () -> String
+        def title: () -> String?
+      end
+    end
+
+    class ConversationContext
+      include Fields
+      include ConversationProjections
+
+      EVENTS_CHANNEL: String
+
+      attr_reader workspace_public_id: String
+      attr_reader public_id: String
+
+      def initialize: (
+        dispatch: _Dispatch, workspace_public_id: String, public_id: String
+      ) -> void
+      def fetch: () -> Conversation
+      def update: (?title: String?, ?metadata: Hash[untyped, untyped]) -> Conversation
+      def archive: () -> Conversation
+      def unarchive: () -> Conversation
+      def delete: () -> nil
+      def children: (?after: String?, ?limit: Integer?) -> Page[ConversationSummary]
+      def memory: () -> MemoryContext
+      def set_memory_context: (memory_context: Hash[untyped, untyped]?) -> Conversation
+      def store_entries: () -> StoreEntriesContext
+      def inputs: () -> InputsContext
+      def schedules: () -> SchedulesContext
+      def turns: () -> ConversationTurnsContext
+      def history: () -> ConversationHistoryContext
+      def cancel: () -> nil
+      def set_default_runner: (executor_public_id: String?) -> Conversation
+      def set_access: (default: String, ?entries: Array[Hash[untyped, untyped]]) -> Conversation
+      def fork: (
+        idempotency_key: String,
+        ?turn_public_id: String?,
+        ?variant_public_id: String?,
+        ?title: String?,
+        ?side: bool?
+      ) -> Forked
+      def rewind: (
+        turn_public_id: String,
+        idempotency_key: String,
+        ?variant_public_id: String?,
+        ?title: String?,
+        ?restore_checkpoints: bool,
+        ?poll: Numeric,
+        ?patience: Numeric?,
+        ?approval_rules: untyped,
+        ?restore_guard: (^(String?, Checkpoint) -> String?)?
+      ) -> Rewound
+      def restore_checkpoints: (
+        RunnerEffects effects,
+        ?poll: Numeric,
+        ?patience: Numeric?,
+        ?approval_rules: untyped,
+        ?restore_guard: (^(String?, Checkpoint) -> String?)?
+      ) -> Hash[Symbol, untyped]
+      def compact: (?model: untyped, ?reasoning_effort: untyped, ?reasoning_enabled: bool?) -> ConversationCompaction
+      def estimate_input: (
+        model: String,
+        ?prompt: String?,
+        ?reasoning_effort: String?, ?reasoning_enabled: bool?,
+        ?configuration: Hash[untyped, untyped],
+        ?history: Hash[untyped, untyped],
+        ?reasoning_replay: Hash[untyped, untyped],
+        ?inline: Array[untyped],
+        ?render: bool,
+        ?to: String?,
+        ?variables: Hash[untyped, untyped],
+        ?template: Hash[untyped, untyped]
+      ) -> ConversationInputEstimate
+      def events: (?after: String?, ?limit: Integer?) -> ConversationEventPage
+      def feed: (
+        ?position: KernelFeed::Position,
+        ?limit: Integer?,
+        ?realtime: Realtime::Client?,
+        ?items: String?,
+        **untyped
+      ) -> KernelFeed[ConversationEvent]
+      def realtime_opener: (
+        Realtime::Client client, ?items: String?
+      ) -> ^() -> Realtime::FeedSubscription[ConversationEvent]
+      def transcript: (
+        realtime: Realtime::Client
+      ) -> ^() -> Realtime::FeedSubscription[TranscriptItem]
+      def progress: (realtime: Realtime::Client) -> ^() -> Realtime::FeedSubscription[ProgressFrame]
+
+      private
+
+      def path: () -> String
+
+      class Forked < Data
+        attr_reader conversation: Conversation
+        attr_reader replayed: bool
+        attr_reader runner_effects: RunnerEffects
+
+        def replayed?: () -> bool
+        def public_id: () -> String
+      end
+
+      class Rewound < Data
+        attr_reader conversation: Conversation
+        attr_reader replayed: bool
+        attr_reader fork_point: RunnerEffects
+        attr_reader restoration: Hash[Symbol, untyped]
+
+        def replayed?: () -> bool
+        def public_id: () -> String
+        def status: () -> String?
+        def restored?: () -> bool
+        def untouched?: () -> bool
+        def kept?: () -> bool
+        def unavailable?: () -> bool
+        def failed?: () -> bool
+        def partial?: () -> bool
+        def runners: () -> Array[Hash[Symbol, untyped]]
+        def reason: () -> String?
+      end
+    end
+
+    class InputsContext
+      include Fields
+      include ConversationProjections
+
+      attr_reader path: String
+
+      def initialize: (dispatch: _Dispatch, path: String) -> void
+      def list: () -> ConversationInputList
+
+      def materialization: (String public_id, ?include_hidden: bool?) -> InputMaterialization?
+      def create: (
+        idempotency_key: String,
+        ?text: String?,
+        ?entries: Array[untyped],
+        ?kind: String?,
+        ?role: String?,
+        ?model: String?,
+        ?reasoning_effort: String?, ?reasoning_enabled: bool?,
+        ?configuration: Hash[untyped, untyped],
+        ?delivery_mode: String?,
+        ?context_mode: String?,
+        ?history: Hash[untyped, untyped],
+        ?reasoning_replay: Hash[untyped, untyped],
+        ?inline: Array[untyped],
+        ?visible_in_context: bool,
+        ?expected_context_revision: Integer?,
+        ?expected_tail_turn_public_id: String?,
+        ?expected_steering_run_public_id: String?,
+        ?tool_names: Array[String],
+        ?approval_mode: String?,
+        ?instructions: String?,
+        ?to: String?,
+        ?attachments: Array[String | Upload],
+        ?variables: Hash[untyped, untyped],
+        ?steps: Array[untyped]?,
+        ?deliver_at: Time | String,
+        ?deliver_in: String,
+        ?speaker_public_id: String
+      ) -> Accepted
+      def update: (
+        String public_id,
+        ?expected_lock_version: Integer?,
+        ?text: String?,
+        ?entries: Array[untyped],
+        ?model: String?,
+        ?reasoning_effort: String?, ?reasoning_enabled: bool?,
+        ?configuration: Hash[untyped, untyped],
+        ?context_mode: String?,
+        ?history: Hash[untyped, untyped],
+        ?reasoning_replay: Hash[untyped, untyped],
+        ?inline: Array[untyped],
+        ?visible_in_context: bool,
+        ?tool_names: Array[String],
+        ?approval_mode: String?,
+        ?instructions: String?,
+        ?attachments: Array[String | Upload],
+        ?variables: Hash[untyped, untyped],
+        ?steps: Array[untyped]?,
+        ?deliver_at: Time | String,
+        ?deliver_in: String
+      ) -> ConversationInput
+      def delete: (String public_id) -> nil
+      def reorder: (Array[String] ordered_public_ids) -> Array[ConversationInput]
+
+      private
+
+      def input_path: (String public_id) -> String
+
+      class Accepted < Data
+        attr_reader input: ConversationInput
+        attr_reader replayed: bool
+
+        def replayed?: () -> bool
+        def public_id: () -> String
+        def queue_position: () -> Integer
+        def state: () -> String
+        def blocked?: () -> bool
+      end
+    end
+
+    class ConversationTurnsContext
+      include Fields
+      include ConversationProjections
+
+      attr_reader workspace_public_id: String
+      attr_reader conversation_public_id: String
+
+      def initialize: (
+        dispatch: _Dispatch, workspace_public_id: String, conversation_public_id: String
+      ) -> void
+      def list: (
+        ?after_position: Integer?, ?before_position: Integer?, ?limit: Integer?, ?include_hidden: bool?
+      ) -> ConversationTurnPage
+      def fetch: (String public_id, ?include_hidden: bool?) -> ConversationTurn
+      def set_view_state: (
+        String public_id, ?visibility: String?, ?concealed: bool
+      ) -> TurnReference
+      def delete: (String public_id) -> nil
+      def edit: (String public_id, ?text: String?, ?entries: Array[untyped]) -> ConversationVariant
+      def regenerate: (
+        String public_id,
+        idempotency_key: String,
+        ?model: String?,
+        ?reasoning_effort: String?, ?reasoning_enabled: bool?,
+        ?configuration: Hash[untyped, untyped]
+      ) -> ConversationRegeneration
+      def regeneration_receipt: (idempotency_key: String) -> ConversationRegeneration
+      def variants: (String public_id) -> ConversationVariantDeck
+      def request: (String public_id, String variant_public_id) -> SealedRequest
+      def reasoning: (String public_id, String variant_public_id, ?before: String?, ?limit: Integer?) -> ConversationReasoningPage
+      def activate: (String public_id, String variant_public_id) -> ConversationVariant
+      def set_variant_view_state: (
+        String public_id, String variant_public_id, concealed: bool
+      ) -> ConversationVariant
+
+      private
+
+      def path: () -> String
+      def conversation_path: () -> String
+      def turn_path: (String public_id) -> String
+      def variants_path: (String public_id) -> String
+
+      class TurnReference < Data
+        attr_reader public_id: String
+        attr_reader inherited: bool
+
+        def inherited?: () -> bool
+      end
+    end
+
+  end
+
+end

@@ -1,0 +1,133 @@
+name: "${CYBROS_PROJECT_NAME:-cybros}"
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-nexus: &nexus
+  image: "${CYBROS_IMAGE_NAMESPACE:-jasl123}/cybros-nexus:${CYBROS_IMAGE_TAG:-latest}"
+  entrypoint: []
+  environment: &nexus-environment
+    RAILS_ENV: production
+    PGHOST: db
+    PGUSER: postgres
+    PGPASSWORD: "${POSTGRES_PASSWORD:?Missing POSTGRES_PASSWORD}"
+    SECRET_KEY_BASE: "${SECRET_KEY_BASE:?Missing SECRET_KEY_BASE}"
+    ACTIVE_RECORD_ENCRYPTION__PRIMARY_KEY: "${ACTIVE_RECORD_ENCRYPTION__PRIMARY_KEY:?Missing encryption key}"
+    ACTIVE_RECORD_ENCRYPTION__DETERMINISTIC_KEY: "${ACTIVE_RECORD_ENCRYPTION__DETERMINISTIC_KEY:?Missing encryption key}"
+    ACTIVE_RECORD_ENCRYPTION__KEY_DERIVATION_SALT: "${ACTIVE_RECORD_ENCRYPTION__KEY_DERIVATION_SALT:?Missing encryption salt}"
+    NEXUS_SETUP_SECRET: "${NEXUS_SETUP_SECRET:-}"
+    BASE_URL: "${CYBROS_NEXUS_URL:?Missing browser-reachable Nexus URL}"
+    NEXUS_OAUTH_REDIRECT_URIS: '["${CYBROS_RHO_URL:?Missing browser-reachable rho URL}/auth/callback"]'
+    NEXUS_OAUTH_ALLOW_HTTP: "${CYBROS_OAUTH_ALLOW_HTTP:-false}"
+    SOLID_QUEUE_IN_PUMA: "false"
+    THRUSTER_LOG_REQUESTS: "false"
+  volumes:
+    - ./data/nexus/storage:/rails/storage
+  logging: *logging
+
+services:
+  # Prepare the image users' writable bind mounts once, including restored data.
+  # PostgreSQL's official entrypoint prepares its own directory and UID.
+  data_init:
+    image: "${CYBROS_IMAGE_NAMESPACE:-jasl123}/cybros-nexus:${CYBROS_IMAGE_TAG:-latest}"
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "mkdir -p /data/nexus/storage /data/rho/home/tmp /data/rho/work && chown -R 1000:1000 /data/nexus/storage /data/rho/home /data/rho/work && chmod 700 /data/rho/home /data/rho/home/tmp"
+    volumes:
+      - ./data:/data
+    restart: "no"
+    logging: *logging
+
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      PGDATA: /var/lib/postgresql/data/18
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Missing POSTGRES_PASSWORD}"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    logging: *logging
+
+  migrator:
+    <<: *nexus
+    depends_on:
+      data_init:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    restart: "no"
+    command: ["./bin/rails", "db:prepare"]
+
+  nexus:
+    <<: *nexus
+    restart: unless-stopped
+    depends_on: &nexus-dependencies
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    command: ["./bin/thrust", "./bin/rails", "server"]
+    ports:
+      - "${CYBROS_BIND:-127.0.0.1}:${CYBROS_NEXUS_PORT:-3300}:80"
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --max-time, "5", "http://127.0.0.1/up"]
+      interval: 5s
+      timeout: 6s
+      retries: 24
+      start_period: 30s
+
+  jobs:
+    <<: *nexus
+    restart: unless-stopped
+    depends_on: *nexus-dependencies
+    command: ["./bin/jobs"]
+
+  model_runner:
+    <<: *nexus
+    restart: unless-stopped
+    depends_on: *nexus-dependencies
+    stop_grace_period: 35s
+    command: ["./bin/model_runner"]
+
+  rho:
+    image: "${CYBROS_IMAGE_NAMESPACE:-jasl123}/cybros-rho:${CYBROS_IMAGE_TAG:-latest}"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    depends_on:
+      nexus:
+        condition: service_healthy
+    environment:
+      RHO_MODE: full
+      RHO_HOME: /var/lib/rho
+      RHO_TOOLS_ROOT: /home/runner
+      RHO_NEXUS_URL: http://nexus
+      RHO_NEXUS_PUBLIC_URL: "${CYBROS_NEXUS_URL}"
+      RHO_PUBLIC_URL: "${CYBROS_RHO_URL}"
+      RHO_TELEGRAM_BOT_TOKEN: "${RHO_TELEGRAM_BOT_TOKEN:-}"
+    command: [server, --bind, "0.0.0.0", --port, "7777", --unsafe-plaintext]
+    working_dir: /home/runner
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${CYBROS_BIND:-127.0.0.1}:${CYBROS_RHO_PORT:-7777}:7777"
+    volumes:
+      - ./data/rho/home:/var/lib/rho
+      - ./data/rho/work:/home/runner
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --max-time, "5", "http://127.0.0.1:7777/healthz"]
+      interval: 5s
+      timeout: 6s
+      retries: 12
+      start_period: 15s
+    logging: *logging

@@ -1,0 +1,54 @@
+module CybrosAgent
+  module Api
+    class BaseClient
+      include Parsing
+
+      DEFAULT_REQUEST_TIMEOUT: Integer
+
+      def initialize: (
+        base_url: String,
+        ?credential: String?,
+        ?credential_provider: (^() -> String)?,
+        ?transport: _Transport?,
+        ?request_timeout: Numeric
+      ) -> void
+
+      def inspect: () -> String
+      def to_s: () -> String
+      def pretty_print: (untyped printer) -> void
+
+      private
+
+      def dispatch: () -> _Dispatch
+      def initialize_dispatch: (base_url: String, credential_provider: ^() -> String?,
+                                transport: _Transport?, request_timeout: Numeric) -> void
+    end
+
+  end
+
+  class Client < Api::BaseClient
+    def profile: () -> Api::ProfileContext
+    def workspaces: () -> Api::Workspaces
+    def workspace: (String public_id) -> Api::WorkspaceContext
+    def uploads: () -> Api::UploadsContext
+    def tools: () -> Api::ToolCatalog
+    def models: () -> Api::ModelCatalog
+    def model_providers: () -> Api::ModelProviders
+    def executors: () -> Api::Executors
+  end
+
+  class ExecutorClient < Api::BaseClient
+    EXECUTOR_PATH: String
+    ANNOUNCEMENT_PATH: String
+    INBOX_PATH: String
+    PROGRESS_PATH: String
+
+    def executor: () -> Api::ExecutorDescription
+    def announce: (tools: Array[Hash[String, untyped]], ?environment: Hash[String, untyped]?, ?documents: Array[Hash[String, untyped]]?) -> Api::ExecutorDescription
+    def inbox: () -> Api::ExecutorInboxContext
+    def uploads: () -> Api::ExecutorUploadsContext
+    def inbox_task: (run_public_id: String, task_key: String) -> Api::ExecutorTaskContext
+    def report_progress: (Hash[String, untyped] frame) -> nil
+  end
+
+end

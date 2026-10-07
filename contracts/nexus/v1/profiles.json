@@ -1,0 +1,885 @@
+{
+  "agent_api": {
+    "member": {
+      "public_id": "01900000-0000-7000-8000-000000000020",
+      "handle": "lark",
+      "kind": "agent",
+      "role": "member",
+      "display_name": "Fixture agent"
+    },
+    "credential": {
+      "plane": "member",
+      "expires_at": "2026-08-13T00:00:00Z"
+    },
+    "configuration": {
+      "tool_definitions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "delegate_task",
+            "description": "Give one bounded job to a new agent that starts with an EMPTY\ncontext. It sees only `prompt`, not this conversation, so say which\nfiles, what question, and the shape of the answer you want back. It\ninherits your tools unless `tools` names fewer, including the ability\nto delegate again when `delegate_task` remains declared. `model`\nselects a provider/model for this task only; omission inherits your\nconfigured model. An unavailable explicit selection is refused.\n\nThe task runs in the background: this call answers at once with the\ntask's id, and its answer is delivered to you later as a `<task_result>`\nblock whose `task` attribute is that id, in a message that is not from\nthe person. A task is a step of your own work, not a conversation: it\ntakes no further messages, and a `<task_result>` that also carries a\n`conversation` attribute is from a conversation you spawned, not from a\ntask. Until the answer arrives do not poll, run the same command\nyourself, guess its answer, or edit the files it is working on. If\n`wait` is available, use it later when that result is needed before\ncontinuing. To run\nseveral jobs at once, put several `delegate_task` calls in ONE message; they run\nat the same time:\n\n    delegate_task({prompt: \"Review app/models/user.rb for N+1 queries. Answer file:line and a fix, or 'none'.\"})\n    delegate_task({prompt: \"Run the test suite. Answer the failing tests as file:line, or 'all green'.\"})\n\n`wait: true` means your next round WAITS for the task: the `<task_result>` is\nthis call's result, and several waited calls in one message answer\ntogether, in the order you asked. Use the default for a long test run or\nbuild while you do other work; use `wait: true` when you need the answer\nbefore you can continue.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\ntask's answer before becoming final, independently of immediate waiting.\n`lifetime: \"conversation\"` delivers an unwaited result in a new turn\nafter this reply, even if the task finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Dependencies and explicit stops still apply.\n`wake: \"passive\"` records a completion after the final answer as\nconversation history without starting another reply. Omit to inherit\nthe calling work's wake mode; ordinary replies default to \"auto\".\n`wait: true` and turn-lifetime joining still consume results in this\nreply. Standalone runs have no later turn and await all results.\n\nDelegate from what the person told you, in your FIRST message — do not\nlook around the project first to write a better prompt: the task has\nyour tools and looks for itself — and do your own part beside it, in\nthe same message:\n\n    \"Find every place that reads the retry limit; meanwhile, what does the README say this service does?\"\n    → one message: delegate_task({prompt: \"Find every place in this repository that reads the retry limit. Answer file:line for each, or 'none'.\"}) beside your own read of the README.\n\nUse `delegate_task` when the work needs a model and would fill your context (a\nreview, a search across the whole tree, a test run whose failures you\nwant summarised — you keep the conclusion, not the file dumps), for a\nlong command whose result you want later, or for several jobs at once\nwhose answers you will read yourself; not for a file or a few greps you\ncan do yourself, several in one message.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "prompt": {
+                  "type": "string",
+                  "description": "What to do and what to answer with. The task sees only this text, so name the files, the question, and the shape of the answer."
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Optional provider/model reference for this task at that model's reasoning default. Omit to inherit your configured model. Does not change your model or any agent profile."
+                },
+                "lifetime": {
+                  "type": "string",
+                  "enum": [
+                    "turn",
+                    "conversation"
+                  ],
+                  "description": "turn: consume the work's result before this reply becomes final. conversation: permit it to finish afterward. Omit to inherit; ordinary replies default to conversation. Independent of immediate waiting."
+                },
+                "wake": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "passive"
+                  ],
+                  "description": "auto: a later completion may start a new reply. passive: record it in conversation history without starting a reply. Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged."
+                },
+                "wait": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "true: the next round waits and the answer is this call's result. false (the default): the next round continues alongside the task. Lifetime independently controls whether final delivery waits."
+                },
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Names from your own tool list, to give the task fewer tools. Omit to give it all of yours, including delegate_task when declared."
+                }
+              },
+              "required": [
+                "prompt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "kernel_tools": [],
+      "runner_executor_public_ids": [],
+      "runner_tool_names": null,
+      "approval_mode": "bypass",
+      "approval_rules": [
+        {
+          "tool": "bash",
+          "path": "command",
+          "match": "*rm -rf /*",
+          "verdict": "deny",
+          "reason": "a person can run it"
+        },
+        {
+          "tool": "memory_*|ask|task",
+          "verdict": "allow"
+        }
+      ],
+      "prompt_mechanism": "default",
+      "prompt_template": null,
+      "compaction_policy": {
+        "mode": "kernel"
+      },
+      "lifecycle_hooks": null,
+      "default_model": "dev/mock-text",
+      "fallback_model": "dev/mock-unmetered"
+    },
+    "measured_at": "2026-07-30T00:00:00Z"
+  },
+  "valid_ingress_speaker_fixture": {
+    "ingress_speaker": {
+      "public_id": "01900000-0000-7000-8000-0000000000a8",
+      "kind": "ingress",
+      "channel_key": "bridge:123",
+      "external_id": "456",
+      "display_name": "External Ada"
+    }
+  },
+  "approval_modes": [
+    "bypass",
+    "ask",
+    "rules"
+  ],
+  "approval_rule_keys": [
+    "tool",
+    "path",
+    "match",
+    "verdict",
+    "reason",
+    "origin"
+  ],
+  "approval_verdicts": [
+    "allow",
+    "ask",
+    "deny"
+  ],
+  "platform_api_session": {
+    "member": {
+      "public_id": "01900000-0000-7000-8000-000000000021",
+      "kind": "human",
+      "role": "owner"
+    },
+    "credential_plane": null
+  },
+  "platform_api_token": {
+    "member": {
+      "public_id": "01900000-0000-7000-8000-000000000021",
+      "kind": "human",
+      "role": "owner"
+    },
+    "credential_plane": "platform"
+  },
+  "unknown_member_kind_fixture": {
+    "member": {
+      "public_id": "01900000-0000-7000-8000-000000000020",
+      "handle": "lark",
+      "kind": "zz_unknown_value",
+      "role": "member",
+      "display_name": "Fixture agent"
+    },
+    "credential": {
+      "plane": "member",
+      "expires_at": "2026-08-13T00:00:00Z"
+    },
+    "configuration": {
+      "tool_definitions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "delegate_task",
+            "description": "Give one bounded job to a new agent that starts with an EMPTY\ncontext. It sees only `prompt`, not this conversation, so say which\nfiles, what question, and the shape of the answer you want back. It\ninherits your tools unless `tools` names fewer, including the ability\nto delegate again when `delegate_task` remains declared. `model`\nselects a provider/model for this task only; omission inherits your\nconfigured model. An unavailable explicit selection is refused.\n\nThe task runs in the background: this call answers at once with the\ntask's id, and its answer is delivered to you later as a `<task_result>`\nblock whose `task` attribute is that id, in a message that is not from\nthe person. A task is a step of your own work, not a conversation: it\ntakes no further messages, and a `<task_result>` that also carries a\n`conversation` attribute is from a conversation you spawned, not from a\ntask. Until the answer arrives do not poll, run the same command\nyourself, guess its answer, or edit the files it is working on. If\n`wait` is available, use it later when that result is needed before\ncontinuing. To run\nseveral jobs at once, put several `delegate_task` calls in ONE message; they run\nat the same time:\n\n    delegate_task({prompt: \"Review app/models/user.rb for N+1 queries. Answer file:line and a fix, or 'none'.\"})\n    delegate_task({prompt: \"Run the test suite. Answer the failing tests as file:line, or 'all green'.\"})\n\n`wait: true` means your next round WAITS for the task: the `<task_result>` is\nthis call's result, and several waited calls in one message answer\ntogether, in the order you asked. Use the default for a long test run or\nbuild while you do other work; use `wait: true` when you need the answer\nbefore you can continue.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\ntask's answer before becoming final, independently of immediate waiting.\n`lifetime: \"conversation\"` delivers an unwaited result in a new turn\nafter this reply, even if the task finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Dependencies and explicit stops still apply.\n`wake: \"passive\"` records a completion after the final answer as\nconversation history without starting another reply. Omit to inherit\nthe calling work's wake mode; ordinary replies default to \"auto\".\n`wait: true` and turn-lifetime joining still consume results in this\nreply. Standalone runs have no later turn and await all results.\n\nDelegate from what the person told you, in your FIRST message — do not\nlook around the project first to write a better prompt: the task has\nyour tools and looks for itself — and do your own part beside it, in\nthe same message:\n\n    \"Find every place that reads the retry limit; meanwhile, what does the README say this service does?\"\n    → one message: delegate_task({prompt: \"Find every place in this repository that reads the retry limit. Answer file:line for each, or 'none'.\"}) beside your own read of the README.\n\nUse `delegate_task` when the work needs a model and would fill your context (a\nreview, a search across the whole tree, a test run whose failures you\nwant summarised — you keep the conclusion, not the file dumps), for a\nlong command whose result you want later, or for several jobs at once\nwhose answers you will read yourself; not for a file or a few greps you\ncan do yourself, several in one message.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "prompt": {
+                  "type": "string",
+                  "description": "What to do and what to answer with. The task sees only this text, so name the files, the question, and the shape of the answer."
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Optional provider/model reference for this task at that model's reasoning default. Omit to inherit your configured model. Does not change your model or any agent profile."
+                },
+                "lifetime": {
+                  "type": "string",
+                  "enum": [
+                    "turn",
+                    "conversation"
+                  ],
+                  "description": "turn: consume the work's result before this reply becomes final. conversation: permit it to finish afterward. Omit to inherit; ordinary replies default to conversation. Independent of immediate waiting."
+                },
+                "wake": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "passive"
+                  ],
+                  "description": "auto: a later completion may start a new reply. passive: record it in conversation history without starting a reply. Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged."
+                },
+                "wait": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "true: the next round waits and the answer is this call's result. false (the default): the next round continues alongside the task. Lifetime independently controls whether final delivery waits."
+                },
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Names from your own tool list, to give the task fewer tools. Omit to give it all of yours, including delegate_task when declared."
+                }
+              },
+              "required": [
+                "prompt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "kernel_tools": [],
+      "runner_executor_public_ids": [],
+      "runner_tool_names": null,
+      "approval_mode": "bypass",
+      "approval_rules": [
+        {
+          "tool": "bash",
+          "path": "command",
+          "match": "*rm -rf /*",
+          "verdict": "deny",
+          "reason": "a person can run it"
+        },
+        {
+          "tool": "memory_*|ask|task",
+          "verdict": "allow"
+        }
+      ],
+      "prompt_mechanism": "default",
+      "prompt_template": null,
+      "compaction_policy": {
+        "mode": "kernel"
+      },
+      "lifecycle_hooks": null,
+      "default_model": "dev/mock-text",
+      "fallback_model": "dev/mock-unmetered"
+    },
+    "measured_at": "2026-07-30T00:00:00Z"
+  },
+  "unknown_member_role_fixture": {
+    "member": {
+      "public_id": "01900000-0000-7000-8000-000000000020",
+      "handle": "lark",
+      "kind": "agent",
+      "role": "zz_unknown_value",
+      "display_name": "Fixture agent"
+    },
+    "credential": {
+      "plane": "member",
+      "expires_at": "2026-08-13T00:00:00Z"
+    },
+    "configuration": {
+      "tool_definitions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "delegate_task",
+            "description": "Give one bounded job to a new agent that starts with an EMPTY\ncontext. It sees only `prompt`, not this conversation, so say which\nfiles, what question, and the shape of the answer you want back. It\ninherits your tools unless `tools` names fewer, including the ability\nto delegate again when `delegate_task` remains declared. `model`\nselects a provider/model for this task only; omission inherits your\nconfigured model. An unavailable explicit selection is refused.\n\nThe task runs in the background: this call answers at once with the\ntask's id, and its answer is delivered to you later as a `<task_result>`\nblock whose `task` attribute is that id, in a message that is not from\nthe person. A task is a step of your own work, not a conversation: it\ntakes no further messages, and a `<task_result>` that also carries a\n`conversation` attribute is from a conversation you spawned, not from a\ntask. Until the answer arrives do not poll, run the same command\nyourself, guess its answer, or edit the files it is working on. If\n`wait` is available, use it later when that result is needed before\ncontinuing. To run\nseveral jobs at once, put several `delegate_task` calls in ONE message; they run\nat the same time:\n\n    delegate_task({prompt: \"Review app/models/user.rb for N+1 queries. Answer file:line and a fix, or 'none'.\"})\n    delegate_task({prompt: \"Run the test suite. Answer the failing tests as file:line, or 'all green'.\"})\n\n`wait: true` means your next round WAITS for the task: the `<task_result>` is\nthis call's result, and several waited calls in one message answer\ntogether, in the order you asked. Use the default for a long test run or\nbuild while you do other work; use `wait: true` when you need the answer\nbefore you can continue.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\ntask's answer before becoming final, independently of immediate waiting.\n`lifetime: \"conversation\"` delivers an unwaited result in a new turn\nafter this reply, even if the task finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Dependencies and explicit stops still apply.\n`wake: \"passive\"` records a completion after the final answer as\nconversation history without starting another reply. Omit to inherit\nthe calling work's wake mode; ordinary replies default to \"auto\".\n`wait: true` and turn-lifetime joining still consume results in this\nreply. Standalone runs have no later turn and await all results.\n\nDelegate from what the person told you, in your FIRST message — do not\nlook around the project first to write a better prompt: the task has\nyour tools and looks for itself — and do your own part beside it, in\nthe same message:\n\n    \"Find every place that reads the retry limit; meanwhile, what does the README say this service does?\"\n    → one message: delegate_task({prompt: \"Find every place in this repository that reads the retry limit. Answer file:line for each, or 'none'.\"}) beside your own read of the README.\n\nUse `delegate_task` when the work needs a model and would fill your context (a\nreview, a search across the whole tree, a test run whose failures you\nwant summarised — you keep the conclusion, not the file dumps), for a\nlong command whose result you want later, or for several jobs at once\nwhose answers you will read yourself; not for a file or a few greps you\ncan do yourself, several in one message.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "prompt": {
+                  "type": "string",
+                  "description": "What to do and what to answer with. The task sees only this text, so name the files, the question, and the shape of the answer."
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Optional provider/model reference for this task at that model's reasoning default. Omit to inherit your configured model. Does not change your model or any agent profile."
+                },
+                "lifetime": {
+                  "type": "string",
+                  "enum": [
+                    "turn",
+                    "conversation"
+                  ],
+                  "description": "turn: consume the work's result before this reply becomes final. conversation: permit it to finish afterward. Omit to inherit; ordinary replies default to conversation. Independent of immediate waiting."
+                },
+                "wake": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "passive"
+                  ],
+                  "description": "auto: a later completion may start a new reply. passive: record it in conversation history without starting a reply. Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged."
+                },
+                "wait": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "true: the next round waits and the answer is this call's result. false (the default): the next round continues alongside the task. Lifetime independently controls whether final delivery waits."
+                },
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Names from your own tool list, to give the task fewer tools. Omit to give it all of yours, including delegate_task when declared."
+                }
+              },
+              "required": [
+                "prompt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "kernel_tools": [],
+      "runner_executor_public_ids": [],
+      "runner_tool_names": null,
+      "approval_mode": "bypass",
+      "approval_rules": [
+        {
+          "tool": "bash",
+          "path": "command",
+          "match": "*rm -rf /*",
+          "verdict": "deny",
+          "reason": "a person can run it"
+        },
+        {
+          "tool": "memory_*|ask|task",
+          "verdict": "allow"
+        }
+      ],
+      "prompt_mechanism": "default",
+      "prompt_template": null,
+      "compaction_policy": {
+        "mode": "kernel"
+      },
+      "lifecycle_hooks": null,
+      "default_model": "dev/mock-text",
+      "fallback_model": "dev/mock-unmetered"
+    },
+    "measured_at": "2026-07-30T00:00:00Z"
+  },
+  "unknown_credential_plane_fixture": {
+    "member": {
+      "public_id": "01900000-0000-7000-8000-000000000020",
+      "handle": "lark",
+      "kind": "agent",
+      "role": "member",
+      "display_name": "Fixture agent"
+    },
+    "credential": {
+      "plane": "zz_unknown_value",
+      "expires_at": "2026-08-13T00:00:00Z"
+    },
+    "configuration": {
+      "tool_definitions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "delegate_task",
+            "description": "Give one bounded job to a new agent that starts with an EMPTY\ncontext. It sees only `prompt`, not this conversation, so say which\nfiles, what question, and the shape of the answer you want back. It\ninherits your tools unless `tools` names fewer, including the ability\nto delegate again when `delegate_task` remains declared. `model`\nselects a provider/model for this task only; omission inherits your\nconfigured model. An unavailable explicit selection is refused.\n\nThe task runs in the background: this call answers at once with the\ntask's id, and its answer is delivered to you later as a `<task_result>`\nblock whose `task` attribute is that id, in a message that is not from\nthe person. A task is a step of your own work, not a conversation: it\ntakes no further messages, and a `<task_result>` that also carries a\n`conversation` attribute is from a conversation you spawned, not from a\ntask. Until the answer arrives do not poll, run the same command\nyourself, guess its answer, or edit the files it is working on. If\n`wait` is available, use it later when that result is needed before\ncontinuing. To run\nseveral jobs at once, put several `delegate_task` calls in ONE message; they run\nat the same time:\n\n    delegate_task({prompt: \"Review app/models/user.rb for N+1 queries. Answer file:line and a fix, or 'none'.\"})\n    delegate_task({prompt: \"Run the test suite. Answer the failing tests as file:line, or 'all green'.\"})\n\n`wait: true` means your next round WAITS for the task: the `<task_result>` is\nthis call's result, and several waited calls in one message answer\ntogether, in the order you asked. Use the default for a long test run or\nbuild while you do other work; use `wait: true` when you need the answer\nbefore you can continue.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\ntask's answer before becoming final, independently of immediate waiting.\n`lifetime: \"conversation\"` delivers an unwaited result in a new turn\nafter this reply, even if the task finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Dependencies and explicit stops still apply.\n`wake: \"passive\"` records a completion after the final answer as\nconversation history without starting another reply. Omit to inherit\nthe calling work's wake mode; ordinary replies default to \"auto\".\n`wait: true` and turn-lifetime joining still consume results in this\nreply. Standalone runs have no later turn and await all results.\n\nDelegate from what the person told you, in your FIRST message — do not\nlook around the project first to write a better prompt: the task has\nyour tools and looks for itself — and do your own part beside it, in\nthe same message:\n\n    \"Find every place that reads the retry limit; meanwhile, what does the README say this service does?\"\n    → one message: delegate_task({prompt: \"Find every place in this repository that reads the retry limit. Answer file:line for each, or 'none'.\"}) beside your own read of the README.\n\nUse `delegate_task` when the work needs a model and would fill your context (a\nreview, a search across the whole tree, a test run whose failures you\nwant summarised — you keep the conclusion, not the file dumps), for a\nlong command whose result you want later, or for several jobs at once\nwhose answers you will read yourself; not for a file or a few greps you\ncan do yourself, several in one message.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "prompt": {
+                  "type": "string",
+                  "description": "What to do and what to answer with. The task sees only this text, so name the files, the question, and the shape of the answer."
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Optional provider/model reference for this task at that model's reasoning default. Omit to inherit your configured model. Does not change your model or any agent profile."
+                },
+                "lifetime": {
+                  "type": "string",
+                  "enum": [
+                    "turn",
+                    "conversation"
+                  ],
+                  "description": "turn: consume the work's result before this reply becomes final. conversation: permit it to finish afterward. Omit to inherit; ordinary replies default to conversation. Independent of immediate waiting."
+                },
+                "wake": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "passive"
+                  ],
+                  "description": "auto: a later completion may start a new reply. passive: record it in conversation history without starting a reply. Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged."
+                },
+                "wait": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "true: the next round waits and the answer is this call's result. false (the default): the next round continues alongside the task. Lifetime independently controls whether final delivery waits."
+                },
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Names from your own tool list, to give the task fewer tools. Omit to give it all of yours, including delegate_task when declared."
+                }
+              },
+              "required": [
+                "prompt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "kernel_tools": [],
+      "runner_executor_public_ids": [],
+      "runner_tool_names": null,
+      "approval_mode": "bypass",
+      "approval_rules": [
+        {
+          "tool": "bash",
+          "path": "command",
+          "match": "*rm -rf /*",
+          "verdict": "deny",
+          "reason": "a person can run it"
+        },
+        {
+          "tool": "memory_*|ask|task",
+          "verdict": "allow"
+        }
+      ],
+      "prompt_mechanism": "default",
+      "prompt_template": null,
+      "compaction_policy": {
+        "mode": "kernel"
+      },
+      "lifecycle_hooks": null,
+      "default_model": "dev/mock-text",
+      "fallback_model": "dev/mock-unmetered"
+    },
+    "measured_at": "2026-07-30T00:00:00Z"
+  },
+  "unknown_platform_credential_plane_fixture": {
+    "member": {
+      "public_id": "01900000-0000-7000-8000-000000000021",
+      "kind": "human",
+      "role": "owner"
+    },
+    "credential_plane": "zz_unknown_value"
+  },
+  "unknown_value_fixture": "zz_unknown_value",
+  "unknown_value_behavior": "carry_unknown",
+  "unknown_field_behavior": "ignore",
+  "alias_render_fixture": {
+    "member": {
+      "public_id": "01900000-0000-7000-8000-000000000020",
+      "handle": "lark",
+      "kind": "agent",
+      "role": "member",
+      "display_name": "Fixture agent"
+    },
+    "credential": {
+      "plane": "member",
+      "expires_at": "2026-08-13T00:00:00Z"
+    },
+    "configuration": {
+      "tool_definitions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "wait",
+            "description": "Wait for an existing task when its result is needed before continuing.\nName the task key returned when it started; to observe work from an\nearlier turn, also name that execution's run_public_id. The target\nmust belong to this conversation, or this same standalone execution.\nThis waits for generated work and the original spawned reply, not the\nlaunch receipt. Already completed work returns immediately. A timeout\nor cancellation ends only this wait; the target and its normal result\ndelivery continue. Repeating a wait reads the available result without\nrestarting the target or consuming mailbox messages.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "task": {
+                  "type": "string",
+                  "description": "The existing task key."
+                },
+                "run_public_id": {
+                  "type": "string",
+                  "description": "Source execution UUID; omit for this execution."
+                },
+                "timeout_ms": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Finite waiting duration in milliseconds; defaults to one hour, at most 24 hours effective."
+                }
+              },
+              "required": [
+                "task"
+              ]
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "spawn",
+            "description": "Open a conversation with another agent and give it a job. Without\n`agent` it is answered by a fresh copy of yourself with an empty\ncontext (a subagent); with `agent`, by that agent's own engine, tools\nand memory (a peer). Unlike `Agent`, a spawned conversation\npersists: you can `send` it more messages, read its `status`,\nand `cancel` it. Its reply reaches you as a `<task_result task=\"…\"\nconversation=\"…\">` message that is not from the person; `wait: true`\nwaits for the first reply. Use `Agent` for one bounded job that\nends with one answer; use `spawn` when the work needs another\nagent's tools or memory, or a back-and-forth.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\nchild's report before becoming final. That obligation survives an\nexpired or canceled immediate wait. The child's initial execution\ninherits turn lifetime; explicitly cross-turn work may remain afterward.\n`lifetime: \"conversation\"` delivers an unwaited report in a new turn\nafter this reply, even if the child finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Later messages are independent requests.\n`wake: \"passive\"` records an unwaited reply in your conversation\nhistory without starting another turn. Omit to inherit the calling\nwork's wake mode; ordinary replies default to \"auto\". A waited reply\nand the turn-lifetime reporting obligation are unchanged.\n\nSpawn from what the person told you, in your FIRST message — do not\nlook around the project first to write a better brief: the agent has\ntools of its own and looks for itself — and do your own part beside\nit, in the same message:\n\n    \"Get an agent I can keep talking to onto the flaky login tests; meanwhile, what does the README say this service does?\"\n    → one message: spawn({label: \"login-tests\", prompt: \"The login tests are flaky. Find why, fix it, and answer with what you changed.\"}) beside your own read of the README.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "prompt": {
+                  "type": "string",
+                  "description": "The job, as the first message of the new conversation. It sees only this text, so name the files, the question, and what to answer with."
+                },
+                "agent": {
+                  "type": "string",
+                  "description": "The agent that answers the conversation, as its @handle or its public id. Omit for a fresh copy of yourself."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "A short name for the conversation, unique among the ones you spawned here (lowercase letters, digits, `_`, `-`). Optional."
+                },
+                "lifetime": {
+                  "type": "string",
+                  "enum": [
+                    "turn",
+                    "conversation"
+                  ],
+                  "description": "turn: consume the work's result before this reply becomes final. conversation: permit it to finish afterward. Omit to inherit; ordinary replies default to conversation. Independent of immediate waiting."
+                },
+                "wake": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "passive"
+                  ],
+                  "description": "auto: a later completion may start a new reply. passive: record it in conversation history without starting a reply. Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged."
+                },
+                "wait": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "true: the next round waits for the first reply as this call's result. false (the default): the next round continues alongside the child. Lifetime independently controls whether final delivery waits."
+                },
+                "default_runner_executor_public_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Runner UUID for the new conversation; null clears the default. Omit to inherit the caller default when eligible."
+                },
+                "model": {
+                  "type": "string",
+                  "description": "The model the conversation runs on, as provider/model, when its agent has none of its own. Omit for the model you are running on."
+                }
+              },
+              "required": [
+                "prompt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "send",
+            "description": "Post a message into a conversation you spawned, or one you may\nwrite in, except your parent or any ancestor conversation. To\nreport to your parent, finish your reply; it is returned automatically.\nBy default, it queues for a new reply after the current reply ends,\nor starts one immediately if idle; a scheduled message also waits\nuntil its delivery time. `steer: true` joins the running reply at\nits next model boundary; it does not interrupt an in-flight model\nrequest or tool. On an idle conversation it queues a new reply. `agent`\naddresses one agent in that conversation; without it the\nconversation's own agent replies. A reply, if any, reaches you\nin a new turn after your current reply, even if it finishes sooner;\nthis message is not from the person. `wake: \"passive\"`\nstores an owed reply in your conversation history without starting\nanother turn. It does not change delivery to the recipient; a steer\njoining an existing reply keeps that reply's original wake policy.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string",
+                  "description": "The conversation: the label you gave it when you spawned it, or its public id."
+                },
+                "agent": {
+                  "type": "string",
+                  "description": "The agent in that conversation this message is for, as its @handle or its public id. Omit for the conversation's own agent."
+                },
+                "message": {
+                  "type": "string",
+                  "description": "The message, as the person would write it."
+                },
+                "steer": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "true: join the running reply at its next model boundary, without interrupting an in-flight model request or tool. false (the default): deliver after that reply ends, or at once if nothing is running."
+                },
+                "deliver_in": {
+                  "type": "string",
+                  "description": "Deliver after this delay from now: 90s, 20m, 2h or 1d. Omit to deliver now. Not with steer. Send to your own conversation to wake yourself later."
+                },
+                "deliver_at": {
+                  "type": "string",
+                  "description": "Deliver at this time, as an ISO 8601 time with a UTC offset (2026-09-16T09:00:00Z). Use it only when you were told the time; otherwise deliver_in. Not with steer."
+                },
+                "wake": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "passive"
+                  ],
+                  "description": "auto: a later completion may start a new reply. passive: record it in conversation history without starting a reply. Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged."
+                },
+                "model": {
+                  "type": "string",
+                  "description": "The model the reply runs on, as provider/model, when the agent answering has none of its own. Omit for the model you are running on."
+                }
+              },
+              "required": [
+                "to",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "Agent",
+            "description": "Give one bounded job to a new agent that starts with an EMPTY\ncontext. It sees only `prompt`, not this conversation, so say which\nfiles, what question, and the shape of the answer you want back. It\ninherits your tools unless `tools` names fewer, including the ability\nto delegate again when `Agent` remains declared. `model`\nselects a provider/model for this task only; omission inherits your\nconfigured model. An unavailable explicit selection is refused.\n\nThe task runs in the background: this call answers at once with the\ntask's id, and its answer is delivered to you later as a `<task_result>`\nblock whose `task` attribute is that id, in a message that is not from\nthe person. A task is a step of your own work, not a conversation: it\ntakes no further messages, and a `<task_result>` that also carries a\n`conversation` attribute is from a conversation you spawned, not from a\ntask. Until the answer arrives do not poll, run the same command\nyourself, guess its answer, or edit the files it is working on. If\n`wait` is available, use it later when that result is needed before\ncontinuing. To run\nseveral jobs at once, put several `Agent` calls in ONE message; they run\nat the same time:\n\n    Agent({prompt: \"Review app/models/user.rb for N+1 queries. Answer file:line and a fix, or 'none'.\"})\n    Agent({prompt: \"Run the test suite. Answer the failing tests as file:line, or 'all green'.\"})\n\n`run_in_background: false` means your next round WAITS for the task: the\n`<task_result>` is this call's result, and several waited calls in one\nmessage answer together, in the order you asked. Use the default for a\nlong test run or build while you do other work; use\n`run_in_background: false` when you need the answer before you can\ncontinue.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\ntask's answer before becoming final, independently of immediate waiting.\n`lifetime: \"conversation\"` delivers an unwaited result in a new turn\nafter this reply, even if the task finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Dependencies and explicit stops still apply.\n`wake: \"passive\"` records a completion after the final answer as\nconversation history without starting another reply. Omit to inherit\nthe calling work's wake mode; ordinary replies default to \"auto\".\n`wait: true` and turn-lifetime joining still consume results in this\nreply. Standalone runs have no later turn and await all results.\n\nDelegate from what the person told you, in your FIRST message — do not\nlook around the project first to write a better prompt: the task has\nyour tools and looks for itself — and do your own part beside it, in\nthe same message:\n\n    \"Find every place that reads the retry limit; meanwhile, what does the README say this service does?\"\n    → one message: Agent({prompt: \"Find every place in this repository that reads the retry limit. Answer file:line for each, or 'none'.\"}) beside your own read of the README.\n\nUse `Agent` when the work needs a model and would fill your context (a\nreview, a search across the whole tree, a test run whose failures you\nwant summarised — you keep the conclusion, not the file dumps), for a\nlong command whose result you want later, or for several jobs at once\nwhose answers you will read yourself; not for a file or a few greps you\ncan do yourself, several in one message.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "prompt": {
+                  "type": "string",
+                  "description": "What to do and what to answer with. The task sees only this text, so name the files, the question, and the shape of the answer."
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Optional provider/model reference for this task at that model's reasoning default. Omit to inherit your configured model. Does not change your model or any agent profile."
+                },
+                "lifetime": {
+                  "type": "string",
+                  "enum": [
+                    "turn",
+                    "conversation"
+                  ],
+                  "description": "turn: consume the work's result before this reply becomes final. conversation: permit it to finish afterward. Omit to inherit; ordinary replies default to conversation. Independent of immediate waiting."
+                },
+                "wake": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "passive"
+                  ],
+                  "description": "auto: a later completion may start a new reply. passive: record it in conversation history without starting a reply. Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged."
+                },
+                "run_in_background": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "true (the default): the next round continues alongside the task. false: the next round waits and the answer is this call's result. Lifetime independently controls whether final delivery waits."
+                },
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Names from your own tool list, to give the task fewer tools. Omit to give it all of yours, including Agent when declared."
+                }
+              },
+              "required": [
+                "prompt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "canonical": "nexus.graph.delegate_task",
+          "params": {
+            "run_in_background": {
+              "maps_to": "wait",
+              "invert": true,
+              "description": "true (the default): the next round continues alongside the task. false: the next round waits and the answer is this call's result. Lifetime independently controls whether final delivery waits."
+            }
+          },
+          "description": "Give one bounded job to a new agent that starts with an EMPTY\ncontext. It sees only `prompt`, not this conversation, so say which\nfiles, what question, and the shape of the answer you want back. It\ninherits your tools unless `tools` names fewer, including the ability\nto delegate again when `{{delegate_task}}` remains declared. `model`\nselects a provider/model for this task only; omission inherits your\nconfigured model. An unavailable explicit selection is refused.\n\nThe task runs in the background: this call answers at once with the\ntask's id, and its answer is delivered to you later as a `<task_result>`\nblock whose `task` attribute is that id, in a message that is not from\nthe person. A task is a step of your own work, not a conversation: it\ntakes no further messages, and a `<task_result>` that also carries a\n`conversation` attribute is from a conversation you spawned, not from a\ntask. Until the answer arrives do not poll, run the same command\nyourself, guess its answer, or edit the files it is working on. If\n`{{wait}}` is available, use it later when that result is needed before\ncontinuing. To run\nseveral jobs at once, put several `{{delegate_task}}` calls in ONE message; they run\nat the same time:\n\n    {{delegate_task}}({prompt: \"Review app/models/user.rb for N+1 queries. Answer file:line and a fix, or 'none'.\"})\n    {{delegate_task}}({prompt: \"Run the test suite. Answer the failing tests as file:line, or 'all green'.\"})\n\n`run_in_background: false` means your next round WAITS for the task: the\n`<task_result>` is this call's result, and several waited calls in one\nmessage answer together, in the order you asked. Use the default for a\nlong test run or build while you do other work; use\n`run_in_background: false` when you need the answer before you can\ncontinue.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\ntask's answer before becoming final, independently of immediate waiting.\n`lifetime: \"conversation\"` delivers an unwaited result in a new turn\nafter this reply, even if the task finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Dependencies and explicit stops still apply.\n`wake: \"passive\"` records a completion after the final answer as\nconversation history without starting another reply. Omit to inherit\nthe calling work's wake mode; ordinary replies default to \"auto\".\n`wait: true` and turn-lifetime joining still consume results in this\nreply. Standalone runs have no later turn and await all results.\n\nDelegate from what the person told you, in your FIRST message — do not\nlook around the project first to write a better prompt: the task has\nyour tools and looks for itself — and do your own part beside it, in\nthe same message:\n\n    \"Find every place that reads the retry limit; meanwhile, what does the README say this service does?\"\n    → one message: {{delegate_task}}({prompt: \"Find every place in this repository that reads the retry limit. Answer file:line for each, or 'none'.\"}) beside your own read of the README.\n\nUse `{{delegate_task}}` when the work needs a model and would fill your context (a\nreview, a search across the whole tree, a test run whose failures you\nwant summarised — you keep the conclusion, not the file dumps), for a\nlong command whose result you want later, or for several jobs at once\nwhose answers you will read yourself; not for a file or a few greps you\ncan do yourself, several in one message."
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "AskUserQuestion",
+            "description": "Ask the person one question and wait for the answer. Use it when\nyou cannot proceed without a decision only they can make — which of\ntwo designs, whether to delete something, a credential you do not\nhave. Do not use it to report progress or to confirm something you\ncan check yourself.\n\nThis turn waits. The answer arrives as `<answer task=\"r3t1\">`, a\nmessage that is not the person typing to you anew — read it as the\nanswer to your question and continue the work.\n\nExample: `AskUserQuestion({prompt: \"Migrating users.email to citext drops the\nexisting index for ~2 min in production. Proceed, or schedule it\nfor a maintenance window?\"})`",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "prompt": {
+                  "type": "string",
+                  "description": "The one question."
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The choices, if there are choices: one string each, in the order to show them."
+                },
+                "multi": {
+                  "type": "boolean",
+                  "description": "true when more than one choice may be taken. Default false."
+                }
+              },
+              "required": [
+                "prompt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "canonical": "nexus.human.ask"
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "Skill",
+            "description": "Load the full instructions of one skill from the \"Skills available now\" list\nin this conversation. When the person names a skill, or the task clearly\nmatches a skill's description, call Skill with the exact name from that\nlist BEFORE acting on the task, then follow the loaded instructions. The list\ncarries summaries only: never follow, quote or guess a skill's instructions\nbefore loading it, and never name a skill you have not loaded. Load every\nskill that applies; do not load one twice.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "skill": {
+                  "type": "string",
+                  "description": "The skill name. E.g., \"commit\", \"review-pr\", or \"pdf\""
+                }
+              },
+              "required": [
+                "skill"
+              ]
+            }
+          },
+          "canonical": "nexus.skill.load",
+          "params": {
+            "skill": {
+              "maps_to": "name",
+              "description": "The skill name. E.g., \"commit\", \"review-pr\", or \"pdf\""
+            }
+          }
+        }
+      ],
+      "kernel_tools": [],
+      "runner_executor_public_ids": [],
+      "runner_tool_names": null,
+      "approval_mode": "bypass",
+      "approval_rules": [
+        {
+          "tool": "bash",
+          "path": "command",
+          "match": "*rm -rf /*",
+          "verdict": "deny",
+          "reason": "a person can run it"
+        },
+        {
+          "tool": "memory_*|ask|task",
+          "verdict": "allow"
+        }
+      ],
+      "prompt_mechanism": "default",
+      "prompt_template": null,
+      "compaction_policy": {
+        "mode": "kernel"
+      },
+      "lifecycle_hooks": null,
+      "default_model": "dev/mock-text",
+      "fallback_model": "dev/mock-unmetered"
+    },
+    "measured_at": "2026-07-30T00:00:00Z"
+  },
+  "definition_scopes": [
+    "instance",
+    "steward"
+  ],
+  "named_agents_fixture": {
+    "agents": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000031",
+        "handle": "docs",
+        "kind": "agent",
+        "display_name": "docs",
+        "agent_identifier": "rho.19c0aa77/docs",
+        "steward_public_id": "01900000-0000-7000-8000-000000000003",
+        "scope": "steward",
+        "name": "docs",
+        "description": "Writes the docs for a change and answers with the paths it wrote.",
+        "derived_from_public_id": "01900000-0000-7000-8000-000000000022",
+        "configuration": {
+          "tool_definitions": [],
+          "kernel_tools": [],
+          "runner_executor_public_ids": [],
+          "runner_tool_names": [],
+          "approval_mode": "bypass",
+          "approval_rules": null,
+          "prompt_mechanism": "default",
+          "prompt_template": null,
+          "compaction_policy": null,
+          "lifecycle_hooks": null,
+          "default_model": null,
+          "fallback_model": null
+        }
+      },
+      {
+        "public_id": "01900000-0000-7000-8000-000000000030",
+        "handle": "reviewer",
+        "kind": "agent",
+        "display_name": "reviewer",
+        "agent_identifier": "rho.7f3a9c1e/reviewer",
+        "steward_public_id": "01900000-0000-7000-8000-000000000003",
+        "scope": "instance",
+        "name": "reviewer",
+        "description": "Reviews a diff for defects and reports only what matters; use it after a change lands.",
+        "derived_from_public_id": "01900000-0000-7000-8000-000000000020",
+        "configuration": {
+          "tool_definitions": [
+            {
+              "type": "function",
+              "function": {
+                "name": "delegate_task",
+                "description": "Give one bounded job to a new agent that starts with an EMPTY\ncontext. It sees only `prompt`, not this conversation, so say which\nfiles, what question, and the shape of the answer you want back. It\ninherits your tools unless `tools` names fewer, including the ability\nto delegate again when `delegate_task` remains declared. `model`\nselects a provider/model for this task only; omission inherits your\nconfigured model. An unavailable explicit selection is refused.\n\nThe task runs in the background: this call answers at once with the\ntask's id, and its answer is delivered to you later as a `<task_result>`\nblock whose `task` attribute is that id, in a message that is not from\nthe person. A task is a step of your own work, not a conversation: it\ntakes no further messages, and a `<task_result>` that also carries a\n`conversation` attribute is from a conversation you spawned, not from a\ntask. Until the answer arrives do not poll, run the same command\nyourself, guess its answer, or edit the files it is working on. If\n`wait` is available, use it later when that result is needed before\ncontinuing. To run\nseveral jobs at once, put several `delegate_task` calls in ONE message; they run\nat the same time:\n\n    delegate_task({prompt: \"Review app/models/user.rb for N+1 queries. Answer file:line and a fix, or 'none'.\"})\n    delegate_task({prompt: \"Run the test suite. Answer the failing tests as file:line, or 'all green'.\"})\n\n`wait: true` means your next round WAITS for the task: the `<task_result>` is\nthis call's result, and several waited calls in one message answer\ntogether, in the order you asked. Use the default for a long test run or\nbuild while you do other work; use `wait: true` when you need the answer\nbefore you can continue.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\ntask's answer before becoming final, independently of immediate waiting.\n`lifetime: \"conversation\"` delivers an unwaited result in a new turn\nafter this reply, even if the task finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Dependencies and explicit stops still apply.\n`wake: \"passive\"` records a completion after the final answer as\nconversation history without starting another reply. Omit to inherit\nthe calling work's wake mode; ordinary replies default to \"auto\".\n`wait: true` and turn-lifetime joining still consume results in this\nreply. Standalone runs have no later turn and await all results.\n\nDelegate from what the person told you, in your FIRST message — do not\nlook around the project first to write a better prompt: the task has\nyour tools and looks for itself — and do your own part beside it, in\nthe same message:\n\n    \"Find every place that reads the retry limit; meanwhile, what does the README say this service does?\"\n    → one message: delegate_task({prompt: \"Find every place in this repository that reads the retry limit. Answer file:line for each, or 'none'.\"}) beside your own read of the README.\n\nUse `delegate_task` when the work needs a model and would fill your context (a\nreview, a search across the whole tree, a test run whose failures you\nwant summarised — you keep the conclusion, not the file dumps), for a\nlong command whose result you want later, or for several jobs at once\nwhose answers you will read yourself; not for a file or a few greps you\ncan do yourself, several in one message.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "prompt": {
+                      "type": "string",
+                      "description": "What to do and what to answer with. The task sees only this text, so name the files, the question, and the shape of the answer."
+                    },
+                    "model": {
+                      "type": "string",
+                      "description": "Optional provider/model reference for this task at that model's reasoning default. Omit to inherit your configured model. Does not change your model or any agent profile."
+                    },
+                    "lifetime": {
+                      "type": "string",
+                      "enum": [
+                        "turn",
+                        "conversation"
+                      ],
+                      "description": "turn: consume the work's result before this reply becomes final. conversation: permit it to finish afterward. Omit to inherit; ordinary replies default to conversation. Independent of immediate waiting."
+                    },
+                    "wake": {
+                      "type": "string",
+                      "enum": [
+                        "auto",
+                        "passive"
+                      ],
+                      "description": "auto: a later completion may start a new reply. passive: record it in conversation history without starting a reply. Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged."
+                    },
+                    "wait": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "true: the next round waits and the answer is this call's result. false (the default): the next round continues alongside the task. Lifetime independently controls whether final delivery waits."
+                    },
+                    "tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Names from your own tool list, to give the task fewer tools. Omit to give it all of yours, including delegate_task when declared."
+                    }
+                  },
+                  "required": [
+                    "prompt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          ],
+          "kernel_tools": [],
+          "runner_executor_public_ids": [],
+          "runner_tool_names": null,
+          "approval_mode": "bypass",
+          "approval_rules": null,
+          "prompt_mechanism": "default",
+          "prompt_template": null,
+          "compaction_policy": {
+            "mode": "kernel"
+          },
+          "lifecycle_hooks": null,
+          "default_model": "dev/mock-text",
+          "fallback_model": "dev/mock-unmetered"
+        }
+      }
+    ]
+  },
+  "unknown_named_agent_scope_fixture": {
+    "agents": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000031",
+        "handle": "docs",
+        "kind": "agent",
+        "display_name": "docs",
+        "agent_identifier": "rho.19c0aa77/docs",
+        "steward_public_id": "01900000-0000-7000-8000-000000000003",
+        "scope": "zz_unknown_value",
+        "name": "docs",
+        "description": "Writes the docs for a change and answers with the paths it wrote.",
+        "derived_from_public_id": "01900000-0000-7000-8000-000000000022",
+        "configuration": {
+          "tool_definitions": [],
+          "kernel_tools": [],
+          "runner_executor_public_ids": [],
+          "runner_tool_names": [],
+          "approval_mode": "bypass",
+          "approval_rules": null,
+          "prompt_mechanism": "default",
+          "prompt_template": null,
+          "compaction_policy": null,
+          "lifecycle_hooks": null,
+          "default_model": null,
+          "fallback_model": null
+        }
+      }
+    ]
+  }
+}

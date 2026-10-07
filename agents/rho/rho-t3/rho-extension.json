@@ -1,0 +1,29 @@
+{
+  "id": "rho.t3",
+  "display_name": "T3 coding",
+  "description": "Delegate coding to native Codex and Claude Code through a host or local T3 service.",
+  "configuration_version": 1,
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "server": { "type": "string", "enum": ["host", "local"], "default": "host", "title": "T3 location" },
+      "url": { "type": "string", "default": "", "title": "Host service URL", "description": "Used only for a host service; include its port." },
+      "listen_port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 3773, "title": "Local port", "description": "Local T3 listens on container loopback. No Docker port publication is needed." },
+      "token_env": { "type": "string", "default": "RHO_T3_TOKEN", "title": "Bearer environment variable" },
+      "project_id": { "type": "string", "default": "", "title": "T3 project", "description": "Select an existing project with rho t3 projects and rho t3 project." },
+      "default_agent": { "type": "string", "default": "", "title": "Default coding agent" },
+      "workspace": {
+        "type": "object", "default": { "type": "root" }, "additionalProperties": false,
+        "properties": {
+          "type": { "type": "string", "enum": ["root", "existing_worktree", "worktree"], "default": "root" },
+          "worktreePath": { "type": "string" }, "baseRef": { "type": "string" }, "branch": { "type": "string" }
+        }
+      }
+    },
+    "additionalProperties": false
+  },
+  "default_enabled": false,
+  "modes": ["full", "agent"],
+  "requires": [],
+  "restart_only": false
+}

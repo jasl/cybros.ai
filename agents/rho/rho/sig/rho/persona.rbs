@@ -1,0 +1,22 @@
+module Rho
+  class Core
+    include Persona
+
+    module Persona
+      def persona: () -> Hash[Symbol, untyped]
+      def write_persona: (String content) -> Hash[Symbol, untyped]
+      def reset_persona: () -> nil
+    end
+  end
+
+  module Extensions
+    module Ops
+      module Persona
+        USAGE: String
+        CONTENT_BYTES: Integer
+        def self.register: (untyped api) -> untyped
+        def self.command: (Cli::Terminal cli, Array[String] arguments, Hash[Symbol, untyped] options, ?input: untyped) -> untyped
+      end
+    end
+  end
+end

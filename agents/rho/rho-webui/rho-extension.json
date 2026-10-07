@@ -1,0 +1,15 @@
+{
+  "id": "rho.webui",
+  "display_name": "Web interface",
+  "description": "Browser access to conversations and rho settings.",
+  "configuration_version": 1,
+  "configuration_schema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "default_enabled": true,
+  "modes": ["full", "agent"],
+  "requires": [],
+  "restart_only": false
+}
