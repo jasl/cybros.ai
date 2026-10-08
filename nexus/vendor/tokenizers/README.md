@@ -31,7 +31,7 @@ tokenizer mapping for Qwen Max.
 
 Kimi K3's official release currently supplies a custom Python tokenizer and
 `tiktoken.model`, not a compatible `tokenizer.json`. It has no HF counter binding
-here. MiniMax has no shipped catalog entry. Neither receives a guessed exact
+here. MiniMax has no installed tokenizer binding. Neither receives a guessed exact
 counter from another family.
 
 To add an installed vocabulary, pin its official tokenizer and license in the
