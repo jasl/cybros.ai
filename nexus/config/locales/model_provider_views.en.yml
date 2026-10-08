@@ -1,0 +1,293 @@
+---
+en:
+  admin:
+    model_providers:
+      api_key:
+        api_key: API key
+        enter_api_key: Enter API key
+        paste_the_key_from_your_provider_account: Paste the key from your provider account.
+        enter_a_new_key_to_update_this_connection: Enter a new key to update this connection.
+        save: Save
+        update: Update
+        remove: Remove
+        encrypted_in_brand_and_never_sent_to_agents_saving: >-
+          Encrypted in %{brand} and never sent to agents. Saving a key does not make a model request or
+          verify provider billing.
+        remove_the_api_key_for_provider_new_requests_will: >-
+          Remove the API key for %{provider}? New requests will need another key. Models and visibility
+          settings are kept.
+      authorization:
+        manage_models: Manage models
+        subscription_credentials_are_stored_in_brand_agents_use_the: >-
+          Subscription credentials are stored in %{brand}. Agents use the connection without receiving
+          its tokens.
+        connecting_successfully_will_enable_this_provider: Connecting successfully will enable this provider.
+        subscription: Subscription
+      authorization_actions:
+        disconnect_this_subscription_agents_will_lose_access_through_it: Disconnect this subscription?
+          Agents will lose access through it, and any pending sign-in will stop.
+        disconnect: Disconnect
+        start_your_own_sign_in_the_current_pending_sign: Start your own sign-in? The current pending sign-in
+          will stop.
+        connect: Connect
+      authorization_session:
+        authorization_code: Authorization code
+        refresh_status: Refresh status
+        copy: Copy
+        open_authorization_page: Open authorization page
+        return_here_after_approving_this_page_will_update_when: Return here after approving. This page
+          will update when the connection is ready.
+        checking_progress_automatically: Checking progress automatically.
+      availability:
+        disable_provider: Disable provider
+        disabled: Disabled
+        enable_provider: Enable provider
+        enabled: Enabled
+        provider_availability: Provider availability
+        allow_new_requests_from_agents_disabling_keeps_credentials_and: Allow new requests from agents.
+          Disabling keeps credentials and model settings.
+      definition_form:
+        a_stable_short_identifier_such_as_local_or_my: A stable short identifier, such as local or my-provider.
+        provider_id: Provider ID
+        optional_name_shown_in_settings: Optional name shown in settings.
+        display_name: Display name
+        choose_the_api_supported_by_this_endpoint: Choose the API supported by this endpoint.
+        protocol: Protocol
+        the_provider_s_http_or_https_endpoint_including_its: The provider's HTTP or HTTPS endpoint, including
+          its API prefix when required.
+        base_url: Base URL
+        save_or_rotate_the_api_key_separately_on_the: Save or rotate the API key separately on the provider
+          overview.
+        authentication: Authentication
+        no_authentication: No authentication
+        api_key: API key
+        subscription_sign_in: Subscription sign-in
+        optional_maximum_number_of_simultaneous_requests_to_this_provider: Optional maximum number of
+          simultaneous requests to this provider.
+        concurrent_requests: Concurrent requests
+        cancel: Cancel
+        save_connection: Save connection
+        add_provider: Add provider
+        advanced_connection_settings: Advanced connection settings
+        connection_settings: Connection settings
+      form_errors:
+        reload_current_settings: Reload current settings
+        review_these_settings: Review these settings
+      header:
+        model_providers: Model providers
+        disabled: Disabled
+        enabled: Enabled
+      models:
+        test: Test
+        edit: Edit
+        clear_invalid_mark: Clear invalid mark
+        hidden: Hidden
+        visible: Visible
+        no_models_are_configured_yet_add_a_model_id: No models are configured yet. Add a model ID manually
+          or discover IDs from the provider.
+        tools: Tools
+        streaming: Streaming
+        invalid_hidden_from_agents: Invalid · hidden from agents
+        test_model: Test %{model}
+        edit_model: Edit %{model}
+        clear_invalid_mark_for_model: Clear invalid mark for %{model}
+        hide_model_from_agents: Hide %{model} from agents
+        make_model_visible: Make %{model} visible
+        model_visibility: "%{model} visibility"
+      api_keys:
+        show:
+          connect_this_installation_using_your_provider_api_key: Connect this installation using your
+            provider API key.
+          api_key: API key
+          provider_api_key: "%{provider} API key"
+      authorization_sessions:
+        show:
+          finish_signing_in_with_your_provider_account: Finish signing in with your provider account.
+          subscription_sign_in: Subscription sign-in
+          provider_sign_in: "%{provider} sign-in"
+      authorizations:
+        show:
+          connect_a_subscription_for_agents_to_use_through_brand: Connect a subscription for agents to
+            use through %{brand}.
+          subscription_sign_in: Subscription sign-in
+          provider_subscription: "%{provider} subscription"
+      definitions:
+        show:
+          provider_connection: Provider connection
+          edit_the_connection_used_for_this_provider_s_models: Edit the connection used for this provider's
+            models.
+          edit_connection: Edit connection
+          restore_the_connection_shipped_with_this_installation_model_edits: Restore the connection shipped
+            with this installation. Model edits and stored credentials are kept.
+          removing_this_connection_disables_the_custom_provider_its_credentials: Removing this connection
+            disables the custom provider. Its credentials are kept.
+          reset_this_provider_connection: Reset this provider connection?
+          restore_installation_connection: Restore installation connection
+          remove_custom_connection: Remove custom connection
+          this_provider_s_connection_was_removed_save_a_new: This provider's connection was removed. Save
+            a new connection to use the same provider ID again.
+          reset_provider_connection: Reset provider connection
+      index:
+        model_providers: Model providers
+        add_provider: Add provider
+        set_cost_unit: Set cost unit
+        disabled: Disabled
+        enabled: Enabled
+        connect_your_providers_and_choose_which_models_agents_can: Connect your providers and choose which
+          models agents can use.
+        optional_cost_estimates: Optional cost estimates
+        set_an_account_cost_unit_to_estimate_spending_models: >-
+          Set an account cost unit to estimate spending. Models work without prices, and actual usage
+          is recorded independently.
+        credentials_are_stored_in_brand: Credentials are stored in %{brand}
+        no_model_providers_configured: No model providers configured
+        add_a_hosted_or_local_provider_to_get_started: Add a hosted or local provider to get started.
+        enabling_a_provider_allows_new_requests_from_agents_each: Enabling a provider allows new requests
+          from agents. Each agent chooses its own default model.
+        cost_tracking_setup: Cost tracking setup
+        providers: Providers
+      lanes:
+        show:
+          control_whether_agents_can_use_this_provider: Control whether agents can use this provider.
+          provider_access: Provider access
+          provider_availability: "%{provider} availability"
+      model_definitions:
+        form:
+          the_exact_model_id_accepted_by_the_provider_including: The exact model ID accepted by the provider,
+            including any namespace.
+          model_id: Model ID
+          an_optional_friendly_model_name: An optional friendly model name.
+          display_name: Display name
+          advisory_input_threshold: Advisory input threshold
+          combined_context_window: Combined context window
+          output_token_limit: Output token limit
+          input_token_limit: Input token limit
+          optional_planning_threshold_at_or_below_the_input_or: Optional planning threshold at or below
+            the input or combined context limit.
+          a_shared_input_output_window_clear_the_separate_input: A shared input/output window. Clear the
+            separate input limit when using this.
+          streaming: Streaming
+          tool_calls: Tool calls
+          disabled: Disabled
+          supported: Supported
+          use_protocol_default: Use protocol default
+          pricing: Pricing
+          use_the_rates_below: Use the rates below
+          keep_current_pricing: Keep current pricing
+          no_cost_estimate: No cost estimate
+          for_example_usd_the_account_must_use_the_same: For example USD. The account must use the same
+            unit to calculate estimates.
+          cost_unit: Cost unit
+          cancel: Cancel
+          save_model: Save model
+          context_and_capabilities: Context and capabilities
+          leave_fields_blank_to_use_protocol_defaults_enter_the: >-
+            Match these limits to the context loaded by your server, which may be smaller than the
+            model's advertised maximum. Leave fields blank to use protocol defaults. Discovery does
+            not determine these limits.
+          optional_cost_estimate: Optional cost estimate
+          pricing_helps_estimate_spending_it_is_optional_and_does: >-
+            Pricing helps estimate spending. It is optional and does not affect recorded usage. Blank
+            rates are unknown; enter 0 only for an explicitly free rate.
+          model_settings: Model settings
+        new:
+          add_model: Add model
+          add_a_model_using_its_exact_provider_id_pricing: Add a model using its exact provider ID. Pricing
+            is optional.
+        show:
+          edit_model: Edit model
+          edit_this_model_s_context_capabilities_and_optional_cost: Edit this model's context, capabilities
+            and optional cost estimate.
+          discard_this_model_s_edits_and_restore_its_installation: Discard this model's edits and restore
+            its installation definition?
+          restore_installation_model: Restore installation model
+          remove_this_model_new_requests_will_stop_custom_model: Remove this model? New requests will
+            stop. Custom model settings must be entered again to re-add it.
+          remove_model: Remove model
+          this_model_is_removed_saving_a_definition_makes_it: This model is removed. Saving a definition
+            makes it available again when the provider is ready.
+          model_actions: Model actions
+      model_discoveries:
+        show:
+          discover_models: Discover models
+          read_the_model_directory_from_your_saved_endpoint: Read the model directory from your saved
+            endpoint.
+          discover_model_ids: Discover model IDs
+          fetching: Fetching…
+          fetch_model_ids: Fetch model IDs
+          enter_a_model_id_manually: Enter a model ID manually
+          added: Added
+          removed: Removed
+          edit_model: Edit model
+          review_model: Review model
+          add_model: Add model
+          a_complete_successful_fetch_marks_configured_models_missing_from: >-
+            A complete, successful fetch marks configured models missing from the directory invalid and
+            hides them from agents. Listed models have their invalid mark cleared; manual hiding is kept.
+            Definitions and pricing are retained.
+          some_providers_do_not_offer_a_directory_a_failed: >-
+            Some providers do not offer a directory. A failed or incomplete fetch leaves your models unchanged.
+            You can add model IDs manually or clear an invalid mark from the provider page. The directory
+            does not verify inference, capabilities or pricing.
+          model_directory_synced_review_availability_on_the_provider_page: Model directory synced. Review
+            availability on the provider page.
+          this_endpoint_returned_an_empty_directory_all_configured_models: >-
+            This endpoint returned an empty directory. All configured models are now marked invalid. You
+            can still enter a model ID manually.
+          model_id_in_use: Model ID in use
+          model_discovery: Model discovery
+          review_model_label: Review %{model}
+          edit_model_label: Edit %{model}
+          add_model_label: Add %{model}
+          error_your_existing_models_are_unchanged: "%{error} Your existing models are unchanged."
+      model_tests:
+        show:
+          test_model_connection: Test model connection
+          test_a_model_using_the_saved_provider_connection: Test a model using the saved provider connection.
+          testing: Testing…
+          run_connection_test: Run connection test
+          this_sends_one_small_request_for_this_model_s: >-
+            This sends one small request for this model's workload and may incur provider charges. It
+            can take up to 30 seconds. It checks the connection, not all model capabilities. Test usage
+            is not included in agent usage statistics.
+          a_definite_model_not_found_response_marks_this_model: >-
+            A definite model-not-found response marks this model invalid and hides it from agents. A successful
+            test clears that mark and preserves any manual hiding. Authentication errors, timeouts and
+            other failures do not change model availability.
+          settings_changed_during_this_test_the_result_was_not: >-
+            Settings changed during this test. The result was not applied; review the current model settings
+            before testing again.
+          the_test_finished_but_its_availability_change_could_not: The test finished, but its availability
+            change could not be saved. Review the model settings.
+          this_model_is_now_marked_invalid_and_hidden_from: This model is now marked invalid and hidden
+            from agents. Its definition and pricing are kept.
+          model_connection_test: Model connection test
+          duration_ms: "%{duration} ms"
+          http_status: "· HTTP %{status}"
+      model_visibilities:
+        show:
+          choose_which_models_are_visible_to_every_agent_in: Choose which models are visible to every
+            agent in this installation.
+          model_visibility: Model visibility
+          hidden_models_cannot_be_selected_for_new_requests_existing: >-
+            Hidden models cannot be selected for new requests. Existing work can finish, and definitions
+            and pricing are kept. Each agent selects its own default model.
+          provider_models: "%{provider} models"
+      new:
+        add_provider: Add provider
+        model_providers: Model providers
+        connect_a_hosted_or_local_model_endpoint_after_saving: Connect a hosted or local model endpoint.
+          After saving, add its models and enable the provider.
+      show:
+        manage_access_and_models_for_this_provider: Manage access and models for this provider.
+        edit_connection: Edit connection
+        discover_model_ids: Discover model IDs
+        add_model: Add model
+        configure_again: Configure again
+        this_provider_does_not_need_credentials: This provider does not need credentials.
+        models: Models
+        provider_models: Provider models
+        configure_model_again: Configure %{model} again
+        the_provider_has_asked_brand_to_wait_until_available_at: The provider has asked %{brand} to wait
+          until %{available_at} before starting more requests.
+        removed_models_count: Removed models (%{count})

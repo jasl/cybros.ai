@@ -33,8 +33,9 @@ vocabulary already carries; the rule grammar already walks `url`.
 }
 ```
 
-The distributed plugin is disabled by default. Enable it on hosts serving runner
-tools in Settings → Plugins or with `rho extensions enable rho.web_tools`.
+The distributed plugin is enabled by default in full and runner modes. An explicit
+disabled setting remains disabled. Change it in Settings → Plugins or with
+`rho extensions enable rho.web_tools` / `rho extensions disable rho.web_tools`.
 Configure it in Settings → Plugins, including while disabled. The static schema
 owns its single boolean, `allow_private_network`, whose default is `false`.
 An invalid hand-written value falls back to that default with a diagnostic; an

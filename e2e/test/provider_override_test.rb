@@ -182,7 +182,7 @@ class ProviderOverrideTest < Minitest::Test
     w2 = steward.workspaces.create(
       name: "Provider override #{SecureRandom.hex(4)}", access_mode: "account_wide",
       idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @created_workspaces += [w2.public_id]
     set_w2 = steward.workspace(w2.public_id).set_tool_provider_overrides(
       overrides: { NAMESPACE => @provider.executor_public_id }, lock_version: w2.lock_version

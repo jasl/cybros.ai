@@ -23,12 +23,25 @@ class ModelCatalog::ProviderEndpointTest < ActiveSupport::TestCase
     "xai" => "https://api.x.ai",
   }.freeze
 
-  test "every shipped provider declares its endpoint" do
+  test "every originally authored provider keeps its endpoint" do
     candidate = ModelCatalog::FileBase.compile(root: Rails.root.join("config/model_catalog"))
 
-    assert_equal EXPECTED.keys.sort, candidate.providers.keys.sort
+    assert_empty EXPECTED.keys - candidate.providers.keys
     EXPECTED.each do |provider_id, base_url|
       assert_equal base_url, candidate.providers.fetch(provider_id).fetch("base_url")
+    end
+  end
+
+  test "model endpoints are independent and a deployment endpoint can be unconfigured" do
+    snapshot = ModelCatalog::FileBase::Candidate.new(
+      providers: { "cloud" => { "base_url" => nil }, "regional" => { "base_url" => "https://us.example" } },
+      models: { "cloud/m" => {}, "regional/us" => {}, "regional/eu" => { "base_url" => "https://eu.example" } },
+      selectors: {})
+    assert_nil ModelCatalog.model_base_url("cloud/m", snapshot: snapshot)
+    assert_equal "https://us.example", ModelCatalog.model_base_url("regional/us", snapshot: snapshot)
+    assert_equal "https://eu.example", ModelCatalog.model_base_url("regional/eu", snapshot: snapshot)
+    ["https://valid.example/", "https://{region}.example", "file:///tmp/model", "https://example.test?secret=bad"].each do |value|
+      assert_raises(Nexus::ProviderDefinition::Invalid) { Nexus::ProviderDefinition.normalize_endpoint(value) }
     end
   end
 

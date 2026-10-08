@@ -1,17 +1,17 @@
 <%= form_with url: search_url, method: :get, class: "rounded-box border border-base-300 bg-base-200 p-4" do %>
   <fieldset class="fieldset">
-    <legend class="fieldset-legend">Find an active member</legend>
-    <%= label_tag :query, "Search members", class: "label" %>
-    <p class="label">Search by name or email.</p>
+    <legend class="fieldset-legend"><%= t("shared.member_search_form.find_an_active_member") %></legend>
+    <%= label_tag :query, t("shared.member_search_form.search_members"), class: "label" %>
+    <p class="label"><%= t("shared.member_search_form.search_by_name_or_email") %></p>
     <div class="flex flex-col gap-2 sm:flex-row">
       <%= search_field_tag :query, query,
         maxlength: max_length,
         autocomplete: "off",
         class: "input input-sm min-w-0 grow" %>
       <div class="flex gap-2">
-        <%= submit_tag "Search", class: "btn btn-sm btn-primary" %>
+        <%= submit_tag t("shared.member_search_form.search"), class: "btn btn-sm btn-primary" %>
         <% if query.present? %>
-          <%= link_to "Clear", search_url, class: "btn btn-sm btn-ghost" %>
+          <%= link_to t("shared.member_search_form.clear"), search_url, class: "btn btn-sm btn-ghost" %>
         <% end %>
       </div>
     </div>

@@ -220,6 +220,13 @@ Trust-domain and credential authority remain owned by `.ai/boundaries.md`.
   never read by a service or job.
   `last_used_at` and `last_seen_at` are deliberately separate: never let a presence/contact
   sample extend credential authority.
+- Deployment administration is an explicit local-IO exception: an active Human administrator
+  may read bounded Nexus-only status, receipt and log windows through the configured private Unix socket.
+  These reads never contact a registry or run Docker. Explicit check and upgrade POSTs delegate
+  Nexus's own upgrade to the installation owner; they cannot select or operate an agent
+  application or a combined release. Nexus never holds the Docker socket or runs an upgrade job.
+  Browser writes use the existing cookie/CSRF plane; Platform writes retain bearer-only rules.
+  An unavailable owner reports unavailable, and an unset socket reports unsupported.
 
 ## Parameter Doctrine
 
@@ -271,7 +278,16 @@ Trust-domain and credential authority remain owned by `.ai/boundaries.md`.
   audiences server-side at publish time, keep messages thin (type + ids + deltas; durable rows are
   the recovery path, REST replay is truth). Avoid polling-focused design — return the durable
   resource/status and let ActionCable push wake-ups.
+- Deployment progress is the narrow streaming exception: a bounded SSE window bridges the
+  installation owner's durable receipt and opaque-cursor log, with live Human session/admin
+  rechecks. The browser reconnects to that same operation after Nexus restarts; reconnecting
+  never resubmits an upgrade. The owner remains outside the app database and Action Cable
+  lifecycle because both become unavailable during application migration and restart.
 - Collection endpoints document and test ordering, pagination, empty results, N+1, cursor opacity,
   and the `max_limit` cap; endpoint tests cover success, denied, not found, and validation failures.
+  Agent API HTTP `limit` parameters default when omitted/null (including Strong Parameters
+  filtering above); malformed, nonpositive, and above-maximum permitted scalar values return
+  `400 parameter_invalid` through the shared bounded-integer
+  helper. Each family retains its own default, maximum, ordering, and cursor grammar.
   Cover malformed consumed params only when their handling protects security or durable data
   integrity.

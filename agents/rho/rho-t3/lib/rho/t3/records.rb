@@ -43,7 +43,7 @@ module Rho
 
       def create(key, value)
         @store.create(namespace: NAMESPACE, key: key, value: value.merge("conversation" => @conversation),
-          idempotency_key: "t3:#{key}")
+          idempotency_key: "t3:#{key}").store_entry
       end
 
       def update(row, **changes)

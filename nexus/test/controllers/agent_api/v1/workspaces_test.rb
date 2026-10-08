@@ -52,12 +52,12 @@ class AgentAPI::V1::WorkspacesTest < ActionDispatch::IntegrationTest
     assert_equal "parameter_invalid", response.parsed_body.dig("error", "code")
   end
 
-  test "a garbage cursor is 400 and a limit above the maximum clamps to 100" do
+  test "garbage cursors and limits outside the documented range return 400" do
     get agent_api_v1_workspaces_path, headers: bearer(@curator), params: { after: "not-a-cursor" }
     assert_response :bad_request
     assert_equal "parameter_invalid", response.parsed_body.dig("error", "code")
 
-    [0, "not-an-integer"].each do |limit|
+    [-1, 0, "not-an-integer", 101].each do |limit|
       get agent_api_v1_workspaces_path, headers: bearer(@curator), params: { limit: limit }
       assert_response :bad_request
       assert_equal "parameter_invalid", response.parsed_body.dig("error", "code")
@@ -69,12 +69,12 @@ class AgentAPI::V1::WorkspacesTest < ActionDispatch::IntegrationTest
         account: users(:curator).account,
         creator: users(:curator),
         owner: users(:curator),
-        name: "Clamp #{index}",
+        name: "Page #{index}",
         access_mode: "private"
       )
     end
 
-    get agent_api_v1_workspaces_path, headers: bearer(@curator), params: { limit: 101 }
+    get agent_api_v1_workspaces_path, headers: bearer(@curator), params: { limit: 100 }
     assert_response :success
     assert_equal 100, response.parsed_body.fetch("workspaces").length
     assert response.parsed_body.dig("pagination", "next_after").present?

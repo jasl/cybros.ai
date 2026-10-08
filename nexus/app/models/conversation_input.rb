@@ -29,7 +29,8 @@ class ConversationInput < ApplicationRecord
   # AgentRun round lands the drain. A principal's input may steer; the kernel's
   # own mail is always `queue`, so a running turn finishes first. At idle,
   # direct_reply starts a turn; passive message mail only joins the history.
-  DELIVERY_MODES = %w[queue steer].freeze
+  STEERING_MODES = %w[steer steer_now].freeze
+  DELIVERY_MODES = ["queue", *STEERING_MODES].freeze
   # THE SOURCE KIND of every row — the neutral testimony of sourcing a
   # presenter shows, closed at four words: `person` (a human's word),
   # `agent` (a peer's `send`), `task_result` (a background task's answer
@@ -57,7 +58,7 @@ class ConversationInput < ApplicationRecord
   include Addressing
 
   attr_readonly :account_id, :host_type, :host_id, :public_id, :kind, :role,
-    :delivery_mode, :speaker_id, :authoring_user_id, :answering_user_id, :origin,
+    :speaker_id, :authoring_user_id, :answering_user_id, :origin,
     :sender_conversation_public_id, :sender_run_public_id, :sender_task_key, :expected_steering_run_public_id,
     :callback_result
 
@@ -98,6 +99,7 @@ class ConversationInput < ApplicationRecord
   # Prefixed so `origin_agent?` never reads as `User#agent?` beside it.
   enum :origin, ORIGINS.index_by(&:itself), validate: true, scopes: false, prefix: :origin
   validates :delivery_mode, inclusion: { in: DELIVERY_MODES }
+  validate :delivery_mode_transition, on: :update
   validates :context_mode, inclusion: { in: CONTEXT_MODES }
   validates :queue_position, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   # A bound steer names its turn on a host that has turns; a one-turn host
@@ -131,6 +133,7 @@ class ConversationInput < ApplicationRecord
 
   scope :pending, -> { where(state: "pending") }
   scope :steering, -> { where(state: "steering") }
+
   # DUE: nothing scheduled, or scheduled for a time that has passed. The
   # explicit OR, as the admitter spells its own; a row before its time is
   # neither the head nor a blocker — it is not in the room yet. No fourth
@@ -146,6 +149,20 @@ class ConversationInput < ApplicationRecord
   # limit bounds. Peer mail counts — an agent's `send` included; the
   # kernel's own set is not COUNTED against the bound but can meet it.
   scope :caller_authored, -> { where(state: %w[pending steering]).where.not(origin: KERNEL_ORIGINS) }
+
+  # The held input keeps its target. Send now advances that execution through
+  # the scheduler; Rails defers its wake until the input transaction commits.
+  def wake_steering
+    return unless steering? && delivery_mode == "steer_now"
+
+    run = if host.hosts_turns?
+      steering_target_turn.conversation_turn_variants.live
+        .find_by(status: ConversationTurnVariant::ACTIVE_STATUSES)&.agent_run
+    else
+      host
+    end
+    AgentRuns::ScheduleJob.perform_later(run.id) if run
+  end
 
   # The kernel's own row, BY NAME: what reads first, degrades instead of
   # blocking, passes the bin and is nobody's to change.
@@ -194,4 +211,14 @@ class ConversationInput < ApplicationRecord
     assembled = Tools::Assemble.for_profile(profile: declaring_profile, runner: runner, tool_names: tool_names)
     environment && assembled.accepted? ? assembled.with(environment: environment) : assembled
   end
+
+  private
+
+    def delivery_mode_transition
+      return unless will_save_change_to_delivery_mode?
+      return if state_in_database == "steering" && steering? &&
+        delivery_mode_change_to_be_saved == %w[steer steer_now]
+
+      errors.add(:delivery_mode, :invalid)
+    end
 end

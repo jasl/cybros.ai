@@ -1,6 +1,6 @@
 require "async"
 require "digest"
-require_relative "media_workflow"
+require_relative "input_workflow"
 require_relative "speech_workflow"
 require_relative "session_workflow"
 require_relative "conversation_workflow"
@@ -20,7 +20,7 @@ module Rho
     # One long poll consumes updates serially; a separate task follows every bound
     # conversation and drains formal messages. Neither waits for a model to finish.
     class Runtime
-      include MediaWorkflow
+      include InputWorkflow
       include SpeechWorkflow
       include SessionWorkflow
       include ConversationWorkflow
@@ -119,6 +119,9 @@ module Rho
         update = Update.new(pending.fetch("update"), pending["route_key"])
         process(update, recovering: !!held["pending_update"])
         @state.consumed(update.id)
+        # Zero still saves the receipt before submission, but need not wait for
+        # the next timer pass. Media keeps its existing preparation cadence.
+        reconcile_inputs(media: false) if @settings.input_debounce_seconds.zero?
       end
 
       def tick
@@ -126,7 +129,7 @@ module Rho
         runs = @bridge.runs
         reconcile = @clock.call >= @next_reconcile_at
         @next_reconcile_at = @clock.call + RECONCILE_INTERVAL if reconcile
-        reconcile_media if reconcile
+        reconcile_inputs(media: reconcile)
         @state.read.fetch("routes").each do |key, route|
           next unless permitted_route?(route)
 
@@ -198,7 +201,7 @@ module Rho
       end
 
       def open_route(update, fresh: false, workspace_public_id: nil)
-        discard_media(update.route_key) if fresh
+        discard_pending_inputs(update.route_key) if fresh
         route = room(update)
         current = route["current"]
         if current && !fresh
@@ -306,7 +309,7 @@ module Rho
       end
 
       def stop_conversation(update, task_id: nil)
-        target = task_target(update, task_id: task_id, allow_pending_media: true)
+        target = task_target(update, task_id: task_id, allow_pending_inputs: true)
         unless target["run_id"]
           if target["parent_report"] || (target["execution_conversation_id"] && !target["schedule_id"])
             raise Rho::Error, "This task's original execution is not linked. Check /status TASK_ID."
@@ -318,7 +321,7 @@ module Rho
             # concurrently, Nexus refuses; never redirect Stop to a current loop.
             return @bridge.delete_input(target.fetch("execution_conversation_id", target.fetch("conversation_id")), task_id, workspace_public_id: target.fetch("workspace_public_id"))
           end
-          return discard_media(target.fetch("route_key"), request_id: @state.read.fetch("pending_update").fetch("request_id"))
+          return discard_pending_inputs(target.fetch("route_key"), request_id: @state.read.fetch("pending_update").fetch("request_id"))
         end
 
         cancel_task_speech(target)
@@ -427,7 +430,7 @@ module Rho
           return if @commands.answer_reply(update)
           return if update.text.empty? && !update.media && !update.unsupported_media?
 
-          triggered = update.triggers?(@bot) || !!pending["request_id"]
+          triggered = update.triggers?(@bot) || !!pending["request_id"] || burst_waiting?(update)
           return unless triggered || observed?(update)
 
           if update.unsupported_media?
@@ -443,11 +446,7 @@ module Rho
             text = update.media ? [update.text, "[#{update.media.fetch("kind")} attachment]"].reject(&:empty?).join("\n") : update.text
             return submit(update, text: text, observe: true)
           end
-          if update.media || media_waiting?(update.route_key)
-            return stage_media_input(update, open_route(update), speaker_for(update), triggered)
-          end
-          text = update.media&.fetch("kind") == "voice" ? [update.text, "[Voice message]"].reject(&:empty?).join("\n") : update.text
-          submit(update, text: text, observe: !triggered)
+          stage_input(update, open_route(update), speaker_for(update), triggered)
         rescue Rho::ConnectionError
           raise
         rescue Rho::Core::Refused => error
@@ -614,7 +613,7 @@ module Rho
         def retire_source(conversation_id)
           @history_reads.delete(conversation_id)
           @turn_pages.delete(conversation_id)
-          discard_source_media(conversation_id)
+          discard_source_inputs(conversation_id)
           @state.change do |document|
             question_ids = document.fetch("questions").filter_map do |id, question|
               id if question.fetch("conversation_id") == conversation_id

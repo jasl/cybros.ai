@@ -44,7 +44,7 @@ class LiveVisionTest < Minitest::Test
     @client = CybrosAgent::Client.new(base_url: @base_url, credential: @human.member_token)
     @workspace = @client.workspaces.create(
       name: "Vision live #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @conversations = @client.workspace(@workspace.public_id).conversations
   end
 

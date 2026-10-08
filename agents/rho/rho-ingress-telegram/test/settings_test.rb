@@ -19,6 +19,18 @@ class TelegramSettingsTest < Minitest::Test
     refute settings.owner?(7)
   end
 
+  def test_message_grouping_defaults_to_two_seconds_and_accepts_zero_through_ten
+    assert_equal 2, Rho::IngressTelegram::Settings.new({}, env: {}).input_debounce_seconds
+    (0..10).each do |seconds|
+      settings = Rho::IngressTelegram::Settings.new({ "input_debounce_seconds" => seconds.to_s }, env: {})
+      assert_equal seconds, settings.input_debounce_seconds
+      assert_equal seconds, settings.to_h.fetch("input_debounce_seconds")
+    end
+    [nil, 11, -1, 1.5, "soon"].each do |value|
+      assert_raises(Rho::ConfigurationError) { Rho::IngressTelegram::Settings.new({ "input_debounce_seconds" => value }, env: {}) }
+    end
+  end
+
   def test_owner_must_be_a_positive_integer_when_configured
     [0, -7, "alice", 7.2, false, ""].each do |id|
       assert_raises(Rho::ConfigurationError) do

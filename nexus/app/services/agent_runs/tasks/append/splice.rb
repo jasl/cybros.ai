@@ -10,6 +10,10 @@ module AgentRuns
           new(agent_run).replace_reads(replaces, reads)
         end
 
+        def self.interpose(agent_run:, head:, source:, pending:)
+          new(agent_run).interpose(head, source, pending)
+        end
+
         def initialize(agent_run, command = nil, compiled = nil, created = {})
           @agent_run = agent_run
           @command = command
@@ -62,6 +66,22 @@ module AgentRuns
           # its commit hook flushes narration after the remaining business locks.
           @agent_run.touch unless readers.empty?
           Transition.spliced(@agent_run, readers)
+        end
+
+        # The inserted mainline has consumed the completed material. This
+        # original join retains its edges and reads only the new mainline
+        # plus the eventual results that the receipt deliberately deferred.
+        def interpose(head, source, pending)
+          raise Refused, :splice_head_not_queued unless head.reload.status == "queued"
+
+          inputs = [source.node_key]
+          results = pending.map(&:node_key)
+          validate_sources(inputs, result: false)
+          validate_sources(results, result: true)
+          AgentRunTask.where(id: head.id).update_all(input_from_node_keys: inputs,
+            result_from_node_keys: results.presence, updated_at: Time.current)
+          @agent_run.touch
+          Transition.spliced(@agent_run, [head.reload])
         end
 
         private

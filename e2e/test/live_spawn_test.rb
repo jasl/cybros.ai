@@ -347,7 +347,7 @@ class LiveSpawnTest < Minitest::Test
     def open_room!
       room = client.workspaces.create(
         name: "Live spawn room #{SecureRandom.hex(3)}", access_mode: "account_wide", idempotency_key: SecureRandom.uuid
-      ).public_id
+      ).workspace.public_id
       @daemon = E2E::RhoDaemon.new(base_url: @base_url, home: @home, env: { "RHO_WORKSPACE" => room })
       room
     end

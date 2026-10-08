@@ -23,6 +23,8 @@ module CybrosAgent
       Model = Data.define(
         :ref, :provider, :workload, :visible, :available, :unavailable_reason, :capabilities, :pricing
       ) do
+        # Capability descriptors retain the server's semantic names and
+        # absent/null/false values; clients need not infer controls from refs.
         def initialize(capabilities: {}, unavailable_reason: nil, **) = super
 
         def available? = available

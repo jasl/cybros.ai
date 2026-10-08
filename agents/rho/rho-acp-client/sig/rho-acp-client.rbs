@@ -28,6 +28,7 @@ module Rho
     def self.row: (String key) -> Settings::Row?
     def self.child_env: (untyped row, ?Hash[String, String] current) -> Hash[String, String]
     def self.register: (untyped api) -> nil
+    def self.check_prerequisites: (Array[Settings::Row | Settings::Fault] rows) -> nil
     def self.call: (Hash[String, untyped] args, env: untyped) -> Rho::Runner::Result
     def self.release: (String conversation) -> nil
     def self.close!: () -> nil

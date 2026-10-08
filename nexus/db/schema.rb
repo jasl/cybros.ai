@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_09_14_150002) do
+ActiveRecord::Schema[8.2].define(version: 2026_10_08_203000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -471,7 +471,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_09_14_150002) do
     t.string "kind", limit: 20, null: false
     t.string "role", limit: 10, default: "user", null: false
     t.string "state", limit: 16, default: "pending", null: false
-    t.string "delivery_mode", limit: 8, default: "queue", null: false
+    t.string "delivery_mode", limit: 16, default: "queue", null: false
     t.bigint "speaker_id", null: false
     t.bigint "authoring_user_id", null: false
     t.boolean "visible_in_context", default: true, null: false
@@ -650,7 +650,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_09_14_150002) do
     t.index ["spawn_node_id"], name: "index_conversations_on_spawn_node_id", unique: true, where: "(spawn_node_id IS NOT NULL)"
     t.index ["tombstoned_at", "id"], name: "index_conversations_reap_frontier", where: "(tombstoned_at IS NOT NULL)"
     t.index ["workspace_id", "id"], name: "index_conversations_on_workspace_id_and_id"
-    t.index ["workspace_id", "last_activity_at", "id"], name: "index_conversations_on_workspace_activity", where: "(tombstoned_at IS NULL)"
+    t.index ["workspace_id", "last_activity_at", "public_id"], name: "index_conversations_on_workspace_activity", where: "(tombstoned_at IS NULL)"
     t.index ["workspace_id", "public_id"], name: "index_conversations_on_workspace_and_listable_public_id", where: "(tombstoned_at IS NULL)"
   end
 

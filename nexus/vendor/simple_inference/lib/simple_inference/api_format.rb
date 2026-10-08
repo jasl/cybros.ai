@@ -25,6 +25,7 @@ module SimpleInference
       "openai_responses" => Protocols::OpenAIResponses,
       "codex_responses" => Protocols::CodexResponses,
       "anthropic_messages" => Protocols::AnthropicMessages,
+      "bedrock_converse" => Protocols::BedrockConverse,
       "gemini_generate_content" => Protocols::GeminiGenerateContent,
       "openrouter_chat" => Protocols::OpenRouterResponses,
       # The plain OpenAI-compatible translator: a third-party host speaking
@@ -32,6 +33,8 @@ module SimpleInference
       # case this whole file exists for — nobody can ship a row for a model
       # only one deployment runs.
       "openai_compatible_chat" => Protocols::OpenAICompatibleResponses,
+      "mistral_chat" => Protocols::MistralChat,
+      "pi_messages" => Protocols::PiMessages,
       "deepseek_responses" => Protocols::DeepSeekResponses,
       "xai_responses" => Protocols::XAIResponses,
       "openai_images" => Protocols::OpenAIImages,
@@ -64,7 +67,10 @@ module SimpleInference
     # id, only the format its provider speaks.
     WORKLOADS = {
       "anthropic_messages" => "text_generation",
+      "bedrock_converse" => "text_generation",
       "openai_compatible_chat" => "text_generation",
+      "mistral_chat" => "text_generation",
+      "pi_messages" => "text_generation",
       "codex_responses" => "text_generation",
       "deepseek_responses" => "text_generation",
       "gemini_embeddings" => "embedding",
@@ -102,6 +108,24 @@ module SimpleInference
     # https://ai.google.dev/gemini-api/docs/generate-content/document-processing
     # Files remain whole bytes; no fixed per-document token cost is known.
     DEFAULTS = {
+      "bedrock_converse" => {
+        protocol_route: "converse_http_eventstream",
+        **STREAMING_LANE,
+        output_modalities: %w[text].freeze,
+        token_counter: { "kind" => "anchored", "encoding" => "o200k_base", "safety_factor" => "2.5" }.freeze,
+        reasoning_options: {
+          "efforts" => %w[minimal low medium high xhigh max].freeze,
+          "budgets" => %w[manual_mode_only].freeze,
+        }.freeze,
+        generation_parameters: {},
+        service_tiers: [],
+        input_media: {
+          "image" => { "mime_allowlist" => %w[image/jpeg image/png image/gif image/webp].freeze,
+                       "max_dimension" => 1568 }.freeze,
+          "file" => { "mime_allowlist" => %w[application/pdf].freeze }.freeze,
+        }.freeze,
+        wire_options: {}.freeze,
+      }.freeze,
       "anthropic_messages" => {
         protocol_route: "messages_http_sse",
         **STREAMING_LANE,
@@ -447,7 +471,21 @@ module SimpleInference
           responses_path: "/v1/responses",
         }.freeze,
       }.freeze,
-    }.freeze
+      "pi_messages" => STREAMING_LANE.merge(
+        protocol_route: "pi_messages_http_sse", credential_lane: "api_key",
+        capabilities: %w[streaming tool_calls reasoning].freeze,
+        input_modalities: %w[image].freeze, output_modalities: %w[text].freeze,
+        input_media: {
+          "image" => { "mime_allowlist" => %w[image/jpeg image/png image/gif image/webp].freeze }.freeze,
+        }.freeze,
+        token_counter: nil, service_tiers: [], generation_parameters: {},
+        reasoning_options: { "efforts" => Protocols::PiMessages::REASONING_EFFORTS, "budgets" => %w[none].freeze }.freeze,
+        wire_options: { messages_path: "/messages", stream_only: true }.freeze,
+      ).freeze,
+    }.then do |defaults|
+      chat = defaults.fetch("openai_compatible_chat")
+      defaults.merge("mistral_chat" => chat.merge(input_media: chat.fetch(:input_media).except("file")).freeze).freeze
+    end
 
     FORMATS = DEFAULTS.keys.freeze
 
@@ -511,6 +549,7 @@ module SimpleInference
         klass = protocol_class(profile.adapter_profile)
 
         wire_options = klass.protocol_option_keys.to_h { |key| [key, profile.wire_options[key]] }
+        wire_options[:provider_id] = profile.provider_id if profile.adapter_profile == "pi_messages"
         # Pre-IO input caps flow from their single home — the profile's
         # local_safety_limits — into the protocol's construction keywords.
         input_caps = klass.local_safety_limit_option_keys.to_h { |key, limit_key| [key, profile.local_safety_limits[limit_key]] }

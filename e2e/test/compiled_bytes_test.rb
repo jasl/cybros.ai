@@ -45,7 +45,7 @@ class CompiledBytesTest < Minitest::Test
     E2E.hosts.start
     @workspace = @client.workspaces.create(
       name: "Compiled bytes #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @workspace_context = @client.workspace(@workspace.public_id)
     @conversations = @workspace_context.conversations
     @profile = @client.profile

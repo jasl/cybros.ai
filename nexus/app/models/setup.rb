@@ -2,14 +2,13 @@
 # Account.create_with_owner and maps each founding record's errors back onto
 # the form. No persistence, no authorization.
 class Setup
-  DEFAULT_ACCOUNT_NAME = "Nexus".freeze
   DEFAULT_COST_UNIT = "USD".freeze
 
   include ActiveModel::Model
   include ActiveModel::Attributes
   include ActiveModel::Attributes::Normalization
 
-  attribute :account_name, :string, default: DEFAULT_ACCOUNT_NAME
+  attribute :account_name, :string, default: -> { Setup.default_account_name }
   attribute :cost_unit, :string, default: DEFAULT_COST_UNIT
   attribute :display_name, :string
   attribute :email, :string
@@ -18,10 +17,12 @@ class Setup
 
   normalizes :cost_unit, with: ->(unit) { unit.to_s.strip.presence || DEFAULT_COST_UNIT }, apply_to_nil: true
 
+  def self.default_account_name = I18n.t("brand.name")
+
   # Founds the installation and returns the Account, or nil with form errors.
   def establish
     Account.create_with_owner(
-      account: { name: account_name.presence || DEFAULT_ACCOUNT_NAME, cost_unit: cost_unit },
+      account: { name: account_name.presence || self.class.default_account_name, cost_unit: cost_unit },
       owner: {
         email: email,
         display_name: display_name,

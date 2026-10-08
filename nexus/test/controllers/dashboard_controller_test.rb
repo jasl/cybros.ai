@@ -29,14 +29,15 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "article[aria-label='Agent connection']", count: 1
   end
 
-  test "administrators can enter administration from the account menu" do
+  test "administrators can enter administration from the primary navigation and account menu" do
     sign_out
     sign_in_as users(:owner)
 
     get root_path
 
     assert_response :success
-    assert_select "aside a[href=?]", admin_users_path, text: "Administration"
+    assert_select "nav[aria-label='Primary'] a[href=?]", admin_users_path, text: "Administration", count: 1
+    assert_select "aside details a[href=?]", admin_users_path, text: "Administration", count: 1
     assert_select "article[aria-label='Model provider setup']", count: 1
     assert_select "article[aria-label='Agent connection']", count: 1
   end

@@ -158,7 +158,7 @@ module Rho
 
       def inputs: (String public_id, ?host_type: String?, ?workspace_public_id: String?) -> Array[untyped]
       def delete_input: (String public_id, String input_public_id, ?host_type: String?, ?workspace_public_id: String?) -> untyped
-      def update_input: (String public_id, String input_public_id, ?text: String?, ?schedule: Hash[String, String], ?host_type: String?, ?workspace_public_id: String?) -> untyped
+      def update_input: (String public_id, String input_public_id, ?text: String?, ?schedule: Hash[String, String], ?delivery_mode: String?, ?host_type: String?, ?workspace_public_id: String?) -> untyped
       def access: (String public_id) -> untyped
       def replace_access: (String public_id, untyped change) -> untyped
       def prompt_preview: (String public_id, ?model: String?, ?prompt: String?, ?to: String?,

@@ -1,9 +1,6 @@
 <p>
-  You have been invited to join <%= @invitation.account.name %> on Nexus as
-  <%= @invitation.role %>.
+  <%= t("invitation_mailer.acceptance.introduction", account: @invitation.account.name, role: t("members.roles.#{@invitation.role}"), brand: t("brand.name")) %>
 </p>
 <p>
-  <%= link_to "Accept your invitation", @acceptance_url %> before
-  <%= @invitation.expires_at.to_fs(:long) %>. A later invitation email carries
-  the same reusable link and may renew its expiry.
+  <%= t("invitation_mailer.acceptance.accept_before_html", link: link_to(t("invitation_mailer.acceptance.accept_invitation"), @acceptance_url), expires_at: l(@invitation.expires_at, format: :long)) %>
 </p>

@@ -46,8 +46,8 @@ module CybrosAgent
       end
 
       # The subagent followers, reachable only through their parent.
-      def children(after: nil, limit: nil)
-        page(ConversationSummary, @dispatch.call("#{path}/children", params: query(after:, limit:)), "conversations")
+      def children(after: nil, limit: nil, order: nil, order_by: nil)
+        page(ConversationSummary, @dispatch.call("#{path}/children", params: query(after:, limit:, order:, order_by:)), "conversations")
       end
 
       def inputs = InputsContext.new(dispatch: @dispatch, path: "#{path}/inputs")

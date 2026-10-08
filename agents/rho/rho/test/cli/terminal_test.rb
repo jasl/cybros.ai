@@ -458,9 +458,9 @@ class CliTerminalTest < Minitest::Test
     assert_match(/profile:   0199-user/, @out.string)
     assert_match(/^handle:    @helper$/, @out.string, "the agent's own handle, as the last probe read it")
     assert_match(/executor:  0199-executor/, @out.string)
-    # The coding set (including attachment import/publication), the processes pair and the checkpoint store's two
-    # hidden names: a default-layout home opens a store for its placed runner.
-    assert_match(/^runner:    0199-runner serving 20 tools \((socket connected|no socket), swept \d+\)$/, @out.string)
+    # The default runner includes web reading alongside coding, processes,
+    # checkpoints, environment binding and code mode.
+    assert_match(/^runner:    0199-runner serving 21 tools \((socket connected|no socket), swept \d+\)$/, @out.string)
     assert_match(/  runner_transport: live/, @out.string)
     assert_match(/^adaptations: default \(gem\)$/, @out.string,
       "the default model's adaptation row and its source, off the daemon")

@@ -2,8 +2,7 @@
 
 Status: implemented and locally verified, 2026-10-06. This is the naming contract for the
 breaking change, alongside [multi-environment execution](nexus-multi-environment.md).
-It is implemented in this checkout; deployment is a separate task. The [change inventory](../plans/2026-10-06-nexus-terminology.md)
-defines the coordinated implementation and its consumer boundary.
+It is implemented in this checkout; deployment is a separate task.
 
 Use familiar AI and agent terminology where the responsibility matches. Preserve
 distinctions that carry identity, authority or lifecycle. A naming change alone

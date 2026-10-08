@@ -13,7 +13,15 @@ module Nexus
           provider = { "api_format" => "openrouter_chat" }
           rates = { "input_per_mtok" => "0.3", "output_per_mtok" => "1.2" }
           priced = { "pricing" => { "account_unit" => "USD", "schedule" => { "kind" => "catalog_only", "rates" => rates } },
-                     "capabilities" => { "tool_calls" => true, "input_modalities" => %w[image] } }
+                     "capabilities" => { "tool_calls" => true, "input_modalities" => %w[image],
+                       "reasoning" => { "efforts" => %w[low high], "default_effort" => "low",
+                         "default_enabled" => false, "disable_supported" => true },
+                       "service_tiers" => %w[default priority],
+                       "limits" => { "input_tokens" => 64_000, "effective_input_tokens" => 48_000 },
+                       "generation_parameters" => {
+                         "max_output_tokens" => { "kind" => "integer", "default" => nil, "minimum" => 1,
+                           "maximum" => nil, "allowed_values" => nil },
+                       } } }
           free = { "pricing" => { "account_unit" => "USD",
                                   "schedule" => { "kind" => "catalog_only",
                                                   "rates" => rates.transform_values { "0" } } } }

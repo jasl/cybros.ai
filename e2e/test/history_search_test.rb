@@ -23,7 +23,7 @@ class HistorySearchTest < Minitest::Test
     @people = E2E::ActorProvisioning.world(@base_url)
     @steward = @people.rho_steward
     @client = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)
-    @workspace = @client.workspaces.create(name: "History #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid)
+    @workspace = @client.workspaces.create(name: "History #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid).workspace
     @room = @client.workspace(@workspace.public_id)
     @home = Dir.mktmpdir("rho-history-e2e")
     E2E.enable_dev_lane!
@@ -62,6 +62,8 @@ class HistorySearchTest < Minitest::Test
 
     child = chat.fork(turn_public_id: reply.public_id, idempotency_key: SecureRandom.uuid).conversation
     fork = @room.conversation(child.public_id)
+    assert_equal chat.public_id, child.source_conversation_public_id
+    assert_equal chat.public_id, fork.fetch.source_conversation_public_id
     chat.turns.edit(reply.public_id, text: "A replacement response / 新的答复")
     copied = @room.conversations.search(query: "run 安装").matches
     assert_equal [child.public_id], copied.map(&:conversation_public_id).uniq
@@ -71,6 +73,13 @@ class HistorySearchTest < Minitest::Test
     assert_equal [child.public_id], inherited.map(&:conversation_public_id).uniq
     assert_predicate inherited.first, :inherited?
     assert_includes @room.conversations.search(query: "replacement").matches.map(&:conversation_public_id), chat.public_id
+
+    recent = @room.conversations.list(order_by: "last_activity_at", order: "desc", limit: 1)
+    assert_equal [chat.public_id], recent.items.map(&:public_id)
+    refute_nil recent.next_after
+    older = @room.conversations.list(order_by: "last_activity_at", order: "desc", limit: 1, after: recent.next_after)
+    assert_equal [child.public_id], older.items.map(&:public_id)
+    assert_equal chat.public_id, older.items.first.source_conversation_public_id
 
     fork.archive
     assert_empty @room.conversations.search(query: "run 安装").matches

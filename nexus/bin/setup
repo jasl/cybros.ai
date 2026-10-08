@@ -16,6 +16,9 @@ FileUtils.chdir APP_ROOT do
   puts "== Installing dependencies =="
   system("bundle check") || system!("bundle install")
 
+  puts "\n== Preparing local tokenizers =="
+  system! "bin/download-tokenizers"
+
   # Install JavaScript dependencies
   bun_install_command = %w[bun install]
   bun_install_command << "--frozen-lockfile" if ENV["CI"]

@@ -7,12 +7,10 @@ module Rho
     # and never to Playwright, which is what lets a fake stand in for the
     # whole thing under test.
     #
-    # `require "playwright"` happens at START, not at load. The extension
-    # must register — and the daemon must boot — on a machine where the
-    # Node driver is not installed yet; the tools then report exactly what
-    # is missing at the moment a model first reaches for a page, which is
-    # a message somebody will read, instead of a daemon that will not
-    # start with a stack trace nobody asked for.
+    # `require "playwright"` happens at START, not at metadata discovery.
+    # Plugin startup checks the configured driver and Chromium before its
+    # tools become available; a failed check leaves core settings available
+    # so the operator can repair the installation and retry enablement.
     #
     # BOUNDED IN BOTH DIRECTIONS, TOLD WHEN THE PROCESS DIES, AND ABLE TO
     # END IT WITHOUT ITS HELP. Three things the gem does not do, each

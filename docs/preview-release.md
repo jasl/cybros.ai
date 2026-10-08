@@ -63,12 +63,14 @@ Do not copy the development `.git` directory, merge its history into the public
 repository, or recreate the public repository for each update. Source
 synchronization is a manual maintainer step.
 
-Image publishing is also a manual step, described in the
-[image guide](../install/docker/README.md#publish-the-current-checkout). The
-publisher builds the current checkout and promotes both images to `latest`
-after both builds succeed. The script's automatic timestamp tags support that
-publication process; they do not require a product version or a pinned source
-commit. A recorded image revision identifies the checkout used for that build.
+Image publishing is an explicit maintainer command, described in the
+[image guide](../install/docker/README.md#publish-the-current-checkout). It freezes
+a clean, committed checkout and builds Nexus, rho and the updater on native amd64
+and arm64 Docker Engines. All six runtime checks finish before upload; all three
+release indexes and their image labels are verified before promotion to `latest`,
+which is verified again. UTC minute tags cannot be reused. These tags require no
+product version number or Git release tag; each image's OCI revision identifies
+the source commit used for its build.
 
 Keep the public source and installed image behavior aligned. If a snapshot or
 image has not completed its intended checks, say which verification is missing

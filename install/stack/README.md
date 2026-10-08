@@ -1,7 +1,7 @@
 # Nexus + rho on Docker
 
 This installs Nexus, PostgreSQL and a full-mode rho on one Docker host. It uses
-published `jasl123/cybros-nexus` and `jasl123/cybros-rho` images for
+published `jasl123/cybros-nexus`, `jasl123/cybros-rho` and `jasl123/cybros-updater` images for
 `linux/amd64` and `linux/arm64`. Linux Docker Engine with Compose v2 and macOS
 Docker Desktop are supported. The installer downloads images rather than
 building the application. No host Ruby or JavaScript runtime is required.
@@ -78,6 +78,7 @@ cd "$HOME/.local/share/cybros"
 | `--dir DIRECTORY` | Select the installation directory |
 | `--yes` | Skip interactive questions; use defaults and environment settings |
 | `--no-start` | Write configuration only; do not pull images or start services |
+| `--upgrade-manager` | Refresh `cybros` and its managed deployment overlays; preserve the base Compose file, settings, secrets and data |
 | `--help` | Show the available options |
 
 Re-running the installer skips the installation questions and preserves `.env`,
@@ -184,14 +185,26 @@ for each invocation:
 | --- | --- | --- |
 | `CYBROS_INSTALL_DIR` | `~/.local/share/cybros` | Installation directory; `--dir` takes precedence |
 | `CYBROS_PROJECT_NAME` | `cybros` | Compose project name; choose a distinct name for another installation |
-| `CYBROS_IMAGE_NAMESPACE` | `jasl123` | Docker Hub namespace |
-| `CYBROS_IMAGE_TAG` | `latest` | Rolling tag shared by both product images |
+| `CYBROS_NEXUS_IMAGE_REPOSITORY` | `jasl123/cybros-nexus` | Complete Nexus image repository path, without a tag or digest |
+| `CYBROS_RHO_IMAGE_REPOSITORY` | `jasl123/cybros-rho` | Complete rho image repository path, without a tag or digest |
+| `CYBROS_UPDATER_IMAGE_REPOSITORY` | `jasl123/cybros-updater` | Complete upgrade-manager image repository path, without a tag or digest |
+| `CYBROS_IMAGE_TAG` | `latest` | `latest` or a UTC `yyMMddHHmm` release tag shared by both product images |
+| `CYBROS_UPDATER_TAG` | Initial `CYBROS_IMAGE_TAG` | Independently selected manager tag; application upgrades do not replace the running manager |
 | `CYBROS_BIND` | `127.0.0.1` | Host address on which both HTTP ports are published |
 | `CYBROS_NEXUS_PORT` | `3300` | Nexus host port |
 | `CYBROS_RHO_PORT` | `7777` | rho host port |
 | `CYBROS_NEXUS_URL` | `http://localhost:3300` | Browser-reachable Nexus URL used for login and setup |
 | `CYBROS_RHO_URL` | `http://localhost:7777` | Browser address used by the installer and exact OAuth callback |
 | `CYBROS_OAUTH_ALLOW_HTTP` | `true` for direct HTTP URLs; otherwise `false` | Explicit local/LAN HTTP OAuth deployment mode |
+
+Repository values use the same path as `docker pull`: for example,
+`CYBROS_NEXUS_IMAGE_REPOSITORY='ghcr.io/jasl/cybros-nexus'`. The selected release
+tag is appended when checking updates; accepted upgrades freeze each reference
+to its immutable digest. On an existing installation, edit these values in its
+`.env`, then run `./cybros update-manager` so the manager receives the new sources. The Web
+UI displays deployment sources; it does not change registry configuration.
+Release tags use UTC `yyMMddHHmm`: `2610080750` means 2026-10-08 07:50 UTC,
+with years interpreted as 2000–2099. `latest` remains the rolling release selector.
 
 The guided setup's home-server choice asks for an address reachable from your
 browser. For an unattended LAN installation, supply it explicitly:
@@ -259,12 +272,17 @@ cybros/
   .env
   secrets.env
   compose.yaml
+  deployment.compose.yaml  managed application image/socket overlay
+  updater.compose.yaml     separate upgrade-manager project
+  images.env               immutable application image references after activation
   cybros
   data/
     postgres/        PostgreSQL's databases
     nexus/storage/   uploaded files and other Rails storage
     rho/home/        OAuth credentials, settings, logs and instance identity
     rho/work/        the runner's default /home/runner directory
+    updater/         private durable upgrade receipts and bounded progress logs
+    updater-ipc/     private Unix socket shared only with Nexus
 ```
 
 There are no named data volumes. The one-shot `data_init` container runs the
@@ -273,6 +291,12 @@ UID/GID 1000. PostgreSQL's official entrypoint handles its own directory owner.
 The application containers continue running as their normal non-root users.
 The initialization command also works after a restore; recursive ownership
 correction can take time on a large restored tree.
+
+The separate updater container owns installation lifecycle operations and the
+Docker socket. It has no published HTTP port. Nexus receives only the private
+Unix socket; rho receives neither socket. The updater's installation bind uses
+the same absolute path inside the container and on the Docker host so Compose
+resolves data mounts correctly, including installation paths containing spaces.
 
 The rho container receives the internal Nexus API URL, browser-visible Nexus
 URL and its own browser URL. It never receives `NEXUS_SETUP_SECRET`, a mounted
@@ -297,22 +321,121 @@ runner, not the host's entire filesystem.
 ./cybros instructions          # show browser URLs and setup steps
 ./cybros logs                  # last 100 lines from each service
 ./cybros logs nexus
+./cybros manager logs          # separate upgrade-manager service diagnostics
 ./cybros compose logs -f rho   # ordinary Compose for follow/tail options
 ./cybros stop                  # preserves every data directory
 ./cybros up
-./cybros update                # pull the configured tag, start, wait for health
+./cybros check                 # explicit preflight JSON; does not accept an upgrade
+./cybros update                # full backup, matching manager, then application upgrade
+./cybros update 2610080750      # select the published 2026-10-08 07:50 UTC release
+./cybros update --no-backup     # explicitly skip the full snapshot and database export
+./cybros upgrade-status        # latest accepted upgrade, including after interruption
+./cybros upgrade-log           # latest upgrade's bounded progress window
+./cybros upgrade-resume ID     # resume a safe recorded phase without repeating migration
 ```
 
-The default `latest` tag follows the rolling release. Use `./cybros update latest`
-if an existing installation was configured with another tag. Back up before
-upgrading. A failed pull leaves the configured tag unchanged. Startup or
-migration failure does not delete data and is not silently rolled back.
-Selecting an older image is not a database rollback: restore a matching backup
-if the newer release changed the database incompatibly. Updating images does
-not replace the installer or edited Compose template.
+In Nexus, an active Human administrator can open **System upgrade** in the admin
+area, review Nexus's current and candidate image references and preflight checks,
+and confirm its upgrade. **Back up the database before upgrading** starts checked;
+changing this choice requires another preflight check. This replaces Nexus and its jobs/model-runner workers
+only. It does not inspect candidate rho releases, pull rho images or restart rho.
+rho's connection to Nexus is unavailable during the restart; its process and
+image remain unchanged. Agent application management belongs to its application
+or installation tools, not Nexus administration.
+
+The page follows its Nexus-only durable receipt and reconnects after Nexus
+restarts. Closing the tab does not cancel the operation. CLI and browser commands
+use the same installation owner and only one upgrade runs at a time. The CLI
+commands above retain whole-installation upgrades and can inspect or recover
+either kind of operation. Nexus shows only Nexus upgrade receipts and logs.
+Standalone Nexus installations without an updater socket show this feature as
+unsupported.
+
+The CLI check resolves both native-platform images without pulling their layers,
+and requires matching, valid UTC `yyMMddHHmm` release labels. The Nexus browser
+check resolves only the Nexus image and validates its release label. Both check local
+Compose configuration, PostgreSQL, installed images, and pending
+recovery. A blocked check explains the required manual step and prevents
+confirmation. When backup is selected, the free-space estimate is twice the database size plus 256 MiB;
+SQL expansion and later writes can exceed this estimate. Docker's separate image
+storage capacity remains a manual check, shown as a warning. Checks are explicit;
+routine status and progress polling do not contact a registry. Confirming freezes those exact digests.
+The updater pulls the selected images before stopping the selected application
+services, leaves PostgreSQL running, writes a private database export when selected, performs
+one migration, starts the selected application images, and checks their health
+and required worker processes. Configuration, secrets,
+uploads, conversations and rho state keep their existing storage owners.
+Browser progress contains bounded operation summaries. Full migration output
+stays in the named Docker container for operator diagnosis and is not forwarded
+to the browser log.
+
+The host `update` command first resolves and pulls the matching manager release,
+stops the installation and manager, and creates a full snapshot using the previous
+cached manager image. It starts the existing application containers by identity
+before replacing the
+manager and requesting the application upgrade. A snapshot failure attempts to
+restart those services and exits without accepting an upgrade. A manager readiness
+failure retains the new manager selection and state for diagnosis and retry;
+the existing applications remain running and no application upgrade is accepted.
+It does not automatically restart an older manager against potentially newer state.
+`latest` resolves once to a
+concrete release; the manager and applications use that same tag. Only the manager
+tag and image pin change in `.env`; secrets, custom Compose and other settings
+remain intact. `--no-backup` skips both the full snapshot and SQL export.
+
+When selected, database backup free space is checked again before and after
+image pulls, before stopping applications. A failed pull on a fresh upgrade leaves
+the running application alone. Failed database export prevents migration and
+keeps applications stopped for explicit recovery.
+Failed or uncertain migration leaves application services stopped and records
+recovery guidance. The updater never resets a database, retries an uncertain
+migration, or silently rolls back. Before migration begins, `upgrade-resume` can
+repeat preparation and stopping. Once migration begins, it can continue activation
+only when the existing migration is proven successful; otherwise diagnose the
+retained migration container and restore a matching backup if necessary.
+Ordinary `up`, `install` and manager replacement refuse an active operation or
+unresolved recovery. Explicit `./cybros compose` remains available for operator
+repairs; avoid running manual lifecycle commands during a managed upgrade.
+An older image alone is not a database rollback. Ordinary `./cybros up` uses
+`images.env` after activation. A Nexus-only upgrade preserves rho's actual
+immutable image reference in that file, including when creating it for the first
+time. Installed components may therefore have different release tags; installation
+status reports their individual versions and leaves the combined release null
+until they match. A later explicit whole-installation upgrade selects both images.
+
+To add the manager to an older stack or refresh its shipped scripts, rerun the
+installer with `--upgrade-manager --no-start`, then run `./cybros up`. This
+preserves the locally edited `compose.yaml`, `.env`, `secrets.env` and all data,
+and replaces the owned manager and overlays. Set the three full repository
+paths in `.env` if using custom images. An installation that already has the
+manager can adopt a new wrapper and perform its upgrade in one command:
+
+```sh
+sh /path/to/new/release/install/stack/cybros --dir /path/to/installation update 2610080750
+```
+
+The wrapper replaces the installed `cybros` only after its default full snapshot
+succeeds. Its existing managed overlays must already support the updater.
+To update only the manager image, choose
+`CYBROS_UPDATER_TAG` in `.env` and run `./cybros update-manager` while no
+application upgrade is active. The service never replaces the manager executing
+an accepted application upgrade; the host command replaces it before acceptance.
+A manager returning combined-application state cannot
+serve the Nexus-only administration page; refresh the manager before using that
+page. A restored installation may also have a complete
+`CYBROS_UPDATER_IMAGE` pin in `.env`; this takes precedence over repository/tag.
+For `update-manager`, explicitly change or remove that pin when choosing a new
+manager release. Whole-installation `update` uses `CYBROS_UPDATER_IMAGE_REPOSITORY`
+as its release source and replaces the installed image pin with the selected digest.
+`CYBROS_POSTGRES_IMAGE` similarly pins the PostgreSQL image for a restored stack.
+An image pinned by local `sha256:` config ID must already be cached on that Docker
+host; it cannot be pulled from a registry. Use `up` with those local images;
+`install` and `update-manager` explicitly pull their selected references.
 
 This pre-release version assumes a freshly initialized database; existing
-development databases are rebuilt when the schema changes incompatibly. New
+development databases are rebuilt when the schema changes incompatibly. Stable
+public releases will retain incremental Rails migrations for installed databases;
+the pre-release reset assumption is not the public upgrade policy. New
 titles and completed messages are indexed as they are saved. Chinese
 tokenization and English stemming run inside Nexus and PostgreSQL; no separate
 search container is needed.
@@ -345,37 +468,104 @@ not necessarily shrink immediately. Do not schedule `VACUUM FULL` as routine
 cleanup: it rewrites and locks tables. See the
 [PostgreSQL space-recovery guidance](https://www.postgresql.org/docs/18/routine-vacuuming.html#VACUUM-FOR-SPACE-RECOVERY).
 
-For a consistent complete backup, stop the stack and archive the installation
-directory, including `secrets.env`, PostgreSQL data, uploaded files and rho home:
+For a consistent complete backup, finish any accepted upgrade, then stop the
+stack and its updater. The bundled backup command uses the updater image already
+cached locally; it needs no host Ruby, `sudo`, or tar implementation:
 
 ```sh
 cd "$HOME/.local/share/cybros"
 ./cybros stop
-sudo tar -czpf "$HOME/cybros-backup.tar.gz" -C "$HOME/.local/share" cybros
+./cybros backup                # prints {id, created_at, size_bytes, path} as JSON
+./cybros backups               # installation and database backup inventory
 ./cybros up
 ```
 
-Root permission may be needed to read PostgreSQL-owned files on Linux. Store
-the archive privately: it includes account credentials and encryption keys.
-Restore while the stack is stopped, preserving file ownership and permissions.
-Use a PostgreSQL 18 image and product images matching the backup's database schema
-for the first start.
+Snapshots live under `backups/installations/<backup UUID>/installation/`, with a
+private sibling `snapshot.json`. They contain `.env`, `secrets.env`, Compose and
+management files, PostgreSQL files, uploaded bytes, rho home/work and updater
+receipts. File owners, permissions and symlinks are preserved. Snapshot images
+are frozen to the actual Nexus, rho, PostgreSQL and updater container images,
+using a registry digest when available and otherwise a cached local config ID.
+Creating a backup never changes the active installation's image settings.
+
+The backup root is mode `0700` and contains credentials and encryption keys. Copy
+the complete snapshot privately to another disk for protection against disk
+loss. Backups do not contain Docker image layers, external symlink targets, or
+custom bind-mounted directories outside the installation. Back those up
+separately and preserve image availability. Known runtime sockets, temporary
+files and the `backups/` tree itself are excluded. Backup and restore refuse
+running managed services or a retained running migration container. A running
+updater holds the same lock and must also be stopped.
+Operator-created `compose run` jobs are outside managed service ownership; finish
+or stop any such job that writes installation data before taking a snapshot.
+
+`CYBROS_BACKUP_KEEP='3'` in `.env` controls retention; choose a positive integer.
+The newest three completed full snapshots and the newest three completed
+pre-migration database exports are retained independently. Older tool-owned
+outputs are removed only after a new backup of that kind succeeds. Failed
+backups do not remove a good copy, and unrelated files are not retention targets.
+The backup destination needs the estimated source size plus 256 MiB of free
+space; errors leave the original installation intact.
+
+To rehearse recovery on the same Docker host, stop the original installation
+and restore a listed backup into a new, empty directory. Replace `BACKUP_ID`
+with the UUID from `backup` or `backups`:
+
+```sh
+./cybros stop
+mkdir -m 700 "$HOME/cybros-restore-drill"
+./cybros restore BACKUP_ID "$HOME/cybros-restore-drill"
+# Still in the original installation: remove its stopped containers and networks.
+# These commands retain all bind-mounted data; do not add volume-delete options.
+./cybros compose down
+./cybros manager down
+cd "$HOME/cybros-restore-drill"
+./cybros up
+./cybros status
+```
+
+Restore prints `{id, directory, started:false}` and never starts the copy. Removing
+the original stopped containers matters: both copies initially use the same
+Compose project name, and an existing manager container would still mount the
+old directory. Alternatively, configure a separate project name, ports and
+browser URLs before starting an independent copy. Verify that the restored
+browser can sign in, read an existing conversation and read saved settings; then
+check a normal conversation against a configured model if inference is needed.
+Successful file copy or HTTP health alone does not verify decrypted provider
+credentials or model execution. Keep the original directory until rehearsal is
+complete. On Linux, give the top-level restored directory and management files
+to the new operator if their UID differs; the container entrypoints prepare
+application and PostgreSQL data ownership.
+
+If a migration failed, `./cybros stop` intentionally refuses unresolved recovery.
+Inspect the receipt and retained migration container first. Once that container
+is confirmed stopped, explicitly run `./cybros compose stop` and
+`./cybros manager stop`, then restore a matching earlier full snapshot into an
+empty directory using the procedure above. Do not start old images against a
+database that may already have been migrated. A failed restore can leave a
+partial destination; inspect it and choose a fresh empty directory before retrying.
+
 For migration across CPU architectures or PostgreSQL major versions, use a
 logical database export/import instead of assuming physical database files are
 portable. Host bind mounts make the files accessible; they do not change
 PostgreSQL's physical-format compatibility requirements.
-On another machine, install Docker, extract the directory, then run:
+On another machine, install Docker, copy the completed snapshot preserving its
+ownership and permissions, and make its frozen images available before starting
+the copied `installation/` directory. A local image-ID pin requires transferring
+that image separately or explicitly selecting a proven matching registry digest.
+Do not copy a live PostgreSQL data directory as a valid backup.
 
-```sh
-cd "$HOME/.local/share/cybros"
-./cybros compose run --rm --no-deps data_init
-./cybros up
-```
-
-If the restored installation's host-user UID differs, give the installation
-directory and its top-level configuration and management files to the new
-operator. `data_init` fixes the application data owners; PostgreSQL fixes its
-own. Do not copy a live PostgreSQL data directory as a valid backup.
+Managed upgrades default to creating `backups/databases/<operation UUID>.sql`
+after application shutdown and before migration. The private mode-0600
+`pg_dumpall` export is written and flushed before its completed name is published.
+A failed export blocks migration; resuming adopts an already completed export.
+The browser receipt exposes only creation time, byte size and current
+availability. SQL and filesystem paths never enter browser progress. An old
+receipt can report an unavailable backup after retention removes its file.
+The browser checkbox or CLI `--no-backup` can disable this export and its storage
+checks. The boolean choice is frozen in the accepted receipt, including retries
+and explicit recovery. Nexus browser upgrades back up only the database; the host
+CLI's default full snapshot also preserves uploads, rho state and configuration.
 
 For an online database-only logical export:
 
@@ -383,7 +573,7 @@ For an online database-only logical export:
 ./cybros compose exec -T db pg_dumpall -U postgres > nexus-databases.sql
 ```
 
-That file does not include uploaded bytes or rho credentials, and its separate
+That file, like the automatic pre-migration export, does not include uploaded bytes or rho credentials, and its separate
 database snapshots are not a full-stack point-in-time backup. Use the stopped
 directory backup when moving the complete personal installation.
 

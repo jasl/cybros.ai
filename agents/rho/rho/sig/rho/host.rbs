@@ -306,7 +306,7 @@ module Rho
     ASSEMBLED_MECHANISMS: Array[String]
     def self?.steps: (
       prompt: untyped, model: untyped, registry: Rho::Runner::Extensions::Registry,
-      ?environment: Rho::Runner::Environment?, ?instructions: untyped, ?key: String,
+      ?environment: Rho::Runner::Environment?, ?instructions: untyped, ?system_prompt: String, ?key: String,
       ?kernel_tools: Array[String], ?kernel_aliases: Array[Hash[String, untyped]],
       ?runner_executor_public_ids: Array[String], ?runner_tool_names: Array[String]?,
       ?served: untyped, ?prompt_mechanism: untyped, ?hints: untyped, ?code_mode: bool, ?runner_executor_public_id: String?
@@ -320,7 +320,7 @@ module Rho
     ) -> String
     def self?.instructions: (
       registry: Rho::Runner::Extensions::Registry, ?environment: Rho::Runner::Environment?,
-      ?instructions: untyped, ?hints: untyped, ?code_mode: bool
+      ?instructions: untyped, ?system_prompt: String, ?hints: untyped, ?code_mode: bool
     ) -> String
     def self?.hint_block: (untyped hints) -> String?
     BOUND_ROOT: String
@@ -328,7 +328,7 @@ module Rho
     def self?.remote_lead: (untyped environment, ?instructions: untyped, ?hints: untyped, ?root: String?,
                             ?directories: Array[String], ?kernel_environment: bool) -> String
     def self?.bound_block: (String? root, Array[String] directories) -> String?
-    def self?.remote_instructions: (untyped environment, ?instructions: untyped, ?hints: untyped) -> String
+    def self?.remote_instructions: (untyped environment, ?instructions: untyped, ?system_prompt: String, ?hints: untyped) -> String
     def self?.snapshot_block: (untyped environment) -> String
     def self?.declaration: (
       registry: Rho::Runner::Extensions::Registry, ?kernel_tools: Array[String], ?kernel_aliases: Array[Hash[String, untyped]],

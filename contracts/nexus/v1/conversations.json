@@ -283,7 +283,8 @@
   ],
   "delivery_modes": [
     "queue",
-    "steer"
+    "steer",
+    "steer_now"
   ],
   "context_modes": [
     "assembled",
@@ -397,6 +398,7 @@
     "archived_at",
     "billing_subject",
     "parent",
+    "source_conversation_public_id",
     "forked_from_turn_public_id",
     "forked_from_variant_public_id",
     "side",
@@ -754,10 +756,15 @@
     "payload"
   ],
   "list_filters": [
+    "order_by",
     "order",
     "after",
     "limit",
     "side"
+  ],
+  "list_order_by": [
+    "public_id",
+    "last_activity_at"
   ],
   "list_directions": [
     "asc",
@@ -888,6 +895,7 @@
         "archived_at": null,
         "billing_subject": null,
         "parent": null,
+        "source_conversation_public_id": null,
         "forked_from_turn_public_id": null,
         "forked_from_variant_public_id": null,
         "side": false,
@@ -910,6 +918,7 @@
       "archived_at": null,
       "billing_subject": null,
       "parent": null,
+      "source_conversation_public_id": null,
       "forked_from_turn_public_id": null,
       "forked_from_variant_public_id": null,
       "side": false,
@@ -979,11 +988,29 @@
       "spawn_node_key": "r2t0",
       "label": "reviewer"
     },
+    "source_conversation_public_id": null,
     "forked_from_turn_public_id": null,
     "forked_from_variant_public_id": null,
     "side": false,
     "active_turn_public_id": null,
     "context_revision": 1,
+    "last_activity_at": "2026-08-31T00:00:12Z",
+    "created_at": "2026-08-31T00:00:00Z",
+    "updated_at": "2026-08-31T00:00:12Z"
+  },
+  "forked_conversation_fixture": {
+    "public_id": "01900000-0000-7000-8000-000000000073",
+    "title": "Planning",
+    "answering_user_public_id": "01900000-0000-7000-8000-000000000003",
+    "archived_at": null,
+    "billing_subject": null,
+    "parent": null,
+    "source_conversation_public_id": "01900000-0000-7000-8000-000000000070",
+    "forked_from_turn_public_id": null,
+    "forked_from_variant_public_id": null,
+    "side": true,
+    "active_turn_public_id": null,
+    "context_revision": 4,
     "last_activity_at": "2026-08-31T00:00:12Z",
     "created_at": "2026-08-31T00:00:00Z",
     "updated_at": "2026-08-31T00:00:12Z"
@@ -1782,6 +1809,7 @@
       "archived_at": null,
       "billing_subject": null,
       "parent": null,
+      "source_conversation_public_id": null,
       "forked_from_turn_public_id": null,
       "forked_from_variant_public_id": null,
       "side": false,

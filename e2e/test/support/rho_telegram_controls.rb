@@ -10,7 +10,7 @@ module E2E
       assert_equal accepted.payload.fetch("input_public_id"), task_id
       loop_id = running.active_variant.run_public_id
 
-      @runtime.consume(update(2, "!mock reply=queued-answer -- a separate waiting request"))
+      receive(update(2, "!mock reply=queued-answer -- a separate waiting request"))
       queued_id = original.inputs.list.items.fetch(0).public_id
       refute_equal task_id, queued_id
       assert_equal [queued_id], original.inputs.list.items.map(&:public_id)
@@ -58,8 +58,8 @@ module E2E
       queued_text = "!mock reply=original-queued-answer -- revise this queued request"
       canceled_text = "!mock reply=canceled-answer -- cancel this queued request"
       edited_text = "!mock reply=edited-queued-answer -- the revised queued request"
-      @runtime.consume(update(2, queued_text))
-      @runtime.consume(update(3, canceled_text))
+      receive(update(2, queued_text))
+      receive(update(3, canceled_text))
       queued = chat.inputs.list.items
       assert_equal [queued_text, canceled_text], queued.map(&:text)
       assert_equal %w[pending pending], queued.map(&:state)
@@ -193,7 +193,7 @@ module E2E
           before = @telegram.calls.length
           incoming = update(id, text, user: user, chat: chat, topic: topic)
           incoming.fetch("message")["reply_to_message"] = reply_to if reply_to
-          @runtime.consume(incoming)
+          receive(incoming)
           expected = @state.read.fetch("deliveries").fetch("control:#{incoming.fetch("update_id")}").fetch("text")
           delivered = await("the Telegram control reply for update #{id}") do
             tick

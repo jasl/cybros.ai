@@ -254,7 +254,7 @@ module Rho
 
         def create_dedicated_workspace(client)
           name = client.profile.fetch.member.display_name
-          client.workspaces.create(name: name, idempotency_key: SecureRandom.uuid)
+          client.workspaces.create(name: name, idempotency_key: SecureRandom.uuid).workspace
         end
     end
   end

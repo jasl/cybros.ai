@@ -9,6 +9,7 @@ async function withFakeDialog(run) {
   const message = { textContent: "" }
   const confirmButton = { textContent: "" }
   const dialog = {
+    dataset: { confirmLabel: "Confirm" },
     returnValue: "stale-from-last-time",
     open: false,
     querySelector: (selector) => (selector === "button[value='confirm']" ? confirmButton : null),
@@ -63,15 +64,16 @@ test("cancel and Escape resolve false, including a stale returnValue from an ear
   })
 })
 
-test("an input submitter carries its label through value; no submitter falls back to Confirm", async () => {
+test("an input submitter carries its label through value; no submitter uses the translated dialog label", async () => {
   await withFakeDialog(async ({ dialog, confirmButton }) => {
     const viaInput = confirmWithDialog("Take over?", null, { value: "Take over", textContent: "" })
     expect(confirmButton.textContent).toBe("Take over")
     dialog.closeWith("cancel")
     await viaInput
 
+    dialog.dataset.confirmLabel = "Confirmer"
     const bare = confirmWithDialog("Sure?", null, null)
-    expect(confirmButton.textContent).toBe("Confirm")
+    expect(confirmButton.textContent).toBe("Confirmer")
     dialog.closeWith("cancel")
     await bare
   })

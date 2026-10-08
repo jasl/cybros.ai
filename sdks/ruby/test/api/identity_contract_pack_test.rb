@@ -262,6 +262,11 @@ class ApiIdentityContractPackTest < Minitest::Test
     assert_predicate model, :tool_calls?
     refute_respond_to model, :parallel_tool_calls?, "no row states a parallel fact (owner 2026-09-16)"
     assert_equal models.fetch("capabilities_projection").sort, model.capabilities.keys.sort
+    assert_equal models.dig("valid_fixture", "models", 0, "capabilities"), model.capabilities
+    assert_equal false, model.capabilities.dig("reasoning", "default_enabled")
+    assert_equal "low", model.capabilities.dig("reasoning", "default_effort")
+    assert_equal 48_000, model.capabilities.dig("limits", "effective_input_tokens")
+    assert_equal "integer", model.capabilities.dig("generation_parameters", "max_output_tokens", "kind")
     assert_predicate model.pricing, :priced?
     assert_equal models.fetch("pricing_projection").sort,
       CybrosAgent::Api::ModelCatalog::Pricing.members.map(&:to_s).sort

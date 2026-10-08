@@ -1,8 +1,8 @@
 module Conversations
   module Inputs
     # A queued row stays the caller's to change until materialization seals
-    # it; editing a blocked head is the unblock path. A held steer is not
-    # editable: cancel it and send again. A kernel-origin row is nobody's to
+    # it; editing a blocked head is the unblock path. A held steer admits
+    # only the Send now timing change; its content and target stay fixed. A kernel-origin row is nobody's to
     # change: `kernel_input_immutable`, by name — the kernel's SET, so a
     # peer's `send` stays the recipient's to manage.
     class Update
@@ -23,8 +23,8 @@ module Conversations
       Command = Data.define(:host, :input_public_id, :acting_user,
         :expected_lock_version, :entries, :visible_in_context, :context_mode,
         :context_options, :provider_id, :model_ref, :reasoning_effort, :reasoning_enabled,
-        :request_options, :tool_names, :approval_mode, :instructions, :attachments, :deliver_at, :steps) do
-        def initialize(reasoning_enabled: nil, tool_names: nil, approval_mode: nil, instructions: nil, attachments: nil, deliver_at: nil, steps: nil,
+        :request_options, :tool_names, :approval_mode, :instructions, :attachments, :deliver_at, :steps, :delivery_mode) do
+        def initialize(reasoning_enabled: nil, tool_names: nil, approval_mode: nil, instructions: nil, attachments: nil, deliver_at: nil, steps: nil, delivery_mode: nil,
                        **) = super
       end
 
@@ -81,6 +81,8 @@ module Conversations
           return Outcome.refused(:not_found) if found.nil?
           return Outcome.refused(:kernel_input_immutable) if found.kernel_origin?
 
+          return advance_steer(found) unless @command.delivery_mode.nil?
+
           message = recomposed_message(found)
           return Outcome.refused(message.refusal) if message && !message.accepted?
 
@@ -101,6 +103,27 @@ module Conversations
           apply(input, message)
         rescue ActiveRecord::StaleObjectError
           Outcome.refused(:stale_object)
+        end
+
+        def advance_steer(found)
+          input = @host.conversation_inputs.lock.find(found.id)
+          unless input.steering? && ConversationInput::STEERING_MODES.include?(input.delivery_mode) &&
+              @command.delivery_mode == "steer_now"
+            input.errors.add(:delivery_mode, :invalid)
+            return Outcome.invalid(input)
+          end
+          changed_fields = @command.to_h.compact.keys - Admission::PLUMBING - %i[delivery_mode expected_lock_version]
+          return Outcome.refused(:steering_held) if changed_fields.any?
+          if @command.expected_lock_version && @command.expected_lock_version != input.lock_version
+            return Outcome.refused(:stale_object)
+          end
+
+          if input.delivery_mode != "steer_now"
+            input.update!(delivery_mode: "steer_now")
+            narrate(input)
+          end
+          input.wake_steering
+          Outcome.accepted(input)
         end
 
         # THE CLOCK ON THE EDIT: the door's two bounds, judged once under
@@ -238,6 +261,7 @@ module Conversations
                 "input_public_id" => input.public_id,
                 "queue_position" => input.queue_position,
                 "state" => input.state,
+                "delivery_mode" => input.delivery_mode,
                 "deliver_at" => input.deliver_at&.iso8601,
               }.compact,
             }]

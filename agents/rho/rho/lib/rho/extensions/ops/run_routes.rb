@@ -127,6 +127,7 @@ module Rho
               # (unnamed: today's bytes) the system field keeps the lead
               # and the guideline (`RunDeclaration.instructions`/`remote_instructions`).
               mechanism = body["prompt_mechanism"]
+              system_prompt = ctx.config.system_prompt
               assembled = Rho::RunDeclaration.assembled?(mechanism)
               # The model's adaptation row's hints ride the seed's lead as
               # they ride a conversation turn's.
@@ -146,12 +147,12 @@ module Rho
               steps = Rho::RunDeclaration.steps(
                 prompt: assembled ? Rho::RunDeclaration.led(lead, prompt) : prompt,
                 model: model, registry: registry, served: selected&.served_tools, runner_executor_public_id: runner,
-                environment: environment, prompt_mechanism: mechanism,
+                environment: environment, prompt_mechanism: mechanism, system_prompt: system_prompt,
                 # A remote seed's system field is composed whole here, hints
                 # inside it; a local one composes it in `steps`.
                 hints: (remote ? [] : hints),
                 instructions: remote ? Rho::RunDeclaration.remote_instructions(remote.environment,
-                  instructions: body["instructions"], hints: hints) : body["instructions"],
+                  instructions: body["instructions"], system_prompt: system_prompt, hints: hints) : body["instructions"],
                 **ctx.kernel_tool_configuration(client), code_mode: code_mode,
                 runner_executor_public_ids: candidates.map(&:public_id)
               )
@@ -511,6 +512,7 @@ module Rho
           def task_row(detail)
             { key: detail.task.key, kind: detail.task.kind,
               status: detail.task.status, tool_name: detail.task.tool_name,
+              on_failure: detail.task.on_failure, failure_resolution: detail.task.failure_resolution,
               prompt: detail.prompt, output: detail.output,
               # The settled call's bounded preview, what its feed item
               # carried, for a reader that attached after it settled.

@@ -5,6 +5,7 @@ require "async"
 class StoreDocumentTest < Minitest::Test
   Row = Data.define(:public_id, :namespace, :key, :lock_version, :value)
   Page = Data.define(:items, :next_after)
+  Created = Data.define(:store_entry)
 
   class Store
     attr_accessor :row, :failure
@@ -17,7 +18,8 @@ class StoreDocumentTest < Minitest::Test
     def create(namespace:, key:, value:, **)
       raise CybrosAgent::Api::Conflict.new("key taken", code: "key_taken") if @row
 
-      publish(Row.new(public_id: "entry", namespace: namespace, key: key, lock_version: 0, value: copy(value)))
+      row = publish(Row.new(public_id: "entry", namespace: namespace, key: key, lock_version: 0, value: copy(value)))
+      Created.new(store_entry: row)
     end
 
     def update(id, value:, lock_version:)

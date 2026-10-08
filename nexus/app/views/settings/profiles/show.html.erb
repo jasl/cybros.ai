@@ -1,27 +1,27 @@
-<% content_for :title, "Settings" %>
+<% content_for :title, t("settings.profiles.show.settings") %>
 
 <%= render layout: "settings/shell", locals: { current: :profile } do %>
   <% if @user.errors.any? %>
     <div role="alert" class="alert alert-error alert-soft">
       <span class="iconify lucide--circle-alert size-5" aria-hidden="true"></span>
-      <span>The profile could not be saved — check the highlighted field.</span>
+      <span><%= t("settings.profiles.show.the_profile_could_not_be_saved_check_the_highlighted") %></span>
     </div>
   <% end %>
 
   <section>
-    <h2 class="mb-1 text-xs font-medium text-base-content/60">Profile</h2>
-    <p class="mb-3 text-sm text-base-content/60">Choose how your name appears in Nexus.</p>
+    <h2 class="mb-1 text-xs font-medium text-base-content/60"><%= t("settings.profiles.show.profile") %></h2>
+    <p class="mb-3 text-sm text-base-content/60"><%= t("settings.profiles.show.choose_how_your_name_appears_in_brand", brand: t("brand.name")) %></p>
     <%= form_with url: settings_profile_path, method: :patch, scope: :profile, data: { turbo_frame: "_top" } do |form| %>
       <div class="rounded-box border border-base-300 bg-base-200">
-        <%= render layout: "shared/form_row", locals: { form:, attribute: :display_name, label: "Display name" } do %>
+        <%= render layout: "shared/form_row", locals: { form:, attribute: :display_name, label: t("settings.profiles.show.display_name") } do %>
           <%= validated_field form, :text_field, :display_name, @user.errors.full_messages_for(:display_name), size: :sm, value: @user.display_name, required: true, maxlength: User::DISPLAY_NAME_MAX_LENGTH %>
         <% end %>
-        <%= render layout: "shared/form_row", locals: { form:, attribute: :handle, label: "Handle", description: "How others address you: @handle. Lowercase letters, digits, - and _; 2 to 32 characters; unique here." } do %>
+        <%= render layout: "shared/form_row", locals: { form:, attribute: :handle, label: t("settings.profiles.show.handle"), description: t("settings.profiles.show.how_others_address_you_handle_lowercase_letters_digits_and") } do %>
           <%= validated_field form, :text_field, :handle, @user.errors.full_messages_for(:handle), size: :sm, value: @user.handle, required: true, maxlength: User::Handle::MAX_LENGTH %>
         <% end %>
       </div>
       <div class="mt-3 flex justify-end">
-        <%= form.submit "Save", class: "btn btn-primary btn-sm" %>
+        <%= form.submit t("settings.profiles.show.save"), class: "btn btn-primary btn-sm" %>
       </div>
     <% end %>
   </section>

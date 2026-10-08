@@ -256,7 +256,7 @@ class RhoWebuiTest < Minitest::Test
     @web_fixture = E2E::WebFixture.new.start
     boot_console(mode: "full", width: 1400, height: 1000,
       settings: { "plugins" => { "rho.web_tools" => {
-        "enabled" => true, "configuration" => { "allow_private_network" => true },
+        "configuration" => { "allow_private_network" => true },
       } } })
     new_conversation
     first_url = "#{@web_fixture.site}/page.html"
@@ -287,6 +287,86 @@ class RhoWebuiTest < Minitest::Test
       "a fresh conversation reuses the site permission without another approval"
     refute @page.has_button?("Allow this site until restart", wait: 0)
     screenshot("site-approved-narrow")
+    assert_clean_console
+  end
+
+  def test_send_now_reads_a_steer_while_the_original_tool_keeps_running
+    boot_console(mode: "full", width: 1400, height: 1000)
+    new_conversation(approval: "bypass")
+    assert_equal "steer", @page.find_field("Send behavior").value
+    marker = SecureRandom.hex(4)
+    command = "until test -f release; do sleep 0.1; done; printf 'long-%s\\n' complete-#{marker}"
+    send_message(tool_prompt("bash", { "command" => command, "timeout" => 180 }, "The original work finished."))
+    assert @page.has_current_path?(/conversation=/, url: true, wait: WAIT)
+    client = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)
+    workspace = client.workspace(@workspace_id)
+    chat = workspace.conversation(conversation_id)
+    turn = @daemon.await("the conversation never started its original turn") do
+      chat.turns.list.items.find { |row| row.kind == "direct_reply" && row.active_variant&.run_public_id }
+    end
+    run_id = turn.active_variant.run_public_id
+    run = workspace.run(run_id)
+    original = @daemon.await("the runner never claimed the long shell") do
+      run.fetch.tasks.find { |task| task.tool_name == "bash" && task.claimed_by }
+    end
+    continuation = run.fetch.deliverable_task_key
+    ordinary = reply_prompt("The correction was read while the shell runs.")
+    send_message(ordinary)
+    assert @page.has_text?("Additional instruction waiting to be read", wait: WAIT)
+    held = chat.inputs.list.items.find { |input| input.text == ordinary }
+    assert_equal ["steering", "steer"], [held.state, held.delivery_mode]
+    assert_equal "waiting", run.fetch.tasks.find { |task| task.key == continuation }.status
+    refute run.fetch.tasks.any? { |task| task.key.start_with?("steer") }
+    assert @page.has_field?("Message", with: "")
+    screenshot("steer-waiting-desktop")
+    resize_console(width: 320, height: 844)
+    assert @page.has_button?("Send now", disabled: false)
+    screenshot("steer-waiting-narrow")
+    @page.click_button "Send now"
+    @daemon.await("Send now never produced an immediate model response") do
+      run.fetch.tasks.any? { |task| task.key == "steer1" && task.status == "completed" }
+    end
+    first_request = workspace.run_task(run_public_id: run_id, task_key: "steer1").request.entries.to_json
+    assert_includes first_request, ordinary
+    assert_includes first_request, "still pending"
+    refute chat.inputs.list.items.any? { |input| input.public_id == held.public_id }
+    live = run.fetch.tasks.find { |task| task.key == original.key }
+    assert_equal ["dispatched", original.started_at, original.claimed_by, original.lifetime],
+      [live.status, live.started_at, live.claimed_by, live.lifetime]
+    assert_nil live.completed_at
+    assert_equal "running", run.fetch.status
+    assert_equal turn.public_id, chat.turns.list.items.find { |row| row.active_variant&.run_public_id == run_id }.public_id
+
+    @page.select "Queue after current reply", from: "Send behavior"
+    queued = reply_prompt("The queued next turn finished.")
+    send_message(queued)
+    assert @page.has_text?("Message queued", wait: WAIT)
+    assert_equal "queue", chat.inputs.list.items.find { |input| input.text == queued }.delivery_mode
+    immediate = reply_prompt("The keyboard correction was read immediately.")
+    @page.fill_in "Message", with: immediate
+    assert @page.has_button?("Send now", disabled: false, wait: WAIT)
+    @page.find_field("Message").send_keys([:control, :enter])
+    @daemon.await("Control Enter never produced a second immediate response") do
+      run.fetch.tasks.any? { |task| task.key == "steer2" && task.status == "completed" }
+    end
+    assert_includes workspace.run_task(run_public_id: run_id, task_key: "steer2").request.entries.to_json, immediate
+    assert_equal [queued], chat.inputs.list.items.map(&:text)
+    assert_equal "dispatched", run.fetch.tasks.find { |task| task.key == original.key }.status
+    assert_equal continuation, run.fetch.deliverable_task_key
+    released = @daemon.control(:post, "/runs/call_tool", body: {
+      "runner_executor_public_id" => @runner_id, "tool" => "bash",
+      "input" => { "command" => "touch #{File.join(@project, "release")}" },
+    })
+    assert_equal "completed", released.dig("call_tool", "task", "status")
+    @daemon.await("the foreground turn did not join the original shell result") { run.fetch.status == "completed" }
+    final_request = workspace.run_task(run_public_id: run_id, task_key: continuation).request.entries.to_json
+    assert_equal 1, final_request.scan("long-complete-#{marker}").length
+    assert_equal first_request, workspace.run_task(run_public_id: run_id, task_key: "steer1").request.entries.to_json
+    assert @page.has_text?("Mock: The queued next turn finished.", wait: WAIT)
+    replies = chat.turns.list.items.select { |row| row.kind == "direct_reply" }
+    assert_equal 2, replies.length
+    assert_equal turn.public_id, replies.first.public_id
+    assert_equal original.started_at, run.fetch.tasks.find { |task| task.key == original.key }.started_at
     assert_clean_console
   end
 

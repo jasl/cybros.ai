@@ -82,6 +82,14 @@ module SimpleInference
       "content_filter" => REFUSED,
       "refusal" => REFUSED,
     }.freeze
+    BEDROCK = {
+      "max_tokens" => OUTPUT_BUDGET_EXHAUSTED,
+      "model_context_window_exceeded" => CONTEXT_WINDOW_EXHAUSTED,
+      "guardrail_intervened" => BLOCKED,
+      "content_filtered" => BLOCKED,
+      "malformed_model_output" => ERROR,
+      "malformed_tool_use" => ERROR,
+    }.freeze
     NONE = {}.freeze
 
     BY_ADAPTER_PROFILE = {
@@ -90,9 +98,12 @@ module SimpleInference
       "deepseek_responses" => RESPONSES,
       "xai_responses" => RESPONSES,
       "anthropic_messages" => MESSAGES,
+      "bedrock_converse" => BEDROCK,
       "gemini_generate_content" => GEMINI,
       "openrouter_chat" => CHAT,
       "openai_compatible_chat" => CHAT,
+      "mistral_chat" => CHAT,
+      "pi_messages" => CHAT,
     }.freeze
 
     def self.for(adapter_profile:, detail:)

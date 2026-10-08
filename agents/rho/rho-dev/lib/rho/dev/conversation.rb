@@ -82,9 +82,9 @@ module Rho
         # is QUEUED (the kernel refuses a picture on a steer); an explicit
         # `--mode steer --attach` is refused before any call, by the
         # kernel's word.
-        mode: { type: :string, enum: %w[steer queue],
-                desc: "`steer` lands at the running turn's next model boundary (the default); `queue` waits for the turn " \
-                      "boundary (the default under --attach)" },
+        mode: { type: :string, enum: %w[steer steer_now queue],
+                desc: "`steer` lands at the running turn's next model boundary (the default); `steer_now` asks the model " \
+                      "to read it while supported tools keep running; `queue` waits for the turn boundary (the default under --attach)" },
         attach: { type: :array, desc: "Attach a file to the message (repeatable; the turn is queued)" },
         # WHO ANSWERS THIS TURN (group chat): a member agent
         # of the daemon's workspace by @handle or public id, holding full

@@ -59,6 +59,20 @@ class OpsReadsTest < Minitest::Test
     refute row.key?("metadata")
   end
 
+  def test_task_details_preserve_the_policy_and_resolution_that_settle_a_failure
+    detail = { "kind" => "model_task", "lifetime" => "conversation", "wake" => "auto", "status" => "failed",
+      "on_failure" => "absorb", "failure_resolution" => "abandoned", "visibility" => "visible",
+      "error" => { "key" => "provider_context_overflow" }, "created_at" => "2026-09-04T00:00:00Z" }
+    daemon = member_ready(boot, NexusDoubles::FakeAgentApi.new(task_detail: detail))
+
+    response = request(daemon, :get, "/runs/task?public_id=al-9&task_key=r1", token: bearer(daemon))
+
+    assert_equal "200", response.code, response.body
+    row = JSON.parse(response.body).fetch("task")
+    assert_equal "absorb", row.fetch("on_failure")
+    assert_equal "abandoned", row.fetch("failure_resolution")
+  end
+
   # THE BYTES READ, proxied: the daemon fetches an upload's
   # bytes on the member plane — streamed through the SDK into a spool —
   # and answers them whole as an octet stream; the kernel's 404 for an id

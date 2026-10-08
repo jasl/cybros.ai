@@ -67,7 +67,7 @@ class ConversationAclTest < Minitest::Test
       steward_client = CybrosAgent::Client.new(base_url: base_url, credential: steward.member_token)
       @world.room_public_id = steward_client.workspaces.create(
         name: "ACL room #{SecureRandom.hex(3)}", access_mode: "account_wide", idempotency_key: SecureRandom.uuid
-      ).public_id
+      ).workspace.public_id
       @world.peer_a = E2E::PeerProgram.pair(base_url: base_url, actor: actor, name: "acl-a")
       @world.peer_b = E2E::PeerProgram.pair(base_url: base_url, actor: actor, name: "acl-b")
       @world

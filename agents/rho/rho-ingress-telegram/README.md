@@ -179,6 +179,39 @@ messages, 2,000 characters per message and 8,000 characters in total, as user-le
 context with speaker identities. Background attachments are labelled without being
 downloaded. Observation never becomes an automatic steer. Requests from one person
 queue within their selected conversation; another person's held task does not block them.
+Ordinary text waits for `input_debounce_seconds` without another message from that
+requester (2 seconds by default; integer values from 0 to 10). Zero sends each
+message immediately; positive values wait for follow-up text.
+Each following message extends that window. Consecutive text with the same
+speaker, chat/topic, selected conversation, model and quoted context becomes one
+input in the original order. In a group, a follow-up inside this window does not
+need another mention. Different requesters and topics keep independent windows;
+changing the selected conversation or model starts another batch. A later batch
+still queues after an already running response; explicit `/steer` keeps its
+current execution target and next-model-boundary behavior.
+
+The channel saves every source message and its deadline in Nexus Store before
+advancing the Telegram offset. Restart resumes the remaining window. Once
+admission starts, the input body and retry key stay fixed; later messages cannot
+change an uncertain submission. Every source message remains linked to the
+accepted task, so replying to any member of a batch selects that same work.
+Commands, question answers and approvals bypass the window. Before admission,
+replying to an original message with `/stop` removes only that message; `/new`,
+`/resume` and a workspace switch discard that requester's unadmitted inputs.
+Attachments and voice preparation use the same ordered admission queue, with
+separate inputs rather than text batching. Another requester remains independent.
+
+Change **Telegram options and access → Message grouping delay** in the WebUI, or
+use the shared plugin settings command:
+
+```sh
+rho extensions configure rho.ingress_telegram '[{"op":"set","path":["input_debounce_seconds"],"value":3}]'
+```
+
+The setting applies to newly received messages without restarting the poller.
+An already saved deadline survives restart or settings changes; the next message
+in that burst extends it using the current setting.
+
 The in-process gateway owns the slash registry and handlers. Telegram projects
 that registry into its menu; rho's WebUI keeps its own command system.
 

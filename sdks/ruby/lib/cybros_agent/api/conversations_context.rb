@@ -28,14 +28,14 @@ module CybrosAgent
         @workspace_public_id = required_string_snapshot(workspace_public_id, "workspace_public_id")
       end
 
-      def list(after: nil, limit: nil, side: UNSET)
-        params = query(after:, limit:, side: (SIDE_FLAG if side == true))
+      def list(after: nil, limit: nil, order: nil, order_by: nil, side: UNSET)
+        params = query(after:, limit:, order:, order_by:, side: (SIDE_FLAG if side == true))
         page(ConversationSummary, @dispatch.call(path, params: params), "conversations")
       end
 
       # The recycle bin's own view — same shape, opposite filter.
-      def archived(after: nil, limit: nil)
-        answer = @dispatch.call("#{path}/archived", params: query(after:, limit:))
+      def archived(after: nil, limit: nil, order: nil, order_by: nil)
+        answer = @dispatch.call("#{path}/archived", params: query(after:, limit:, order:, order_by:))
         page(ConversationSummary, answer, "conversations")
       end
 

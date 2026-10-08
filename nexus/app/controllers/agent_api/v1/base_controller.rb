@@ -190,8 +190,8 @@ class AgentAPI::V1::BaseController < ActionController::API
 
     # A list's page size: the family default when absent, else a bounded
     # integer — "abc" is 400, never 0. Both planes page the same way.
-    def limit_param(default:, max:)
-      params[:limit].nil? ? default : bounded_integer(params[:limit], :limit, range: 1..max)
+    def limit_param(default:, max:, value: params[:limit])
+      value.nil? ? default : bounded_integer(value, :limit, range: 1..max)
     end
 
     # The shared cursor reader: absent is the feed's start, and a cursor

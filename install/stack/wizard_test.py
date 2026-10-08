@@ -327,7 +327,7 @@ class WizardTest(unittest.TestCase):
                 "CYBROS_INSTALL_DIR": str(environment_directory),
                 "CYBROS_BIND": "127.0.0.1", "CYBROS_NEXUS_PORT": "4330",
                 "CYBROS_RHO_PORT": "8777", "CYBROS_NEXUS_URL": "https://nexus.example.test",
-                "CYBROS_RHO_URL": "https://rho.example.test", "CYBROS_IMAGE_TAG": "1234567890",
+                "CYBROS_RHO_URL": "https://rho.example.test", "CYBROS_IMAGE_TAG": "2610080749",
             },
         )
         self.assertEqual(result.returncode, 0, result.stdout.decode())
@@ -335,7 +335,7 @@ class WizardTest(unittest.TestCase):
         self.assert_config(
             CYBROS_BIND="127.0.0.1", CYBROS_NEXUS_PORT="4330", CYBROS_RHO_PORT="8777",
             CYBROS_NEXUS_URL="https://nexus.example.test", CYBROS_RHO_URL="https://rho.example.test",
-            CYBROS_IMAGE_TAG="1234567890",
+            CYBROS_IMAGE_TAG="2610080749",
         )
         self.assert_no_start()
 

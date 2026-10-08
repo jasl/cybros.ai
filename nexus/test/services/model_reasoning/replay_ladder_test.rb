@@ -37,6 +37,41 @@ class ModelReasoning::ReplayLadderTest < ActiveSupport::TestCase
     assert_equal({ "type" => "redacted_thinking", "data" => "blob" }, redacted)
   end
 
+  test "unsigned Anthropic-compatible thinking needs a declared target and exact provider and model" do
+    block = { "type" => "thinking", "thinking" => "Reasoned", "signature" => "" }
+    captured = trace(format: "anthropic_thinking", items: [{ "text" => "Reasoned", "provider_payload" => block }])
+    ordinary = target(format: "anthropic_thinking")
+    compatible = ordinary.with(allow_empty_thinking_signature: true)
+
+    assert_equal "missing_signature", decide(captured, ordinary).reason
+    assert_equal [block], decide(captured, compatible).payloads
+    assert_equal :drop, decide(captured, compatible.with(provider_id: "other")).kind
+    assert_equal :drop, decide(captured, compatible.with(model_id: "other")).kind
+    assert_equal :drop, decide(captured, compatible.with(reasoning_enabled: false)).kind
+  end
+
+  test "Pi thinking and Bedrock reasoning keep native payloads within their provider and model" do
+    cases = {
+      "pi_messages" => ["pi_thinking", { "type" => "thinking", "thinking" => "Thought", "thinkingSignature" => "sig" }],
+      "bedrock_converse" => ["bedrock_reasoning", { "reasoningContent" => { "reasoningText" => { "text" => "Thought", "signature" => "sig" } } }],
+    }
+    cases.each do |api, (format, block)|
+      result = SimpleInference::Responses::Result.new(output_text: "", tool_calls: [],
+        output_items: [{ "type" => "reasoning", "text" => "Thought", "signature" => "sig", "provider_payload" => block }],
+        usage: {}, finish_reason: "stop", finish_detail: "stop", provider_response: nil, provider_format: "responses")
+      envelope = ModelReasoning::TraceBuilder.call(result: result,
+        origin: { provider_id: "prov", model_id: "m-1", api_format: api }, normalized_tool_calls: [])
+      captured = ModelReasoning::Trace.new(envelope: envelope)
+      assert_equal format, captured.origin_format_variant, api
+      same = target(format: format)
+      expected = api == "pi_messages" ? block : { "type" => "bedrock_reasoning", "provider_payload" => block }
+      assert_equal [expected], decide(captured, same).payloads, api
+      assert_equal "origin_provider_mismatch", decide(captured, same.with(provider_id: "other")).reason, api
+      assert_equal "cross_model_mismatch", decide(captured, same.with(model_id: "other")).reason, api
+      assert_equal "reasoning_disabled", decide(captured, same.with(reasoning_enabled: false)).reason, api
+    end
+  end
+
   test "the verbatim block wins: Claude 5's signature-only thinking replays exactly as received" do
     signature_only = trace(format: "anthropic_thinking", items: [
       { "signature" => "sig-348", "signature_kind" => "anthropic_signature",

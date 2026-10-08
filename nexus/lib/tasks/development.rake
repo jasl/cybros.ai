@@ -5,7 +5,7 @@ namespace :development do
     abort "The installation already has an account. No settings were changed." if Account.exists?
 
     Account.create_with_owner(
-      account: { name: Setup::DEFAULT_ACCOUNT_NAME },
+      account: { name: Setup.default_account_name },
       owner: {
         email: "admin@example.com", display_name: "Admin",
         password: "Passw0rd!", password_confirmation: "Passw0rd!",

@@ -115,6 +115,7 @@ module ModelSelection
         entry = catalog.models[model]
         return Result.refused(:unknown_model) if entry.nil?
         return Result.refused(:model_hidden) if catalog.hidden_models.include?(model)
+        return Result.refused(:endpoint_unconfigured) if ModelCatalog.model_base_url(model, snapshot: catalog).nil?
 
         # The catalog composes it: naming a wire names the one workload it
         # serves, so an unserved workload is a composition that never happens.
@@ -168,14 +169,10 @@ module ModelSelection
       # only Nexus's advisory input threshold does not belong to the gem.
       def capability_snapshot(entry, profile)
         capabilities = entry.fetch("capabilities", {})
-        authored_limits = capabilities["limits"] || entry["limits"] || {}
         Nexus::ModelCapabilitySnapshot.new(
           input_modalities: profile.input_modalities,
           output_modalities: profile.output_modalities,
-          limits: capability_limits(
-            profile.local_safety_limits,
-            effective_input_tokens: authored_limits["effective_input_tokens"]
-          ),
+          limits: Nexus::ModelCapabilityLimits.from_catalog(entry: entry, profile: profile),
           prompt_caching: profile.capability_enabled?("prompt_caching"),
           streaming: profile.capability_enabled?("streaming"),
           service_tiers: profile.service_tiers,
@@ -184,12 +181,6 @@ module ModelSelection
           reasoning_replay:
             Nexus::ReasoningReplayCapability.from_h(capabilities["reasoning_replay"])
         )
-      end
-
-      def capability_limits(limits, effective_input_tokens:)
-        # deconstruct_keys carries every declared bound, absent ones as nil;
-        # the profile's own to_h is the compact catalog projection.
-        Nexus::ModelCapabilityLimits.new(effective_input_tokens: effective_input_tokens, **limits.deconstruct_keys(nil))
       end
 
       def generation_parameters(parameters)

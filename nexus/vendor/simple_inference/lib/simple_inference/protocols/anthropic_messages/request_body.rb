@@ -86,11 +86,16 @@ module SimpleInference
         def apply_thinking_options(body, options)
           enabled = validated_reasoning_enabled(options[:reasoning_enabled], effort: options[:reasoning_effort])
           effort = validated_reasoning_effort(options[:reasoning_effort]) unless enabled == false
-          thinking = bind_thinking(anthropic_thinking_config(effort, options[:thinking], enabled: enabled))
+          thinking = bind_thinking(anthropic_thinking_config(effort, options[:thinking], enabled: enabled,
+            max_tokens: body.fetch(:max_tokens)))
           body[:thinking] = thinking if thinking
           validate_manual_thinking(thinking, body)
+          if @thinking_omits_temperature && thinking && %w[adaptive enabled].include?(thinking[:type].to_s)
+            body.delete(:temperature)
+          end
 
-          output_config = anthropic_output_config(options, effort: effort, enabled: enabled)
+          output_effort = effort unless @anthropic_thinking_control == "budget"
+          output_config = anthropic_output_config(options, effort: output_effort, enabled: enabled)
           body[:output_config] = output_config if output_config
         end
 
@@ -112,14 +117,15 @@ module SimpleInference
           return nil if effort.nil?
 
           value = effort.to_s
-          return value if value == "none" || REASONING_EFFORT_VOCABULARY.include?(value)
+          vocabulary = @anthropic_thinking_control == "budget" ? @thinking_budgets.keys : REASONING_EFFORT_VOCABULARY
+          return value if value == "none" || vocabulary.include?(value)
 
           raise SimpleInference::ValidationError,
-                "anthropic_messages accepts reasoning_effort none|#{REASONING_EFFORT_VOCABULARY.join("|")} " \
+                "anthropic_messages accepts reasoning_effort none|#{vocabulary.join("|")} " \
                 "(got #{value.inspect}); efforts lower faithfully — this protocol never clamps"
         end
 
-        def anthropic_thinking_config(effort, explicit_thinking, enabled:)
+        def anthropic_thinking_config(effort, explicit_thinking, enabled:, max_tokens:)
           return { type: "disabled" } if enabled == false
 
           unless explicit_thinking.nil?
@@ -129,6 +135,13 @@ module SimpleInference
           end
 
           return nil if effort.nil? && enabled.nil?
+          return { type: "disabled" } if effort == "none"
+          if @anthropic_thinking_control == "budget"
+            budget = effort ? @thinking_budgets.fetch(effort) : MANUAL_THINKING_BUDGET_MINIMUM
+            # The model's response ceiling includes thinking. Fit a mapped
+            # effort inside it while retaining Pi's 1,024-token answer room.
+            return { type: "enabled", budget_tokens: [budget, max_tokens - 1024].min, display: "summarized" }
+          end
 
           # display: "summarized" is this lane's CAPTURE DEFAULT (the
           # reasoning-capture posture, like the responses family's
@@ -138,7 +151,7 @@ module SimpleInference
           # display or to carry across a model switch. Summaries bill the
           # same as omitted (display controls visibility only). A caller's
           # explicit :thinking hash overrides, as everywhere on this lane.
-          effort == "none" ? { type: "disabled" } : { type: "adaptive", display: "summarized" }
+          { type: "adaptive", display: "summarized" }
         end
 
         # Effort rides output_config.effort in adaptive mode only; pairing it
@@ -504,7 +517,7 @@ module SimpleInference
             # continuation contract is replay-verbatim — live-probed 2026-08-29.
             thinking = normalized["thinking"].to_s
             signature = normalized["signature"].to_s
-            return nil if signature.empty?
+            return nil if signature.empty? && (!@allow_empty_thinking_signature || thinking.empty?)
 
             { type: "thinking", thinking: thinking, signature: signature }
           when "redacted_thinking"

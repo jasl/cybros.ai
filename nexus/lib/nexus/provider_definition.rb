@@ -4,7 +4,7 @@ module Nexus
     class Invalid < ArgumentError; end
 
     KEYS = %w[base_url api_format credentials display_name concurrency_limit
-      workload_concurrency_limits native_cost_contract wire_options service_tiers].freeze
+      workload_concurrency_limits native_cost_contract wire_options service_tiers authentication request_headers].freeze
     REQUIRED_KEYS = %w[base_url api_format].freeze
     CREDENTIALS = { "api_key" => "api_key", "none" => "none", "codex" => "oauth_tokens" }.freeze
     DEFAULT_CREDENTIALS = "api_key".freeze
@@ -34,6 +34,10 @@ module Nexus
         unless CREDENTIALS.key?(declaration.fetch("credentials", DEFAULT_CREDENTIALS))
           raise Invalid, "provider #{provider_id.inspect} credentials must be one of #{CREDENTIALS.keys.join(", ")}"
         end
+        if declaration.key?("authentication") &&
+            !SimpleInference::Config::AUTHENTICATION_HEADERS.key?(declaration.fetch("authentication"))
+          raise Invalid, "provider authentication must be one of #{SimpleInference::Config::AUTHENTICATION_HEADERS.keys.join(", ")}"
+        end
 
         if declaration.key?("display_name")
           name = String.try_convert(declaration.fetch("display_name"))
@@ -43,24 +47,30 @@ module Nexus
           declaration["display_name"] = name.strip
         end
         declaration = declaration.reverse_merge("concurrency_limit" => DEFAULT_CONCURRENCY_LIMIT)
-        validate_base_url(provider_id, declaration.fetch("base_url"))
+        if declaration.key?("request_headers")
+          declaration["request_headers"] = SimpleInference::Config.normalize_request_headers(declaration.fetch("request_headers"))
+        end
+        normalize_endpoint(declaration.fetch("base_url"), label: "provider #{provider_id.inspect}")
         validate_concurrency(provider_id, declaration)
         declaration
+      rescue SimpleInference::ConfigurationError => error
+        raise Invalid, error.message
       end
 
-      private
-
-        def validate_base_url(provider_id, value)
+      def normalize_endpoint(value, label: "endpoint")
+          return nil if value.nil?
           uri = URI.parse(value.to_s)
           valid = %w[http https].include?(uri.scheme) && uri.host.present? && uri.userinfo.nil? &&
             uri.query.nil? && uri.fragment.nil? && !uri.path.end_with?("/")
-          return if valid
+          return value if valid
 
-          raise Invalid, "provider #{provider_id.inspect} base_url must be an absolute http(s) origin with no " \
+          raise Invalid, "#{label} base_url must be an absolute http(s) origin with no " \
             "userinfo, query, fragment, or trailing slash"
         rescue URI::InvalidURIError
-          raise Invalid, "provider #{provider_id.inspect} base_url is not a URI"
-        end
+          raise Invalid, "#{label} base_url is not a URI"
+      end
+
+      private
 
         def validate_concurrency(provider_id, declaration)
           ceiling = positive_integer(declaration.fetch("concurrency_limit"))

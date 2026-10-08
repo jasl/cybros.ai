@@ -1,15 +1,15 @@
-<% content_for :title, "Sign in to your application" %>
+<% content_for :title, t("oauth.authorizations.show.sign_in_to_your_application") %>
 <% turbo_page_requires_reload %>
 <div class="space-y-6">
   <header class="space-y-2">
-    <h1 class="text-2xl font-semibold">Sign in to your application</h1>
-    <p>Continue as <strong><%= Current.user.display_name %></strong>.</p>
+    <h1 class="text-2xl font-semibold"><%= t("oauth.authorizations.show.sign_in_to_your_application") %></h1>
+    <p><%= t("oauth.authorizations.show.continue_as_html", name: tag.strong(Current.user.display_name)) %></p>
   </header>
-  <p>The application can use your personal Nexus settings. If you are an administrator, it can also manage this installation on your behalf.</p>
+  <p><%= t("oauth.authorizations.show.the_application_can_use_your_personal_brand_settings_if", brand: t("brand.name")) %></p>
   <% if @authorization_request.connection_mode == "connect" %>
-    <p>This also connects the application to your Agent or Runner. Reconnecting replaces its previous credentials; work already running on that connection may need attention.</p>
+    <p><%= t("oauth.authorizations.show.this_also_connects_the_application_to_your_agent_or") %></p>
   <% else %>
-    <p>Your existing Agent and Runner connection will keep running.</p>
+    <p><%= t("oauth.authorizations.show.your_existing_agent_and_runner_connection_will_keep_running") %></p>
   <% end %>
   <%= form_with url: oauth_authorize_path, data: { turbo: false }, class: "space-y-4" do %>
     <% @authorization_request.form_attributes.each do |name, value| %>
@@ -21,13 +21,13 @@
       <% if @existing_runner.nil? && Current.user.admin? %>
         <label class="label gap-3">
           <%= check_box_tag :account_wide, "1", false, class: "checkbox checkbox-sm" %>
-          <span>Make this Runner available to this installation's Agents</span>
+          <span><%= t("oauth.authorizations.show.make_this_runner_available_to_this_installation_s_agents") %></span>
         </label>
       <% end %>
     <% end %>
     <div class="flex flex-wrap justify-end gap-3">
-      <button type="submit" name="decision" value="deny" class="btn btn-ghost">Cancel</button>
-      <button type="submit" name="decision" value="allow" class="btn btn-primary">Continue</button>
+      <button type="submit" name="decision" value="deny" class="btn btn-ghost"><%= t("oauth.authorizations.show.cancel") %></button>
+      <button type="submit" name="decision" value="allow" class="btn btn-primary"><%= t("oauth.authorizations.show.continue") %></button>
     </div>
   <% end %>
 </div>

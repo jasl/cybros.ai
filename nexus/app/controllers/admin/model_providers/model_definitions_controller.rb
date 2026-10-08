@@ -26,7 +26,7 @@ class Admin::ModelProviders::ModelDefinitionsController < Admin::ModelProviders:
     result = ModelProviders::RemoveModelOverride.call(account: account, provider_id: provider_id,
       model_ref: @model.fetch(:model), validate_definition: true, expected_lock_version: expected_lock_version(fields))
     if result.done?
-      redirect_to admin_model_provider_path(provider_id), notice: "Model removed. You can add it again or restore an installation definition.", status: :see_other
+      redirect_to admin_model_provider_path(provider_id), notice: t("admin.model_providers.model_removed"), status: :see_other
     else
       @form = build_form(row: @model)
       configuration_error(@form, result)
@@ -65,13 +65,13 @@ class Admin::ModelProviders::ModelDefinitionsController < Admin::ModelProviders:
       template = row ? :show : :new
       if @form.valid?
         if row.nil? && configuration.fetch(:models).any? { |entry| entry.fetch(:model) == @form.model_ref }
-          @form.errors.add(:model_id, "already exists. Edit or restore it from the provider overview.")
+          @form.errors.add(:model_id, :already_configured_model)
           return render template, status: :unprocessable_entity
         end
         result = ModelProviders::UpsertModelOverride.call(account: account, provider_id: provider_id,
           model_ref: @form.model_ref, model: @form.definition, validate_definition: true, expected_lock_version: expected_lock_version(fields))
         if result.done?
-          redirect_to admin_model_provider_path(provider_id), notice: "Model saved. Agents can use it when the provider is enabled and connected.", status: :see_other
+          redirect_to admin_model_provider_path(provider_id), notice: t("admin.model_providers.model_saved"), status: :see_other
         else
           configuration_error(@form, result, template: template)
         end

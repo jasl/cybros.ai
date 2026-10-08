@@ -17,7 +17,7 @@ module AgentAPI
 
     private
 
-      # `columns` maps ordered key columns to their shape (:uuid or :text) as code
+      # `columns` maps ordered key columns to their shape (:uuid, :text or :timestamp) as code
       # literals. The order is this method's: a caller-ordered scope could
       # disagree with the cursor it hands back.
       def keyset_page(scope, columns:)
@@ -32,17 +32,12 @@ module AgentAPI
 
         Page.new(
           records: rows,
-          next_after: overflow ? encode_cursor(rows.last, columns.keys, direction) : nil,
+          next_after: overflow ? encode_cursor(rows.last, columns, direction) : nil,
         )
       end
 
       def list_limit
-        if params[:limit].nil?
-          DEFAULT_LIST_LIMIT
-        else
-          requested = bounded_integer(params[:limit], :limit, range: (LIST_LIMIT_RANGE.begin..))
-          requested.clamp(..LIST_LIMIT_RANGE.end)
-        end
+        limit_param(default: DEFAULT_LIST_LIMIT, max: LIST_LIMIT_RANGE.end)
       end
 
       def list_direction
@@ -72,7 +67,7 @@ module AgentAPI
           raise APIErrors::ParameterInvalid, :after if value.nil?
           raise APIErrors::ParameterInvalid, :after if shape == :uuid && !value.match?(UUID_FORMAT)
 
-          value
+          shape == :timestamp ? Time.iso8601(value) : value
         end
       rescue ArgumentError, JSON::ParserError
         raise APIErrors::ParameterInvalid, :after
@@ -82,22 +77,24 @@ module AgentAPI
         scope.where(keyset_predicate(scope.klass.arel_table, keys, values, direction))
       end
 
-      # (a, b) > (x, y) expanded as a > x OR (a = x AND b > y), recursively —
-      # pure Arel, so no SQL text is ever assembled from key names. Descending
-      # is the same walk with the comparison reversed.
+      # Every key is non-null and ordered in the same direction. Row comparison
+      # lets PostgreSQL seek the compound index at the cursor instead of scanning
+      # and filtering the preceding pages. Keep column names and values in Arel.
       def keyset_predicate(table, keys, values, direction)
-        key, *rest_keys = keys
-        value, *rest_values = values
-        beyond = direction == :desc ? table[key].lt(value) : table[key].gt(value)
-        return beyond if rest_keys.empty?
-
-        beyond.or(
-          table[key].eq(value).and(keyset_predicate(table, rest_keys, rest_values, direction))
+        columns = Arel::Nodes::Grouping.new(keys.map { |key| table[key] })
+        boundary = Arel::Nodes::Grouping.new(
+          keys.zip(values).map { |key, value| Arel::Nodes.build_quoted(value, table[key]) }
         )
+        direction == :desc ? columns.lt(boundary) : columns.gt(boundary)
       end
 
-      def encode_cursor(row, keys, direction)
-        payload = keys.to_h { |key| [key.to_s, row.public_send(key)] }
+      def encode_cursor(row, columns, direction)
+        payload = columns.to_h do |key, shape|
+          value = row.public_send(key)
+          # PostgreSQL timestamps retain microseconds. The ordinary JSON
+          # rendering truncates them and would repeat or skip a boundary row.
+          [key.to_s, shape == :timestamp ? value.iso8601(6) : value]
+        end
         Base64.urlsafe_encode64(
           JSON.generate(payload.merge(CURSOR_DIRECTION_KEY => direction.to_s)), padding: false
         )

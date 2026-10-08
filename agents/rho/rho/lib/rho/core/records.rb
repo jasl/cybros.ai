@@ -59,10 +59,11 @@ module Rho
       # The unblock path: the row rewritten — its `text`, and the kernel's
       # schedule fields (`schedule_fields`'s answer, or `deliver_in: "0s"`
       # for `--now`). Answers the `input` row.
-      def update_input(public_id, input_public_id, text: nil, schedule: {}, host_type: nil, workspace_public_id: nil)
+      def update_input(public_id, input_public_id, text: nil, schedule: {}, delivery_mode: nil, host_type: nil, workspace_public_id: nil)
         body = { "public_id" => public_id, "input_public_id" => input_public_id,
           "host_type" => host_type, "workspace_public_id" => workspace_public_id }.compact
         body["text"] = text unless text.to_s.strip.empty?
+        body["delivery_mode"] = delivery_mode if delivery_mode
         input_verb("update", body.merge(schedule), "the daemon refused to edit the input").fetch("input")
       end
 

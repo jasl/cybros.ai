@@ -120,15 +120,15 @@ class Session < ApplicationRecord
 
   # Coarse, display-only label derived from the recorded user agent.
   def device_description
-    return "API session" if api?
+    return I18n.t("sessions.devices.api") if api?
 
     case user_agent
-    when /Mobile|Android|iPhone/ then "Mobile browser"
-    when /Firefox/ then "Firefox"
-    when /Edg\//i then "Edge"
-    when /Chrome/ then "Chrome"
-    when /Safari/ then "Safari"
-    else "Web session"
+    when /Mobile|Android|iPhone/ then I18n.t("sessions.devices.mobile")
+    when /Firefox/ then I18n.t("sessions.devices.firefox")
+    when /Edg\//i then I18n.t("sessions.devices.edge")
+    when /Chrome/ then I18n.t("sessions.devices.chrome")
+    when /Safari/ then I18n.t("sessions.devices.safari")
+    else I18n.t("sessions.devices.web")
     end
   end
 

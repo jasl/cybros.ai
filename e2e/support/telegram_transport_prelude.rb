@@ -6,6 +6,13 @@ begin
 rescue LoadError
   # The bundle launcher runs before the product's load path is installed.
 else
+  # Permission journeys need the real Browser tool declarations to be active.
+  # Reuse its synthetic driver so startup is independent of host Playwright;
+  # the journey still asserts forbidden calls are rejected before any claim.
+  require "rho/browser"
+  require_relative "../../agents/rho/rho-browser/test/support"
+  Rho::Browser.driver_factory = -> { BrowserTest::FakeDriver.new }
+
   Rho::IngressTelegram::Runtime.prepend(Module.new do
     def start; end
   end)

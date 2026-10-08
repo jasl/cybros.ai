@@ -41,6 +41,37 @@ class API::V1::AdminModelProviderDefinitionsTest < ActionDispatch::IntegrationTe
     assert_equal @definition.fetch(:base_url), response.parsed_body.dig("configuration", "definition", "base_url")
   end
 
+  test "model counter definitions survive the settings round trip and reach selection" do
+    create_provider
+    version = response.parsed_body.dig("model_provider", "lock_version")
+    counter = { "kind" => "huggingface", "tokenizer_id" => "Qwen/Qwen3.8-Flash-Next" }
+    definition = { "display_name" => "Local model", "token_counter" => counter }
+
+    put "#{provider_path}/model_definition", params: { command: {
+      model: "local/text", definition: definition, expected_lock_version: version,
+    } }, as: :json, headers: auth
+    assert_response :success
+    version = response.parsed_body.dig("model_provider", "lock_version")
+
+    get provider_path, headers: auth
+    assert_response :success
+    row = response.parsed_body.dig("configuration", "models").find { |entry| entry.fetch("model") == "local/text" }
+    assert_equal definition, row.fetch("definition")
+    candidate = ModelSelection::Resolver.effective_catalog(@account, ModelCatalog.current)
+    selected = ModelCatalog::ProfileBuilder.call(model_ref: "local/text", provider: candidate.providers.fetch("local"),
+      model: candidate.models.fetch("local/text"))
+    assert_equal counter, selected.token_counter.to_h
+    assert_equal 18, ModelRequests::TokenCount.count(profile: selected, segments: ["Hello world"]).tokens
+
+    put "#{provider_path}/model_definition", params: { command: {
+      model: "local/text", definition: definition.merge("token_counter" => nil), expected_lock_version: version,
+    } }, as: :json, headers: auth
+    assert_response :success
+    row = response.parsed_body.dig("configuration", "models").find { |entry| entry.fetch("model") == "local/text" }
+    assert row.fetch("definition").key?("token_counter")
+    assert_nil row.dig("definition", "token_counter")
+  end
+
   test "removed custom provider keeps a versioned authoring anchor and can be recreated" do
     create_provider
     version = response.parsed_body.dig("model_provider", "lock_version")
@@ -63,7 +94,16 @@ class API::V1::AdminModelProviderDefinitionsTest < ActionDispatch::IntegrationTe
   test "authoring rejects invalid models and stale provider changes without modifying the catalog" do
     create_provider
     version = response.parsed_body.dig("model_provider", "lock_version")
-    [{ future_contract: true }, { pricing: false }, { wire_options: "not-a-mapping" }].each do |definition|
+    [
+      { future_contract: true },
+      { pricing: false },
+      { wire_options: "not-a-mapping" },
+      { api_format: "anthropic_messages", wire_options: "not-a-mapping" },
+      { token_counter: false },
+      { token_counter: "huggingface" },
+      { token_counter: 7 },
+      { token_counter: [] },
+    ].each do |definition|
       put "#{provider_path}/model_definition", params: { command: {
         model: "local/bad", definition: definition, expected_lock_version: version,
       } }, as: :json, headers: auth

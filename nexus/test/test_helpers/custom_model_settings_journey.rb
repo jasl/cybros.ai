@@ -30,7 +30,6 @@ module CustomModelSettingsJourney
       assert_no_link "Discover model IDs"
       fill_in "Model ID", with: "my-team/long-model-name-for-a-local-endpoint"
       fill_in "Display name", with: "Local assistant"
-      find("summary", text: "Context and capabilities").click
       fill_in "Input token limit", with: "32768"
       select "Disabled", from: "Tool calls"
       assert_no_horizontal_overflow

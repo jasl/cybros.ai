@@ -6,6 +6,7 @@ require "tmpdir"
 module T3Test
   Row = Data.define(:public_id, :namespace, :key, :value, :lock_version)
   Page = Data.define(:items, :next_after)
+  Created = Data.define(:store_entry)
   class Store
     attr_reader :rows
     def initialize = @rows = {}
@@ -14,6 +15,7 @@ module T3Test
     def create(namespace:, key:, value:, **)
       id = SecureRandom.uuid_v7
       @rows[id] = Row.new(public_id: id, namespace: namespace, key: key, value: value, lock_version: 0)
+      Created.new(store_entry: @rows.fetch(id))
     end
     def update(id, value:, lock_version:)
       row = fetch(id)

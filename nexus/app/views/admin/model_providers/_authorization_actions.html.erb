@@ -2,12 +2,12 @@
 <% pending = latest_session && latest_session.fetch(:state) == "pending" %>
 <div class="flex flex-wrap items-center gap-3">
   <% if authorization.fetch(:state) == "authorized" %>
-    <%= button_to "Disconnect", admin_model_provider_authorization_path(provider.fetch(:id)), method: :delete,
-      class: "btn btn-sm btn-outline btn-error", form: { data: { turbo_frame: "_top", turbo_confirm: "Disconnect this subscription? Agents will lose access through it, and any pending sign-in will stop." } } %>
+    <%= button_to t("admin.model_providers.authorization_actions.disconnect"), admin_model_provider_authorization_path(provider.fetch(:id)), method: :delete,
+      class: "btn btn-sm btn-outline btn-error", form: { data: { turbo_frame: "_top", turbo_confirm: t("admin.model_providers.authorization_actions.disconnect_this_subscription_agents_will_lose_access_through_it") } } %>
   <% else %>
     <% restart = pending && (latest_session.fetch(:kind) != "device_start" || !latest_session.fetch(:owned_by_current_user)) %>
-    <%= button_to "Connect", admin_model_provider_authorization_path(provider.fetch(:id)),
+    <%= button_to t("admin.model_providers.authorization_actions.connect"), admin_model_provider_authorization_path(provider.fetch(:id)),
       params: { authorization: { restart: restart == true } }, class: "btn btn-primary btn-sm",
-      form: { data: { turbo_confirm: ("Start your own sign-in? The current pending sign-in will stop." if restart) } } %>
+      form: { data: { turbo_confirm: (t("admin.model_providers.authorization_actions.start_your_own_sign_in_the_current_pending_sign") if restart) } } %>
   <% end %>
 </div>

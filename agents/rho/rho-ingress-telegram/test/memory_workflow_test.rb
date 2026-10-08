@@ -5,8 +5,8 @@ class TelegramMemoryWorkflowTest < Minitest::Test
   include TelegramRuntimeSupport
 
   def test_group_requesters_share_one_database_anchor_with_distinct_write_access
-    @runtime.consume(mention(1))
-    @runtime.consume(mention(2, user: 2))
+    receive(mention(1))
+    receive(mention(2, user: 2))
     owner, member = %w[conversation-1 conversation-2].map { |id| @bridge.memory_bindings.fetch(id).fetch("bindings") }
     assert_equal %w[conversation group], owner.map { |row| row.fetch("name") }
     assert_equal %w[conversation group], member.map { |row| row.fetch("name") }
@@ -18,11 +18,11 @@ class TelegramMemoryWorkflowTest < Minitest::Test
   end
 
   def test_new_task_and_restart_keep_group_memory_while_topics_have_separate_anchors
-    @runtime.consume(mention(1))
+    receive(mention(1))
     @state = Rho::IngressTelegram::State.new(store: TelegramStateSupport.document(@home))
     @runtime = runtime
-    @runtime.consume(telegram_message(2, "/new", chat: -10, topic: 4))
-    @runtime.consume(mention(3, topic: 5))
+    receive(telegram_message(2, "/new", chat: -10, topic: 4))
+    receive(mention(3, topic: 5))
     anchors = %w[conversation-1 conversation-2 conversation-3].map { |id| @bridge.memory_bindings.fetch(id).fetch("bindings").last.fetch("conversation_public_id") }
     assert_equal anchors.first, anchors[1]
     refute_equal anchors.first, anchors.last
@@ -30,9 +30,9 @@ class TelegramMemoryWorkflowTest < Minitest::Test
   end
 
   def test_owner_private_chat_keeps_default_memory_and_external_person_has_no_owner_scope
-    @runtime.consume(telegram_message(1, "Owner request"))
-    @runtime.consume(telegram_message(2, "External person's request", user: 2))
-    @runtime.consume(telegram_message(3, "/new", user: 2))
+    receive(telegram_message(1, "Owner request"))
+    receive(telegram_message(2, "External person's request", user: 2))
+    receive(telegram_message(3, "/new", user: 2))
     assert_nil @bridge.memory_bindings.fetch("conversation-1")
     first, second = %w[conversation-2 conversation-3].map { |id| @bridge.memory_bindings.fetch(id).fetch("bindings") }
     assert_equal %w[conversation person], first.map { |row| row.fetch("name") }
@@ -41,8 +41,8 @@ class TelegramMemoryWorkflowTest < Minitest::Test
   end
 
   def test_existing_nonowner_private_conversation_keeps_its_binding_on_the_next_input
-    @runtime.consume(telegram_message(1, "First request", user: 2))
-    @runtime.consume(telegram_message(2, "Continue", user: 2))
+    receive(telegram_message(1, "First request", user: 2))
+    receive(telegram_message(2, "Continue", user: 2))
     assert_equal %w[conversation person], @bridge.memory_bindings.fetch("conversation-1").fetch("bindings").map { |row| row.fetch("name") }
     assert_equal true, @bridge.inputs.fetch("telegram:42:2:input").fetch(:isolated)
   end
@@ -53,10 +53,10 @@ class TelegramMemoryWorkflowTest < Minitest::Test
       calls << [id, action.verb, action.fields, workspace_public_id]
       "Write completed: group/notes.md"
     end
-    @runtime.consume(mention(1))
+    receive(mention(1))
     command = telegram_message(2, "/memory write group/notes.md Team fact", chat: -10, topic: 4)
-    @runtime.consume(command)
-    @runtime.consume(command)
+    receive(command)
+    receive(command)
     assert_equal [["conversation-1", "write", { path: "group/notes.md", content: "Team fact" }, "workspace-home"]], calls
     assert_includes @state.read.fetch("deliveries").fetch("control:2").fetch("text"), "Write completed"
   end

@@ -24,6 +24,22 @@ class UsageRecords::TokensTest < ActiveSupport::TestCase
     assert_equal [9_000, 8_192, nil], counts.values_at(:input_tokens, :cache_read_tokens, :cache_creation_tokens)
   end
 
+  test "Bedrock folds both cache classes while Pi already includes them" do
+    bedrock = Tokens.read({ "input_tokens" => 20, "output_tokens" => 30,
+                            "cache_read_input_tokens" => 90, "cache_creation_input_tokens" => 15,
+                            "cache_creation" => { "ephemeral_5m_input_tokens" => 10, "ephemeral_1h_input_tokens" => 5 } },
+      adapter_profile: "bedrock_converse")
+    pi = Tokens.read({ "input_tokens" => 125, "output_tokens" => 30,
+                       "input_tokens_details" => { "cached_tokens" => 90, "cache_creation_tokens" => 15 } },
+      adapter_profile: "pi_messages")
+
+    assert_equal [125, 30, 90, 15, 155],
+      bedrock.values_at(:input_tokens, :output_tokens, :cache_read_tokens, :cache_creation_tokens, :total_tokens)
+    assert_equal 5, bedrock.fetch(:cache_creation_1h_tokens)
+    assert_equal [125, 30, 90, 15, 155],
+      pi.values_at(:input_tokens, :output_tokens, :cache_read_tokens, :cache_creation_tokens, :total_tokens)
+  end
+
   test "the 1-hour write share is read from the breakdown, and the breakdown stands in for a missing total" do
     counts = Tokens.read({ "input_tokens" => 10, "output_tokens" => 1,
                            "cache_creation" => { "ephemeral_5m_input_tokens" => 30, "ephemeral_1h_input_tokens" => 70 } },

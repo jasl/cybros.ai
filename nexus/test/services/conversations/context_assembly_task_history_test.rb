@@ -64,6 +64,54 @@ class Conversations::ContextAssemblyTaskHistoryTest < ActiveJob::TestCase
       "the launch acknowledgement and later delivery keep the positions the model read"
   end
 
+  test "steer_now history and prune keep the pending receipt and late result at their consumption positions" do
+    declare_tools!(@agent, tools: [READ_TOOL])
+    turn, agent_run = materialize_loop_reply!(@conversation, agent: @agent, text: "run a long read")
+    schedule_loop!(agent_run)
+    apply_via(attempt_for(agent_run, "r1"), sse_success("starting read", tool_calls: [
+      { id: "call_long", name: "read_file", arguments: { path: "long" }.to_json },
+    ]))
+    AgentRuns::ConvergeTerminalSteps.call
+    schedule_loop!(agent_run)
+    input = post_input!(@conversation, acting_user: @human, text: "inspect now", delivery_mode: "steer_now")
+    assert_equal "steering", input.state
+    schedule_loop!(agent_run)
+    pending_request = round_request_entries(loop_node(agent_run, "steer1"))
+    assert_includes pending_request.to_json, "still pending"
+    finish_round(agent_run, "steer1", "immediate answer")
+    settled = AgentRuns::Parks::Settle.call(node: loop_node(agent_run, "r2t0"), trusted: true,
+      content: "late read secret value", outcome: "completed")
+    assert_predicate settled, :applied?
+    schedule_loop!(agent_run)
+    final_request = round_request_entries(loop_node(agent_run, "r2"))
+    assert_equal 1, final_request.to_json.scan("late read secret value").length
+
+    pruned = loop_node(agent_run, "r2")
+    original_compaction = pruned.compaction
+    AgentRunTask.where(id: pruned.id).update_all(compaction: { "pruned_before" => "steer1" })
+    composed = AgentRuns::InputComposition.call(node: pruned.reload, input: pruned.input_value)
+    assert_predicate composed, :composed?, composed.refusal.inspect
+    replayed = Nexus::InputEntries.for(composed.elements).to_json
+    assert_includes replayed, "still pending"
+    assert_equal 1, replayed.scan("late read secret value").length
+    assert_operator replayed.index("immediate answer"), :<, replayed.index("late read secret value")
+    assert_equal pending_request, round_request_entries(loop_node(agent_run, "steer1"))
+    AgentRunTask.where(id: pruned.id).update_all(compaction: original_compaction)
+
+    finish_round(agent_run, "r2", "joined answer")
+    Conversations::Turns::Converge.call
+    assert_equal "completed", turn.reload.status
+    _next_turn, next_loop = materialize_loop_reply!(@conversation, agent: @agent, text: "continue")
+    schedule_loop!(next_loop)
+    next_request = round_request_entries(loop_node(next_loop, "r1"))
+    assert_equal final_request, next_request.take(final_request.length)
+    assert_equal 1, next_request.to_json.scan("late read secret value").length
+    summary = Conversations::Compaction::Serialize.timeline_entries(@conversation).join("\n")
+    assert_includes summary, "still pending"
+    assert_operator summary.index("immediate answer"), :<, summary.index("(completed, ok)")
+    refute_includes summary, "late read secret value"
+  end
+
   test "an ask answer remains in later history even when the model does not repeat it" do
     turn, agent_run = answered_ask
     finish_round(agent_run, "r2", "recorded")

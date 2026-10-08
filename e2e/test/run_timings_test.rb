@@ -62,7 +62,7 @@ class RunTimingsTest < Minitest::Test
     E2E.hosts.start
     @workspace = @api.workspaces.create(
       name: "Loop timings #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
   end
 
   def test_the_kernel_narrates_a_round_dialled_a_step_started_and_the_branch_under_a_waited_task_call_in_order

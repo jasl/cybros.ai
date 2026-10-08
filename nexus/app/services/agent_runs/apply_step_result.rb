@@ -168,7 +168,9 @@ module AgentRuns
             return if ModelFallback.call(agent_run: agent_run, node: node, reason: invocation.failure_reason_key)
           end
 
-          if node.auto_retries_used < node.retry_budget && !abandoned_now?(agent_run, node)
+          # Once the size repair is unavailable or spent, resending cannot change
+          # what fits. This also stops an oversized summarizer after its first refusal.
+          if !invocation.context_overflow? && node.auto_retries_used < node.retry_budget && !abandoned_now?(agent_run, node)
             requeue(node, count_retry: true)
             return
           end

@@ -17,7 +17,7 @@ product policy lives in agent applications built on its APIs. The
 ## Development
 
 ```bash
-bin/setup            # installs dependencies, prepares Rails credentials and databases
+bin/setup            # installs dependencies/tokenizers, prepares Rails credentials and databases
 bin/setup --reset    # prepare, then drop and rebuild a development database
 bin/dev              # Procfile.dev: web (debugger-ready), jobs, js/css watchers
 ```
@@ -56,6 +56,31 @@ advanced local overrides:
   bare-metal configuration on the same host.
 
 `bin/setup` never creates either environment file.
+
+## Local tokenizers
+
+`bin/setup` preloads the official text tokenizers used by the shipped open-weight
+models and local Qwen examples. The Docker build runs the same command:
+
+```bash
+bin/download-tokenizers          # download missing or changed pinned assets
+bin/download-tokenizers --check  # verify all installed assets without network access
+```
+
+The [manifest](config/tokenizers.json) fixes each source revision, tokenizer
+checksum and license checksum. Only `tokenizer.json` and `LICENSE` are downloaded,
+about 68 MB in total; no model weights or remote Python code are loaded. Verified
+files are reused, and a failed download preserves the previous file. Run the
+command before starting a bare-metal installation and restart running processes
+after replacing tokenizer assets; their loaded vocabularies are cached locally.
+
+Model definitions explicitly select a counter. These counters feed input
+estimates, history fitting and compaction planning. Exact text tokenization does
+not include the provider's chat template or media processing: Nexus adds its own
+chat allowance, while provider usage remains authoritative. Models without a
+matching local tokenizer retain their declared estimate behavior. Missing or
+invalid files report counter unavailability, never trigger a runtime download.
+See the [asset notes](vendor/tokenizers/README.md) for model mappings and licenses.
 
 ## Import provider API keys
 
@@ -98,6 +123,56 @@ after the Dashboard task is complete. Configuration does not make a model call
 or select an Agent's default model; verify inference with an ordinary request
 from the connected Agent.
 See [model settings](../docs/nexus-model-settings.md) for the complete flow.
+
+## Provider catalog source
+
+The `80_pi_*.yml` fragments import chat-model metadata from the immutable
+`@earendil-works/pi-ai@1.1.0` package. The generator checks its SHA-512 integrity;
+adapter behavior is compared with Pi source revision
+`6fb2e7815167e6b19006fc526d1a5d0f5f998787`. Pi is a generation-time reference,
+not a Nexus runtime dependency. Its [MIT notice](vendor/licenses/pi-ai-MIT.txt)
+is included. Run `ruby script/import_pi_catalog.rb --check` to verify the
+checked-in generated files, or omit `--check` to regenerate them. An already
+extracted provider-data object can be supplied with `--source-json PATH`.
+
+Pi supplies only new providers. The seven authored providers—OpenAI API,
+Anthropic, Gemini, Codex subscription, OpenRouter, DeepSeek and xAI—keep their
+complete Nexus definitions and model sets; Pi adds no models or metadata to
+them. The import report records the 499 excluded source entries and the 1,064
+chat models imported under 34 new providers. Regeneration removes obsolete
+`80_pi_*.yml` fragments, and `--check` rejects them.
+
+Every imported provider/model pair keeps its own context and output limits,
+modalities, reasoning controls, endpoint and declared prices; identical model
+names do not share metadata across providers. Unknown prices and schedules
+that cannot be represented exactly remain unpriced.
+
+New providers use the ordinary encrypted API-key credential lane. Their wire
+format and authentication header are independent, so a gateway can carry
+Messages or Gemini bodies while authenticating with its own bearer credential.
+Static model headers cannot contain credentials. The following setup details
+matter before using the imported providers:
+
+| Provider | Required setup |
+| --- | --- |
+| Azure | Configure the resource endpoint and API key; Responses uses `/openai/v1/responses?api-version=v1`, Chat uses `/openai/v1/chat/completions`. |
+| Cloudflare AI Gateway | Configure `https://gateway.ai.cloudflare.com/v1/ACCOUNT/GATEWAY` and its gateway bearer key. |
+| Cloudflare Workers AI | Configure the account endpoint ending in `/ai`; the Chat route adds `/v1/chat/completions`. |
+| Google Vertex | The imported route supports express-mode API keys at `https://aiplatform.googleapis.com`; project/location ADC credentials are not imported. |
+| Amazon Bedrock | Supply a Bedrock bearer API key for the declared regional endpoint; SigV4 and ambient AWS credential discovery are not implemented. Regional model endpoints remain independent. |
+| GitHub Copilot | Supply an already-issued Copilot API token; a GitHub PAT or device-login token is not exchanged automatically. |
+
+Entries without a configured endpoint are unavailable before network I/O.
+The existing Codex subscription authorization remains its own credential lane;
+no Anthropic/Claude Code subscription authorization is imported. New OAuth
+login/refresh workflows are outside this import.
+
+Qualification is offline: source-shaped request, stream, tool replay and
+credential-isolation fixtures plus complete catalog compilation. No paid
+provider account has been exercised. Image generation and classifier entries
+from Pi are outside this chat import, and Pi-specific image resizing, routing,
+session-affinity and cache-placement policies are not imported. Existing Nexus
+non-chat models remain available under their authored contracts.
 
 ## Tests and checks
 

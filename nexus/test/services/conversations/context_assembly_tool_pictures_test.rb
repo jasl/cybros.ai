@@ -47,6 +47,54 @@ class Conversations::ContextAssemblyToolPicturesTest < ActiveJob::TestCase
       "the later request resolves the bound capture bytes through the provider builder"
   end
 
+  test "steer_now delivers late captures with their actual result and preserves that position in later turns" do
+    picture = capture("late.png")
+    turn, agent_run = materialize_loop_reply!(@conversation, agent: @human, text: "start the capture")
+    schedule_loop!(agent_run)
+    run_loop_round!(agent_run, sse_success("capturing", tool_calls: [
+      { id: "call_capture", name: "read_file", arguments: "{}" },
+    ]))
+    task = agent_run.agent_run_tasks.find_by!(tool_call_id: "call_capture")
+    claimed = Executors::Claim.call(Executors::Claim::Command.new(
+      agent_run: agent_run, task_key: task.node_key, executor: @executor))
+    assert_predicate claimed, :accepted?
+    post_input!(@conversation, acting_user: @human, text: "inspect now", delivery_mode: "steer_now")
+    schedule_loop!(agent_run)
+    pending = payloads(request_of(loop_node(agent_run, "steer1")))
+    assert_empty upload_ids(pending)
+    run_loop_round!(agent_run, sse_success("immediate inspection"))
+    committed = Executors::Commit.call(Executors::Commit::Command.new(
+      agent_run: agent_run, task_key: task.node_key, executor: @executor, claim_token: claimed.value.claim_token,
+      content: [{ "type" => "text", "text" => "late captured output" },
+        { "type" => "resource_link", "uri" => "nexus://uploads/#{picture.public_id}", "name" => "late.png" }],
+      structured_content: nil, result_type: nil, outcome: "completed", is_error: false, title: nil, metadata: nil))
+    assert_predicate committed, :applied?
+    schedule_loop!(agent_run)
+    request = request_of(loop_node(agent_run, "r2"))
+    final_entries = payloads(request)
+    assert_equal [picture.public_id], upload_ids(final_entries)
+    assert_equal [picture.public_id], request.content_uploads.map(&:public_id)
+    assert_equal pending, payloads(request_of(loop_node(agent_run, "steer1")))
+    actual = final_entries.find { |entry| upload_ids([entry]).any? }
+    assert_includes actual.fetch("parts").first.fetch("text"), "late captured output"
+    assert_operator final_entries.to_json.index("immediate inspection"), :<, final_entries.to_json.index(picture.public_id)
+    consumer = loop_node(agent_run, "r2")
+    original_compaction = consumer.compaction
+    AgentRunTask.where(id: consumer.id).update_all(compaction: { "pruned_before" => "steer1" })
+    composed = AgentRuns::InputComposition.call(node: consumer.reload, input: consumer.input_value)
+    assert_predicate composed, :composed?, composed.refusal.inspect
+    assert_equal [picture.public_id], upload_ids(Nexus::InputEntries.for(composed.elements))
+    assert_equal [picture.public_id], composed.uploads.map(&:public_id)
+    AgentRunTask.where(id: consumer.id).update_all(compaction: original_compaction)
+    finish_turn(turn, agent_run)
+
+    _, next_loop = next_turn
+    history = request_of(loop_node(next_loop, "r1"))
+    assert_equal final_entries, payloads(history).take(final_entries.length)
+    assert_equal [picture.public_id], upload_ids(payloads(history))
+    assert_equal [picture.public_id], history.content_uploads.map(&:public_id)
+  end
+
   test "each later model re-places the retained captures as native images or index lines" do
     png = capture("supported.png")
     heic = capture("unsupported.heic", content_type: "image/heic")

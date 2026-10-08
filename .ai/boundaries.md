@@ -178,7 +178,7 @@ framework mechanism is insufficient, and a test that fails without the added des
   It compiles raw/assembly/default prompts and durable prompt documents without interpreting
   persona meaning or owning product features such as lorebooks or depth injection. Approval
   reads opaque `tool_input` through agent-authored rules; the kernel never learns what `bash`
-  means. Cross-conversation messaging uses conversation inputs (`delivery_mode: queue|steer`),
+  means. Cross-conversation messaging uses conversation inputs (`delivery_mode: queue|steer|steer_now`),
   and delegation spawns child conversations. `origin` is testimony (`person|agent|task_result|child`),
   not authority; only `task_result` and `child` identify kernel-owned mail acts. Side conversations
   use the kernel's fork/boundary/shared-prefix mechanism; one-open-side limits, idle TTL and
@@ -252,6 +252,11 @@ framework mechanism is insufficient, and a test that fails without the added des
 
 ## Administration Boundary
 
+- Nexus deployment administration covers Nexus and its own worker processes only.
+  Agent application releases, installation state and lifecycle remain owned by each
+  application's installer or the enclosing deployment tools. A combined installation
+  does not authorize Nexus to manage those applications; generic image lists or a private
+  IPC bridge do not change that ownership. Joint upgrades belong to the installation layer.
 - Administrators operate the Account; they do not act as custodians of how members use Nexus.
   Administrative scope is account-global settings, Human user management, aggregate statistics
   and operational monitoring, and any current or future executor kind whose owning contract

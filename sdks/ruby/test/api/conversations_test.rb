@@ -30,6 +30,39 @@ class ApiConversationsTest < Minitest::Test
     assert_equal({ "limit" => 5, "side" => "1" }, request.fetch(:params))
   end
 
+  def test_conversation_lists_forward_activity_order_and_cursor_together
+    options = { order_by: "last_activity_at", order: "desc", after: "opaque", limit: 2 }
+    wire = options.transform_keys(&:to_s)
+    conversations([[200, {}, contract.fetch("valid_list_fixture")]]).list(**options, side: true)
+    assert_equal wire.merge("side" => "1"), request.fetch(:params)
+
+    conversations([[200, {}, contract.fetch("valid_list_fixture")]]).archived(**options)
+    assert_equal wire, request.fetch(:params)
+
+    chat([[200, {}, contract.fetch("valid_list_fixture")]]).children(**options)
+    assert_equal wire, request.fetch(:params)
+  end
+
+  def test_direct_fork_source_is_nullable_on_both_shapes_and_independent_of_parent
+    root = chat([[200, {}, contract.fetch("valid_fixture")]]).fetch
+    assert_nil root.source_conversation_public_id
+
+    forked = contract.fetch("forked_conversation_fixture")
+    list = { "conversations" => [forked], "pagination" => { "next_after" => nil } }
+    summary = conversations([[200, {}, list]]).list(side: true).items.first
+    assert_equal CONVERSATION_ID, summary.source_conversation_public_id
+    assert_nil summary.parent
+    assert_nil summary.forked_from_turn_public_id, "an empty Side still has its direct source"
+
+    full = contract.fetch("valid_fixture").fetch("conversation").merge(forked)
+    conversation = chat([[200, {}, { "conversation" => full }]]).fetch
+    assert_equal CONVERSATION_ID, conversation.source_conversation_public_id
+
+    full["source_conversation_public_id"] = nil
+    hidden_source = chat([[200, {}, { "conversation" => full }]]).fetch
+    assert_nil hidden_source.source_conversation_public_id
+  end
+
   # THE PARENT FACTS: a spawned child carries `parent` as one
   # block — the parent's id, the `spawn` call's key (the id the spawning
   # model read back; nil once the spawning run is reaped), the label —
@@ -381,7 +414,7 @@ class ApiConversationsTest < Minitest::Test
     fixture = store_pack.fetch("valid_fixture").fetch("store_entry")
     entry = chat([[201, {}, { "store_entry" => fixture }]]).store_entries
       .create(namespace: fixture.fetch("namespace"), key: fixture.fetch("key"), value: nil,
-        idempotency_key: "key-1")
+        idempotency_key: "key-1").store_entry
 
     assert_equal :post, request.fetch(:method)
     assert_equal "#{PATH}/store_entries", request.fetch(:path)

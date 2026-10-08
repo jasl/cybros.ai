@@ -1,7 +1,7 @@
 {
   "id": "rho.codemode",
-  "display_name": "rho-codemode",
-  "description": "",
+  "display_name": "Code mode",
+  "description": "Combine tool calls in JavaScript and keep intermediate values during a task.",
   "configuration_version": 1,
   "configuration_schema": {
     "type": "object",

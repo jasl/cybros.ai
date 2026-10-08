@@ -307,7 +307,7 @@ class WorkspaceDedicationTest < Minitest::Test
     assert_equal %w[ask bash cancel code edit file_import file_publish find grep list_extensions list_processes ls manage_extension manage_schedule
                     memory_delete memory_edit memory_grep memory_ls memory_read memory_write read read_process read_schedules runners_list
                     send session_read session_search skill spawn tool_call tool_search
-                    start_process status stop_process delegate_task todo_write write].sort,
+                    start_process status stop_process delegate_task todo_write web_fetch write].sort,
       ordinary_tools.sort,
       "rho declared its own registry's tools, including extension management, the todo tracker and scheduled jobs, " \
       "and the kernel tools it was configured with"
@@ -349,7 +349,7 @@ class WorkspaceDedicationTest < Minitest::Test
     # and environment commands are announced without model declarations. The
     # Agent's summarizer likewise remains available only for kernel delegation.
     assert_equal %w[bash checkpoints code edit environment_bind file_import file_publish files_bytes find grep list_processes ls process_log read
-                    read_process skill start_process stop_process checkpoint_restore write].sort,
+                    read_process skill start_process stop_process checkpoint_restore web_fetch write].sort,
       runner.fetch("tools").sort
     assert_equal %w[summarize_history todo_write read_schedules manage_schedule list_extensions manage_extension code], addresses.fetch("agent").fetch("tools"),
       "the agent address serves the summarizer, todo tracker, scheduled jobs, extension management and code: #{addresses["agent"].inspect}"
@@ -367,10 +367,11 @@ class WorkspaceDedicationTest < Minitest::Test
     # supplies the browser console routes and `rho.setup` registers terminal setup.
     # Settings and plugin recovery routes belong to the core; Telegram is disabled until
     # explicitly enabled. `rho.lifecycle_hooks` owns optional hook configuration.
-    # `rho.packages` supplies local extension management; `rho.memory_review` observes settled turns.
+    # `rho.packages` supplies local extension management; `rho.memory_review` observes settled turns;
+    # `rho.web_tools` supplies the default Runner web reader.
     assert_equal %w[rho.agents rho.checkpoints rho.codemode rho.coding rho.compaction rho.console_link rho.conventions rho.dev
                     rho.environment rho.guard rho.default_runner rho.images rho.lifecycle_hooks rho.memory_review rho.ops rho.packages rho.processes
-                    rho.schedules rho.setup rho.todo rho.until rho.webui].sort,
+                    rho.schedules rho.setup rho.todo rho.until rho.web_tools rho.webui].sort,
       inventory.map { |entry| entry.fetch("name") }.sort,
       "the default set plus the dev extension this home names arrives through the extension plane, not a frozen table"
   end

@@ -1,6 +1,7 @@
-# Copy convention: model, controller,
-# and layout strings live here — full explicit keys in controllers, lazy lookup
-# in layouts/partials. Page templates under app/views keep their text inline.
+# Human-facing copy uses I18n in models, controllers, helpers and templates.
+# Views use explicit owning-template keys so layout and partial blocks preserve
+# their lookup scope. Browser controllers receive translated page messages.
+# Protocol identifiers and user content stay literal.
 en:
   setups:
     create:
@@ -24,7 +25,7 @@ en:
       subject: "Reset your password"
   invitation_mailer:
     acceptance:
-      subject: "You have been invited to Nexus"
+      subject: "You have been invited to %{brand}"
   agents:
     credentials:
       destroy:

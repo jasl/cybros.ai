@@ -7,6 +7,10 @@ module CybrosAgent
       include WorkspaceProjections
       include Fields
 
+      Created = Data.define(:workspace, :replayed) do
+        def replayed? = replayed
+      end
+
       PATH = "/agent_api/v1/workspaces".freeze
 
       def initialize(dispatch:)
@@ -17,8 +21,8 @@ module CybrosAgent
       # bin. Nexus applies principal-sensitive dedication visibility and
       # resolves `true` against the current Agent — the SDK never learns the
       # identifier.
-      def list(state: nil, dedicated_to_current_agent: nil, after: nil, limit: nil)
-        params = query(state:, dedicated_to_current_agent:, after:, limit:)
+      def list(state: nil, dedicated_to_current_agent: nil, after: nil, limit: nil, order: nil)
+        params = query(state:, dedicated_to_current_agent:, after:, limit:, order:)
         page(WorkspaceSummary, @dispatch.call(PATH, params: params), "workspaces")
       end
 
@@ -29,14 +33,14 @@ module CybrosAgent
         required_string(idempotency_key, "idempotency_key")
         body = fields(name:, access_mode:, metadata:)
 
-        answer = @dispatch.call(
+        answer = @dispatch.call_accepting(
           PATH,
           method: :post,
           body: { "workspace" => body },
           headers: { "Idempotency-Key" => idempotency_key },
           success: 201
         )
-        shape(Workspace, answer, "workspace")
+        Created.new(workspace: shape(Workspace, answer.body, "workspace"), replayed: answer.replayed)
       end
 
       def fetch(public_id)

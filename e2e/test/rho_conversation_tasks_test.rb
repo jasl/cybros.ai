@@ -288,7 +288,10 @@ class RhoConversationTest
     assert_includes agent_text, "several `Agent` calls in ONE message", "the kernel's macro spelled as the alias"
     developer = sealed.fetch("entries").select { |entry| entry["role"] == "developer" }
       .map { |entry| entry.fetch("parts").map { |part| part["text"].to_s }.join }
-    assert(developer.any? { |text| text.include?("start_process, never `&`.\n\n#{MOCK_HINT}") },
+    hint_tail = "start_process, never `&`.\n" \
+      "- Use web_fetch to read a page or a raw file from the web instead of curl or wget in bash; " \
+      "it is a read and returns markdown.\n\n#{MOCK_HINT}"
+    assert(developer.any? { |text| text.include?(hint_tail) },
       "the row's hint rides the developer lead after the tool lines: #{developer.inspect}")
     call = agent_call(completed)
     assert_equal %w[tool_task delegate_task Agent completed], call.values_at("kind", "tool_name", "tool_alias", "status"),

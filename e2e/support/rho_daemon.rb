@@ -24,6 +24,7 @@ module E2E
         "source" => { "kind" => "path", "path" => File.join(RHO_DEV_LIB, "rho", "dev_plugin.rb") } },
     } }.freeze
     READY_TIMEOUT = 60
+    DISCONNECT_TIMEOUT = 60
     POLL = 0.2
     # THE KERNEL'S RECOVERY FLOOR: a wake the kernel loses is recovered by
     # its recurring sweeps, scheduled `every minute`
@@ -110,11 +111,28 @@ module E2E
 
     # Final fixture disposal revokes the connection before its home is removed. Ordinary stop
     # keeps credentials for restart journeys; an unconnected home has nothing to revoke.
-    # Return the CLI outcome so the owning journey asserts cleanup succeeded.
+    # The suite shares the 12/min per-IP revoke budget. Wait only for the CLI's explicit
+    # throttling refusal, counting command runtime toward one deadline; preserve the final
+    # CLI outcome so the owning journey still asserts cleanup succeeded.
     def dispose_connection
       stop
       home = Rho::Home.new(base_url: @base_url, root: @home, work_root: Rho::Home.default_work_root(@home))
-      cli("disconnect") if File.file?(home.connection_pointer_path)
+      return unless File.file?(home.connection_pointer_path)
+
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + DISCONNECT_TIMEOUT
+      outcome = cli("disconnect")
+      loop do
+        retry_after = outcome.first[/^rho disconnect: rate limited; retry after (\d+)s$/, 1]
+        return outcome unless retry_after
+
+        wait = retry_after.to_i
+        return outcome if Process.clock_gettime(Process::CLOCK_MONOTONIC) + wait >= deadline
+
+        sleep wait
+        return outcome if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+
+        outcome = cli("disconnect")
+      end
     end
 
     # ---- the definition files under the environment root ----

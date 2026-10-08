@@ -62,6 +62,17 @@ Rails.application.routes.draw do
       resource :persona, only: [:show, :destroy]
       put "persona", to: "personas#update"
       namespace :admin do
+        resource :deployment, only: :show do
+          scope module: :deployment do
+            resource :release_check, only: :create
+            resources :upgrades, only: [:show, :create] do
+              scope module: :upgrades do
+                resource :log, only: :show
+                resource :stream, only: :show
+              end
+            end
+          end
+        end
         resources :models, only: :index
         resources :model_providers, only: [:index, :show], format: false, constraints: { id: /[^\/]+/ } do
           scope module: :model_providers do
@@ -497,6 +508,12 @@ Rails.application.routes.draw do
   end
 
   namespace :admin do
+    resource :deployment, only: :show do
+      scope module: :deployment do
+        resource :release_check, only: :create
+        resources :upgrades, only: [:show, :create]
+      end
+    end
     resource :cost_unit, only: [:show, :update]
     resources :model_providers, only: [:index, :show, :new, :create], format: false, constraints: { id: /[^\/]+/ } do
       scope module: :model_providers do

@@ -4,15 +4,15 @@ A multi-provider LLM protocol client vendored into the Nexus Rails kernel
 (`nexus/vendor/simple_inference`) and consumed through execution profiles
 assembled by the caller. It speaks each provider's native wire protocol —
 OpenAI Responses, Codex Responses, DeepSeek native Responses, xAI Responses,
-OpenRouter Chat Completions lane, Anthropic Messages, Gemini
+OpenRouter Chat Completions lane, Anthropic Messages, Amazon Bedrock Converse, Gemini
 `generateContent` / `embedContent`, plus OpenAI images, audio, and
 embeddings — and normalizes the results into one shape the kernel can meter,
 persist, and replay.
 
 This gem serves this repository only. It is not published — the gemspec pins
 an invalid push host so `gem push` fails closed — and breaking changes land
-together with their kernel-side consumers. Requires Ruby >= 4.0. Zero
-runtime dependencies.
+together with their kernel-side consumers. Requires Ruby >= 4.0. The
+`aws-eventstream` runtime dependency decodes Bedrock's binary stream framing.
 
 ## Execution profiles: the only routing surface
 
@@ -164,6 +164,21 @@ an explicit `true` with a native `none` effort raises `ValidationError` as a
 contradictory request.
 
 ## Request options: declared vocabulary + `extra_body`
+
+`bedrock_converse` uses native Converse JSON and ConverseStream binary events
+through the same HTTPX/AsyncHTTP adapters. Configure the regional runtime URL
+as `base_url` and an API key as a bearer credential. AWS profile discovery and
+SigV4 signing are not part of this adapter. The model identifier, including
+an inference-profile ARN, is encoded in the request path.
+
+Bedrock reasoning uses explicit `wire_options.bedrock_thinking_control`:
+`adaptive`, `budget`, `reasoning_effort`, `nested_effort`, or `none`. Model
+names select no behavior. Optional `thinking_budgets`, `reasoning_effort_map`,
+`thinking_binding`, and `bedrock_omit_thinking_display` capture model and
+regional differences. Native reasoning content, including signature-only
+and encrypted blocks, remains available in `provider_payload` for exact
+replay. Usage retains the wire's uncached input count beside its cache read
+and write counts; accounting consumers must include all three in total input.
 
 Every protocol declares the symbol options it understands:
 

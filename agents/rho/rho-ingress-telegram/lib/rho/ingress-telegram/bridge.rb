@@ -1,4 +1,5 @@
 require "rho"
+require "rho/failure_hints"
 require "stringio"
 require_relative "group_profile"
 require_relative "render"
@@ -341,7 +342,7 @@ module Rho
           detail = run_context.fetch
           held = detail.tasks.select { |task| %w[awaiting_input needs_approval].include?(task.status) }
           if held.empty?
-            failed = detail.tasks.find { |task| %w[failed timed_out uncertain].include?(task.status) }
+            failed = detail.repairable_tasks.first
             [local_attention(detail.public_id, nil, failure_message(failed&.error&.fetch("key", nil)))]
           else
             held.map do |task|
@@ -483,6 +484,9 @@ module Rho
         end
 
         def failure_message(key)
+          hint = Rho::FailureHints.for(key)
+          return hint if hint
+
           case key
           when "provider_model_unavailable", "model_unavailable"
             "The selected model provider is unavailable. Check its credentials and model settings in Nexus, then open the failed request in rho to retry it."
@@ -493,7 +497,9 @@ module Rho
 
         def current_action(run)
           if %w[failed needs_attention].include?(run["run_status"] || run["status"])
-            failed = Array(run["tasks"]).find { |row| %w[failed timed_out uncertain].include?(row["status"]) }
+            failed = Array(run["tasks"]).find do |row|
+              %w[failed timed_out uncertain].include?(row["status"]) && !row["failure_resolution"] && row["on_failure"] != "absorb"
+            end
             return failure_message(failed["error_key"]) if failed
           end
 

@@ -5,7 +5,9 @@ module ModelReasoning
   # bytes, the way the vendors themselves drop reasoning a model cannot
   # read. Every miss names its gate. Never raises.
   class ReplayLadder
-    Target = Data.define(:provider_id, :model_id, :reasoning_enabled, :capability)
+    Target = Data.define(:provider_id, :model_id, :reasoning_enabled, :capability, :allow_empty_thinking_signature) do
+      def initialize(allow_empty_thinking_signature: false, **) = super
+    end
 
     # kind: :native_parts (in-message blocks, or the chat message's field) |
     # :native_item (role-less items, one per replayed reasoning item) |
@@ -74,6 +76,8 @@ module ModelReasoning
       when "gemini_thought" then gemini
       when "chat_reasoning" then chat
       when "responses_reasoning_text" then responses_text
+      when "pi_thinking" then pi_thinking
+      when "bedrock_reasoning" then bedrock_reasoning
       else raise ArgumentError, "unknown replay format #{@target.capability.format}"
       end
       decision.with(call_payloads: tool_call_payloads)
@@ -100,6 +104,30 @@ module ModelReasoning
         Decision.native_parts(blocks)
       end
 
+      def pi_thinking
+        miss = native_miss("pi_thinking")
+        return Decision.drop(miss) if miss
+
+        blocks = @trace.reasoning_items.filter_map do |item|
+          payload = item["provider_payload"].to_h
+          payload if payload["type"] == "thinking"
+        end
+        blocks.empty? ? Decision.drop("missing_native_payload") : Decision.native_parts(blocks)
+      end
+
+      def bedrock_reasoning
+        miss = native_miss("bedrock_reasoning")
+        return Decision.drop(miss) if miss
+
+        blocks = @trace.reasoning_items.filter_map do |item|
+          payload = item["provider_payload"].to_h
+          if payload.key?("reasoningContent")
+            { "type" => "bedrock_reasoning", "provider_payload" => payload }
+          end
+        end
+        blocks.empty? ? Decision.drop("missing_native_payload") : Decision.native_parts(blocks)
+      end
+
       # Replay exactly what came back: the verbatim block wins (adaptive
       # thinking returns signature-only blocks synthesis cannot rebuild).
       def anthropic_block(item)
@@ -107,8 +135,10 @@ module ModelReasoning
         if payload
           case payload["type"].to_s
           when "thinking"
-            payload if payload["signature"].to_s.present? &&
-              item["signature_kind"].to_s == "anthropic_signature"
+            signed = payload["signature"].to_s.present? && item["signature_kind"].to_s == "anthropic_signature"
+            unsigned = @target.allow_empty_thinking_signature && @trace.origin_model_id == @target.model_id &&
+              payload["signature"].to_s.empty? && payload["thinking"].to_s.present?
+            payload if signed || unsigned
           when "redacted_thinking"
             payload if payload["data"].to_s.present?
           else nil

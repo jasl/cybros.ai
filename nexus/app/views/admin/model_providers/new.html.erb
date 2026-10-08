@@ -1,10 +1,10 @@
-<% content_for :title, "Add provider" %>
+<% content_for :title, t("admin.model_providers.new.add_provider") %>
 <div class="space-y-8">
   <header class="space-y-4">
-    <%= render "shared/back_navigation", path: admin_model_providers_path, label: "Model providers" %>
+    <%= render "shared/back_navigation", path: admin_model_providers_path, label: t("admin.model_providers.new.model_providers") %>
     <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight">Add provider</h1>
-      <p class="max-w-prose text-sm text-base-content/60">Connect a hosted or local model endpoint. After saving, add its models and enable the provider.</p>
+      <h1 class="text-xl font-medium tracking-tight"><%= t("admin.model_providers.new.add_provider") %></h1>
+      <p class="max-w-prose text-sm text-base-content/60"><%= t("admin.model_providers.new.connect_a_hosted_or_local_model_endpoint_after_saving") %></p>
     </div>
   </header>
   <%= render "definition_form", form: @form, url: admin_model_providers_path, method: :post, creating: true %>

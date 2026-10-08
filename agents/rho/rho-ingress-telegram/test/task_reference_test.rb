@@ -192,17 +192,17 @@ class TelegramTaskReferenceTest < Minitest::Test
     request(2)
     update = telegram_message(3, "/steer #{task_id(1)} retained instruction", user: 2, chat: -10, topic: 4)
     @bridge.fail_input = true
-    assert_raises(Rho::ConnectionError) { @runtime.consume(update) }
+    assert_raises(Rho::ConnectionError) { receive(update) }
     @state = Rho::IngressTelegram::State.new(store: TelegramStateSupport.document(@home))
     @runtime = runtime
-    @runtime.consume(update)
+    receive(update)
     assert_equal "loop-1", @bridge.inputs.fetch("telegram:42:3:input").fetch(:expected_steering_run_public_id)
     @bridge.fail_stop = true
     stop = telegram_message(4, "/stop #{task_id(1)}", user: 2, chat: -10, topic: 4)
-    assert_raises(Rho::ConnectionError) { @runtime.consume(stop) }
+    assert_raises(Rho::ConnectionError) { receive(stop) }
     @state = Rho::IngressTelegram::State.new(store: TelegramStateSupport.document(@home))
     @runtime = runtime
-    @runtime.consume(stop)
+    receive(stop)
     assert_equal ["loop-1"], @bridge.stops
     assert_includes feedback(4), "It was not repeated"
   end
@@ -226,12 +226,12 @@ class TelegramTaskReferenceTest < Minitest::Test
     def task_id(number) = self.class.task_id(number)
 
     def request(id, user: 2)
-      @runtime.consume(telegram_message(id, "@rho_bot task #{id}", user: user, chat: -10, topic: 4,
+      receive(telegram_message(id, "@rho_bot task #{id}", user: user, chat: -10, topic: 4,
         entities: [{ "type" => "mention", "offset" => 0, "length" => 8 }]))
     end
 
     def control(id, text, **options)
-      @runtime.consume(telegram_message(id, text, **{ user: 2, chat: -10, topic: 4 }.merge(options)))
+      receive(telegram_message(id, text, **{ user: 2, chat: -10, topic: 4 }.merge(options)))
     end
 
     def feedback(id) = @state.read.fetch("deliveries").fetch("control:#{id}").fetch("text")

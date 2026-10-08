@@ -39,6 +39,19 @@ class ConversationInputTest < ActiveSupport::TestCase
     assert reply.errors.of_kind?(:kind, :inclusion)
   end
 
+  test "only a held steer can upgrade its delivery timing" do
+    row = input(host: @conversation, state: "steering", delivery_mode: "steer", steering_target_turn: running_reply)
+    row.save!
+    row.update!(delivery_mode: "steer_now")
+    assert_not row.update(delivery_mode: "steer"), "send now cannot be withdrawn by changing its timing"
+    assert row.errors.of_kind?(:delivery_mode, :invalid)
+
+    queued = input(host: @conversation, delivery_mode: "queue", queue_position: 1)
+    queued.save!
+    assert_not queued.update(delivery_mode: "steer_now"), "a queued input never acquires a new binding by an edit"
+    assert queued.errors.of_kind?(:delivery_mode, :invalid)
+  end
+
   test "a record without a host adds errors and never raises" do
     orphan = ConversationInput.new(
       account: @account, queue_position: 0, kind: "message",

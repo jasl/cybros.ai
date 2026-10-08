@@ -78,8 +78,8 @@ DELETE /agent_api/v1/workspaces/{workspace_id}?lock_version=...
   taken one way and continued the other would walk back over rows the
   caller already has, so that combination is refused `parameter_invalid`
   rather than served. `after` is an
-  opaque cursor, `limit` defaults to 25; values above the maximum clamp to
-  100, while non-integer values and values below 1 return
+  opaque cursor, `limit` defaults to 25 and accepts 1–100. Non-integer
+  values, values below 1, and values above 100 return
   `400 parameter_invalid`.
 - `lock_version` is required on every mutating command except create: in the
   JSON body for PATCH/PUT/POST commands, as a required query parameter on

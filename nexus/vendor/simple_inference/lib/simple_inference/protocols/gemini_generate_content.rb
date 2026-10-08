@@ -4,6 +4,7 @@ module SimpleInference
   module Protocols
     class GeminiGenerateContent < Base
       require_relative "gemini_generate_content/request_body"
+      require_relative "gemini_generate_content/stream_fold"
 
       include RequestBody
 
@@ -23,25 +24,6 @@ module SimpleInference
       # enum — fail closed instead of classifying an unknown terminal
       # vocabulary.
       class UnknownFinishReasonError < SimpleInference::Error; end
-
-      # The fold over one generateContent stream: output items under
-      # assembly, the latest usage snapshot (each chunk REPLACES the previous
-      # one — the last seen is authoritative, and survives a bare terminal
-      # chunk), prompt feedback, and the terminal finishReason.
-      class StreamFold
-        attr_accessor :output_items, :latest_usage_metadata, :prompt_feedback, :finish_reason
-        attr_reader :events_seen
-
-        def initialize
-          @output_items = []
-          @latest_usage_metadata = nil
-          @prompt_feedback = {}
-          @finish_reason = nil
-          @events_seen = 0
-        end
-
-        def count_event = @events_seen += 1
-      end
 
       # Supported FinishReason vocabulary: the released SDK's original
       # 18 values plus the documented signature/response errors used by 3.8.
@@ -109,6 +91,19 @@ module SimpleInference
           reasoning_enabled reasoning_effort thinking_config
           seed n response_format
         ].freeze
+      end
+
+      def initialize(models_path: "/v1beta/models", gemini_thinking_control: "level", thinking_budgets: {}, **connection)
+        super(**connection)
+        @models_path = models_path.to_s
+        unless @models_path.start_with?("/") && !@models_path.end_with?("/")
+          raise SimpleInference::ConfigurationError, "models_path must start with '/' and have no trailing slash"
+        end
+        @thinking_control = gemini_thinking_control.to_s
+        unless %w[level budget].include?(@thinking_control)
+          raise SimpleInference::ConfigurationError, "gemini_thinking_control must be level or budget"
+        end
+        @thinking_budgets = thinking_budgets.to_h.transform_keys(&:to_s)
       end
 
       def create(model:, input:, **options)
@@ -390,19 +385,15 @@ module SimpleInference
       # Deterministic path constructions: the model rides in the path segment,
       # and the SSE variant is a different endpoint carrying alt=sse.
       def generate_content_path(model)
-        "/v1beta/models/#{model}:generateContent"
+        "#{@models_path}/#{model}:generateContent"
       end
 
       def stream_generate_content_path(model)
-        "/v1beta/models/#{model}:streamGenerateContent?alt=sse"
+        "#{@models_path}/#{model}:streamGenerateContent?alt=sse"
       end
 
       def gemini_headers(connection_config)
-        headers = connection_config.headers.reject { |key, _value| key.to_s.casecmp("authorization").zero? }
-        return headers if connection_config.api_key.nil?
-
-        # No api_key means NO credential header — never an empty "x-goog-api-key".
-        headers.merge("x-goog-api-key" => connection_config.api_key)
+        connection_config.authentication_headers(default: "x-goog-api-key")
       end
 
       def compiled_connection_headers(connection_config)

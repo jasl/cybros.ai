@@ -250,9 +250,27 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
       Nexus::ReasoningReplayCapability.from_h(entry.dig("capabilities", "reasoning_replay")).required_for_tool_rounds
     end
     assert_equal %w[
+      azure/deepseek-v4-pro
+      cloudflare-ai-gateway/workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731
+      cloudflare-ai-gateway/workers-ai/@cf/deepseek-ai/deepseek-v4-pro-0813
+      cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731
+      cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-pro-0813
       deepseek/deepseek-flash deepseek/deepseek-v4-pro openrouter/deepseek/deepseek-v4-pro-0813
       openrouter/deepseek/deepseek-v4.1-flash openrouter/moonshotai/kimi-k3
-    ], required.keys.sort
+      fireworks/accounts/fireworks/models/kimi-k3 fireworks/accounts/fireworks/routers/kimi-k3-fast
+      moonshotai-cn/kimi-k3 moonshotai/kimi-k3 nvidia/deepseek-ai/deepseek-v4.1-flash
+      opencode-go/deepseek-v4-flash opencode-go/deepseek-v4-flash-vision-exp opencode-go/deepseek-v4-pro
+      opencode-go/deepseek-v4.1-flash opencode/deepseek-v4-flash opencode/deepseek-v4-flash-vision-exp
+      opencode/deepseek-v4-pro opencode/deepseek-v4.1-flash
+      xiaomi-token-plan-ams/mimo-v2.5 xiaomi-token-plan-ams/mimo-v2.5-pro
+      xiaomi-token-plan-ams/mimo-v2.6-flash xiaomi-token-plan-ams/mimo-v2.6-pro
+      xiaomi-token-plan-cn/mimo-v2.5 xiaomi-token-plan-cn/mimo-v2.5-pro
+      xiaomi-token-plan-cn/mimo-v2.6-flash xiaomi-token-plan-cn/mimo-v2.6-pro
+      xiaomi-token-plan-sgp/mimo-v2.5 xiaomi-token-plan-sgp/mimo-v2.5-pro
+      xiaomi-token-plan-sgp/mimo-v2.6-flash xiaomi-token-plan-sgp/mimo-v2.6-pro
+      xiaomi/mimo-v2.5 xiaomi/mimo-v2.5-pro xiaomi/mimo-v2.5-pro-ultraspeed
+      xiaomi/mimo-v2.6-flash xiaomi/mimo-v2.6-pro xiaomi/mimo-v2.6-pro-ultraspeed
+    ].sort, required.keys.sort
   end
 
   # The OpenAI API rows ask the service to render every earlier turn's

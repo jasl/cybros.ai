@@ -50,8 +50,10 @@ class TelegramConfigurationRoutesTest < Minitest::Test
     assert_includes File.read(@home.settings_path), TOKEN
     assert_equal ["getMe"], @client.calls
 
-    @core.configure_telegram("owner_id" => "8", "stale_after" => 30, "speech_model" => "provider/speech")
+    assert_equal 2, enabled.dig("configuration", "input_debounce_seconds")
+    @core.configure_telegram("owner_id" => "8", "stale_after" => 30, "input_debounce_seconds" => 10, "speech_model" => "provider/speech")
     assert_equal "8", @core.telegram_settings.dig("configuration", "owner_id")
+    assert_equal 10, @core.telegram_settings.dig("configuration", "input_debounce_seconds")
     assert_equal ["getMe"], @client.calls
     @core.configure_telegram("enabled" => false, "token" => nil)
     plugin = @core.extensions.fetch("plugins").find { |row| row.fetch("id") == Rho::IngressTelegram::NAME }
@@ -85,6 +87,11 @@ class TelegramConfigurationRoutesTest < Minitest::Test
     error = assert_raises(Rho::Core::Refused) { @core.configure_telegram("owner_id" => "alice") }
     assert_equal 400, error.status
     assert_equal saved, File.read(@home.settings_path)
+    [-1, 11].each do |seconds|
+      error = assert_raises(Rho::Core::Refused) { @core.configure_telegram("input_debounce_seconds" => seconds) }
+      assert_equal 400, error.status
+      assert_equal saved, File.read(@home.settings_path)
+    end
   end
 
   def test_missing_profile_is_unavailable_without_fabricating_an_empty_access_list

@@ -1,16 +1,16 @@
-<% content_for :title, "Provider connection" %>
+<% content_for :title, t("admin.model_providers.definitions.show.provider_connection") %>
 <div class="space-y-8">
-  <%= render "admin/model_providers/header", provider: @provider, title: "Edit connection", current: :connection, description: "Edit the connection used for this provider's models." %>
+  <%= render "admin/model_providers/header", provider: @provider, title: t("admin.model_providers.definitions.show.edit_connection"), current: :connection, description: t("admin.model_providers.definitions.show.edit_the_connection_used_for_this_provider_s_models") %>
   <% if @configuration.fetch(:source) == "removed" %>
-    <p class="text-sm text-base-content/60">This provider's connection was removed. Save a new connection to use the same provider ID again.</p>
+    <p class="text-sm text-base-content/60"><%= t("admin.model_providers.definitions.show.this_provider_s_connection_was_removed_save_a_new") %></p>
   <% end %>
   <%= render "admin/model_providers/definition_form", form: @form, url: admin_model_provider_definition_path(@provider.fetch(:id)), method: :patch, creating: false %>
   <% if %w[override custom].include?(@configuration.fetch(:source)) %>
-    <section class="space-y-3 border-t border-base-300 pt-5" aria-label="Reset provider connection">
-      <p class="text-sm text-base-content/60"><%= @configuration.fetch(:source) == "custom" ? "Removing this connection disables the custom provider. Its credentials are kept." : "Restore the connection shipped with this installation. Model edits and stored credentials are kept." %></p>
-      <%= button_to @configuration.fetch(:source) == "custom" ? "Remove custom connection" : "Restore installation connection", admin_model_provider_definition_path(@provider.fetch(:id)), method: :delete,
+    <section class="space-y-3 border-t border-base-300 pt-5" aria-label="<%= t("admin.model_providers.definitions.show.reset_provider_connection") %>">
+      <p class="text-sm text-base-content/60"><%= @configuration.fetch(:source) == "custom" ? t("admin.model_providers.definitions.show.removing_this_connection_disables_the_custom_provider_its_credentials") : t("admin.model_providers.definitions.show.restore_the_connection_shipped_with_this_installation_model_edits") %></p>
+      <%= button_to @configuration.fetch(:source) == "custom" ? t("admin.model_providers.definitions.show.remove_custom_connection") : t("admin.model_providers.definitions.show.restore_installation_connection"), admin_model_provider_definition_path(@provider.fetch(:id)), method: :delete,
         params: { provider_definition: { expected_lock_version: @provider.fetch(:lock_version) } }, class: "btn btn-sm btn-outline",
-        form: { data: { turbo_confirm: "Reset this provider connection?" } } %>
+        form: { data: { turbo_confirm: t("admin.model_providers.definitions.show.reset_this_provider_connection") } } %>
     </section>
   <% end %>
 </div>

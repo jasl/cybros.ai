@@ -4,8 +4,8 @@ class TelegramBindingTest < Minitest::Test
   include TelegramRuntimeSupport
 
   def test_binding_is_a_projection_of_the_current_chat_and_topic_after_restart
-    @runtime.consume(telegram_message(1, "hello"))
-    @runtime.consume(telegram_message(2, "@rho_bot hello", chat: -10, topic: 4,
+    receive(telegram_message(1, "hello"))
+    receive(telegram_message(2, "@rho_bot hello", chat: -10, topic: 4,
       entities: [{ "type" => "mention", "offset" => 0, "length" => 8 }]))
     state = Rho::IngressTelegram::State.new(store: TelegramStateSupport.document(@home))
 
@@ -17,8 +17,8 @@ class TelegramBindingTest < Minitest::Test
   end
 
   def test_new_releases_the_previous_conversation_without_losing_its_background_tracker
-    @runtime.consume(telegram_message(1, "hello"))
-    @runtime.consume(telegram_message(2, "/new"))
+    receive(telegram_message(1, "hello"))
+    receive(telegram_message(2, "/new"))
 
     assert_nil @state.binding("conversation-1")
     assert_equal "1", @state.binding("conversation-2").fetch("chat_id")
@@ -26,11 +26,11 @@ class TelegramBindingTest < Minitest::Test
   end
 
   def test_workspace_switch_releases_only_that_topics_current_conversation
-    @runtime.consume(telegram_message(1, "@rho_bot hello", chat: -10, topic: 4,
+    receive(telegram_message(1, "@rho_bot hello", chat: -10, topic: 4,
       entities: [{ "type" => "mention", "offset" => 0, "length" => 8 }]))
-    @runtime.consume(telegram_message(2, "@rho_bot hello", chat: -10, topic: 5,
+    receive(telegram_message(2, "@rho_bot hello", chat: -10, topic: 5,
       entities: [{ "type" => "mention", "offset" => 0, "length" => 8 }]))
-    @runtime.consume(telegram_message(3, "/workspace use workspace-project", chat: -10, topic: 4))
+    receive(telegram_message(3, "/workspace use workspace-project", chat: -10, topic: 4))
 
     assert_nil @state.binding("conversation-1")
     assert_equal 5, @state.binding("conversation-2").fetch("topic_id")

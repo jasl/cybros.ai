@@ -126,6 +126,83 @@ class RhoDaemonHarnessTest < Minitest::Test
     end
   end
 
+  def test_final_disposal_waits_out_repeated_revocation_throttling
+    Dir.mktmpdir("rho-disposal-harness") do |home|
+      File.write(File.join(home, "connection.json"), "{}")
+      started = daemon(home)
+      completed = ["disconnected", :success_status]
+      outcomes = [revocation_throttled] * 4 + [completed]
+      calls = []
+      waits = []
+      now = 0
+      command = lambda do |*arguments|
+        calls << arguments
+        now += 1
+        outcomes.shift
+      end
+      sleeper = ->(seconds) { waits << seconds; now += seconds }
+
+      Process.stub(:clock_gettime, ->(*) { now }) do
+        started.stub(:sleep, sleeper) do
+          started.stub(:cli, command) { assert_same completed, started.dispose_connection }
+        end
+      end
+
+      assert_equal [["disconnect"]] * 5, calls
+      assert_equal [5] * 4, waits
+      assert_empty outcomes
+    end
+  end
+
+  def test_final_disposal_counts_cli_runtime_in_its_retry_deadline
+    Dir.mktmpdir("rho-disposal-harness") do |home|
+      File.write(File.join(home, "connection.json"), "{}")
+      started = daemon(home)
+      refused = revocation_throttled
+      calls = 0
+      waits = []
+      now = 0
+      command = lambda do |*|
+        calls += 1
+        now += calls == 1 ? 1 : 51
+        refused
+      end
+      sleeper = ->(seconds) { waits << seconds; now += seconds }
+
+      Process.stub(:clock_gettime, ->(*) { now }) do
+        started.stub(:sleep, sleeper) do
+          started.stub(:cli, command) { assert_same refused, started.dispose_connection }
+        end
+      end
+
+      assert_equal 2, calls
+      assert_equal [5], waits
+    end
+  end
+
+  def test_final_disposal_does_not_restart_the_cli_when_the_wait_outlasts_its_deadline
+    Dir.mktmpdir("rho-disposal-harness") do |home|
+      File.write(File.join(home, "connection.json"), "{}")
+      started = daemon(home)
+      refused = revocation_throttled
+      calls = 0
+      waits = []
+      now = 0
+      sleeper = ->(seconds) { waits << seconds; now += 61 }
+
+      Process.stub(:clock_gettime, ->(*) { now }) do
+        started.stub(:sleep, sleeper) do
+          started.stub(:cli, ->(*) { calls += 1; refused }) do
+            assert_same refused, started.dispose_connection
+          end
+        end
+      end
+
+      assert_equal 1, calls
+      assert_equal [5], waits
+    end
+  end
+
   def test_start_ceremony_does_not_retry_another_refusal_or_a_transport_failure
     started = daemon(Dir.tmpdir)
     refused = { "error" => { "code" => "connection_failed" } }
@@ -183,6 +260,11 @@ class RhoDaemonHarnessTest < Minitest::Test
   end
 
   private
+
+    def revocation_throttled
+      error = CybrosAgent::DeviceFlow::RateLimited.new(retry_after: 5)
+      ["rho disconnect: #{error.message}\n", :failed_status]
+    end
 
     # Every settings-write statement in a lane, whole: from the write to
     # the line its brackets balance on.

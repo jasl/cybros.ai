@@ -31,8 +31,9 @@ class ClaimOrchestrationTest < Minitest::Test
       "executors" => [{ "runner_executor_public_id" => "runner-a", "environment" => { "root" => "/captured/project" } }],
       "skills" => [{ "callable" => "read_skill", "name" => "review", "source" => "runner", "executor_public_id" => "runner-a" }] }.freeze
 
-    attr_accessor :child_done, :unknown_submit, :cancel_on_submit, :expire_on_submit, :context, :paginate, :submit_refusal, :submit_status, :observe_changed
-    attr_reader :calls, :commits, :trace, :submits
+    attr_accessor :child_done, :unknown_submit, :cancel_on_submit, :expire_on_submit, :context, :paginate,
+      :submit_refusal, :submit_status, :observe_changed, :observe_retry_after, :park_seconds
+    attr_reader :calls, :commits, :trace, :submits, :observation_times
 
     def initialize
       @calls = []
@@ -41,6 +42,8 @@ class ClaimOrchestrationTest < Minitest::Test
       @submits = 0
       @claims = 0
       @child_done = true
+      @observation_times = []
+      @park_seconds = 60
     end
 
     def call(path, **request)
@@ -51,11 +54,7 @@ class ClaimOrchestrationTest < Minitest::Test
           { "claim" => { "active" => true } }
         else
           @claims += 1
-          parent = path.include?("/parent/")
-          { "task" => { "kind" => "tool_call", "workspace_public_id" => "workspace", "run_public_id" => "run_public_id",
-            "conversation_public_id" => nil, "parent_public_id" => nil, "task_key" => parent ? "parent" : "child",
-            "tool_name" => parent ? "orchestrator" : "child", "tool_input" => {}, "claimed" => true },
-            "claim" => { "claim_token" => "proof-#{@claims}", "deadline_at" => (Time.now + 60).iso8601(3) } }
+          claim(path, token: "proof-#{@claims}")
         end
       when %r{/operations\z}
         if request.fetch(:method, :get) == :get
@@ -84,6 +83,13 @@ class ClaimOrchestrationTest < Minitest::Test
         end
         { "operation" => event }
       when %r{/observation\z}
+        @observation_times << Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        if @observe_retry_after
+          retry_after = @observe_retry_after
+          @observe_retry_after = nil
+          return CybrosAgent::Response.new(status: 429, headers: { "Retry-After" => retry_after.to_s }, body: {
+            "error" => { "code" => "rate_limited", "message" => "Rate limit exceeded" } })
+        end
         if @child_done && @trace.none? { |event| event["type"] == "observation" }
           @trace << { "type" => "observation", "position" => @trace.length + 1, "key" => "op_0", "outcome" => { "content" => "child done" } }
           if @observe_changed
@@ -95,6 +101,8 @@ class ClaimOrchestrationTest < Minitest::Test
         else
           { "observation" => nil, "position" => @trace.length }
         end
+      when %r{/extend\z}
+        claim(path, token: request.fetch(:body).fetch("claim_token"))
       when %r{/commit\z}
         @commits << [path, request.fetch(:body)]
         @child_done = true if path.include?("/child/")
@@ -104,6 +112,17 @@ class ClaimOrchestrationTest < Minitest::Test
       end
       CybrosAgent::Response.new(status: 200, headers: {}, body: body)
     end
+
+    private
+
+      def claim(path, token:)
+        parent = path.include?("/parent/")
+        { "task" => { "kind" => "tool_call", "workspace_public_id" => "workspace", "run_public_id" => "run_public_id",
+          "conversation_public_id" => nil, "parent_public_id" => nil, "task_key" => parent ? "parent" : "child",
+          "tool_name" => parent ? "orchestrator" : "child", "tool_input" => {}, "claimed" => true,
+          "timeout_ms" => (@park_seconds * 1000).to_i },
+          "claim" => { "claim_token" => token, "deadline_at" => (Time.now + @park_seconds).iso8601(3) } }
+      end
   end
 
   class Log
@@ -173,6 +192,51 @@ class ClaimOrchestrationTest < Minitest::Test
     assert_equal 1, @transport.submits
     assert_equal "completed", @transport.commits.last.last.fetch("outcome")
     assert_empty @log.warnings
+  end
+
+  def test_a_limited_observation_waits_then_retries_the_same_position_while_renewing_its_claim
+    @transport.observe_retry_after = 2
+    @transport.park_seconds = 1.5
+
+    assert_equal :done, run_task("parent")
+
+    observations = @transport.calls.select { |path, _, _| path.end_with?("/observation") }
+    assert_equal 2, observations.length
+    assert_equal observations.first[1].fetch(:body), observations.last[1].fetch(:body),
+      "the observation position and original claim survive the throttle"
+    assert_operator @transport.observation_times.last - @transport.observation_times.first, :>=, 2
+    renewals = @transport.calls.select { |path, _, _| path.end_with?("/extend") }
+    refute_empty renewals, "the control reactor renews during Retry-After"
+    assert renewals.all? { |_, request, _| request.fetch(:body).fetch("claim_token") == "proof-1" }
+    assert_equal 1, @runtime.programs.length
+    assert_equal 1, @transport.submits
+    assert_equal 1, @transport.commits.length
+    assert_equal "completed", @transport.commits.last.last.fetch("outcome")
+    assert_equal %w[operation observation], @runtime.events.map { |event| event.fetch(:type) }
+    assert @transport.calls.all? { |_, _, thread| thread == Thread.current }
+    assert_empty @log.warnings
+  end
+
+  def test_canceling_a_limited_observation_stops_the_live_handler_before_retry_after
+    @transport.observe_retry_after = 60
+    Async do |reactor|
+      reactor.with_timeout(3) do
+        parent = reactor.async { run_task("parent") }
+        sleep 0.01 until @transport.observation_times.any?
+        sleep 0.05
+        assert_empty @transport.commits, "a throttle must leave the invocation running"
+        assert @pool.cancel(run_public_id: "run_public_id", task_key: "parent")
+        assert_equal :done, parent.wait
+      end
+    end
+
+    assert_equal 1, @runtime.programs.length
+    assert_equal 1, @transport.submits
+    assert_equal 1, @transport.observation_times.length
+    assert_equal 1, @transport.commits.length
+    assert_equal "failed", @transport.commits.last.last.fetch("outcome")
+    assert_match(/interrupted/, @transport.commits.last.last.fetch("content"))
+    assert_equal 0, @pool.in_flight
   end
 
   def test_cancellation_during_a_control_request_stops_before_observation_or_a_second_operation

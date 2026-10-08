@@ -72,7 +72,7 @@ module Rho
         @entry = if @entry
           collection.update(@entry.public_id, value: value, lock_version: @entry.lock_version)
         else
-          collection.create(namespace: @namespace, key: @key, value: value, idempotency_key: SecureRandom.uuid)
+          collection.create(namespace: @namespace, key: @key, value: value, idempotency_key: SecureRandom.uuid).store_entry
         end
         @loaded = true
       rescue CybrosAgent::Api::RateLimited

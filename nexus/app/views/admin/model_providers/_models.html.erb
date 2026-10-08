@@ -1,5 +1,5 @@
 <% if models.empty? %>
-  <div class="rounded-box border border-base-300 bg-base-200 p-6 text-sm text-base-content/60">No models are configured yet. Add a model ID manually or discover IDs from the provider.</div>
+  <div class="rounded-box border border-base-300 bg-base-200 p-6 text-sm text-base-content/60"><%= t("admin.model_providers.models.no_models_are_configured_yet_add_a_model_id") %></div>
 <% else %>
   <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200">
     <% models.each do |model| %>
@@ -11,34 +11,34 @@
             <h3 class="text-sm font-medium hyphens-none wrap-anywhere"><%= display_name || model.fetch(:ref) %></h3>
             <% if display_name %><p class="text-xs text-base-content/50 wrap-anywhere"><%= model.fetch(:ref) %></p><% end %>
             <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
-              <span><%= model.fetch(:workload).humanize %></span>
-              <% if model.fetch(:capabilities).fetch(:tool_calls) %><span class="badge badge-outline badge-xs">Tools</span><% end %>
-              <% if model.fetch(:capabilities).fetch(:streaming) %><span class="badge badge-outline badge-xs">Streaming</span><% end %>
-              <% if unavailable %><span>Invalid · hidden from agents</span><% end %>
+              <span><%= t("model_workloads.#{model.fetch(:workload)}") %></span>
+              <% if model.fetch(:capabilities).fetch(:tool_calls) %><span class="badge badge-outline badge-xs"><%= t("admin.model_providers.models.tools") %></span><% end %>
+              <% if model.fetch(:capabilities).fetch(:streaming) %><span class="badge badge-outline badge-xs"><%= t("admin.model_providers.models.streaming") %></span><% end %>
+              <% if unavailable %><span><%= t("admin.model_providers.models.invalid_hidden_from_agents") %></span><% end %>
             </div>
           </div>
           <% if editable %>
             <div class="flex max-w-full flex-wrap items-center gap-2 sm:justify-end">
-            <%= link_to "Test", admin_model_provider_model_test_path(provider.fetch(:id), model: model.fetch(:ref)), class: "btn btn-ghost btn-sm", aria: { label: "Test #{model.fetch(:ref)}" } %>
-            <%= link_to "Edit", admin_model_provider_model_definition_path(provider.fetch(:id), model: model.fetch(:ref)), class: "btn btn-ghost btn-sm", aria: { label: "Edit #{model.fetch(:ref)}" } %>
+            <%= link_to t("admin.model_providers.models.test"), admin_model_provider_model_test_path(provider.fetch(:id), model: model.fetch(:ref)), class: "btn btn-ghost btn-sm", aria: { label: t("admin.model_providers.models.test_model", model: (model.fetch(:ref))) } %>
+            <%= link_to t("admin.model_providers.models.edit"), admin_model_provider_model_definition_path(provider.fetch(:id), model: model.fetch(:ref)), class: "btn btn-ghost btn-sm", aria: { label: t("admin.model_providers.models.edit_model", model: (model.fetch(:ref))) } %>
             <% if unavailable %>
-              <%= button_to "Clear invalid mark", admin_model_provider_model_availability_path(provider.fetch(:id)), method: :patch,
+              <%= button_to t("admin.model_providers.models.clear_invalid_mark"), admin_model_provider_model_availability_path(provider.fetch(:id)), method: :patch,
                 params: { model_availability: { model: model.fetch(:ref), available: true, expected_lock_version: provider.fetch(:lock_version) } },
-                class: "btn btn-ghost btn-sm", aria: { label: "Clear invalid mark for #{model.fetch(:ref)}" } %>
+                class: "btn btn-ghost btn-sm", aria: { label: t("admin.model_providers.models.clear_invalid_mark_for_model", model: (model.fetch(:ref))) } %>
             <% end %>
-            <div class="inline-flex shrink-0 items-center gap-1 rounded-full border border-base-300 bg-base-100 p-1" role="group" aria-label="<%= model.fetch(:ref) %> visibility">
-              <% [[true, "Visible"], [false, "Hidden"]].each do |visible, label| %>
+            <div class="inline-flex shrink-0 items-center gap-1 rounded-full border border-base-300 bg-base-100 p-1" role="group" aria-label="<%= t("admin.model_providers.models.model_visibility", model: (model.fetch(:ref))) %>">
+              <% [[true, t("admin.model_providers.models.visible")], [false, t("admin.model_providers.models.hidden")]].each do |visible, label| %>
                 <% selected = model.fetch(:visible) == visible %>
                 <%= button_to label, admin_model_provider_model_visibility_path(provider.fetch(:id)), method: :patch,
                   params: { model_visibility: { model: model.fetch(:ref), visible: visible, expected_lock_version: provider.fetch(:lock_version) } },
                   class: provider_choice_classes(selected: selected),
                   disabled: selected || unavailable,
-                  aria: { label: visible ? "Make #{model.fetch(:ref)} visible" : "Hide #{model.fetch(:ref)} from agents", pressed: selected } %>
+                  aria: { label: visible ? t("admin.model_providers.models.make_model_visible", model: (model.fetch(:ref))) : t("admin.model_providers.models.hide_model_from_agents", model: (model.fetch(:ref))), pressed: selected } %>
               <% end %>
             </div>
             </div>
           <% else %>
-            <span class="<%= badge_classes(model.fetch(:visible), tone: :success) %>"><%= model.fetch(:visible) ? "Visible" : "Hidden" %></span>
+            <span class="<%= badge_classes(model.fetch(:visible), tone: :success) %>"><%= model.fetch(:visible) ? t("admin.model_providers.models.visible") : t("admin.model_providers.models.hidden") %></span>
           <% end %>
         </div>
         <p class="text-xs leading-relaxed text-base-content/50"><%= model_pricing_label(model.fetch(:pricing)) %></p>

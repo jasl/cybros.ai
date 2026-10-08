@@ -66,4 +66,9 @@ Subprojects add stack-specific rules without restating these principles.
   scheduler lanes. Restorable resources have an archive action, never a delete affordance.
   Expose cancel only when the backend contract supports it. Design disabled, loading, empty,
   and error states deliberately. Wrap or truncate long tokens safely.
+- Human-facing application copy and product branding go through the owning application's
+  i18n catalogs, including dynamic labels, accessible names, and actionable errors. Keep
+  protocol identifiers, user-authored content, and model-facing instructions separate from
+  display text. Plugin-authored names and descriptions are translation defaults owned by
+  their static metadata, not duplicated English catalogs in each consumer.
 - Verify meaningful UI changes at desktop and narrow viewports.

@@ -36,7 +36,7 @@ class ReplayQualityTest < Minitest::Test
         peer = E2E::PeerProgram.pair(base_url: base_url, actor: actor, name: "replay-quality")
         workspace = peer.client.workspaces.create(
           name: "Replay quality #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-        )
+        ).workspace
         World.new(client: peer.client, workspace: peer.client.workspace(workspace.public_id))
       end
     end

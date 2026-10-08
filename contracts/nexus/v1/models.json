@@ -32,7 +32,11 @@
     "prompt_caching",
     "input_modalities",
     "output_modalities",
-    "reasoning_modes"
+    "reasoning_modes",
+    "reasoning",
+    "generation_parameters",
+    "service_tiers",
+    "limits"
   ],
   "pricing_projection": [
     "state",
@@ -107,7 +111,45 @@
           "output_modalities": [
             "text"
           ],
-          "reasoning_modes": []
+          "reasoning_modes": [],
+          "reasoning": {
+            "supported": true,
+            "default_enabled": false,
+            "disable_supported": true,
+            "efforts": [
+              "low",
+              "high"
+            ],
+            "default_effort": "low"
+          },
+          "generation_parameters": {
+            "max_output_tokens": {
+              "kind": "integer",
+              "default": null,
+              "minimum": 1,
+              "maximum": null,
+              "allowed_values": null
+            },
+            "output_format": {
+              "kind": "output_format",
+              "default": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_values": [
+                "text",
+                "json_object",
+                "json_schema"
+              ]
+            }
+          },
+          "service_tiers": [
+            "default",
+            "priority"
+          ],
+          "limits": {
+            "input_tokens": 64000,
+            "effective_input_tokens": 48000
+          }
         },
         "pricing": {
           "state": "priced",
@@ -135,7 +177,45 @@
       "output_modalities": [
         "text"
       ],
-      "reasoning_modes": []
+      "reasoning_modes": [],
+      "reasoning": {
+        "supported": true,
+        "default_enabled": false,
+        "disable_supported": true,
+        "efforts": [
+          "low",
+          "high"
+        ],
+        "default_effort": "low"
+      },
+      "generation_parameters": {
+        "max_output_tokens": {
+          "kind": "integer",
+          "default": null,
+          "minimum": 1,
+          "maximum": null,
+          "allowed_values": null
+        },
+        "output_format": {
+          "kind": "output_format",
+          "default": null,
+          "minimum": null,
+          "maximum": null,
+          "allowed_values": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        }
+      },
+      "service_tiers": [
+        "default",
+        "priority"
+      ],
+      "limits": {
+        "input_tokens": 64000,
+        "effective_input_tokens": 48000
+      }
     },
     "pricing": {
       "state": "priced",
@@ -161,7 +241,45 @@
       "output_modalities": [
         "text"
       ],
-      "reasoning_modes": []
+      "reasoning_modes": [],
+      "reasoning": {
+        "supported": true,
+        "default_enabled": false,
+        "disable_supported": true,
+        "efforts": [
+          "low",
+          "high"
+        ],
+        "default_effort": "low"
+      },
+      "generation_parameters": {
+        "max_output_tokens": {
+          "kind": "integer",
+          "default": null,
+          "minimum": 1,
+          "maximum": null,
+          "allowed_values": null
+        },
+        "output_format": {
+          "kind": "output_format",
+          "default": null,
+          "minimum": null,
+          "maximum": null,
+          "allowed_values": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        }
+      },
+      "service_tiers": [
+        "default",
+        "priority"
+      ],
+      "limits": {
+        "input_tokens": 64000,
+        "effective_input_tokens": 48000
+      }
     },
     "pricing": {
       "state": "priced",
@@ -187,7 +305,45 @@
       "output_modalities": [
         "text"
       ],
-      "reasoning_modes": []
+      "reasoning_modes": [],
+      "reasoning": {
+        "supported": true,
+        "default_enabled": false,
+        "disable_supported": true,
+        "efforts": [
+          "low",
+          "high"
+        ],
+        "default_effort": "low"
+      },
+      "generation_parameters": {
+        "max_output_tokens": {
+          "kind": "integer",
+          "default": null,
+          "minimum": 1,
+          "maximum": null,
+          "allowed_values": null
+        },
+        "output_format": {
+          "kind": "output_format",
+          "default": null,
+          "minimum": null,
+          "maximum": null,
+          "allowed_values": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        }
+      },
+      "service_tiers": [
+        "default",
+        "priority"
+      ],
+      "limits": {
+        "input_tokens": 64000,
+        "effective_input_tokens": 48000
+      }
     },
     "pricing": {
       "state": "priced",
@@ -211,7 +367,31 @@
       "output_modalities": [
         "text"
       ],
-      "reasoning_modes": []
+      "reasoning_modes": [],
+      "reasoning": {
+        "supported": false,
+        "default_enabled": null,
+        "disable_supported": false,
+        "efforts": [],
+        "default_effort": null
+      },
+      "generation_parameters": {
+        "output_format": {
+          "kind": "output_format",
+          "default": null,
+          "minimum": null,
+          "maximum": null,
+          "allowed_values": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        }
+      },
+      "service_tiers": [],
+      "limits": {
+        "input_tokens": 128000
+      }
     },
     "pricing": {
       "state": "known_free_candidate",
@@ -235,7 +415,31 @@
       "output_modalities": [
         "text"
       ],
-      "reasoning_modes": []
+      "reasoning_modes": [],
+      "reasoning": {
+        "supported": false,
+        "default_enabled": null,
+        "disable_supported": false,
+        "efforts": [],
+        "default_effort": null
+      },
+      "generation_parameters": {
+        "output_format": {
+          "kind": "output_format",
+          "default": null,
+          "minimum": null,
+          "maximum": null,
+          "allowed_values": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        }
+      },
+      "service_tiers": [],
+      "limits": {
+        "input_tokens": 128000
+      }
     },
     "pricing": {
       "state": "unmetered"
@@ -258,7 +462,45 @@
       "output_modalities": [
         "text"
       ],
-      "reasoning_modes": []
+      "reasoning_modes": [],
+      "reasoning": {
+        "supported": true,
+        "default_enabled": false,
+        "disable_supported": true,
+        "efforts": [
+          "low",
+          "high"
+        ],
+        "default_effort": "low"
+      },
+      "generation_parameters": {
+        "max_output_tokens": {
+          "kind": "integer",
+          "default": null,
+          "minimum": 1,
+          "maximum": null,
+          "allowed_values": null
+        },
+        "output_format": {
+          "kind": "output_format",
+          "default": null,
+          "minimum": null,
+          "maximum": null,
+          "allowed_values": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        }
+      },
+      "service_tiers": [
+        "default",
+        "priority"
+      ],
+      "limits": {
+        "input_tokens": 64000,
+        "effective_input_tokens": 48000
+      }
     },
     "pricing": {
       "state": "cost_unknown"
@@ -383,7 +625,45 @@
       "output_modalities": [
         "text"
       ],
-      "reasoning_modes": []
+      "reasoning_modes": [],
+      "reasoning": {
+        "supported": true,
+        "default_enabled": false,
+        "disable_supported": true,
+        "efforts": [
+          "low",
+          "high"
+        ],
+        "default_effort": "low"
+      },
+      "generation_parameters": {
+        "max_output_tokens": {
+          "kind": "integer",
+          "default": null,
+          "minimum": 1,
+          "maximum": null,
+          "allowed_values": null
+        },
+        "output_format": {
+          "kind": "output_format",
+          "default": null,
+          "minimum": null,
+          "maximum": null,
+          "allowed_values": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        }
+      },
+      "service_tiers": [
+        "default",
+        "priority"
+      ],
+      "limits": {
+        "input_tokens": 64000,
+        "effective_input_tokens": 48000
+      }
     },
     "pricing": {
       "state": "priced",
@@ -409,7 +689,45 @@
       "output_modalities": [
         "text"
       ],
-      "reasoning_modes": []
+      "reasoning_modes": [],
+      "reasoning": {
+        "supported": true,
+        "default_enabled": false,
+        "disable_supported": true,
+        "efforts": [
+          "low",
+          "high"
+        ],
+        "default_effort": "low"
+      },
+      "generation_parameters": {
+        "max_output_tokens": {
+          "kind": "integer",
+          "default": null,
+          "minimum": 1,
+          "maximum": null,
+          "allowed_values": null
+        },
+        "output_format": {
+          "kind": "output_format",
+          "default": null,
+          "minimum": null,
+          "maximum": null,
+          "allowed_values": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        }
+      },
+      "service_tiers": [
+        "default",
+        "priority"
+      ],
+      "limits": {
+        "input_tokens": 64000,
+        "effective_input_tokens": 48000
+      }
     },
     "pricing": {
       "state": "zz_unknown_value"

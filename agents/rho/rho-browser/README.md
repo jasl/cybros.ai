@@ -3,8 +3,12 @@
 An optional rho extension providing `browser_snapshot`, `browser_navigate`,
 `browser_click`, `browser_type`, `browser_screenshot`, and `browser_evaluate`
 through Playwright. Load `rho/browser` through rho's extension settings.
-The Node Playwright driver and Chromium must be installed separately; loading
-the extension does not start a browser.
+The Node Playwright driver and Chromium must be installed separately. Enabling
+the plugin or starting an enabled plugin launches and immediately closes a test
+browser before making its tools available. If that check fails, the plugin stays
+inactive and Settings shows installation guidance. Repair the driver command or
+install Playwright and Chromium, then enable the plugin again. Core settings and
+other plugins remain available. Ordinary browsing sessions still start on first use.
 
 The process shares one browser context, including cookies. Each agent loop
 gets its own tab: calls within a loop serialize, and different loops can

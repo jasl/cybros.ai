@@ -16,12 +16,41 @@ module SimpleInference
       x-api-key
       x-goog-api-key
       api-key
+      cf-aig-authorization
       cookie
       set-cookie
     ].freeze
+    AUTHENTICATION_HEADERS = {
+      "bearer" => ["Authorization", "Bearer "].freeze,
+      "x-api-key" => ["x-api-key", ""].freeze,
+      "x-goog-api-key" => ["x-goog-api-key", ""].freeze,
+      "api-key" => ["api-key", ""].freeze,
+      "cf-aig-authorization" => ["cf-aig-authorization", "Bearer "].freeze,
+    }.freeze
+
+    # Catalog identity/routing headers are separate from the credential
+    # owner. Lowercase at this boundary makes provider/model override merge
+    # case-insensitive, as HTTP header names are on the wire.
+    def self.normalize_request_headers(value)
+      headers = Hash.try_convert(value)
+      raise SimpleInference::ConfigurationError, "request_headers must be a mapping" unless headers
+
+      headers.to_h do |name, value|
+        name = name.to_s.downcase
+        text = String.try_convert(value)
+        unless name.match?(/\A[!#$%&'*+\-.^_`|~0-9a-z]+\z/) && text && !text.match?(/[\r\n]/)
+          raise SimpleInference::ConfigurationError, "request_headers must contain valid header names and single-line strings"
+        end
+        if SENSITIVE_HEADER_NAMES.include?(name)
+          raise SimpleInference::ConfigurationError, "request_headers cannot carry credential header #{name.inspect}"
+        end
+        [name.freeze, text.dup.freeze]
+      end.freeze
+    end
 
     attr_reader :base_url,
                 :api_key,
+                :authentication,
                 :api_prefix,
                 :timeout,
                 :open_timeout,
@@ -31,9 +60,14 @@ module SimpleInference
 
     def initialize(base_url:, api_key: nil, api_prefix: "/v1", base_url_included_api_prefix: nil,
                    timeout: nil, open_timeout: nil, read_timeout: nil, adapter: nil,
-                   raise_on_error: true, headers: {})
+                   raise_on_error: true, headers: {}, authentication: nil)
       original_base_url = normalize_base_url(base_url)
       @api_key = api_key.to_s.then { |key| key.empty? ? nil : key }
+      @authentication = authentication&.to_s
+      if @authentication && !AUTHENTICATION_HEADERS.key?(@authentication)
+        raise SimpleInference::ConfigurationError,
+              "authentication must be one of #{AUTHENTICATION_HEADERS.keys.join(", ")}"
+      end
       @api_prefix = normalize_api_prefix(api_prefix)
 
       # Avoid the common "/v1/v1" footgun when callers include "/v1" in base_url
@@ -56,7 +90,20 @@ module SimpleInference
     end
 
     def headers
-      @default_headers.dup
+      authentication_headers
+    end
+
+    # Authentication belongs to the connection, independently of the body
+    # dialect. An explicit scheme overrides the protocol's native default.
+    # Credentials are added only when executing a compiled request.
+    def authentication_headers(default: "bearer")
+      name, prefix = AUTHENTICATION_HEADERS.fetch(authentication || default)
+      credential = api_key ? { name => "#{prefix}#{api_key}" } : {}
+      known = AUTHENTICATION_HEADERS.values.map { |header, _prefix| header.downcase }
+      extra = @default_headers.reject do |header, _value|
+        known.include?(header.downcase) && header.downcase != name.downcase
+      end
+      credential.merge(extra)
     end
 
     def base_url_included_api_prefix?
@@ -142,8 +189,6 @@ module SimpleInference
       end
 
       headers = { "Accept" => "application/json" }
-      headers["Authorization"] = "Bearer #{@api_key}" if @api_key
-
       headers.merge(Internal::Keys.shallow_stringify(extra_headers))
     end
   end

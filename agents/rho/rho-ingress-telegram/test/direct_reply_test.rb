@@ -4,7 +4,7 @@ class TelegramDirectReplyTest < Minitest::Test
   include TelegramRuntimeSupport
 
   def test_normal_chat_delivers_the_answer_without_a_task_receipt
-    @runtime.consume(telegram_message(1, "你好"))
+    receive(telegram_message(1, "你好"))
     @bridge.current.merge!("status" => "completed")
     @bridge.turn_rows["conversation-1"] = [turn(0, "你好！有什么可以帮你？")]
     @runtime.tick
@@ -16,7 +16,7 @@ class TelegramDirectReplyTest < Minitest::Test
   end
 
   def test_background_work_keeps_the_assistants_launch_acknowledgement_and_later_result
-    @runtime.consume(telegram_message(1, "Prepare the report in the background"))
+    receive(telegram_message(1, "Prepare the report in the background"))
     @bridge.current.merge!("status" => "completed")
     @bridge.turn_rows["conversation-1"] = [turn(0, "The report is running in the background. I will send it here when ready.")]
     @runtime.tick
@@ -41,7 +41,7 @@ class TelegramDirectReplyTest < Minitest::Test
   end
 
   def test_a_private_draft_does_not_reappear_after_the_next_tick_delivers_the_final_answer
-    @runtime.consume(telegram_message(1, "你好"))
+    receive(telegram_message(1, "你好"))
     @runtime.tick
     assert_equal ["sendMessageDraft"], @client.calls.map(&:first)
 
@@ -63,10 +63,10 @@ class TelegramDirectReplyTest < Minitest::Test
   def test_lost_acceptance_response_recovers_without_a_receipt_or_duplicate_answer
     @bridge.fail_input = true
     update = telegram_message(1, "Hello")
-    assert_raises(Rho::ConnectionError) { @runtime.consume(update) }
+    assert_raises(Rho::ConnectionError) { receive(update) }
     @runtime = runtime
-    @runtime.consume(update)
-    @runtime.consume(update)
+    receive(update)
+    receive(update)
     @bridge.current.merge!("status" => "completed")
     @bridge.turn_rows["conversation-1"] = [turn(0, "Hello!")]
     @runtime.tick

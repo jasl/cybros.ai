@@ -61,9 +61,8 @@ module Rho
         @driver_factory ||= -> { Driver.new(cli: @playwright_cli) }
       end
 
-      # The one session this process owns, built on first use — so a
-      # daemon with the extension loaded and no loop that ever touches a
-      # page never spawns a browser at all.
+      # The browsing session is built on first use. Startup's bounded
+      # prerequisite probe owns and closes a separate temporary browser.
       #
       # BUILT UNDER A LOCK, because `||=` is two operations and the first
       # two browser calls of a round arrive on two worker threads at
@@ -121,10 +120,25 @@ module Rho
         @log = api.log
         @idle_after = api.configuration.fetch("idle_seconds", Session::IDLE_SECONDS).to_f
         @playwright_cli = api.configuration["playwright_cli"]
+        LOCK.synchronize { @closed = false }
+        api.on(:startup) { check_prerequisites }
         TOOLS.each { |klass| api.register_tool(klass) }
         # A runner rebuilt for a new working directory keeps the session;
         # shutdown closes it even when calls are still draining.
         api.on(:shutdown) { close! }
+      end
+
+      # Verify the actual configured driver and Chromium once before publishing
+      # tools. The probe opens no page and releases its process immediately.
+      def check_prerequisites
+        driver = driver_factory.call
+        driver.start
+      rescue StandardError, LoadError
+        raise Rho::Runner::Extensions::PrerequisiteError,
+          "Browser tools could not start Playwright and Chromium. Install them with `npm i -g playwright && playwright install chromium`, " \
+          "or set the Browser plugin's Playwright driver command to a working installation, then enable the plugin again.", cause: nil
+      ensure
+        driver&.stop
       end
     end
   end

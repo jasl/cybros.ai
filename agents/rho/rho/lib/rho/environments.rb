@@ -578,7 +578,7 @@ module Rho
 
       def create(conversation, plane, binding, runner:)
         entry = door(plane, conversation).create(namespace: Extensions::Environment::STORE_NAMESPACE,
-          key: binding_key(runner), value: value_of(binding), idempotency_key: SecureRandom.uuid)
+          key: binding_key(runner), value: value_of(binding), idempotency_key: SecureRandom.uuid).store_entry
         written(conversation, entry, binding, runner:)
       rescue CybrosAgent::Api::Conflict => error
         raise unless error.code == "key_taken"

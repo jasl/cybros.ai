@@ -2,23 +2,23 @@
 <% runner = @grant.runner_only_connection? %>
 <% subject = device_grant_subject(@grant) %>
 <% machine = device_grant_machine_label(@grant) %>
-<% content_for :title, "Connect #{subject}" %>
+<% content_for :title, t("oauth.device_grants.show.connect_subject", subject: (subject)) %>
 
 <div class="mx-auto max-w-xl space-y-8">
   <header class="space-y-1">
-    <h1 class="text-2xl font-semibold tracking-tight">Connect <%= subject %></h1>
+    <h1 class="text-2xl font-semibold tracking-tight"><%= t("oauth.device_grants.show.connect_subject", subject: (subject)) %></h1>
     <p class="text-sm text-base-content/60">
-      Compare the code below with the <%= subject %>. Connect only when it matches exactly.
+      <%= t("oauth.device_grants.show.compare_the_code_below_with_the_subject_connect_only", subject: (subject)) %>
     </p>
   </header>
 
   <div class="rounded-box border border-base-300 bg-base-200 px-6 py-4 text-center">
-    <p class="text-xs text-base-content/60">Code shown by the <%= subject %></p>
+    <p class="text-xs text-base-content/60"><%= t("oauth.device_grants.show.code_shown_by_the_subject", subject: (subject)) %></p>
     <p class="mt-1 font-mono text-2xl tracking-widest"><%= @grant.formatted_user_code %></p>
   </div>
 
   <section>
-    <h2 class="mb-3 text-sm font-medium text-base-content/70"><%= runner ? machine : "Agent program" %></h2>
+    <h2 class="mb-3 text-sm font-medium text-base-content/70"><%= runner ? machine : t("oauth.device_grants.show.agent_program") %></h2>
     <div class="rounded-box border border-base-300 bg-base-200">
       <% device_grant_facts(@grant, existing_runner: @existing_runner).each do |label, value| %>
         <div class="flex flex-col gap-1 border-b border-base-300 px-6 py-3 last:border-0 sm:flex-row sm:items-center sm:gap-6">
@@ -30,31 +30,26 @@
   </section>
 
   <% if @grant.application_connection? %>
-    <p>This signs the application in as <strong><%= Current.user.display_name %></strong>, with access to your personal settings and any administration your current role permits.</p>
+    <p><%= t("oauth.device_grants.show.application_access_html", name: tag.strong(Current.user.display_name)) %></p>
   <% end %>
 
   <div role="alert" class="alert alert-warning alert-soft">
     <span class="iconify lucide--shield-alert size-5" aria-hidden="true"></span>
     <span class="text-sm">
-      Connect this only if you started it yourself, just now, on a machine you control. Completing
-      this connection grants the <%= subject %> the access described above.
+      <%= t("oauth.device_grants.show.connect_this_only_if_you_started_it_yourself_just", subject: (subject)) %>
       <% if @grant.mode_login? %>
-        Your existing Agent and Runner connection will keep running.
+        <%= t("oauth.device_grants.show.your_existing_agent_and_runner_connection_will_keep_running") %>
       <% else %>
-      If the same
-      <%= subject %> is already connected, then once this connection finishes it replaces the old
-      device immediately and its credentials stop working. Work already running there cannot move
-      and may fail, time out, or require reconciliation; work not yet started can continue on the
-      new device.
+      <%= t("oauth.device_grants.show.if_the_same_subject_is_already_connected_then_once", subject: (subject)) %>
       <% end %>
-      If someone sent you this code or this link, close this page.
+      <%= t("oauth.device_grants.show.if_someone_sent_you_this_code_or_this_link") %>
     </span>
   </div>
 
   <div class="flex flex-wrap items-center justify-end gap-3">
     <%= form_with url: oauth_device_grant_cancellation_path(@grant) do |form| %>
       <%= hidden_field_tag :return_to, oauth_device_grant_path(@grant) %>
-      <%= form.submit "Cancel", name: nil, class: "btn btn-ghost btn-sm" %>
+      <%= form.submit t("oauth.device_grants.show.cancel"), name: nil, class: "btn btn-ghost btn-sm" %>
     <% end %>
 
     <%= form_with url: oauth_device_grant_connection_path(@grant),
@@ -65,36 +60,33 @@
         <% if @existing_runner %>
           <div class="max-w-sm space-y-1 text-sm text-base-content/70">
             <p>
-              Assignment scope:
+              <%= t("oauth.device_grants.show.assignment_scope") %>
               <span class="badge badge-sm whitespace-nowrap">
-                <%= @existing_runner.account_wide? ? "Account-wide" : "Private" %>
+                <%= @existing_runner.account_wide? ? t("oauth.device_grants.show.account_wide") : t("oauth.device_grants.show.private") %>
               </span>
             </p>
             <p class="text-xs text-base-content/60">
-              Reconnecting keeps this registration's existing scope. Revoke the <%= machine %> first to
-              register it again with a different scope.
+              <%= t("oauth.device_grants.show.reconnecting_keeps_this_registration_s_existing_scope_revoke_the", subject: (machine)) %>
             </p>
           </div>
         <% elsif Current.user.admin? %>
           <fieldset class="fieldset max-w-md rounded-box border border-base-300 px-4 py-3 text-start">
-            <legend class="fieldset-legend">Assignment scope</legend>
+            <legend class="fieldset-legend"><%= t("oauth.device_grants.show.assignment_scope_legend") %></legend>
             <label class="label cursor-pointer items-start justify-start gap-3">
               <%= check_box_tag "connection[account_wide]", "1", false, class: "checkbox checkbox-sm mt-0.5" %>
-              <span class="font-medium">Make this <%= subject %> available account-wide</span>
+              <span class="font-medium"><%= t("oauth.device_grants.show.make_this_subject_available_account_wide", subject: (subject)) %></span>
             </label>
             <p class="text-xs text-base-content/60">
-              Leave this unchecked to keep discovery and new work private to Agents you
-              manage. Account-wide <%= subject %>s can be discovered by every eligible Agent in
-              this installation.
+              <%= t("oauth.device_grants.show.leave_this_unchecked_to_keep_discovery_and_new_work", subject: (subject)) %>
             </p>
           </fieldset>
         <% else %>
           <p class="max-w-sm text-sm text-base-content/60">
-            This <%= machine %> will be private to the Agents you manage.
+            <%= t("oauth.device_grants.show.this_subject_will_be_private_to_the_agents_you", subject: (machine)) %>
           </p>
         <% end %>
       <% end %>
-      <%= form.submit "Connect", name: nil, class: "btn btn-primary btn-sm" %>
+      <%= form.submit t("oauth.device_grants.show.connect"), name: nil, class: "btn btn-primary btn-sm" %>
     <% end %>
   </div>
 </div>

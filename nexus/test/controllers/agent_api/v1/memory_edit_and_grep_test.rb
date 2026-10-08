@@ -79,6 +79,18 @@ class AgentAPI::V1::MemoryEditAndGrepTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "grep rejects invalid and out of range limits at each HTTP door" do
+    doors.each do |base, _scope|
+      [-1, 0, "abc", 501].each do |limit|
+        post "#{base}/grep", headers: bearer, as: :json, params: { memory: { pattern: "x", limit: limit } }
+        assert_response :bad_request
+        assert_equal "parameter_invalid", response.parsed_body.dig("error", "code")
+      end
+      post "#{base}/grep", headers: bearer, as: :json, params: { memory: { pattern: "x", limit: 500 } }
+      assert_response :success
+    end
+  end
+
   test "all new memory routes require a member credential" do
     doors.each do |base, _scope|
       %w[grep edit].each do |verb|

@@ -6,5 +6,5 @@
   "archived" => "badge-ghost",
 } %>
 <span class="badge badge-sm whitespace-nowrap <%= styles.fetch(workspace.state) %>">
-  <%= workspace.state.capitalize %>
+  <%= t("workspace_states.#{workspace.state}") %>
 </span>

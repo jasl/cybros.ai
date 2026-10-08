@@ -34,9 +34,10 @@ GET .../operations?after=0&limit=100
 Claim-Token: <current claim token>
 ```
 
-`after` defaults to zero; `limit` defaults to 100 and is clamped to 1–200. Both use the
-shared nonnegative integer parser, with maximum 2147483647 and a `400` refusal for
-invalid values. The matching last claim may read its trace even after its deadline
+`after` defaults to zero and accepts integers from 0 through 2147483647.
+`limit` defaults to 100 and accepts integers from 1 through 200. Malformed or
+out-of-range values return `400 parameter_invalid` through the shared bounded-integer
+parser. The matching last claim may read its trace even after its deadline
 expires; mutation has stricter live-claim requirements.
 
 ```json

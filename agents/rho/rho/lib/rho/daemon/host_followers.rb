@@ -26,7 +26,7 @@ module Rho
       include Settlement
       include Materialization
 
-      DELIVERY_MODES = %w[steer queue].freeze
+      DELIVERY_MODES = %w[steer steer_now queue].freeze
       # The kernel's two "not before" spellings.
       SCHEDULE_FIELDS = %w[deliver_at deliver_in].freeze
       # Materialization is asynchronous (`DrainJob`): the daemon follows its
@@ -290,7 +290,7 @@ module Rho
           next Refusal.malformed("text or attachments are required") if text.strip.empty? && !attachments_present?(body)
 
           mode = body.fetch("delivery_mode", "steer").to_s
-          next Refusal.malformed("delivery_mode must be steer or queue") unless DELIVERY_MODES.include?(mode)
+          next Refusal.malformed("delivery_mode must be steer, steer_now or queue") unless DELIVERY_MODES.include?(mode)
           next Refusal.malformed("wait must be true or false") unless [true, false].include?(body.fetch("wait", true))
           next Refusal.malformed("kind must be direct_reply or message") unless [nil, "direct_reply", "message"].include?(body["kind"])
           if body["kind"] == "message"
@@ -300,7 +300,7 @@ module Rho
           next Refusal.malformed("inline must be a list") if inline.nil?
           # THE KERNEL'S WORD, before a byte is staged: a steer
           # takes no picture this slice; the verb's `--attach` queues.
-          if mode == "steer" && attachments_present?(body)
+          if mode != "queue" && attachments_present?(body)
             next Refusal.new(status: 422, code: "attachments_not_steerable",
               message: "A picture rides a queued turn, never a steer: say it with --mode queue")
           end

@@ -20,6 +20,10 @@ module CybrosAgent
       include WorkspaceProjections
       include Fields
 
+      Created = Data.define(:store_entry, :replayed) do
+        def replayed? = replayed
+      end
+
       attr_reader :path
 
       # `path` is the door: the store collection this context reads and
@@ -29,8 +33,8 @@ module CybrosAgent
         @path = required_string_snapshot(path, "path")
       end
 
-      def list(after: nil, limit: nil)
-        page(StoreEntrySummary, @dispatch.call(path, params: query(after:, limit:)), "store_entries")
+      def list(after: nil, limit: nil, order: nil)
+        page(StoreEntrySummary, @dispatch.call(path, params: query(after:, limit:, order:)), "store_entries")
       end
 
       # Creation demands the caller's own Idempotency-Key — the SDK never
@@ -38,14 +42,14 @@ module CybrosAgent
       def create(namespace:, key:, value:, idempotency_key:)
         required_string(idempotency_key, "idempotency_key")
 
-        answer = @dispatch.call(
+        answer = @dispatch.call_accepting(
           path,
           method: :post,
           body: { "store_entry" => { "namespace" => namespace, "key" => key, "value" => value } },
           headers: { "Idempotency-Key" => idempotency_key },
           success: 201
         )
-        shape(StoreEntry, answer, "store_entry")
+        Created.new(store_entry: shape(StoreEntry, answer.body, "store_entry"), replayed: answer.replayed)
       end
 
       def fetch(public_id)

@@ -136,6 +136,17 @@ class Conversation < ApplicationRecord
     where(workspace_id: workspace.id).listable.readable_by(user)
   end
 
+  # Direct fork provenance, including an empty Side. The closure owns this
+  # fact; the current read funnel decides whether the caller may name it.
+  def self.readable_source_public_ids(conversation_ids, user:, workspace:)
+    return {} if conversation_ids.empty?
+
+    ConversationAncestry.where(conversation_id: conversation_ids, depth: 1)
+      .joins(:ancestor_conversation)
+      .merge(visible_to(user, workspace: workspace))
+      .pluck(:conversation_id, "conversations.public_id").to_h
+  end
+
   # The live sides forked directly off any of these conversations — what a
   # parent's archive or tombstone reaps FIRST (leaves-first; a side is
   # never a subagent, so the tree walk does not reach it).

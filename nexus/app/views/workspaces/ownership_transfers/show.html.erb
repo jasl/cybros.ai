@@ -1,13 +1,12 @@
-<% content_for :title, "Transfer ownership" %>
+<% content_for :title, t("workspaces.ownership_transfers.show.transfer_ownership") %>
 
 <div class="space-y-8">
   <header class="space-y-4">
     <%= render "shared/back_navigation", path: workspace_path(@workspace), label: @workspace.name %>
     <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight">Transfer ownership</h1>
+      <h1 class="text-xl font-medium tracking-tight"><%= t("workspaces.ownership_transfers.show.transfer_ownership") %></h1>
       <p class="text-sm text-base-content/60">
-        Hand <span class="font-medium wrap-anywhere"><%= @workspace.name %></span> to another active
-        member. You stop managing it immediately; if it is private, your data access moves with it.
+        <%= t("workspaces.ownership_transfers.show.transfer_description_html", workspace: tag.span(@workspace.name, class: "font-medium wrap-anywhere")) %>
       </p>
     </div>
   </header>
@@ -30,7 +29,7 @@
               <p class="text-sm text-base-content/60 hyphens-none wrap-anywhere"><%= candidate.email %></p>
             </div>
             <div class="list-col-wrap justify-self-start sm:justify-self-end sm:[grid-row-start:1]">
-              <%= button_to "Transfer",
+              <%= button_to t("workspaces.ownership_transfers.show.transfer"),
                 workspace_ownership_transfer_path(@workspace),
                 method: :post,
                 params: {
@@ -41,19 +40,19 @@
                   },
                 },
                 class: "btn btn-sm btn-primary",
-                aria: { label: "Transfer to #{candidate.display_name}" },
-                data: { turbo_confirm: "Transfer #{@workspace.name} to #{candidate.display_name}? They become the owner immediately and you stop managing it." } %>
+                aria: { label: t("workspaces.ownership_transfers.show.transfer_to_member", member: (candidate.display_name)) },
+                data: { turbo_confirm: t("workspaces.ownership_transfers.show.transfer_confirmation", workspace: (@workspace.name), member: (candidate.display_name)) } %>
             </div>
           </li>
         <% end %>
       </ul>
     <% else %>
       <div class="px-4 py-10 text-center">
-        <p class="text-sm font-medium">No matching members</p>
-        <p class="mt-1 text-sm text-base-content/60">Try a different name or email address.</p>
+        <p class="text-sm font-medium"><%= t("workspaces.ownership_transfers.show.no_matching_members") %></p>
+        <p class="mt-1 text-sm text-base-content/60"><%= t("workspaces.ownership_transfers.show.try_a_different_name_or_email_address") %></p>
       </div>
     <% end %>
   </section>
 
-  <%= render "shared/pagination_footer", pagy: @candidates_pagy, noun: "eligible members", aria_label: "Transfer candidates pages" %>
+  <%= render "shared/pagination_footer", pagy: @candidates_pagy, noun: "eligible_members", aria_label: t("workspaces.ownership_transfers.show.transfer_candidates_pages") %>
 </div>

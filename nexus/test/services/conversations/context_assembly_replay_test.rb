@@ -10,7 +10,9 @@ class Conversations::ContextAssemblyReplayTest < ActiveSupport::TestCase
 
   # A resolved selection's duck: the target is read off it and nothing else.
   Selection = Data.define(:provider_id, :execution_profile, :reasoning, :capabilities)
-  Pin = Data.define(:model_pin)
+  Pin = Data.define(:model_pin) do
+    def wire_option(_key) = nil
+  end
   Reasoning = Data.define(:enabled)
   Capabilities = Data.define(:reasoning_replay)
 

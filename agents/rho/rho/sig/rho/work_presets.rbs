@@ -1,0 +1,9 @@
+module Rho
+  module WorkPresets
+    NAMES: Array[String]
+    MAX_BYTES: Integer
+    COMPACT: String
+    PROMPTS: Hash[String, String]
+    def self.resolve: (work_preset: String, custom_instructions: String?, base_prompt: String?) -> String
+  end
+end

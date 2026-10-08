@@ -12,6 +12,19 @@ class ModelCatalog::ProfileBuilderTest < ActiveSupport::TestCase
   B = ModelCatalog::ProfileBuilder
   AF = SimpleInference::ApiFormat
 
+  test "row headers override provider headers independently of authentication" do
+    profile = B.call(model_ref: "gateway/m",
+      provider: { "api_format" => "anthropic_messages", "authentication" => "bearer",
+        "request_headers" => { "User-Agent" => "provider-client", "X-Routing" => "provider-route" } },
+      model: { "request_headers" => { "user-agent" => "model-client" } })
+    assert_equal "bearer", profile.authentication
+    assert_equal({ "user-agent" => "model-client", "x-routing" => "provider-route" }, profile.request_headers)
+    assert_raises(SimpleInference::ConfigurationError) do
+      B.call(model_ref: "gateway/m", provider: { "api_format" => "anthropic_messages" },
+        model: { "request_headers" => { "AUTHORIZATION" => "static-secret" } })
+    end
+  end
+
   test "a model that states nothing inherits its whole wire from the format" do
     profile = B.call(
       model_ref: "local/sample-text",
@@ -149,9 +162,9 @@ class ModelCatalog::ProfileBuilderTest < ActiveSupport::TestCase
   # `prompt_caching` has it on every text-generation wire and on no
   # image/speech/transcription/embedding one; `false` is the one opt-out,
   # and a written `true` says nothing more than silence does. The
-  # BREAKPOINT placement stays the Anthropic wire's alone — a different
+  # BREAKPOINT placement belongs to Messages and Bedrock — a different
   # predicate, read by Build, never by the capability.
-  test "a silent row has prompt_caching on every text wire, breakpoints on the Anthropic wire alone" do
+  test "a silent row has prompt_caching on every text wire, with explicit native breakpoint wires" do
     silent = ->(api_format) do
       B.call(
         model_ref: "lane/m", provider: { "api_format" => api_format, "credentials" => "none" }, model: {}
@@ -168,8 +181,10 @@ class ModelCatalog::ProfileBuilderTest < ActiveSupport::TestCase
       refute silent.call(api_format), "#{api_format} has no prompt to cache"
       refute ModelRequests::WireLowering.carries_prompt_caching?(api_format)
     end
-    assert ModelRequests::WireLowering.carries_cache_breakpoints?("anthropic_messages")
-    (AF::FORMATS - %w[anthropic_messages]).each do |api_format|
+    %w[anthropic_messages bedrock_converse].each do |api_format|
+      assert ModelRequests::WireLowering.carries_cache_breakpoints?(api_format)
+    end
+    (AF::FORMATS - %w[anthropic_messages bedrock_converse]).each do |api_format|
       refute ModelRequests::WireLowering.carries_cache_breakpoints?(api_format), "#{api_format}: nothing for the kernel to mark"
     end
 
@@ -228,7 +243,8 @@ class ModelCatalog::ProfileBuilderTest < ActiveSupport::TestCase
         model: { "capabilities" => capabilities }
       )
     end
-    text_wires = AF::WORKLOADS.select { |_format, workload| workload == "text_generation" }.keys
+    text_wires = AF::WORKLOADS.select { |_format, workload| workload == "text_generation" }.keys -
+      %w[bedrock_converse pi_messages]
 
     text_wires.each do |api_format|
       descriptor = profile.call(api_format).generation_parameters["output_format"]
@@ -242,7 +258,7 @@ class ModelCatalog::ProfileBuilderTest < ActiveSupport::TestCase
       "the Messages protocol lowers json_schema alone (text and json_object are its local rejections)"
     (AF::FORMATS - text_wires).each do |api_format|
       refute profile.call(api_format).generation_parameters.key?("output_format"),
-        "#{api_format} is no text lane; its response_format, where declared, names a container"
+        "#{api_format} has no structured text format contract"
       refute ModelRequests::WireLowering.carries_output_format?(api_format)
     end
 

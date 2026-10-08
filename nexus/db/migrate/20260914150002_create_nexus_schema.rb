@@ -659,7 +659,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.index ["spawn_node_id"], name: "index_conversations_on_spawn_node_id", unique: true, where: "(spawn_node_id IS NOT NULL)"
       t.index ["tombstoned_at", "id"], name: "index_conversations_reap_frontier", where: "(tombstoned_at IS NOT NULL)"
       t.index ["workspace_id", "id"], name: "index_conversations_on_workspace_id_and_id"
-      t.index ["workspace_id", "last_activity_at", "id"], name: "index_conversations_on_workspace_activity", where: "(tombstoned_at IS NULL)"
+      t.index ["workspace_id", "last_activity_at", "public_id"], name: "index_conversations_on_workspace_activity", where: "(tombstoned_at IS NULL)"
       t.index ["workspace_id", "public_id"], name: "index_conversations_on_workspace_and_listable_public_id", where: "(tombstoned_at IS NULL)"
     end
 

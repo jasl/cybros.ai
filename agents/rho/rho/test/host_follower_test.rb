@@ -80,7 +80,7 @@ class HostFollowerTest < Minitest::Test
     child = CybrosAgent::Api::ConversationSummary.new(
       public_id: "c-child", title: nil, answering_user_public_id: "peer-1", archived_at: nil, billing_subject: nil,
       parent: CybrosAgent::Api::ConversationParent.new(public_id: "c-1", spawn_node_key: "r2t0", label: "reviewer"),
-      forked_from_turn_public_id: nil, forked_from_variant_public_id: nil, side: false,
+      source_conversation_public_id: nil, forked_from_turn_public_id: nil, forked_from_variant_public_id: nil, side: false,
       active_turn_public_id: "t-9", context_revision: 0, last_activity_at: nil,
       created_at: "2026-09-12T00:00:00Z", updated_at: "2026-09-12T00:00:00Z"
     )
@@ -115,7 +115,7 @@ class HostFollowerTest < Minitest::Test
       CybrosAgent::Api::ConversationSummary.new(
         public_id: public_id, title: nil, answering_user_public_id: "peer-1", archived_at: nil, billing_subject: nil,
         parent: CybrosAgent::Api::ConversationParent.new(public_id: "c-1", spawn_node_key: nil, label: nil),
-        forked_from_turn_public_id: nil, forked_from_variant_public_id: nil, side: false,
+        source_conversation_public_id: nil, forked_from_turn_public_id: nil, forked_from_variant_public_id: nil, side: false,
         active_turn_public_id: nil, context_revision: 0, last_activity_at: nil,
         created_at: "2026-09-12T00:00:00Z", updated_at: "2026-09-12T00:00:00Z"
       )

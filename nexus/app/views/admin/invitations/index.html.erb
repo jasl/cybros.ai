@@ -1,9 +1,9 @@
-<% content_for :title, "Invitations" %>
+<% content_for :title, t("admin.invitations.index.invitations") %>
 
 <div class="space-y-8">
   <header class="space-y-1">
-    <h1 class="text-xl font-medium tracking-tight">Invitations</h1>
-    <p class="text-sm text-base-content/60">Invite people by email; each address holds one current invitation</p>
+    <h1 class="text-xl font-medium tracking-tight"><%= t("admin.invitations.index.invitations") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("admin.invitations.index.invite_people_by_email_each_address_holds_one_current") %></p>
   </header>
 
   <% mail_configured = ApplicationMailer.delivery_configured? %>
@@ -11,30 +11,29 @@
   <section class="rounded-box border border-base-300 bg-base-200 p-4">
     <% unless mail_configured %>
       <p class="mb-3 text-sm text-base-content/60">
-        Outbound email is not configured, so invitations are not emailed — share each unexpired
-        invitation's link manually instead.
+        <%= t("admin.invitations.index.outbound_email_is_not_configured_so_invitations_are_not") %>
       </p>
     <% end %>
     <%= form_with url: admin_invitations_path, scope: :invitation do |form| %>
       <div class="flex flex-wrap items-start gap-2">
         <div class="min-w-64 grow">
-          <%= form.label :email, "Email", class: "sr-only" %>
+          <%= form.label :email, t("admin.invitations.index.email"), class: "sr-only" %>
           <%= form.email_field :email, required: true, placeholder: "person@example.com", class: "input input-sm w-full" %>
         </div>
         <div>
-          <%= form.label :role, "Role", class: "sr-only" %>
-          <%= form.select :role, Invitation.roles.keys.map { |role| [ role.humanize, role ] }, {}, class: "select select-sm w-32" %>
+          <%= form.label :role, t("admin.invitations.index.role"), class: "sr-only" %>
+          <%= form.select :role, Invitation.roles.keys.map { |role| [ t("members.role_options.#{role}"), role ] }, {}, class: "select select-sm w-32" %>
         </div>
-        <%= form.submit mail_configured ? "Send invitation" : "Create invitation", class: "btn btn-primary btn-sm" %>
+        <%= form.submit mail_configured ? t("admin.invitations.index.send_invitation") : t("admin.invitations.index.create_invitation"), class: "btn btn-primary btn-sm" %>
       </div>
     <% end %>
   </section>
 
   <div class="space-y-4">
     <div class="flex justify-end">
-      <nav aria-label="Invitation filters" class="tabs tabs-box tabs-sm w-full sm:w-auto">
-        <%= link_to "Pending", admin_invitations_path, class: class_names("tab flex-1 sm:flex-none", "tab-active": @invitation_filter == :pending), aria: { current: ("page" if @invitation_filter == :pending) } %>
-        <%= link_to "All", admin_invitations_path(filter: "all"), class: class_names("tab flex-1 sm:flex-none", "tab-active": @invitation_filter == :all), aria: { current: ("page" if @invitation_filter == :all) } %>
+      <nav aria-label="<%= t("admin.invitations.index.invitation_filters") %>" class="tabs tabs-box tabs-sm w-full sm:w-auto">
+        <%= link_to t("admin.invitations.index.pending"), admin_invitations_path, class: class_names("tab flex-1 sm:flex-none", "tab-active": @invitation_filter == :pending), aria: { current: ("page" if @invitation_filter == :pending) } %>
+        <%= link_to t("admin.invitations.index.all"), admin_invitations_path(filter: "all"), class: class_names("tab flex-1 sm:flex-none", "tab-active": @invitation_filter == :all), aria: { current: ("page" if @invitation_filter == :all) } %>
       </nav>
     </div>
 
@@ -46,56 +45,56 @@
             <div class="list-col-grow min-w-0">
               <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h2 class="min-w-0 font-medium hyphens-none wrap-anywhere"><%= invitation.email %></h2>
-                <span class="badge badge-ghost badge-sm whitespace-nowrap"><%= invitation.role %></span>
+                <span class="badge badge-ghost badge-sm whitespace-nowrap"><%= t("members.roles.#{invitation.role}") %></span>
                 <% if expired %>
-                  <span class="badge badge-warning badge-sm">Expired</span>
+                  <span class="badge badge-warning badge-sm"><%= t("admin.invitations.index.expired") %></span>
                 <% end %>
               </div>
 
               <div class="mt-2 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-xs text-base-content/60">
-                <span class="min-w-0 wrap-anywhere">Invited by <%= invitation.inviter.display_name %></span>
+                <span class="min-w-0 wrap-anywhere"><%= t("admin.invitations.index.invited_by_inviter", inviter: (invitation.inviter.display_name)) %></span>
                 <% if invitation.delivery_requested? %>
-                  <span title="<%= invitation.last_delivery_requested_at.to_fs(:long) %>">
-                    Email requested <%= time_ago_in_words(invitation.last_delivery_requested_at) %> ago
+                  <span title="<%= l(invitation.last_delivery_requested_at, format: :long) %>">
+                    <%= t("admin.invitations.index.email_requested_elapsed_ago", elapsed: (time_ago_in_words(invitation.last_delivery_requested_at))) %>
                   </span>
                 <% else %>
-                  <span class="badge badge-ghost badge-sm">Link only</span>
+                  <span class="badge badge-ghost badge-sm"><%= t("admin.invitations.index.link_only") %></span>
                 <% end %>
                 <% unless expired %>
-                  <span>Expires in <%= distance_of_time_in_words_to_now(invitation.expires_at) %></span>
+                  <span><%= t("admin.invitations.index.expires_in_remaining", remaining: (distance_of_time_in_words_to_now(invitation.expires_at))) %></span>
                 <% end %>
               </div>
             </div>
 
             <div class="list-col-wrap flex flex-wrap justify-start gap-1 sm:justify-end sm:[grid-row-start:1]">
               <% if !mail_configured %>
-                <%= button_to invitation.delivery_requested? ? "Resend" : "Send email", admin_invitation_resend_path(invitation), disabled: true, class: "btn btn-ghost btn-sm", title: t("admin.invitations.mail_delivery_unavailable") %>
+                <%= button_to invitation.delivery_requested? ? t("admin.invitations.index.resend") : t("admin.invitations.index.send_email"), admin_invitation_resend_path(invitation), disabled: true, class: "btn btn-ghost btn-sm", title: t("admin.invitations.mail_delivery_unavailable") %>
               <% else %>
                 <% wait = invitation.resend_available_in.ceil %>
                 <% if wait.positive? %>
-                  <div data-controller="countdown" data-countdown-seconds-value="<%= wait %>">
-                    <%= button_to "Resend in #{wait}s", admin_invitation_resend_path(invitation), disabled: true, class: "btn btn-ghost btn-sm", data: { countdown_target: "button", countdown_label: "Resend" } %>
+                  <div data-controller="countdown" data-countdown-seconds-value="<%= wait %>" data-countdown-pending-label-value="<%= t("countdown.pending", label: t("admin.invitations.index.resend"), seconds: "%{seconds}") %>">
+                    <%= button_to t("admin.invitations.index.resend_in_seconds", seconds: (wait)), admin_invitation_resend_path(invitation), disabled: true, class: "btn btn-ghost btn-sm", data: { countdown_target: "button", countdown_label: t("admin.invitations.index.resend") } %>
                   </div>
                 <% else %>
-                  <%= button_to invitation.delivery_requested? ? "Resend" : "Send email", admin_invitation_resend_path(invitation), class: "btn btn-ghost btn-sm" %>
+                  <%= button_to invitation.delivery_requested? ? t("admin.invitations.index.resend") : t("admin.invitations.index.send_email"), admin_invitation_resend_path(invitation), class: "btn btn-ghost btn-sm" %>
                 <% end %>
               <% end %>
-              <%= button_to "Revoke", admin_invitation_path(invitation), method: :delete, class: "btn btn-ghost btn-sm text-error", data: { turbo_confirm: "Revoke the invitation for #{invitation.email}? Every shared or emailed link stops working." } %>
+              <%= button_to t("admin.invitations.index.revoke"), admin_invitation_path(invitation), method: :delete, class: "btn btn-ghost btn-sm text-error", data: { turbo_confirm: t("admin.invitations.index.revoke_the_invitation_for_email_every_shared_or_emailed", email: (invitation.email)) } %>
             </div>
 
             <div class="col-span-full min-w-0 space-y-1.5 [grid-row-start:3] sm:[grid-row-start:2]">
-              <p class="text-xs font-medium text-base-content/70">Invitation link</p>
-              <div class="flex min-w-0 gap-2" data-controller="clipboard">
-                <%= text_field_tag :acceptance_link, join_url(**external_url_options, token: invitation.acceptance_token), readonly: true, class: "input input-sm min-w-0 w-full flex-1 font-mono text-xs", data: { clipboard_target: "source" }, aria: { label: "Invitation link for #{invitation.email}" }, id: nil %>
+              <p class="text-xs font-medium text-base-content/70"><%= t("admin.invitations.index.invitation_link") %></p>
+              <div class="flex min-w-0 gap-2" data-controller="clipboard" data-clipboard-copied-value="<%= t("clipboard.copied") %>">
+                <%= text_field_tag :acceptance_link, join_url(**external_url_options, token: invitation.acceptance_token), readonly: true, class: "input input-sm min-w-0 w-full flex-1 font-mono text-xs", data: { clipboard_target: "source" }, aria: { label: t("admin.invitations.index.invitation_link_for_email", email: (invitation.email)) }, id: nil %>
                 <% if expired %>
-                  <button type="button" class="btn btn-ghost btn-sm shrink-0" data-clipboard-target="button" disabled>Expired</button>
+                  <button type="button" class="btn btn-ghost btn-sm shrink-0" data-clipboard-target="button" disabled><%= t("admin.invitations.index.expired") %></button>
                 <% else %>
-                  <button type="button" class="btn btn-ghost btn-sm shrink-0" data-clipboard-target="button" data-action="clipboard#copy">Copy</button>
+                  <button type="button" class="btn btn-ghost btn-sm shrink-0" data-clipboard-target="button" data-action="clipboard#copy"><%= t("admin.invitations.index.copy") %></button>
                 <% end %>
               </div>
               <% if expired %>
                 <p class="text-xs text-base-content/70">
-                  <%= mail_configured ? "Resend before sharing this link." : "Revoke and create a replacement before sharing." %>
+                  <%= mail_configured ? t("admin.invitations.index.resend_before_sharing_this_link") : t("admin.invitations.index.revoke_and_create_a_replacement_before_sharing") %>
                 </p>
               <% end %>
             </div>
@@ -105,13 +104,13 @@
     <% else %>
       <section class="rounded-box border border-base-300 bg-base-200 p-6">
         <% if @invitation_filter == :pending %>
-          <p class="text-sm text-base-content/60">No pending invitations. Expired invitations remain available under All.</p>
+          <p class="text-sm text-base-content/60"><%= t("admin.invitations.index.no_pending_invitations_expired_invitations_remain_available_under_all") %></p>
         <% else %>
-          <p class="text-sm text-base-content/60">No invitations. Members appear on the Members page once they accept.</p>
+          <p class="text-sm text-base-content/60"><%= t("admin.invitations.index.no_invitations_members_appear_on_the_members_page_once") %></p>
         <% end %>
       </section>
     <% end %>
 
-    <%= render "shared/pagination_footer", pagy: @invitations_pagy, noun: "invitations", aria_label: "Invitations pages" %>
+    <%= render "shared/pagination_footer", pagy: @invitations_pagy, noun: "invitations", aria_label: t("admin.invitations.index.invitations_pages") %>
   </div>
 </div>

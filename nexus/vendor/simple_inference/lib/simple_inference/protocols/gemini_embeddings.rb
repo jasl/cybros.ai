@@ -113,11 +113,7 @@ module SimpleInference
       end
 
       def gemini_headers(connection_config)
-        headers = connection_config.headers.reject { |key, _value| key.to_s.casecmp("authorization").zero? }
-        return headers if connection_config.api_key.nil?
-
-        # No api_key means NO credential header — never an empty "x-goog-api-key".
-        headers.merge("x-goog-api-key" => connection_config.api_key)
+        connection_config.authentication_headers(default: "x-goog-api-key")
       end
 
       def compiled_connection_headers(connection_config)

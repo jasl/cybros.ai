@@ -57,6 +57,10 @@ HTTP/controller rules belong to `.ai/api.md`; persistence, locking, and transact
 - API-callable read/status predicates are side-effect-free, lock-free, and IO-free. Long IO belongs
   in jobs or named blocking entrypoints, never render paths. Database-independent support lives in
   `lib/nexus`.
+  Deployment administration follows `.ai/api.md`'s bounded local-IPC exception: a configured
+  Unix-socket client reads the separate installation owner's Nexus-only state without Rails persistence.
+  Registry checks are explicit commands; application lifecycle work never runs in a Rails job.
+  Agent application and combined-installation upgrades stay outside Nexus administration.
 
 ## Closed Internal Shapes
 

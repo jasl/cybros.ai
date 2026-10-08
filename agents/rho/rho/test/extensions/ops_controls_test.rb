@@ -445,6 +445,18 @@ class OpsControlsTest < Minitest::Test
     refute default.key?("tool_names"), "an omitted subset cannot prove a read-only admission"
   end
 
+  def test_send_now_promotes_the_exact_pending_input_without_rewriting_its_content
+    api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE, workspaces: [{ public_id: "ws-1", name: "Original" }])
+    daemon = member_ready(boot, api)
+    body = { public_id: "c-1", input_public_id: "cin-1", host_type: "conversation", workspace_public_id: "ws-1", delivery_mode: "steer_now" }
+
+    response = request(daemon, :post, "/inputs/update", token: bearer(daemon), body: body)
+
+    assert_equal "200", response.code, response.body
+    assert_equal [["cin-1", { "input" => { "delivery_mode" => "steer_now" } }]], api.input_updates
+    assert_equal "400", request(daemon, :post, "/inputs/update", token: bearer(daemon), body: body.merge(delivery_mode: "queue")).code
+  end
+
   # A kernel-origin row is nobody's to change: the
   # kernel's 409 relays with its code and its sentence, never re-worded.
   def test_the_inputs_routes_relay_the_kernels_refusal_on_a_kernel_origin_row

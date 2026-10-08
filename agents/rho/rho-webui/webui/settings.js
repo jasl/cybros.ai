@@ -1,8 +1,12 @@
+import { t } from "./i18n.js";
 import { el } from "./views.js";
 import { automaticModel, setupProgress, webLink } from "./settings_state.js";
 import { settingsEditor } from "./settings_editor.js";
 import { telegramSettings } from "./telegram_settings.js";
 import { pluginSettings } from "./plugin_settings.js";
+import { pluginSaveMessage } from "./plugin_draft.js";
+import { packageSettings } from "./package_settings.js";
+import { promptSettings } from "./prompt_settings.js";
 
 const button = (text, onclick, attrs = {}) => el("button", { type: "button", text, onclick, ...attrs });
 
@@ -31,46 +35,53 @@ export function createSettings({ shell, notice, call, onChanged, onError, onUse 
   const automaticAttempts = new Set();
   const alert = el("p", { class: "bad", role: "alert", tabindex: "-1", hidden: true });
   const saved = el("p", { class: "settings-saved", role: "status", hidden: true });
-  const complete = el("p", { class: "settings-progress", role: "status", text: "rho is ready to use", hidden: true });
+  const complete = el("p", { class: "settings-progress", role: "status", text: t("common.rho_is_ready_to_use"), hidden: true });
   const nexusStatus = el("p", { class: "muted" });
-  const connectionSection = el("section", { class: "settings-section", "aria-label": "Nexus account" },
-    el("h3", { text: "Nexus account" }), nexusStatus);
+  const connectionSection = el("section", { class: "settings-section", "aria-label": t("common.nexus_account") },
+    el("h3", { text: t("common.nexus_account") }), nexusStatus);
   const telegram = telegramSettings({ write: async (path, body) => {
     const answer = await write(path, body, "POST");
     if (!answer || path !== "/telegram/configuration") return answer;
     return call("/telegram", { signal: session.signal });
-  }, showError,
+  }, showError, activate: async () => {
+    const answer = await write("/extensions/rho.ingress_telegram/enable", {}, "POST");
+    if (answer) acknowledge(pluginSaveMessage(answer));
+    await refresh();
+  },
     changed: async (answer, message) => { telegramDocument = answer; acknowledge(message); await refresh(); } });
   const modelStatus = el("p", { class: "muted" });
   const modelLink = el("div");
   const model = el("select", { name: "default_model", required: true, onchange: () => { modelDirty = true; } });
-  const modelSave = el("button", { type: "submit", text: "Save default model" });
-  const modelFields = el("fieldset", { class: "settings-fields" }, el("label", {}, "Default model", model), modelSave);
+  const modelSave = el("button", { type: "submit", text: t("settings.save_default_model") });
+  const modelFields = el("fieldset", { class: "settings-fields" }, el("label", {}, t("settings.default_model_2"), model), modelSave);
   const modelForm = el("form", { class: "settings-form", onsubmit: async (event) => {
     event.preventDefault(); modelFields.disabled = true;
     try {
       if (await save({ default_model: model.value })) { modelDirty = false; paintModel(); }
     } finally { modelFields.disabled = !status?.connected; }
   } }, modelFields);
-  const modelSection = el("section", { class: "settings-section", "aria-label": "Model setup" },
-    el("h3", { text: "Configure a model in Nexus" }), modelStatus, modelLink,
-    el("p", { class: "faint", text: "Add or enable a model in Nexus, then return here. This page checks the available models again when you return. It keeps your saved default, or selects the only eligible model when no default is saved." }), modelForm);
+  const modelSection = el("section", { class: "settings-section", "aria-label": t("settings.model_setup") },
+    el("h3", { text: t("settings.configure_a_model_in_nexus") }), modelStatus, modelLink,
+    el("p", { class: "faint", text: t("settings.add_or_enable_a_model_in_nexus_then") }), modelForm);
   const defaults = el("p", { class: "faint" });
-  const use = button("Start using rho", () => { dialog.close(); onUse(); }, { class: "primary", hidden: true });
+  const use = button(t("settings.start_using_rho"), () => { dialog.close(); onUse(); }, { class: "primary", hidden: true });
   const advanced = settingsEditor({ save, showError });
+  const prompts = promptSettings({ save, showError });
   const plugins = pluginSettings({ call, signal: session.signal, showError, changed: async () => { await refresh(); } });
-  const refreshButton = button("Refresh status", () => refresh());
+  const packages = packageSettings({ call, signal: session.signal, showError, changed: async () => { await refresh(); } });
+  const refreshButton = button(t("settings.refresh_status"), () => refresh());
   const dialog = el("dialog", { class: "task-dialog settings-dialog", "aria-labelledby": "settings-title" },
-    el("div", { class: "settings-heading" }, el("h2", { id: "settings-title", text: "Settings" }),
-      el("div", { class: "settings-actions" }, refreshButton, button("Close", () => dialog.close()))),
-    alert, saved, connectionSection, telegram.element, modelSection, defaults, complete, use, plugins.element, advanced.element);
+    el("div", { class: "settings-heading" }, el("h2", { id: "settings-title", text: t("common.settings") }),
+      el("div", { class: "settings-actions" }, refreshButton, button(t("common.close"), () => dialog.close()))),
+    alert, saved, connectionSection, telegram.element, modelSection, defaults, complete, use,
+    prompts.element, plugins.element, packages.element, advanced.element);
   shell.append(dialog);
-  dialog.addEventListener("close", () => { telegram.clearToken(); advanced.clearSecrets(); plugins.clearSecrets(); });
+  dialog.addEventListener("close", () => { telegram.clearToken(); advanced.clearSecrets(); plugins.clearSecrets(); packages.clearSecrets(); });
   const alive = () => !session.signal.aborted;
 
   function showError(error) {
     if (!alive() || error.name === "AbortError") return;
-    alert.textContent = error.message || "The request failed. Your changes have not been confirmed. Refresh status before retrying.";
+    alert.textContent = error.message || t("settings.the_request_failed_your_changes_have_not_been");
     alert.hidden = false; saved.hidden = true;
     if (dialog.open) alert.focus();
     if (error.status === 401) onError(error);
@@ -97,30 +108,30 @@ export function createSettings({ shell, notice, call, onChanged, onError, onUse 
   async function save(changes) {
     const answer = await write("/settings", changes, "PATCH");
     if (!answer) return null;
-    document = answer; advanced.update(document, choices);
-    acknowledge("Settings saved and active.");
+    document = answer; advanced.update(document, choices); prompts.update(document);
+    acknowledge(t("settings.settings_saved_and_active"));
     await refresh();
     return document;
   }
   function paintConnection() {
     const human = identity?.human;
     nexusStatus.textContent = human
-      ? `Signed in to Nexus as ${human.display_name || human.public_id} (${human.role}).`
-      : "Your Nexus session is unavailable. Sign out and connect again.";
+      ? t("settings.signed_in_to_nexus_as", { value1: human.display_name || human.public_id, role: t(`roles.${human.role}`, {}, human.role) })
+      : t("settings.your_nexus_session_is_unavailable_sign_out_and");
   }
   function paintModel() {
     const state = status?.model;
     const rows = state?.eligible || [];
-    modelStatus.textContent = state?.ready ? `Default model: ${state.default_model}.`
-      : state?.default_model ? `The saved default ${state.default_model} is unavailable. Enable it in Nexus or choose another model.`
-        : rows.length ? "Choose a default from the available models." : "To do: add an available text model with tool support in Nexus.";
+    modelStatus.textContent = state?.ready ? t("settings.default_model", { default_model: state.default_model })
+      : state?.default_model ? t("settings.the_saved_default_is_unavailable_enable_it_in", { default_model: state.default_model })
+        : rows.length ? t("settings.choose_a_default_from_the_available_models") : t("settings.to_do_add_an_available_text_model_with");
     const url = webLink(document?.nexus.model_settings_url);
-    modelLink.replaceChildren(...(url ? [el("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: "Open Nexus model settings" })] : []));
+    modelLink.replaceChildren(...(url ? [el("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: t("settings.open_nexus_model_settings") })] : []));
     if (!modelDirty) {
-      model.replaceChildren(el("option", { value: "", text: rows.length > 1 ? "Choose a default model" : "No default selected" }),
+      model.replaceChildren(el("option", { value: "", text: rows.length > 1 ? t("settings.choose_a_default_model") : t("settings.no_default_selected") }),
         ...rows.map((row) => el("option", { value: row.ref, text: row.display_name ? `${row.display_name} · ${row.ref}` : row.ref })));
       if (state?.default_model && !rows.some((row) => row.ref === state.default_model)) {
-        model.append(el("option", { value: state.default_model, text: `${state.default_model} · unavailable`, disabled: true }));
+        model.append(el("option", { value: state.default_model, text: t("common.unavailable_item", { name: state.default_model }), disabled: true }));
       }
       model.value = state?.default_model || "";
     }
@@ -129,7 +140,7 @@ export function createSettings({ shell, notice, call, onChanged, onError, onUse 
   }
   function paint() {
     const step = setupProgress(status, telegramDocument);
-    notice.replaceChildren(el("span", { text: "Finish setup in Settings." }), button("Open settings", () => open()));
+    notice.replaceChildren(el("span", { text: t("settings.finish_setup_in_settings") }), button(t("settings.open_settings"), () => open()));
     notice.hidden = step.ready;
     for (const [name, section] of [["connection", connectionSection], ["telegram", telegram.element], ["model", modelSection]]) {
       section.classList.toggle("settings-current", step.step === name);
@@ -137,10 +148,10 @@ export function createSettings({ shell, notice, call, onChanged, onError, onUse 
     use.hidden = !step.ready;
     complete.hidden = !step.ready;
     defaults.textContent = status?.defaults?.tools_ready && status?.defaults?.runner_executor_public_id
-      ? "Agent tools and the default runner are ready. Working location and other options are under More settings."
-      : "Agent and tool defaults are installed. Runner readiness updates after Nexus connects.";
+      ? t("settings.agent_tools_and_the_default_runner_are_ready")
+      : t("settings.agent_and_tool_defaults_are_installed_runner_readiness");
     paintConnection(); paintModel();
-    telegram.update(telegramDocument); advanced.update(document, choices);
+    telegram.update(telegramDocument, plugins.get("rho.ingress_telegram")); advanced.update(document, choices); prompts.update(document);
   }
   async function refresh({ notify = true } = {}) {
     if (!alive() || busy) return;
@@ -148,7 +159,7 @@ export function createSettings({ shell, notice, call, onChanged, onError, onUse 
     refreshButton.disabled = true;
     try {
       const [[configuration, readiness, telegramState, humanIdentity]] = await Promise.all([
-        settingsSnapshot(call, session.signal), plugins.refresh(),
+        settingsSnapshot(call, session.signal), plugins.refresh(), packages.refresh(),
       ]);
       if (!alive() || version !== reading) return;
       document = configuration; status = readiness; telegramDocument = telegramState; identity = humanIdentity;
@@ -163,7 +174,7 @@ export function createSettings({ shell, notice, call, onChanged, onError, onUse 
           const readiness = await call("/settings/status", { signal: session.signal });
           if (!alive() || afterWrite !== reading) return;
           status = readiness;
-          acknowledge(`Default model selected: ${automatic}.`); paint();
+          acknowledge(t("settings.default_model_selected", { automatic: automatic })); paint();
         }
       }
       if (notify) await onChanged(document, status);
@@ -188,6 +199,6 @@ export function createSettings({ shell, notice, call, onChanged, onError, onUse 
   }
   window.addEventListener("focus", () => refresh().then(() => { if (dialog.open) return loadChoices(); }), { signal: session.signal });
   return { open, refresh, document: () => document, status: () => status, destroy: () => {
-    session.abort(); telegram.clearToken(); advanced.clearSecrets(); plugins.clearSecrets(); dialog.close(); dialog.remove();
+    session.abort(); telegram.clearToken(); advanced.clearSecrets(); plugins.clearSecrets(); packages.clearSecrets(); dialog.close(); dialog.remove();
   } };
 }

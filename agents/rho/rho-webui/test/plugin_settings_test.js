@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { configurationEdits, pluginDraft, pluginSaveMessage } from "../webui/plugin_draft.js";
-import { enabledDependents, pluginFieldValue } from "../webui/plugin_settings.js";
+import { enabledDependents, pluginFieldValue, pluginSettings } from "../webui/plugin_settings.js";
 
 const schema = { type: "object", properties: {
   port: { type: "integer", minimum: 1, maximum: 65535, default: 3773 },
@@ -134,3 +134,61 @@ test("disable choices contain enabled direct and transitive dependents without u
   expect(enabledDependents(inventory, "base").map((plugin) => plugin.id)).toEqual(["second", "first"]);
   expect(enabledDependents(inventory, "unrelated")).toEqual([]);
 });
+
+async function withDocument(run) {
+  const previous = globalThis.document;
+  const descendants = (node) => [node, ...node.children.flatMap(descendants)];
+  const node = (tag) => ({ tag, nodeType: 1, children: [], listeners: {}, value: "", textContent: "", hidden: false,
+    classList: { toggle() {} },
+    setAttribute(name, value) { this[name] = value; },
+    addEventListener(name, handler) { this.listeners[name] = handler; },
+    append(child) { this.children.push(child); },
+    replaceChildren(...children) { this.children = children; },
+    querySelectorAll(selector) { return descendants(this).filter((child) => child !== this &&
+      (selector === "input:checked" ? child.tag === "input" && child.checked : child.tag === selector)); },
+    get childElementCount() { return this.children.length; },
+  });
+  globalThis.document = { createElement: node, createTextNode: (text) => ({ nodeType: 3, textContent: text, children: [] }) };
+  try { await run(descendants); } finally { globalThis.document = previous; }
+}
+
+test("failed plugin activation can retry directly and preserves unsaved configuration", async () => withDocument(async (descendants) => {
+  const initial = { id: "example", name: "Example", enabled: false, active: false, configurable: true,
+    requires: [], source: { kind: "installed" }, readiness: { ready: false, issues: [] },
+    capabilities: { tools: [], commands: [] }, configuration: { overrides: {}, value: { port: 3773 }, diagnostics: [], secrets: [],
+      schema: { type: "object", properties: { port: schema.properties.port } } } };
+  const failed = { ...initial, enabled: true, readiness: { ready: false, issues: ["Install the dependency, then retry activation."] } };
+  const active = { ...failed, active: true, readiness: { ready: true, issues: [] } };
+  const calls = [];
+  const errors = [];
+  let finish;
+  const panel = pluginSettings({ showError: (error) => errors.push(error), call: async (path, options) => {
+    calls.push({ path, method: options.method, body: options.body });
+    if (calls.length === 1) throw Object.assign(new Error(failed.readiness.issues[0]), {
+      status: 503, details: { saved: true, applied: false, plugin: failed },
+    });
+    return new Promise((resolve) => { finish = () => resolve({ saved: true, applied: true, plugin: active }); });
+  } });
+  panel.update({ plugins: [initial] });
+  const find = (tag, label) => descendants(panel.element).find((node) => node.tag === tag && node.textContent === label && !node.hidden);
+  const port = descendants(panel.element).find((node) => node.tag === "input" && node["aria-label"] === "port");
+  port.value = "4373"; port.listeners.input();
+  await find("button", "Enable plugin").listeners.click();
+  expect(errors).toHaveLength(1);
+  expect(find("p", "Requested: enabled · Running: inactive · Setup needed")).toBeDefined();
+  const retry = find("button", "Retry activation");
+  expect(retry).toBeDefined();
+  expect(find("button", "Disable plugin")).toBeDefined();
+  const pending = retry.listeners.click();
+  expect(retry.disabled).toBe(true);
+  await retry.listeners.click();
+  expect(calls).toEqual([
+    { path: "/extensions/example/enable", method: "POST", body: { dependents: [] } },
+    { path: "/extensions/example/enable", method: "POST", body: {} },
+  ]);
+  finish(); await pending;
+  expect(find("button", "Retry activation")).toBeUndefined();
+  expect(find("p", "Requested: enabled · Running: active · Ready")).toBeDefined();
+  expect(port.value).toBe("4373");
+  expect(find("button", "Save configuration").disabled).toBe(false);
+}));

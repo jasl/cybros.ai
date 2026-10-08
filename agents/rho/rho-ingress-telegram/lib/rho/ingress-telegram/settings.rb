@@ -2,9 +2,9 @@ module Rho
   module IngressTelegram
     # This adapter consumes its own opaque settings; rho resolves its plugin schema before registration.
     class Settings
-      KEYS = %w[token token_env owner_id stale_after transcription_model speech_model].freeze
+      KEYS = %w[token token_env owner_id stale_after input_debounce_seconds transcription_model speech_model].freeze
 
-      attr_reader :owner_id, :stale_after, :transcription_model, :speech_model, :token_env, :token_source
+      attr_reader :owner_id, :stale_after, :input_debounce_seconds, :transcription_model, :speech_model, :token_env, :token_source
 
       def initialize(document, env: ENV)
         document = document.to_h.transform_keys(&:to_s)
@@ -20,13 +20,17 @@ module Rho
         @token_source = "none" if @token.empty?
         @owner_id = Integer(document.fetch("owner_id").to_s, 10).to_s unless document["owner_id"].nil?
         @stale_after = Integer(document.fetch("stale_after", 600).to_s, 10)
+        @input_debounce_seconds = Integer(document.fetch("input_debounce_seconds", 2).to_s, 10)
+        unless (0..10).cover?(@input_debounce_seconds)
+          raise Rho::ConfigurationError, Locales::ENGLISH.fetch("input_debounce_invalid")
+        end
         @transcription_model = document["transcription_model"].to_s.strip
         @speech_model = document["speech_model"].to_s.strip
         unless (!@owner_id || @owner_id.to_i.positive?) && @stale_after.positive?
           raise Rho::ConfigurationError, "telegram: owner_id and stale_after must be positive"
         end
       rescue ArgumentError, TypeError
-        raise Rho::ConfigurationError, "telegram: owner_id and stale_after must be integers"
+        raise Rho::ConfigurationError, Locales::ENGLISH.fetch("settings_integers_required")
       end
 
       def token = @token

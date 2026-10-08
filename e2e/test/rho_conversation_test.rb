@@ -462,7 +462,7 @@ class RhoConversationTest < Minitest::Test
     project = connect!
     rho_profile, rho_runner = rho_identity
     client = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)
-    workspace = client.workspaces.create(name: "Answered #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid)
+    workspace = client.workspaces.create(name: "Answered #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid).workspace
     @answered_workspace = [client, workspace.public_id]
     conversations = client.workspace(workspace.public_id).conversations
     created = conversations.create(

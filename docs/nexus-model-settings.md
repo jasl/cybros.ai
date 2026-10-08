@@ -80,6 +80,28 @@ supported capabilities or prices. Manual entry remains available, and an unliste
 alias can use **Clear invalid mark**. Set the model's context and output limits
 and capabilities to match its server.
 
+**Context and capabilities** is always visible on the model form. For a local
+server, enter the window actually loaded by the serving process, rather than the
+maximum advertised by the model. For example, with a 32768-token shared window,
+set **Combined context window** to `32768` and leave **Input token limit** blank.
+These are alternative window contracts and cannot both be set. An **Advisory
+input threshold** below that window can leave room for generation and chat-template
+overhead; it drives planning, not a change to the server's allocation.
+
+If the provider rejects a request for context length, Nexus attempts the existing
+compaction repair when the run allows it. A repair is bounded: the same round
+does not keep summarizing on repeated rejection. A misconfigured window can make
+the summary itself too large, and instructions or a large new input may not be
+removable history. Correct the model settings and shorten the input or start a
+new conversation if the request still cannot fit.
+
+Also check the requested output budget. **Output token limit** declares the
+model's limit; it does not set the provider's `max_tokens` request field. An
+explicit `configuration.max_output_tokens`, or the model's
+`generation_parameters.max_output_tokens.default`, can make even a short prompt
+exceed a shared window. Lower that requested budget as needed. Model directory
+discovery does not overwrite any of these settings.
+
 Pricing is optional advanced configuration for spending estimates. Missing
 prices or an unset cost unit do not block an otherwise available model. Usage
 quantities continue to be recorded; an unknown monetary amount remains absent,
@@ -174,6 +196,13 @@ below. They do not establish full rho compatibility: verify instruction retentio
 tools, multi-turn replay and images on the deployed model. Quantization packages
 can ship different templates, including ones that silently omit later instructions.
 An HTTP success alone does not prove that all context reached the model.
+
+The four local examples explicitly select the official tokenizers preloaded by
+`nexus/bin/download-tokenizers` and included in the Nexus image. Flash-Next and
+27B share the identical Qwen3.8 tokenizer artifact; the 35B-A3B and 9B examples
+share the identical earlier artifact. These count text for planning and
+compaction. Provider chat-template framing and media can still change the actual
+input usage, so the count is not an exact prediction of provider billing.
 
 ## Model prompt adaptation
 

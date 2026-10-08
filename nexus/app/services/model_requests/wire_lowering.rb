@@ -132,7 +132,15 @@ module ModelRequests
           "seed" => :seed,
         }.freeze,
       }.freeze,
-    }.freeze
+      "pi_messages" => {
+        arguments: {}.freeze,
+        options: { "temperature" => :temperature, "max_output_tokens" => :max_output_tokens }.freeze,
+      }.freeze,
+      "bedrock_converse" => {
+        arguments: {}.freeze,
+        options: { "temperature" => :temperature, "max_output_tokens" => :max_output_tokens, "top_p" => :top_p }.freeze,
+      }.freeze,
+    }.then { |table| table.merge("mistral_chat" => table.fetch("openai_compatible_chat")).freeze }
 
     EMPTY_LANE = { arguments: {}.freeze, options: {}.freeze }.freeze
 
@@ -186,12 +194,13 @@ module ModelRequests
       "xai_responses" => %w[text json_object json_schema].freeze,
       "gemini_generate_content" => %w[json_object json_schema].freeze,
       "openai_compatible_chat" => %w[text json_object json_schema].freeze,
+      "mistral_chat" => %w[text json_object json_schema].freeze,
       "openrouter_chat" => %w[text json_object json_schema].freeze,
     }.freeze
     # Explicit `cache_control` breakpoints are ONE wire's feature; every
     # other family caches implicitly on prefix stability and the kernel
     # marks nothing there.
-    CACHE_BREAKPOINT_FORMATS = %w[anthropic_messages].freeze
+    CACHE_BREAKPOINT_FORMATS = %w[anthropic_messages bedrock_converse].freeze
     # A prompt cache KEY is two wires' feature: OpenAI routes its prefix
     # cache by `prompt_cache_key` on the Responses and the codex lanes
     # (codex-rs client.rs, opencode transform.ts promptCacheKey). The

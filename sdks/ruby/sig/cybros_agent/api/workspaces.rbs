@@ -99,14 +99,20 @@ module CybrosAgent
     end
 
     class Workspaces
+      class Created < Data
+        attr_reader workspace: Workspace
+        attr_reader replayed: bool
+        def replayed?: () -> bool
+      end
+
       include Fields
       include WorkspaceProjections
 
       PATH: String
 
       def initialize: (dispatch: _Dispatch) -> void
-      def list: (?state: String?, ?dedicated_to_current_agent: bool?, ?after: String?, ?limit: Integer?) -> Page[WorkspaceSummary]
-      def create: (name: String, idempotency_key: String, ?access_mode: String?, ?metadata: Hash[untyped, untyped]?) -> Workspace
+      def list: (?state: String?, ?dedicated_to_current_agent: bool?, ?after: String?, ?limit: Integer?, ?order: String?) -> Page[WorkspaceSummary]
+      def create: (name: String, idempotency_key: String, ?access_mode: String?, ?metadata: Hash[untyped, untyped]?) -> Created
       def fetch: (String public_id) -> Workspace
     end
 

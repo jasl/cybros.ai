@@ -78,6 +78,7 @@ module AgentRuns
         def schedule(agent_run)
           admitted = false
           TaskWaits.reconcile(agent_run)
+          Steers::Advance.call(agent_run)
           admitted |= drain(agent_run, ready_nodes(agent_run))
           # The detached wake, here for latency only — the guarantee lives in
           # quiescence; whichever runs second finds the work delivered.

@@ -44,17 +44,18 @@ module AgentRuns
       # `task` call that made each: that call's paired result is rendered
       # as the tip's envelope, never its own "started" text. `cleared`
       # renders every result as the prune placeholder.
-      def call(node, fan_by_call_id:, replay: nil, tips_by_call_key: {}, cleared: false, reference: false)
+      def call(node, fan_by_call_id:, replay: nil, tips_by_call_key: {}, cleared: false, reference: false, receipts: {})
         new(node, fan_by_call_id: fan_by_call_id, replay: replay,
-          tips_by_call_key: tips_by_call_key, cleared: cleared, reference: reference).call
+          tips_by_call_key: tips_by_call_key, cleared: cleared, reference: reference, receipts: receipts).call
       end
 
       # Compaction replaced the answer, but this fan still needs its first
       # read, including the native replay its wire requires. The same
       # renderer suppresses only the old words. A history reader may hand
       # in its batched trace to place the calls before its own replay pass.
-      def pairs(node, fan_by_call_id:, tips_by_call_key: {}, replay: nil, trace: nil, cleared: false)
-        new(node, fan_by_call_id: fan_by_call_id, replay: replay, tips_by_call_key: tips_by_call_key, cleared: cleared)
+      def pairs(node, fan_by_call_id:, tips_by_call_key: {}, replay: nil, trace: nil, cleared: false, receipts: {})
+        new(node, fan_by_call_id: fan_by_call_id, replay: replay, tips_by_call_key: tips_by_call_key,
+          cleared: cleared, receipts: receipts)
           .call(only_pairs: true, captured_trace: trace)
       end
 
@@ -115,13 +116,14 @@ module AgentRuns
     # `replay` is the assembled lane's Replay value (mode + resolved
     # target); nil renders the round without reasoning, which is what a
     # reader outside the loop's own lane means.
-    def initialize(node, fan_by_call_id:, replay:, tips_by_call_key: {}, cleared: false, reference: false)
+    def initialize(node, fan_by_call_id:, replay:, tips_by_call_key: {}, cleared: false, reference: false, receipts: {})
       @node = node
       @fan_by_call_id = fan_by_call_id
       @replay = replay
       @tips_by_call_key = tips_by_call_key
       @cleared = cleared
       @reference = reference
+      @receipts = receipts
     end
 
     def call(only_pairs: false, captured_trace: nil)
@@ -129,7 +131,7 @@ module AgentRuns
       decision = replay_decision if replay_trace
       placed_trace = captured_trace || (trace if replay_trace)
       paired = Pairing.call(calls: round_calls, nodes_by_call_id: @fan_by_call_id,
-        tips_by_call_key: @tips_by_call_key, cleared: @cleared, reference: @reference)
+        tips_by_call_key: @tips_by_call_key, cleared: @cleared, reference: @reference, receipts: @receipts)
       placed = Placement.call(trace: placed_trace, natives: replayed_items(decision),
         calls: tool_call_items(decision), text: (body_text unless only_pairs), messages: !only_pairs)
       Round.new(

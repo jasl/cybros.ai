@@ -62,10 +62,14 @@ Telegram configuration and owner pairing, and model setup guidance linking to
 Nexus. Model setup is not a login requirement. Returning from Nexus refreshes
 available models. A valid saved choice stays selected, a sole eligible model is
 adopted automatically, and multiple models require a choice. When the optional
-Telegram plugin is disabled, enable it in Plugins to reveal its setup controls.
+Telegram plugin is disabled, choose **Enable Telegram** directly under **Connect
+and pair Telegram**. Successful activation replaces the button with the bot token
+and account settings in the same section. Failed activation keeps its reported
+repair guidance and **Retry Telegram activation** there.
 If it is absent, install `rho-ingress-telegram`; model and general settings remain usable.
 
-**Plugins** lists installed capabilities, including disabled plugins. Expand a
+**Plugins** lists installed capabilities, including disabled plugins, with a
+human-readable description of what each provides. Expand a
 plugin to enable or disable it, edit its schema-generated form, or edit explicit
 non-secret overrides in **Advanced JSON**. Both editors share one draft. **Save
 configuration** publishes a field batch through the same owner as the CLI;
@@ -88,6 +92,41 @@ Secrets have separate **Keep**, replacement and **Clear** controls. Blank input
 keeps the existing value; current credentials never appear in the form or JSON
 editor. Removing a named connection explicitly removes its credentials too.
 Configuration is editable while a plugin is disabled, without starting its code.
+
+**Managed packages** installs source and tests from a directory on the machine
+running rho; a Docker installation needs a path inside the rho container. **Install
+candidate** copies a version without running or activating it. Choose an **Installed
+version**, then explicitly **Check version** or **Activate version**. Checks run that
+version's Ruby test files and show their bounded output. When no test files exist,
+the result states that only structure and dependencies were checked. A check can
+perform the effects of the installed code, and activation does not run checks.
+Check results remain in this page only.
+
+Saved, running and previous versions are shown separately. **Activate version**
+keeps and migrates existing configuration unless explicit replacement JSON is
+entered under **Activation configuration (optional)**. Leave that field blank to
+preserve configuration; `{}` selects defaults. Existing secrets are never loaded
+into it, and closing Settings clears entered overrides. Use the ordinary Plugins
+editor for the selected plugin's configuration.
+
+**Roll back** restores the previous code and configuration. It does not restore
+business data; incompatible state schemas or dependencies remain a visible refusal
+from rho. **Disable package** preserves its installed versions and configuration.
+A saved selection can need a restart while the old version remains running. The
+page reports application, announcement and durability warnings separately and
+never retries a write automatically. After an uncertain response, **Refresh
+packages** reads the current state before another deliberate change.
+
+**Working style** selects **Standard** or **Compact** and appends **Additional
+instructions** without trimming whitespace or newlines. Compact shortens the
+built-in guidance while retaining its policies and tool surface. Under
+**Advanced prompt settings**, **Replace base prompt** accepts a complete base
+replacement, including an empty one. **Restore built-in prompt** restores the
+selected preset in the editor; **Save working style** applies that change and
+preserves the additional instructions. The resolved prompt is limited to 64 KiB
+of UTF-8. Changes apply to future materialized turns; an in-progress turn retains
+its captured prompt. Named agents, personal persona and Workspace character
+retain their own prompt slots. Failed saves keep the draft available for repair.
 
 **More settings** holds core model, working-directory, runner/workspace and
 connection defaults. Unchanged connections and existing conversations stay in
@@ -113,7 +152,15 @@ default without changing it. Each accepted Runner call retains its own target. R
 Messages, titles and archive state live in Nexus. Reopening a conversation or
 refreshing the browser reads its durable history. Rename and archive operate
 on that same record; archived conversations can be restored. Sending another
-message queues input on the selected conversation. Drafts remain in the page
+message defaults to **Steer current work**: Nexus keeps the instruction pending for
+the next model boundary in the same turn. **Send now** (Ctrl+Enter or Cmd+Enter)
+lets the model read it while supported long tools continue running. With an empty
+draft, Send now promotes the latest waiting steer, keeping earlier instructions
+in order without duplicating their text. An in-flight model request finishes
+before it reads new instructions. Choose **Queue after current reply** to start
+separate work after that reply. Pending labels reflect the
+server's accepted delivery mode; waiting does not mean the model has read the
+message. Neither sending mode implicitly stops tools. Drafts remain in the page
 when a request fails; they are not a second conversation store.
 
 An existing Side conversation's frozen parent context is labelled **Parent
@@ -155,6 +202,11 @@ and resumed; failed steps offer retry or abandon. Stopping execution is an
 explicit action; changing conversations or closing the browser only detaches
 the viewer. The page reconnects read streams and reconciles durable history,
 but never retries a mutation automatically.
+An unresolved provider context overflow points to **Nexus Settings > Model providers >
+Edit model > Context and capabilities** to check the server's actual input or combined
+context limit and output limit. Only one input or combined window contract should be set.
+Automatic compaction and resolved or absorbed failures do not show this
+repair hint. The CLI and Telegram use the same guidance from rho's English catalog.
 For `web_fetch`, **Allow this site until restart** approves the held request and
 remembers a literal URL prefix for the running daemon. Future initial URLs must begin
 with the same scheme, host and written port followed by `/`; subdomains, `www`
@@ -207,6 +259,22 @@ JavaScript process is required. The browser loads `console.js`, with `api.js`,
 `views.js`, `composer.js`, `controls.js`, `lifecycle.js`, `schedules.js` and the DOM-based `markdown.js` renderer. Stable file
 names remain at the static root so they are revalidated instead of receiving
 the daemon's fingerprinted-asset cache policy.
+
+The active interface, document title and product names use `webui/i18n.js` and
+the default English catalog in `webui/locales/en.js`. Add locale overrides through
+the translator's catalog argument; interpolation remains plain text. Plugin
+names, descriptions and schema field copy use keys under `plugins.<id>` with the
+plugin's authored metadata as the literal fallback, keeping one source for the
+default description. The static HTML title and no-JavaScript guidance remain
+English because they must work before browser JavaScript runs. The default
+interface language remains English.
+
+Daemon, provider and plugin diagnostics arrive as authored text, including prerequisite
+repair guidance; localization belongs to their producer. For an unresolved typed
+`provider_context_overflow`, the browser catalog adds recovery guidance alongside the
+existing literal diagnostic in task details. Resolved failures retain their diagnostic.
+Executable names, commands and protocol identifiers remain literal when product
+display names change.
 
 Conversation queue reads use `GET /inputs?public_id=ID&host_type=conversation`.
 The explicit type keeps this read independent of local followers, including

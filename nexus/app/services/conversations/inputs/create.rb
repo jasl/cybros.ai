@@ -186,7 +186,7 @@ module Conversations
           # Steer-on-idle falls back to queue: nothing to redirect, but the words are still
           # worth delivering.
           binding = nil
-          if @command.delivery_mode == "steer"
+          if ConversationInput::STEERING_MODES.include?(@command.delivery_mode)
             binding = ApplicationRecord.uncached { @host.steer_binding }
           end
 
@@ -240,7 +240,7 @@ module Conversations
         end
 
         def steering_mode_refusal
-          if @command.expected_steering_run_public_id && @command.delivery_mode != "steer"
+          if @command.expected_steering_run_public_id && !ConversationInput::STEERING_MODES.include?(@command.delivery_mode)
             Outcome.refused(:steering_guard_requires_steer)
           end
         end
@@ -275,7 +275,7 @@ module Conversations
         def schedule_refusal
           at = @command.deliver_at
           return nil if at.nil?
-          return Outcome.refused(NOT_SCHEDULABLE) if @command.delivery_mode == "steer"
+          return Outcome.refused(NOT_SCHEDULABLE) if ConversationInput::STEERING_MODES.include?(@command.delivery_mode)
 
           @now = DatabaseClock.now
           return Outcome.refused(IN_PAST) if at < @now - PAST_GRACE
@@ -389,6 +389,7 @@ module Conversations
           # SAME kick at the time it is due: one enqueue per accept; a time
           # inside the grace is due and kicks now.
           @host.wake_drain(at: wake_at(input))
+          input.wake_steering
           Outcome.accepted(input)
         end
 
@@ -405,7 +406,7 @@ module Conversations
           attachments = @command.attachments
           entries = @command.entries
           placed = attachments.nil? ? ContentBodies::AttachedMessage.placed_ids(entries) : Array(attachments)
-          if placed.any? && @command.delivery_mode == "steer"
+          if placed.any? && ConversationInput::STEERING_MODES.include?(@command.delivery_mode)
             return ContentBodies::AttachedMessage::Result.refused(NOT_STEERABLE)
           end
 

@@ -4,7 +4,7 @@ class TelegramFollowerTest < Minitest::Test
   include TelegramRuntimeSupport
 
   def test_first_turn_waits_for_completion_across_restart_and_delivers_once
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @bridge.turn_rows["conversation-1"] = [turn(0, "", status: "running")]
     @runtime.tick
     assert_nil @state.read.fetch("routes").dig("1:0", "conversations", "conversation-1", "position")

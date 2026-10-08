@@ -116,7 +116,7 @@ class RhoMemoryReviewTest < Minitest::Test
     other = E2E::ActorProvisioning.world(@base_url).shared_human
     reader = CybrosAgent::Client.new(base_url: @base_url, credential: other.member_token)
     room = @member.workspaces.create(name: "Memory review ACL", access_mode: "account_wide",
-      idempotency_key: SecureRandom.uuid)
+      idempotency_key: SecureRandom.uuid).workspace
     @workspace = @member.workspace(room.public_id)
     reader_workspace = reader.workspace(room.public_id)
     assert_equal room.public_id, reader.workspaces.fetch(room.public_id).public_id,

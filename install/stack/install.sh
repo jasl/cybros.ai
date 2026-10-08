@@ -12,7 +12,7 @@ x-logging: &logging
     max-file: "3"
 
 x-nexus: &nexus
-  image: "${CYBROS_IMAGE_NAMESPACE:-jasl123}/cybros-nexus:${CYBROS_IMAGE_TAG:-latest}"
+  image: "${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}:${CYBROS_IMAGE_TAG:-latest}"
   entrypoint: []
   environment: &nexus-environment
     RAILS_ENV: production
@@ -37,7 +37,7 @@ services:
   # Prepare the image users' writable bind mounts once, including restored data.
   # PostgreSQL's official entrypoint prepares its own directory and UID.
   data_init:
-    image: "${CYBROS_IMAGE_NAMESPACE:-jasl123}/cybros-nexus:${CYBROS_IMAGE_TAG:-latest}"
+    image: "${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}:${CYBROS_IMAGE_TAG:-latest}"
     user: "0:0"
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -48,7 +48,7 @@ services:
     logging: *logging
 
   db:
-    image: postgres:18
+    image: "${CYBROS_POSTGRES_IMAGE:-postgres:18}"
     restart: unless-stopped
     environment:
       PGDATA: /var/lib/postgresql/data/18
@@ -106,7 +106,7 @@ services:
     command: ["./bin/model_runner"]
 
   rho:
-    image: "${CYBROS_IMAGE_NAMESPACE:-jasl123}/cybros-rho:${CYBROS_IMAGE_TAG:-latest}"
+    image: "${CYBROS_RHO_IMAGE_REPOSITORY:-jasl123/cybros-rho}:${CYBROS_IMAGE_TAG:-latest}"
     restart: unless-stopped
     stop_grace_period: 30s
     depends_on:
@@ -139,7 +139,70 @@ services:
 CYBROS_PAYLOAD_EOF
     mv compose.yaml.new compose.yaml
   fi
-  if [ ! -e cybros ]; then
+  if [ ! -e deployment.compose.yaml ] || [ "$upgrade_manager" = yes ]; then
+    cat > deployment.compose.yaml.new <<'CYBROS_PAYLOAD_EOF'
+# Managed overlay: application activation writes both immutable references to
+# images.env. Ordinary starts must use the same references as the updater.
+x-nexus-image: &nexus-image
+  image: "${CYBROS_NEXUS_IMAGE:-${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}:${CYBROS_IMAGE_TAG:-latest}}"
+
+services:
+  data_init:
+    <<: *nexus-image
+  migrator:
+    <<: *nexus-image
+  nexus:
+    <<: *nexus-image
+    environment:
+      NEXUS_DEPLOYMENT_SOCKET: /run/cybros-updater/updater.sock
+    volumes:
+      - ./data/updater-ipc:/run/cybros-updater
+  jobs:
+    <<: *nexus-image
+  model_runner:
+    <<: *nexus-image
+  rho:
+    image: "${CYBROS_RHO_IMAGE:-${CYBROS_RHO_IMAGE_REPOSITORY:-jasl123/cybros-rho}:${CYBROS_IMAGE_TAG:-latest}}"
+CYBROS_PAYLOAD_EOF
+    mv deployment.compose.yaml.new deployment.compose.yaml
+  fi
+  if [ ! -e updater.compose.yaml ] || [ "$upgrade_manager" = yes ]; then
+    cat > updater.compose.yaml.new <<'CYBROS_PAYLOAD_EOF'
+# This owner survives application shutdown and has no published network port.
+name: "${CYBROS_PROJECT_NAME:-cybros}-updater"
+
+services:
+  updater:
+    image: "${CYBROS_UPDATER_IMAGE:-${CYBROS_UPDATER_IMAGE_REPOSITORY:-jasl123/cybros-updater}:${CYBROS_UPDATER_TAG:-latest}}"
+    restart: unless-stopped
+    environment:
+      CYBROS_INSTALL_DIR: "${CYBROS_INSTALL_DIR:?Missing absolute installation directory}"
+      CYBROS_NEXUS_IMAGE_REPOSITORY: "${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}"
+      CYBROS_RHO_IMAGE_REPOSITORY: "${CYBROS_RHO_IMAGE_REPOSITORY:-jasl123/cybros-rho}"
+      CYBROS_BACKUP_KEEP: "${CYBROS_BACKUP_KEEP:-3}"
+      CYBROS_UPDATER_STATE_DIR: "${CYBROS_INSTALL_DIR}/data/updater"
+      CYBROS_UPDATER_SOCKET: /run/cybros-updater/updater.sock
+    volumes:
+      - type: bind
+        source: "${CYBROS_INSTALL_DIR}"
+        target: "${CYBROS_INSTALL_DIR}"
+      - ./data/updater-ipc:/run/cybros-updater
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: [CMD, ruby, /app/updater.rb, status]
+      interval: 5s
+      timeout: 8s
+      retries: 12
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+CYBROS_PAYLOAD_EOF
+    mv updater.compose.yaml.new updater.compose.yaml
+  fi
+  if [ ! -e cybros ] || [ "$upgrade_manager" = yes ]; then
     cat > cybros.new <<'CYBROS_PAYLOAD_EOF'
 #!/bin/sh
 # Local management for the installed stack. Configuration is Compose dotenv,
@@ -148,10 +211,35 @@ set -eu
 umask 077
 
 fail() { printf 'cybros: %s\n' "$*" >&2; exit 1; }
-stack_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
+script_path=$script_dir/$(basename -- "$0")
+stack_dir=$script_dir
+if [ "${1:-}" = --dir ]; then
+  [ "$#" -ge 2 ] || fail '--dir requires an existing installation directory'
+  stack_dir=$(CDPATH='' cd -- "$2" && pwd -P) || fail 'Installation directory is unavailable'
+  shift 2
+fi
 cd "$stack_dir"
 
-compose() { docker compose --env-file .env --env-file secrets.env -f compose.yaml "$@"; }
+compose() {
+  set -- --env-file secrets.env -f compose.yaml -f deployment.compose.yaml "$@"
+  if [ -f images.env ]; then set -- --env-file images.env "$@"; fi
+  docker compose --env-file .env "$@"
+}
+
+updater_compose() {
+  docker compose --env-file .env -f updater.compose.yaml "$@"
+}
+
+start_updater() {
+  if ! updater_compose up -d "${1:---no-recreate}" --wait --wait-timeout "${CYBROS_WAIT_TIMEOUT:-240}"; then
+    fail 'Upgrade manager did not become healthy. Run ./cybros manager logs; configuration and data were retained.'
+  fi
+}
+
+updater_command() {
+  updater_compose exec -T updater ruby /app/updater.rb "$@"
+}
 
 container_exec() {
   if [ -t 0 ] && [ -t 1 ]; then
@@ -200,6 +288,8 @@ initialize() {
     fail 'Only one configuration file exists. Restore the missing file from backup; secrets are never regenerated for an existing installation.'
   fi
   if [ ! -e .env ]; then
+    backup_keep=${CYBROS_BACKUP_KEEP:-3}
+    case "$backup_keep" in ''|*[!0-9]*|0*) fail 'CYBROS_BACKUP_KEEP must be a positive integer' ;; esac
     nexus_public_url=$(printf '%s' "${CYBROS_NEXUS_URL:-http://localhost:${CYBROS_NEXUS_PORT:-3300}}" | sed 's:/*$::')
     rho_public_url=$(printf '%s' "${CYBROS_RHO_URL:-http://localhost:${CYBROS_RHO_PORT:-7777}}" | sed 's:/*$::')
     case "$nexus_public_url $rho_public_url" in
@@ -209,8 +299,14 @@ initialize() {
     {
       printf '# Compose configuration. Preserve secrets.env and the complete data/ directory.\n'
       write_setting CYBROS_PROJECT_NAME "${CYBROS_PROJECT_NAME:-cybros}"
-      write_setting CYBROS_IMAGE_NAMESPACE "${CYBROS_IMAGE_NAMESPACE:-jasl123}"
+      write_setting CYBROS_NEXUS_IMAGE_REPOSITORY "${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}"
+      write_setting CYBROS_RHO_IMAGE_REPOSITORY "${CYBROS_RHO_IMAGE_REPOSITORY:-jasl123/cybros-rho}"
+      write_setting CYBROS_UPDATER_IMAGE_REPOSITORY "${CYBROS_UPDATER_IMAGE_REPOSITORY:-jasl123/cybros-updater}"
       write_setting CYBROS_IMAGE_TAG "${CYBROS_IMAGE_TAG:-latest}"
+      write_setting CYBROS_UPDATER_TAG "${CYBROS_UPDATER_TAG:-${CYBROS_IMAGE_TAG:-latest}}"
+      write_setting CYBROS_BACKUP_KEEP "$backup_keep"
+      if [ -n "${CYBROS_UPDATER_IMAGE:-}" ]; then write_setting CYBROS_UPDATER_IMAGE "$CYBROS_UPDATER_IMAGE"; fi
+      if [ -n "${CYBROS_POSTGRES_IMAGE:-}" ]; then write_setting CYBROS_POSTGRES_IMAGE "$CYBROS_POSTGRES_IMAGE"; fi
       write_setting CYBROS_BIND "${CYBROS_BIND:-127.0.0.1}"
       write_setting CYBROS_NEXUS_PORT "${CYBROS_NEXUS_PORT:-3300}"
       write_setting CYBROS_RHO_PORT "${CYBROS_RHO_PORT:-7777}"
@@ -237,16 +333,90 @@ configured() {
   [ -f .env ] && [ -f secrets.env ] || fail 'Configuration is missing. Run the installer first; do not regenerate secrets for an existing database.'
   # Keep installation-file settings authoritative, even when this command is
   # launched from a shell used to install another stack.
-  unset CYBROS_PROJECT_NAME CYBROS_IMAGE_NAMESPACE CYBROS_IMAGE_TAG CYBROS_BIND CYBROS_NEXUS_PORT CYBROS_RHO_PORT CYBROS_NEXUS_URL CYBROS_RHO_URL CYBROS_OAUTH_ALLOW_HTTP
+  unset CYBROS_PROJECT_NAME CYBROS_NEXUS_IMAGE_REPOSITORY CYBROS_RHO_IMAGE_REPOSITORY CYBROS_UPDATER_IMAGE_REPOSITORY CYBROS_IMAGE_TAG CYBROS_UPDATER_TAG CYBROS_NEXUS_IMAGE CYBROS_RHO_IMAGE CYBROS_BIND CYBROS_NEXUS_PORT CYBROS_RHO_PORT CYBROS_NEXUS_URL CYBROS_RHO_URL CYBROS_OAUTH_ALLOW_HTTP
+  unset CYBROS_BACKUP_KEEP CYBROS_UPDATER_IMAGE CYBROS_POSTGRES_IMAGE
   unset POSTGRES_PASSWORD SECRET_KEY_BASE ACTIVE_RECORD_ENCRYPTION__PRIMARY_KEY ACTIVE_RECORD_ENCRYPTION__DETERMINISTIC_KEY ACTIVE_RECORD_ENCRYPTION__KEY_DERIVATION_SALT NEXUS_SETUP_SECRET RHO_TELEGRAM_BOT_TOKEN
+  CYBROS_INSTALL_DIR=$stack_dir
+  export CYBROS_INSTALL_DIR
   compose config --quiet
 }
 
 start() {
+  start_updater
+  updater_command assert-idle
   if ! compose up -d --wait --wait-timeout "${CYBROS_WAIT_TIMEOUT:-240}"; then
     compose ps --all >&2 || true
     fail 'Startup did not become healthy. Run ./cybros logs; configuration and data were retained.'
   fi
+  updater_command refresh-installed > /dev/null
+}
+
+recover_before_upgrade() {
+  if ! CYBROS_UPDATER_IMAGE=$previous_manager updater_compose up -d --no-recreate --wait --wait-timeout "${CYBROS_WAIT_TIMEOUT:-240}"; then
+    printf '%s\n' 'cybros: Could not restart the previous manager. Inspect ./cybros manager logs.' >&2
+    return 1
+  fi
+  updater_command assert-idle || return 1
+  if ! compose start --wait --wait-timeout "${CYBROS_WAIT_TIMEOUT:-240}"; then
+    printf '%s\n' 'cybros: Could not restart the previous services. Inspect ./cybros logs.' >&2
+    return 1
+  fi
+  updater_command refresh-installed > /dev/null
+}
+
+update_installation() {
+  if [ "$backup" = true ]; then
+    docker compose start --help | grep -q -- --wait-timeout || fail 'Update Docker Compose: start --wait-timeout is required for backup recovery.'
+  fi
+  start_updater
+  updater_command assert-idle
+  previous_manager=$(docker inspect --format '{{.Image}}' "$(updater_compose ps --quiet updater)")
+  # Pins identify installed images, including local IDs in restored snapshots.
+  # Compose's configured repository remains the new-release authority.
+  manager_repository=$(CYBROS_UPDATER_IMAGE='' updater_compose config --images)
+  case "$manager_repository" in ''|*'
+'*) fail 'The manager Compose project must identify one image' ;; esac
+  manager_repository=${manager_repository%@*}
+  case "${manager_repository##*/}" in *:*) manager_repository=${manager_repository%:*} ;; esac
+  manager_image=$manager_repository:$tag
+  docker pull "$manager_image"
+  release=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' "$manager_image")
+  case "$release" in
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+    *) fail 'The selected manager does not identify a published release' ;;
+  esac
+  [ "$tag" = latest ] || [ "$tag" = "$release" ] || fail 'The selected manager identifies a different release'
+  manager_image=$(docker image inspect --format '{{if .RepoDigests}}{{index .RepoDigests 0}}{{else}}{{.Id}}{{end}}' "$manager_image")
+  updater_command assert-idle
+  if [ "$backup" = true ]; then
+    if ! compose stop || ! updater_compose stop; then
+      recover_before_upgrade || true
+      fail 'Could not stop the installation for backup. Upgrade was not accepted.'
+    fi
+    if ! CYBROS_UPDATER_IMAGE=$previous_manager updater_compose run --rm --no-deps --pull never -T updater ruby /app/updater.rb backup; then
+      recover_before_upgrade || true
+      fail 'Installation backup failed. Upgrade was not accepted.'
+    fi
+    recover_before_upgrade || fail 'Backup completed, but the previous installation could not restart. Upgrade was not accepted.'
+  fi
+  if [ "$script_path" != "$stack_dir/cybros" ]; then
+    cp "$script_path" cybros.new
+    chmod 700 cybros.new
+    mv cybros.new cybros
+  fi
+  # Only the manager selection changes here. Compose remains the dotenv parser;
+  # unrelated configuration, secrets and operator overlays retain their bytes.
+  cp -p .env .env.new
+  sed '/^CYBROS_UPDATER_TAG=/d; /^CYBROS_UPDATER_IMAGE=/d' .env > .env.new
+  write_setting CYBROS_UPDATER_TAG "$release" >> .env.new
+  write_setting CYBROS_UPDATER_IMAGE "$manager_image" >> .env.new
+  mv .env.new .env
+  if ! updater_compose up -d --force-recreate --wait --wait-timeout "${CYBROS_WAIT_TIMEOUT:-240}"; then
+    fail 'New manager failed readiness. Its selected image and state were retained. Inspect ./cybros manager logs and repair or retry. Application upgrade was not accepted.'
+  fi
+  set -- update "$release"
+  if [ "$backup" = false ]; then set -- "$@" --no-backup; fi
+  updater_command "$@"
 }
 
 shell_quote() {
@@ -313,10 +483,17 @@ setup() {
 }
 
 usage() {
-  printf '%s\n' 'Usage: ./cybros init|install|setup [model|telegram]|t3 [ARGS...]|instructions|up|status|logs [SERVICE]|stop|update [TAG]|connect|rho [ARGS...]|cmctl [ARGS...]|compose [ARGS...]'
+  printf '%s\n' 'Usage: ./cybros [--dir DIRECTORY] init|install|setup [model|telegram]|t3 [ARGS...]|instructions|up|status|logs [SERVICE]|stop|update [TAG] [--no-backup]|connect|rho [ARGS...]|cmctl [ARGS...]|compose [ARGS...]'
   printf '%s\n' 'init initializes configuration only; it never pulls images or starts services.'
   printf '%s\n' 'install initializes missing configuration, pulls images and starts; reruns preserve existing files.'
-  printf '%s\n' 'update pulls the configured tag, or selects latest/a Unix timestamp, then starts and checks health.'
+  printf '%s\n' 'update [TAG] backs up the stopped installation, updates its manager, then accepts and waits for the application upgrade with a database backup.'
+  printf '%s\n' '--no-backup skips both backups. TAG defaults to latest and resolves to one UTC yyMMddHHmm release.'
+  printf '%s\n' 'check [TAG] [--no-backup] prints the upgrade preflight report without accepting an upgrade.'
+  printf '%s\n' 'backup and backups create/list private backups; stop the stack and manager first.'
+  printf '%s\n' 'restore BACKUP_ID /absolute/empty/directory restores a stopped installation without starting it.'
+  printf '%s\n' 'upgrade-status [ID], upgrade-log [ID] [CURSOR], and upgrade-resume ID inspect or recover an accepted upgrade.'
+  printf '%s\n' 'update-manager pulls and restarts the separate upgrade manager using CYBROS_UPDATER_TAG.'
+  printf '%s\n' 'manager [ARGS...] exposes its separate Docker Compose project, including manager logs.'
   printf '%s\n' 'instructions prints the rho URL and first-account setup steps without starting services.'
   printf '%s\n' 'setup configures Telegram, providers and the default model; saved settings apply immediately.'
   printf '%s\n' 'stop preserves containers and data. compose exposes normal Docker Compose commands.'
@@ -342,6 +519,7 @@ case "$action" in
     [ "$#" -eq 0 ] || fail 'install takes no arguments'
     initialize
     configured
+    updater_compose pull
     compose pull
     start
     printf '\nCybros services are healthy.\n'
@@ -365,26 +543,69 @@ case "$action" in
       *) container_exec rho /opt/rho/libexec/docker-entrypoint t3 "$@" ;;
     esac
     ;;
-  status) configured; compose ps --all ;;
+  status) configured; compose ps --all; updater_compose ps --all ;;
   logs) configured; compose logs --tail 100 "$@" ;;
-  stop) configured; compose stop ;;
-  update)
-    [ "$#" -le 1 ] || fail 'update accepts one tag'
+  stop)
     configured
-    if [ "$#" -eq 1 ]; then
-      case "$1" in latest) ;; ''|*[!0-9]*) fail 'tag must be latest or a Unix timestamp' ;; esac
-      CYBROS_IMAGE_TAG=$1 compose pull
-      awk -v tag="$1" '/^CYBROS_IMAGE_TAG=/{print "CYBROS_IMAGE_TAG=\047" tag "\047"; next} {print}' .env > .env.new
-      mv .env.new .env
+    if [ -n "$(updater_compose ps --status running --quiet updater)" ]; then updater_command assert-idle; fi
+    compose stop
+    updater_compose stop
+    ;;
+  check|update)
+    tag=latest
+    tag_given=false
+    backup=true
+    for argument do
+      case "$argument" in
+        --no-backup) backup=false ;;
+        *) [ "$tag_given" = false ] || fail "$action accepts one tag"; tag=$argument; tag_given=true ;;
+      esac
+    done
+    case "$tag" in
+      latest|[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+      *) fail 'tag must be latest or a UTC yyMMddHHmm release tag' ;;
+    esac
+    configured
+    if [ "$action" = update ]; then
+      update_installation
     else
-      compose pull
+      start_updater
+      set -- check "$tag"
+      if [ "$backup" = false ]; then set -- "$@" --no-backup; fi
+      updater_command "$@"
     fi
-    start
+    ;;
+  backup|backups)
+    [ "$#" -eq 0 ] || fail "$action takes no arguments"
+    configured
+    updater_compose run --rm --no-deps --pull never -T updater ruby /app/updater.rb "$action"
+    ;;
+  restore)
+    [ "$#" -eq 2 ] || fail 'restore requires BACKUP_ID and an existing empty absolute destination directory'
+    configured
+    case "$2" in /*) ;; *) fail 'restore destination must be absolute' ;; esac
+    [ -d "$2" ] || fail 'restore destination must already exist'
+    restore_directory=$(CDPATH='' cd -- "$2" && pwd -P)
+    for entry in "$restore_directory"/* "$restore_directory"/.[!.]* "$restore_directory"/..?*; do
+      if [ -e "$entry" ] || [ -L "$entry" ]; then fail 'restore destination must be empty'; fi
+    done
+    updater_compose run --rm --no-deps --pull never -T --volume "$restore_directory:$restore_directory" updater ruby /app/updater.rb restore "$1" "$restore_directory"
+    ;;
+  upgrade-status) configured; updater_command receipt "$@" ;;
+  upgrade-log) configured; updater_command log "$@" ;;
+  upgrade-resume) configured; updater_command resume "$@" ;;
+  update-manager)
+    configured
+    start_updater
+    updater_command assert-idle
+    updater_compose pull
+    start_updater --force-recreate
     ;;
   connect) configured; compose exec -T rho rho connect ;;
   rho) configured; compose exec -T rho rho "$@" ;;
   cmctl) configured; container_exec -e CMCTL_HOME=/var/lib/rho/cmctl rho cmctl "$@" ;;
   compose) configured; compose "$@" ;;
+  manager) configured; updater_compose "$@" ;;
   *) usage >&2; fail "unknown command: $action" ;;
 esac
 CYBROS_PAYLOAD_EOF
@@ -464,15 +685,17 @@ install_main() {
   directory_set=${CYBROS_INSTALL_DIR:+yes}
   action=install
   unattended=no
+  upgrade_manager=no
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --help|-h)
-        printf '%s\n' 'Usage: sh install.sh [--dir DIRECTORY] [--no-start] [--yes]' 'Interactive setup uses /dev/tty, including when the script is piped to sh.' '--yes uses environment settings and defaults without questions.' '--no-start prepares configuration without pulling images or starting services.' 'Default directory: ~/.local/share/cybros. Requires Docker with Compose v2.'
+        printf '%s\n' 'Usage: sh install.sh [--dir DIRECTORY] [--no-start] [--yes] [--upgrade-manager]' 'Interactive setup uses /dev/tty, including when the script is piped to sh.' '--yes uses environment settings and defaults without questions.' '--no-start prepares configuration without pulling images or starting services.' '--upgrade-manager replaces the cybros manager and its managed overlays; preserves compose.yaml, configuration, secrets and data.' 'Default directory: ~/.local/share/cybros. Requires Docker with Compose v2.'
         return 0
         ;;
       --dir) [ "$#" -ge 2 ] && [ -n "$2" ] || install_fail '--dir requires one nonempty directory'; install_dir=$2; directory_set=yes; shift 2 ;;
       --no-start) action=init; shift ;;
       --yes) unattended=yes; shift ;;
+      --upgrade-manager) upgrade_manager=yes; shift ;;
       *) install_fail 'Usage: sh install.sh [--dir DIRECTORY] [--no-start] [--yes]' ;;
     esac
   done
@@ -548,7 +771,7 @@ install_main() {
   printf '\n[4/5] Review installation\n'
   printf 'Directory: %s\nData:      %s/data\n' "$install_dir" "$install_dir"
   if [ ! -e "$install_dir/.env" ] && [ ! -e "$install_dir/secrets.env" ]; then
-    printf 'Nexus:     %s\nrho:       %s\nBind:      %s\nImages:    %s/cybros-{nexus,rho}:%s\n' "$CYBROS_NEXUS_URL" "$CYBROS_RHO_URL" "$CYBROS_BIND" "${CYBROS_IMAGE_NAMESPACE:-jasl123}" "${CYBROS_IMAGE_TAG:-latest}"
+    printf 'Nexus:     %s\nrho:       %s\nBind:      %s\nNexus image: %s:%s\nrho image:   %s:%s\n' "$CYBROS_NEXUS_URL" "$CYBROS_RHO_URL" "$CYBROS_BIND" "${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}" "${CYBROS_IMAGE_TAG:-latest}" "${CYBROS_RHO_IMAGE_REPOSITORY:-jasl123/cybros-rho}" "${CYBROS_IMAGE_TAG:-latest}"
     if [ "$unattended" = no ]; then
       if [ "$action" = init ]; then question='Create configuration? [Y/n]: '; else question='Install and start Cybros? [Y/n]: '; fi
       while :; do
@@ -563,7 +786,11 @@ install_main() {
   [ "$install_dir" != / ] || install_fail 'Choose an installation directory other than /.'
   chmod 700 "$install_dir"
   if [ -e "$install_dir/cybros" ] || [ -e "$install_dir/compose.yaml" ]; then
-    printf '%s\n' 'Keeping the existing cybros manager and Compose file, including local changes.'
+    if [ "$upgrade_manager" = yes ]; then
+      printf '%s\n' 'Refreshing cybros and the managed deployment overlays. Keeping the existing Compose file, configuration, secrets and data.'
+    else
+      printf '%s\n' 'Keeping the existing cybros manager and Compose file, including local changes.'
+    fi
   fi
   (
     cd "$install_dir"

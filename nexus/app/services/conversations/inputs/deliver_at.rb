@@ -7,7 +7,8 @@ module Conversations
     # an offset or `Z`; `deliver_in`, a delay from now (`90s`, `20m`, `2h`,
     # `1d`) — hermes' one-shot-by-duration grammar and openclaw's relative
     # form, the references' agreement on the shape of a delay. Exactly one
-    # of the two; both resolve to ONE Time here and the row stores
+    # of the two. Parsing retains relative intent so create receipts can
+    # digest it before resolving the first execution's clock. The row stores
     # `deliver_at` only.
     #
     # A shape check first, anchored and length-capped,
@@ -27,15 +28,19 @@ module Conversations
       AMBIGUOUS = :deliver_at_ambiguous
 
       # Exactly one of the two is non-nil; both nil when nothing was said.
-      Reading = Data.define(:time, :refusal)
+      Reading = Data.define(:time, :delay_seconds, :refusal) do
+        def resolve(now:)
+          delay_seconds.nil? ? time : now + delay_seconds
+        end
+      end
 
       class << self
-        def parse(at: nil, in_: nil, now:)
-          return Reading.new(time: nil, refusal: AMBIGUOUS) if at && in_
-          return Reading.new(time: nil, refusal: nil) if at.nil? && in_.nil?
+        def parse(at: nil, in_: nil)
+          return refused(AMBIGUOUS) if at && in_
+          return Reading.new(time: nil, delay_seconds: nil, refusal: nil) if at.nil? && in_.nil?
           return parse_at(at) if at
 
-          parse_in(in_, now)
+          parse_in(in_)
         end
 
         private
@@ -44,21 +49,21 @@ module Conversations
             string = value.to_s
             return refused(:deliver_at_invalid) unless string.length <= MAX_LENGTH && AT_SHAPE.match?(string)
 
-            Reading.new(time: Time.iso8601(string), refusal: nil)
+            Reading.new(time: Time.iso8601(string), delay_seconds: nil, refusal: nil)
           rescue ArgumentError
             # The shape passed and the calendar refused: a 13th month, a 25th
             # hour (a 30th of February rolls over to March; Ruby's own rule).
             refused(:deliver_at_invalid)
           end
 
-          def parse_in(value, now)
+          def parse_in(value)
             match = IN_SHAPE.match(value.to_s)
             return refused(:deliver_in_invalid) if match.nil?
 
-            Reading.new(time: now + Integer(match[1], 10) * UNIT.fetch(match[2]), refusal: nil)
+            Reading.new(time: nil, delay_seconds: Integer(match[1], 10) * UNIT.fetch(match[2]), refusal: nil)
           end
 
-          def refused(code) = Reading.new(time: nil, refusal: code)
+          def refused(code) = Reading.new(time: nil, delay_seconds: nil, refusal: code)
       end
     end
   end

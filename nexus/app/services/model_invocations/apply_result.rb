@@ -543,6 +543,7 @@ module ModelInvocations
       # and nothing in our lane set answers 404/409/422 for length — each
       # widening buys false positives against no evidence.
       OVERFLOW_STATUSES = [400, 413].freeze
+      OVERFLOW_ERROR_IDENTIFIERS = %w[context_length_exceeded exceed_context_size_error].freeze
       # Run first, from opencode: a throttling phrase read as "too long"
       # would compact a conversation that was merely rate limited.
       OVERFLOW_EXCLUSIONS = [
@@ -558,6 +559,9 @@ module ModelInvocations
         /request_too_large/i,                         # anthropic, byte overflow (413)
         /input token count.*exceeds the maximum/i,    # gemini
         /maximum context length is \d+ tokens/i,      # openrouter
+        /exceeds the available context size \(\d+ tokens\)/i, # llama.cpp
+        /prompt \(\d+ tokens\) \+ max tokens \(\d+\) exceeds the context \(\d+\)/i, # Strata
+        /prompt \(\d+ tokens\) leaves no room to answer in the context \(\d+\)/i, # Strata
       ].freeze
 
       def transient?(error) = self.class.transient_error?(error)
@@ -580,13 +584,10 @@ module ModelInvocations
       # frame and reaches no column afterwards: this method or nothing.
       def context_overflow?
         case @outcome.error
-        # TIER 1: the one arm with no string matching in it. Exact
-        # equality on the provider's own code, which is the predicate
-        # both codex and opencode ship in production.
+        # A Responses failure may arrive inside an already-started stream.
         when SimpleInference::Protocols::OpenAIResponses::ResponseFailedError
           @outcome.error.code == "context_length_exceeded"
-        # TIER 2: text, and narrow. Reached only by the three lanes that
-        # deliver length as a STATUS.
+        # Pre-stream refusals use HTTP, including on the Responses endpoint.
         when SimpleInference::HTTPError
           http_context_overflow?(@outcome.error)
         else
@@ -597,17 +598,19 @@ module ModelInvocations
       def http_context_overflow?(error)
         return false unless OVERFLOW_STATUSES.include?(error.status)
 
-        detail = overflow_detail(error)
+        fields = provider_error_fields(error)
+        detail = overflow_detail(error, fields)
         return false if OVERFLOW_EXCLUSIONS.any? { |pattern| pattern.match?(detail) }
 
-        OVERFLOW_PATTERNS.any? { |pattern| pattern.match?(detail) }
+        OVERFLOW_ERROR_IDENTIFIERS.include?(fields["code"]) ||
+          OVERFLOW_ERROR_IDENTIFIERS.include?(fields["type"]) ||
+          OVERFLOW_PATTERNS.any? { |pattern| pattern.match?(detail) }
       end
 
       # Structured fields only, never `raw_body`: an echoed prompt would let
       # a caller's own text make the kernel compact on demand.
-      def overflow_detail(error)
-        inner = provider_error_fields(error)
-        [inner["message"], inner["code"], inner["type"], error.message]
+      def overflow_detail(error, fields)
+        [fields["message"], fields["code"], fields["type"], error.message]
           .compact.join(" ")
       end
 

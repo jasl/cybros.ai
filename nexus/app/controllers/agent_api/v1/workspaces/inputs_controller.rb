@@ -13,7 +13,7 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
     inputs = host.conversation_inputs
       .where(state: ConversationInput::STATES)
       .in_read_order
-      .includes(:content_bodies).to_a
+      .includes(:content_bodies, :answering_user, speaker: :user).to_a
     ContentBody.preload_for_render(inputs.flat_map(&:content_bodies))
 
     render json: {
@@ -29,7 +29,7 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
     host = self.host
     fields = params.permit(input: [
       :text, :visible_in_context, :context_mode, :expected_lock_version, :approval_mode, :instructions,
-      :deliver_at, :deliver_in,
+      :deliver_at, :deliver_in, :delivery_mode,
       { model: %i[model reasoning_effort reasoning_enabled], configuration: {} },
     ]).fetch(:input)
     provider_id, model_ref, reasoning_effort, reasoning_enabled = split_model(fields[:model])
@@ -37,8 +37,9 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
     # THE CLOCK ON THE EDIT: absent keeps the row's time (nil is
     # untouched); a time reschedules; `deliver_in: "0s"` is the clear —
     # the one parser resolves it, the door re-judges the bounds.
-    deliver_at = deliver_at_time(fields)
+    delivery_time = deliver_at_reading(fields)
     return if performed?
+    deliver_at = delivery_time.resolve(now: Time.current)&.utc&.floor
 
     expected_lock_version = fields[:expected_lock_version].nil? ? nil :
       bounded_integer(fields[:expected_lock_version], :expected_lock_version, range: 0..(2**31))
@@ -61,6 +62,7 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
       instructions: fields[:instructions],
       deliver_at: deliver_at,
       steps: submitted_steps,
+      delivery_mode: fields[:delivery_mode],
     ))
 
     if result.accepted?
@@ -148,9 +150,11 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
         answering_user_public_id: envelope["answering_user_public_id"],
         speaker_public_id: envelope["speaker_public_id"],
         attachments: envelope["attachments"],
-        # The resolved time, read back off the envelope's own canonical
-        # string: the row holds exactly what the digest fenced.
-        deliver_at: envelope["deliver_at"] && Time.iso8601(envelope["deliver_at"]),
+        # Only the first receipt execution resolves a relative clock.
+        deliver_at: ::Conversations::Inputs::DeliverAt::Reading.new(
+          time: envelope["deliver_at"] && Time.iso8601(envelope["deliver_at"]),
+          delay_seconds: envelope["deliver_in_seconds"], refusal: nil
+        ).resolve(now: Time.current)&.utc&.floor,
         steps: envelope["steps"],
       )
     end
@@ -172,7 +176,7 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
         :answering_user_public_id, :deliver_at, :deliver_in,
         { model: %i[model reasoning_effort reasoning_enabled], configuration: {} },
       ]).fetch(:input)
-      deliver_at = deliver_at_time(fields)
+      delivery_time = deliver_at_reading(fields)
       return {} if performed?
 
       {
@@ -199,11 +203,9 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
         # The pictures beside the words: canonical upload ids in order; in
         # the digest, so a replay naming another set is a mismatch.
         "attachments" => submitted_attachments,
-        # THE CLOCK: the CANONICAL ISO string of the resolved time, in the
-        # digest — a replay naming another time is a mismatch, and a
-        # `deliver_in` replay resolves to a later instant and mismatches
-        # too: a retry after a delay is not the same word.
-        "deliver_at" => deliver_at&.iso8601,
+        # Digest authored intent independently of when a retry arrives.
+        "deliver_at" => delivery_time.time&.utc&.floor&.iso8601,
+        "deliver_in_seconds" => delivery_time.delay_seconds,
         "steps" => submitted_steps,
       }.compact
     end
@@ -216,19 +218,19 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
     end
 
     # THE ONE PARSER, at this door: `deliver_at` (ISO 8601 WITH an offset
-    # or `Z`) or `deliver_in` (`90s`, `20m`, `2h`, `1d`), resolved against
-    # this boundary's clock and canonicalized to whole seconds in UTC —
-    # the string the envelope digests and the row holds. A malformed value
+    # or `Z`) or `deliver_in` (`90s`, `20m`, `2h`, `1d`). Preserve the
+    # duration until execution; absolute timestamps canonicalize to UTC.
+    # A malformed value
     # is `400 parameter_invalid` naming its field (the
     # `expected_tail_turn_public_id` precedent); both at once is the
     # door's `422 deliver_at_ambiguous`. Absent is nil: the door defaults
     # a create to now and an update to untouched.
-    def deliver_at_time(fields)
+    def deliver_at_reading(fields)
       reading = ::Conversations::Inputs::DeliverAt.parse(
-        at: fields[:deliver_at], in_: fields[:deliver_in], now: Time.current
+        at: fields[:deliver_at], in_: fields[:deliver_in]
       )
       case reading.refusal
-      when nil then reading.time&.utc&.floor
+      when nil then reading
       when :deliver_at_invalid then raise APIErrors::ParameterInvalid, :deliver_at
       when :deliver_in_invalid then raise APIErrors::ParameterInvalid, :deliver_in
       else render_refusal(reading.refusal)

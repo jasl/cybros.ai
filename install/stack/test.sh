@@ -16,8 +16,36 @@ case "$*" in
   'compose version') [ "${TEST_NO_COMPOSE:-0}" = 0 ] ;;
   info) [ "${TEST_NO_DAEMON:-0}" = 0 ] ;;
   'compose up --help') printf '%s\n' --wait-timeout ;;
+  'compose start --help') printf '%s\n' --wait-timeout ;;
   *' config --quiet') [ "${TEST_BAD_CONFIG:-0}" = 0 ] ;;
+  *'updater.compose.yaml config --images')
+    if [ "${TEST_MANAGER_LOCAL_PIN:-0}" = 1 ] && [ "${CYBROS_UPDATER_IMAGE-unset}" = unset ]; then
+      printf '%s\n' sha256:previous-manager
+    else
+      printf '%s\n' example-test/updater:2610080749
+    fi
+    ;;
+  'pull '*) [ "${TEST_PULL_FAIL:-0}" = 0 ] ;;
+  'inspect --format {{.Image}} fixture-updater') printf '%s\n' sha256:previous-manager ;;
+  'image inspect --format {{index .Config.Labels '* ) printf '%s\n' "${TEST_MANAGER_RELEASE:-2610080750}" ;;
+  'image inspect --format {{if .RepoDigests}}'*) printf '%s\n' example-test/updater@sha256:selected-manager ;;
   *' pull') [ "${TEST_PULL_FAIL:-0}" = 0 ] ;;
+  *' exec -T updater ruby /app/updater.rb update '*) [ "${TEST_UPDATE_FAIL:-0}" = 0 ] ;;
+  *' exec -T updater ruby /app/updater.rb assert-idle') [ "${TEST_RECOVERY_REQUIRED:-0}" = 0 ] ;;
+  *'updater.compose.yaml ps --status running --quiet updater')
+    if [ "${TEST_UPDATER_RUNNING:-1}" = 1 ]; then printf '%s\n' fixture-updater; fi
+    ;;
+  *'updater.compose.yaml ps --quiet updater') printf '%s\n' fixture-updater ;;
+  *'run --rm --no-deps --pull never -T updater ruby /app/updater.rb backup')
+    if [ "${TEST_EXPECT_OLD_WRAPPER:-0}" = 1 ]; then
+      grep -q 'old installed wrapper' "$CYBROS_INSTALL_DIR/cybros"
+      [ "$CYBROS_UPDATER_IMAGE" = sha256:previous-manager ]
+    fi
+    [ "${TEST_BACKUP_FAIL:-0}" = 0 ]
+    ;;
+  *'deployment.compose.yaml stop') [ "${TEST_STOP_FAIL:-0}" = 0 ] ;;
+  *'deployment.compose.yaml start --wait '*) [ "${TEST_RECOVERY_FAIL:-0}" = 0 ] ;;
+  *'updater.compose.yaml up -d --force-recreate '*) [ "${TEST_MANAGER_FAIL:-0}" = 0 ] ;;
   *' exec -e CMCTL_HOME=/var/lib/rho/cmctl rho rho setup telegram --finish')
     [ -t 0 ] && [ -t 1 ] || { printf 'setup has no TTY\n' >&2; exit 1; }
     printf 'Your Telegram numeric user ID: '
@@ -31,7 +59,7 @@ case "$*" in
     printf '%s\n' "$answer" > "$TEST_SETUP_STDIN"
     [ "${TEST_SETUP_FAIL:-0}" = 0 ]
     ;;
-  *' up -d --wait '*) [ "${TEST_UP_FAIL:-0}" = 0 ] ;;
+  *' up -d '*) [ "${TEST_UP_FAIL:-0}" = 0 ] ;;
   *' exec -T -e CMCTL_HOME=/var/lib/rho/cmctl rho cmctl '*) cat > "$TEST_CMCTL_STDIN" ;;
   *' exec -T rho /opt/rho/libexec/t3-setup '*|*' exec -T rho /opt/rho/libexec/docker-entrypoint t3 project '*|*' exec -T rho /opt/rho/libexec/docker-entrypoint t3 create '*)
     [ "${TEST_T3_SAVE_FAIL:-0}" = 0 ] || exit 1
@@ -56,7 +84,7 @@ TEST_CMCTL_STDIN="$test_root/cmctl.stdin"
 export TEST_CMCTL_STDIN
 install_dir="$test_root/install with spaces"
 export CYBROS_INSTALL_DIR="$install_dir"
-export CYBROS_IMAGE_NAMESPACE=example-test CYBROS_IMAGE_TAG=1234567890
+export CYBROS_NEXUS_IMAGE_REPOSITORY=example-test/nexus CYBROS_RHO_IMAGE_REPOSITORY=example-test/rho CYBROS_UPDATER_IMAGE_REPOSITORY=example-test/updater CYBROS_IMAGE_TAG=2610080749
 export CYBROS_BIND=0.0.0.0 CYBROS_NEXUS_URL=http://home.local:3300 CYBROS_RHO_URL=http://home.local:7777
 
 sh "$here/render.sh" --check
@@ -72,7 +100,10 @@ check 'prerequisites fail before writing configuration'
 cat "$here/install.sh" | sh -s -- --yes > "$test_root/install.log"
 cmp "$here/compose.yaml" "$install_dir/compose.yaml"
 cmp "$here/cybros" "$install_dir/cybros"
-grep -q "CYBROS_IMAGE_TAG='1234567890'" "$install_dir/.env" || fail 'tag not captured'
+cmp "$here/deployment.compose.yaml" "$install_dir/deployment.compose.yaml"
+cmp "$here/updater.compose.yaml" "$install_dir/updater.compose.yaml"
+grep -q "CYBROS_IMAGE_TAG='2610080749'" "$install_dir/.env" || fail 'tag not captured'
+grep -q "CYBROS_BACKUP_KEEP='3'" "$install_dir/.env" || fail 'backup retention default missing'
 grep -q "CYBROS_NEXUS_URL='http://home.local:3300'" "$install_dir/.env" || fail 'browser URL not captured'
 [ "$(grep -c "='[a-f0-9]\{64\}'$" "$install_dir/secrets.env")" = 5 ] || fail 'secrets missing or malformed'
 [ "$(cut -d= -f2 "$install_dir/secrets.env" | sort -u | wc -l | tr -d ' ')" = 6 ] || fail 'secrets are not independent'
@@ -113,6 +144,15 @@ cmp "$test_root/env.before" "$install_dir/.env"
 cmp "$test_root/secrets.before" "$install_dir/secrets.env"
 grep -q 'user customization' "$install_dir/compose.yaml" || fail 'compose overwritten'
 check 'reinstall preserves configuration, secrets and Compose edits'
+printf '\n# local manager edit\n' >> "$install_dir/cybros"
+sh "$here/install.sh" --yes --no-start > /dev/null
+grep -q 'local manager edit' "$install_dir/cybros" || fail 'ordinary reinstall overwrote manager'
+sh "$here/install.sh" --yes --no-start --upgrade-manager > /dev/null
+cmp "$here/cybros" "$install_dir/cybros"
+cmp "$test_root/env.before" "$install_dir/.env"
+cmp "$test_root/secrets.before" "$install_dir/secrets.env"
+grep -q 'user customization' "$install_dir/compose.yaml" || fail 'manager refresh overwrote custom Compose'
+check 'explicit manager refresh preserves installation settings and custom base Compose'
 "$install_dir/cybros" instructions > "$test_root/instructions.log"
 grep -q 'http://home.local:7777' "$test_root/instructions.log" || fail 'instructions lost the saved public rho URL'
 grep -q 'Create your administrator account' "$test_root/instructions.log" || fail 'instructions omitted first-account setup'
@@ -150,17 +190,97 @@ if grep -q ' restart rho$' "$TEST_DOCKER_LOG"; then fail 'rho restarted after re
 if grep -q ' restart rho$' "$TEST_DOCKER_LOG"; then fail 'offline T3 status restarted rho'; fi
 check 'T3 setup and project saves restart rho; refused saves and status preserve the running process'
 
-if TEST_PULL_FAIL=1 "$install_dir/cybros" update 1234567891 > "$test_root/failure.log" 2>&1; then fail 'pull failure swallowed'; fi
-cmp "$test_root/env.before" "$install_dir/.env"
-"$install_dir/cybros" update 1234567891 > /dev/null
-grep -q "CYBROS_IMAGE_TAG='1234567891'" "$install_dir/.env" || fail 'update tag missing'
+: > "$TEST_DOCKER_LOG"
+if TEST_UPDATE_FAIL=1 "$install_dir/cybros" update 2610080750 > "$test_root/failure.log" 2>&1; then fail 'upgrade failure swallowed'; fi
+"$install_dir/cybros" update 2610080750 > /dev/null
+grep -q 'exec -T updater ruby /app/updater.rb update 2610080750$' "$TEST_DOCKER_LOG" || fail 'update did not reach shared installation owner'
+grep -q '^pull example-test/updater:2610080750$' "$TEST_DOCKER_LOG" || fail 'matching manager was not pulled'
+grep -q "CYBROS_UPDATER_TAG='2610080750'" "$install_dir/.env" || fail 'manager release was not saved'
+grep -q "CYBROS_UPDATER_IMAGE='example-test/updater@sha256:selected-manager'" "$install_dir/.env" || fail 'manager immutable reference was not saved'
+sed '/^CYBROS_UPDATER_TAG=/d; /^CYBROS_UPDATER_IMAGE=/d' "$test_root/env.before" > "$test_root/env.before.filtered"
+sed '/^CYBROS_UPDATER_TAG=/d; /^CYBROS_UPDATER_IMAGE=/d' "$install_dir/.env" > "$test_root/env.after.filtered"
+cmp "$test_root/env.before.filtered" "$test_root/env.after.filtered"
 cmp "$test_root/secrets.before" "$install_dir/secrets.env"
-if "$install_dir/cybros" update 'bad;tag' > "$test_root/failure.log" 2>&1; then fail 'invalid tag accepted'; fi
-check 'upgrade changes the shared image tag only after a successful pull'
+for tag in '' 'bad;tag' 261008750 20261008075000; do
+  if "$install_dir/cybros" update "$tag" > "$test_root/failure.log" 2>&1; then fail 'invalid tag accepted'; fi
+done
+"$install_dir/cybros" upgrade-status > /dev/null
+"$install_dir/cybros" upgrade-log > /dev/null
+grep -q 'exec -T updater ruby /app/updater.rb receipt$' "$TEST_DOCKER_LOG" || fail 'receipt recovery missing'
+check 'upgrades and receipts use the shared owner, propagate failure and retain private settings'
+
+: > "$TEST_DOCKER_LOG"
+TEST_MANAGER_LOCAL_PIN=1 "$install_dir/cybros" update --no-backup > /dev/null
+grep -q 'exec -T updater ruby /app/updater.rb update 2610080750 --no-backup$' "$TEST_DOCKER_LOG" || fail 'no-backup choice was not forwarded with resolved release'
+if grep -q ' stop$\|/app/updater.rb backup$' "$TEST_DOCKER_LOG"; then fail 'no-backup stopped the stack or created a snapshot'; fi
+for failure in TEST_BACKUP_FAIL TEST_STOP_FAIL TEST_PULL_FAIL TEST_RECOVERY_FAIL TEST_MANAGER_FAIL; do
+  : > "$TEST_DOCKER_LOG"
+  cp "$install_dir/.env" "$test_root/manager-env.before"
+  if env "$failure=1" TEST_MANAGER_RELEASE=2610080751 "$install_dir/cybros" update 2610080751 > "$test_root/failure.log" 2>&1; then fail "$failure was swallowed"; fi
+  if grep -q '/app/updater.rb update ' "$TEST_DOCKER_LOG"; then fail "$failure accepted an upgrade"; fi
+  if [ "$failure" != TEST_MANAGER_FAIL ]; then cmp "$test_root/manager-env.before" "$install_dir/.env"; fi
+  case "$failure" in
+    TEST_BACKUP_FAIL|TEST_STOP_FAIL|TEST_RECOVERY_FAIL) grep -q 'deployment.compose.yaml start --wait' "$TEST_DOCKER_LOG" || fail "$failure did not restart existing application containers" ;;
+    TEST_PULL_FAIL) if grep -q ' stop$' "$TEST_DOCKER_LOG"; then fail 'pull failure stopped applications'; fi ;;
+    TEST_MANAGER_FAIL)
+      grep -q 'New manager failed readiness' "$test_root/failure.log" || fail 'manager failure lacks recovery guidance'
+      grep -q "CYBROS_UPDATER_TAG='2610080751'" "$install_dir/.env" || fail 'manager failure reverted the selection despite new state'
+      [ "$(grep -c -- '--force-recreate' "$TEST_DOCKER_LOG")" = 1 ] || fail 'manager failure attempted an unsafe old-manager restart'
+      grep -q 'deployment.compose.yaml start --wait' "$TEST_DOCKER_LOG" || fail 'old applications were not running before manager replacement'
+      ;;
+  esac
+done
+: > "$TEST_DOCKER_LOG"
+printf '\n# old installed wrapper\n' >> "$install_dir/cybros"
+if TEST_BACKUP_FAIL=1 TEST_EXPECT_OLD_WRAPPER=1 sh "$here/cybros" --dir "$install_dir" update 2610080750 > "$test_root/failure.log" 2>&1; then fail 'external wrapper ignored backup failure'; fi
+grep -q 'old installed wrapper' "$install_dir/cybros" || fail 'external wrapper replaced installed script before backup succeeded'
+: > "$TEST_DOCKER_LOG"
+TEST_EXPECT_OLD_WRAPPER=1 sh "$here/cybros" --dir "$install_dir" update 2610080750 > /dev/null
+cmp "$here/cybros" "$install_dir/cybros"
+python3 - "$TEST_DOCKER_LOG" <<'PY'
+from pathlib import Path
+import sys
+calls = Path(sys.argv[1]).read_text().splitlines()
+def index(needle): return next(i for i, value in enumerate(calls) if needle in value)
+assert index('pull example-test/updater:2610080750') < index('deployment.compose.yaml stop')
+assert index('deployment.compose.yaml stop') < index('updater.compose.yaml stop')
+assert index('/app/updater.rb backup') < index('deployment.compose.yaml start --wait')
+assert index('deployment.compose.yaml start --wait') < index('--force-recreate')
+assert not any('deployment.compose.yaml up ' in value for value in calls), 'recovery recreated old application containers'
+assert index('--force-recreate') < index('/app/updater.rb update 2610080750')
+PY
+check 'updates include full backup and matching manager; opt-out and failures preserve existing services and settings'
+
+: > "$TEST_DOCKER_LOG"
+"$install_dir/cybros" check 2610080750 > /dev/null
+grep -q 'exec -T updater ruby /app/updater.rb check 2610080750$' "$TEST_DOCKER_LOG" || fail 'preflight did not reach the owner'
+: > "$TEST_DOCKER_LOG"
+"$install_dir/cybros" backup > /dev/null
+"$install_dir/cybros" backups > /dev/null
+restore_directory="$test_root/restore with spaces"
+mkdir "$restore_directory"
+restore_directory=$(CDPATH='' cd -- "$restore_directory" && pwd -P)
+"$install_dir/cybros" restore 0198cb96-3770-7000-8000-000000000001 "$restore_directory" > /dev/null
+grep -q 'run --rm --no-deps --pull never -T updater ruby /app/updater.rb backup$' "$TEST_DOCKER_LOG" || fail 'backup did not run offline'
+grep -q 'run --rm --no-deps --pull never -T updater ruby /app/updater.rb backups$' "$TEST_DOCKER_LOG" || fail 'backup inventory did not run offline'
+grep -q -- "--volume $restore_directory:$restore_directory updater ruby /app/updater.rb restore" "$TEST_DOCKER_LOG" || fail 'restore destination was not mounted at its host path'
+if grep -q ' up -d\| pull$' "$TEST_DOCKER_LOG"; then fail 'offline maintenance started or pulled managed services'; fi
+for target in relative "$test_root/missing-destination" "$install_dir"; do
+  if "$install_dir/cybros" restore 0198cb96-3770-7000-8000-000000000001 "$target" > "$test_root/failure.log" 2>&1; then fail 'invalid restore destination accepted'; fi
+done
+check 'preflight uses the shared owner; backup/restore stay offline and require an existing empty destination'
+
+for action in up install stop update-manager; do
+  : > "$TEST_DOCKER_LOG"
+  if TEST_RECOVERY_REQUIRED=1 "$install_dir/cybros" "$action" > "$test_root/failure.log" 2>&1; then fail "$action ignored unresolved upgrade recovery"; fi
+  if grep -q 'deployment.compose.yaml up -d\|deployment.compose.yaml stop\|--force-recreate' "$TEST_DOCKER_LOG"; then fail "$action changed applications or manager despite unresolved recovery"; fi
+done
+TEST_UPDATER_RUNNING=0 TEST_RECOVERY_REQUIRED=1 "$install_dir/cybros" stop > /dev/null
+check 'ordinary startup and manager replacement refuse unresolved upgrade recovery'
 
 : > "$TEST_DOCKER_LOG"
 if TEST_UP_FAIL=1 "$install_dir/cybros" up > "$test_root/failure.log" 2>&1; then fail 'health failure swallowed'; fi
-grep -q 'Startup did not become healthy' "$test_root/failure.log" || fail 'missing health failure guidance'
+grep -q 'did not become healthy' "$test_root/failure.log" || fail 'missing health failure guidance'
 if grep -q ' --profile setup up -d setup$' "$TEST_DOCKER_LOG"; then fail 'setup helper started after core health failed'; fi
 cmp "$test_root/secrets.before" "$install_dir/secrets.env"
 mv "$install_dir/secrets.env" "$test_root/saved.secrets"
@@ -213,7 +333,7 @@ if [ "${CYBROS_TEST_COMPOSE_CONFIG:-0}" = 1 ]; then
   [ -n "$real_docker" ] || fail 'real Docker Compose requested but not installed'
   (
     cd "$test_root/initialize only"
-    unset CYBROS_IMAGE_NAMESPACE CYBROS_IMAGE_TAG CYBROS_BIND CYBROS_NEXUS_URL CYBROS_RHO_URL RHO_TELEGRAM_BOT_TOKEN NEXUS_SETUP_SECRET
+    unset CYBROS_NEXUS_IMAGE_REPOSITORY CYBROS_RHO_IMAGE_REPOSITORY CYBROS_UPDATER_IMAGE_REPOSITORY CYBROS_IMAGE_TAG CYBROS_BIND CYBROS_NEXUS_URL CYBROS_RHO_URL RHO_TELEGRAM_BOT_TOKEN NEXUS_SETUP_SECRET
     "$real_docker" compose --env-file .env --env-file secrets.env config --quiet
     named_volumes=$("$real_docker" compose --env-file .env --env-file secrets.env config --volumes)
     [ -z "$named_volumes" ] || fail 'durable data unexpectedly uses named volumes'
@@ -247,6 +367,47 @@ assert nexus["NEXUS_SETUP_SECRET"] == ""
 assert json.loads(nexus["NEXUS_OAUTH_REDIRECT_URIS"]) == ["http://home.local:7777/auth/callback"]
 assert nexus["NEXUS_OAUTH_ALLOW_HTTP"] == "true"
 assert all(mount["target"] != "/var/run/docker.sock" for row in services.values() for mount in row.get("volumes", []))
+'
+    CYBROS_INSTALL_DIR=$(pwd)
+    export CYBROS_INSTALL_DIR
+    "$real_docker" compose --env-file .env -f updater.compose.yaml config --format json | python3 -c '
+import json, os, sys
+config = json.load(sys.stdin)
+assert config["name"].endswith("-updater")
+assert list(config["services"]) == ["updater"]
+updater = config["services"]["updater"]
+assert not updater.get("ports")
+mounts = {v["target"]: v for v in updater["volumes"]}
+assert os.path.realpath(mounts[os.environ["CYBROS_INSTALL_DIR"]]["source"]) == os.getcwd()
+assert "/var/run/docker.sock" in mounts
+assert updater["environment"]["CYBROS_NEXUS_IMAGE_REPOSITORY"] == "example-test/nexus"
+assert updater["environment"]["CYBROS_RHO_IMAGE_REPOSITORY"] == "example-test/rho"
+assert updater["environment"]["CYBROS_BACKUP_KEEP"] == "3"
+'
+    printf "CYBROS_UPDATER_IMAGE='registry.example/team/cybros-updater@sha256:%s'\nCYBROS_POSTGRES_IMAGE='postgres@sha256:%s'\n" \
+      cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc \
+      dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd >> .env
+    CYBROS_UPDATER_IMAGE=unwanted:latest PATH="$(dirname -- "$real_docker"):$PATH" \
+      ./cybros manager config --format json | python3 -c '
+import json, sys
+assert json.load(sys.stdin)["services"]["updater"]["image"] == "registry.example/team/cybros-updater@sha256:" + "c" * 64
+'
+    printf "CYBROS_NEXUS_IMAGE='registry.example/team/cybros-nexus@sha256:%s'\nCYBROS_RHO_IMAGE='registry.example/team/cybros-rho@sha256:%s'\n" \
+      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+      bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb > images.env
+    CYBROS_POSTGRES_IMAGE=unwanted:latest CYBROS_NEXUS_IMAGE=unwanted:latest CYBROS_RHO_IMAGE=unwanted:latest PATH="$(dirname -- "$real_docker"):$PATH" \
+      ./cybros compose config --format json | python3 -c '
+import json, sys
+services = json.load(sys.stdin)["services"]
+for name in ["data_init", "migrator", "nexus", "jobs", "model_runner"]:
+    assert services[name]["image"] == "registry.example/team/cybros-nexus@sha256:" + "a" * 64
+assert services["rho"]["image"] == "registry.example/team/cybros-rho@sha256:" + "b" * 64
+assert services["db"]["image"] == "postgres@sha256:" + "d" * 64
+assert services["nexus"]["environment"]["NEXUS_DEPLOYMENT_SOCKET"] == "/run/cybros-updater/updater.sock"
+for name, service in services.items():
+    targets = [m["target"] for m in service.get("volumes", [])]
+    assert "/var/run/docker.sock" not in targets
+    assert ("/run/cybros-updater" in targets) == (name == "nexus")
 '
     printf "NEXUS_SETUP_SECRET='synthetic-operator-setup-secret'\n" >> secrets.env
     NEXUS_SETUP_SECRET=synthetic-other-deployment PATH="$(dirname -- "$real_docker"):$PATH" \

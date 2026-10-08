@@ -1,52 +1,52 @@
-<% content_for :title, "New workspace" %>
+<% content_for :title, t("workspaces.new.new_workspace") %>
 
 <div class="space-y-8">
   <header class="space-y-4">
-    <%= render "shared/back_navigation", path: workspaces_path, label: "Workspaces" %>
+    <%= render "shared/back_navigation", path: workspaces_path, label: t("workspaces.new.workspaces") %>
     <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight">New workspace</h1>
-      <p class="text-sm text-base-content/60">Give your data a home. You will own and manage this workspace.</p>
+      <h1 class="text-xl font-medium tracking-tight"><%= t("workspaces.new.new_workspace") %></h1>
+      <p class="text-sm text-base-content/60"><%= t("workspaces.new.give_your_data_a_home_you_will_own_and") %></p>
     </div>
   </header>
 
   <% if @name_errors&.any? || @access_mode_errors&.any? %>
     <div role="alert" class="alert alert-error alert-soft">
-      <span>The workspace could not be created — check the fields below.</span>
+      <span><%= t("workspaces.new.the_workspace_could_not_be_created_check_the_fields") %></span>
     </div>
   <% end %>
 
   <%= form_with url: workspaces_path, scope: :workspace do |form| %>
     <div class="rounded-box border border-base-300 bg-base-200">
-      <%= render layout: "shared/form_row", locals: { form:, attribute: :name, label: "Name" } do %>
+      <%= render layout: "shared/form_row", locals: { form:, attribute: :name, label: t("workspaces.new.name") } do %>
         <%= validated_field form, :text_field, :name, Array(@name_errors), size: :sm,
           value: @submitted_name, required: true, maxlength: Workspace::NAME_MAX_LENGTH, autofocus: true %>
       <% end %>
       <fieldset class="space-y-3 px-4 py-4" aria-describedby="workspace-access-description workspace-access-errors">
-        <legend class="sr-only">Access</legend>
-        <p class="text-sm font-medium" aria-hidden="true">Access</p>
+        <legend class="sr-only"><%= t("workspaces.new.access") %></legend>
+        <p class="text-sm font-medium" aria-hidden="true"><%= t("workspaces.new.access") %></p>
         <p id="workspace-access-description" class="text-sm text-base-content/60">
-          Choose who can use the workspace. Only you can manage its settings.
+          <%= t("workspaces.new.choose_who_can_use_the_workspace_only_you_can") %>
         </p>
         <div class="flex items-start gap-3 rounded-box border border-base-300 p-4">
           <%= form.radio_button :access_mode, "private", checked: @submitted_access_mode == "private", class: "radio radio-sm mt-0.5", aria: { describedby: "workspace-private-description" } %>
           <span class="min-w-0">
-            <%= form.label :access_mode_private, "Private", class: "block cursor-pointer text-sm font-medium" %>
-            <span id="workspace-private-description" class="mt-1 block text-sm text-base-content/60">For you and the agents you manage.</span>
+            <%= form.label :access_mode_private, t("workspaces.new.private"), class: "block cursor-pointer text-sm font-medium" %>
+            <span id="workspace-private-description" class="mt-1 block text-sm text-base-content/60"><%= t("workspaces.new.for_you_and_the_agents_you_manage") %></span>
           </span>
         </div>
         <div class="flex items-start gap-3 rounded-box border border-base-300 p-4">
           <%= form.radio_button :access_mode, "account_wide", checked: @submitted_access_mode == "account_wide", class: "radio radio-sm mt-0.5", aria: { describedby: "workspace-account-wide-description" } %>
           <span class="min-w-0">
-            <%= form.label :access_mode_account_wide, "Account-wide", class: "block cursor-pointer text-sm font-medium" %>
-            <span id="workspace-account-wide-description" class="mt-1 block text-sm text-base-content/60">For all members of this installation and their agents.</span>
+            <%= form.label :access_mode_account_wide, t("workspaces.new.account_wide"), class: "block cursor-pointer text-sm font-medium" %>
+            <span id="workspace-account-wide-description" class="mt-1 block text-sm text-base-content/60"><%= t("workspaces.new.for_all_members_of_this_installation_and_their_agents") %></span>
           </span>
         </div>
         <%= validator_hints(Array(@access_mode_errors), id: "workspace-access-errors") %>
       </fieldset>
     </div>
     <div class="mt-3 flex flex-wrap justify-end gap-2">
-      <%= link_to "Cancel", workspaces_path, class: "btn btn-ghost btn-sm" %>
-      <%= form.submit "Create workspace", class: "btn btn-primary btn-sm" %>
+      <%= link_to t("workspaces.new.cancel"), workspaces_path, class: "btn btn-ghost btn-sm" %>
+      <%= form.submit t("workspaces.new.create_workspace"), class: "btn btn-primary btn-sm" %>
     </div>
   <% end %>
 </div>

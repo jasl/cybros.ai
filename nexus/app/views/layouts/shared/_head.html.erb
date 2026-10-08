@@ -1,9 +1,9 @@
 <% turbo_cache = local_assigns.fetch(:turbo_cache, true) %>
 <head>
-  <title><%= [content_for(:title), "Nexus"].compact.join(" · ") %></title>
+  <title><%= [content_for(:title), t("brand.name")].compact.join(" · ") %></title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="application-name" content="Nexus">
+  <meta name="application-name" content="<%= t("brand.name") %>">
   <meta name="mobile-web-app-capable" content="yes">
   <% unless turbo_cache %>
     <meta name="turbo-cache-control" content="no-cache">

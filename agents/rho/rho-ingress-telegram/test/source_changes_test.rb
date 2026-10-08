@@ -73,7 +73,7 @@ class TelegramSourceChangesTest < Minitest::Test
   end
 
   def test_a_question_waits_for_a_successful_pending_refresh_and_missing_questions_never_send
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @state.change { |document| document["retry_at"] = @now + 1 }
     @bridge.pending_rows = [{ "workspace_public_id" => "workspace-home", "run_public_id" => "loop-1", "task_key" => "ask",
       "kind" => "ask", "question" => "Choose one" }]
@@ -104,13 +104,13 @@ class TelegramSourceChangesTest < Minitest::Test
   end
 
   def test_reply_to_a_retired_bot_question_never_becomes_a_new_model_input
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     reply = telegram_message(2, "The old answer")
     reply.fetch("message")["reply_to_message"] = {
       "message_id" => 500, "from" => { "id" => 42, "is_bot" => true },
       "text" => "Question (0123456789ab)\nWhich option?\nReply to this message, or use /answer 0123456789ab your answer.",
     }
-    @runtime.consume(reply)
+    receive(reply)
 
     assert_equal 1, @bridge.inputs.length
     assert_includes @state.read.fetch("deliveries").fetch("control:2").fetch("text"), "no longer available"
@@ -118,12 +118,12 @@ class TelegramSourceChangesTest < Minitest::Test
   end
 
   def test_another_bots_question_format_does_not_intercept_a_normal_private_message
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     reply = telegram_message(2, "An ordinary request")
     reply.fetch("message")["reply_to_message"] = {
       "message_id" => 500, "from" => { "id" => 99, "is_bot" => true }, "text" => "Question (0123456789ab)\nSomething?",
     }
-    @runtime.consume(reply)
+    receive(reply)
     assert_equal 2, @bridge.inputs.length
   end
 
@@ -176,10 +176,10 @@ class TelegramSourceChangesTest < Minitest::Test
       @bridge.read_failure = refused(404)
       @runtime.tick
       @bridge.read_failure = nil
-      @runtime.consume(telegram_message(2, "/new"))
-      @runtime.consume(telegram_message(3, "New task"))
+      receive(telegram_message(2, "/new"))
+      receive(telegram_message(3, "New task"))
       @runtime = runtime
-      @runtime.consume(telegram_message(4, command, reply_to: 1, reply_user: 1))
+      receive(telegram_message(4, command, reply_to: 1, reply_user: 1))
 
       document = @state.read
       assert_includes document.fetch("deliveries").fetch("control:4").fetch("text"), "no longer followed"
@@ -190,7 +190,7 @@ class TelegramSourceChangesTest < Minitest::Test
       assert_equal 2, @bridge.opened.length
       assert_empty @bridge.stops
 
-      @runtime.consume(telegram_message(5, "Continue the new task"))
+      receive(telegram_message(5, "Continue the new task"))
       assert_nil @state.read["pending_update"]
       assert_equal 6, @state.read.fetch("offset")
       assert_equal 3, @bridge.inputs.length
@@ -203,7 +203,7 @@ class TelegramSourceChangesTest < Minitest::Test
       @runtime.tick
       @bridge.read_failure = nil
       @runtime = runtime
-      @runtime.consume(telegram_message(2, "The source is readable again"))
+      receive(telegram_message(2, "The source is readable again"))
 
       assert_equal 1, @bridge.inputs.length, "a retired conversation must not accept an unfollowed request"
       assert_equal 1, @bridge.opened.length
@@ -213,8 +213,8 @@ class TelegramSourceChangesTest < Minitest::Test
       assert_includes refusal, "/new"
       assert_includes refusal, "/workspace"
 
-      @runtime.consume(telegram_message(3, command))
-      @runtime.consume(telegram_message(4, "Continue in the new conversation"))
+      receive(telegram_message(3, command))
+      receive(telegram_message(4, "Continue in the new conversation"))
       route = @state.read.fetch("routes").fetch("1:0")
       assert_equal "conversation-2", route.fetch("current")
       assert route.fetch("conversations").key?("conversation-2")
@@ -223,7 +223,7 @@ class TelegramSourceChangesTest < Minitest::Test
     end
 
     def queue_answer
-      @runtime.consume(telegram_message(1, "start"))
+      receive(telegram_message(1, "start"))
       @state.change do |document|
         document.fetch("deliveries").clear
         document.fetch("routes").fetch("1:0").fetch("conversations").fetch("conversation-1")["position"] = 0

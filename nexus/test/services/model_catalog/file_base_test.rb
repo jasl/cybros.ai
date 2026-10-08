@@ -428,9 +428,9 @@ class ModelCatalog::FileBaseTest < ActiveSupport::TestCase
   # The origin and the profile's relative wire path are two halves owned by
   # two sides; a trailing slash or an embedded query is how one side starts
   # carrying the other's.
-  test "a provider endpoint must be an absolute origin with nothing trailing" do
+  test "a configured provider endpoint must be an absolute origin with nothing trailing" do
     [
-      nil, "", "api.openai.com", "ftp://api.openai.com", "https://api.openai.com/",
+      "", "api.openai.com", "ftp://api.openai.com", "https://api.openai.com/",
       "https://api.openai.com?key=x", "https://api.openai.com#frag",
     ].each do |value|
       with_root do |root|
@@ -439,6 +439,24 @@ class ModelCatalog::FileBaseTest < ActiveSupport::TestCase
         error = assert_raises(ModelCatalog::CompileError) { ModelCatalog::FileBase.compile(root: root) }
         assert_includes error.message, "base_url", "#{value.inspect} should have been refused"
       end
+    end
+  end
+
+  test "a null provider endpoint compiles as unconfigured for its models" do
+    with_root do |root|
+      write(root, "10_base.yml", base_fragment(
+        providers: { "custom" => {
+          "base_url" => nil, "api_format" => "openai_responses", "concurrency_limit" => 8,
+        } },
+        models: { "custom/text" => text_entry }
+      ))
+
+      candidate = ModelCatalog::FileBase.compile(root: root)
+
+      assert_nil candidate.providers.fetch("custom").fetch("base_url")
+      assert candidate.models.key?("custom/text")
+      assert_nil ModelCatalog.provider_base_url("custom", snapshot: candidate)
+      assert_nil ModelCatalog.model_base_url("custom/text", snapshot: candidate)
     end
   end
 

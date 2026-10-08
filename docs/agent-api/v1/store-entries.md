@@ -46,8 +46,8 @@ DELETE /agent_api/v1/profile/store_entries/{store_entry_id}?lock_version=...
   a tombstoned Workspace or Conversation reads as absence too. The
   archived bin of either stays browsable and refuses writes.
 - Lists paginate by keyset over `(namespace ASC, key ASC)` with an opaque
-  composite cursor; `limit` defaults to 25, and values above the maximum
-  clamp to 100, while non-integer values and values below 1 return
+  composite cursor; `limit` defaults to 25 and accepts 1–100. Non-integer
+  values, values below 1, and values above 100 return
   `400 parameter_invalid`.
 - The list projection omits `value`; show, create, and update return it.
   Separate Basic/Full shapes keep an omitted list value distinguishable from

@@ -1,12 +1,12 @@
-<% content_for :title, "Forgot your password?" %>
+<% content_for :title, t("passwords.new.forgot_your_password") %>
 
 <div class="space-y-8">
   <header class="space-y-4">
-    <%= render "shared/back_navigation", path: new_session_path, label: "Back to sign in" %>
+    <%= render "shared/back_navigation", path: new_session_path, label: t("passwords.new.back_to_sign_in") %>
     <div class="space-y-1.5 text-center">
-      <h1 class="text-2xl font-semibold tracking-tight">Forgot your password?</h1>
+      <h1 class="text-2xl font-semibold tracking-tight"><%= t("passwords.new.forgot_your_password") %></h1>
       <% if ApplicationMailer.delivery_configured? %>
-        <p class="text-base-content/60">We will email you instructions to reset it</p>
+        <p class="text-base-content/60"><%= t("passwords.new.we_will_email_you_instructions_to_reset_it") %></p>
       <% end %>
     </div>
   </header>
@@ -16,16 +16,16 @@
   <% if ApplicationMailer.delivery_configured? %>
     <%= form_with url: passwords_path do |form| %>
       <fieldset class="fieldset">
-        <%= form.label :email, "Email", class: "label" %>
-        <%= form.email_field :email, required: true, autofocus: true, autocomplete: "username", placeholder: "Enter your email address", value: params[:email], class: "input w-full" %>
+        <%= form.label :email, t("passwords.new.email"), class: "label" %>
+        <%= form.email_field :email, required: true, autofocus: true, autocomplete: "username", placeholder: t("passwords.new.enter_your_email_address"), value: params[:email], class: "input w-full" %>
 
-        <%= form.submit "Email reset instructions", class: "btn btn-primary btn-block mt-4" %>
+        <%= form.submit t("passwords.new.email_reset_instructions"), class: "btn btn-primary btn-block mt-4" %>
       </fieldset>
     <% end %>
   <% else %>
     <div role="alert" class="alert alert-warning">
       <span class="iconify lucide--mail-x size-5" aria-hidden="true"></span>
-      <span>Password reset by email is unavailable because this installation has no outbound mail. Contact your administrator.</span>
+      <span><%= t("passwords.new.password_reset_by_email_is_unavailable_because_this_installation") %></span>
     </div>
   <% end %>
 

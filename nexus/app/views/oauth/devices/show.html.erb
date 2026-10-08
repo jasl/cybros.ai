@@ -1,13 +1,11 @@
-<% content_for :title, "Connect a device" %>
+<% content_for :title, t("oauth.devices.show.connect_a_device") %>
 <% content_for :page_owned_flash, "oauth-device" %>
 
 <div class="mx-auto max-w-md space-y-8">
   <header class="space-y-1">
-    <h1 class="text-2xl font-semibold tracking-tight">Connect a device</h1>
+    <h1 class="text-2xl font-semibold tracking-tight"><%= t("oauth.devices.show.connect_a_device") %></h1>
     <p class="text-sm text-base-content/60">
-      Enter the code shown by the program you just started, then review the connection warning
-      before continuing. If you did not start a program yourself, you have nothing to enter here —
-      a code someone else gave you would connect their program as you.
+      <%= t("oauth.devices.show.enter_the_code_shown_by_the_program_you_just") %>
     </p>
   </header>
 
@@ -21,7 +19,7 @@
   <%= form_with url: oauth_device_verification_path, scope: :verification do |form| %>
     <%= hidden_field_tag :return_to, @return_to %>
     <div class="rounded-box border border-base-300 bg-base-200 px-6 py-4">
-      <%= form.label :user_code, "Device code", class: "text-sm" %>
+      <%= form.label :user_code, t("oauth.devices.show.device_code"), class: "text-sm" %>
       <%= form.text_field :user_code,
             value: @prefilled_code,
             class: "input mt-2 w-full text-center font-mono text-lg tracking-widest",
@@ -31,7 +29,7 @@
             placeholder: "XXXX-XXXX" %>
     </div>
     <div class="mt-3 flex justify-end">
-      <%= form.submit "Continue", class: "btn btn-primary btn-sm" %>
+      <%= form.submit t("oauth.devices.show.continue"), class: "btn btn-primary btn-sm" %>
     </div>
   <% end %>
 </div>

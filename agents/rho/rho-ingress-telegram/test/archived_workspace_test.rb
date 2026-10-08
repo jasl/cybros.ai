@@ -79,7 +79,7 @@ class TelegramArchivedWorkspaceTest < Minitest::Test
   def test_archived_conversation_keeps_original_scope_after_default_changes_and_local_follow_is_forgotten
     @bridge = ScopedBridge.new
     @runtime = runtime
-    @runtime.consume(telegram_message(1, "Start in A"))
+    receive(telegram_message(1, "Start in A"))
     @state.change { |document| document.fetch("deliveries").clear }
     @bridge.default_workspace = @bridge.workspace_rows.last
     @bridge.archive("conversation-1")
@@ -97,9 +97,9 @@ class TelegramArchivedWorkspaceTest < Minitest::Test
 
     # After the owner restores the source, requests and controls keep A too.
     @bridge.current = { "status" => "running", "run_public_id" => "loop-1" }
-    @runtime.consume(telegram_message(2, "Continue after restoration"))
-    @runtime.consume(telegram_message(3, "/status"))
-    @runtime.consume(telegram_message(4, "/stop"))
+    receive(telegram_message(2, "Continue after restoration"))
+    receive(telegram_message(3, "/status"))
+    receive(telegram_message(4, "/stop"))
     assert_equal %i[submit conversation inputs snapshot pending stop], @bridge.scope_calls.last(6).map(&:first)
     assert_equal ["workspace-home"], @bridge.scope_calls.map(&:last).uniq
     status = @state.read.fetch("deliveries").fetch("control:3").fetch("text")

@@ -88,25 +88,25 @@ class TelegramRecoveryTest < Minitest::Test
   end
 
   def test_callback_ack_uses_client_signature_and_exact_original_task
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @bridge.pending_rows = [approval]
     @runtime.tick
     id = @state.read.fetch("questions").keys.fetch(0)
 
     # Telegram gives the original message date, not the time of this click.
-    @runtime.consume(approval_callback(2, id, message_date: 1))
+    receive(approval_callback(2, id, message_date: 1))
     assert_equal [["approve", "child-loop", "dangerous-tool", "workspace-home"]], @bridge.decisions
     assert_equal ["answerCallbackQuery", { callback_query_id: "callback-2" }], @client.calls.last
     assert_equal 3, @state.read.fetch("offset")
 
-    @runtime.consume(approval_callback(3, id, message_date: 1))
+    receive(approval_callback(3, id, message_date: 1))
     assert_equal 1, @bridge.decisions.length
     assert_equal ["answerCallbackQuery", { callback_query_id: "callback-3" }], @client.calls.last
     assert_includes @state.read.fetch("deliveries").fetch("control:3").fetch("text"), "no longer available"
   end
 
   def test_expired_queued_question_is_not_sent_and_a_new_question_can_be_delivered
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @state.change { |document| document["retry_at"] = @now + 1 }
     @bridge.pending_rows = [approval]
     @runtime.tick
@@ -122,7 +122,7 @@ class TelegramRecoveryTest < Minitest::Test
     refute @state.read.fetch("deliveries").key?("question:#{id}")
     assert_empty approval_messages
 
-    @runtime.consume(approval_callback(2, id))
+    receive(approval_callback(2, id))
     assert_empty @bridge.decisions
     assert_includes @state.read.fetch("deliveries").fetch("control:2").fetch("text"), "no longer available"
     @runtime = runtime
@@ -140,7 +140,7 @@ class TelegramRecoveryTest < Minitest::Test
   end
 
   def test_decision_survives_follower_removing_the_resolved_question_before_ack
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @bridge.pending_rows = [approval]
     @runtime.tick
     id = @state.read.fetch("questions").keys.fetch(0)
@@ -152,18 +152,18 @@ class TelegramRecoveryTest < Minitest::Test
       follower.tick
     end
 
-    @runtime.consume(approval_callback(2, id))
+    receive(approval_callback(2, id))
 
     assert_equal [["approve", "child-loop", "dangerous-tool", "workspace-home"]], @bridge.decisions
     refute @state.read.fetch("questions").key?(id)
     assert_equal "Response accepted.", @state.read.fetch("deliveries").fetch("control:2").fetch("text")
     assert_equal 3, @state.read.fetch("offset")
-    @runtime.consume(approval_callback(2, id))
+    receive(approval_callback(2, id))
     assert_equal 1, @bridge.decisions.length
   end
 
   def test_long_tool_refreshes_same_draft_but_full_final_is_always_formal
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @runtime.tick
     assert_equal "sendMessageDraft", @client.calls.first.first
     @client.calls.clear

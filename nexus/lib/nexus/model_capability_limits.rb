@@ -5,6 +5,15 @@ module Nexus
   ) do
     def self.from_h(hash) = new(**hash.transform_keys(&:to_sym))
 
+    # Discovery and selection share the same bounds. The advisory threshold
+    # belongs to Nexus; every other bound comes from the compiled profile.
+    def self.from_catalog(entry:, profile:)
+      capabilities = entry.fetch("capabilities", {})
+      authored = capabilities["limits"] || entry["limits"] || {}
+      new(effective_input_tokens: authored["effective_input_tokens"],
+        **profile.local_safety_limits.deconstruct_keys(nil))
+    end
+
     # The necessary bound on input, whichever way the lane spells its window.
     # A shared-window provider checks input + requested output; this input
     # ceiling alone does not reserve the requested output tokens.

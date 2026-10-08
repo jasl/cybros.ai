@@ -424,7 +424,7 @@ class ExecutorPlaneTest < Minitest::Test
     human = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)
     workspace = human.workspace(human.workspaces.create(
       name: "Profile removal #{SecureRandom.hex(4)}", access_mode: "account_wide", idempotency_key: SecureRandom.uuid
-    ).public_id)
+    ).workspace.public_id)
     chat = workspace.conversations.conversation(workspace.conversations.create(
       answering_user_public_id: profile_id, idempotency_key: SecureRandom.uuid
     ).public_id)

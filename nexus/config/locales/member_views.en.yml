@@ -1,0 +1,331 @@
+---
+en:
+  agents:
+    index:
+      my_agents: My agents
+      connect_agent: Connect agent
+      removed: Removed
+      active: Active
+      not_registered: Not registered
+      registered: Registered
+      manage: Manage
+      agent_pages: Agent pages
+      an_agent_program_connects_itself_start_it_on_the: >-
+        An agent program connects itself. Start it on the machine you want to connect and follow the link
+        it prints — it opens this installation with the code already filled in.
+      no_agents: No agents
+      agents_you_manage_each_agent_has_at_most_one: Agents you manage. Each Agent has at most one current
+        registration.
+      program: Program
+      defined_by: Defined by
+      status: Status
+      registration: Registration
+      credential_readiness: Credential readiness
+      action: Action
+      not_defined: "—"
+      removed_program: a removed program
+      manage_member: Manage %{member}
+    show:
+      my_agents: My agents
+      description: Description
+      defined_by: Defined by
+      created: Created
+      removed: Removed
+      active: Active
+      status: Status
+      how_others_address_this_agent_handle_lowercase_letters_digits: >-
+        How others address this agent: @handle. Lowercase letters, digits, - and _; 2 to 32 characters;
+        unique here.
+      handle: Handle
+      rename: Rename
+      revoke_credentials: Revoke credentials
+      revokes_this_profile_s_access_immediately_and_force_stops: Revokes this profile's access immediately
+        and force-stops related conversations in the background.
+      remove: Remove
+      reopens_the_profile_reconnect_the_program_to_get_new: Reopens the profile. Reconnect the program
+        to get new credentials.
+      restore: Restore
+      agent: Agent
+      this_agent_is_removed_its_access_and_credentials_are: >-
+        This Agent is removed: its access and credentials are revoked. Related conversations are being
+        force-stopped in the background.
+      registration: Registration
+      this_agent_can_have_at_most_one_durable_registered: >-
+        This Agent can have at most one durable registered address. Connecting a replacement device re-pairs
+        that address and invalidates the previous credentials. Credential readiness says only whether
+        current transport credentials can authenticate — it does not mean the program is online. Work
+        already running does not move and follows its own reconciliation policy.
+      no_credentials_issued_for_this_registration: No credentials issued for this registration
+      not_registered: Not registered
+      start_the_program_on_the_machine_you_want_it: Start the program on the machine you want it to run
+        on and follow the link it prints.
+      lifecycle: Lifecycle
+      never: never
+      definition_origin: "%{name} (%{definition_scope})"
+      removed_program: a removed program
+      elapsed_ago: "%{elapsed} ago"
+      revoke_credentials_for_name_it_ends_this_registration_and: >-
+        Revoke credentials for %{name}? It ends this registration and invalidates any current credentials
+        immediately. The profile and its data stay; connecting again creates a new registration.
+      revoke_credentials_for_name: Revoke credentials for %{name}
+      remove_name_its_credentials_stop_working_immediately_and_related: >-
+        Remove %{name}? Its credentials stop working immediately and related conversations are force-stopped
+        in the background.
+      credentials_issued_elapsed_ago: Credentials issued %{elapsed} ago
+      credential_last_used_last_used: Credential last used %{last_used}
+    definition_scopes:
+      instance: instance
+      steward: steward
+  runners:
+    index:
+      my_runners: My runners
+      connect_runner: Connect runner
+      private: Private
+      account_wide: Account-wide
+      revoke_credentials: Revoke credentials
+      revoke_runner: Revoke runner
+      runner_pages: Runner pages
+      a_runner_connects_itself_start_it_on_the_machine: >-
+        A runner connects itself. Start it on the machine you want to connect and follow the link it prints
+        — it opens this installation with the code already filled in.
+      no_runners_connected: No runners connected
+      machines_you_manage_as_execution_capacity_runners_and_tools: >-
+        Machines you manage as execution capacity — runners and tools providers. Scope controls who can
+        discover them for new work.
+      machine: Machine
+      scope: Scope
+      credential_readiness: Credential readiness
+      registered: Registered
+      presence: Presence
+      actions: Actions
+      revoke_credentials_for_name_it_stops_working_immediately_and: >-
+        Revoke credentials for %{name}? It stops working immediately and keeps its registration — starting
+        the same Runner product and connecting again restores it.
+      revoke_credentials_for_name: Revoke credentials for %{name}
+      revoke_name_this_cannot_be_undone_the_machine_loses: >-
+        Revoke %{name}? This cannot be undone: the machine loses this identity and reconnecting registers
+        a new runner.
+      revoke_name: Revoke %{name}
+      elapsed_ago: "%{elapsed} ago"
+  settings:
+    shell:
+      profile: Profile
+      email: Email
+      password: Password
+      sessions: Sessions
+      tokens: Tokens
+      model_providers: Model providers
+      cost_unit: Cost unit
+      retention: Retention
+      settings: Settings
+      manage_your_profile_sign_in_credentials_and_active_sessions: Manage your profile, sign-in credentials,
+        and active sessions.
+      system_settings: System settings
+      as_an_administrator_you_can_configure_models_and_installation: As an administrator, you can configure
+        models and installation-wide settings.
+    emails:
+      show:
+        settings: Settings
+        email: Email
+        current_password: Current password
+        change_email: Change email
+        the_email_address_could_not_be_changed_check_the: The email address could not be changed — check
+          the highlighted fields.
+        changing_the_email_address_used_to_sign_in_requires: Changing the email address used to sign in
+          requires your current password.
+    passwords:
+      show:
+        settings: Settings
+        current_password: Current password
+        new_password: New password
+        repeat_new_password: Repeat new password
+        change_password: Change password
+        the_password_could_not_be_changed_check_the_highlighted: The password could not be changed — check
+          the highlighted fields.
+        password: Password
+        use_at_least_minimum_characters_changing_your_password_signs: Use at least %{minimum} characters.
+          Changing your password signs out every other device.
+    profiles:
+      show:
+        settings: Settings
+        display_name: Display name
+        how_others_address_you_handle_lowercase_letters_digits_and: >-
+          How others address you: @handle. Lowercase letters, digits, - and _; 2 to 32 characters; unique
+          here.
+        handle: Handle
+        save: Save
+        the_profile_could_not_be_saved_check_the_highlighted: The profile could not be saved — check the
+          highlighted field.
+        profile: Profile
+        choose_how_your_name_appears_in_brand: Choose how your name appears in %{brand}.
+    sessions:
+      index:
+        settings: Settings
+        log_out: Log out
+        revoke: Revoke
+        active_sessions_pages: Active sessions pages
+        active_sessions: Active sessions
+        review_browser_and_api_sessions_signed_in_to_your: Review browser and API sessions signed in to
+          your account and revoke access you no longer need.
+        device: Device
+        signed_in: Signed in
+        action: Action
+        session_id: Session ID
+        this_device: This device
+        api_session_session_id: API session %{session_id}
+        revoke_session_clients_using_this_session_lose_access_immediately: Revoke %{session}? Clients
+          using this session lose access immediately.
+        revoke_session: Revoke %{session}
+        elapsed_ago: "%{elapsed} ago"
+    tokens:
+      index:
+        settings: Settings
+        name: Name
+        note_optional: Note (optional)
+        current_password: Current password
+        create_token: Create token
+        never: Never
+        revoke: Revoke
+        token_pages: Token pages
+        new_token: New token
+        personal_access_tokens_authenticate_automation_acting_as_you_the: Personal access tokens authenticate
+          automation acting as you. The token is shown exactly once.
+        token_kind: Token kind
+        your_tokens: Your tokens
+        kind: Kind
+        created: Created
+        last_used: Last used
+        action: Action
+        token_id: Token ID
+        revoked: Revoked
+        no_tokens_yet: No tokens yet.
+        admin_token_scope: A member token automates your own account; a platform token reaches installation
+          administration.
+        member_token_scope: A member token automates your own account.
+        token_identity: "%{name} (Token ID %{token_id})"
+        elapsed_ago: "%{elapsed} ago"
+        revoke_token_automation_using_it_stops_authenticating_immediately: Revoke %{token}? Automation
+          using it stops authenticating immediately.
+        revoke_token: Revoke %{token}
+      reveal:
+        settings: Settings
+        new_access_token: New access token
+        done: Done
+        token_created: Token created
+        token_id: Token ID
+        copy: Copy
+        save_token_html: Save %{name} now — you won't be able to see it again.
+  workspaces:
+    agent_badge:
+      agent_workspace: Agent workspace
+    edit:
+      edit_workspace: Edit workspace
+      name: Name
+      metadata_json: Metadata (JSON)
+      save_changes: Save changes
+      update_the_name_or_the_small_json_metadata_object: Update the name or the small JSON metadata object
+        stored with this workspace.
+      the_workspace_could_not_be_updated_check_the_fields: The workspace could not be updated — check
+        the fields below.
+      enter_one_json_object_its_canonical_json_representation_may: Enter one JSON object. Its canonical
+        JSON representation may use up to %{maximum}.
+    index:
+      workspaces: Workspaces
+      new_workspace: New workspace
+      live: Live
+      archived: Archived
+      private: Private
+      account_wide: Account-wide
+      you: You
+      workspace_pages: Workspace pages
+      archived_workspaces_rest_here_with_their_data_readable_until: Archived workspaces rest here with
+        their data readable until you restore or delete them.
+      the_archive_is_empty: The archive is empty
+      create_a_workspace_for_your_data_or_let_an: >-
+        Create a workspace for your data, or let an agent program create its own dedicated workspace when
+        it needs one.
+      no_workspaces_yet: No workspaces yet
+      shared_homes_for_the_data_you_and_your_agents: Shared homes for the data you and your agents work
+        on.
+      name: Name
+      access: Access
+      state: State
+      owner: Owner
+      created: Created
+      workspace_lists: Workspace lists
+    new:
+      new_workspace: New workspace
+      workspaces: Workspaces
+      name: Name
+      private: Private
+      account_wide: Account-wide
+      cancel: Cancel
+      create_workspace: Create workspace
+      give_your_data_a_home_you_will_own_and: Give your data a home. You will own and manage this workspace.
+      the_workspace_could_not_be_created_check_the_fields: The workspace could not be created — check
+        the fields below.
+      access: Access
+      choose_who_can_use_the_workspace_only_you_can: Choose who can use the workspace. Only you can manage
+        its settings.
+      for_you_and_the_agents_you_manage: For you and the agents you manage.
+      for_all_members_of_this_installation_and_their_agents: For all members of this installation and
+        their agents.
+    ownership_transfers:
+      show:
+        transfer_ownership: Transfer ownership
+        transfer: Transfer
+        transfer_candidates_pages: Transfer candidates pages
+        no_matching_members: No matching members
+        try_a_different_name_or_email_address: Try a different name or email address.
+        transfer_description_html: >-
+          Hand %{workspace} to another active member. You stop managing it immediately; if it is private,
+          your data access moves with it.
+        transfer_confirmation: Transfer %{workspace} to %{member}? They become the owner immediately and
+          you stop managing it.
+        transfer_to_member: Transfer to %{member}
+    show:
+      workspaces: Workspaces
+      created: Created
+      you: You
+      owner: Owner
+      private: Private
+      account_wide: Account-wide
+      access: Access
+      private_keeps_the_data_to_you_and_your_agents: >-
+        Private keeps the data to you and your agents. Account-wide shares it with every active member;
+        switching back to private cuts their access immediately.
+      update_access: Update access
+      change_the_name_or_update_the_small_json_metadata: Change the name or update the small JSON metadata
+        object.
+      edit_details: Edit details
+      hand_this_workspace_to_another_active_member_you_stop: Hand this workspace to another active member.
+        You stop managing it immediately.
+      transfer_ownership: Transfer ownership
+      takes_the_workspace_out_of_the_live_list_and: >-
+        Takes the workspace out of the live list and blocks new writes. Its data stays readable, and restoring
+        brings it back.
+      archive: Archive
+      brings_the_workspace_back_to_the_live_list_and: Brings the workspace back to the live list and reopens
+        writes.
+      restore: Restore
+      removes_the_workspace_and_its_data_from_every_list: >-
+        Removes the workspace and its data from every list immediately. This cannot be undone from the
+        console.
+      delete: Delete
+      workspace: Workspace
+      details: Details
+      an_agent_program_created_this_workspace_for_its_own: >-
+        An agent program created this workspace for its own data and is the only agent that writes to
+        it. As a reader you always see its current contents; the owner can manage it like any other workspace.
+      ownership: Ownership
+      lifecycle: Lifecycle
+      a_lifecycle_change_is_completing_the_state_above_is: A lifecycle change is completing. The state
+        above is current; refresh to see it settle.
+      only_the_workspace_owner_can_manage_it_you_can: Only the workspace owner can manage it. You can
+        read and use its data while your access lasts.
+      archive_workspace_new_writes_stop_and_it_leaves_the: >-
+        Archive %{workspace}? New writes stop and it leaves the live list; its data stays readable and
+        you can restore it later.
+      delete_workspace_it_disappears_from_every_list_immediately_its: >-
+        Delete %{workspace}? It disappears from every list immediately, its data becomes unreachable,
+        and the console cannot bring it back.

@@ -90,8 +90,9 @@ class ContractFixturesTest < Minitest::Test
     assert_equal 403, conversations.dig("error_statuses", "not_authorized")
     assert_equal 404, conversations.dig("error_statuses", "runner_not_found")
     assert_equal 422, conversations.fetch("refusal_default_status")
-    assert_equal %w[after limit order side], conversations.fetch("list_filters").sort
+    assert_equal %w[after limit order order_by side], conversations.fetch("list_filters").sort
     assert_equal %w[asc desc], conversations.fetch("list_directions")
+    assert_equal %w[public_id last_activity_at], conversations.fetch("list_order_by")
 
     loops = E2E::ContractFixtures.runs
     assert_equal 409, loops.dig("error_statuses", "stale_revision")

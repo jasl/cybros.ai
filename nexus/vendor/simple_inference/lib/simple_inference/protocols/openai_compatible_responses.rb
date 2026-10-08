@@ -34,10 +34,25 @@ module SimpleInference
         ].freeze
       end
 
-      def initialize(stream_include_usage: nil, reasoning_control: nil, **connection)
+      def initialize(stream_include_usage: nil, reasoning_control: nil, chat_path: nil,
+                     max_tokens_field: "max_tokens", supports_developer_role: true,
+                     supports_strict_tools: true, requires_reasoning_content: false,
+                     supports_reasoning_effort: true, tool_stream: false,
+                     reasoning_effort_map: {}, **connection)
         super(**connection)
         @stream_include_usage = validated_stream_include_usage(stream_include_usage)
         @reasoning_control = reasoning_control.nil? ? "reasoning_effort" : reasoning_control
+        @chat_path = chat_path || api_path("/chat/completions")
+        @max_tokens_field = max_tokens_field.to_s
+        unless %w[max_tokens max_completion_tokens].include?(@max_tokens_field)
+          raise SimpleInference::ConfigurationError, "max_tokens_field must be max_tokens or max_completion_tokens"
+        end
+        @supports_developer_role = supports_developer_role
+        @supports_strict_tools = supports_strict_tools
+        @requires_reasoning_content = requires_reasoning_content
+        @supports_reasoning_effort = supports_reasoning_effort
+        @tool_stream = tool_stream
+        @reasoning_effort_map = reasoning_effort_map.to_h.transform_keys(&:to_s)
         unless ExecutionProfile::REASONING_CONTROLS.include?(@reasoning_control)
           raise SimpleInference::ConfigurationError,
                 "reasoning_control must be one of #{ExecutionProfile::REASONING_CONTROLS.join(", ")}"
@@ -55,9 +70,10 @@ module SimpleInference
           extra_body
         )
 
-        compile_json_request(path: api_path("/chat/completions"), body: body, stream: false) do |connection_config, compiled|
+        compile_json_request(path: @chat_path, body: body, stream: false) do |connection_config, compiled|
           observation = new_wire_observation
-          raw_result = chat_result_from_response(compiled_response(compiled, config: connection_config))
+          response = normalize_chat_response(compiled_response(compiled, config: connection_config))
+          raw_result = chat_result_from_response(response)
           observe_terminal_body(observation, raw_result.response&.body)
           chat_result_from(raw_result, observation)
         end
@@ -71,7 +87,7 @@ module SimpleInference
         )
         body["stream"] = true
 
-        compile_json_request(path: api_path("/chat/completions"), body: body, stream: true) do |connection_config, compiled|
+        compile_json_request(path: @chat_path, body: body, stream: true) do |connection_config, compiled|
           stream_from_compiled(connection_config, compiled)
         end
       end
@@ -96,6 +112,7 @@ module SimpleInference
 
           raw_response =
             compiled_stream_response(compiled, config: connection_config) do |_event_name, event|
+              event = normalize_chat_event(event)
               raise_on_mid_stream_error_event(event)
               events_seen += 1
               last_event_type = event["object"].to_s
@@ -200,6 +217,10 @@ module SimpleInference
 
       private
 
+      def normalize_chat_response(response) = response
+
+      def normalize_chat_event(event) = event
+
       def validated_stream_include_usage(value)
         return true if value.nil?
         return value if value == true || value == false
@@ -242,14 +263,21 @@ module SimpleInference
       end
 
       def coerce_messages(input, options)
-        responses_messages_for(input, options)
+        responses_messages_for(input, options).map do |entry|
+          message = Internal::Keys.deep_stringify(entry)
+          message["role"] = "system" if message["role"] == "developer" && !@supports_developer_role
+          if @requires_reasoning_content && message["role"] == "assistant"
+            message["reasoning_content"] ||= ""
+          end
+          message
+        end
       end
 
       def chat_options(options)
         normalized = options.each_with_object({}) do |(key, value), out|
           next if key == :instructions
 
-          normalized_key = key == :max_output_tokens ? :max_tokens : key
+          normalized_key = key == :max_output_tokens ? @max_tokens_field.to_sym : key
           out[normalized_key] =
             case key
             when :response_format
@@ -263,19 +291,44 @@ module SimpleInference
             end
         end
 
+        normalized[:tool_stream] = true if @tool_stream && normalized[:tools]&.any?
         reasoning_chat_options(normalized)
       end
 
       def reasoning_chat_options(options)
         enabled = validated_reasoning_enabled(options[:reasoning_enabled], effort: options[:reasoning_effort])
-        rest = options.except(:reasoning_enabled)
+        effort = options[:reasoning_effort]&.to_s
+        mapped = @reasoning_effort_map.fetch(enabled == false ? "off" : effort, effort)
+        rest = options.except(:reasoning_enabled, :reasoning_effort)
+        rest[:reasoning_effort] = mapped if @supports_reasoning_effort && mapped
         return rest if enabled.nil?
 
-        if @reasoning_control == "chat_template_kwargs"
+        case @reasoning_control
+        when "chat_template_kwargs"
           rest = rest.except(:reasoning_effort) if enabled == false
           rest.merge(chat_template_kwargs: { enable_thinking: enabled })
-        else
+        when "chat_template_args"
+          rest.merge(chat_template_args: { enable_thinking: enabled })
+        when "enable_thinking"
+          rest.merge(enable_thinking: enabled)
+        when "deepseek", "zai"
+          thinking = { type: enabled ? "enabled" : "disabled" }
+          thinking[:clear_thinking] = false if enabled && @reasoning_control == "zai"
+          rest.merge(thinking: thinking)
+        when "together"
+          rest.merge(reasoning: { enabled: enabled })
+        when "nested_effort"
+          rest = rest.except(:reasoning_effort)
+          mapped ? rest.merge(reasoning: { effort: mapped }) : rest
+        when "string_thinking"
+          rest = rest.except(:reasoning_effort)
+          mapped ? rest.merge(thinking: mapped) : rest
+        when "reasoning_effort"
+          return rest unless @supports_reasoning_effort
+
           enabled ? rest : rest.merge(reasoning_effort: "none")
+        else
+          raise SimpleInference::ConfigurationError, "unknown reasoning control #{@reasoning_control.inspect}"
         end
       end
 
@@ -302,6 +355,7 @@ module SimpleInference
         return value unless value[:type] == "function"
 
         function = value.slice(:name, :description, :parameters, :strict).compact
+        function = function.except(:strict) unless @supports_strict_tools
         return value if function.empty?
 
         { type: "function", function: function }

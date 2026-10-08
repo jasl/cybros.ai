@@ -20,6 +20,12 @@ module SimpleInference
 
       # Server-Sent-Events sniff over a SUCCESSFUL response's headers.
       def sse? = success? && headers.fetch("content-type", "").include?("text/event-stream")
+
+      def event_stream? = success? && headers.fetch("content-type", "").include?("application/vnd.amazon.eventstream")
+
+      # Both streaming encodings ride the same adapter deadlines, cancellation
+      # and connection ownership. The protocol owns decoding their bytes.
+      def streaming? = sse? || event_stream?
     end
   end
 end

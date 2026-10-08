@@ -1,3 +1,4 @@
+import { t } from "./i18n.js";
 const owns = (object, key) => Object.hasOwn(object, key);
 const object = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -50,17 +51,17 @@ function visible(value, schema) {
 // removing their containing named entry is an intentional whole-entry reset.
 export function configurationEdits(before, after, schema, path = []) {
   if (schema.writeOnly) {
-    if (!equal(before, after)) throw new Error("Use the separate secret controls to replace or clear credentials.");
+    if (!equal(before, after)) throw new Error(t("common.use_the_separate_secret_controls_to_replace_or"));
     return [];
   }
   if (schema.type === "array" && hasSecrets(schema) && !equal(before, after)) {
-    throw new Error("This list contains secrets and needs dedicated configuration controls.");
+    throw new Error(t("plugin_draft.this_list_contains_secrets_and_needs_dedicated_configuration"));
   }
   if (object(before) && object(after)) {
     return [...new Set([...Object.keys(before), ...Object.keys(after)])].flatMap((key) => {
       const child = schemaAt(schema, [key]);
       if (child.writeOnly) {
-        if (owns(after, key)) throw new Error("Use the separate secret controls to replace or clear credentials.");
+        if (owns(after, key)) throw new Error(t("common.use_the_separate_secret_controls_to_replace_or"));
         return [];
       }
       if (!owns(after, key)) return [{ op: "unset", path: [...path, key] }];
@@ -71,7 +72,7 @@ export function configurationEdits(before, after, schema, path = []) {
   if (equal(before, after)) return [];
   if (hasSecrets(schema)) {
     if (object(after)) return configurationEdits({}, after, schema, path);
-    throw new Error("Reset this field explicitly or use the separate secret controls.");
+    throw new Error(t("plugin_draft.reset_this_field_explicitly_or_use_the_separate"));
   }
   return [{ op: "set", path, value: after }];
 }
@@ -121,9 +122,9 @@ export function pluginDraft(initial) {
 }
 
 export function pluginSaveMessage(answer) {
-  if (answer.code === "settings_durability_uncertain") return "Published, but durability could not be confirmed. Do not retry this write; refresh status before making further changes.";
-  if (!answer.saved) return "Changes were not saved. Your draft is kept for correction.";
-  if (answer.restart_required) return "Saved. Restart rho to apply this change; the running plugin is unchanged.";
-  if (!answer.applied) return "Saved, but not applied. The running plugin is unchanged; check the reported issues.";
-  return "Saved and applied.";
+  if (answer.code === "settings_durability_uncertain") return t("plugin_draft.published_but_durability_could_not_be_confirmed_do");
+  if (!answer.saved) return t("plugin_draft.changes_were_not_saved_your_draft_is_kept");
+  if (answer.restart_required) return t("plugin_draft.saved_restart_rho_to_apply_this_change_the");
+  if (!answer.applied) return t("plugin_draft.saved_but_not_applied_the_running_plugin_is");
+  return t("plugin_draft.saved_and_applied");
 }

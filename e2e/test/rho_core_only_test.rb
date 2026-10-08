@@ -42,7 +42,7 @@ class RhoCoreOnlyTest < Minitest::Test
     # The temporary settings name no extension; the prelude, loaded through
     # RUBYOPT into the daemon and the CLI alike, shrinks the shipped default.
     File.write(File.join(@home, "settings.json"),
-      JSON.generate({ "settings_version" => 1, "plugins" => %w[rho.webui rho.ingress_telegram rho.codemode].to_h { |id| [id, { "enabled" => false }] } }), perm: 0o600)
+      JSON.generate({ "settings_version" => 1, "plugins" => %w[rho.webui rho.ingress_telegram rho.codemode rho.web_tools].to_h { |id| [id, { "enabled" => false }] } }), perm: 0o600)
     @daemon = E2E::RhoDaemon.new(base_url: @base_url, home: @home, env: { "RUBYOPT" => "-r#{PRELUDE}" })
     sign_in_steward
   end

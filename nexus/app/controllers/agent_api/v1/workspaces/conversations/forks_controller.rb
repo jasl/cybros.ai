@@ -35,7 +35,7 @@ class AgentAPI::V1::Workspaces::Conversations::ForksController <
         ConversationCommandReceipt::Idempotent::Success.new(
           status: 201,
           body: {
-            conversation: AgentAPI::ConversationPresenter.full(child),
+            conversation: AgentAPI::ConversationPresenter.full(child, acting_user: acting_user),
             # THE WORLD AT THE FORK POINT: a derived fact about the
             # SOURCE's rows at and below its head, which the fork does not
             # change — so it is read here, after `Fork` returned and

@@ -1,12 +1,12 @@
-<% content_for :title, "My agents" %>
+<% content_for :title, t("agents.index.my_agents") %>
 
 <div class="space-y-8">
   <header class="flex flex-wrap items-end justify-between gap-3">
     <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight">My agents</h1>
-      <p class="text-sm text-base-content/60">Agents you manage. Each Agent has at most one current registration.</p>
+      <h1 class="text-xl font-medium tracking-tight"><%= t("agents.index.my_agents") %></h1>
+      <p class="text-sm text-base-content/60"><%= t("agents.index.agents_you_manage_each_agent_has_at_most_one") %></p>
     </div>
-    <%= link_to "Connect agent", oauth_device_path, class: "btn btn-primary btn-sm" %>
+    <%= link_to t("agents.index.connect_agent"), oauth_device_path, class: "btn btn-primary btn-sm" %>
   </header>
 
   <% if @agents.any? %>
@@ -14,12 +14,12 @@
       <table class="table">
         <thead>
           <tr>
-            <th>Program</th>
-            <th>Defined by</th>
-            <th>Status</th>
-            <th>Registration</th>
-            <th>Credential readiness</th>
-            <th class="text-end">Action</th>
+            <th><%= t("agents.index.program") %></th>
+            <th><%= t("agents.index.defined_by") %></th>
+            <th><%= t("agents.index.status") %></th>
+            <th><%= t("agents.index.registration") %></th>
+            <th><%= t("agents.index.credential_readiness") %></th>
+            <th class="text-end"><%= t("agents.index.action") %></th>
           </tr>
         </thead>
         <tbody>
@@ -36,20 +36,20 @@
               <td class="text-sm text-base-content/60" data-defined-by>
                 <%# A named definition: the paired program that declared it and how long it lives. %>
                 <% if agent.named_definition? %>
-                  <span class="block wrap-anywhere"><%= agent.derived_from&.display_name || "a removed program" %></span>
-                  <span class="whitespace-nowrap"><%= agent.definition_scope %></span>
+                  <span class="block wrap-anywhere"><%= agent.derived_from&.display_name || t("agents.index.removed_program") %></span>
+                  <span class="whitespace-nowrap"><%= t("agents.definition_scopes.#{agent.definition_scope}") %></span>
                 <% else %>
-                  &mdash;
+                  <%= t("agents.index.not_defined") %>
                 <% end %>
               </td>
               <td>
                 <span class="<%= badge_classes(agent.active?, tone: :success, extra: "whitespace-nowrap") %>">
-                  <%= agent.active? ? "Active" : "Removed" %>
+                  <%= agent.active? ? t("agents.index.active") : t("agents.index.removed") %>
                 </span>
               </td>
               <td>
                 <span class="<%= badge_classes(address, tone: :info, extra: "whitespace-nowrap") %>">
-                  <%= address ? "Registered" : "Not registered" %>
+                  <%= address ? t("agents.index.registered") : t("agents.index.not_registered") %>
                 </span>
               </td>
               <td>
@@ -58,7 +58,7 @@
                 </span>
               </td>
               <td class="text-end">
-                <%= link_to "Manage", agent_path(agent), class: "btn btn-ghost btn-sm", aria: { label: "Manage #{agent.display_name}" } %>
+                <%= link_to t("agents.index.manage"), agent_path(agent), class: "btn btn-ghost btn-sm", aria: { label: t("agents.index.manage_member", member: (agent.display_name)) } %>
               </td>
             </tr>
           <% end %>
@@ -66,10 +66,10 @@
       </table>
     </section>
 
-    <%= render "shared/pagination_footer", pagy: @agents_pagy, noun: "agents", aria_label: "Agent pages" %>
+    <%= render "shared/pagination_footer", pagy: @agents_pagy, noun: "agents", aria_label: t("agents.index.agent_pages") %>
   <% else %>
     <%= render "shared/empty_state",
-      title: "No agents",
-      description: "An agent program connects itself. Start it on the machine you want to connect and follow the link it prints — it opens this installation with the code already filled in." %>
+      title: t("agents.index.no_agents"),
+      description: t("agents.index.an_agent_program_connects_itself_start_it_on_the") %>
   <% end %>
 </div>

@@ -6,7 +6,16 @@ module AgentAPI
     RunBlock = Conversations::TurnProjection::RunBlock
 
     class << self
-      def basic(conversation)
+      def basic_collection(conversations, acting_user:, workspace:)
+        sources = Conversation.readable_source_public_ids(
+          conversations.map(&:id), user: acting_user, workspace: workspace
+        )
+        conversations.map do |conversation|
+          basic(conversation, source_conversation_public_id: sources[conversation.id])
+        end
+      end
+
+      def basic(conversation, source_conversation_public_id: nil)
         {
           public_id: conversation.public_id,
           title: conversation.title,
@@ -19,6 +28,7 @@ module AgentAPI
           # that minted it and its label as ONE block — the `/children`
           # listing prints them; nil on a top-level row.
           parent: parent(conversation),
+          source_conversation_public_id: source_conversation_public_id,
           forked_from_turn_public_id: conversation.forked_from_turn_public_id,
           forked_from_variant_public_id: conversation.forked_from_variant_public_id,
           # A SIDE CONVERSATION: a child row a UI may hide, forked at the
@@ -33,8 +43,11 @@ module AgentAPI
         }
       end
 
-      def full(conversation)
-        basic(conversation).merge(
+      def full(conversation, acting_user:)
+        source = Conversation.readable_source_public_ids(
+          [conversation.id], user: acting_user, workspace: conversation.workspace
+        )[conversation.id]
+        basic(conversation, source_conversation_public_id: source).merge(
           metadata: conversation.metadata,
           memory_context: conversation.memory_context,
           input_queue: {

@@ -1,10 +1,10 @@
 <section id="provider-availability" class="flex flex-wrap items-center justify-between gap-4 rounded-box border border-base-300 bg-base-200 p-5">
   <div class="min-w-0 max-w-prose space-y-1">
-    <h2 class="text-sm font-medium">Provider availability</h2>
-    <p class="text-sm leading-relaxed text-base-content/60">Allow new requests from agents. Disabling keeps credentials and model settings.</p>
+    <h2 class="text-sm font-medium"><%= t("admin.model_providers.availability.provider_availability") %></h2>
+    <p class="text-sm leading-relaxed text-base-content/60"><%= t("admin.model_providers.availability.allow_new_requests_from_agents_disabling_keeps_credentials_and") %></p>
   </div>
-  <div class="inline-flex shrink-0 items-center gap-1 rounded-full border border-base-300 bg-base-100 p-1" role="group" aria-label="Provider availability">
-    <% [[true, "Enabled", "Enable provider"], [false, "Disabled", "Disable provider"]].each do |enabled, label, name| %>
+  <div class="inline-flex shrink-0 items-center gap-1 rounded-full border border-base-300 bg-base-100 p-1" role="group" aria-label="<%= t("admin.model_providers.availability.provider_availability") %>">
+    <% [[true, t("admin.model_providers.availability.enabled"), t("admin.model_providers.availability.enable_provider")], [false, t("admin.model_providers.availability.disabled"), t("admin.model_providers.availability.disable_provider")]].each do |enabled, label, name| %>
       <% selected = provider.fetch(:enabled) == enabled %>
       <%= button_to label, admin_model_provider_lane_path(provider.fetch(:id)), method: :patch,
         params: { lane: { enabled: enabled, expected_lock_version: provider.fetch(:lock_version) } },

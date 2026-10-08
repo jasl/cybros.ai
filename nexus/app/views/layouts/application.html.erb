@@ -8,17 +8,17 @@
       <input id="sidebar" type="checkbox" class="drawer-toggle lg:hidden" tabindex="-1" aria-hidden="true" data-sidebar-target="drawer" data-action="change->sidebar#syncDrawer">
 
       <div class="drawer-content flex min-h-dvh flex-col" data-sidebar-target="content">
-        <a href="#main" class="btn btn-sm btn-primary fixed start-4 top-4 z-50 -translate-y-20 focus:translate-y-0" data-turbo="false"><%= t(".skip_to_main") %></a>
+        <a href="#main" class="btn btn-sm btn-primary fixed start-4 top-4 z-50 -translate-y-20 focus:translate-y-0" data-turbo="false"><%= t("layouts.application.skip_to_main") %></a>
 
-        <button type="button" class="btn btn-ghost btn-square btn-sm fixed start-3 top-3 z-40 hidden <%= "lg:inline-flex" if sidebar_collapsed %>" aria-label="<%= t(".expand_sidebar") %>" data-sidebar-target="expander" data-action="sidebar#toggle">
+        <button type="button" class="btn btn-ghost btn-square btn-sm fixed start-3 top-3 z-40 hidden <%= "lg:inline-flex" if sidebar_collapsed %>" aria-label="<%= t("layouts.application.expand_sidebar") %>" data-sidebar-target="expander" data-action="sidebar#toggle">
           <span class="iconify lucide--panel-left-open size-4" aria-hidden="true"></span>
         </button>
 
         <header class="navbar border-b border-base-300 bg-base-100 lg:hidden">
-          <button type="button" aria-label="<%= t(".open_sidebar") %>" aria-controls="sidebar-panel" aria-expanded="false" class="btn btn-ghost btn-square drawer-button" data-sidebar-target="opener" data-action="sidebar#openDrawer">
+          <button type="button" aria-label="<%= t("layouts.application.open_sidebar") %>" aria-controls="sidebar-panel" aria-expanded="false" class="btn btn-ghost btn-square drawer-button" data-sidebar-target="opener" data-action="sidebar#openDrawer">
             <span class="iconify lucide--menu size-5" aria-hidden="true"></span>
           </button>
-          <span class="px-2 text-base font-semibold tracking-tight">Nexus</span>
+          <span class="px-2 text-base font-semibold tracking-tight"><%= t("brand.name") %></span>
         </header>
 
         <div class="mx-auto w-full max-w-6xl grow px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
@@ -34,20 +34,20 @@
           lg from re-presenting the sidebar as an overlay after growing past lg
           while the shell is collapsed %>
       <div class="drawer-side lg:in-[.is-collapsed]:hidden" data-sidebar-target="side">
-        <label for="sidebar" aria-label="<%= t(".close_sidebar") %>" class="drawer-overlay"></label>
+        <label for="sidebar" aria-label="<%= t("layouts.application.close_sidebar") %>" class="drawer-overlay"></label>
 
         <aside id="sidebar-panel" class="flex min-h-full w-72 flex-col border-e border-base-300 bg-base-100">
           <div class="flex items-center justify-between px-4 py-3">
-            <%= link_to root_path, class: "px-1 text-base font-semibold tracking-tight" do %>Nexus<% end %>
-            <button type="button" class="btn btn-ghost btn-square btn-sm lg:hidden" aria-label="<%= t(".close_sidebar") %>" aria-controls="sidebar-panel" data-sidebar-target="closer" data-action="sidebar#closeDrawer">
+            <%= link_to root_path, class: "px-1 text-base font-semibold tracking-tight" do %><%= t("brand.name") %><% end %>
+            <button type="button" class="btn btn-ghost btn-square btn-sm lg:hidden" aria-label="<%= t("layouts.application.close_sidebar") %>" aria-controls="sidebar-panel" data-sidebar-target="closer" data-action="sidebar#closeDrawer">
               <span class="iconify lucide--x size-4" aria-hidden="true"></span>
             </button>
-            <button type="button" class="btn btn-ghost btn-square btn-sm hidden lg:inline-flex" aria-label="<%= t(".collapse_sidebar") %>" data-sidebar-target="collapser" data-action="sidebar#toggle">
+            <button type="button" class="btn btn-ghost btn-square btn-sm hidden lg:inline-flex" aria-label="<%= t("layouts.application.collapse_sidebar") %>" data-sidebar-target="collapser" data-action="sidebar#toggle">
               <span class="iconify lucide--panel-left-close size-4" aria-hidden="true"></span>
             </button>
           </div>
 
-          <nav class="grow overflow-y-auto scrollbar-auto-hide px-3 py-2" aria-label="<%= t(".primary_navigation") %>">
+          <nav class="grow overflow-y-auto scrollbar-auto-hide px-3 py-2" aria-label="<%= t("layouts.application.primary_navigation") %>">
             <%= render sidebar_nav_partial %>
           </nav>
 
@@ -65,10 +65,10 @@
                   <p class="truncate text-xs text-base-content/60"><%= Current.identity&.email %></p>
                 </div>
                 <div class="flex items-center justify-between px-2.5 py-2" data-controller="theme">
-                  <span class="text-sm"><%= t(".appearance") %></span>
-                  <div class="join" role="group" aria-label="<%= t(".appearance") %>">
+                  <span class="text-sm"><%= t("layouts.application.appearance") %></span>
+                  <div class="join" role="group" aria-label="<%= t("layouts.application.appearance") %>">
                     <% current_theme = explicit_theme || "system" %>
-                    <% { "light" => t(".theme_light"), "dark" => t(".theme_dark"), "system" => t(".theme_system") }.each do |value, label| %>
+                    <% { "light" => t("layouts.application.theme_light"), "dark" => t("layouts.application.theme_dark"), "system" => t("layouts.application.theme_system") }.each do |value, label| %>
                       <button type="button" class="btn btn-xs join-item <%= current_theme == value ? "bg-base-300 border-base-300" : "btn-ghost" %>" aria-pressed="<%= current_theme == value %>" data-theme-target="choice" data-theme-value-param="<%= value %>" data-action="theme#choose"><%= label %></button>
                     <% end %>
                   </div>
@@ -77,7 +77,7 @@
                   <div class="border-b border-base-300 py-1">
                     <%= link_to admin_users_path, class: "btn btn-ghost btn-sm btn-block justify-start gap-2.5 font-normal" do %>
                       <span class="iconify lucide--shield size-4" aria-hidden="true"></span>
-                      <%= t(".administration") %>
+                      <%= t("layouts.application.administration") %>
                     <% end %>
                   </div>
                 <% end %>
@@ -87,7 +87,7 @@
                         params: (request.path.start_with?(oauth_device_path) ? { return_to: request.fullpath } : {}),
                         class: "btn btn-ghost btn-sm btn-block justify-start gap-2.5 font-normal" do %>
                     <span class="iconify lucide--log-out size-4" aria-hidden="true"></span>
-                    <%= t(".sign_out") %>
+                    <%= t("layouts.application.sign_out") %>
                   <% end %>
                 </div>
               </div>

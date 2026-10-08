@@ -6,7 +6,7 @@ class ExtensionTest < Minitest::Test
   def test_registration_points_to_a_complete_browser_bundle
     root = registered_root
     assert_equal File.join(ROOT, "webui"), root
-    assert_equal %w[api.js composer.js console.css console.js controls.js conversation_usage.js index.html lifecycle.js login.js markdown.js plugin_draft.js plugin_settings.js schedules.js
+    assert_equal %w[api.js composer.js console.css console.js controls.js conversation_usage.js i18n.js index.html lifecycle.js locales login.js markdown.js package_settings.js plugin_draft.js plugin_settings.js prompt_settings.js schedules.js
                     settings.js settings_editor.js settings_state.js telegram_settings.js views.js], Dir.children(root).sort
 
     document = File.read(File.join(root, "index.html"))

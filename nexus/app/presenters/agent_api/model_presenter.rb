@@ -19,6 +19,8 @@ module AgentAPI
             "model_unavailable"
           elsif !visible
             "model_hidden"
+          elsif ModelCatalog.model_base_url(ref, snapshot: catalog).nil?
+            "endpoint_unconfigured"
           else
             refusal_for(account: account, catalog: catalog, provider_id: provider_id,
                         profile: profile(ref, provider, entry), now: now)
@@ -41,7 +43,7 @@ module AgentAPI
           visible: visible,
           available: refusal.nil?,
           unavailable_reason: refusal,
-          capabilities: capabilities(profile),
+          capabilities: capabilities(entry, profile),
           pricing: pricing(entry: entry, account_unit: account_unit, ref: ref, provider: provider),
         }
       end
@@ -71,7 +73,7 @@ module AgentAPI
         # An agent reads facts from the kernel, never from a pack. Structured
         # output is no flag: it is the `output_format` control every text
         # wire offers, read where the caller's configuration is accepted.
-        def capabilities(profile)
+        def capabilities(entry, profile)
           {
             tool_calls: profile.capability_enabled?("tool_calls"),
             streaming: profile.capability_enabled?("streaming"),
@@ -79,6 +81,22 @@ module AgentAPI
             input_modalities: profile.input_modalities,
             output_modalities: profile.output_modalities,
             reasoning_modes: profile.reasoning_option_values("modes"),
+            reasoning: reasoning(entry, profile),
+            generation_parameters: profile.generation_parameters.transform_values(&:to_h),
+            service_tiers: profile.service_tiers,
+            limits: Nexus::ModelCapabilityLimits.from_catalog(entry: entry, profile: profile).to_h.compact,
+          }
+        end
+
+        def reasoning(entry, profile)
+          declaration = entry.dig("capabilities", "reasoning") || {}
+          defaults, = Nexus::EffectiveReasoning.derive(declaration, nil)
+          {
+            supported: !defaults.enabled.nil?,
+            default_enabled: defaults.enabled,
+            disable_supported: declaration.fetch("disable_supported", false),
+            efforts: profile.reasoning_option_values("efforts"),
+            default_effort: defaults.effort,
           }
         end
 

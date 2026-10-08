@@ -13,7 +13,7 @@ class InvitationMailerTest < ActionMailer::TestCase
     end
 
     assert_equal ["invited@example.com"], email.to
-    assert_equal I18n.t("invitation_mailer.acceptance.subject"), email.subject
+    assert_equal I18n.t("invitation_mailer.acceptance.subject", brand: I18n.t("brand.name")), email.subject
     assert_match "http://example.com/join?token=", email.text_part.body.to_s
     assert_match CGI.escapeHTML("http://example.com/join?token="), email.html_part.body.to_s
 

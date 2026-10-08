@@ -155,12 +155,12 @@ module Rho
               model: nil, approval_mode: nil, tool_names: nil, idempotency_key: nil, speaker_public_id: nil, kind: nil, wait: true, workspace_public_id: nil, expected_steering_run_public_id: nil, inline: nil, code_mode: KEEP)
         paths = attachment_paths(attachments)
         uploads = prepared_attachments(upload_public_ids, paths)
-        if mode == "steer" && (paths.any? || uploads.any?)
+        if %w[steer steer_now].include?(mode) && (paths.any? || uploads.any?)
           raise Rho::Error, "attachments_not_steerable: an attachment rides a queued turn, never a steer " \
             "(`--attach` implies `--mode queue`; drop `--mode steer`)"
         end
         schedule = Core.schedule_fields(deliver_at: deliver_at, deliver_in: deliver_in)
-        if mode == "steer" && schedule.any?
+        if %w[steer steer_now].include?(mode) && schedule.any?
           raise Rho::Error, "deliver_at_not_steerable: a timed word rides a queued turn, never a steer " \
             "(`--at`/`--in` imply `--mode queue`; drop `--mode steer`)"
         end

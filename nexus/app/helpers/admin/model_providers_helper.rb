@@ -1,41 +1,16 @@
 module Admin::ModelProvidersHelper
-  PROVIDER_NAMES = {
-    "openai_api" => "OpenAI", "anthropic" => "Anthropic", "gemini" => "Google Gemini",
-    "codex_subscription" => "OpenAI Codex", "openrouter" => "OpenRouter",
-    "deepseek" => "DeepSeek", "xai" => "xAI",
-  }.freeze
-
   def model_provider_name(id, display_name: nil)
-    display_name.presence || PROVIDER_NAMES.fetch(id) { id.humanize }
+    display_name.presence || t("helpers.model_providers.names").fetch(id.to_sym) { id.humanize }
   end
-
-  PROTOCOL_NAMES = {
-    "openai_compatible_chat" => "OpenAI-compatible Chat", "openai_responses" => "OpenAI Responses",
-    "anthropic_messages" => "Anthropic Messages", "gemini_generate_content" => "Google Gemini",
-    "openrouter_chat" => "OpenRouter Chat", "deepseek_responses" => "DeepSeek Responses",
-    "xai_responses" => "xAI Responses", "openai_images" => "OpenAI Images",
-    "openai_audio_speech" => "OpenAI Text to speech", "openai_audio_transcriptions" => "OpenAI Speech to text",
-    "openai_embeddings" => "OpenAI Embeddings", "gemini_embeddings" => "Gemini Embeddings",
-    "codex_responses" => "Codex Responses",
-  }.freeze
 
   def provider_protocol_options(current: nil)
     formats = SimpleInference::ApiFormat::FORMATS - ["codex_responses"]
     formats << "codex_responses" if current == "codex_responses"
-    formats.map { |format| [PROTOCOL_NAMES.fetch(format) { format.humanize }, format] }
+    formats.map { |format| [t("helpers.model_providers.protocols").fetch(format.to_sym) { format.humanize }, format] }
   end
 
   def model_rate_label(key)
-    {
-      "input_per_mtok" => "Input per 1M tokens", "output_per_mtok" => "Output per 1M tokens",
-      "cached_input_per_mtok" => "Cached input per 1M tokens", "cache_write_per_mtok" => "Cache write per 1M tokens",
-      "cache_write_1h_per_mtok" => "1-hour cache write per 1M tokens", "input_cache_hit_per_mtok" => "Cache hit per 1M tokens",
-      "input_cache_miss_per_mtok" => "Cache miss per 1M tokens", "per_image" => "Per image",
-      "per_mchar" => "Per 1M characters", "per_minute" => "Per audio minute",
-      "long_context_threshold_tokens" => "Long context threshold (tokens)",
-      "long_context_input_multiplier" => "Long context input multiplier",
-      "long_context_output_multiplier" => "Long context output multiplier",
-    }.fetch(key) { key.humanize.sub("per mtok", "per 1M tokens") }
+    t("helpers.model_providers.rates").fetch(key.to_sym) { key.humanize }
   end
 
   def provider_choice_classes(selected:)
@@ -45,13 +20,13 @@ module Admin::ModelProvidersHelper
 
   def provider_credential_label(provider)
     if provider.fetch(:reauthorization_required)
-      "Sign-in required"
+      t("helpers.model_providers.credentials.sign_in_required")
     elsif provider.fetch(:credentials) == "none"
-      "No credentials needed"
+      t("helpers.model_providers.credentials.not_required")
     elsif provider.fetch(:configured)
-      provider.fetch(:credentials) == "api_key" ? "API key saved" : "Subscription connected"
+      provider.fetch(:credentials) == "api_key" ? t("helpers.model_providers.credentials.api_key_saved") : t("helpers.model_providers.subscription.connected")
     else
-      provider.fetch(:credentials) == "api_key" ? "API key needed" : "Not connected"
+      provider.fetch(:credentials) == "api_key" ? t("helpers.model_providers.credentials.api_key_needed") : t("helpers.model_providers.credentials.not_connected")
     end
   end
 
@@ -65,35 +40,16 @@ module Admin::ModelProvidersHelper
 
   def model_discovery_message(outcome)
     case outcome
-    when :stale then "These settings changed while the directory was being fetched. Fetch again to update model availability."
-    when :invalid then "The directory was fetched, but model availability could not be saved. Review the provider's model configuration."
-    when :unsupported_protocol then "This provider does not support model discovery. Enter a model ID manually."
-    when :missing_credential then "Save usable credentials before fetching the directory, or enter a model ID manually."
-    else "The provider's model directory could not be fetched. It may be unavailable or unsupported. Try again or enter a model ID manually."
+    when :stale then t("helpers.model_providers.discovery.stale")
+    when :invalid then t("helpers.model_providers.discovery.invalid")
+    when :unsupported_protocol then t("helpers.model_providers.discovery.unsupported_protocol")
+    when :missing_credential then t("helpers.model_providers.discovery.missing_credential")
+    else t("helpers.model_providers.discovery.unavailable")
     end
   end
 
   def model_connection_test_message(outcome)
-    {
-      succeeded: "Connection succeeded. The model accepted the test request.",
-      model_not_found: "The provider reports that this model no longer exists or is no longer served.",
-      not_found: "This model is no longer configured. Return to model settings.",
-      provider_disabled: "Enable this provider before testing its connection.",
-      missing_credential: "Save the provider's credentials before testing.",
-      reauthorization_required: "Sign in to the provider again before testing.",
-      credential_unusable: "The provider credential is not ready. Reconnect and try again.",
-      model_plane_unavailable: "The model catalog is currently unavailable.",
-      test_input_unavailable: "This model needs additional workload settings before a connection test can run.",
-      request_invalid: "The configured model cannot accept this test. Review its protocol and capabilities.",
-      authentication_failed: "The provider rejected authentication or access. Check credentials and model permissions.",
-      quota_exceeded: "The provider rejected this request because of billing or quota limits.",
-      rate_limited: "The provider rate-limited this request. Try again later.",
-      provider_error: "The provider could not complete the test. Check its service status and model configuration.",
-      timed_out: "The test timed out. The model has not been marked invalid.",
-      connection_failed: "Could not connect to the provider. Check the saved endpoint and network.",
-      invalid_response: "The provider returned a response this protocol could not read.",
-      request_rejected: "The provider declined the test request.",
-    }.fetch(outcome)
+    t("helpers.model_providers.connection_test").fetch(outcome)
   end
 
   def model_pricing_label(pricing)
@@ -101,18 +57,18 @@ module Admin::ModelProvidersHelper
     when "priced"
       input, output = pricing[:input_per_mtok], pricing[:output_per_mtok]
       if input && output
-        "#{pricing.fetch(:unit)} #{input} input / #{output} output per 1M tokens"
+        t("helpers.model_providers.pricing.token_rates", unit: pricing.fetch(:unit), input:, output:)
       else
-        "Estimated usage cost in #{pricing.fetch(:unit)}"
+        t("helpers.model_providers.pricing.estimated_cost", unit: pricing.fetch(:unit))
       end
-    when "unmetered" then "No cost estimate configured. Recorded usage is still tracked."
-    when "known_free_candidate" then "No usage cost in the configured catalog"
-    else "Cost estimate unavailable. Recorded usage is still tracked."
+    when "unmetered" then t("helpers.model_providers.pricing.unmetered")
+    when "known_free_candidate" then t("helpers.model_providers.pricing.known_free")
+    else t("helpers.model_providers.pricing.unavailable")
     end
   end
 
   def provider_authorization_label(authorization)
-    authorization.fetch(:state) == "authorized" ? "Subscription connected" : "No subscription connected"
+    authorization.fetch(:state) == "authorized" ? t("helpers.model_providers.subscription.connected") : t("helpers.model_providers.subscription.not_connected")
   end
 
   def latest_provider_sign_in_completed?(authorization, session)
@@ -124,25 +80,25 @@ module Admin::ModelProvidersHelper
     case session.fetch(:state)
     when "pending"
       if session.fetch(:kind) == "token_refresh"
-        "Nexus is renewing the connection. No action is needed."
+        t("helpers.model_providers.sign_in.renewing", brand: t("brand.name"))
       elsif !session.fetch(:owned_by_current_user)
-        "Another administrator started this sign-in. Only that administrator can see its authorization code."
+        t("helpers.model_providers.sign_in.waiting_for_owner")
       elsif session.fetch(:progress) == "exchanging_code"
-        "Sign-in approved. Nexus is finishing the connection."
+        t("helpers.model_providers.sign_in.exchanging_code", brand: t("brand.name"))
       elsif session[:user_code].present?
-        "Open the authorization page, sign in to your provider account, and enter this code."
+        t("helpers.model_providers.sign_in.enter_code")
       else
-        "Preparing sign-in. Your authorization code will appear here shortly."
+        t("helpers.model_providers.sign_in.preparing")
       end
-    when "completed" then "This sign-in finished. The current subscription status is shown above."
-    when "expired" then "This sign-in expired."
+    when "completed" then t("helpers.model_providers.sign_in.completed")
+    when "expired" then t("helpers.model_providers.sign_in.expired")
     when "revoked"
-      session.fetch(:outcome) == "superseded" ? "A newer sign-in replaced this one." : "This sign-in was stopped."
+      session.fetch(:outcome) == "superseded" ? t("helpers.model_providers.sign_in.superseded") : t("helpers.model_providers.sign_in.revoked")
     else
       if session.fetch(:outcome) == "device_code_not_enabled"
-        "Device sign-in is not enabled for this account. Enable it with your provider before connecting."
+        t("helpers.model_providers.sign_in.device_code_not_enabled")
       else
-        "Sign-in did not complete."
+        t("helpers.model_providers.sign_in.failed")
       end
     end
   end

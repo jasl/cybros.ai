@@ -21,7 +21,7 @@ module AgentRuns
     # round whose answerer declares no fallback still takes its own rung.
     UNAVAILABLE = %w[
       unknown_provider unknown_model model_hidden provider_disabled missing_credential
-      reauthorization_required credential_unusable provider_model_unavailable
+      reauthorization_required credential_unusable provider_model_unavailable endpoint_unconfigured
       attempt_budget_spent provider_overloaded
     ].freeze
     # The switch trigger's reasons: the declined or overloaded step's own

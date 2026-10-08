@@ -1,5 +1,5 @@
-<% content_for :title, "Add model" %>
+<% content_for :title, t("admin.model_providers.model_definitions.new.add_model") %>
 <div class="space-y-8">
-  <%= render "admin/model_providers/header", provider: @provider, title: "Add model", current: :model, description: "Add a model using its exact provider ID. Pricing is optional." %>
+  <%= render "admin/model_providers/header", provider: @provider, title: t("admin.model_providers.model_definitions.new.add_model"), current: :model, description: t("admin.model_providers.model_definitions.new.add_a_model_using_its_exact_provider_id_pricing") %>
   <%= render "form", form: @form, provider: @provider, creating: true %>
 </div>

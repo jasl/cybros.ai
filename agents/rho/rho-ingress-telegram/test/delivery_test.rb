@@ -81,7 +81,7 @@ class TelegramDeliveryTest < Minitest::Test
   end
 
   def test_restart_does_not_announce_completion_for_an_already_completed_group_conversation
-    @runtime.consume(telegram_message(1, "@rho_bot start", chat: -10,
+    receive(telegram_message(1, "@rho_bot start", chat: -10,
       entities: [{ "type" => "mention", "offset" => 0, "length" => 8 }]))
     @runtime.tick
     @bridge.current = { "status" => "completed", "run_public_id" => "loop-1", "action" => "Waiting for work" }

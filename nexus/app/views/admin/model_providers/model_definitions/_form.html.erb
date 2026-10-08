@@ -2,35 +2,35 @@
   <%= render "admin/model_providers/form_errors", form: form, reload_path: creating ? new_admin_model_provider_model_definition_path(provider.fetch(:id)) : admin_model_provider_model_definition_path(provider.fetch(:id), model: form.model) %>
   <%= f.hidden_field :expected_lock_version %>
   <%= f.hidden_field :model unless creating %>
-  <section class="overflow-hidden rounded-box border border-base-300 bg-base-200" aria-label="Model settings">
-    <%= render "shared/form_row", form: f, attribute: :model_id, label: "Model ID", description: "The exact model ID accepted by the provider, including any namespace." do %>
+  <section class="overflow-hidden rounded-box border border-base-300 bg-base-200" aria-label="<%= t("admin.model_providers.model_definitions.form.model_settings") %>">
+    <%= render "shared/form_row", form: f, attribute: :model_id, label: t("admin.model_providers.model_definitions.form.model_id"), description: t("admin.model_providers.model_definitions.form.the_exact_model_id_accepted_by_the_provider_including") do %>
       <%= validated_field f, :text_field, :model_id, form.errors[:model_id], required: true, autocomplete: "off", spellcheck: false, size: :sm %>
     <% end %>
-    <%= render "shared/form_row", form: f, attribute: :display_name, label: "Display name", description: "An optional friendly model name." do %>
+    <%= render "shared/form_row", form: f, attribute: :display_name, label: t("admin.model_providers.model_definitions.form.display_name"), description: t("admin.model_providers.model_definitions.form.an_optional_friendly_model_name") do %>
       <%= validated_field f, :text_field, :display_name, form.errors[:display_name], size: :sm %>
     <% end %>
   </section>
-  <details class="rounded-box border border-base-300 bg-base-200" <%= "open" if form.errors.any? %>>
-    <summary class="cursor-pointer p-4 text-sm font-medium">Context and capabilities</summary>
-    <p class="px-4 pb-3 text-xs text-base-content/60">Leave fields blank to use protocol defaults. Enter the model's supported limits; discovery does not determine them.</p>
-    <% [["input_tokens", "Input token limit"], ["output_tokens", "Output token limit"], ["combined_input_output_tokens", "Combined context window"], ["effective_input_tokens", "Advisory input threshold"]].each do |attribute, label| %>
-      <%= render "shared/form_row", form: f, attribute: attribute, label: label, description: { "combined_input_output_tokens" => "A shared input/output window. Clear the separate input limit when using this.", "effective_input_tokens" => "Optional planning threshold at or below the input or combined context limit." }[attribute] do %>
+  <section class="rounded-box border border-base-300 bg-base-200" aria-label="<%= t("admin.model_providers.model_definitions.form.context_and_capabilities") %>">
+    <h2 class="p-4 text-sm font-medium"><%= t("admin.model_providers.model_definitions.form.context_and_capabilities") %></h2>
+    <p class="px-4 pb-3 text-xs text-base-content/60"><%= t("admin.model_providers.model_definitions.form.leave_fields_blank_to_use_protocol_defaults_enter_the") %></p>
+    <% [["input_tokens", t("admin.model_providers.model_definitions.form.input_token_limit")], ["output_tokens", t("admin.model_providers.model_definitions.form.output_token_limit")], ["combined_input_output_tokens", t("admin.model_providers.model_definitions.form.combined_context_window")], ["effective_input_tokens", t("admin.model_providers.model_definitions.form.advisory_input_threshold")]].each do |attribute, label| %>
+      <%= render "shared/form_row", form: f, attribute: attribute, label: label, description: { "combined_input_output_tokens" => t("admin.model_providers.model_definitions.form.a_shared_input_output_window_clear_the_separate_input"), "effective_input_tokens" => t("admin.model_providers.model_definitions.form.optional_planning_threshold_at_or_below_the_input_or") }[attribute] do %>
         <%= validated_field f, :number_field, attribute, form.errors[attribute], min: 1, step: 1, size: :sm %>
       <% end %>
     <% end %>
-    <% [["tool_calls", "Tool calls"], ["streaming", "Streaming"]].each do |attribute, label| %>
+    <% [["tool_calls", t("admin.model_providers.model_definitions.form.tool_calls")], ["streaming", t("admin.model_providers.model_definitions.form.streaming")]].each do |attribute, label| %>
       <%= render "shared/form_row", form: f, attribute: attribute, label: label do %>
-        <%= f.select attribute, [["Use protocol default", ""], ["Supported", "true"], ["Disabled", "false"]], {}, class: "select select-sm w-full" %>
+        <%= f.select attribute, [[t("admin.model_providers.model_definitions.form.use_protocol_default"), ""], [t("admin.model_providers.model_definitions.form.supported"), "true"], [t("admin.model_providers.model_definitions.form.disabled"), "false"]], {}, class: "select select-sm w-full" %>
       <% end %>
     <% end %>
-  </details>
+  </section>
   <details class="rounded-box border border-base-300 bg-base-200" <%= "open" if form.pricing_mode == "custom" %>>
-    <summary class="cursor-pointer p-4 text-sm font-medium">Optional cost estimate</summary>
-    <p class="px-4 pb-3 text-xs leading-relaxed text-base-content/60">Pricing helps estimate spending. It is optional and does not affect recorded usage. Blank rates are unknown; enter 0 only for an explicitly free rate.</p>
-    <%= render "shared/form_row", form: f, attribute: :pricing_mode, label: "Pricing" do %>
-      <%= f.select :pricing_mode, [["No cost estimate", "none"], ["Keep current pricing", "preserve"], ["Use the rates below", "custom"]], {}, class: "select select-sm w-full" %>
+    <summary class="cursor-pointer p-4 text-sm font-medium"><%= t("admin.model_providers.model_definitions.form.optional_cost_estimate") %></summary>
+    <p class="px-4 pb-3 text-xs leading-relaxed text-base-content/60"><%= t("admin.model_providers.model_definitions.form.pricing_helps_estimate_spending_it_is_optional_and_does") %></p>
+    <%= render "shared/form_row", form: f, attribute: :pricing_mode, label: t("admin.model_providers.model_definitions.form.pricing") do %>
+      <%= f.select :pricing_mode, [[t("admin.model_providers.model_definitions.form.no_cost_estimate"), "none"], [t("admin.model_providers.model_definitions.form.keep_current_pricing"), "preserve"], [t("admin.model_providers.model_definitions.form.use_the_rates_below"), "custom"]], {}, class: "select select-sm w-full" %>
     <% end %>
-    <%= render "shared/form_row", form: f, attribute: :pricing_unit, label: "Cost unit", description: "For example USD. The account must use the same unit to calculate estimates." do %>
+    <%= render "shared/form_row", form: f, attribute: :pricing_unit, label: t("admin.model_providers.model_definitions.form.cost_unit"), description: t("admin.model_providers.model_definitions.form.for_example_usd_the_account_must_use_the_same") do %>
       <%= validated_field f, :text_field, :pricing_unit, form.errors[:pricing_unit], autocomplete: "off", size: :sm %>
     <% end %>
     <% form.rate_fields.each do |attribute| %>
@@ -40,7 +40,7 @@
     <% end %>
   </details>
   <div class="flex flex-wrap items-center justify-end gap-2">
-    <%= link_to "Cancel", admin_model_provider_path(provider.fetch(:id)), class: "btn btn-ghost btn-sm" %>
-    <%= f.submit "Save model", class: "btn btn-primary btn-sm" %>
+    <%= link_to t("admin.model_providers.model_definitions.form.cancel"), admin_model_provider_path(provider.fetch(:id)), class: "btn btn-ghost btn-sm" %>
+    <%= f.submit t("admin.model_providers.model_definitions.form.save_model"), class: "btn btn-primary btn-sm" %>
   </div>
 <% end %>

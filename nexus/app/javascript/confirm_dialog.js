@@ -6,7 +6,7 @@
 export function confirmWithDialog(message, _form, submitter) {
   const dialog = document.getElementById("turbo-confirm")
   document.getElementById("turbo-confirm-message").textContent = message
-  dialog.querySelector("button[value='confirm']").textContent = submitterLabel(submitter)
+  dialog.querySelector("button[value='confirm']").textContent = submitterLabel(submitter, dialog.dataset.confirmLabel)
 
   dialog.returnValue = ""
   dialog.showModal()
@@ -17,7 +17,7 @@ export function confirmWithDialog(message, _form, submitter) {
 
 // The confirm branch repeats the verb the user just pressed: button_to
 // renders a <button> (textContent), form.submit an <input> (value).
-function submitterLabel(submitter) {
+function submitterLabel(submitter, fallback) {
   const label = submitter && (submitter.value || submitter.textContent).trim()
-  return label || "Confirm"
+  return label || fallback
 }

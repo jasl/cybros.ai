@@ -38,7 +38,7 @@ class ScheduledInputTest < Minitest::Test
     E2E.hosts.start
     @workspace = @client.workspace(@client.workspaces.create(
       name: "Scheduled input #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    ).public_id)
+    ).workspace.public_id)
     @chat = @workspace.conversations.conversation(
       @workspace.conversations.create(title: "Timed", idempotency_key: SecureRandom.uuid).public_id
     )
@@ -47,7 +47,8 @@ class ScheduledInputTest < Minitest::Test
   def test_a_timed_row_waits_for_its_time_then_drains_and_wakes_and_the_edit_surface_and_refusals_hold
     assert_nil @chat.fetch.active_turn_public_id, "an IDLE conversation: nothing runs before the row (decision 23)"
 
-    accepted = timed("!mock reply=woke -- wake me", deliver_in: "#{DELAY}s")
+    schedule_key = SecureRandom.uuid
+    accepted = timed("!mock reply=woke -- wake me", deliver_in: "#{DELAY}s", idempotency_key: schedule_key)
     assert_equal "pending", accepted.state
     due_at = Time.iso8601(accepted.input.deliver_at)
     assert_in_delta Time.now + DELAY, due_at, 2, "the delay is resolved against the kernel's clock"
@@ -71,6 +72,12 @@ class ScheduledInputTest < Minitest::Test
     assert_includes reply.text.to_s, "woke", "the mock spoke the row's word: #{reply.text.inspect}"
     assert_operator Time.iso8601(reply.created_at), :>=, due_at.floor, "the turn opened not before the row's time"
     refute @chat.inputs.list.items.any? { |row| row.public_id == accepted.public_id }, "materialized: the row is gone"
+
+    replayed = timed("!mock reply=woke -- wake me", deliver_in: "#{DELAY}s", idempotency_key: schedule_key)
+    assert_predicate replayed, :replayed?
+    assert_equal accepted.input.to_h, replayed.input.to_h,
+      "a lost response recovers the original relative schedule even after its input has drained"
+    assert_empty @chat.inputs.list.items, "replay cannot enqueue a second timed input"
 
     # THE CLEAR: `deliver_in: "0s"` makes a 30 s row due now.
     after = assistant_turns.map(&:position).max
@@ -166,9 +173,9 @@ class ScheduledInputTest < Minitest::Test
       assert_equal Time.iso8601(deliver_at).utc.iso8601, event.payload.fetch("deliver_at")
     end
 
-    def timed(text, **schedule)
+    def timed(text, idempotency_key: SecureRandom.uuid, **schedule)
       accepted = @chat.inputs.create(kind: "direct_reply", model: MODEL, text: text,
-        idempotency_key: SecureRandom.uuid, **schedule)
+        idempotency_key: idempotency_key, **schedule)
       refute_nil accepted.input.deliver_at, "a timed row carries the time the kernel holds"
       accepted
     end

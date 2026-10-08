@@ -12,7 +12,7 @@ module SimpleInference
   # profile hands values out.
   class ExecutionProfile < Data.define(
     :profile_id, :provider_id, :adapter_profile, :protocol_route, :workload, :model_pin,
-    :credential_lane, :total_execution_deadline_seconds, :stream_idle_timeout_seconds,
+    :credential_lane, :authentication, :request_headers, :total_execution_deadline_seconds, :stream_idle_timeout_seconds,
     :primary_execution_pair, :allowed_execution_pairs, :capabilities, :input_modalities,
     :output_modalities, :service_tiers, :generation_parameters, :wire_options, :input_media,
     :reasoning_options, :local_safety_limits, :native_cost_contract, :token_counter
@@ -29,9 +29,12 @@ module SimpleInference
       openai_responses
       codex_responses
       anthropic_messages
+      bedrock_converse
       gemini_generate_content
       openrouter_chat
       openai_compatible_chat
+      mistral_chat
+      pi_messages
       deepseek_responses
       xai_responses
       openai_images
@@ -44,6 +47,8 @@ module SimpleInference
     PROTOCOL_ROUTES = %w[
       responses_http_sse
       messages_http_sse
+      converse_http_eventstream
+      pi_messages_http_sse
       chat_completions_http_sse
       generate_content_http_sse
       images_generations_http
@@ -98,6 +103,7 @@ module SimpleInference
       transcriptions_path
       embeddings_path
       messages_path
+      chat_path models_path
     ].freeze
 
     # stream_only: the lane's wire ACCEPTS ONLY streaming requests (the
@@ -112,6 +118,11 @@ module SimpleInference
       use_responses_lite stream_only
       stream_include_usage default_store encrypted_reasoning_include
       mid_conversation_system
+      supports_developer_role supports_strict_tools requires_reasoning_content
+      supports_reasoning_effort tool_stream
+      allow_empty_thinking_signature
+      thinking_omits_temperature
+      bedrock_omit_thinking_display
     ].freeze
 
     # originator / responses_lite_header: the codex non-credential protocol
@@ -125,6 +136,10 @@ module SimpleInference
     STRING_WIRE_OPTION_KEYS = %i[
       originator responses_lite_header anthropic_version image_response_format
       images_edits_encoding thinking_binding
+      max_tokens_field
+      gemini_thinking_control
+      anthropic_thinking_control
+      bedrock_thinking_control
     ].freeze
 
     # A model's instruction-role layout, applied before protocol lowering.
@@ -133,9 +148,12 @@ module SimpleInference
     PROMPT_FORMATS = %w[qwen3_5].freeze
     # Generic chat hosts expose different thinking switches. This is an
     # explicit wire choice, independent of instruction layout or model name.
-    REASONING_CONTROLS = %w[reasoning_effort chat_template_kwargs].freeze
+    REASONING_CONTROLS = %w[
+      reasoning_effort chat_template_kwargs chat_template_args enable_thinking
+      deepseek zai together nested_effort string_thinking
+    ].freeze
     WIRE_OPTION_KEYS = (PATH_WIRE_OPTION_KEYS + BOOLEAN_WIRE_OPTION_KEYS + STRING_WIRE_OPTION_KEYS +
-      %i[prompt_format reasoning_control]).freeze
+      %i[prompt_format reasoning_control reasoning_effort_map thinking_budgets]).freeze
 
     MAX_TOTAL_EXECUTION_DEADLINE_SECONDS = 3600
 
@@ -182,6 +200,8 @@ module SimpleInference
       total_execution_deadline_seconds:,
       primary_execution_pair:,
       allowed_execution_pairs:,
+      authentication: nil,
+      request_headers: {},
       stream_idle_timeout_seconds: nil,
       capabilities: [],
       input_modalities: [],
@@ -210,6 +230,9 @@ module SimpleInference
         workload: Facts.member(workload, WORKLOADS, field: "workload"),
         model_pin: Facts.identity(model_pin, field: "model_pin"),
         credential_lane: Facts.member(credential_lane, CREDENTIAL_LANES, field: "credential_lane"),
+        authentication: authentication.nil? ? nil :
+          Facts.member(authentication, Config::AUTHENTICATION_HEADERS.keys, field: "authentication"),
+        request_headers: Config.normalize_request_headers(request_headers),
         total_execution_deadline_seconds: deadline,
         stream_idle_timeout_seconds: validated_idle_timeout(stream_idle_timeout_seconds, deadline),
         primary_execution_pair: primary,
@@ -384,6 +407,36 @@ module SimpleInference
           if value && adapter_profile.to_s != "openai_compatible_chat"
             raise SimpleInference::ConfigurationError, "wire option reasoning_control belongs to openai_compatible_chat"
           end
+        elsif key == :max_tokens_field
+          unless %w[max_tokens max_completion_tokens].include?(value)
+            raise SimpleInference::ConfigurationError, "max_tokens_field must be max_tokens or max_completion_tokens"
+          end
+        elsif key == :reasoning_effort_map
+          mapping = Hash.try_convert(value)
+          unless mapping && (mapping.keys.map(&:to_s) - %w[off none minimal low medium high xhigh max ultra]).empty? &&
+              mapping.values.all? { |entry| entry.nil? || String.try_convert(entry)&.match?(/\A[a-z][a-z0-9_-]*\z/) }
+            raise SimpleInference::ConfigurationError, "reasoning_effort_map must map known efforts to wire words or null"
+          end
+        elsif key == :gemini_thinking_control
+          unless %w[level budget].include?(value)
+            raise SimpleInference::ConfigurationError, "gemini_thinking_control must be level or budget"
+          end
+        elsif key == :anthropic_thinking_control
+          unless %w[adaptive budget].include?(value)
+            raise SimpleInference::ConfigurationError, "anthropic_thinking_control must be adaptive or budget"
+          end
+        elsif key == :bedrock_thinking_control
+          unless %w[none adaptive budget reasoning_effort nested_effort].include?(value)
+            raise SimpleInference::ConfigurationError, "invalid bedrock_thinking_control"
+          end
+        elsif key == :thinking_budgets
+          mapping = Hash.try_convert(value)
+          valid = mapping && (mapping.keys.map(&:to_s) - %w[minimal low medium high xhigh max]).empty? &&
+            mapping.values.all? do |entry|
+              integer = Integer(entry, exception: false)
+              integer && entry.eql?(integer) && integer >= -1
+            end
+          raise SimpleInference::ConfigurationError, "thinking_budgets must map efforts to integer budgets >= -1" unless valid
         elsif PATH_WIRE_OPTION_KEYS.include?(key)
           unless value.is_a?(String) && value.start_with?("/")
             raise SimpleInference::ConfigurationError,

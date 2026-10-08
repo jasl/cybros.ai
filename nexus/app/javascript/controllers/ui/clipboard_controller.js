@@ -5,6 +5,11 @@ import { Controller } from "@hotwired/stimulus"
 // JavaScript too.
 export default class extends Controller {
   static targets = ["source", "button"]
+  static values = { copied: String }
+
+  connect() {
+    this.copyLabel = this.buttonTarget.textContent
+  }
 
   copy() {
     if (navigator.clipboard) {
@@ -23,7 +28,7 @@ export default class extends Controller {
   }
 
   showCopied() {
-    this.buttonTarget.textContent = "Copied"
-    setTimeout(() => { this.buttonTarget.textContent = "Copy" }, 1500)
+    this.buttonTarget.textContent = this.copiedValue
+    setTimeout(() => { this.buttonTarget.textContent = this.copyLabel }, 1500)
   }
 }

@@ -1,3 +1,4 @@
+import { t } from "./i18n.js";
 // Nexus login creates a browser credential distinct from the daemon's private
 // CLI bearer. Keep it in this tab's sessionStorage, including across refreshes.
 const KEY = `rho.bearer.${location.origin}`;
@@ -10,7 +11,7 @@ export const bearer = {
 
 export class Refused extends Error {
   constructor(status, code, message, details = {}) {
-    super(message || code || `HTTP ${status}`);
+    super(message || code || t("api.http", { status: status }));
     this.status = status;
     this.code = code;
     this.details = details;

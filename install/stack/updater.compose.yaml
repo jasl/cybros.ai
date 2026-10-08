@@ -1,0 +1,31 @@
+# This owner survives application shutdown and has no published network port.
+name: "${CYBROS_PROJECT_NAME:-cybros}-updater"
+
+services:
+  updater:
+    image: "${CYBROS_UPDATER_IMAGE:-${CYBROS_UPDATER_IMAGE_REPOSITORY:-jasl123/cybros-updater}:${CYBROS_UPDATER_TAG:-latest}}"
+    restart: unless-stopped
+    environment:
+      CYBROS_INSTALL_DIR: "${CYBROS_INSTALL_DIR:?Missing absolute installation directory}"
+      CYBROS_NEXUS_IMAGE_REPOSITORY: "${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}"
+      CYBROS_RHO_IMAGE_REPOSITORY: "${CYBROS_RHO_IMAGE_REPOSITORY:-jasl123/cybros-rho}"
+      CYBROS_BACKUP_KEEP: "${CYBROS_BACKUP_KEEP:-3}"
+      CYBROS_UPDATER_STATE_DIR: "${CYBROS_INSTALL_DIR}/data/updater"
+      CYBROS_UPDATER_SOCKET: /run/cybros-updater/updater.sock
+    volumes:
+      - type: bind
+        source: "${CYBROS_INSTALL_DIR}"
+        target: "${CYBROS_INSTALL_DIR}"
+      - ./data/updater-ipc:/run/cybros-updater
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: [CMD, ruby, /app/updater.rb, status]
+      interval: 5s
+      timeout: 8s
+      retries: 12
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

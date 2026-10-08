@@ -168,6 +168,39 @@ class AgentRuns::ToolDiscoveryTest < ActiveJob::TestCase
     assert_equal AgentRuns::RoundReplay::Pairing::CLEARED, cleared_result.fetch("output")
   end
 
+  test "steer_now preserves the pending wrapped tool and delivers its actual result later" do
+    run = execution([declaration("local_read", suite_runner)])
+    run_loop_round!(run, sse_success("read", tool_calls: [
+      { id: "invoke", name: "tool_call", arguments: { name: "local_read", input: { path: "long" } }.to_json },
+    ]))
+    AgentRuns::ToolDiscoveryJob.perform_now(loop_node(run, "r1t0").id)
+    schedule_loop!(run)
+    child = loop_node(run, "r1t0-tool-1")
+    claimed = Executors::Claim.call(Executors::Claim::Command.new(
+      agent_run: run, task_key: child.node_key, executor: suite_runner))
+    assert_predicate claimed, :accepted?
+    accepted = loop_input!(run, acting_user: @human, text: "inspect wrapped read", delivery_mode: "steer_now")
+    assert_predicate accepted, :accepted?
+    schedule_loop!(run)
+    pending_request = round_request_entries(loop_node(run, "steer1"))
+    receipt = pending_request.find { |item| item["type"] == "tool_result_item" }.fetch("payload")
+    assert_equal "invoke", receipt.fetch("call_id")
+    assert_includes receipt.fetch("output"), "still pending"
+    assert_includes receipt.fetch("output"), child.node_key
+    assert_equal "dispatched", child.reload.status
+    run_loop_round!(run, sse_success("steered wrapped work"))
+    committed = Executors::Commit.call(Executors::Commit::Command.new(
+      agent_run: run, task_key: child.node_key, executor: suite_runner, claim_token: claimed.value.claim_token,
+      content: "wrapped late value", structured_content: nil, result_type: nil, outcome: "completed",
+      is_error: false, title: nil, metadata: nil))
+    assert_predicate committed, :applied?
+    schedule_loop!(run)
+    request = round_request_entries(loop_node(run, "r1")).to_json
+    assert_equal 1, request.scan("wrapped late value").length
+    assert_operator request.index("steered wrapped work"), :<, request.index("wrapped late value")
+    assert_equal pending_request, round_request_entries(loop_node(run, "steer1"))
+  end
+
   test "allowing tool_call does not bypass denial or approval of the actual tool" do
     %w[deny ask].each do |verdict|
       run = execution([declaration("local_read", suite_runner)], approval_mode: "rules", approval_rules: [

@@ -121,6 +121,27 @@ class ModelCatalog::ModelDefinitionTest < ActiveSupport::TestCase
     end
   end
 
+  test "model counters override the wire and explicit null clears its default" do
+    inherited = profile_for(compile_model({}))
+    assert_equal "tiktoken", inherited.token_counter.kind
+
+    declared = { "kind" => "huggingface", "tokenizer_id" => "example/vocabulary" }
+    selected = profile_for(compile_model({ "token_counter" => declared }))
+    assert_equal declared, selected.token_counter.to_h
+
+    disabled = profile_for(compile_model({ "token_counter" => nil }))
+    assert_nil disabled.token_counter
+
+    [
+      false, "huggingface", 7, [],
+      { "kind" => "unknown" },
+      { "kind" => "huggingface" },
+      { "kind" => "huggingface", "tokenizer_id" => "example/vocabulary", "encoding" => "o200k_base" },
+    ].each do |invalid|
+      assert_raises(ModelCatalog::CompileError) { compile_model({ "token_counter" => invalid }) }
+    end
+  end
+
   private
 
     def compile_model(entry, provider: {})

@@ -75,7 +75,7 @@ module CybrosAgent
     # the child the kernel's `spawn` minted, listed through `children`.
     ConversationSummary = Data.define(
       :public_id, :title, :answering_user_public_id, :archived_at, :billing_subject,
-      :parent, :forked_from_turn_public_id,
+      :parent, :source_conversation_public_id, :forked_from_turn_public_id,
       :forked_from_variant_public_id, :side, :active_turn_public_id,
       :context_revision, :last_activity_at, :created_at, :updated_at
     ) do
@@ -112,7 +112,7 @@ module CybrosAgent
     # `access` is the carrier, always present: the pack pins it.
     Conversation = Data.define(
       :public_id, :title, :answering_user_public_id, :archived_at, :billing_subject,
-      :parent, :forked_from_turn_public_id,
+      :parent, :source_conversation_public_id, :forked_from_turn_public_id,
       :forked_from_variant_public_id, :side, :active_turn_public_id,
       :context_revision, :last_activity_at, :created_at, :updated_at,
       :metadata, :input_queue, :latest_event_cursor, :context, :usage_summary, :default_runner, :access, :memory_context

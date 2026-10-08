@@ -271,11 +271,9 @@ end
       "the agent serves code, summaries, todos, schedules and package management"
     wait_for { api.runner_inbox_reads.positive? && api.executor_inbox_reads.positive? }
     log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
-    # 19 = the coding set with file import/publication, the processes pair, the store's two hidden
-    # names — a default-layout home opens a store for its placed runner
-    # (re-cut from 14 when the work root's exemption landed) — and the
-    # environment's hidden `environment_bind`.
-    assert_includes log, "event=executor.announced tools=20 address=runner"
+    # The default runner set includes coding, processes, checkpoints, the
+    # environment binding, code mode and web reading.
+    assert_includes log, "event=executor.announced tools=21 address=runner"
     assert_includes log, "event=executor.announced tools=7 address=agent"
 
     agent = boot(device_flow: connection_device_flow, api_transport: NexusDoubles::FakeAgentApi.new(
@@ -332,11 +330,8 @@ end
     assert_equal 1, api.runner_announcements.length
     refute_nil api.runner_announcements.first["environment"]
     log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
-    # 19: the store's two hidden names announce on a default-layout home
-    # too (re-cut from 14 with the work root's exemption), and the
-    # environment's hidden `environment_bind` — a runner-mode rho is told
-    # its conversations' root sets by the host.
-    assert_includes log, "event=executor.announced tools=20 address=runner"
+    # Runner mode keeps the same default local tools, including web reading.
+    assert_includes log, "event=executor.announced tools=21 address=runner"
     assert_equal "connected", JSON.parse(request(daemon, :get, "/environment", token: token).body).dig("environment", "root").then { |root| root ? "connected" : "unset" }
     assert_includes daemon.context.environment.root, File.join("runners", "0199-runner")
   end

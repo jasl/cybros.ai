@@ -30,7 +30,7 @@ class InferenceRequestFeedTest < Minitest::Test
     E2E.hosts.pin(:runner)
     @workspace = @client.workspaces.create(
       name: "InferenceRequest feed #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @lane = @client.workspace(@workspace.public_id).inference_requests
   end
 

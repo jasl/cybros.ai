@@ -65,7 +65,7 @@ class LiveMemoryScopesTest < Minitest::Test
     # and nothing else — the note crossed workspaces on the person alone.
     other = steward_client.workspaces.create(
       name: "Memory scopes live #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     conversations = steward_client.workspace(other.public_id).conversations
     chat = conversations.conversation(
       conversations.create(title: "The other workspace", idempotency_key: SecureRandom.uuid).public_id

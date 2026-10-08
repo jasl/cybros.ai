@@ -47,6 +47,9 @@ schema_version: cybros.model_catalog.v1
 #   # weights also accept low/medium/xhigh effort; earlier rows are switch-only.
 #   local/qwen3.8-flash-next:
 #     model_id: Qwen/Qwen3.8-Flash-Next
+#     token_counter:
+#       kind: huggingface
+#       tokenizer_id: Qwen/Qwen3.8-Flash-Next
 #     wire_options:
 #       prompt_format: qwen3_5
 #       reasoning_control: chat_template_kwargs
@@ -60,6 +63,10 @@ schema_version: cybros.model_catalog.v1
 #       output_tokens: 4096
 #   local/qwen3.8-27b:
 #     model_id: Qwen/Qwen3.8-27B
+#     # The official 27B and Flash-Next tokenizer files are byte-identical.
+#     token_counter:
+#       kind: huggingface
+#       tokenizer_id: Qwen/Qwen3.8-Flash-Next
 #     wire_options:
 #       prompt_format: qwen3_5
 #       reasoning_control: chat_template_kwargs
@@ -73,6 +80,10 @@ schema_version: cybros.model_catalog.v1
 #       output_tokens: 4096
 #   local/qwen3.6-35b-a3b:
 #     model_id: Qwen/Qwen3.6-35B-A3B
+#     # The official 35B-A3B and 9B tokenizer files are byte-identical.
+#     token_counter:
+#       kind: huggingface
+#       tokenizer_id: Qwen/Qwen3.5-9B
 #     wire_options:
 #       prompt_format: qwen3_5
 #       reasoning_control: chat_template_kwargs
@@ -84,6 +95,9 @@ schema_version: cybros.model_catalog.v1
 #       output_tokens: 4096
 #   local/qwen3.5-9b:
 #     model_id: Qwen/Qwen3.5-9B
+#     token_counter:
+#       kind: huggingface
+#       tokenizer_id: Qwen/Qwen3.5-9B
 #     wire_options:
 #       prompt_format: qwen3_5
 #       reasoning_control: chat_template_kwargs

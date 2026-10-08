@@ -14,7 +14,7 @@ class TestReasoningWireGates < Minitest::Test
   # broker, or any server speaking the OpenAI-compatible dialect — so they
   # have no local gate to exceed. A new format without a gate must be named
   # here on purpose.
-  PASS_THROUGH = %w[openrouter_chat openai_compatible_chat].freeze
+  PASS_THROUGH = %w[openrouter_chat openai_compatible_chat mistral_chat].freeze
 
   def formats_with_efforts
     SimpleInference::ApiFormat::PROTOCOL_CLASSES.filter_map do |format, klass|

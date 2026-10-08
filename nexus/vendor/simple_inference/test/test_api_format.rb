@@ -72,8 +72,8 @@ class TestApiFormat < Minitest::Test
     assert_nil facts.token_cost, "the resize bound does not declare provider token accounting"
   end
 
-  def test_pdf_is_inline_file_input_only_on_the_four_adapted_formats
-    formats = %w[openai_responses openai_compatible_chat anthropic_messages gemini_generate_content]
+  def test_pdf_is_inline_file_input_only_on_the_adapted_formats
+    formats = %w[openai_responses openai_compatible_chat anthropic_messages gemini_generate_content bedrock_converse]
     formats.each do |format|
       profile = profile_for(format)
       facts = profile.input_media.fetch("file")

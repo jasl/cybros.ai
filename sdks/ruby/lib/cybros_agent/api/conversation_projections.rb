@@ -16,6 +16,7 @@ module CybrosAgent
         archived_at: :optional_string,
         billing_subject: :optional_string,
         parent: [:optional_shape, ConversationParent],
+        source_conversation_public_id: :optional_string,
         forked_from_turn_public_id: :optional_string,
         forked_from_variant_public_id: :optional_string,
         side: :boolean,

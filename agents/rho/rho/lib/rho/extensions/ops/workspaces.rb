@@ -38,7 +38,7 @@ module Rho
             name = body["name"].to_s
             next Rho::Daemon::Refusal.malformed("name is required") if name.strip.empty?
 
-            row = client.workspaces.create(name: name, idempotency_key: body["idempotency_key"] || SecureRandom.uuid)
+            row = client.workspaces.create(name: name, idempotency_key: body["idempotency_key"] || SecureRandom.uuid).workspace
             [201, { workspace: summary(row) }]
           end
         end

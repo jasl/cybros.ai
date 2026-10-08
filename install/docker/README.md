@@ -1,7 +1,8 @@
 # Docker images
 
-The combined stack uses `docker.io/jasl123/cybros-nexus` and `docker.io/jasl123/cybros-rho`.
-Both publish the rolling `latest` tag and support Linux amd64 and arm64.
+The combined stack uses `docker.io/jasl123/cybros-nexus`, `docker.io/jasl123/cybros-rho`
+and `docker.io/jasl123/cybros-updater`. All publish the rolling `latest` tag and
+support Linux amd64 and arm64.
 The rho image publishes the `browser` target below,
 including project language toolchains, Chromium, Office converters, fonts and Python file-work
 libraries. The existing browser extension remains separately enabled in rho settings.
@@ -28,31 +29,73 @@ layout is unchanged.
 
 ## Publish the current checkout
 
-Publishing is a manual operator step. Build `rho-install-test:rho` locally before the
-full container and Compose E2E checks. GitHub Actions runs smoke and key quality checks
-without building or publishing images.
+Run the relevant project tests first, commit the intended source, and log in to the
+registry on the publishing machine. One command then owns native builds, image smoke,
+upload and verification. GitHub Actions does not build or publish these images.
+The publisher needs a POSIX shell, Docker with Buildx, Git, Ruby with its standard
+`json` and `open3` libraries, `tar`, `mktemp`, `date` and `awk`.
 
-Run the relevant tests and runtime smoke checks first and log in to Docker Hub. Use a
-Buildx builder backed by native amd64 and arm64 nodes: a single Mac's amd64 emulation
-can fail in git-lfs installation or `uv --version`. Select your configured native builder
-with `BUILDX_BUILDER` (`cybros-release` below is an example builder name):
+Set both native Docker Engines explicitly. Each value is an existing Docker context
+name or an `ssh://` Docker endpoint; the SSH user must be able to access that host's
+Docker socket. For example, from an arm64 Mac with an amd64 Linux builder:
 
 ```sh
-export BUILDX_BUILDER=cybros-release
-sh install/docker/publish.sh                  # publish both rolling images under jasl123
-sh install/docker/publish.sh your-namespace   # another Docker Hub namespace
+export CYBROS_ARM64_DOCKER_CONTEXT=desktop-linux
+export CYBROS_AMD64_DOCKER_CONTEXT=ssh://builder@builder.example
+sh install/docker/publish.sh                  # UTC minute selected once
+sh install/docker/publish.sh 2610080750       # explicit unused UTC minute
 ```
 
-The script builds Nexus from `nexus/` and rho from the repository root, using the files in
-this checkout. It never pulls a source branch or release archive. It pushes both timestamp
-tags before promoting either to `latest`; a failed build leaves both existing `latest`
-tags unchanged. The two tag promotions are separate registry operations: if one fails,
-rerun the command with its reported timestamp as the second argument. These automatic
-build tags support publishing and recovery; installations use `latest`, and publishing
-does not require a product version number or a Git release tag.
-The script needs a POSIX shell, Docker Buildx and `date`; Git is optional and adds the
-checkout's HEAD as an OCI revision label when available. Local uncommitted files are still
-part of the build context.
+The script verifies each Engine's native architecture and selects its same-named
+Docker driver builder, reusing the Engine's build cache. `BUILDX_BUILDER` does not
+override that selection. It creates a temporary context for an SSH URL and removes
+only contexts it created. Existing contexts, builders and caches are retained.
+Docker streams build contexts and copies smoke scripts through its API, so the remote
+host needs no source checkout or copied registry credential file. Pushes use the local
+Docker client's existing login.
+
+The checkout must be clean. A temporary local Git archive freezes `HEAD` for all six
+builds and excludes ignored and untracked files. Nexus uses `nexus/`, rho uses the
+repository root and its `browser` target, and the updater uses
+`install/stack/updater`. Each image carries the same OCI version, Git revision and
+source labels. No source branch or release archive is downloaded.
+
+All six images build and pass native runtime checks before any push: Nexus boots its
+Rails runtime without a database connection, rho runs `version`, `doctor --strict`
+and the existing offline coding/Cowork/browser smoke as uid 1000, and the updater
+loads its runtime and executes its Docker and Compose clients. These image checks
+do not replace the full container, Compose, project and cross-project tests.
+
+The script pushes `:<tag>-amd64` and `:<tag>-arm64`, checks each native image's config
+and labels, then assembles the three `:<tag>` indexes from their exact digests.
+Every index must contain the checked Linux amd64 and arm64 images and matching
+version/revision/source labels before any `latest` write. Promotions use those
+verified index digests; success also requires every `latest` digest to match.
+
+Tags use UTC `yyMMddHHmm`, with `yy` interpreted as 2000–2099. For example,
+`2610080750` means 2026-10-08 07:50 UTC. The script refuses an existing release or
+architecture tag, and registry authentication or network failures also stop it.
+Use a new minute for each attempt. A failure before promotion leaves all existing
+`latest` tags unchanged. The three rolling-tag writes are separate registry
+operations, so a promotion or final verification failure can leave a partial
+promotion; the command reports failure. After correcting the cause, rerun the
+complete command with a new unused minute. Whole-installation update checks reject
+a mismatched Nexus/rho release pair. Installations use `latest`; publishing needs no
+product version number or Git release tag.
+
+Architecture tags remain available for diagnosis. The publisher never deletes
+registry tags, manifests or blobs. Temporary source and smoke containers, including
+their anonymous volumes, are removed on exit; built native images and build caches
+remain on their Engines.
+
+To publish to other repositories, set complete repository paths without tags:
+
+```sh
+CYBROS_NEXUS_IMAGE_REPOSITORY=ghcr.io/jasl/cybros-nexus \
+CYBROS_RHO_IMAGE_REPOSITORY=ghcr.io/jasl/cybros-rho \
+CYBROS_UPDATER_IMAGE_REPOSITORY=ghcr.io/jasl/cybros-updater \
+sh install/docker/publish.sh
+```
 
 Nexus builds its JavaScript and CSS in a separate `BUILDPLATFORM` stage with Bun 1.4.2
 and the frozen lockfile. The target-architecture Rails stage copies those outputs and
@@ -77,7 +120,7 @@ trees and `install/`). Four targets:
 | `base` | the manifest's apt core (`apt.image`), tini, uid 1000 `rho`, mise and gh (manifest-pinned tarballs, sha256) | build stage only |
 | `rho` | `install.sh --from-checkout`, profile `full`: the portable Ruby, the lock's bundler, the gems built here, rg, fd, jq, uv; `libexec/docker-entrypoint`; the bootsnap cache prewarmed on the layer; `rho doctor --strict`; the standalone stack installer | custom smaller builds |
 | `toolchains` | mise's `node@24.21.0 go@1.27.1 rust@1.98.1`, npm/pnpm and JavaScript tools; pinned T3, Codex and Claude Code; Rust uses rustup's minimal profile plus rustfmt/clippy; uv's Python 3.14 and ruff/pyright/mypy | operator-selected tag |
-| `browser` | Chromium libraries and the existing `dev` driver/headless shell; LibreOffice Writer/Calc/Impress, fonts, and the Cowork Python environment | `docker.io/jasl123/cybros-rho:latest`, `:<Unix seconds>` |
+| `browser` | Chromium libraries and the existing `dev` driver/headless shell; LibreOffice Writer/Calc/Impress, fonts, and the Cowork Python environment | `docker.io/jasl123/cybros-rho:latest`, `:<yyMMddHHmm UTC>` |
 
 `rho-webui` and its static resources are included from the `rho` target onward. The Ruby daemon
 serves the page in `full` and `agent` modes; the default `runner` mode stays headless. No JavaScript

@@ -164,7 +164,7 @@ module CybrosAgent
       attr_reader workspace_public_id: String
 
       def initialize: (dispatch: _Dispatch, workspace_public_id: String) -> void
-      def list: (?workload: String?, ?after: String?, ?limit: Integer?) -> Page[InferenceRequestSummary]
+      def list: (?workload: String?, ?after: String?, ?limit: Integer?, ?order: String?) -> Page[InferenceRequestSummary]
       def estimate_input: (
         workload: String,
         model: String,

@@ -45,6 +45,8 @@ module SimpleInference
 
       # Register minimum for manual thinking budgets (budget_tokens).
       MANUAL_THINKING_BUDGET_MINIMUM = 1024
+      THINKING_BUDGETS = { "minimal" => 1024, "low" => 2048, "medium" => 8192,
+        "high" => 16384, "xhigh" => 16384, "max" => 16384 }.freeze
 
       # Deterministic wire constants (labeled): the ONE Messages endpoint
       # every request posts to, and the pinned wire-version marker. The
@@ -96,13 +98,27 @@ module SimpleInference
       #   opus-5-5 / opus-5 / opus-4-8, not on sonnet-5); without it a
       #   non-leading system entry lowers in place to user text.
       def initialize(messages_path: nil, anthropic_version: nil, betas: nil, thinking_binding: nil,
-                     mid_conversation_system: nil, **connection)
+                     mid_conversation_system: nil, anthropic_thinking_control: "adaptive", thinking_budgets: nil,
+                     allow_empty_thinking_signature: false, thinking_omits_temperature: false, **connection)
         super(**connection)
         @messages_path = normalized_messages_path(messages_path)
         @anthropic_version = validated_anthropic_version(anthropic_version)
         @betas = validated_betas(betas)
         @thinking_binding = validated_thinking_binding(thinking_binding)
         @mid_conversation_system = mid_conversation_system == true
+        unless %w[adaptive budget].include?(anthropic_thinking_control)
+          raise SimpleInference::ConfigurationError, "anthropic_thinking_control must be adaptive or budget"
+        end
+        @anthropic_thinking_control = anthropic_thinking_control
+        @thinking_budgets = THINKING_BUDGETS.merge(thinking_budgets.to_h.transform_keys(&:to_s)).freeze
+        unless (@thinking_budgets.keys - THINKING_BUDGETS.keys).empty? && @thinking_budgets.values.all? do |budget|
+            integer = Integer(budget, exception: false)
+            integer && budget.eql?(integer) && integer >= MANUAL_THINKING_BUDGET_MINIMUM
+          end
+          raise SimpleInference::ConfigurationError, "Anthropic thinking_budgets must map efforts to integer budgets >= 1024"
+        end
+        @allow_empty_thinking_signature = allow_empty_thinking_signature == true
+        @thinking_omits_temperature = thinking_omits_temperature == true
       end
 
       # The responses-family options this protocol PROCESSES by name (thinking
@@ -347,9 +363,7 @@ module SimpleInference
       end
 
       def anthropic_headers(connection_config)
-        headers = connection_config.headers.reject { |key, _value| key.to_s.casecmp("authorization").zero? }
-        # No api_key means NO credential header — never an empty "x-api-key".
-        connection_config.api_key.nil? ? headers : headers.merge("x-api-key" => connection_config.api_key)
+        connection_config.authentication_headers(default: "x-api-key")
       end
 
       def compiled_connection_headers(connection_config)
@@ -401,7 +415,7 @@ module SimpleInference
           when "thinking_delta"
             block["thinking"] = block["thinking"].to_s + delta["thinking"].to_s
           when "signature_delta"
-            block["signature"] = delta["signature"].to_s unless delta["signature"].nil?
+            block["signature"] = block["signature"].to_s + delta["signature"].to_s unless delta["signature"].nil?
           when "input_json_delta"
             block["_input_json"] = block["_input_json"].to_s + delta["partial_json"].to_s
           else

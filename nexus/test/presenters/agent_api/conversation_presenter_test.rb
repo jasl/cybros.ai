@@ -25,7 +25,7 @@ class AgentAPI::ConversationPresenterTest < ActiveSupport::TestCase
 
     answered = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: users(:agent))
     assert_equal users(:agent).public_id, AgentAPI::ConversationPresenter.basic(answered).fetch(:answering_user_public_id)
-    assert_equal users(:agent).public_id, AgentAPI::ConversationPresenter.full(answered).fetch(:answering_user_public_id)
+    assert_equal users(:agent).public_id, AgentAPI::ConversationPresenter.full(answered, acting_user: @human).fetch(:answering_user_public_id)
   end
 
   # A side conversation is a child row a UI may hide: `side` rides basic so the listings can, and
@@ -36,7 +36,7 @@ class AgentAPI::ConversationPresenterTest < ActiveSupport::TestCase
 
     side = Conversation.create!(workspace: @workspace, creating_user: @human, side: true)
     assert_equal true, AgentAPI::ConversationPresenter.basic(side).fetch(:side)
-    assert_equal true, AgentAPI::ConversationPresenter.full(side).fetch(:side)
+    assert_equal true, AgentAPI::ConversationPresenter.full(side, acting_user: @human).fetch(:side)
   end
 
   # THE PARENT FACTS: a spawned child names its parent, the `spawn` call that minted it and its
@@ -47,7 +47,7 @@ class AgentAPI::ConversationPresenterTest < ActiveSupport::TestCase
     agent = users(:agent)
     root = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: agent)
     assert_nil AgentAPI::ConversationPresenter.basic(root).fetch(:parent)
-    assert_nil AgentAPI::ConversationPresenter.full(root).fetch(:parent)
+    assert_nil AgentAPI::ConversationPresenter.full(root, acting_user: @human).fetch(:parent)
 
     seam = create_run_backed_turn(conversation: root, acting_user: @human)
     appended = AgentRuns::Tasks::Append.call(AgentRuns::Tasks::Append::Command.kernel(
@@ -64,7 +64,7 @@ class AgentAPI::ConversationPresenterTest < ActiveSupport::TestCase
     assert_equal({ public_id: root.public_id, spawn_node_key: "r1t0", label: "reviewer" },
       AgentAPI::ConversationPresenter.basic(child).fetch(:parent))
     assert_equal({ public_id: root.public_id, spawn_node_key: "r1t0", label: "reviewer" },
-      AgentAPI::ConversationPresenter.full(child).fetch(:parent))
+      AgentAPI::ConversationPresenter.full(child, acting_user: @human).fetch(:parent))
     assert_not AgentAPI::ConversationPresenter.basic(child).key?(:parent_conversation_public_id),
       "one block, never a second flat spelling"
 
@@ -76,7 +76,7 @@ class AgentAPI::ConversationPresenterTest < ActiveSupport::TestCase
   test "runner carries the four keys when bound, nil when unbound, and vanishes with a reaped executor" do
     NexusServer.register
     unbound = Conversation.create!(workspace: @workspace, creating_user: @human)
-    assert_nil AgentAPI::ConversationPresenter.full(unbound).fetch(:default_runner)
+    assert_nil AgentAPI::ConversationPresenter.full(unbound, acting_user: @human).fetch(:default_runner)
     assert_not AgentAPI::ConversationPresenter.basic(unbound).key?(:runner)
 
     bound = Conversation.create!(workspace: @workspace, creating_user: @human, default_runner_executor: @runner)
@@ -85,13 +85,13 @@ class AgentAPI::ConversationPresenterTest < ActiveSupport::TestCase
     assert_equal(
       { executor_public_id: @runner.public_id, display_name: "Laptop", presence: "online",
         last_seen_at: @runner.reload.last_seen_at },
-      AgentAPI::ConversationPresenter.full(bound.reload).fetch(:default_runner)
+      AgentAPI::ConversationPresenter.full(bound.reload, acting_user: @human).fetch(:default_runner)
     )
 
     # The reap nullifies the FK (schema: on_delete nullify) — the same
     # column state, written directly.
     bound.update_columns(default_runner_executor_id: nil)
-    assert_nil AgentAPI::ConversationPresenter.full(bound.reload)[:default_runner]
+    assert_nil AgentAPI::ConversationPresenter.full(bound.reload, acting_user: @human)[:default_runner]
   end
 
   # THE ACCESS CARRIER: the default and the entries ride `full` only, like `runner`; each entry is
@@ -104,7 +104,7 @@ class AgentAPI::ConversationPresenterTest < ActiveSupport::TestCase
     conversation.conversation_access_entries.create!(user: users(:owner), level: "read")
     conversation.conversation_access_entries.create!(user: users(:curator), level: "full")
 
-    access = AgentAPI::ConversationPresenter.full(conversation).fetch(:access)
+    access = AgentAPI::ConversationPresenter.full(conversation, acting_user: @human).fetch(:access)
 
     assert_equal "none", access.fetch(:default)
     assert_equal [
@@ -115,7 +115,7 @@ class AgentAPI::ConversationPresenterTest < ActiveSupport::TestCase
     assert_not AgentAPI::ConversationPresenter.basic(conversation).key?(:access)
 
     bare = Conversation.create!(workspace: @workspace, creating_user: @human)
-    assert_equal({ default: "full", entries: [] }, AgentAPI::ConversationPresenter.full(bare).fetch(:access),
+    assert_equal({ default: "full", entries: [] }, AgentAPI::ConversationPresenter.full(bare, acting_user: @human).fetch(:access),
       "never nil: an empty set under the birth default")
   end
 
@@ -254,7 +254,7 @@ class AgentAPI::ConversationPresenterTest < ActiveSupport::TestCase
       assert_equal({ memory_context: memory_context }, deck.slice(:memory_context))
     end
 
-    assert_equal({ "bindings" => [] }, AgentAPI::ConversationPresenter.full(conversation).fetch(:memory_context))
+    assert_equal({ "bindings" => [] }, AgentAPI::ConversationPresenter.full(conversation, acting_user: @human).fetch(:memory_context))
   end
 
   # THE ROW'S CLOCK (owner 2026-09-15, item 12): `deliver_at` by presence

@@ -14,13 +14,13 @@ class Admin::ModelProvidersController < Admin::ModelProviders::BaseController
     fields = definition_fields
     @form = Admin::ModelProviders::DefinitionForm.new(provider_id: fields.fetch(:provider_id).to_s.strip, attributes: fields.except(:provider_id))
     if provider_metadata(@form.provider_id).providers.key?(@form.provider_id)
-      @form.errors.add(:provider_id, "already exists. Edit its connection from the provider overview.")
+      @form.errors.add(:provider_id, :already_configured_provider)
       render :new, status: :unprocessable_entity
     elsif @form.valid?
       result = ModelProviders::SetDefinition.call(account: account, provider_id: @form.provider_id,
         definition: @form.definition, expected_lock_version: expected_lock_version(fields))
       if result.done?
-        redirect_to admin_model_provider_path(@form.provider_id), notice: "Provider added. Add a model and enable the provider when ready.", status: :see_other
+        redirect_to admin_model_provider_path(@form.provider_id), notice: t("admin.model_providers.provider_added"), status: :see_other
       else
         configuration_error(@form, result, template: :new)
       end

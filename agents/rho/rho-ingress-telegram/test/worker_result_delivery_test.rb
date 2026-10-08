@@ -5,8 +5,8 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
 
   def setup
     super
-    @runtime.consume(telegram_message(1, "Prepare independent reports"))
-    @runtime.consume(telegram_message(2, "/new", chat: -10, topic: 4))
+    receive(telegram_message(1, "Prepare independent reports"))
+    receive(telegram_message(2, "/new", chat: -10, topic: 4))
     @worker_results, @worker_requests, @worker_reads = {}, {}, []
     results, requests, reads = @worker_results, @worker_requests, @worker_reads
     @bridge.define_singleton_method(:worker_request) do |id, workspace_public_id:|
@@ -39,7 +39,7 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     assert_nil request["run_id"]
     assert_equal "conversation-1", request.fetch("conversation_id")
     refute @state.read.fetch("routes").values.any? { |route| route.fetch("conversations").key?("child-a") }
-    @runtime.consume(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
+    receive(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
     assert_includes feedback(3), "no completed result to copy"
 
     publish_report(%w[a], "Parent report")
@@ -72,9 +72,9 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     assert_equal %w[a b].map { |name| task_id(name) }, summary.fetch("callback_sources").map { |row| row.fetch("result").fetch("input_public_id") }
     refute worker_request("b").key?("result_destination")
 
-    @runtime.consume(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
-    @runtime.consume(telegram_message(4, "/deliver #{task_id("b")} 1:0"))
-    @runtime.consume(telegram_message(5, "/deliver #{task_id("a")} -10:4"))
+    receive(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
+    receive(telegram_message(4, "/deliver #{task_id("b")} 1:0"))
+    receive(telegram_message(5, "/deliver #{task_id("a")} -10:4"))
     assert_equal summary, @state.read.fetch("deliveries").values.find { |row| row["text"] == "Combined A and B" }
     assert_equal "1", worker_request("b").fetch("result_destination").fetch("chat_id")
     @now += 1_001
@@ -94,7 +94,7 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
       event(3, "turn_status", "turn_public_id" => "turn-1", "run_public_id" => "summary-loop"),
     ]
     @state.change { |document| document.fetch("requests").fetch("telegram:42:1:input")["input_id"] = task_id("c") }
-    @runtime.consume(telegram_message(3, "/deliver #{task_id("c")} -10:4"))
+    receive(telegram_message(3, "/deliver #{task_id("c")} -10:4"))
     drain
 
     assert_equal ["-10"], sends("Parent own final").map { |row| row.fetch(:chat_id) }
@@ -105,7 +105,7 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
   def test_canonical_worker_result_survives_child_active_variant_change_and_restart
     publish_report(%w[a], "Parent report")
     @runtime.tick
-    @runtime.consume(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
+    receive(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
     @bridge.turn_rows["child-a"] = [worker_turn("a").merge("variant_public_id" => "manual-edit", "text" => "Later edit")]
     @state = Rho::IngressTelegram::State.new(store: TelegramStateSupport.document(@home))
     @runtime = runtime
@@ -118,7 +118,7 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
   def test_unreadable_worker_discards_its_copy_without_retiring_parent_report
     publish_report(%w[a], "Parent report")
     @runtime.tick
-    @runtime.consume(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
+    receive(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
     assert @state.read.fetch("deliveries").values.any? { |row| row["canonical_result"] }
     @worker_results["worker-a-variant"] = Rho::Core::Refused.new("not readable", code: "not_found", status: 404)
     drain
@@ -132,7 +132,7 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
   def test_worker_identity_does_not_replace_the_unqualified_main_stop_target
     publish_report(%w[a], "Parent report")
     @runtime.tick
-    @runtime.consume(telegram_message(3, "/stop"))
+    receive(telegram_message(3, "/stop"))
 
     assert_equal [["loop-1", "run", "workspace-home"]], @bridge.stop_calls
   end
@@ -141,7 +141,7 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     publish_report(%w[a b], "Combined report")
     @state.change { |document| document["retry_at"] = @now + 1_000 }
     @runtime.tick
-    @runtime.consume(telegram_message(3, "/stop #{task_id("a")}"))
+    receive(telegram_message(3, "/stop #{task_id("a")}"))
     assert_equal [["worker-a-loop", "run", "workspace-home"]], @bridge.stop_calls
     assert @state.read.fetch("deliveries").values.any? { |row| row["text"] == "Combined report" }
     @now += 1_001
@@ -155,8 +155,8 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     @state.change { |document| document.fetch("requests").fetch("telegram:42:1:input")["input_id"] = task_id("c") }
     @runtime.tick
     before = @worker_reads.count { |row| row.first == :result }
-    @runtime.consume(telegram_message(3, "/deliver #{task_id("c")} -10:4"))
-    @runtime.consume(telegram_message(4, "/deliver #{task_id("c")} -10:4"))
+    receive(telegram_message(3, "/deliver #{task_id("c")} -10:4"))
+    receive(telegram_message(4, "/deliver #{task_id("c")} -10:4"))
 
     assert_equal 2, before
     assert_equal before, @worker_reads.count { |row| row.first == :result }
@@ -172,7 +172,7 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     @bridge.current["children"] = [{ "public_id" => "child-a", "busy" => true }]
     @worker_requests["child-a"] = worker_turn("a", status: "running")
     @runtime.tick
-    @runtime.consume(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
+    receive(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
     publish_report(%w[a], "Parent report")
     drain
 
@@ -186,16 +186,16 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     publish_report(%w[a b], "Combined report")
     drain
     report_message = @state.read.fetch("messages").find { |_key, owner| owner == "report:#{task_id("s")}" }.first.split(":").last.to_i
-    @runtime.consume(telegram_message(3, "/new"))
-    @runtime.consume(telegram_message(4, "Explain the comparison", reply_to: report_message))
+    receive(telegram_message(3, "/new"))
+    receive(telegram_message(4, "Explain the comparison", reply_to: report_message))
     assert_equal "conversation-1", @bridge.inputs.fetch("telegram:42:4:input").fetch(:conversation_id)
-    @runtime.consume(telegram_message(5, "/steer add details", reply_to: report_message))
+    receive(telegram_message(5, "/steer add details", reply_to: report_message))
     steering = @bridge.inputs.fetch("telegram:42:5:input")
     assert_equal "conversation-1", steering.fetch(:conversation_id)
     assert_equal "summary-loop", steering.fetch(:expected_steering_run_public_id)
-    @runtime.consume(telegram_message(6, "/stop #{task_id("s")}"))
+    receive(telegram_message(6, "/stop #{task_id("s")}"))
     assert_equal [["summary-loop", "run", "workspace-home"]], @bridge.stop_calls
-    @runtime.consume(telegram_message(7, "/status #{task_id("s")}"))
+    receive(telegram_message(7, "/status #{task_id("s")}"))
     assert_includes @worker_reads, [:execution, "summary-loop", "workspace-home"]
     assert_equal "worker-a-loop", worker_request("a").fetch("run_id")
     assert_equal "worker-b-loop", worker_request("b").fetch("run_id")
@@ -211,10 +211,10 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     @now += 60
     @runtime.tick
     @state.change { |document| document.fetch("requests").fetch("telegram:42:1:input")["input_id"] = task_id("c") }
-    @runtime.consume(telegram_message(3, "/deliver #{task_id("c")} -10:4"))
-    @runtime.consume(telegram_message(4, "/stop", reply_to: report_message))
-    @runtime.consume(telegram_message(5, "/status #{task_id("s")}"))
-    @runtime.consume(telegram_message(6, "/steer add details", reply_to: report_message))
+    receive(telegram_message(3, "/deliver #{task_id("c")} -10:4"))
+    receive(telegram_message(4, "/stop", reply_to: report_message))
+    receive(telegram_message(5, "/status #{task_id("s")}"))
+    receive(telegram_message(6, "/steer add details", reply_to: report_message))
 
     assert_equal [["summary-loop", "run", "workspace-home"]], @bridge.stop_calls
     assert_includes @worker_reads, [:execution, "summary-loop", "workspace-home"]
@@ -232,9 +232,9 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     @bridge.current["sequence"] += 1
     @now += 60
     @runtime.tick
-    @runtime.consume(telegram_message(3, "/stop", reply_to: report_message))
-    @runtime.consume(telegram_message(4, "/steer add details", reply_to: report_message))
-    @runtime.consume(telegram_message(5, "/status #{task_id("s")}"))
+    receive(telegram_message(3, "/stop", reply_to: report_message))
+    receive(telegram_message(4, "/steer add details", reply_to: report_message))
+    receive(telegram_message(5, "/status #{task_id("s")}"))
 
     assert_nil @state.read.fetch("work").fetch(task_id("s"))["run_id"]
     assert_includes feedback(3), "No known execution"
@@ -243,9 +243,9 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     assert_empty @bridge.stop_calls
     assert_equal 1, @bridge.inputs.length
     refute @worker_reads.any? { |row| row.first == :execution }
-    @runtime.consume(telegram_message(6, "Explain this report", reply_to: report_message))
+    receive(telegram_message(6, "Explain this report", reply_to: report_message))
     assert_equal "conversation-1", @bridge.inputs.fetch("telegram:42:6:input").fetch(:conversation_id)
-    @runtime.consume(telegram_message(7, "/stop #{task_id("s")}"))
+    receive(telegram_message(7, "/stop #{task_id("s")}"))
     assert_includes feedback(7), "original execution is not linked"
     assert_empty @bridge.queue_writes
   end
@@ -255,8 +255,8 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     @worker_requests["child-a"] = worker_turn("a", status: "running").merge("run_public_id" => "regenerated-loop")
     @runtime.tick
     assert_nil worker_request("a")["run_id"]
-    @runtime.consume(telegram_message(3, "/stop #{task_id("a")}"))
-    @runtime.consume(telegram_message(4, "/steer #{task_id("a")} add details"))
+    receive(telegram_message(3, "/stop #{task_id("a")}"))
+    receive(telegram_message(4, "/steer #{task_id("a")} add details"))
     assert_includes feedback(3), "original execution is not linked"
     assert_includes feedback(4), "no known execution to steer"
     assert_empty @bridge.stop_calls
@@ -264,14 +264,14 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     publish_report(%w[a], "Parent report")
     @now += 60
     @runtime.tick
-    @runtime.consume(telegram_message(5, "/stop #{task_id("a")}"))
+    receive(telegram_message(5, "/stop #{task_id("a")}"))
 
     assert_equal [["worker-a-loop", "run", "workspace-home"]], @bridge.stop_calls
     assert_equal "worker-a-loop", worker_request("a").fetch("run_id")
   end
 
   def test_report_with_one_requester_preserves_private_route_ownership_for_a_new_worker_after_restart
-    @runtime.consume(telegram_message(3, "A second independent request"))
+    receive(telegram_message(3, "A second independent request"))
     publish_report(%w[a b], "Combined report", position: 2)
     @bridge.turn_rows.fetch("conversation-1").last.fetch("callback_sources").last["sender_run_public_id"] = "loop-2"
     @runtime.tick
@@ -314,10 +314,10 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
   def test_worker_export_reply_remains_explicit_control_only
     publish_report(%w[a], "Parent report")
     @runtime.tick
-    @runtime.consume(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
+    receive(telegram_message(3, "/deliver #{task_id("a")} -10:4"))
     drain
     export = @state.read.fetch("deliveries").values.find { |row| row["canonical_result"] }
-    @runtime.consume(telegram_message(4, "Continue privately", chat: -10, topic: 4, reply_to: export.fetch("message_ids").first))
+    receive(telegram_message(4, "Continue privately", chat: -10, topic: 4, reply_to: export.fetch("message_ids").first))
 
     assert_includes feedback(4), "/steer #{task_id("a")}"
     assert_equal 1, @bridge.inputs.length
@@ -326,7 +326,7 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
   def test_group_report_reply_preserves_the_original_requester
     update = telegram_message(3, "@rho_bot compare these reports", user: 2, chat: -10, topic: 4,
       entities: [{ "type" => "mention", "offset" => 0, "length" => 8 }])
-    @runtime.consume(update)
+    receive(update)
     @worker_results["worker-a-variant"] = worker_turn("a")
     callback = source("a").merge("sender_run_public_id" => "loop-2")
     callback.fetch("result")["requester_speaker_public_id"] = "speaker-2"
@@ -335,10 +335,10 @@ class TelegramWorkerResultDeliveryTest < Minitest::Test
     drain
     report_message = @state.read.fetch("messages").find { |_key, owner| owner == "report:#{task_id("g")}" }.first.split(":").last.to_i
     @state.change { |document| document.fetch("access").fetch("allowed_users") << "3" }
-    @runtime.consume(telegram_message(4, "Read private notes", user: 3, chat: -10, topic: 4, reply_to: report_message))
+    receive(telegram_message(4, "Read private notes", user: 3, chat: -10, topic: 4, reply_to: report_message))
     assert_includes feedback(4), "Only this task's requester"
     assert_equal 2, @bridge.inputs.length
-    @runtime.consume(telegram_message(5, "Explain the comparison", user: 2, chat: -10, topic: 4, reply_to: report_message))
+    receive(telegram_message(5, "Explain the comparison", user: 2, chat: -10, topic: 4, reply_to: report_message))
     assert_equal "conversation-3", @bridge.inputs.fetch("telegram:42:5:input").fetch(:conversation_id)
   end
 

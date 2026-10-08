@@ -85,7 +85,7 @@ class Conversations::Compaction::TriggerTest < ActiveJob::TestCase
     Conversations::Turns::Converge.call
     assert_equal "completed", turn.reload.status
 
-    context = AgentAPI::ConversationPresenter.full(conversation.reload).fetch(:context)
+    context = AgentAPI::ConversationPresenter.full(conversation.reload, acting_user: @human).fetch(:context)
 
     assert_equal 4_321, context.fetch(:input_tokens)
     assert_equal 8_192, context.fetch(:window_tokens)

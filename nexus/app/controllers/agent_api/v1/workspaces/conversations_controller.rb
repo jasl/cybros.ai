@@ -4,6 +4,7 @@
 # browsable for archived rows; tombstones conceal as absence everywhere.
 class AgentAPI::V1::Workspaces::ConversationsController <
       AgentAPI::V1::Workspaces::BaseController
+  include AgentAPI::ConversationListing
   include AgentAPI::V1::WorkspaceScoped
   include AgentAPI::MemoryContextParameters
 
@@ -14,18 +15,13 @@ class AgentAPI::V1::Workspaces::ConversationsController <
       .unarchived.where(parent_conversation_id: nil)
       .includes(:active_turn, :answering_user)
     scope = params[:side] == SIDE_FLAG ? scope.sides : scope.working
-    page = keyset_page(scope, columns: { public_id: :uuid })
-
-    render json: {
-      conversations: page.records.map { |c| AgentAPI::ConversationPresenter.basic(c) },
-      pagination: { next_after: page.next_after },
-    }
+    render_conversation_list(scope)
   end
 
   def show
     conversation = find_listable_conversation(@workspace, param: :public_id)
 
-    render json: { conversation: AgentAPI::ConversationPresenter.full(conversation) }
+    render json: { conversation: AgentAPI::ConversationPresenter.full(conversation, acting_user: acting_user) }
   end
 
   def create
@@ -62,7 +58,7 @@ class AgentAPI::V1::Workspaces::ConversationsController <
       when :accepted
         ConversationCommandReceipt::Idempotent::Success.new(
           status: 201,
-          body: { conversation: AgentAPI::ConversationPresenter.full(result.value) },
+          body: { conversation: AgentAPI::ConversationPresenter.full(result.value, acting_user: acting_user) },
           host: result.value,
         )
       else
@@ -97,7 +93,7 @@ class AgentAPI::V1::Workspaces::ConversationsController <
     end
 
     if conversation.update(changes)
-      render json: { conversation: AgentAPI::ConversationPresenter.full(conversation) }
+      render json: { conversation: AgentAPI::ConversationPresenter.full(conversation, acting_user: acting_user) }
     elsif conversation.errors.any? { |e| e.type == Nexus::SizeBounds::REJECTION }
       render_error(:content_too_large,
         "Content exceeds the persisted size bounds", status: :content_too_large)

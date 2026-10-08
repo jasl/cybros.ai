@@ -255,7 +255,9 @@ not give its contexts another identity's bearer.
 `CybrosAgent::Client` carries the member plane's Workspace surface. Lists return a `CybrosAgent::Api::Page` with `items` and `next_after`;
 pagination is manual — hand the cursor back to the same list call, repeating
 the same filters every page, because the cursor encodes only ordering and the
-server rebuilds the scope from each request's own parameters:
+server rebuilds the scope from each request's own parameters. Ordinary lists
+accept `order: "asc"` (default) or `order: "desc"`; repeat the same order with
+the next cursor. `limit` accepts 1–100 and defaults to 25:
 
 ```ruby
 client = CybrosAgent::Client.new(base_url: "https://nexus.example", credential: member_token)
@@ -294,10 +296,12 @@ undedicated. Dedication grants no access, is frozen when the Workspace is
 created, and has no SDK input or mutation method.
 
 ```ruby
-workspace = client.workspaces.create(
+created = client.workspaces.create(
   name: "Notes",
   idempotency_key: SecureRandom.uuid
 )
+workspace = created.workspace
+created.replayed? # true when this receipt replays an earlier creation
 workspace = client.workspaces.fetch(workspace.public_id)
 ```
 
@@ -410,14 +414,17 @@ rather than omitting the field.
 entries = handle.store_entries                               # the workspace's
 entries = handle.conversation(conversation_id).store_entries # the conversation's
 entries = client.profile.store_entries                       # the acting principal's own
-entry = entries.create(namespace: "notes", key: "pinned", value: nil, idempotency_key: SecureRandom.uuid)
+created = entries.create(namespace: "notes", key: "pinned", value: nil, idempotency_key: SecureRandom.uuid)
+entry = created.store_entry
+created.replayed? # false on the profile door, which has no create receipt
 entry = entries.update(entry.public_id, value: { "ids" => [1, 2] }, lock_version: entry.lock_version)
 entries.delete(entry.public_id, lock_version: entry.lock_version) # => nil
 ```
 
 The workspace and conversation doors replay a create under its key; the
 profile door keeps no receipt — a retried create is `Conflict` `key_taken`,
-not a replay.
+not a replay. Creation returns the entry together with the `replayed?` result;
+fetch and update return the entry directly.
 
 `WorkspaceSummary`/`StoreEntrySummary` (list items) and
 `Workspace`/`StoreEntry` (singular answers) are distinct value types: only the
@@ -560,6 +567,13 @@ envelope `code` (`stale_object`, `key_taken`, `not_workspace_owner`, …).
 
 A conversation is the multi-turn plane, where an InferenceRequest is a single call. It
 nests under the same workspace handle.
+
+`conversations.list`, `conversations.archived`, and `chat.children` accept
+`order_by: "last_activity_at", order: "desc"` for recent activity first.
+The default is `order_by: "public_id", order: "asc"`; activity ties use the
+public ID in the same direction. Keep both options when continuing with
+`after: page.next_after`. Activity can move rows between page requests, so
+refresh the first page to incorporate changes.
 
 **Nothing is authored directly.** A caller enqueues an **input**, which waits
 as a durable row, and the kernel materializes it into a **turn** at the next
@@ -1032,6 +1046,11 @@ through a closure and copies no content bytes.
 ```ruby
 branch = chat.fork(turn_public_id: turn.public_id, idempotency_key: SecureRandom.uuid)
 ```
+
+Both conversation shapes expose `source_conversation_public_id`, the direct
+fork or Side source, including an empty Side. It is nil for a root or when
+the current caller cannot read the source. `parent` continues to describe
+a spawned subagent independently of fork provenance.
 
 A turn read out of a forked conversation may be `inherited?` — the ancestor's
 row, same `public_id`, read through the closure. Its content is the ancestor's;

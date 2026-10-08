@@ -5,10 +5,10 @@ module E2E
     def test_telegram_history_search_lifecycle_and_view_state_stay_in_the_saved_route
       boot_runtime(allowed: [101, 102])
       marker = "history-#{SecureRandom.hex(6)}"
-      @runtime.consume(update(1, "!mock reply=history-answer -- #{marker} public discussion"))
+      receive(update(1, "!mock reply=history-answer -- #{marker} public discussion"))
       chat = @workspace.conversation(current("101:0"))
       turn = completed_reply(chat)
-      @runtime.consume(update(2, "!mock reply=private-answer -- #{marker} private discussion", user: 102, chat: 102))
+      receive(update(2, "!mock reply=private-answer -- #{marker} private discussion", user: 102, chat: 102))
       foreign = @workspace.conversation(current("102:0"))
       completed_reply(foreign)
 
@@ -47,7 +47,7 @@ module E2E
     def test_telegram_regeneration_delivers_a_new_candidate_once_after_restart_and_preserves_old_task_identity
       boot_runtime(allowed: [101, 102])
       sender = { user: 102, chat: 102 }
-      @runtime.consume(update(1, "!mock reply=candidate-answer -- sample an answer", **sender))
+      receive(update(1, "!mock reply=candidate-answer -- sample an answer", **sender))
       original_task = telegram_task_id(telegram_control("original-status", "/status", **sender))
       chat = @workspace.conversation(current("102:0"))
       original = completed_reply(chat)
@@ -79,7 +79,7 @@ module E2E
       assert_includes telegram_control(4, "/status #{candidate_id}", **sender), regenerated.active_variant.run_public_id
       assert_includes telegram_control(5, "/transcript #{candidate_id}", **sender), "candidate-answer"
       before = @telegram.calls.length
-      @runtime.consume(update(6, "/context", **sender))
+      receive(update(6, "/context", **sender))
       assert await("the first chunk of the Telegram context preview") {
         tick
         @telegram.calls.drop(before).any? { |method, fields| method == "sendMessage" && fields[:text].start_with?("Context preview:") }
@@ -90,7 +90,7 @@ module E2E
 
     def test_telegram_edit_candidate_fork_and_undo_keep_the_original_history_and_current_files
       boot_runtime(allowed: [101])
-      @runtime.consume(update(1, "!mock reply=original-answer -- a retained premise"))
+      receive(update(1, "!mock reply=original-answer -- a retained premise"))
       chat = @workspace.conversation(current("101:0"))
       original = completed_reply(chat)
       assert_includes telegram_control(2, "/edit #{original.position} Manually corrected answer"), "Edited as a new candidate"
@@ -111,7 +111,7 @@ module E2E
       refute copied.inherited
       assert_equal original.active_variant.content, copied.active_variant.content
       assert_equal "Keep the current files.\n", File.read(path)
-      @runtime.consume(update(5, "!mock reply=branch-answer -- continue this fork"))
+      receive(update(5, "!mock reply=branch-answer -- continue this fork"))
       branch = await("a completed local reply in the fork") do
         child.turns.list.items.find { |row| row.public_id != copied.public_id && !row.inherited && row.kind == "direct_reply" && row.status == "completed" }
       end

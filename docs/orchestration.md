@@ -87,6 +87,11 @@ steer released to the queue when that execution closes becomes a separate
 message request. A branch's empty context and a child Conversation's persistent
 identity are independent of waiting and lifetime.
 
+An input with `delivery_mode: "steer_now"` can insert a model boundary ahead of
+pending tools. The model reads a pending receipt for each unfinished call; those
+tools retain their claims, lifetime and original join. Their actual results enter
+the later consuming request once, and the turn still waits for its foreground work.
+
 The `claude` and `codex` tool-style presets are naming adaptations. They do
 not promise the corresponding product's lifecycle, parameter, or mailbox
 semantics. In particular, `Agent` currently names `task`, while `spawn_agent`

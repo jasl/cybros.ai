@@ -242,7 +242,7 @@ module SimpleInference
           stream_response.each do |chunk|
             status ||= stream_response.status.to_i
             response_headers = normalize_headers(stream_response) if response_headers.empty?
-            streaming = streamable_sse?(status, response_headers) if streaming.nil?
+            streaming = streamable?(status, response_headers) if streaming.nil?
 
             if streaming
               yield chunk
@@ -260,7 +260,7 @@ module SimpleInference
         status ||= stream_response.status.to_i
         response_headers = normalize_headers(stream_response) if response_headers.empty?
 
-        if streamable_sse?(status, response_headers)
+        if streamable?(status, response_headers)
           { status: status, headers: response_headers, body: nil }
         else
           { status: status, headers: response_headers, body: full_body.to_s }
@@ -400,8 +400,8 @@ module SimpleInference
         end
       end
 
-      def streamable_sse?(status, headers)
-        Internal::Envelope.new(status: status.to_i, headers: headers, body: nil).sse?
+      def streamable?(status, headers)
+        Internal::Envelope.new(status: status.to_i, headers: headers, body: nil).streaming?
       end
     end
   end

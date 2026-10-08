@@ -143,7 +143,7 @@ class Ledger
         save(row, field => observed)
       else
         @store.create(namespace: NAMESPACE, key: room, value: { "conversation" => @session.conversation, field => observed },
-          idempotency_key: "household:#{@session.conversation}:#{room}:#{observed.fetch("event_id")}")
+          idempotency_key: "household:#{@session.conversation}:#{room}:#{observed.fetch("event_id")}").store_entry
       end
     end
 

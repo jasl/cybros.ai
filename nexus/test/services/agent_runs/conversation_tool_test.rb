@@ -426,7 +426,7 @@ class AgentRuns::ConversationToolTest < ActiveJob::TestCase
   # THE MODEL HALF OF THE CLOCK: `deliver_in` — the form a clockless model can use — and
   # `deliver_at` — for a model that was told a wall-clock time — through the SAME parser the member
   # door calls; the row on the addressee carries the resolved time, the one kick is scheduled at it,
-  # the settle names it, and the canonical ISO string is in the call's idempotency envelope.
+  # the settle names it, and the authored time intent is in the call's idempotency envelope.
   test "send deliver_in schedules the row at now + N and deliver_at with an offset as given; the settle names the time" do
     agent_run = spawning_loop(label: "reviewer")
     child = child_of(agent_run)
@@ -541,6 +541,34 @@ class AgentRuns::ConversationToolTest < ActiveJob::TestCase
     assert_equal :applied, Run.call(node: call.reload)
     assert_equal 2, rows_on(child).count, "the brief and ONE send"
     assert_equal "Sent to #{child.public_id} (queued); #{promise("r3t0", child)}", tool_result(agent_run, "r3t0")
+  end
+
+  test "a timed send retry reports its original accepted deadline after the clock advances" do
+    agent_run = spawning_loop(label: "reviewer")
+    child = child_of(agent_run)
+    apply_via(attempt_for(agent_run, "r2"), sse_success("working", tool_calls: [
+      { id: "call_0", name: "send", arguments: { to: "reviewer", message: MORE, deliver_in: "1s" }.to_json },
+    ]))
+    AgentRuns::ConvergeTerminalSteps.call
+    AgentRuns::ScheduleReady.call(agent_run_id: agent_run.id)
+    call = loop_node(agent_run, "r3t0")
+    AgentRuns::KernelTool.stub(:settle, ->(*) { raise IOError, "settlement interrupted" }) do
+      assert_raises(IOError) { AgentRuns::ConversationToolJob.perform_now(call.id) }
+    end
+    input = rows_on(child).order(:queue_position).last
+    deadline = input.deliver_at
+    assert_equal "running", call.status
+    assert_nil tool_result(agent_run, "r3t0"), "the accepted input committed before the worker disappeared"
+
+    travel_to deadline + 1.second do
+      assert_equal :applied, Run.call(node: call.reload)
+    end
+
+    refute tool_error?(agent_run, "r3t0")
+    assert_equal "Sent to #{child.public_id} (scheduled for #{deadline.utc.iso8601}); #{promise("r3t0", child)}",
+      tool_result(agent_run, "r3t0")
+    assert_equal deadline, input.reload.deliver_at
+    assert_equal 2, rows_on(child).count, "the brief and one scheduled send"
   end
 
   # ── send's refusals ──────────────────────────────────────────────────

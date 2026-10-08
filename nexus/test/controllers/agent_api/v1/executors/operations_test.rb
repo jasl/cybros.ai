@@ -111,6 +111,18 @@ class AgentAPI::V1::Executors::TaskOperationsTest < ActionDispatch::IntegrationT
     assert_empty @parent.task_operations
   end
 
+  test "trace limits reject invalid and out of range values without changing operations" do
+    [-1, 0, "abc", 201].each do |limit|
+      get route("operations"), headers: bearer.merge("Claim-Token" => @token), params: { limit: limit }
+      assert_response :bad_request
+      assert_equal "parameter_invalid", response.parsed_body.dig("error", "code")
+    end
+    get route("operations"), headers: bearer.merge("Claim-Token" => @token), params: { limit: 200 }
+    assert_response :ok
+    assert_empty response.parsed_body.dig("operations", "trace")
+    assert_empty @parent.task_operations
+  end
+
   test "a stale observation position refuses without skipping accepted events" do
     submit("tool", { kind: "tool", name: "read_file", input: {} })
     observe(0)

@@ -485,6 +485,10 @@ module Rho
     attr_reader webui_root: String?
     attr_reader kernel_tools: Array[String]
     attr_reader default_model: String?
+    attr_reader work_preset: String
+    attr_reader custom_instructions: String?
+    attr_reader base_prompt: String?
+    def system_prompt: () -> String
     attr_reader adaptations: String
     attr_reader adaptations_dir: String?
     attr_reader executor_socket: bool
@@ -523,6 +527,10 @@ module Rho
       attr_reader webui_root: String?
       attr_reader kernel_tools: Array[String]
       attr_reader default_model: String?
+      attr_reader work_preset: String
+      attr_reader custom_instructions: String?
+      attr_reader base_prompt: String?
+      def system_prompt: () -> String
       attr_reader adaptations: String
       attr_reader adaptations_dir: String?
       attr_reader executor_socket: bool

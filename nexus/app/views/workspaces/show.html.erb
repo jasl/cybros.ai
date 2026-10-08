@@ -3,7 +3,7 @@
 
 <div class="space-y-8">
   <header class="space-y-4">
-    <%= render "shared/back_navigation", path: workspaces_path, label: "Workspaces" %>
+    <%= render "shared/back_navigation", path: workspaces_path, label: t("workspaces.show.workspaces") %>
     <div class="space-y-1">
       <div class="flex flex-wrap items-center gap-2">
         <h1 class="text-xl font-medium tracking-tight wrap-anywhere"><%= @workspace.name %></h1>
@@ -12,22 +12,20 @@
           <%= render "workspaces/agent_badge" %>
         <% end %>
       </div>
-      <p class="text-sm text-base-content/60">Workspace</p>
+      <p class="text-sm text-base-content/60"><%= t("workspaces.show.workspace") %></p>
     </div>
   </header>
 
   <section>
-    <h2 class="mb-2 text-xs font-medium text-base-content/60">Details</h2>
+    <h2 class="mb-2 text-xs font-medium text-base-content/60"><%= t("workspaces.show.details") %></h2>
     <%= render "shared/facts_panel", facts: {
-      "Access" => @workspace.account_wide? ? "Account-wide" : "Private",
-      "Owner" => @workspace.owner == Current.user ? "You" : @workspace.owner.display_name,
-      "Created" => @workspace.created_at.to_date.to_fs(:long),
+      t("workspaces.show.access") => @workspace.account_wide? ? t("workspaces.show.account_wide") : t("workspaces.show.private"),
+      t("workspaces.show.owner") => @workspace.owner == Current.user ? t("workspaces.show.you") : @workspace.owner.display_name,
+      t("workspaces.show.created") => l(@workspace.created_at.to_date, format: :long),
     } %>
     <% if @workspace.agent_identifier %>
       <p class="mt-2 text-sm text-base-content/60">
-        An agent program created this workspace for its own data and is the only agent that writes
-        to it. As a reader you always see its current contents; the owner can manage it like any
-        other workspace.
+        <%= t("workspaces.show.an_agent_program_created_this_workspace_for_its_own") %>
       </p>
     <% end %>
   </section>
@@ -35,39 +33,39 @@
   <% if manageable %>
     <% if @workspace.active? %>
       <section>
-        <h2 class="mb-2 text-xs font-medium text-base-content/60">Access</h2>
+        <h2 class="mb-2 text-xs font-medium text-base-content/60"><%= t("workspaces.show.access") %></h2>
         <%= form_with url: workspace_access_mode_path(@workspace), method: :patch, scope: :access_mode do |form| %>
           <div class="rounded-box border border-base-300 bg-base-200">
             <%= render layout: "shared/form_row", locals: {
               form:,
               attribute: :access_mode,
-              label: "Access",
-              description: "Private keeps the data to you and your agents. Account-wide shares it with every active member; switching back to private cuts their access immediately.",
+              label: t("workspaces.show.access"),
+              description: t("workspaces.show.private_keeps_the_data_to_you_and_your_agents"),
             } do %>
-              <%= form.select :access_mode, [["Private", "private"], ["Account-wide", "account_wide"]], { selected: @access_mode_selection || @workspace.access_mode }, class: "select select-sm w-full" %>
+              <%= form.select :access_mode, [[t("workspaces.show.private"), "private"], [t("workspaces.show.account_wide"), "account_wide"]], { selected: @access_mode_selection || @workspace.access_mode }, class: "select select-sm w-full" %>
             <% end %>
           </div>
           <%= form.hidden_field :lock_version, value: @workspace.lock_version %>
           <div class="mt-3 flex justify-end">
-            <%= form.submit "Update access", class: "btn btn-primary btn-sm" %>
+            <%= form.submit t("workspaces.show.update_access"), class: "btn btn-primary btn-sm" %>
           </div>
         <% end %>
       </section>
 
       <section>
-        <h2 class="mb-2 text-xs font-medium text-base-content/60">Ownership</h2>
+        <h2 class="mb-2 text-xs font-medium text-base-content/60"><%= t("workspaces.show.ownership") %></h2>
         <div class="rounded-box border border-base-300 bg-base-200">
           <%= render layout: "shared/action_row", locals: {
-            title: "Edit details",
-            description: "Change the name or update the small JSON metadata object.",
+            title: t("workspaces.show.edit_details"),
+            description: t("workspaces.show.change_the_name_or_update_the_small_json_metadata"),
           } do %>
-            <%= link_to "Edit details", edit_workspace_path(@workspace), class: "btn btn-ghost btn-sm" %>
+            <%= link_to t("workspaces.show.edit_details"), edit_workspace_path(@workspace), class: "btn btn-ghost btn-sm" %>
           <% end %>
           <%= render layout: "shared/action_row", locals: {
-            title: "Transfer ownership",
-            description: "Hand this workspace to another active member. You stop managing it immediately.",
+            title: t("workspaces.show.transfer_ownership"),
+            description: t("workspaces.show.hand_this_workspace_to_another_active_member_you_stop"),
           } do %>
-            <%= link_to "Transfer ownership", workspace_ownership_transfer_path(@workspace), class: "btn btn-ghost btn-sm" %>
+            <%= link_to t("workspaces.show.transfer_ownership"), workspace_ownership_transfer_path(@workspace), class: "btn btn-ghost btn-sm" %>
           <% end %>
         </div>
       </section>
@@ -75,26 +73,26 @@
 
     <% if @workspace.active? || @workspace.archived? %>
       <section>
-        <h2 class="mb-2 text-xs font-medium text-base-content/60">Lifecycle</h2>
+        <h2 class="mb-2 text-xs font-medium text-base-content/60"><%= t("workspaces.show.lifecycle") %></h2>
         <div class="rounded-box border border-base-300 bg-base-200">
           <% if @workspace.active? %>
             <%= render layout: "shared/action_row", locals: {
-              title: "Archive",
-              description: "Takes the workspace out of the live list and blocks new writes. Its data stays readable, and restoring brings it back.",
+              title: t("workspaces.show.archive"),
+              description: t("workspaces.show.takes_the_workspace_out_of_the_live_list_and"),
             } do %>
-              <%= button_to "Archive",
+              <%= button_to t("workspaces.show.archive"),
                 workspace_archival_path(@workspace),
                 method: :post,
                 params: { command: { lock_version: @workspace.lock_version } },
                 class: "btn btn-ghost btn-sm",
-                data: { turbo_confirm: "Archive #{@workspace.name}? New writes stop and it leaves the live list; its data stays readable and you can restore it later." } %>
+                data: { turbo_confirm: t("workspaces.show.archive_workspace_new_writes_stop_and_it_leaves_the", workspace: (@workspace.name)) } %>
             <% end %>
           <% elsif @workspace.archived? %>
             <%= render layout: "shared/action_row", locals: {
-              title: "Restore",
-              description: "Brings the workspace back to the live list and reopens writes.",
+              title: t("workspaces.show.restore"),
+              description: t("workspaces.show.brings_the_workspace_back_to_the_live_list_and"),
             } do %>
-              <%= button_to "Restore",
+              <%= button_to t("workspaces.show.restore"),
                 workspace_restoration_path(@workspace),
                 method: :post,
                 params: { command: { lock_version: @workspace.lock_version } },
@@ -102,26 +100,26 @@
             <% end %>
           <% end %>
           <%= render layout: "shared/action_row", locals: {
-            title: "Delete",
-            description: "Removes the workspace and its data from every list immediately. This cannot be undone from the console.",
+            title: t("workspaces.show.delete"),
+            description: t("workspaces.show.removes_the_workspace_and_its_data_from_every_list"),
           } do %>
-            <%= button_to "Delete",
+            <%= button_to t("workspaces.show.delete"),
               workspace_deletion_path(@workspace),
               method: :delete,
               params: { command: { lock_version: @workspace.lock_version } },
               class: "btn btn-error btn-soft btn-sm",
-              data: { turbo_confirm: "Delete #{@workspace.name}? It disappears from every list immediately, its data becomes unreachable, and the console cannot bring it back." } %>
+              data: { turbo_confirm: t("workspaces.show.delete_workspace_it_disappears_from_every_list_immediately_its", workspace: (@workspace.name)) } %>
           <% end %>
         </div>
       </section>
     <% else %>
       <p class="text-sm text-base-content/60">
-        A lifecycle change is completing. The state above is current; refresh to see it settle.
+        <%= t("workspaces.show.a_lifecycle_change_is_completing_the_state_above_is") %>
       </p>
     <% end %>
   <% else %>
     <p class="text-sm text-base-content/60">
-      Only the workspace owner can manage it. You can read and use its data while your access lasts.
+      <%= t("workspaces.show.only_the_workspace_owner_can_manage_it_you_can") %>
     </p>
   <% end %>
 </div>

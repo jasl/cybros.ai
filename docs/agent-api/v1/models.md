@@ -42,8 +42,8 @@ configured model is currently available. Rows are ordered by `ref`.
 {
   "models": [
     {
-      "ref": "openrouter/deepseek/deepseek-v4.1-flash",
-      "provider": "openrouter",
+      "ref": "example/text",
+      "provider": "example",
       "workload": "text_generation",
       "visible": true,
       "available": true,
@@ -54,7 +54,35 @@ configured model is currently available. Rows are ordered by `ref`.
         "prompt_caching": true,
         "input_modalities": ["text"],
         "output_modalities": ["text"],
-        "reasoning_modes": []
+        "reasoning_modes": [],
+        "reasoning": {
+          "supported": true,
+          "default_enabled": false,
+          "disable_supported": true,
+          "efforts": ["low", "high"],
+          "default_effort": "low"
+        },
+        "generation_parameters": {
+          "max_output_tokens": {
+            "kind": "integer",
+            "default": null,
+            "minimum": 1,
+            "maximum": null,
+            "allowed_values": null
+          },
+          "output_format": {
+            "kind": "output_format",
+            "default": null,
+            "minimum": null,
+            "maximum": null,
+            "allowed_values": ["text", "json_object", "json_schema"]
+          }
+        },
+        "service_tiers": ["default", "priority"],
+        "limits": {
+          "input_tokens": 64000,
+          "effective_input_tokens": 48000
+        }
       },
       "pricing": {
         "state": "priced",
@@ -68,6 +96,36 @@ configured model is currently available. Rows are ordered by `ref`.
 ```
 
 `ref` is exactly what a task's `model` field takes.
+
+Capability descriptors come from the effective Account catalog and the same
+compiled profile used by model selection, including saved definition overrides.
+They describe semantic request controls, without provider wire keys or adapter
+configuration:
+
+- `reasoning.supported` says whether the model declares reasoning.
+  `default_enabled` is its effective default (`null` when unsupported),
+  `disable_supported` says whether an off request can take effect, and `efforts`
+  lists the accepted intensity values. `default_effort` is nullable and remains
+  independent of enablement. A switch-only model has an empty effort list; a
+  model without reasoning has `supported: false`, `disable_supported: false`,
+  empty efforts and null defaults.
+- `generation_parameters` maps each supported semantic parameter name to its
+  descriptor. `kind` is `integer`, `number`, `string` or `output_format`;
+  `default`, `minimum`, `maximum` and `allowed_values` are always present and
+  nullable. A null default means Nexus supplies no default for that control.
+  Null bounds mean no corresponding local range check; null `allowed_values`
+  means the control is not enumerated. An absent parameter is unsupported.
+  `output_format` lists semantic format kinds, never provider payload keys.
+- `service_tiers` lists the declared tier values. No tier is selected by this
+  listing; omitting a tier, or requesting `default`, leaves the provider's
+  default in effect.
+- `limits` contains only the effective bounds that are known. These can include
+  `input_tokens`, `output_tokens`, `combined_input_output_tokens`,
+  `effective_input_tokens`, `input_bytes`, `input_characters`,
+  `audio_duration_seconds`, `result_count` and `embedding_dimensions`.
+  `effective_input_tokens` is the advisory planning threshold; it is separate
+  from a hard input or combined input/output window. Missing limits are absent,
+  never zero. Generation parameter bounds remain separate from these limits.
 
 The native Gemini Flash row is `gemini/gemini-3.8-flash`. It accepts
 `low`, `medium`, and `high` reasoning effort; `minimal` is rejected.

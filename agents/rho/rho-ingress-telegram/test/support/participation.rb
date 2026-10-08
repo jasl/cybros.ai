@@ -71,7 +71,7 @@ module TelegramParticipationSupport
   private
 
     def group_message(id, text, **options)
-      @runtime.consume(telegram_message(id, text, chat: -10, topic: 4, date: @now.to_i, **options))
+      receive(telegram_message(id, text, chat: -10, topic: 4, date: @now.to_i, **options))
     end
 
     def enable_participation

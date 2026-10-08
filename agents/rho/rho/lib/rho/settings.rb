@@ -162,6 +162,8 @@ module Rho
           raise ApplyError.new(error.message, applied: true), cause: nil
         rescue RestartRequired
           raise ApplyError.new("Settings were saved. Restart rho to apply the changes; the current plugins remain active.", restart_required: true), cause: nil
+        rescue Rho::Runner::Extensions::PrerequisiteError => error
+          raise ApplyError, error.message, cause: nil
         rescue StandardError => error
           raise ApplyError, "Settings were saved, but applying them failed (#{error.class.name}); correct the issue and try saving again.", cause: nil
         end

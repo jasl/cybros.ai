@@ -461,19 +461,23 @@ PUT  /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/default
   `validation_failed` naming the field. `delivery_mode: steer` binds to
   the run's one turn (`state: steering`) and lands at the NEXT
   unambiguous model boundary as the person's trailing user message, in
-  queue order with any others; `queue` is the run's FOLLOW-UP, bound at
+  queue order with any others. `steer_now` can insert that model boundary before pending tool
+  work completes, with truthful pending receipts; the original tasks keep running and are
+  still joined before final delivery. `queue` is the run's FOLLOW-UP, bound at
   quiescence and landed BEFORE the turn-shaped `completed` — `completed`
   means the queue was empty. Queued follow-ups may carry `attachments`,
   with or without text: the next request carries each picture when its
   model supports it, otherwise the ordinary attachment index line. The
   durable landing retains the pictures for retry and history reconstruction;
-  a summary reads their pointers. Explicit `delivery_mode: steer` still
+  a summary reads their pointers. Explicit `delivery_mode: steer|steer_now` still
   refuses pictures with `attachments_not_steerable`.
   The queue is bounded (16; 409
   `input_queue_full`); a terminal or canceling run is 409
   `run_settled`; a conversation-hosted Run's door is its conversation's
   (409 `conversation_hosted` with `conversation_public_id` and
-  `turn_public_id`). A bound steer is not editable (409 `steering_held`);
+  `turn_public_id`). A bound steer admits only a timing promotion via
+  `PATCH {input: {delivery_mode: "steer_now"}}`, with optional `expected_lock_version`;
+  its content stays fixed (409 `steering_held` for other edits).
   `DELETE` on one IS steer-cancel. On landing the sealed request is the
   audit record, the round keeps the landed messages as its own `steers`
   body — what later history (the next turn's prefix), a pruned round's
@@ -1512,7 +1516,9 @@ standing there is `agent: … cannot answer in <id>: it is not an agent with wri
 `@handle` (queued)". `deliver_in` / `deliver_at` on `send` schedule the row
 (the door's fields, the door's rules: not with `steer`); `to` may be the
 sender's own conversation, so a model wakes itself at a time with its own
-words. `send`
+words. A retried `send` keeps its first accepted deadline: the receipt
+digests the relative delay before resolving the clock and retains the
+accepted deadline for the tool result, even after the input is consumed. `send`
 posts the SENDER's own row on the addressee through the one input door
 (`Command.sent`: the author is the profile whose engine made the call,
 `origin: agent`, `sender_conversation_public_id` = the sender's
@@ -1695,13 +1701,13 @@ FOUR TRIGGERS, named on the event as `trigger`:
   classified as `provider_context_overflow` and repairs instead of
   retrying: the round is requeued WITHOUT charging its retry budget (a
   repair is not a failed attempt) and the summarizer is armed. The
-  classification is two-tiered: on the Responses family a length
-  rejection is not an HTTP status at all — the provider answers 200 and
-  fails the run inside the stream — so it is matched by exact equality on
-  the provider's own code; Anthropic, Gemini and OpenRouter deliver it as
-  a 400 or 413, and there one narrow pattern per lane reads the
-  STRUCTURED error fields, never the raw body, so a caller's echoed text
-  can never classify their own request and compact on demand.
+  classification reads typed provider codes or narrow error sentences.
+  Responses can answer 200 and fail inside the stream with
+  `context_length_exceeded`. HTTP 400/413 errors can carry that code or
+  llama.cpp's `exceed_context_size_error`; the same status gate also
+  recognizes the specific length-rejection sentences from Anthropic,
+  Gemini, OpenRouter, llama.cpp and Strata. Only structured error fields
+  and the parsed error message are read, never an echoed raw request.
 - `manual` — somebody asked: COMPACT NOW below, or the conversation's
   `POST .../compaction` reaching a running run-backed turn's next queued
   round.
@@ -1722,6 +1728,17 @@ planning bounds the input without reserving the requested output tokens,
 so the provider can still reject a request whose combined input and output
 budget exceeds its window. Recognized context-overflow errors use the
 overflow trigger.
+
+The configured window must match the provider's actual loaded context. An
+overflow repair does not discover or rewrite it. If that configuration is too
+large, the summarizer may also be rejected; if the requested output budget alone
+is too large, removing history cannot repair it. Repeated rejection of the same
+round does not trigger another summary. Correct the model's context and output
+configuration, and shorten the input when its fixed content cannot fit. Once
+the repair is unavailable or exhausted, a context-length rejection fails the
+step without spending its ordinary retry budget on the unchanged request. This
+also applies to a summary request that is itself rejected for context length;
+transient provider failures keep their normal retry behavior.
 
 THE CHOICE, ONCE PER WALL — `mode` on the event:
 

@@ -121,6 +121,16 @@ adapters or a new OAuth ceremony. Keys use the separate credential route below.
 Subsequent catalog reads, selection, admission and execution use the saved
 definition without a process restart.
 
+`authentication` chooses the existing credential's HTTP spelling: `bearer`,
+`x-api-key`, `x-goog-api-key`, `api-key`, or `cf-aig-authorization`. Omission
+keeps the adapter's default. It does not define another credential store or
+OAuth login. `request_headers` supplies static, non-secret headers; credential
+and cookie headers are rejected here and remain owned by credential handling.
+A `null` `base_url` describes a provider whose deployment endpoint still needs
+configuration. Models inheriting that endpoint report `endpoint_unconfigured`
+and cannot execute until it is supplied; a model with its own `base_url` uses
+that configured endpoint.
+
 DELETE takes `command: {expected_lock_version: ...}`. For a file-backed provider
 it restores file inheritance. For a custom provider it removes the declaration
 and disables the retained policy. It does not delete credentials or the policy
@@ -146,6 +156,32 @@ no media input beyond text. `output_modalities` follows the adapted wire:
 `[audio]` for speech, and `[embedding]` for embeddings. `tool_calls`, `streaming`,
 and `prompt_caching` inherit the wire's capabilities; a model can explicitly
 disable a capability with `false`. Reasoning support still requires a declaration.
+
+A model may override `base_url` for a regional or model-specific endpoint and
+`request_headers` for its static headers. Model headers override provider
+headers by case-insensitive name. Capabilities, context limits, reasoning
+controls and wire options belong to this provider/model pair; models with the
+same upstream name under different providers do not share those settings.
+
+A model may declare `token_counter` for local input estimation, history fitting
+and compaction planning. Omission inherits the adapted wire's counter; explicit
+`null` selects the byte estimate. The supported shapes are:
+
+```json
+{"kind":"huggingface","tokenizer_id":"Qwen/Qwen3.8-Flash-Next"}
+{"kind":"tiktoken","encoding":"o200k_base"}
+{"kind":"anchored","encoding":"o200k_base","safety_factor":"2.5"}
+```
+
+`huggingface` loads an installed tokenizer JSON; `tiktoken` uses an available
+encoding. Their exactness applies to supplied text, not provider framing or
+media. `anchored` multiplies the encoding's text count by the declared decimal
+factor, rounds up, and remains inexact. The factor must be at least one. Nexus
+adds its separate chat allowance; provider-reported usage stays authoritative.
+The deployment prepares HF assets with `nexus/bin/download-tokenizers` before
+starting Nexus. Saving a definition never downloads them. Missing or invalid
+files make that counter unavailable without silently selecting another one;
+see [local tokenizer installation](../../../nexus/README.md#local-tokenizers).
 
 A model can declare `wire_options: {prompt_format: qwen3_5}` for the supported
 single-leading-system instruction layout. The compiler merges leading system
@@ -395,7 +431,7 @@ content, raw provider error or credential material is returned or persisted.
 Success establishes this request's connection only, not every declared model
 capability or the success of future requests.
 
-`outcome` is `succeeded`, `not_found`, `provider_disabled`, `missing_credential`,
+`outcome` is `succeeded`, `not_found`, `provider_disabled`, `endpoint_unconfigured`, `missing_credential`,
 `reauthorization_required`, `credential_unusable`, `model_plane_unavailable`,
 `test_input_unavailable`, `request_invalid`, `authentication_failed`,
 `quota_exceeded`, `rate_limited`, `model_not_found`, `provider_error`, `timed_out`,

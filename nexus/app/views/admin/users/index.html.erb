@@ -1,23 +1,23 @@
-<% content_for :title, "Members" %>
+<% content_for :title, t("admin.users.index.members") %>
 
 <div class="space-y-8">
   <header class="flex flex-wrap items-end justify-between gap-3">
     <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight">Members</h1>
-      <p class="text-sm text-base-content/60">People and agents in this installation</p>
+      <h1 class="text-xl font-medium tracking-tight"><%= t("admin.users.index.members") %></h1>
+      <p class="text-sm text-base-content/60"><%= t("admin.users.index.people_and_agents_in_this_installation") %></p>
     </div>
-    <%= link_to "New member", new_admin_user_path, class: "btn btn-primary btn-sm" %>
+    <%= link_to t("admin.users.index.new_member"), new_admin_user_path, class: "btn btn-primary btn-sm" %>
   </header>
 
   <section class="overflow-x-auto rounded-box border border-base-300 bg-base-200">
     <table class="table min-w-2xl">
       <thead>
         <tr>
-          <th>Member</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th>Status</th>
-          <th>Joined</th>
+          <th><%= t("admin.users.index.member") %></th>
+          <th><%= t("admin.users.index.email") %></th>
+          <th><%= t("admin.users.index.role") %></th>
+          <th><%= t("admin.users.index.status") %></th>
+          <th><%= t("admin.users.index.joined") %></th>
         </tr>
       </thead>
       <tbody>
@@ -28,23 +28,23 @@
               <% if user.agent? %>
                 <span class="badge badge-outline badge-sm ml-1 gap-1 align-middle whitespace-nowrap">
                   <span class="iconify lucide--bot size-3" aria-hidden="true"></span>
-                  agent
+                  <%= t("admin.users.index.agent") %>
                 </span>
               <% end %>
             </td>
             <td class="min-w-48 text-base-content/70 hyphens-none wrap-anywhere"><%= user.email || "—" %></td>
-            <td><span class="badge badge-ghost badge-sm whitespace-nowrap"><%= user.role %></span></td>
+            <td><span class="badge badge-ghost badge-sm whitespace-nowrap"><%= t("members.roles.#{user.role}") %></span></td>
             <td>
               <span class="<%= badge_classes(user.active?, tone: :success, extra: "whitespace-nowrap") %>">
-                <%= user.status %>
+                <%= t("members.statuses.#{user.status}") %>
               </span>
             </td>
-            <td class="text-base-content/60 whitespace-nowrap"><%= user.created_at.to_date.to_fs(:long) %></td>
+            <td class="text-base-content/60 whitespace-nowrap"><%= l(user.created_at.to_date, format: :long) %></td>
           </tr>
         <% end %>
       </tbody>
     </table>
   </section>
 
-  <%= render "shared/pagination_footer", pagy: @members_pagy, noun: "members", aria_label: "Members pages" %>
+  <%= render "shared/pagination_footer", pagy: @members_pagy, noun: "members", aria_label: t("admin.users.index.members_pages") %>
 </div>

@@ -105,7 +105,7 @@ class MemoryScopesTest < Minitest::Test
     # same row.
     other = steward_client.workspaces.create(
       name: "Memory scopes #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @created_workspaces += [other.public_id]
     chat = open_chat(steward_client, other.public_id)
     remembered = ask(chat, "what do you remember #{SecureRandom.hex(4)}")
@@ -127,7 +127,7 @@ class MemoryScopesTest < Minitest::Test
     shared = steward_client.workspaces.create(
       name: "Memory scopes shared #{SecureRandom.hex(4)}", access_mode: "account_wide",
       idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @created_workspaces += [shared.public_id]
     probe_token = connect_probe_agent_as_b
     script = "memory_read:#{CGI.escape(JSON.generate({ "path" => "user/notes.md" }))}," \

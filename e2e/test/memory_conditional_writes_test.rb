@@ -13,7 +13,7 @@ class MemoryConditionalWritesTest < Minitest::Test
     @worker = CybrosAgent::Client.new(base_url: base_url, credential: steward.member_token)
     @workspace = @editor.workspaces.create(
       name: "Memory conditions #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @room = @editor.workspace(@workspace.public_id)
     conversation = @room.conversations.create(title: "Memory conditions", idempotency_key: SecureRandom.uuid)
     @chat = @room.conversation(conversation.public_id)

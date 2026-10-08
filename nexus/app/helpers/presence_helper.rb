@@ -4,12 +4,12 @@
 # every row on the page (the runners index).
 module PresenceHelper
   def presence_label(executor)
-    return "Not yet seen" if executor.nil?
+    return t("executors.presence.not_seen") if executor.nil?
 
     case Nexus::Presence.of(executor, live_server_ids: live_server_ids)
-    when "online" then "Online"
-    when "offline" then "Offline · last seen #{time_ago_in_words(executor.last_seen_at)} ago"
-    else "Not yet seen"
+    when "online" then t("executors.presence.online")
+    when "offline" then t("executors.presence.offline", time: time_ago_in_words(executor.last_seen_at))
+    else t("executors.presence.not_seen")
     end
   end
 

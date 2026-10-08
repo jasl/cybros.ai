@@ -181,7 +181,7 @@ class RhoRunDeclarationTest < Minitest::Test
     refute_includes step.instructions, "Relative paths resolve"
   end
 
-  def test_a_machine_serving_nothing_authors_no_tools_key
+  def test_a_machine_serving_nothing_keeps_the_main_prompt_without_a_tools_key
     empty = Rho::Runner::Extensions::Loader.call.registry
 
     step = sole_step(Rho::RunDeclaration.steps(runner_executor_public_id: "own-runner",
@@ -189,6 +189,6 @@ class RhoRunDeclarationTest < Minitest::Test
     ))
 
     refute step.to_h.fetch("model").key?("tools")
-    refute step.to_h.fetch("model").key?("instructions")
+    assert_equal "#{Rho::RunDeclaration::GUIDELINE}\n\nConversation kind: standalone.", step.to_h.fetch("model").fetch("instructions")
   end
 end

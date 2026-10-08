@@ -104,7 +104,7 @@ class ApiWorkspacesTest < Minitest::Test
   def test_create_posts_the_envelope_under_its_client_minted_idempotency_key
     workspace = client([[201, {}, { "workspace" => FULL }]]).workspaces.create(
       name: "Notes", idempotency_key: "key-1", metadata: { "purpose" => "notes" }
-    )
+    ).workspace
 
     assert_equal :post, request.fetch(:method)
     assert_equal WORKSPACE_PATH, request.fetch(:path)

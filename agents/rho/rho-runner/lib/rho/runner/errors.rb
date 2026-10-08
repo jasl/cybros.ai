@@ -11,6 +11,9 @@ module Rho
       # — the moment somebody can still read it — rather than surfacing
       # later as a task parked to its deadline with nothing to read.
       class RegistrationError < Error; end
+      # An operator-facing dependency failure. Authors supply repair guidance,
+      # never raw subprocess output, configuration values or upstream errors.
+      class PrerequisiteError < RegistrationError; end
     end
   end
 end

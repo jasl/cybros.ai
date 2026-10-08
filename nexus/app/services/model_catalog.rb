@@ -35,6 +35,12 @@ module ModelCatalog
       provider_declaration(provider_id, snapshot: snapshot).fetch("base_url")
     end
 
+    def model_base_url(model_ref, snapshot: current)
+      provider_id = Nexus::ModelRef.parse(model_ref).provider_id
+      entry = snapshot.models.fetch(model_ref)
+      entry.fetch("base_url") { provider_base_url(provider_id, snapshot: snapshot) }
+    end
+
     # Operator capacity, not a wire fact; a workload with no entry inherits
     # the provider's ceiling, so a new workload is bounded from day one.
     def provider_concurrency_limit(provider_id, workload: nil, snapshot: current)

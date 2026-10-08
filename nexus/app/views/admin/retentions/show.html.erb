@@ -1,26 +1,26 @@
-<% content_for :title, "Retention settings" %>
+<% content_for :title, t("admin.retentions.show.retention_settings") %>
 
 <div class="space-y-8">
   <header class="space-y-1">
-    <h1 class="text-xl font-medium tracking-tight">Retention settings</h1>
-    <p class="text-sm text-base-content/60">Keep conversation messages readable and searchable. Automatically remove old execution details to reduce storage use.</p>
+    <h1 class="text-xl font-medium tracking-tight"><%= t("admin.retentions.show.retention_settings") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("admin.retentions.show.keep_conversation_messages_readable_and_searchable_automatically_remove_old") %></p>
   </header>
 
   <% if @account.errors.any? %>
     <div role="alert" class="alert alert-error alert-soft">
-      <span>Retention settings could not be saved. Check the field below.</span>
+      <span><%= t("admin.retentions.show.retention_settings_could_not_be_saved_check_the_field") %></span>
     </div>
   <% end %>
 
   <%= form_with url: admin_retention_path, method: :patch, scope: :account do |form| %>
     <div class="rounded-box border border-base-300 bg-base-200">
-      <%= render layout: "shared/form_row", locals: { form:, attribute: :execution_details_retention_days, label: "Keep execution details for (days)", description: "Default: 90 days. Leave blank to disable automatic cleanup." } do %>
+      <%= render layout: "shared/form_row", locals: { form:, attribute: :execution_details_retention_days, label: t("admin.retentions.show.keep_execution_details_for_days"), description: t("admin.retentions.show.default_90_days_leave_blank_to_disable_automatic_cleanup") } do %>
         <%= validated_field form, :number_field, :execution_details_retention_days, @account.errors.full_messages_for(:execution_details_retention_days), size: :sm, value: @account.execution_details_retention_days_before_type_cast, min: 1, step: 1 %>
       <% end %>
     </div>
-    <p class="mt-3 text-sm text-base-content/60">Cleanup removes eligible execution traces and tool details after work has finished. Conversation text remains readable and searchable. Increasing this period cannot restore details already removed.</p>
+    <p class="mt-3 text-sm text-base-content/60"><%= t("admin.retentions.show.cleanup_removes_eligible_execution_traces_and_tool_details_after") %></p>
     <div class="mt-3 flex justify-end">
-      <%= form.submit "Save retention settings", class: "btn btn-primary btn-sm" %>
+      <%= form.submit t("admin.retentions.show.save_retention_settings"), class: "btn btn-primary btn-sm" %>
     </div>
   <% end %>
 </div>

@@ -141,12 +141,71 @@ fake provider container on the stack's private Docker network supplies a WebUI
 conversation; no external model provider is called. The test checks model
 discovery, clears the synthetic key, preserves identities and credential epochs
 on repeated startup, and verifies that starting services cannot reverse explicit
-revocation. Desktop and narrow screenshots are captured. The journey is excluded
+revocation. Browser JavaScript errors fail the journey. Its console record keeps
+expected HTTP disconnects during service replacement; an initial conversation-list
+409 is accepted only during first login and only after the same list succeeds once
+the default workspace is adopted. Desktop and narrow screenshots are captured. The journey is excluded
 from default groups and skips unless both `E2E_STACK_DIR` and `E2E_BASE_URL` are
 supplied.
 
-The test closes its browser and removes its fake-provider container, but does not
-start or tear down the supplied stack. Inspect diagnostics under
+To include a real browser-driven Nexus upgrade, set
+`E2E_STACK_UPGRADE_RELEASE` to the UTC `yyMMddHHmm` tag served by the configured
+Nexus image repository's `latest` tag. Start the disposable installation's Nexus
+and rho on earlier releases with the independent updater enabled. The Nexus
+releases must carry their matching version labels and be reachable by both Docker
+and the updater. The journey checks the candidate, confirms it through Nexus's
+**System upgrade** page, waits for the durable receipt, and verifies that Nexus,
+jobs and model_runner were replaced with the selected Nexus image and the page
+reconnected. rho's container ID, image and start time must remain unchanged.
+The installation owner's status must report the actual separate component
+versions and no single release for that mixed installation; Nexus's page reports
+the installed Nexus version. A newer rho image is not required for this browser
+operation. The joint installer's `./cybros update [TAG]` remains the separate
+operator command for upgrading both applications.
+
+The journey then verifies conversation history, uploaded bytes
+after deleting their original source file, settings, configured model/provider,
+credentials and private deployment files survived, and sends another fake-model
+conversation. It also checks the visible preflight report and the retained
+pre-migration database backup receipt. No external model provider is called.
+The backup checkbox must start checked. Set `E2E_STACK_UPGRADE_BACKUP=false`
+to uncheck it before the release check and verify the saved choice, skipped
+backup message, and absence of a SQL export. The same data-preservation and
+Nexus-only container checks still apply.
+
+```sh
+E2E_STACK_DIR="$HOME/cybros-stack-check" \
+E2E_BASE_URL=http://127.0.0.1:13300 \
+E2E_STACK_UPGRADE_RELEASE=2610080800 \
+bundle exec ruby -Itest test/stack_installation_test.rb
+```
+
+To rehearse a full installation restore as part of that journey, also set
+`E2E_STACK_RESTORE_DIR` to an absolute, empty disposable directory. After the
+upgrade, the test stops the stack, runs `backup` and `restore`, and verifies a
+copied work file and relative symlink. It removes the old stopped application
+and updater containers, then starts the same Compose project from the restored
+directory. Public API and browser checks verify retained accounts, pairing,
+settings, provider configuration, history and uploaded attachment bytes. The
+test parks the existing rho tab during this offline restore and resumes its
+conversation reads after stored credentials are adopted; the same tab stays
+active throughout the preceding Nexus-only upgrade. The strict console check
+still rejects unexpected errors. The source installation data is retained,
+and the restored stack remains running
+for inspection. Stop it using the restored directory's `./cybros stop`.
+
+For local fixtures, the same built Nexus application can be labeled with two
+distinct release tags and served by a loopback-only test registry, alongside the
+earlier rho image. This proves Nexus image replacement, rho continuity and data
+preservation across the upgrade lifecycle; it does
+not qualify a future schema migration. The updater's offline suite separately
+tests failed/interrupted migrations, exact replay, conflicting starts and
+recovery without repeating a migration. Run all its tests from
+`install/stack/updater` with
+`ruby -Itest -e 'Dir["test/*_test.rb"].sort.each { |file| require_relative file }'`.
+
+The test closes its browser and removes its fake-provider container. Unless the
+explicit restore drill is enabled, it does not tear down the supplied stack. Inspect diagnostics under
 `e2e/artifacts/stack_installation/`, then stop the disposable stack with its
 `./cybros stop` command. Do not point this journey at an existing personal
 installation or delete its data as part of test cleanup.
@@ -187,12 +246,18 @@ Failure logs are retained under `artifacts/rho_setup/`. The journey removes its
 synthetic provider key and disables its lane before and after use.
 
 `bundle exec ruby -Itest test/rho_settings_test.rb` drives the GUI journey: connect
-Nexus, verify a bot, obtain the owner ID from `/start`, bind it, edit access lists,
+Nexus, enable Telegram directly in its setup section, verify a bot, obtain the owner ID from `/start`, bind it, edit access lists,
 configure a model on Nexus, and return to rho. It changes working-directory and
 shell-timeout defaults live, executes a command in the changed directory, and
 receives a Telegram reply using the selected model. Desktop and narrow screenshots
 and browser-console output are retained under `artifacts/rho_settings/`. The same
 local Telegram HTTP service and fake model provider keep all external IO synthetic.
+The journey also checks that Web tools are active without an enablement override
+and that plugin descriptions are visible. A separate browser case configures a
+missing Playwright driver, verifies that activation fails with repair guidance and
+no browser tools, and continues using core settings. Its expected HTTP 503 remains
+in the browser log; other browser errors still fail the test. The WebUI site-approval
+journey exercises the default Web tools plugin through actual `web_fetch` calls.
 
 From this directory, `bundle exec ruby -Itest test/rho_telegram_test.rb` runs the
 conversation-control and media suite; `test/rho_telegram_group_test.rb` runs the

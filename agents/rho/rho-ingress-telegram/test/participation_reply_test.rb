@@ -44,7 +44,7 @@ class TelegramParticipationReplyTest < Minitest::Test
       raw = telegram_message(update_id, "Please explain that", user: 2, chat: -10, topic: 4,
         date: @now.to_i, reply_to: message_id)
       raw.fetch("message").fetch("reply_to_message")["text"] = text
-      @runtime.consume(raw)
+      receive(raw)
     end
 
     def assert_quoted_request(text)

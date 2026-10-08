@@ -1,15 +1,15 @@
-<% content_for :title, "Test model connection" %>
+<% content_for :title, t("admin.model_providers.model_tests.show.test_model_connection") %>
 <div class="space-y-8">
-  <%= render "admin/model_providers/header", provider: @provider, title: "Test model connection", current: :test, description: "Test a model using the saved provider connection." %>
+  <%= render "admin/model_providers/header", provider: @provider, title: t("admin.model_providers.model_tests.show.test_model_connection"), current: :test, description: t("admin.model_providers.model_tests.show.test_a_model_using_the_saved_provider_connection") %>
   <%= turbo_frame_tag "model-connection-test" do %>
-  <section class="space-y-4" aria-label="Model connection test">
+  <section class="space-y-4" aria-label="<%= t("admin.model_providers.model_tests.show.model_connection_test") %>">
     <p class="text-sm font-medium wrap-anywhere"><%= @model.fetch(:ref) %></p>
-    <p class="max-w-prose text-sm leading-relaxed text-base-content/60">This sends one small request for this model's workload and may incur provider charges. It can take up to 30 seconds. It checks the connection, not all model capabilities. Test usage is not included in agent usage statistics.</p>
-    <p class="max-w-prose text-sm leading-relaxed text-base-content/60">A definite model-not-found response marks this model invalid and hides it from agents. A successful test clears that mark and preserves any manual hiding. Authentication errors, timeouts and other failures do not change model availability.</p>
+    <p class="max-w-prose text-sm leading-relaxed text-base-content/60"><%= t("admin.model_providers.model_tests.show.this_sends_one_small_request_for_this_model_s") %></p>
+    <p class="max-w-prose text-sm leading-relaxed text-base-content/60"><%= t("admin.model_providers.model_tests.show.a_definite_model_not_found_response_marks_this_model") %></p>
     <%= form_with url: admin_model_provider_model_test_path(@provider.fetch(:id)), scope: :model_test do |form| %>
       <%= form.hidden_field :model, value: @model.fetch(:ref) %>
       <%= form.hidden_field :expected_lock_version, value: @provider.fetch(:lock_version) %>
-      <%= form.submit "Run connection test", class: "btn btn-primary btn-sm", data: { turbo_submits_with: "Testing…" } %>
+      <%= form.submit t("admin.model_providers.model_tests.show.run_connection_test"), class: "btn btn-primary btn-sm", data: { turbo_submits_with: t("admin.model_providers.model_tests.show.testing") } %>
     <% end %>
     <% if @rate_limited %>
       <p class="text-sm text-error" role="alert"><%= t("admin.model_providers.test_rate_limited") %></p>
@@ -17,13 +17,13 @@
     <% if @test_result %>
       <div class="rounded-box border border-base-300 bg-base-200 p-4 space-y-2 text-sm" role="status">
         <p><%= model_connection_test_message(@test_result.outcome) %></p>
-        <p class="text-base-content/60"><%= @test_result.duration_ms %> ms<% if @test_result.http_status %> · HTTP <%= @test_result.http_status %><% end %></p>
+        <p class="text-base-content/60"><%= t("admin.model_providers.model_tests.show.duration_ms", duration: (@test_result.duration_ms)) %><% if @test_result.http_status %> <%= t("admin.model_providers.model_tests.show.http_status", status: (@test_result.http_status)) %><% end %></p>
         <% if @test_result.availability_update == :stale %>
-          <p>Settings changed during this test. The result was not applied; review the current model settings before testing again.</p>
+          <p><%= t("admin.model_providers.model_tests.show.settings_changed_during_this_test_the_result_was_not") %></p>
         <% elsif %i[invalid not_found].include?(@test_result.availability_update) %>
-          <p>The test finished, but its availability change could not be saved. Review the model settings.</p>
+          <p><%= t("admin.model_providers.model_tests.show.the_test_finished_but_its_availability_change_could_not") %></p>
         <% elsif @test_result.outcome == :model_not_found %>
-          <p>This model is now marked invalid and hidden from agents. Its definition and pricing are kept.</p>
+          <p><%= t("admin.model_providers.model_tests.show.this_model_is_now_marked_invalid_and_hidden_from") %></p>
         <% end %>
       </div>
     <% end %>

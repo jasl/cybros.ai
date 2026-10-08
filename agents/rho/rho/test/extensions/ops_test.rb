@@ -16,6 +16,7 @@ class OpsExtensionTest < Minitest::Test
     - grep: Search file contents for patterns (respects .gitignore)
     - ls: List directory contents
     - read: Read file contents
+    - web_fetch: Fetch a web page by URL
     - write: Create or overwrite files
 
     Guidelines:
@@ -27,6 +28,7 @@ class OpsExtensionTest < Minitest::Test
     - Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.
     - Pass workdir to bash rather than `cd <dir> && ...`.
     - A server or anything that must outlive the call: start_process, never `&`.
+    - Use web_fetch to read a page or a raw file from the web instead of curl or wget in bash; it is a read and returns markdown.
   TEXT
 
   def test_a_standalone_run_keeps_stable_guidance_first_without_conversation_hooks
@@ -66,7 +68,7 @@ class OpsExtensionTest < Minitest::Test
     # The selected built-ins and gem supply the exact registry bytes; the
     # full set would also add the todo tracker's agent tool.
     loaded = Rho::Extensions.load(host: RhoTest.host, extensions: [Rho::Runner::Extensions::Coding,
-      Rho::Extensions::Processes, Rho::Extensions::Ops], gems: ["rho/codemode"])
+      Rho::Extensions::Processes, Rho::Extensions::Ops], gems: ["rho/codemode", "rho/web-tools"])
     assert_empty loaded.failures
     declared = Rho::RunDeclaration.declaration(registry: loaded.registry, runner_executor_public_ids: ["0199-runner"]).fetch(:tool_definitions)
     assert_equal declared, task.fetch("tools")
@@ -74,7 +76,7 @@ class OpsExtensionTest < Minitest::Test
       "one model declaration even when both executor addresses serve the tool"
 
     assert_equal ["work"], answer.dig("run", "tasks").map { |row| row.fetch("key") }
-    expected_names = %w[bash code edit file_import file_publish find grep list_processes ls read read_process start_process stop_process write] +
+    expected_names = %w[bash code edit file_import file_publish find grep list_processes ls read read_process start_process stop_process web_fetch write] +
       %w[code skill].map { |name| NexusDoubles.runner_tool_name("0199-runner", name) }
     assert_equal expected_names.sort, answer.fetch("tools").sort
     refute answer.key?("until")
@@ -112,7 +114,7 @@ class OpsExtensionTest < Minitest::Test
     assert_equal %w[prompt key model tools kernel_tools runner_executor_public_ids], task.keys, "no system field under an assembled word"
     assert_equal "#{TOOL_LINES}\n\nConversation kind: standalone.\n\nfix it", task.fetch("prompt"),
       "the explicit default template leaves the known kind in the input lead and the guideline in the slot"
-    expected_names = %w[bash code edit file_import file_publish find grep list_processes ls read read_process start_process stop_process write] +
+    expected_names = %w[bash code edit file_import file_publish find grep list_processes ls read read_process start_process stop_process web_fetch write] +
       %w[code skill].map { |name| NexusDoubles.runner_tool_name("0199-runner", name) }
     assert_equal expected_names.sort, answer.fetch("tools").sort
 

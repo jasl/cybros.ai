@@ -1,4 +1,5 @@
 require "json"
+require_relative "../failure_hints"
 require_relative "reporting/connection"
 
 module Rho
@@ -39,14 +40,16 @@ module Rho
         tasks.each do |task|
           key = task.fetch("task_key")
           waiting = waiting_on(task, statuses, seen)
+          failure_hint = unresolved_failure_hint(task, seen)
           # The claimant's ask for more time reprints the park it extends;
           # a declined round's facts reprint the failure they explain (the
           # pushed stream names the failure a moment before its round).
-          shown = [task.fetch("status"), waiting, task["extension_ms"], declined_stand(task)]
+          shown = [task.fetch("status"), waiting, task["extension_ms"], declined_stand(task), failure_hint]
           next if seen[key] == shown
 
           seen[key] = shown
           @out.puts task_line(task, waiting, branch_of(key, seen), refusal_way_on(task, row, seen))
+          @out.puts "    #{failure_hint}" if failure_hint
         end
         # A background answer that outlived its turn, delivered to the
         # conversation: once, by the key the model saw; a peer's
@@ -574,6 +577,13 @@ module Rho
           return nil if (task["on_failure"] || seen["on_failure:#{key}"]) == "absorb"
 
           refusal_hint(task["run_public_id"] || row["run_public_id"] || row["public_id"], key, blocked: stand == "blocked")
+        end
+
+        def unresolved_failure_hint(task, seen)
+          return nil unless %w[failed timed_out uncertain].include?(task.fetch("status"))
+          return nil if task["failure_resolution"] || (task["on_failure"] || seen["on_failure:#{task.fetch("task_key")}"]) == "absorb"
+
+          Rho::FailureHints.for(task["error_key"])
         end
 
         def task_line(task, waiting, call, way_on = nil)

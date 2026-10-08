@@ -775,18 +775,24 @@ counting the writes.
 
 No fence and no workspace: the users row is the caller's own and the
 lock. A write bumps no conversation's `context_revision` — the next turn
-of ANY conversation reads it live. Bound: 64 KiB. rho writes its
-runner-independent guideline as `system_prompt` at boot in the atomic
-configuration declaration above. For rho's assembled turns, Nexus renders the
+of ANY conversation reads it live. Bound: 64 KiB. rho resolves its own
+`work_preset` (`standard` or `compact`), optional `base_prompt` replacement and
+appended `custom_instructions` into `system_prompt` at each settings/declaration
+edge in the atomic configuration declaration above. `base_prompt: null` uses
+the selected preset; `base_prompt: ""` supplies an empty base. rho owns these
+application settings; they introduce no additional Nexus profile mechanism.
+Named-agent prompt bodies, Human persona and Workspace character remain
+independent. Already materialized turns keep their captured document.
+For rho's assembled turns, Nexus renders the
 frozen selected environment as a `user`-role lead, and rho supplies its application
 context as a `developer`-role inline lead after history; later turns replay both
 through the sealed preface. rho's `summarizer` slot carries the
 `summarizer_prompt` of the SDK pack row its summary model resolves to,
 replaced in that same PUT and cleared when the row carries none, the
 knob is `off`, or the policy is `delegate`. `rho prompt show [SLOT]` (rho-dev) reads
-this door from a terminal (rho ships no `write`/`delete` verb: its own
-slots are rewritten at every declare edge, so a person's write would not
-survive the next boot).
+this door from a terminal. Use rho's **Working style** settings to persist a
+custom base or additional instructions; rho ships no direct slot `write`/`delete`
+verb, because its own slots are rewritten from configuration at declaration.
 
 ### HTTP response status codes
 

@@ -25,7 +25,7 @@ module AgentAPI::V1::OperationScoped
       value = params[name]
       return default if value.nil? && !default.nil?
 
-      # executor-operations.md: positions and page sizes are bounded JSON
+      # executor-operations.md: positions are bounded JSON
       # integers; they coordinate observation publication, not program data.
       bounded_integer(value, name, range: 0..2_147_483_647)
     end

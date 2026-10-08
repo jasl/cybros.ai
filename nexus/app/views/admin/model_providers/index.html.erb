@@ -1,35 +1,35 @@
-<% content_for :title, "Model providers" %>
+<% content_for :title, t("admin.model_providers.index.model_providers") %>
 
 <div class="space-y-8">
   <header class="flex flex-wrap items-end justify-between gap-4">
     <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight">Model providers</h1>
-      <p class="max-w-prose text-sm text-base-content/60">Connect your providers and choose which models agents can use.</p>
+      <h1 class="text-xl font-medium tracking-tight"><%= t("admin.model_providers.index.model_providers") %></h1>
+      <p class="max-w-prose text-sm text-base-content/60"><%= t("admin.model_providers.index.connect_your_providers_and_choose_which_models_agents_can") %></p>
     </div>
     <div class="flex flex-wrap gap-2">
-      <%= link_to "Add provider", new_admin_model_provider_path, class: "btn btn-primary btn-sm" %>
+      <%= link_to t("admin.model_providers.index.add_provider"), new_admin_model_provider_path, class: "btn btn-primary btn-sm" %>
     </div>
   </header>
 
   <% if @account.cost_unit.blank? %>
-    <section class="flex flex-col items-start justify-between gap-4 rounded-box border border-base-300 bg-base-200 p-4 sm:flex-row sm:items-center sm:p-5" aria-label="Cost tracking setup">
+    <section class="flex flex-col items-start justify-between gap-4 rounded-box border border-base-300 bg-base-200 p-4 sm:flex-row sm:items-center sm:p-5" aria-label="<%= t("admin.model_providers.index.cost_tracking_setup") %>">
       <div class="min-w-0 flex-1 space-y-1">
-        <h2 class="text-sm font-medium wrap-anywhere">Optional cost estimates</h2>
-        <p class="max-w-prose text-sm text-base-content/60">Set an account cost unit to estimate spending. Models work without prices, and actual usage is recorded independently.</p>
+        <h2 class="text-sm font-medium wrap-anywhere"><%= t("admin.model_providers.index.optional_cost_estimates") %></h2>
+        <p class="max-w-prose text-sm text-base-content/60"><%= t("admin.model_providers.index.set_an_account_cost_unit_to_estimate_spending_models") %></p>
       </div>
-      <%= link_to "Set cost unit", admin_cost_unit_path, class: "btn btn-primary btn-sm" %>
+      <%= link_to t("admin.model_providers.index.set_cost_unit"), admin_cost_unit_path, class: "btn btn-primary btn-sm" %>
     </section>
   <% end %>
 
-  <section aria-label="Providers">
+  <section aria-label="<%= t("admin.model_providers.index.providers") %>">
     <div class="mb-3 flex items-center justify-between text-xs text-base-content/60">
-      <span><%= pluralize(@providers.length, "provider") %></span>
-      <span>Credentials are stored in Nexus</span>
+      <span><%= t("provider_counts", count: @providers.length) %></span>
+      <span><%= t("admin.model_providers.index.credentials_are_stored_in_brand", brand: t("brand.name")) %></span>
     </div>
     <% if @providers.empty? %>
       <div class="rounded-box border border-base-300 bg-base-200 p-8 text-center">
-        <h2 class="font-medium">No model providers configured</h2>
-        <p class="mt-2 text-sm text-base-content/60">Add a hosted or local provider to get started.</p>
+        <h2 class="font-medium"><%= t("admin.model_providers.index.no_model_providers_configured") %></h2>
+        <p class="mt-2 text-sm text-base-content/60"><%= t("admin.model_providers.index.add_a_hosted_or_local_provider_to_get_started") %></p>
       </div>
     <% else %>
       <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200">
@@ -39,15 +39,15 @@
               <span class="flex size-10 shrink-0 items-center justify-center rounded-lg border border-base-300 bg-base-100 font-mono text-sm font-semibold" aria-hidden="true"><%= model_provider_name(provider.fetch(:id), display_name: provider[:display_name])[0, 2].upcase %></span>
               <div class="min-w-0 flex-1">
                 <h2 class="text-sm font-medium wrap-anywhere"><%= model_provider_name(provider.fetch(:id), display_name: provider[:display_name]) %></h2>
-                <p class="mt-1 text-xs text-base-content/60"><%= provider_credential_label(provider) %> · <%= pluralize(provider.fetch(:models), "model") %></p>
+                <p class="mt-1 text-xs text-base-content/60"><%= provider_credential_label(provider) %> · <%= t("model_counts", count: provider.fetch(:models)) %></p>
               </div>
-              <span class="<%= badge_classes(provider.fetch(:enabled), tone: :success) %>"><%= provider.fetch(:enabled) ? "Enabled" : "Disabled" %></span>
+              <span class="<%= badge_classes(provider.fetch(:enabled), tone: :success) %>"><%= provider.fetch(:enabled) ? t("admin.model_providers.index.enabled") : t("admin.model_providers.index.disabled") %></span>
               <span class="iconify lucide--chevron-right size-4 shrink-0 text-base-content/40" aria-hidden="true"></span>
             <% end %>
           </li>
         <% end %>
       </ul>
     <% end %>
-    <p class="mt-4 text-xs leading-relaxed text-base-content/60">Enabling a provider allows new requests from agents. Each agent chooses its own default model.</p>
+    <p class="mt-4 text-xs leading-relaxed text-base-content/60"><%= t("admin.model_providers.index.enabling_a_provider_allows_new_requests_from_agents_each") %></p>
   </section>
 </div>

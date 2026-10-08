@@ -1,0 +1,19 @@
+<%# locals: (release:) %>
+<% if release %>
+  <p class="font-mono text-sm break-all"><%= release.release.presence || t("admin.deployments.release.release_not_recorded") %></p>
+  <% if release.images.any? %>
+    <details class="mt-3">
+      <summary class="cursor-pointer text-sm text-base-content/70 focus-visible:outline-2 focus-visible:outline-offset-2"><%= t("admin.deployments.release.images") %></summary>
+      <dl class="mt-3 space-y-3">
+        <% release.images.each do |image| %>
+          <div class="min-w-0">
+            <dt class="text-sm font-medium"><%= image.name %></dt>
+            <dd class="mt-1 font-mono text-xs break-all text-base-content/60"><%= image.reference %></dd>
+          </div>
+        <% end %>
+      </dl>
+    </details>
+  <% end %>
+<% else %>
+  <p class="text-sm text-base-content/60"><%= t("admin.deployments.release.not_available") %></p>
+<% end %>

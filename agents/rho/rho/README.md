@@ -425,7 +425,8 @@ kind=agent user=…>` and the person's own words stay bare; the follower
 prints `sent` with `from:` under a peer's row. A run has one answerer.
 
 THE SECOND WORD on a conversation — the PERSON's `send` (a steer at the
-running turn's next model boundary, or a queued turn), `--to` naming who
+running turn's next model boundary, an explicit `steer_now` while supported tools
+keep running, or a queued turn), `--to` naming who
 answers one turn (group chat), a word scheduled for a time, a picture on a
 later turn — and the END of a turn before its time are the page's,
 ACP's, an IM integration's, or rho-dev's `say` and `stop`; `rho run` stops
@@ -634,8 +635,8 @@ without one; `rho status` prints the default model's row; `rho run` prints
 the turn's row after the turn ids. THE SUMMARIZER SLOT: a row's
 `summarizer_prompt` is the kernel-mode compaction summarizer's text for
 this profile — rho writes it into the profile's `summarizer` prompt
-document at declare, beside the guideline and under the same digest tuple
-(`[identity, tool bytes, summarizer text | absent]`), from the SLOT ROW:
+document at declare, beside the resolved working-style prompt in the same atomic
+declaration, from the SLOT ROW:
 the pinned row, else the row of the `rho.compaction` plugin's `model` or `default_model`.
 An explicit plugin `model` also selects the kernel summary's model;
 without it the summary inherits the current turn's model, while the
@@ -661,6 +662,42 @@ The shared guidance lives in the Agent's `system_prompt` document,
 inside the assembled request's stable prefix. A turn's developer-role lead
 carries the current runner environment, tool guidance and model adaptation
 hints; caller-supplied instructions are appended to that lead.
+
+## Working style and custom instructions
+
+In WebUI **Settings > Working style**, choose **Standard** (the default) or
+**Compact**. Compact shortens the built-in guidance while retaining its tool,
+delegation, delivery and memory policies. Both presets use the same tool
+declarations, approval rules and prompt template. A shorter prompt alone is not
+evidence of equal model quality or faster execution.
+
+**Additional instructions** appends your text to the selected base, preserving
+whitespace and newlines. **Advanced prompt settings > Replace base prompt**
+replaces that base completely; an enabled replacement with empty text means an
+empty base. **Restore built-in prompt**, followed by **Save working style**,
+returns to the selected preset and keeps your additional instructions.
+
+The same fields are available through the existing settings API and CLI:
+
+| Root setting | Meaning | Default |
+| --- | --- | --- |
+| `work_preset` | `standard` or `compact` | `standard` |
+| `custom_instructions` | Text appended to the base, or `null` | `null` |
+| `base_prompt` | Replacement base; `null` uses the preset, `""` is an empty base | `null` |
+
+The resolved base plus additional instructions must fit within 64 KiB of UTF-8.
+The settings owner publishes that resolved document with rho's existing Agent
+declaration, including when only the text changes. The next materialized turn
+reads the new document; an in-progress turn and its later rounds keep the
+captured one. Standalone raw runs also use the resolved default; an explicit
+per-run `instructions` value retains its existing replacement behavior.
+
+These settings control rho's main Agent base. Named-agent definitions keep their
+own prompt bodies, and the Human persona and Workspace character keep their own
+slots. Replacing the base does not remove the environment or tool guidance in
+the turn lead. Nexus continues to validate the prompt document and its macros;
+a publication refusal reports the saved/applied state through the ordinary
+settings result so it can be corrected and published again.
 
 ## Personal persona
 
@@ -835,13 +872,19 @@ see [deployment](../../../docs/rho-deploy.md) for portable installation and cont
 ## Extensions
 
 rho ships a described default set. Each built-in, installed gem, selected local
-file and managed package has a static descriptor with its id, display name,
+file and managed package has a static descriptor with its id, display name, human-readable description,
 configuration schema/version, defaults, supported modes and dependencies.
 Disabled plugins stay visible and configurable without loading their Ruby code,
 starting children or connecting to a service. Enablement is separate from
 configuration completeness: an enabled plugin can be active but not ready.
-MCP, ACP client, web tools, Telegram and T3 are optional and disabled by default;
-their schemas remain visible in the core manager.
+Web tools are enabled by default in full and runner modes; explicit disabled
+settings remain disabled. Browser, MCP, ACP client, Telegram and T3 require
+explicit enablement. Their descriptions and schemas remain visible in the core manager.
+Environment-dependent plugins check prerequisites before becoming active. Browser
+checks that its configured Playwright driver can launch Chromium, then closes that
+temporary browser. A failed check leaves the plugin inactive and returns repair
+guidance while core settings remain available. Saved and active state stay separate:
+repair the installation or configuration and enable the plugin again to retry.
 
 Save only overrides under `plugins`; installed gem and built-in sources are
 discovered from their metadata. A local file needs an explicit source and a
@@ -1859,12 +1902,12 @@ goes removes its row (reversibly — the same file back restores the same
 row, same handle, same public id). The roster the spawner reads rides in each
 turn's lead after history: one line per agent, `- @reviewer: <description>`.
 Tool authority remains in the declarations; the roster does not repeat it.
-The system slot contains the fixed guideline, and the skills block follows
+The system slot contains the configured working-style prompt, and the skills block follows
 history, so changing a Runner or discovering another catalog preserves the
 earlier assembled prefix.
 
 After those independent named-definition commands return their handles,
-rho writes its configuration, fixed guideline, and optional summarizer
+rho writes its configuration, resolved working-style prompt, and optional summarizer
 prompt together in one Agent PUT. A refused prompt leaves the previous main
 Agent declaration intact; the next declaration edge retries the whole body.
 

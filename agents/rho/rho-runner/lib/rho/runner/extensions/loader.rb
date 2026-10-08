@@ -27,7 +27,13 @@ module Rho
       # broke, rather than a daemon that will not take work.
       module Loader
         GEM_METADATA_KEY = "rho_extensions".freeze
-        Failure = Data.define(:source, :error_class, :message)
+        Failure = Data.define(:source, :error_class, :message) do
+          def prerequisite? = error_class == PrerequisiteError.name
+
+          def public_message
+            prerequisite? ? message : "Plugin failed to load or start (#{error_class})."
+          end
+        end
 
         # `committed` is the handles that ACTUALLY landed. A host that
         # reads more off a handle than the registry does — a daemon

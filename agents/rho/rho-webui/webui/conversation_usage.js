@@ -1,58 +1,59 @@
+import { locale, t } from "./i18n.js";
 import { el } from "./views.js";
 
-const integer = new Intl.NumberFormat("en-US");
-const decimal = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
-const tokens = (value) => value == null ? "Unknown" : integer.format(value);
-const percent = (value) => value == null ? "Unknown" : `${decimal.format(value)}%`;
+const integer = new Intl.NumberFormat(locale);
+const decimal = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+const tokens = (value) => value == null ? t("common.unknown") : integer.format(value);
+const percent = (value) => value == null ? t("common.unknown") : `${decimal.format(value)}%`;
 
 export function usagePresentation(usage) {
-  if (!usage) return { summary: "Usage · Unavailable", facts: [], note: "Recorded usage is unavailable." };
+  if (!usage) return { summary: t("conversation_usage.usage_unavailable"), facts: [], note: t("conversation_usage.recorded_usage_is_unavailable") };
 
   // Keep the ledger's decimal and Account unit verbatim. A known subtotal
   // must not look like the price of requests whose cost is still unknown.
   const amount = `${usage.cost_amount}${usage.cost_unit ? ` ${usage.cost_unit}` : ""}`;
-  const cost = usage.cost_complete ? amount : `${amount} (incomplete)`;
-  const costLabel = usage.cost_complete ? "Cost" : "Known subtotal";
+  const cost = usage.cost_complete ? amount : t("conversation_usage.incomplete_amount", { amount });
+  const costLabel = usage.cost_complete ? t("common.cost") : t("conversation_usage.known_subtotal_2");
   return {
-    summary: `Usage · ${tokens(usage.total_tokens)} tokens · ${costLabel} ${cost}`,
+    summary: t("conversation_usage.usage_tokens", { tokens: tokens(usage.total_tokens), costLabel: costLabel, cost: cost }),
     facts: [
-      ["Requests", tokens(usage.request_count)],
-      ["Input tokens", tokens(usage.input_tokens)],
-      ["Cached input tokens", tokens(usage.cache_read_tokens)],
-      ["Uncached input tokens", tokens(usage.uncached_input_tokens)],
-      ["Cache creation tokens", tokens(usage.cache_creation_tokens)],
-      ["Cache hit rate", percent(usage.cache_hit_rate == null ? null : usage.cache_hit_rate * 100)],
-      ["Output tokens", tokens(usage.output_tokens)],
-      ["Reasoning tokens", tokens(usage.reasoning_tokens)],
-      ["Total tokens", tokens(usage.total_tokens)],
-      ["Cost", usage.cost_complete ? cost : `Known subtotal ${cost}`],
-      ["Cost unit", usage.cost_unit || "Not set"],
+      [t("conversation_usage.requests"), tokens(usage.request_count)],
+      [t("common.input_tokens"), tokens(usage.input_tokens)],
+      [t("common.cached_input_tokens"), tokens(usage.cache_read_tokens)],
+      [t("conversation_usage.uncached_input_tokens"), tokens(usage.uncached_input_tokens)],
+      [t("conversation_usage.cache_creation_tokens"), tokens(usage.cache_creation_tokens)],
+      [t("conversation_usage.cache_hit_rate"), percent(usage.cache_hit_rate == null ? null : usage.cache_hit_rate * 100)],
+      [t("common.output_tokens"), tokens(usage.output_tokens)],
+      [t("conversation_usage.reasoning_tokens"), tokens(usage.reasoning_tokens)],
+      [t("conversation_usage.total_tokens"), tokens(usage.total_tokens)],
+      [t("common.cost"), usage.cost_complete ? cost : t("conversation_usage.known_subtotal", { cost: cost })],
+      [t("conversation_usage.cost_unit"), usage.cost_unit || t("common.not_set")],
     ],
-    note: "Cumulative recorded usage for this conversation, including retries and background work."
-      + (usage.cost_complete ? "" : " Some request costs are unknown; the subtotal is incomplete."),
+    note: t("conversation_usage.cumulative_recorded_usage_for_this_conversation_including_retries")
+      + (usage.cost_complete ? "" : t("conversation_usage.some_request_costs_are_unknown_the_subtotal_is")),
   };
 }
 
 export function contextPresentation(context) {
-  if (!context) return { summary: "Context · Unavailable", facts: [],
-    note: "No current provider usage report is available." };
+  if (!context) return { summary: t("conversation_usage.context_unavailable"), facts: [],
+    note: t("conversation_usage.no_current_provider_usage_report_is_available") };
 
-  const window = context.window_tokens == null ? "window unknown" : `${tokens(context.window_tokens)} tokens`;
-  const occupancy = context.window_tokens == null ? `${tokens(context.used_tokens)} tokens · ${window}`
+  const window = context.window_tokens == null ? t("conversation_usage.window_unknown") : t("conversation_usage.token_count", { count: tokens(context.window_tokens) });
+  const occupancy = context.window_tokens == null ? t("conversation_usage.unknown_occupancy", { count: tokens(context.used_tokens), window })
     : `${tokens(context.used_tokens)} / ${window}`;
-  const model = [context.as_of_model?.provider_id, context.as_of_model?.model_ref].filter(Boolean).join("/") || "Unknown";
+  const model = [context.as_of_model?.provider_id, context.as_of_model?.model_ref].filter(Boolean).join("/") || t("common.unknown");
   return {
-    summary: `Context · ${occupancy}${context.used_percent == null ? "" : ` (${percent(context.used_percent)})`}`,
+    summary: t("conversation_usage.context", { occupancy: occupancy, value2: context.used_percent == null ? "" : ` (${percent(context.used_percent)})` }),
     facts: [
-      ["Model", model],
-      ["Used tokens", tokens(context.used_tokens)],
-      ["Context window", tokens(context.window_tokens)],
-      ["Occupancy", percent(context.used_percent)],
-      ["Input tokens", tokens(context.input_tokens)],
-      ["Output tokens", tokens(context.output_tokens)],
-      ["Cached input tokens", tokens(context.cache_read_tokens)],
+      [t("common.model"), model],
+      [t("conversation_usage.used_tokens"), tokens(context.used_tokens)],
+      [t("conversation_usage.context_window"), tokens(context.window_tokens)],
+      [t("conversation_usage.occupancy"), percent(context.used_percent)],
+      [t("common.input_tokens"), tokens(context.input_tokens)],
+      [t("common.output_tokens"), tokens(context.output_tokens)],
+      [t("common.cached_input_tokens"), tokens(context.cache_read_tokens)],
     ],
-    note: "Latest successful request, separate from cumulative conversation usage.",
+    note: t("conversation_usage.latest_successful_request_separate_from_cumulative_conversation_usage"),
   };
 }
 
@@ -71,7 +72,7 @@ export function createConversationMetrics() {
   const usage = disclosure("conversation-usage");
   const context = disclosure("conversation-context");
   const element = el("div", { class: "conversation-metrics", hidden: true, tabindex: "0", role: "region",
-    "aria-label": "Conversation usage and context" }, usage.element, context.element);
+    "aria-label": t("conversation_usage.conversation_usage_and_context") }, usage.element, context.element);
   let conversationId = null;
   let previousConversation = null, previousAccess = null;
   return { element, update(conversation, access = "ready") {

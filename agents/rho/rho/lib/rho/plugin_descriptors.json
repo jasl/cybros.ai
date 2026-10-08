@@ -2,7 +2,7 @@
   {
     "id": "rho.agents",
     "display_name": "Agents",
-    "description": "",
+    "description": "List, synchronize, and publish named agents with their own instructions and model choices.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -20,7 +20,7 @@
   {
     "id": "rho.checkpoints",
     "display_name": "Checkpoints",
-    "description": "",
+    "description": "Capture workspace file changes so a conversation can restore an earlier state.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -60,7 +60,7 @@
   {
     "id": "rho.coding",
     "display_name": "Coding",
-    "description": "",
+    "description": "Read, edit, and search workspace files, and run shell commands.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -85,7 +85,7 @@
   {
     "id": "rho.compaction",
     "display_name": "Compaction",
-    "description": "",
+    "description": "Summarize earlier conversation history when the model context needs room.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -118,7 +118,7 @@
   {
     "id": "rho.console_link",
     "display_name": "Console Link",
-    "description": "",
+    "description": "Open this agent's browser console to chat and manage settings.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -136,7 +136,7 @@
   {
     "id": "rho.conventions",
     "display_name": "Conventions",
-    "description": "",
+    "description": "Load workspace instructions from AGENTS.md and CLAUDE.md into each conversation.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -154,7 +154,7 @@
   {
     "id": "rho.default_runner",
     "display_name": "Default Runner",
-    "description": "",
+    "description": "Choose the runner that executes tools for new work.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -172,7 +172,7 @@
   {
     "id": "rho.environment",
     "display_name": "Environment",
-    "description": "",
+    "description": "Manage working directories and connect editor or remote execution environments.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -191,7 +191,7 @@
   {
     "id": "rho.guard",
     "display_name": "Guard",
-    "description": "",
+    "description": "Apply built-in command safeguards and protect the running installation from agent edits.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -210,7 +210,7 @@
   {
     "id": "rho.images",
     "display_name": "Images",
-    "description": "",
+    "description": "Generate images with the configured image model and attach reference images.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -235,7 +235,7 @@
   {
     "id": "rho.lifecycle_hooks",
     "display_name": "Lifecycle Hooks",
-    "description": "",
+    "description": "Run configured tools at conversation and turn lifecycle events.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -358,7 +358,7 @@
   {
     "id": "rho.ops",
     "display_name": "Ops",
-    "description": "",
+    "description": "Manage conversations, runs, workspaces, and models through the console and CLI.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -376,7 +376,7 @@
   {
     "id": "rho.packages",
     "display_name": "Packages",
-    "description": "",
+    "description": "Install, check, enable, and roll back locally developed extension packages.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -395,7 +395,7 @@
   {
     "id": "rho.processes",
     "display_name": "Processes",
-    "description": "",
+    "description": "Start, inspect, and stop background processes and read their output.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -414,7 +414,7 @@
   {
     "id": "rho.schedules",
     "display_name": "Schedules",
-    "description": "",
+    "description": "Schedule agent tasks and manage recurring work.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -432,7 +432,7 @@
   {
     "id": "rho.setup",
     "display_name": "Setup",
-    "description": "",
+    "description": "Guide account connection, model selection, and optional Telegram setup.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -451,7 +451,7 @@
   {
     "id": "rho.todo",
     "display_name": "Todo",
-    "description": "",
+    "description": "Maintain a task checklist while the agent works.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
@@ -469,7 +469,7 @@
   {
     "id": "rho.until",
     "display_name": "Until",
-    "description": "",
+    "description": "Repeat work until a configured acceptance command succeeds or the attempt limit is reached.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",

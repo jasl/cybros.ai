@@ -22,6 +22,8 @@ module ModelCatalog
           workload: workload,
           model_pin: model["model_id"] || model_tail,
           credential_lane: credential_lane(provider),
+          authentication: provider["authentication"],
+          request_headers: request_headers(provider, model),
           total_execution_deadline_seconds:
             model["deadline_seconds"] || SimpleInference::ApiFormat.deadline_seconds(workload),
           **defaults.merge(stated(format, defaults, provider, model, workload))
@@ -40,7 +42,21 @@ module ModelCatalog
         end
       end
 
+      # MERGED, not replaced: a model that bends one wire option (xAI's
+      # image endpoint needs inline delivery requested explicitly) still
+      # speaks the rest of its format.
+      def wire_options(defaults, provider, model)
+        (defaults[:wire_options] || {})
+          .merge(symbolize(provider["wire_options"]))
+          .merge(symbolize(model["wire_options"]))
+      end
+
       private
+
+        def request_headers(provider, model)
+          SimpleInference::Config.normalize_request_headers(provider.fetch("request_headers", {}))
+            .merge(SimpleInference::Config.normalize_request_headers(model.fetch("request_headers", {})))
+        end
 
         # Mapped one fact at a time: the catalog's `capabilities` and the
         # profile's are different shapes under one name.
@@ -62,7 +78,14 @@ module ModelCatalog
           out[:reasoning_options] = reasoning_options(defaults, caps["reasoning"])
           tiers = caps["service_tiers"] || provider["service_tiers"]
           out[:service_tiers] = tiers if tiers
-          out.compact
+          # Omission inherits the wire's counter; explicit null selects the
+          # existing byte estimate. Preserve that distinction after compacting.
+          out = out.compact
+          if model.key?("token_counter")
+            counter = model["token_counter"]
+            out[:token_counter] = counter.nil? ? nil : mapping(counter, "token_counter")
+          end
+          out
         end
 
         # Which of the wire's reasoning words this model has; only the
@@ -137,15 +160,6 @@ module ModelCatalog
           return declared if declared
 
           Hash(defaults[:input_media]).slice(*Array(modalities))
-        end
-
-        # MERGED, not replaced: a model that bends one wire option (xAI's
-        # image endpoint needs inline delivery requested explicitly) still
-        # speaks the rest of its format.
-        def wire_options(defaults, provider, model)
-          (defaults[:wire_options] || {})
-            .merge(symbolize(provider["wire_options"]))
-            .merge(symbolize(model["wire_options"]))
         end
 
         # This is the merge boundary for both provider and model wire options.

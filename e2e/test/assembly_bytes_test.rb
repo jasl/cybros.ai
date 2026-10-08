@@ -103,7 +103,7 @@ class AssemblyBytesTest < Minitest::Test
       room_name = "Assembly room #{SecureRandom.hex(3)}"
       room = steward_client.workspaces.create(
         name: room_name, access_mode: "account_wide", idempotency_key: SecureRandom.uuid
-      ).public_id
+      ).workspace.public_id
       daemon = E2E::RhoDaemon.new(base_url: base_url, home: home, env: { "RHO_WORKSPACE" => room })
       @world = World.new(daemon: daemon, home: home, steward: steward, actor: actor,
         room_public_id: room, room_name: room_name)

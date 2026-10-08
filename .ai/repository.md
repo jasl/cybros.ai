@@ -8,7 +8,7 @@ Treat each top-level project directory in this monorepo as an independent projec
 change is explicitly shared.
 
 - `Cybros` is the formal product/brand name; `cybros.ai` is the planned primary product domain.
-  The default installation display name is `Nexus` (`Setup::DEFAULT_ACCOUNT_NAME`).
+  The default installation display name is `Nexus` (`Setup.default_account_name`, from I18n).
 - `Nexus`/`nexus` is the kernel: component, project, module, directory, and namespace identifier.
   Agent-facing protocol text calls Nexus the `platform`
   unless a concrete resource name is clearer. The Cybros/Nexus naming theme is StarCraft II
@@ -81,8 +81,10 @@ persistence, credential, runner, console and settings contracts.
   exclusive process-wide integrations report a restart requirement.
 - The distributed Docker image preinstalls project language toolchains, Chromium and document
   processing tools. Versions belong to the installation manifest and dependency locks. This
-  convenience adds no Node or Python boot requirement to bare-metal rho; optional tools report
-  missing dependencies when invoked.
+  convenience adds no Node or Python boot requirement to bare-metal rho. Enabled plugins
+  that require external runtimes check their prerequisites before becoming active. A failed
+  plugin reports actionable repair guidance while core management remains available. Browser
+  checks its configured Playwright driver and Chromium during plugin startup.
 
 rho keeps core deployment settings and all plugin overrides in
 `<RHO_HOME>/settings.json`, with static schemas and versions owned by each plugin.
@@ -118,12 +120,17 @@ rho consists of these independently packaged surfaces:
 - `rho-webui`: plain browser ES modules and CSS, with no build step or Node/Deno server dependency.
   It registers its page through `Api#register_webui`; full/agent modes select it by default,
   runner mode stays headless, and `api_only` disables serving. rho owns static serving,
-  authentication and control APIs.
+  authentication and control APIs. The composer defaults to the next model boundary's
+  `steer`, offers `queue` for a later turn, and uses `steer_now` for Send now. Promoting a
+  held steer changes its timing through the existing input, without resubmitting its words.
 - `rho-ingress-telegram`: bot configuration, long polling, allowlists, chat/topic routing and
   delivery through the shared rho Core. Nexus owns accepted input attribution, history and
   execution. It is disabled by default; static configuration remains available through
   the core plugin manager. Polling and group-profile contributions require explicit enablement.
   GUI and CLI share the configuration owner and apply changes immediately.
+  Ordinary dialogue uses a sliding quiet window (`input_debounce_seconds`, 0–10 seconds,
+  default 2; 0 submits immediately) before one queued input. Only compatible contiguous messages
+  combine; commands bypass the window, and a submitted batch stays frozen across retries and restarts.
   An IM chat/topic uses its selected Agent conversation for dialogue and task scheduling;
   Side and BTW are unavailable on this ingress. Telegram-specific restrictions do not remove
   Core capabilities from the future complete WebUI.
@@ -134,7 +141,8 @@ rho consists of these independently packaged surfaces:
   through rho-runner's skill plane. `rho mcp`, `probe`, `login` and `logout` expose management.
 - `rho-web-tools`: `web_fetch {url}` and `rho web fetch URL`, using httpx, `UrlRule` SSRF filtering,
   same-site redirects and HTML rendering bounded to 1 MiB of input. Private hosts require the operator's explicit
-  `allow_private_network: true` setting. It is a runner extension.
+  `allow_private_network: true` setting. It is enabled by default in runner-capable modes;
+  an explicit saved disable remains effective.
 - `rho-codemode`: the `code` tool, JavaScript authoring instructions and a live VM
   that retains its state across recorded child observations. It serves every available agent and
   runner address through the runner's claim-scoped orchestration bridge; Nexus owns task

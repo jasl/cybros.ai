@@ -61,14 +61,12 @@ module SimpleInference
           end
         end
 
-        # Frozen reasoning contract: 3.x reasoning is thinkingConfig.thinkingLevel
-        # (closed vocabulary; the model default "medium" applies when unset), and
-        # includeThoughts: true returns the rolling thought summaries the kernel
-        # consumes as reasoning deltas. The 2.5-era thinkingBudget is never
-        # emitted from reasoning_effort; a caller-supplied :thinking_config hash
-        # stays a verbatim escape hatch for 2.5-generation models.
+        # The catalog explicitly selects level or budget; neither model names
+        # nor provider names select wire behavior here. The existing level
+        # lane keeps its no-disable contract; older models declare budgets.
         def gemini_thinking_config(declared)
           enabled = validated_reasoning_enabled(declared[:reasoning_enabled], effort: declared[:reasoning_effort])
+          return gemini_thinking_budget(declared, enabled) if @thinking_control == "budget"
           if enabled == false
             raise SimpleInference::ValidationError, "gemini_generate_content cannot disable thinking on this wire"
           end
@@ -91,6 +89,19 @@ module SimpleInference
             includeThoughts: true,
             thinkingLevel: level,
           }
+        end
+
+        def gemini_thinking_budget(declared, enabled)
+          return { thinkingBudget: 0 } if enabled == false
+          existing = declared[:thinking_config]
+          return Internal::Keys.shallow_symbolize(existing) unless existing.nil?
+
+          effort = declared[:reasoning_effort]&.to_s
+          return nil if effort.nil? && enabled.nil?
+          budget = effort.nil? ? -1 : @thinking_budgets.fetch(effort) do
+            raise SimpleInference::ValidationError, "thinking budget is not declared for effort #{effort.inspect}"
+          end
+          { includeThoughts: true, thinkingBudget: budget }
         end
 
         # The caller's input enters here once: a String, or an Array whose

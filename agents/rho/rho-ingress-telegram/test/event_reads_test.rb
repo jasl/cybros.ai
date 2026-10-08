@@ -44,19 +44,19 @@ class TelegramEventReadsTest < Minitest::Test
   end
 
   def test_rate_limit_and_server_failures_preserve_the_original_steer_for_retry
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     update = telegram_message(2, "/steer original task", reply_to: 1, reply_user: 1)
     [[CybrosAgent::Api::RateLimited.new(retry_after: 5), 429],
       [CybrosAgent::Api::ServerError.new("Temporary failure", code: "unavailable"), 502]].each do |error, status|
       @event_source[:error] = error
-      refusal = assert_raises(Rho::Core::Refused) { @runtime.consume(update) }
+      refusal = assert_raises(Rho::Core::Refused) { receive(update) }
       assert_equal status, refusal.status
       assert_equal 2, @state.read.fetch("offset")
       assert_equal update, @state.read.fetch("pending_update").fetch("update")
       assert_equal 1, @bridge.inputs.length
     end
     @event_source.delete(:error)
-    @runtime.consume(update)
+    receive(update)
 
     assert_nil @state.read["pending_update"]
     assert_equal 3, @state.read.fetch("offset")
@@ -64,7 +64,7 @@ class TelegramEventReadsTest < Minitest::Test
   end
 
   def test_temporary_events_failure_preserves_cached_history_until_recovery
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @bridge.turn_rows["conversation-1"] = [turn(0, "Recovered answer")]
     [CybrosAgent::Api::RateLimited.new(retry_after: 5), CybrosAgent::Api::ServerError.new("Temporary failure")].each do |error|
       @event_source[:error] = error
@@ -91,11 +91,11 @@ class TelegramEventReadsTest < Minitest::Test
   private
 
     def assert_control_refused(command, error)
-      @runtime.consume(telegram_message(1, "start"))
+      receive(telegram_message(1, "start"))
       @event_source[:error] = error
       update = telegram_message(2, command, reply_to: 1, reply_user: 1)
-      @runtime.consume(update)
-      @runtime.consume(update)
+      receive(update)
+      receive(update)
 
       document = @state.read
       assert_nil document["pending_update"]
@@ -103,13 +103,13 @@ class TelegramEventReadsTest < Minitest::Test
       assert_includes document.fetch("deliveries").fetch("control:2").fetch("text"), "Request not accepted"
       assert_equal 1, @bridge.inputs.length
       assert_empty @bridge.stops
-      @runtime.consume(telegram_message(3, "/new"))
-      @runtime.consume(telegram_message(4, "Later request"))
+      receive(telegram_message(3, "/new"))
+      receive(telegram_message(4, "Later request"))
       assert_equal "conversation-2", @bridge.inputs.fetch("telegram:42:4:input").fetch(:conversation_id)
     end
 
     def assert_cached_history_retired(error)
-      @runtime.consume(telegram_message(1, "start"))
+      receive(telegram_message(1, "start"))
       @bridge.turn_rows["conversation-1"] = [turn(0, "Unavailable answer")]
       turns = @bridge.method(:turns)
       reads = []

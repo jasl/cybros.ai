@@ -60,9 +60,13 @@ module AgentRuns
       # envelope — the branch's last word IS the call's result. A CLEARED
       # round answers every call that has a result with the placeholder:
       # calls and words stay, results go — and so do its pictures.
-      def call(calls:, nodes_by_call_id:, tips_by_call_key: {}, cleared: false, reference: false)
+      def call(calls:, nodes_by_call_id:, tips_by_call_key: {}, cleared: false, reference: false, receipts: {})
         paired = calls.map do |entry|
           call_id = entry["id"].to_s
+          # A pending receipt stays at its first consumption even after the
+          # task completes. Its actual result and captures arrive separately.
+          next [receipts.fetch(call_id), nil] if receipts.key?(call_id)
+
           node = nodes_by_call_id[call_id]
           tip = node && tips_by_call_key[[node.agent_run_id, node.node_key]]
           output, errored = if reference && (node.nil? || !node.terminal?)

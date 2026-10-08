@@ -165,16 +165,18 @@ module CybrosAgent
       # — the clear is a typed value, never a null.
       # `steps` replaces a pending or blocked input's trailing tree;
       # omission or nil keeps it, while [] clears it.
+      # `delivery_mode: "steer_now"` upgrades a held steer in place. Only
+      # that timing change and the optional lock fence may ride together.
       def update(public_id, expected_lock_version: UNSET, text: UNSET, entries: UNSET,
                  model: UNSET, reasoning_effort: UNSET, reasoning_enabled: UNSET, configuration: UNSET,
                  context_mode: UNSET, history: UNSET, reasoning_replay: UNSET,
                  inline: UNSET, visible_in_context: UNSET, tool_names: UNSET,
                  approval_mode: UNSET, instructions: UNSET, attachments: UNSET, variables: UNSET, steps: UNSET,
-                 deliver_at: UNSET, deliver_in: UNSET)
+                 deliver_at: UNSET, deliver_in: UNSET, delivery_mode: UNSET)
         refuse_text_beside_entries(text, entries, attachments)
 
         body = fields(
-          text:, entries:, context_mode:, visible_in_context:, history:, reasoning_replay:,
+          text:, entries:, context_mode:, visible_in_context:, history:, reasoning_replay:, delivery_mode:,
           inline:, variables:, configuration:, tool_names:, approval_mode:, instructions:,
           attachments: attachment_ids(attachments),
           steps: field(steps) { |given| given.nil? ? nil : Steps.envelope(given) },

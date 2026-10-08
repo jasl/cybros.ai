@@ -1,7 +1,7 @@
 {
   "id": "rho.mcp",
   "display_name": "MCP servers",
-  "description": "Connect named MCP servers and select their tools.",
+  "description": "Connect MCP servers to add their tools and reference documents to the agent.",
   "configuration_version": 1,
   "configuration_schema": {
     "type": "object",

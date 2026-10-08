@@ -5,7 +5,7 @@ class TelegramTaskRoutingRaceTest < Minitest::Test
 
   def test_completion_visible_during_the_history_read_keeps_its_request_association
     @bridge.defer_inputs = true
-    @runtime.consume(mention(1))
+    receive(mention(1))
     completed = turn(0, "Completed while history was being read")
     events = materialized(1, input: "input-1", position: 0, run_public_id: "original-loop")
     original = @bridge.method(:turns)
@@ -79,18 +79,19 @@ class TelegramTaskRoutingRaceTest < Minitest::Test
     @bridge.defer_inputs = true
     @bridge.fail_input = true
     update = mention(1)
-    assert_raises(Rho::ConnectionError) { @runtime.consume(update) }
+    assert_raises(Rho::ConnectionError) { receive(update) }
     @bridge.event_rows["conversation-1"] = materialized(1, input: "input-1", position: 0, run_public_id: "original-loop") + [
       event(3, "input_accepted", "input_public_id" => "supplement-input", "origin" => "task_result",
         "run_public_id" => "original-loop"),
     ] + materialized(4, input: "supplement-input", position: 1, run_public_id: "supplement-loop")
     @bridge.turn_rows["conversation-1"] = [turn(0, "Original answer"), turn(1, "Supplementary answer")]
 
+    @bridge.fail_input = true
     @runtime.tick
     assert_nil tracker.fetch("position")
     refute @state.read.fetch("deliveries").keys.any? { |key| key.start_with?("turn:") }
     @runtime = runtime
-    @runtime.consume(update)
+    receive(update)
     3.times { advance }
 
     document = @state.read
@@ -102,7 +103,7 @@ class TelegramTaskRoutingRaceTest < Minitest::Test
     assert_equal 1, sent_answer("Supplementary answer").fetch(:reply_parameters).fetch(:message_id)
     message_id = document.fetch("messages").keys.select { |key| document.fetch("messages").fetch(key) == request_id }
       .map { |key| key.split(":").last.to_i }.max
-    @runtime.consume(telegram_message(2, "/stop", user: 2, chat: -10, topic: 4, reply_to: message_id))
+    receive(telegram_message(2, "/stop", user: 2, chat: -10, topic: 4, reply_to: message_id))
     assert_equal [["original-loop", "run", "workspace-home"]], @bridge.stop_calls
   end
 
@@ -129,8 +130,8 @@ class TelegramTaskRoutingRaceTest < Minitest::Test
 
     def prepare_backlog
       @bridge.defer_inputs = true
-      @runtime.consume(mention(1))
-      @runtime.consume(mention(2))
+      receive(mention(1))
+      receive(mention(2))
       @bridge.turn_rows["conversation-1"] = [turn(0, "First answer")]
       @bridge.event_rows["conversation-1"] = unrelated_events(1..100) +
         materialized(101, input: "input-1", position: 0, run_public_id: "first-loop")

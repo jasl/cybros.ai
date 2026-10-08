@@ -1,0 +1,172 @@
+---
+en:
+  deployment:
+    phases:
+      accepted: Upgrade accepted
+      preparing: Preparing images
+      stopping: Stopping services
+      backing_up: Backing up the database
+      migrating: Updating the database
+      activating: Starting services
+      verifying: Checking readiness
+      completed: Upgrade complete
+    statuses:
+      running: In progress
+      succeeded: Succeeded
+      failed: Failed
+      interrupted: Interrupted
+    messages:
+      checking: Checking the configured image sources…
+      check_incomplete: The release check did not finish. Try again explicitly.
+      check_unavailable: The release check could not be reached. Try again explicitly.
+      submitting: Submitting the selected release…
+      request_refused: The upgrade request was refused. Reload the page before trying again.
+      request_unknown: >-
+        The request may have been accepted. Checking its saved status; no new upgrade will be started
+        automatically.
+      request_missing: >-
+        No matching request is visible yet. You can check again or explicitly retry the same request;
+        its original key, release and backup choice will be reused.
+      result_saved: Saved upgrade result.
+      following: Following upgrade progress.
+      reconnect_paused: >-
+        Automatic reconnection paused. Use Reconnect, or inspect the installation updater from the command
+        line.
+      reconnecting: Reconnecting while services restart. The accepted upgrade continues independently.
+      backup_skipped: Skipped for this upgrade
+      backup_available: Available on the installation host
+      backup_expired: No longer retained
+      backup_bytes: "%{size} bytes"
+      access_ended: Administrator access ended. Sign in again to view this upgrade.
+      access_required: Administrator access is required. The accepted upgrade continues independently.
+    preflight_statuses:
+      passed: Passed
+      blocked: Blocked
+      warning: Warning
+    errors:
+      administrator_required: Sign in as an administrator to continue.
+      select_checked_image: Select the checked %{brand} image.
+      request_too_large: The upgrade request is too large.
+      updater_unavailable: The installation updater is unavailable. Check its status from the installation
+        directory.
+  clipboard:
+    copied: Copied
+  countdown:
+    pending: "%{label} in %{seconds}s"
+  runners:
+    kinds:
+      runner: Runner
+      tool_provider: Tools provider
+  executors:
+    presence:
+      not_seen: Not yet seen
+      online: Online
+      offline: Offline · last seen %{time} ago
+  members:
+    facts:
+      email: Email
+      kind: Kind
+      role: Role
+      status: Status
+      joined: Joined
+      steward: Steward
+    kinds:
+      human: human
+      agent: agent
+    roles:
+      owner: owner
+      admin: admin
+      member: member
+      system: system
+    role_options:
+      owner: Owner
+      admin: Admin
+      member: Member
+      system: System
+    statuses:
+      active: active
+      suspended: suspended
+      removed: removed
+    inactive_name: "%{name} (%{status})"
+  oauth:
+    authorization_invalid: Invalid authorization request
+    device:
+      subjects:
+        tool_provider: tools provider
+        runner: runner
+        agent: agent program
+      facts:
+        type: Type
+        expires: Expires
+        also: Also
+      agent_program: Agent program
+      expires_from_now: "%{time} from now"
+      combined_runner:
+        account_wide: >-
+          Also runs as a runner on that machine — it can read, write and run commands there — available
+          account-wide for authorized discovery and new work.
+        connected_private: >-
+          Also runs as a runner on that machine — it can read, write and run commands there — private
+          to Agents managed by the member who connected it.
+        private: >-
+          Also runs as a runner on that machine — it can read, write and run commands there — private
+          to the Agents you manage.
+  pagination:
+    summary: Showing %{from}–%{to} of %{total} %{noun}
+    nouns:
+      invitations: invitations
+      members: members
+      agents: agents
+      runners: runners
+      workspaces: workspaces
+      sessions: sessions
+      tokens: tokens
+      eligible_members: eligible members
+  model_counts:
+    one: "%{count} model"
+    other: "%{count} models"
+  provider_counts:
+    one: "%{count} provider"
+    other: "%{count} providers"
+  model_workloads:
+    text_generation: Text generation
+    image_generation: Image generation
+    speech_generation: Speech generation
+    transcription: Transcription
+    embedding: Embedding
+  workspace_states:
+    active: Active
+    archiving: Archiving
+    archived: Archived
+    restoring: Restoring
+    deleting: Deleting
+    deleted: Deleted
+  credential_planes:
+    member: member
+    platform: platform
+  sessions:
+    devices:
+      api: API session
+      mobile: Mobile browser
+      firefox: Firefox
+      edge: Edge
+      chrome: Chrome
+      safari: Safari
+      web: Web session
+  admin:
+    model_providers:
+      provider_added: Provider added. Add a model and enable the provider when ready.
+      connection_saved: Provider connection saved.
+      connection_reset: Provider definition reset. Stored credentials have been kept.
+      model_removed: Model removed. You can add it again or restore an installation definition.
+      model_saved: Model saved. Agents can use it when the provider is enabled and connected.
+      model_reset: Model returned to its installation definition.
+      model_reset_stale: Settings changed. Review the current model before trying again.
+      model_reset_failed: The model could not be reset.
+  errors:
+    messages:
+      already_configured_provider: already exists. Edit its connection from the provider overview.
+      already_configured_model: already exists. Edit or restore it from the provider overview.
+      stale_configuration: These settings changed in another session. Reload the page before saving again.
+      invalid_definition: The definition could not be saved. Check the protocol, URL, capabilities and
+        any pricing formula.

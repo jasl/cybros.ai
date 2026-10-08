@@ -9,7 +9,7 @@ module E2E
       @telegram.provide_member(-10, 103, status: "administrator")
       File.write(permission_path("protected.txt"), "original contents\n")
       owner_prompt = permission_prompt([["write", { "path" => "owner.txt", "content" => "owner works" }]])
-      @runtime.consume(update("permission-owner", owner_prompt))
+      receive(update("permission-owner", owner_prompt))
       owner = completed_reply(@workspace.conversation(current("101:0")))
       assert_includes successful_tool_output(owner, "write"), "owner.txt"
       assert_equal "owner works", File.read(permission_path("owner.txt"))
@@ -32,7 +32,7 @@ module E2E
       ]
       [{ user: 102, chat: 102 }, { user: 103, chat: -10, topic: 7 }].each do |source|
         incoming = permission_update(["permission-matrix", source.fetch(:user)], permission_prompt(calls), **source)
-        @runtime.consume(incoming)
+        receive(incoming)
         chat = @workspace.conversation(current("#{source.fetch(:chat)}:#{source.fetch(:topic, 0)}", user: source.fetch(:user)))
         reply = completed_reply(chat)
         assert_includes successful_tool_output(reply, "read"), "original contents"
@@ -71,7 +71,7 @@ module E2E
         callable = delegation == "code" ? telegram_group_tool_name("code", conversation_id: chat.public_id) : delegation
         prompt = permission_prompt([[callable, arguments], ["ask", { "prompt" => "Finish this foreground reply?" }]], reply: "launched")
         incoming = permission_update([delegation, "launch"], prompt, user: 102, chat: -10, topic: 7)
-        @runtime.consume(incoming)
+        receive(incoming)
         question_id, question = await("the delegated foreground ask") do
           tick
           @state.read.fetch("questions").find { |_id, row| row["conversation_id"] == chat.public_id && row["kind"] == "ask" }
@@ -112,7 +112,7 @@ module E2E
       script = "return await nexus.steps([{tool: {key: 'forbidden', name: 'write', route: #{JSON.generate(telegram_runner_route)}, " \
         "input: {path: 'code-direct.txt', content: 'forbidden'}}}]);"
       callable = telegram_group_tool_name("code", conversation_id: current("102:0"))
-      @runtime.consume(update("direct-code", permission_prompt([[callable, { "code" => script }]]), user: 102, chat: 102))
+      receive(update("direct-code", permission_prompt([[callable, { "code" => script }]]), user: 102, chat: 102))
       reply = completed_reply(@workspace.conversation(current("102:0")))
       context = permission_context(reply)
       calls = context.fetch.tasks.select { |task| task.tool_name == "code" }
@@ -133,11 +133,14 @@ module E2E
       queued = permission_prompt([forbidden], reply: "queued-original", prior_answers: 2)
       incoming = permission_update("readonly-lost-ack", queued, user: 102, chat: -10, topic: 7)
       @bridge.lose_next_ack = true
-      assert_raises(Rho::ConnectionError) { @runtime.consume(incoming) }
+      receive(incoming)
+      assert @state.read.fetch("pending_inputs").fetch(incoming.fetch("update_id").to_s).fetch("submission")
+      assert_nil @state.read["pending_update"], "the source is durable before Telegram advances its offset"
+      assert_equal "Rho::ConnectionError", @logs.pop.last.fetch(:reason)
       queued_id = chat.inputs.list.items.fetch(0).public_id
       restart_group_runtime(allowed: [101, 102])
-      @runtime.consume(incoming)
-      @runtime.consume(incoming)
+      receive(incoming)
+      receive(incoming)
       assert_equal [queued_id], chat.inputs.list.items.map(&:public_id)
       input = @core.inputs(chat.public_id).fetch(0)
       assert_includes input.fetch("tool_names"), "read"
@@ -177,7 +180,7 @@ module E2E
       assert_includes declaration.map { |entry| entry.dig("route", "tool_name") || entry.dig("function", "name") }, "write",
         "the older turn retains broad authority even when its provider schemas are deferred"
       queued = "!mock reply=old-wide-input -- an already admitted broad request"
-      @runtime.consume(update("legacy-queued", queued, user: 102, chat: 102))
+      receive(update("legacy-queued", queued, user: 102, chat: 102))
       old_input = chat.inputs.list.items.fetch(0).public_id
       restart_group_runtime(allowed: [101, 102])
       assert_match(/read-only/, telegram_control("legacy-steer", "/steer Continue", user: 102, chat: 102))
@@ -191,7 +194,7 @@ module E2E
       assert_includes telegram_control("legacy-stop", "/stop", user: 102, chat: 102), "Stop requested"
       await_group_turn_status(chat, running, "canceled")
       telegram_control("legacy-new", "/new", user: 102, chat: 102)
-      @runtime.consume(update("legacy-fresh", "!mock reply=fresh-read-only -- a fresh request", user: 102, chat: 102))
+      receive(update("legacy-fresh", "!mock reply=fresh-read-only -- a fresh request", user: 102, chat: 102))
       reply = completed_reply(@workspace.conversation(current("102:0")))
       assert_permission_rounds_read_only(permission_context(reply))
       assert_empty @logs
@@ -201,7 +204,7 @@ module E2E
 
     def test_nonowner_telegram_side_commands_cannot_create_or_continue_work
       boot_runtime(allowed: [101, 102])
-      @runtime.consume(update("readonly-parent", "!mock reply=parent -- context", user: 102, chat: 102))
+      receive(update("readonly-parent", "!mock reply=parent -- context", user: 102, chat: 102))
       parent_id = current("102:0")
       parent = @workspace.conversation(parent_id)
       completed_reply(parent)

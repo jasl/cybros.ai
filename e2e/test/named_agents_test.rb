@@ -119,7 +119,7 @@ class NamedAgentsTest < Minitest::Test
       room_name = "Named agents room #{SecureRandom.hex(3)}"
       room = steward_client.workspaces.create(
         name: room_name, access_mode: "account_wide", idempotency_key: SecureRandom.uuid
-      ).public_id
+      ).workspace.public_id
       File.write(File.join(root, "NOTES.md"), "#{NOTE_LINE}\n", encoding: Encoding::UTF_8)
       File.write(File.join(home, "settings.json"), JSON.generate(E2E::RhoDaemon.dev_settings(plugins: {
         "e2e.tool-catalog-author" => { "enabled" => true, "source" => { "kind" => "path", "path" => File.expand_path("../support/tool_catalog_author.rb", __dir__) } },

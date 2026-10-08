@@ -61,6 +61,9 @@ without starting native programs. Configuration has one owner, `RHO_HOME/setting
 Use `server: "local"` to start an owned foreground T3 process in rho's execution
 environment, or `server: "host"` with `url` to connect to an independently managed
 service. Local mode derives `http://127.0.0.1:LISTEN_PORT`; `url` has no effect there.
+Local startup must launch the configured service successfully before its tools
+become available. A missing runtime, occupied port, or failed startup leaves the
+plugin inactive with repair guidance; core settings remain available for a retry.
 Host mode never starts a native program or copies provider credentials. Its URL
 must be an HTTP service origin without credentials, path, query or fragment.
 A container can use `http://host.docker.internal:3773` for a reachable host service;

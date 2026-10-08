@@ -32,6 +32,13 @@
     <% end %>
   </li>
   <li>
+    <% deployment_current = controller_path == "admin/deployments" || controller_path.start_with?("admin/deployment/") %>
+    <%= link_to admin_deployment_path, class: class_names("gap-2.5", "menu-active": deployment_current), aria: { current: ("page" if deployment_current) } do %>
+      <span class="iconify lucide--download size-4" aria-hidden="true"></span>
+      <%= t("layouts.shared.admin_nav.system_upgrade") %>
+    <% end %>
+  </li>
+  <li>
     <%= link_to admin_retention_path, class: class_names("gap-2.5", "menu-active": current_page?(admin_retention_path)), aria: { current: ("page" if current_page?(admin_retention_path)) } do %>
       <span class="iconify lucide--archive size-4" aria-hidden="true"></span>
       <%= t("layouts.application.retention") %>

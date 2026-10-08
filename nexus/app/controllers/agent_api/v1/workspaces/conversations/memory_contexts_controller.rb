@@ -10,7 +10,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsController <
     result = ::Conversations::SetMemoryContext.call(conversation: conversation,
       acting_user: acting_user, memory_context: memory_context_parameter(params))
     if result.accepted?
-      render json: { conversation: AgentAPI::ConversationPresenter.full(result.value) }
+      render json: { conversation: AgentAPI::ConversationPresenter.full(result.value, acting_user: acting_user) }
     elsif result.invalid?
       render_domain_invalid(result.record.errors)
     else

@@ -5,23 +5,23 @@ module OAuth
     # words. A new runner is private; a reconnect keeps its existing scope.
     def device_grant_facts(grant, existing_runner:)
       {
-        "Type" => grant.runner_only_connection? ? device_grant_machine_label(grant) : "Agent program",
-        "Expires" => "#{time_ago_in_words(grant.expires_at)} from now",
-        **({ "Also" => combined_runner_sentence(grant, existing_runner: existing_runner) } if grant.combined_connection?).to_h,
+        t("oauth.device.facts.type") => grant.runner_only_connection? ? device_grant_machine_label(grant) : t("oauth.device.agent_program"),
+        t("oauth.device.facts.expires") => t("oauth.device.expires_from_now", time: time_ago_in_words(grant.expires_at)),
+        **({ t("oauth.device.facts.also") => combined_runner_sentence(grant, existing_runner: existing_runner) } if grant.combined_connection?).to_h,
       }
     end
 
     def combined_runner_sentence(grant, existing_runner:)
       scope =
         if existing_runner&.account_wide?
-          "available account-wide for authorized discovery and new work."
+          :account_wide
         elsif grant.connected?
-          "private to Agents managed by the member who connected it."
+          :connected_private
         else
-          "private to the Agents you manage."
+          :private
         end
 
-      "Also runs as a runner on that machine — it can read, write and run commands there — #{scope}"
+      t("oauth.device.combined_runner.#{scope}")
     end
   end
 end

@@ -17,7 +17,7 @@ class ContentBody < ApplicationRecord
     # of the step answer at terminal apply — the deliverable read;
     # `steers` is the steer tail a round read, kept at the landing
     # (AgentRuns::Steers::Landed).
-    agent_run_task: %w[input output steers],
+    agent_run_task: %w[input output steers tool_receipts],
     agent_run_task_operation: %w[observation],
   }.freeze
 

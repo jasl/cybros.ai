@@ -37,3 +37,23 @@ test("copy falls back to selecting the invitation link outside secure contexts",
   expect(selected).toBe(true)
   expect(copied).toBe(true)
 })
+
+test("copy feedback uses the translated label and restores the original button label", () => {
+  const originalTimeout = globalThis.setTimeout
+  let restore
+  const controller = Object.assign(Object.create(ClipboardController.prototype), {
+    copiedValue: "Copié",
+    buttonTarget: { textContent: "Copier" },
+  })
+  globalThis.setTimeout = callback => { restore = callback }
+
+  try {
+    controller.connect()
+    controller.showCopied()
+    expect(controller.buttonTarget.textContent).toBe("Copié")
+    restore()
+    expect(controller.buttonTarget.textContent).toBe("Copier")
+  } finally {
+    globalThis.setTimeout = originalTimeout
+  }
+})

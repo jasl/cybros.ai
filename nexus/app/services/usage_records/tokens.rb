@@ -5,7 +5,7 @@ module UsageRecords
   # boundary a wire number crosses. The receipt prices from it, and a text
   # bench records a call's spend through it, so the two never read one wire
   # two ways. `usage` is the provider's usage hash as the gem hands it back;
-  # `adapter_profile` is the wire's, which decides the Anthropic fold.
+  # `adapter_profile` is the wire's, which decides the split-cache fold.
   class Tokens
     # A bound this generous excludes only lies, and keeps the sums built
     # from these members inside bigint by construction.
@@ -57,7 +57,7 @@ module UsageRecords
         %w[prompt_tokens_details cache_creation_tokens]
       ) || cache_creation_breakdown
       input = raw_input
-      # Anthropic reports the cache classes BESIDE input_tokens; the
+      # Anthropic and Bedrock report cache classes BESIDE input_tokens; the
       # normalized count folds them in so every provider's input means
       # the same thing.
       if split_cache_shape?
@@ -88,7 +88,7 @@ module UsageRecords
     private
 
       def split_cache_shape?
-        @adapter_profile == "anthropic_messages" && (
+        %w[anthropic_messages bedrock_converse].include?(@adapter_profile) && (
           @usage.key?("cache_read_input_tokens") ||
             @usage.key?("cache_creation_input_tokens") ||
             cache_creation_object.any?

@@ -386,7 +386,7 @@ class ApiProfileTest < Minitest::Test
     fixture = store_pack.fetch("valid_fixture").fetch("store_entry")
     entry = profile([[201, {}, { "store_entry" => fixture }]]).store_entries
       .create(namespace: fixture.fetch("namespace"), key: fixture.fetch("key"), value: nil,
-        idempotency_key: "key-1")
+        idempotency_key: "key-1").store_entry
 
     assert_equal :post, request.fetch(:method)
     assert_equal STORE_PATH, request.fetch(:path)

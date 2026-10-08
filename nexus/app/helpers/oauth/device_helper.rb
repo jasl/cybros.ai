@@ -6,11 +6,11 @@
 module OAuth::DeviceHelper
   def device_grant_subject(grant)
     if grant.tool_provider_connection?
-      "tools provider"
+      t("oauth.device.subjects.tool_provider")
     elsif grant.runner_only_connection?
-      "runner"
+      t("oauth.device.subjects.runner")
     else
-      "agent program"
+      t("oauth.device.subjects.agent")
     end
   end
 

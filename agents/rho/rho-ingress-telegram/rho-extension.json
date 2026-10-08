@@ -1,7 +1,7 @@
 {
   "id": "rho.ingress_telegram",
   "display_name": "Telegram",
-  "description": "Connect a Telegram bot and configure its owner.",
+  "description": "Chat with the agent through a Telegram bot, with access controls and conversation routing.",
   "configuration_version": 1,
   "configuration_schema": {
     "type": "object",
@@ -33,6 +33,14 @@
         "minimum": 1,
         "default": 600,
         "title": "Stale message age in seconds"
+      },
+      "input_debounce_seconds": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 10,
+        "default": 2,
+        "title": "Message grouping delay in seconds",
+        "description": "Wait 0–10 seconds before submitting consecutive text together; each new message restarts the wait. Zero sends immediately."
       },
       "transcription_model": {
         "type": "string",

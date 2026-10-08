@@ -68,7 +68,7 @@ class ConversationTurnTest < Minitest::Test
     E2E.hosts.start
     @workspace = @client.workspaces.create(
       name: "Conversation #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @conversations = @client.workspace(@workspace.public_id).conversations
   end
 

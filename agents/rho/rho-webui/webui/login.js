@@ -1,3 +1,4 @@
+import { t } from "./i18n.js";
 import { el } from "./views.js";
 import { webLink } from "./settings_state.js";
 
@@ -25,10 +26,10 @@ export function loginSession({ call, storage, credentials, currentUrl, navigate,
     const url = new URL(currentUrl());
     const transaction = { ...answer, flow, return_to: url.pathname + url.search };
     try { storage.setItem(key, JSON.stringify(transaction)); }
-    catch { throw new Error("Allow session storage in this browser to sign in to rho."); }
+    catch { throw new Error(t("login.allow_session_storage_in_this_browser_to_sign")); }
     if (flow === "authorization_code") {
       const address = webLink(answer.authorization_url);
-      if (!address) { clear(); throw new Error("Nexus returned an invalid login address."); }
+      if (!address) { clear(); throw new Error(t("login.nexus_returned_an_invalid_login_address")); }
       navigate(address);
     }
     return transaction;
@@ -40,15 +41,15 @@ export function loginSession({ call, storage, credentials, currentUrl, navigate,
     replace(transaction?.return_to || "/");
     clear();
     if (!transaction || transaction.flow !== "authorization_code" || url.searchParams.get("state") !== transaction.state) {
-      throw new Error("This login does not match this browser tab. Start a new Nexus login.");
+      throw new Error(t("login.this_login_does_not_match_this_browser_tab"));
     }
     if (url.searchParams.has("error")) {
       throw new Error(url.searchParams.get("error") === "access_denied"
-        ? "Nexus login was not approved. You can start again."
-        : "Nexus could not complete login. Start a new Nexus login.");
+        ? t("login.nexus_login_was_not_approved_you_can_start")
+        : t("login.nexus_could_not_complete_login_start_a_new"));
     }
     const code = url.searchParams.get("code");
-    if (!code) throw new Error("The Nexus login code is missing. Start a new Nexus login.");
+    if (!code) throw new Error(t("login.the_nexus_login_code_is_missing_start_a"));
     // A code exchange is single use. Even an uncertain network failure requires
     // a new login, never an automatic exchange retry after reload.
     return accept(await call("/auth/complete", { method: "POST", signal,
@@ -57,7 +58,7 @@ export function loginSession({ call, storage, credentials, currentUrl, navigate,
   function poll(signal) {
     if (polling) return polling;
     const transaction = pending();
-    if (!transaction || transaction.flow !== "device_code") throw new Error("Start a new device login.");
+    if (!transaction || transaction.flow !== "device_code") throw new Error(t("login.start_a_new_device_login"));
     const current = () => pending()?.state === transaction.state;
     const request = call("/auth/device/poll", { method: "POST", signal,
       body: { state: transaction.state, login_secret: transaction.login_secret } })
@@ -80,24 +81,24 @@ export function createLogin({ root, call, credentials, onReady, message = "" }) 
     replace: (url) => history.replaceState(null, "", url) });
   let timer = null;
   let busy = false;
-  const title = el("h1", { id: "login-title", text: "Connect to Nexus" });
-  const description = el("p", { class: "muted", text: "Sign in with your Nexus account to use rho. On a new installation, Nexus will guide you through creating the first account." });
+  const title = el("h1", { id: "login-title", text: t("common.connect_to_nexus") });
+  const description = el("p", { class: "muted", text: t("login.sign_in_with_your_nexus_account_to_use") });
   const nexus = el("p", { class: "faint" });
   const alert = el("p", { class: "bad", role: "alert", hidden: !message, text: message });
   const progress = el("p", { role: "status", hidden: true });
   const device = el("div", { class: "login-device", hidden: true });
-  const connect = el("button", { type: "button", class: "primary", text: "Connect to Nexus", onclick: () => begin("authorization_code") });
-  const alternate = el("button", { type: "button", text: "Use a device code", onclick: () => begin("device_code") });
+  const connect = el("button", { type: "button", class: "primary", text: t("common.connect_to_nexus"), onclick: () => begin("authorization_code") });
+  const alternate = el("button", { type: "button", text: t("login.use_a_device_code"), onclick: () => begin("device_code") });
   const actions = el("div", { class: "login-actions" }, connect, alternate);
   root.hidden = false;
   root.replaceChildren(el("main", { class: "login", "aria-labelledby": "login-title" },
-    el("p", { class: "login-brand", text: "rho" }), title, description, nexus, alert, progress, actions, device));
+    el("p", { class: "login-brand", text: t("brand.rho") }), title, description, nexus, alert, progress, actions, device));
 
   function destroy() { controller.abort(); clearTimeout(timer); }
   function working(value) { busy = value; connect.disabled = value; alternate.disabled = value; }
   function showError(error) {
     if (controller.signal.aborted || error.name === "AbortError") return;
-    alert.textContent = error.message || "Could not connect to Nexus. Try again.";
+    alert.textContent = error.message || t("login.could_not_connect_to_nexus_try_again");
     alert.hidden = false; progress.hidden = true;
   }
   async function finish() { destroy(); await onReady(); }
@@ -105,23 +106,24 @@ export function createLogin({ root, call, credentials, onReady, message = "" }) 
     const url = webLink(error.details?.initialization_uri);
     if (!url) { showError(error); return; }
     alert.hidden = true; progress.hidden = true; device.hidden = false;
-    const resume = el("button", { type: "button", text: "Continue after setup", onclick: async () => {
+    const resume = el("button", { type: "button", text: t("login.continue_after_setup"), onclick: async () => {
       resume.disabled = true;
       try { await begin("device_code"); } finally { resume.disabled = false; }
     } });
-    device.replaceChildren(el("h2", { text: "Create your Nexus account first" }),
-      el("p", { text: "Open Nexus setup in another tab. Use the private setup link or setup secret supplied by your installer, create the first account, then continue here." }),
-      el("p", {}, el("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: "Open Nexus setup" })), resume);
+    device.replaceChildren(el("h2", { text: t("login.create_your_nexus_account_first") }),
+      el("p", { text: t("login.open_nexus_setup_in_another_tab_use_the") }),
+      el("p", {}, el("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: t("login.open_nexus_setup") })), resume);
   }
   function showDevice(transaction) {
     const url = webLink(transaction.verification_uri_complete || transaction.verification_uri);
-    if (!url) throw new Error("Nexus returned an invalid device login address.");
+    if (!url) throw new Error(t("login.nexus_returned_an_invalid_device_login_address"));
     device.hidden = false;
-    device.replaceChildren(el("h2", { text: "Approve this device login" }),
-      el("p", {}, "Check this code in Nexus: ", el("strong", { class: "login-code", text: transaction.user_code })),
-      el("p", {}, el("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: "Open Nexus to approve" })),
-      el("p", { class: "muted", text: "Keep this tab open. rho will continue after you approve the login." }));
-    progress.textContent = "Waiting for Nexus approval…"; progress.hidden = false;
+    device.replaceChildren(el("h2", { text: t("login.approve_this_device_login") }),
+      el("p", { text: t("login.check_device_code") }),
+      el("p", {}, el("strong", { class: "login-code", text: transaction.user_code })),
+      el("p", {}, el("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: t("login.open_nexus_to_approve") })),
+      el("p", { class: "muted", text: t("login.keep_this_tab_open_rho_will_continue_after") }));
+    progress.textContent = t("login.waiting_for_nexus_approval"); progress.hidden = false;
     schedulePoll(transaction.interval);
   }
   function schedulePoll(interval) {
@@ -138,7 +140,7 @@ export function createLogin({ root, call, credentials, onReady, message = "" }) 
   async function begin(flow) {
     if (busy || controller.signal.aborted) return;
     working(true); clearTimeout(timer); alert.hidden = true; device.hidden = true;
-    progress.textContent = "Connecting to Nexus…"; progress.hidden = false;
+    progress.textContent = t("login.connecting_to_nexus"); progress.hidden = false;
     try {
       const transaction = await session.start(flow, controller.signal);
       if (controller.signal.aborted) return;
@@ -150,7 +152,7 @@ export function createLogin({ root, call, credentials, onReady, message = "" }) 
   }
   async function initialize() {
     if (location.pathname.endsWith("/auth/callback")) {
-      working(true); progress.textContent = "Finishing Nexus login…"; progress.hidden = false;
+      working(true); progress.textContent = t("login.finishing_nexus_login"); progress.hidden = false;
       try { await session.complete(controller.signal); await finish(); }
       catch (error) { showError(error); }
       finally { working(false); }

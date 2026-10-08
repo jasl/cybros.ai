@@ -41,7 +41,7 @@ class AgentAPILoadTest < Minitest::Test
     @base_url = E2E.base_url
     @actor = E2E::ActorProvisioning.world(@base_url).shared_human
     @member = CybrosAgent::Client.new(base_url: @base_url, credential: @actor.member_token)
-    @workspace = @member.workspaces.create(name: "Agent API load", idempotency_key: SecureRandom.uuid)
+    @workspace = @member.workspaces.create(name: "Agent API load", idempotency_key: SecureRandom.uuid).workspace
     browser = E2E::StewardSession.actor(base_url: @base_url, human: @actor)
     device = CybrosAgent::DeviceFlow::Client.new(base_url: @base_url, sleeper: ->(_seconds) { sleep 0.2 })
     E2E::DeviceAuthorizationBudget.consume
@@ -74,7 +74,7 @@ class AgentAPILoadTest < Minitest::Test
             credential: @executor_credential, transport: transport)
           store = member.profile.store_entries
           entry = store.create(namespace: "api-load", key: "#{width}-#{worker}", value: {},
-            idempotency_key: SecureRandom.uuid)
+            idempotency_key: SecureRandom.uuid).store_entry
           context = nil
           (TASKS_PER_WIDTH / width).times do |iteration|
             context = member.workspace(@workspace.public_id).runs.start_tool_call(

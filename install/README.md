@@ -42,9 +42,10 @@ The package includes `rho-webui`, whose ready-to-serve HTML, CSS and JavaScript 
 Ruby daemon in `full` and `agent` modes. There is no Node, Deno or Bun server to install or run for
 the WebUI. `runner` mode is headless by default; `RHO_API_ONLY=1` disables the page in any mode.
 The `dev` install profile adds Playwright for the model's browser tools, not for the WebUI.
-`rho-web-tools` is an optional web reader for `full` and `runner` modes.
-Enable it through the `rho.web_tools` plugin in Settings or
-`rho extensions enable rho.web_tools`. See [Deploying rho](../docs/rho-deploy.md) for
+`rho-web-tools` provides web reading by default in `full` and `runner` modes.
+Disable it through the `rho.web_tools` plugin in Settings or
+`rho extensions disable rho.web_tools`; an explicit saved disable remains effective.
+See [Deploying rho](../docs/rho-deploy.md) for
 console access and headless deployment.
 
 `rho-codemode` supplies the `code` tool and loads by default in full, agent and runner

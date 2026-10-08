@@ -64,6 +64,37 @@ class AgentAPI::V1::ModelsTest < ActionDispatch::IntegrationTest
       "no row states a parallel fact, so the projection carries none (owner 2026-09-16)"
   end
 
+  test "discovery follows saved semantic capabilities and the same bounds as model selection" do
+    ref = "dev/semantic-controls"
+    definition = { "capabilities" => {
+      "reasoning" => { "efforts" => %w[low high], "default_effort" => "high",
+        "default_enabled" => false, "disable_supported" => true },
+      "service_tiers" => ["priority"],
+      "limits" => { "input_tokens" => 64_000, "effective_input_tokens" => 48_000 },
+      "generation_parameters" => {
+        "max_output_tokens" => { "kind" => "integer", "default" => 256, "minimum" => 16,
+          "maximum" => nil, "allowed_values" => nil },
+        "output_format" => false,
+      },
+    } }
+    policy = ModelProviderConfig.find_by!(account: @account, provider_id: "dev")
+    saved = ModelProviders::UpsertModelOverride.call(account: @account, provider_id: "dev", model_ref: ref,
+      model: definition, expected_lock_version: policy.lock_version, validate_definition: true)
+    assert_predicate saved, :done?
+
+    capabilities = listing.find { |model| model.fetch("ref") == ref }.fetch("capabilities")
+    selected = DevModelLane.resolve(workload: "text_generation", account: @account, model: ref).selection
+    assert_equal({ "supported" => true, "default_enabled" => selected.reasoning.enabled,
+      "disable_supported" => true, "efforts" => %w[low high], "default_effort" => selected.reasoning.effort },
+      capabilities.fetch("reasoning"))
+    assert_equal false, capabilities.dig("reasoning", "default_enabled")
+    assert_equal definition.dig("capabilities", "generation_parameters").except("output_format"),
+      capabilities.fetch("generation_parameters")
+    assert_equal ["priority"], capabilities.fetch("service_tiers")
+    assert_equal selected.capabilities.limits.to_h.compact, capabilities.fetch("limits")
+    assert_equal 48_000, capabilities.dig("limits", "effective_input_tokens")
+  end
+
   # Money is the catalog's own number, projected the way settlement reads
   # it — including the state, because "unmetered" and "free" are different
   # claims and a chooser deserves the difference.

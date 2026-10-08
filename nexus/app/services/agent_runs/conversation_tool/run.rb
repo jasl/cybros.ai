@@ -179,10 +179,10 @@ module AgentRuns
 
           addressee = target
           agent = agent_for(agent_run)
-          deliver_at = deliver_at_time
-          state = deliver(addressee, agent, message, input["steer"] == true, deliver_at)
+          accepted = deliver(addressee, agent, message, input["steer"] == true, deliver_at_reading)
+          state = accepted.fetch("state")
           sent = "Sent to #{addressee.public_id}#{agent ? ", for @#{agent.handle}" : ""}" \
-            " (#{settle_state(state, deliver_at)})"
+            " (#{settle_state(state, accepted.fetch("deliver_at"))})"
           return "#{sent}." unless addressee.parent_conversation_id == conversation.id &&
             (addressee.spawn_node.present? || addressee.scheduled_execution?)
           if state == "steering"
@@ -199,33 +199,36 @@ module AgentRuns
 
         # The hosted receipt around the door, keyed on the call: a job
         # retried past the row's commit reads its own receipt and posts
-        # nothing twice (the `ResultDelivery` shape). Keep the accepted delivery state
-        # in that receipt: after a steer is consumed, replay must not promise
-        # a new reply that this call never opened.
-        def deliver(addressee, agent, message, steer, deliver_at)
+        # nothing twice (the `ResultDelivery` shape). Keep the accepted delivery
+        # state and deadline in that receipt: replay must not promise a new
+        # reply after a steer was consumed or move a relative deadline.
+        def deliver(addressee, agent, message, steer, delivery_time)
           envelope = { "send" => addressee.public_id, "agent" => agent&.public_id, "text" => message, "steer" => steer }
-          # The CANONICAL string of the resolved time, so a replayed job
-          # naming another time is a digest mismatch; an untimed send's
-          # envelope is byte-identical to what it was.
-          envelope["deliver_at"] = deliver_at.iso8601 if deliver_at
+          envelope["deliver_at"] = delivery_time.time.utc.floor.iso8601 if delivery_time.time
+          envelope["deliver_in_seconds"] = delivery_time.delay_seconds unless delivery_time.delay_seconds.nil?
+          deliver_at = nil
           result = ConversationCommandReceipt::Idempotent.call(
             account: agent_run.account, workspace: agent_run.workspace, acting_user: sender,
             operation: :input_create, idempotency_key: "send:#{agent_run.public_id}:#{@node.node_key}",
             host: addressee,
             request_digest: ConversationCommandReceipt.digest_for(operation: :input_create, envelope: envelope)
           ) do
+            deliver_at = delivery_time.resolve(now: Time.current)&.utc&.floor
             accepted = Conversations::Inputs::Create.call(command(addressee, agent, message, steer, deliver_at))
             next accepted unless accepted.accepted?
 
             Sent.new(status: 202,
-              body: { "input" => { "public_id" => accepted.value.public_id, "state" => accepted.value.state } },
+              body: { "input" => { "public_id" => accepted.value.public_id, "state" => accepted.value.state,
+                                    "deliver_at" => accepted.value.deliver_at&.utc&.iso8601 } },
               host: addressee)
           end
 
           case result.outcome
           when :refused then raise Refused, door_refusal(result.refusal.outcome, addressee, agent, deliver_at)
-          when :executed then result.response.body.fetch("input").fetch("state")
-          else result.receipt.response_body.fetch("input").fetch("state")
+          when :mismatched then raise Refused, door_refusal(:idempotency_envelope_mismatch, addressee, agent)
+          when :executed then result.response.body.fetch("input")
+          when :replayed then result.receipt.response_body.fetch("input")
+          else raise ArgumentError, "unknown send receipt outcome #{result.outcome.inspect}"
           end
         end
 
@@ -244,24 +247,23 @@ module AgentRuns
 
         # THE ONE PARSER: the SAME reader the member door calls —
         # `deliver_in` for a model with no clock, `deliver_at` for one that
-        # was told a time — resolved against this boundary's clock and
-        # canonicalized to whole seconds in UTC; a refusal is one sentence
-        # naming the grammar. The kernel interprets nothing beyond the
-        # parse: the door judges the instant.
-        def deliver_at_time
+        # was told a time. Keep the intent for the receipt; only its first
+        # execution resolves this boundary's clock to whole seconds in UTC.
+        # A refusal names the grammar; the door judges the instant.
+        def deliver_at_reading
           reading = Conversations::Inputs::DeliverAt.parse(
-            at: input["deliver_at"], in_: input["deliver_in"], now: Time.current
+            at: input["deliver_at"], in_: input["deliver_in"]
           )
           raise Refused, TIME_REFUSED if reading.refusal
 
-          reading.time&.utc&.floor
+          reading
         end
 
         # `scheduled for <ISO>` on a scheduled row; `steering`/`queued`
         # otherwise, preserved by the receipt after the input drains.
         def settle_state(state, deliver_at)
           return "steering" if state == "steering"
-          return "scheduled for #{deliver_at.iso8601}" if deliver_at
+          return "scheduled for #{deliver_at}" if deliver_at
 
           "queued"
         end

@@ -9,6 +9,11 @@ allowed, compatibility shims for deleted names are never kept, and local/generat
 cleared when it blocks a clean reset. `nexus` owns `db/schema.rb`, the truth every world loads
 (`db:schema:load:primary`; the e2e worlds never walk the migration path).
 
+Migration folds are a development-only policy. Stable public releases retain the incremental
+migrations needed to upgrade installed databases; browser and CLI upgrades use that normal Rails
+migration path and never implicitly reset user data. Do not preserve obsolete unpublished schema
+history or add a compatibility protocol for it in anticipation of those future releases.
+
 **Migration folds:** at each fold `db/migrate` holds one schema-creating migration (`create_nexus_schema`) that produces `db/schema.rb` exactly, and every
 intermediate step — renames, relaxations, backfills, every data migration — is deleted; between
 folds a schema change is one migration per change. A development database from before a fold is

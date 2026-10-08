@@ -55,6 +55,10 @@ module Nexus
             context_revision: 1
           )
           spawned = stringify_keys(AgentAPI::ConversationPresenter.basic(child))
+          forked = stringify_keys(AgentAPI::ConversationPresenter.basic(
+            conversation.with(public_id: "01900000-0000-7000-8000-000000000073", side: true, active_turn: nil),
+            source_conversation_public_id: conversation.public_id
+          ))
           full = basic.merge(
             "metadata" => { "topic" => "planning" },
             "memory_context" => nil,
@@ -101,7 +105,7 @@ module Nexus
               ],
             }
           )
-          [basic, full, spawned]
+          [basic, full, spawned, forked]
         end
 
         CONTRACT_INPUT_TYPE = Data.define(

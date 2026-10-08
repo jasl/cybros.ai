@@ -19,7 +19,7 @@ class AgentAPI::V1::Workspaces::Conversations::AccessesController <
     ))
 
     if result.accepted?
-      render json: { conversation: AgentAPI::ConversationPresenter.full(result.value) }
+      render json: { conversation: AgentAPI::ConversationPresenter.full(result.value, acting_user: acting_user) }
     elsif result.invalid?
       render_domain_invalid(result.record.errors)
     else

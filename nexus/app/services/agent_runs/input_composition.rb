@@ -62,6 +62,21 @@ module AgentRuns
       # step the repeat brake and the delivered envelope's root share.
       def source_round(node) = sources_for(node).find(&:model_task?)
 
+      # An immediate steer can insert a newer row before an older queued
+      # continuation. The first read, rather than row id, defines history.
+      def order_rounds(rounds)
+        keys = rounds.map(&:node_key).to_set
+        children = rounds.group_by { |round| Array(round.input_from_node_keys).first }
+        queue = rounds.reject { |round| keys.include?(Array(round.input_from_node_keys).first) }
+        ordered = []
+        until queue.empty?
+          round = queue.shift
+          ordered << round
+          queue.concat(children.fetch(round.node_key, []))
+        end
+        ordered
+      end
+
       # History readers need the material a round consumed as well as its
       # answer. Read explicit sources in one batch; the ordinary mainline/fan
       # case has no delivered material and needs no dependency walk or body.
@@ -73,9 +88,13 @@ module AgentRuns
 
       def material_messages(sources)
         sources.map do |tip, boundary|
-          Nexus::TextInputMessage.new(role: "user", parts: [Nexus::TextInputPart.new(
-            type: Nexus::InputParts::TEXT, text: TaskResultEnvelope.for(tip, boundary: boundary)
-          )])
+          parts = [Nexus::TextInputPart.new(type: Nexus::InputParts::TEXT,
+            text: TaskResultEnvelope.for(tip, boundary: boundary))]
+          pictures = tip.status == "completed" ? RoundReplay::Pairing.picture_uploads([tip]) : []
+          parts.concat(pictures.map do |upload|
+            Nexus::UploadInputPart.new(type: Nexus::InputParts::UPLOAD, upload_public_id: upload.public_id)
+          end)
+          Nexus::TextInputMessage.new(role: "user", parts: parts)
         end
       end
 
@@ -138,8 +157,11 @@ module AgentRuns
 
       def preload_material(sources)
         delivered = sources.uniq(&:id)
-        ActiveRecord::Associations::Preloader.new(records: delivered, associations: :output_body).call
-        bodies = delivered.filter_map(&:output_body).select { |body| body.readable_text.nil? }
+        ActiveRecord::Associations::Preloader.new(records: delivered,
+          associations: { output_body: { content_uploads: { file_attachment: :blob } } }).call
+        bodies = delivered.filter_map(&:output_body).select do |body|
+          body.readable_text.nil? || RoundReplay::Pairing.pictures(body).any?
+        end
         ActiveRecord::Associations::Preloader.new(
           records: bodies, associations: { content_body_entries: :content_fragment }
         ).call
@@ -263,7 +285,7 @@ module AgentRuns
       return nil unless compacted_source && compacted_fan.any?
 
       RoundReplay.pairs(compacted_source, fan_by_call_id: compacted_fan,
-        tips_by_call_key: substituted_tips, replay: replay, trace: trace, cleared: cleared)
+        tips_by_call_key: substituted_tips, replay: replay, trace: trace, cleared: cleared, receipts: tool_receipts)
     end
 
     # The actual results that paired calls consume, preserving provenance
@@ -280,6 +302,10 @@ module AgentRuns
 
     # The rows whose stages decide a boundary: the reader and every tip.
     def owned_keys = [@node, *delivered_tips].map(&:node_key)
+
+    def tool_receipts = @tool_receipts ||= Steers::ToolReceipts.for_consumer(@node)
+
+    def delivered_uploads = RoundReplay::Pairing.picture_uploads(delivered_tips.select { |tip| tip.status == "completed" })
 
     # The `task`/`spawn`/`wait` calls of the mainline source whose tip is
     # among this node's sources and settled: keyed by the call, the tip it
@@ -360,7 +386,7 @@ module AgentRuns
         return rows_history if @node.pruned_before
 
         round = RoundReplay.call(model_source, fan_by_call_id: fan_by_call_id, replay: @replay,
-          tips_by_call_key: substituted_tips)
+          tips_by_call_key: substituted_tips, receipts: tool_receipts)
         @said_count = round.said.length
         prior_request + round.elements
       end
@@ -377,6 +403,8 @@ module AgentRuns
         fans = chain_fans
         tips = chain_paired_tips
         landed = history_steer_bodies.transform_values { |body| Steers::Landed.messages_of(body) }
+        receipts = Steers::ToolReceipts.by_source(rounds)
+        receipts[raw_model_source.id] = tool_receipts if raw_model_source && tool_receipts.any?
         material = self.class.material_by_round(rounds, readers: history_readers)
         cleared = cleared_count
         paired = self.class.compacted_pairs_by_round(history_readers, replay: @replay,
@@ -390,7 +418,7 @@ module AgentRuns
           read_by(round, index.zero?, material: material.fetch(round.id, []), paired: paired[round.id]) +
             landed.fetch(round.id, []) +
             RoundReplay.call(round, fan_by_call_id: fans.fetch(round.id, {}), replay: @replay,
-              tips_by_call_key: tips, cleared: index < cleared).elements
+              tips_by_call_key: tips, cleared: index < cleared, receipts: receipts.fetch(round.id, {})).elements
         end
       end
 
@@ -450,7 +478,8 @@ module AgentRuns
       # binds nothing.
       def bound_uploads
         bodies = prefix_bodies + result_bodies + [@node.input_body, retained_steer_body] + steer_bodies
-        bodies.compact.flat_map { |body| body.content_uploads.to_a }.uniq(&:public_id)
+        historical = @node.pruned_before ? history_readers.values.flat_map(&:delivered_uploads) : []
+        (bodies.compact.flat_map { |body| body.content_uploads.to_a } + historical + delivered_uploads).uniq(&:public_id)
       end
 
       def prefix_bodies
@@ -493,6 +522,7 @@ module AgentRuns
       def history_steer_bodies = @history_steer_bodies ||= Steers::Landed.bodies_by_round(chain_rounds)
 
       def history_readers = @history_readers ||= self.class.readers_by_round(chain_rounds)
+
 
       # A decoded body is dispatched whole: a list is sent verbatim, a text
       # closes as one user message, absence adds nothing.

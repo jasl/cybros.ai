@@ -147,9 +147,8 @@ The current product uses Agent-side code orchestration and Nexus-owned task
 operations under a [language-neutral specification](../../../docs/specs/code-orchestration.md).
 The [JavaScript binding](../../../docs/specs/code-orchestration-javascript.md) retains
 one live VM. The experimental replay technique is no longer its execution contract. Compose and its kernel script evaluator are retired without
-compatibility aliases, translation, fallback or a second execution path. The
-[product design](../../../docs/plans/2026-10-04-agent-code-orchestration-design.md)
-records the decision. This experiment alone does not prove the implemented public
+compatibility aliases, translation, fallback or a second execution path.
+This experiment alone does not prove the implemented public
 protocol, effect safety or cross-model task completion.
 
 An optional, separately budgeted model comparison should use final task artifacts,

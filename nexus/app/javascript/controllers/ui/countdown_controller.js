@@ -7,7 +7,7 @@ import { Controller } from "@hotwired/stimulus"
 // disabled state.
 export default class extends Controller {
   static targets = ["button"]
-  static values = { seconds: Number }
+  static values = { seconds: Number, pendingLabel: String }
 
   connect() {
     this.deadline = Date.now() + this.secondsValue * 1000
@@ -22,7 +22,7 @@ export default class extends Controller {
   tick() {
     const remaining = Math.ceil((this.deadline - Date.now()) / 1000)
     if (remaining > 0) {
-      this.buttonTarget.textContent = `${this.label()} in ${remaining}s`
+      this.buttonTarget.textContent = this.pendingLabelValue.replace("%{seconds}", remaining)
     } else {
       this.buttonTarget.textContent = this.label()
       this.buttonTarget.disabled = false

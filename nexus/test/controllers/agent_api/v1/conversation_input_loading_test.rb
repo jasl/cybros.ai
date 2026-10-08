@@ -74,7 +74,62 @@ class AgentAPI::V1::ConversationInputLoadingTest < ActionDispatch::IntegrationTe
       "one to twenty pending attachment bodies: #{small.length} -> #{large.length} queries\n#{large.join("\n")}"
   end
 
+  %w[ingress member].each do |voice|
+    test "input listing batches #{voice} speakers and answerers as the queue grows" do
+      agent = users(:agent)
+      secret = connect_agent_session(steward: users(:owner), agent_identifier: agent.agent_identifier).access_secret
+      headers = { "Authorization" => "Bearer #{secret}" }
+      conversation = Conversation.create!(workspace: @workspace, creating_user: agent)
+      append = lambda do |index|
+        fields = { text: "message #{index}" }
+        if voice == "ingress"
+          speaker = Speaker.register_ingress(user: agent, channel_key: "queue", external_id: index.to_s,
+            display_name: "Speaker #{index}")
+          fields[:speaker_public_id] = speaker.public_id
+        end
+        post conversation_inputs_path(conversation), headers: headers.merge("Idempotency-Key" => "queue-#{index}"),
+          as: :json, params: { input: fields }
+        assert_response :accepted
+      end
+      read = lambda do
+        get conversation_inputs_path(conversation), headers: headers
+        assert_response :success
+      end
+
+      append.call(0)
+      read.call
+      small = principal_reads { read.call }
+      19.times { |index| append.call(index + 1) }
+      large = principal_reads { read.call }
+
+      inputs = response.parsed_body.fetch("inputs")
+      assert_equal 20.times.map { |index| "message #{index}" }, inputs.pluck("text")
+      assert_equal [agent.public_id] * 20, inputs.pluck("answering_user_public_id")
+      assert_equal [voice == "ingress" ? "ingress" : "agent"] * 20,
+        inputs.map { |input| input.dig("speaker", "kind") }
+      assert_operator large.fetch(:queries).length, :<=, small.fetch(:queries).length,
+        "principal SELECTs: #{small.inspect} -> #{large.inspect}"
+      assert_operator large.fetch(:users), :<=, small.fetch(:users),
+        "User instantiations must not grow with repeated answerers or member voices"
+    end
+  end
+
   private
+
+    def principal_reads
+      reads = { queries: [], users: 0 }
+      ApplicationRecord.connection_pool.clear_query_cache
+      sql = lambda do |*, payload|
+        reads[:queries] << payload[:sql] if !payload[:cached] && payload[:sql].match?(/FROM "(?:users|speakers)"/)
+      end
+      instantiated = lambda do |*, payload|
+        reads[:users] += payload[:record_count] if payload[:class_name] == "User"
+      end
+      ActiveSupport::Notifications.subscribed(sql, "sql.active_record") do
+        ActiveSupport::Notifications.subscribed(instantiated, "instantiation.active_record") { yield }
+      end
+      reads
+    end
 
     def implementation_review_prompt
       paths = %w[

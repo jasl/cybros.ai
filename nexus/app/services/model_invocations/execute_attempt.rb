@@ -62,7 +62,8 @@ module ModelInvocations
       )
       return refuse_uncompilable(:unsupported_workload) unless profile.workload == invocation.workload
 
-      base_url = ModelCatalog.provider_base_url(invocation.provider_id, snapshot: effective_catalog)
+      base_url = ModelCatalog.model_base_url(catalog_ref, snapshot: effective_catalog)
+      return refuse_uncompilable(:endpoint_unconfigured) if base_url.nil?
       built = ModelRequests::Build.call(
         invocation: invocation, profile: profile, base_url: base_url, host: @host,
         reasoning_context: entry.dig("capabilities", "reasoning", "default_context")

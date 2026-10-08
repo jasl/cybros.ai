@@ -29,7 +29,8 @@ class PackageTest < Minitest::Test
       assert_equal File.realpath(File.join(unpacked, "webui")), output
 
       %w[index.html console.css console.js composer.js api.js views.js markdown.js controls.js login.js lifecycle.js schedules.js
-         settings.js settings_editor.js settings_state.js telegram_settings.js plugin_draft.js plugin_settings.js].each do |name|
+         settings.js settings_editor.js settings_state.js telegram_settings.js plugin_draft.js plugin_settings.js prompt_settings.js
+         i18n.js locales/en.js].each do |name|
         assert_equal File.binread(File.join(ROOT, "webui", name)), File.binread(File.join(output, name))
       end
       assert File.file?(File.join(unpacked, "LICENSE.txt"))

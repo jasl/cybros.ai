@@ -71,7 +71,7 @@ module CybrosAgent
       include ScheduleProjections
       attr_reader path: String
       def initialize: (dispatch: _Dispatch, path: String) -> void
-      def list: (?after: String?, ?limit: Integer?) -> Page[Schedule]
+      def list: (?after: String?, ?limit: Integer?, ?order: String?) -> Page[Schedule]
       def fetch: (String public_id) -> Schedule
       def create: (prompt: String, rule: Hash[untyped, untyped], idempotency_key: String,
         ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?, ?configuration: Hash[untyped, untyped]?,
@@ -83,7 +83,7 @@ module CybrosAgent
       def pause: (String public_id) -> Schedule
       def resume: (String public_id) -> Schedule
       def cancel: (String public_id) -> Schedule
-      def executions: (String public_id, ?after: String?, ?limit: Integer?) -> ScheduleExecutionPage
+      def executions: (String public_id, ?after: String?, ?limit: Integer?, ?order: String?) -> ScheduleExecutionPage
 
       private
       def command: (String public_id, String operation) -> Schedule

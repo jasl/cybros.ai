@@ -70,15 +70,17 @@ install_main() {
   directory_set=${CYBROS_INSTALL_DIR:+yes}
   action=install
   unattended=no
+  upgrade_manager=no
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --help|-h)
-        printf '%s\n' 'Usage: sh install.sh [--dir DIRECTORY] [--no-start] [--yes]' 'Interactive setup uses /dev/tty, including when the script is piped to sh.' '--yes uses environment settings and defaults without questions.' '--no-start prepares configuration without pulling images or starting services.' 'Default directory: ~/.local/share/cybros. Requires Docker with Compose v2.'
+        printf '%s\n' 'Usage: sh install.sh [--dir DIRECTORY] [--no-start] [--yes] [--upgrade-manager]' 'Interactive setup uses /dev/tty, including when the script is piped to sh.' '--yes uses environment settings and defaults without questions.' '--no-start prepares configuration without pulling images or starting services.' '--upgrade-manager replaces the cybros manager and its managed overlays; preserves compose.yaml, configuration, secrets and data.' 'Default directory: ~/.local/share/cybros. Requires Docker with Compose v2.'
         return 0
         ;;
       --dir) [ "$#" -ge 2 ] && [ -n "$2" ] || install_fail '--dir requires one nonempty directory'; install_dir=$2; directory_set=yes; shift 2 ;;
       --no-start) action=init; shift ;;
       --yes) unattended=yes; shift ;;
+      --upgrade-manager) upgrade_manager=yes; shift ;;
       *) install_fail 'Usage: sh install.sh [--dir DIRECTORY] [--no-start] [--yes]' ;;
     esac
   done
@@ -154,7 +156,7 @@ install_main() {
   printf '\n[4/5] Review installation\n'
   printf 'Directory: %s\nData:      %s/data\n' "$install_dir" "$install_dir"
   if [ ! -e "$install_dir/.env" ] && [ ! -e "$install_dir/secrets.env" ]; then
-    printf 'Nexus:     %s\nrho:       %s\nBind:      %s\nImages:    %s/cybros-{nexus,rho}:%s\n' "$CYBROS_NEXUS_URL" "$CYBROS_RHO_URL" "$CYBROS_BIND" "${CYBROS_IMAGE_NAMESPACE:-jasl123}" "${CYBROS_IMAGE_TAG:-latest}"
+    printf 'Nexus:     %s\nrho:       %s\nBind:      %s\nNexus image: %s:%s\nrho image:   %s:%s\n' "$CYBROS_NEXUS_URL" "$CYBROS_RHO_URL" "$CYBROS_BIND" "${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}" "${CYBROS_IMAGE_TAG:-latest}" "${CYBROS_RHO_IMAGE_REPOSITORY:-jasl123/cybros-rho}" "${CYBROS_IMAGE_TAG:-latest}"
     if [ "$unattended" = no ]; then
       if [ "$action" = init ]; then question='Create configuration? [Y/n]: '; else question='Install and start Cybros? [Y/n]: '; fi
       while :; do
@@ -169,7 +171,11 @@ install_main() {
   [ "$install_dir" != / ] || install_fail 'Choose an installation directory other than /.'
   chmod 700 "$install_dir"
   if [ -e "$install_dir/cybros" ] || [ -e "$install_dir/compose.yaml" ]; then
-    printf '%s\n' 'Keeping the existing cybros manager and Compose file, including local changes.'
+    if [ "$upgrade_manager" = yes ]; then
+      printf '%s\n' 'Refreshing cybros and the managed deployment overlays. Keeping the existing Compose file, configuration, secrets and data.'
+    else
+      printf '%s\n' 'Keeping the existing cybros manager and Compose file, including local changes.'
+    fi
   fi
   (
     cd "$install_dir"

@@ -3,14 +3,12 @@
 Status: the multi-environment cutover was implemented and locally verified on
 2026-10-06. The tool-assembly follow-up was implemented and locally verified on
 2026-10-07. This document defines the accepted multi-environment execution
-contract. The accompanying
-[implementation plan](../plans/2026-10-06-nexus-multi-environment.md) identifies
-the schema, contract, consumer and verification work. The companion
+contract. The companion
 [terminology specification](nexus-terminology.md) supplies the Run, Task,
 RunnerEffects and default-runner names used below. The [Profile](../agent-api/v1/profile.md)
 and [Tool assembly](../agent-api/v1/tool-assembly.md) manuals document the current
-declaration and assembly APIs. The [rho product record](../plans/2026-10-06-rho-background-work-and-environments.md)
-owns background-work and environment-selection policy.
+declaration and assembly APIs. Agent applications own background-work and
+environment-selection policy.
 
 The owner subsequently authorized the complete Nexus, SDK and rho breaking
 cutover. New native computer-control features remain outside this implementation.

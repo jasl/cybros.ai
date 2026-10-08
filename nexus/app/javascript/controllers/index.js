@@ -28,3 +28,6 @@ application.register("provider-authorization", ProviderAuthorizationController)
 
 import SetupSecretController from "./setup_secret_controller"
 application.register("setup-secret", SetupSecretController)
+
+import DeploymentController from "./deployment_controller"
+application.register("deployment", DeploymentController)

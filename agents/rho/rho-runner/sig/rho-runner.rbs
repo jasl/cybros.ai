@@ -504,6 +504,9 @@ module Rho
       class RegistrationError < Error
       end
 
+      class PrerequisiteError < RegistrationError
+      end
+
       class Resources
         attr_writer dispatch: untyped
         attr_reader failures: Array[String]
@@ -672,6 +675,8 @@ module Rho
           attr_reader source: String
           attr_reader error_class: String
           attr_reader message: String
+          def prerequisite?: () -> bool
+          def public_message: () -> String
         end
 
         class Result < ::Data

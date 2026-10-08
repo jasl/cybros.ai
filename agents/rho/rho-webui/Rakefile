@@ -9,7 +9,7 @@ RuboCop::RakeTask.new
 
 desc "Run offline browser lifecycle tests"
 task :test_js do
-  sh "bun", "test", "test/entrypoint_test.js", "test/lifecycle_test.js", "test/schedules_test.js", "test/artifact_lifecycle_test.js", "test/settings_test.js", "test/plugin_settings_test.js", "test/login_test.js", "test/conversation_usage_test.js", "test/composer_test.js", "test/reference_turn_test.js"
+  sh "bun", "test", "test/entrypoint_test.js", "test/lifecycle_test.js", "test/schedules_test.js", "test/artifact_lifecycle_test.js", "test/settings_test.js", "test/plugin_settings_test.js", "test/package_settings_test.js", "test/login_test.js", "test/conversation_usage_test.js", "test/composer_test.js", "test/reference_turn_test.js", "test/telegram_settings_test.js", "test/i18n_test.js", "test/context_overflow_test.js", "test/prompt_settings_test.js"
 end
 
 desc "Validate the packaged RBS surface"

@@ -317,7 +317,7 @@ module E2E
       end
 
       def ask_in_another_workspace(client, seed, deadline: 300)
-        other = client.workspaces.create(name: "evals memory #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid)
+        other = client.workspaces.create(name: "evals memory #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid).workspace
         conversations = client.workspace(other.public_id).conversations
         chat = conversations.conversation(conversations.create(title: "The other workspace", idempotency_key: SecureRandom.uuid).public_id)
         chat.inputs.create(kind: "direct_reply", model: seed.model, idempotency_key: SecureRandom.uuid,

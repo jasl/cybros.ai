@@ -66,6 +66,12 @@ without presenting them as implemented behavior or requiring a private developme
   model boundary of the in-flight run. It appends trailing messages to the request being
   sealed, never amends a sent request. The round retains those messages for later history,
   pruning, and summarization before its answer (`AgentRuns::Steers::Landed`).
+- `steer_now` keeps that same input and execution ownership but may insert a model boundary
+  before a tool-blocked mainline continuation. Pending calls receive truthful sealed receipts;
+  their executions keep their claims, effects, lifetime and cancellation owner. The original
+  continuation still joins those tasks and the inserted work, consuming each actual result once
+  at its arrival position. A held `steer` may upgrade to `steer_now` without changing its text,
+  target or identity. A sent model request is immutable; Send now cannot interrupt its bytes.
 - A queued `direct_reply` may carry bounded authored `steps`. Its first materialization seeds
   the normal model task, then accepts the trailing steps through ordinary authored Append in
   the same transaction before scheduling. A refusal rolls back that candidate and blocks the
@@ -151,7 +157,8 @@ without presenting them as implemented behavior or requiring a private developme
   paired result, including an error envelope for a tool that could not run. A tool result
   settles only its node; `outcome` records whether it ran and `is_error` is data, never a run-end
   command. The tool fan joins all members before one continuation unless an author explicitly
-  chose an any/quorum join.
+  chose an any/quorum join. `steer_now` can insert an earlier model boundary with pending
+  receipts while preserving that original final join and all execution obligations.
   A settled join's later losing failure is absorbed.
 - Failure policies are `absorb|propagate|halt`. Retry budgets belong to model steps, not tools
   or asks; compiling `retry` on those kinds refuses it. Client-authored tool failure defaults

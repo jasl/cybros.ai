@@ -1,9 +1,9 @@
-<% content_for :title, "Update your password" %>
+<% content_for :title, t("passwords.edit.update_your_password") %>
 
 <div class="space-y-8">
   <header class="space-y-1.5 text-center">
-    <h1 class="text-2xl font-semibold tracking-tight">Update your password</h1>
-    <p class="text-base-content/60">Choose a new password of at least <%= Identity::PASSWORD_MIN_LENGTH %> characters</p>
+    <h1 class="text-2xl font-semibold tracking-tight"><%= t("passwords.edit.update_your_password") %></h1>
+    <p class="text-base-content/60"><%= t("passwords.edit.choose_a_new_password_of_at_least_minimum_characters", minimum: (Identity::PASSWORD_MIN_LENGTH)) %></p>
   </header>
 
   <%= render "layouts/shared/flash" %>
@@ -11,20 +11,20 @@
   <% if @identity.errors.any? %>
     <div role="alert" class="alert alert-error alert-soft">
       <span class="iconify lucide--circle-alert size-5" aria-hidden="true"></span>
-      <span>The password could not be changed — check the highlighted fields below.</span>
+      <span><%= t("passwords.edit.the_password_could_not_be_changed_check_the_highlighted") %></span>
     </div>
   <% end %>
 
   <%= form_with url: passwords_path, method: :put do |form| %>
     <%= hidden_field_tag :token, @password_reset_token %>
     <fieldset class="fieldset">
-      <%= form.label :password, "New password", class: "label" %>
-      <%= validated_field form, :password_field, :password, @identity.errors.full_messages_for(:password), required: true, autocomplete: "new-password", placeholder: "Enter new password", maxlength: 72 %>
+      <%= form.label :password, t("passwords.edit.new_password"), class: "label" %>
+      <%= validated_field form, :password_field, :password, @identity.errors.full_messages_for(:password), required: true, autocomplete: "new-password", placeholder: t("passwords.edit.enter_new_password"), maxlength: 72 %>
 
-      <%= form.label :password_confirmation, "Repeat new password", class: "label mt-2" %>
-      <%= validated_field form, :password_field, :password_confirmation, @identity.errors.full_messages_for(:password_confirmation), required: true, autocomplete: "new-password", placeholder: "Repeat new password", maxlength: 72 %>
+      <%= form.label :password_confirmation, t("passwords.edit.repeat_new_password"), class: "label mt-2" %>
+      <%= validated_field form, :password_field, :password_confirmation, @identity.errors.full_messages_for(:password_confirmation), required: true, autocomplete: "new-password", placeholder: t("passwords.edit.repeat_new_password"), maxlength: 72 %>
 
-      <%= form.submit "Save", class: "btn btn-primary btn-block mt-4" %>
+      <%= form.submit t("passwords.edit.save"), class: "btn btn-primary btn-block mt-4" %>
     </fieldset>
   <% end %>
 </div>

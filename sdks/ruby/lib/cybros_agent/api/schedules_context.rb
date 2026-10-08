@@ -13,8 +13,8 @@ module CybrosAgent
         @path = required_string_snapshot(path, "path")
       end
 
-      def list(after: nil, limit: nil)
-        page(Schedule, @dispatch.call(path, params: query(after:, limit:)), "schedules")
+      def list(after: nil, limit: nil, order: nil)
+        page(Schedule, @dispatch.call(path, params: query(after:, limit:, order:)), "schedules")
       end
 
       def fetch(public_id)
@@ -49,8 +49,8 @@ module CybrosAgent
       def resume(public_id) = command(public_id, "resume")
       def cancel(public_id) = command(public_id, "cancel")
 
-      def executions(public_id, after: nil, limit: nil)
-        shape(ScheduleExecutionPage, @dispatch.call("#{job_path(public_id)}/executions", params: query(after:, limit:)))
+      def executions(public_id, after: nil, limit: nil, order: nil)
+        shape(ScheduleExecutionPage, @dispatch.call("#{job_path(public_id)}/executions", params: query(after:, limit:, order:)))
       end
 
       private

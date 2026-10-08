@@ -7,7 +7,7 @@ module Rho
   # Environment values seed deployment; saved choices and explicit flags win.
   class Config < Data.define(:values, :plugins, :catalog, :resolved, :plugin_errors, :workspace_override, :home)
     SETTINGS_VERSION = 1
-    KEYS = %w[bind api_only tools_root webui_root kernel_tools default_model adaptations adaptations_dir executor_socket mode runner workspace fallback_model nexus_public_url public_url].freeze
+    KEYS = %w[bind api_only tools_root webui_root kernel_tools default_model adaptations adaptations_dir executor_socket mode runner workspace fallback_model nexus_public_url public_url work_preset custom_instructions base_prompt].freeze
     MODES = %w[full agent runner].freeze
     ENV_KEYS = { "bind" => "RHO_BIND", "api_only" => "RHO_API_ONLY", "tools_root" => "RHO_TOOLS_ROOT", "webui_root" => "RHO_WEBUI_ROOT", "default_model" => "RHO_DEFAULT_MODEL", "adaptations" => "RHO_ADAPTATIONS", "executor_socket" => "RHO_EXECUTOR_SOCKET", "mode" => "RHO_MODE", "workspace" => "RHO_WORKSPACE", "fallback_model" => "RHO_FALLBACK_MODEL", "nexus_public_url" => "RHO_NEXUS_PUBLIC_URL", "public_url" => "RHO_PUBLIC_URL" }.freeze
     SWITCHES = %w[api_only executor_socket].freeze
@@ -26,6 +26,7 @@ module Rho
       "default_model" => nil, "fallback_model" => nil, "adaptations" => "auto",
       "adaptations_dir" => nil, "executor_socket" => true, "mode" => "full",
       "runner" => nil, "workspace" => nil, "nexus_public_url" => nil, "public_url" => nil,
+      "work_preset" => "standard", "custom_instructions" => nil, "base_prompt" => nil,
     }.freeze
 
     class << self
@@ -66,6 +67,8 @@ module Rho
             raise ConfigurationError, "settings format requires migration before loading"
           end
           envelope = { "type" => "object", "properties" => {
+            "custom_instructions" => { "type" => ["string", "null"] },
+            "base_prompt" => { "type" => ["string", "null"] },
             "plugins" => { "type" => "object", "additionalProperties" => {
               "type" => "object", "properties" => {
                 "enabled" => { "type" => "boolean" },
@@ -91,6 +94,7 @@ module Rho
       @plugins = immutable(plugins)
       @values = values.merge(
         "mode" => one_of(values.fetch("mode"), "mode", MODES),
+        "work_preset" => one_of(values.fetch("work_preset"), "work_preset", WorkPresets::NAMES),
         "runner" => presence(values["runner"]),
         "workspace" => room(values["workspace"], values["mode"]),
         "fallback_model" => agent_model(values["fallback_model"], "fallback_model", values["mode"]),
@@ -103,6 +107,9 @@ module Rho
         "public_url" => validated_public_url(values["public_url"], "public_url")
       )
       SWITCHES.each { |key| @values[key] = values[key] == true || truthy?(values[key]) }
+      if system_prompt.encode(Encoding::UTF_8).bytesize > WorkPresets::MAX_BYTES
+        raise ConfigurationError, "base_prompt and custom_instructions must compose to at most 64 KiB of UTF-8 text"
+      end
       @workspace_override = workspace_override && !workspace.nil?
       @resolved, @plugin_errors = {}, catalog.failures.dup
       catalog.descriptors.each do |id, descriptor|
@@ -141,6 +148,7 @@ module Rho
     end
 
     def workspace_selection(home) = workspace_override ? workspace : home.settings_workspace || workspace
+    def system_prompt = WorkPresets.resolve(work_preset: work_preset, custom_instructions: custom_instructions, base_prompt: base_prompt)
     def to_h = @values.merge("settings_version" => SETTINGS_VERSION, "plugins" => plugins)
     def with(changes, home: @home)
       self.class.send(:build, to_h.merge(changes), home: home, workspace_override: workspace_override)
@@ -164,7 +172,7 @@ module Rho
       extend Forwardable
       def_delegators :@current, *Config::KEYS.map(&:to_sym), :plugins, :catalog, :plugin_errors,
         :workspace_override, :workspace_selection, :plugin_enabled?, :plugin_requested?, :plugin_configuration,
-        :plugin_resolution, :to_h, :with
+        :plugin_resolution, :system_prompt, :to_h, :with
 
       def initialize(config) = @current = config
       def apply(config)

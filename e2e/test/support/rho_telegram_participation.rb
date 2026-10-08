@@ -14,7 +14,7 @@ module E2E
       assert_includes telegram_control("mode-other-topic", "/mode status", user: 102, chat: -10, topic: 8), "assistant"
       assert_includes telegram_control("mode-no-topic", "/mode", user: 102, chat: -10), "assistant"
 
-      @runtime.consume(update("unobserved-background", participation_prompt("quiet"), user: 102, chat: -10, topic: 7))
+      receive(update("unobserved-background", participation_prompt("quiet"), user: 102, chat: -10, topic: 7))
       telegram_control("observe-active", "/observe on", chat: -10, topic: 7)
       participation_ticks(6)
       assert_empty participation_shots
@@ -22,7 +22,7 @@ module E2E
 
       messages = @telegram.messages.keys
       background = participation_prompt("quiet")
-      @runtime.consume(update("quiet-background", background, user: 102, chat: -10, topic: 7))
+      receive(update("quiet-background", background, user: 102, chat: -10, topic: 7))
       await("the observation is available before the memory-only preview") { group_observer.turns.list.items.length == 1 }
       marker = "group-release-fact-#{SecureRandom.hex(6)}"
       secret = "owner-private-fact-#{SecureRandom.hex(6)}"
@@ -61,7 +61,7 @@ module E2E
       telegram_control("member-model", "/model dev/mock-text-only", user: 102, chat: -10, topic: 7)
       enable_active_room
       answer = "The deployment checklist needs a rollback step."
-      @runtime.consume(update("reply-background", participation_prompt("reply", answer), user: 102, chat: -10, topic: 7))
+      receive(update("reply-background", participation_prompt("reply", answer), user: 102, chat: -10, topic: 7))
       message = group_bot_message(answer)
       sent = @telegram.messages.fetch(message.fetch("message_id"))
       refute sent.key?(:parse_mode)
@@ -71,7 +71,7 @@ module E2E
       incoming = update("member-reply-to-active", "!mock reply=member-follow-up -- Explain that rollback step.",
         user: 102, chat: -10, topic: 7)
       incoming.fetch("message")["reply_to_message"] = message
-      @runtime.consume(incoming)
+      receive(incoming)
       conversation = @workspace.conversation(current("-10:7", user: 102))
       turn = completed_reply(conversation)
       assert_includes request_text(turn), answer
@@ -92,7 +92,7 @@ module E2E
       assert_equal self.class::MODEL, @bridge.participation_starts.fetch(0).fetch(:fields).fetch(:model)
       assert_equal @workspace.public_id, @bridge.participation_starts.fetch(0).fetch(:fields).fetch(:workspace_public_id)
 
-      @runtime.consume(update("reply-followup-background", "Another detail can wait for the cooldown.", user: 102, chat: -10, topic: 7))
+      receive(update("reply-followup-background", "Another detail can wait for the cooldown.", user: 102, chat: -10, topic: 7))
       participation_ticks(6)
       assert_equal [shots.first.public_id], participation_shots.map(&:public_id)
       assert_equal 1, participation_messages(answer).length
@@ -106,7 +106,7 @@ module E2E
       enable_active_room
       answer = "Keep the rollback steps next to the release checklist."
       @bridge.lose_next_participation_ack = true
-      @runtime.consume(update("lost-create", participation_prompt("reply", answer), user: 102, chat: -10, topic: 7))
+      receive(update("lost-create", participation_prompt("reply", answer), user: 102, chat: -10, topic: 7))
       original = await("the real InferenceRequest create is accepted before its reply is lost") do
         tick
         @bridge.participation_starts&.first
@@ -143,7 +143,7 @@ module E2E
       [7, 8].each do |topic|
         enable_active_room(topic: topic)
         stale = "Outdated advice #{topic}: " + "detail " * 130
-        @runtime.consume(update(["stale-background", topic], participation_prompt("reply", stale, slow: true),
+        receive(update(["stale-background", topic], participation_prompt("reply", stale, slow: true),
           user: 102, chat: -10, topic: topic))
         shot = await_participation_shot(count: topic == 7 ? 1 : 2)
         await("the real provider is still streaming the room judgment") do
@@ -153,7 +153,7 @@ module E2E
         if topic == 7
           telegram_control("mode-stop-stream", "/mode assistant", chat: -10, topic: topic)
         else
-          @runtime.consume(update("new-background", "The question changed while that answer was being prepared.",
+          receive(update("new-background", "The question changed while that answer was being prepared.",
             user: 102, chat: -10, topic: topic))
         end
         terminal = await_participation_terminal(shot.public_id)

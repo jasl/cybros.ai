@@ -95,6 +95,7 @@ module Rho
         end
         klass = Tool.build(rows)
         if klass && api.serves?(:runner)
+          api.on(:startup) { check_prerequisites(rows) }
           api.register_tool(klass)
         elsif klass.nil?
           @log&.info("acp.no_agent_enabled", rows: rows.length)
@@ -108,6 +109,31 @@ module Rho
         api.on(:shutdown) { close! }
         @rows = rows
         Children.configure(rows, log: @log)
+        nil
+      end
+
+      # Child sessions choose their working directory at call time. Check only
+      # commands whose location is already determined by the launch environment;
+      # project-relative commands and PATH entries remain that session's check.
+      def check_prerequisites(rows)
+        rows.reject(&:fault?).select(&:enabled?).each do |row|
+          command = row.command
+          paths = if command.start_with?("/")
+            [command]
+          elsif command.include?("/")
+            next
+          else
+            directories = child_env(row)["PATH"]&.split(File::PATH_SEPARATOR, -1)
+            next if directories.nil? || directories.empty? || directories.any? { |directory| !directory.start_with?("/") }
+
+            directories.map { |directory| File.join(directory, command) }
+          end
+          unless paths.any? { |path| File.file?(path) && File.executable?(path) }
+            raise Rho::Runner::Extensions::PrerequisiteError,
+              "ACP agent #{row.key} cannot find an executable command. Install its runtime or correct its command and PATH in " \
+              "the ACP agents plugin settings, then enable the plugin again."
+          end
+        end
         nil
       end
 

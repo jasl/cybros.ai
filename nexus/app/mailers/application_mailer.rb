@@ -1,5 +1,5 @@
 class ApplicationMailer < ActionMailer::Base
-  default from: ENV.fetch("MAILER_FROM_ADDRESS", "Nexus <no-reply@cybros.ai>")
+  default from: -> { ENV.fetch("MAILER_FROM_ADDRESS") { email_address_with_name("no-reply@cybros.ai", I18n.t("brand.name")) } }
   layout "mailer"
 
   # Configured readiness derived from deployment configuration: the test and

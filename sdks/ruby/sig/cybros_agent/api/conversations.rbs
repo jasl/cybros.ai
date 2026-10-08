@@ -67,6 +67,7 @@ module CybrosAgent
       attr_reader archived_at: String?
       attr_reader billing_subject: String?
       attr_reader parent: ConversationParent?
+      attr_reader source_conversation_public_id: String?
       attr_reader forked_from_turn_public_id: String?
       attr_reader forked_from_variant_public_id: String?
       attr_reader side: bool
@@ -116,6 +117,7 @@ module CybrosAgent
       attr_reader archived_at: String?
       attr_reader billing_subject: String?
       attr_reader parent: ConversationParent?
+      attr_reader source_conversation_public_id: String?
       attr_reader forked_from_turn_public_id: String?
       attr_reader forked_from_variant_public_id: String?
       attr_reader side: bool
@@ -394,8 +396,8 @@ module CybrosAgent
       attr_reader workspace_public_id: String
 
       def initialize: (dispatch: _Dispatch, workspace_public_id: String) -> void
-      def list: (?after: String?, ?limit: Integer?, ?side: bool?) -> Page[ConversationSummary]
-      def archived: (?after: String?, ?limit: Integer?) -> Page[ConversationSummary]
+      def list: (?after: String?, ?limit: Integer?, ?order: String?, ?order_by: String?, ?side: bool?) -> Page[ConversationSummary]
+      def archived: (?after: String?, ?limit: Integer?, ?order: String?, ?order_by: String?) -> Page[ConversationSummary]
       def search: (query: String, ?archived: String?, ?include_auxiliary: bool?,
                    ?limit: Integer?, ?after: String?) -> ConversationSearchPage
       def create: (
@@ -438,7 +440,7 @@ module CybrosAgent
       def archive: () -> Conversation
       def unarchive: () -> Conversation
       def delete: () -> nil
-      def children: (?after: String?, ?limit: Integer?) -> Page[ConversationSummary]
+      def children: (?after: String?, ?limit: Integer?, ?order: String?, ?order_by: String?) -> Page[ConversationSummary]
       def memory: () -> MemoryContext
       def set_memory_context: (memory_context: Hash[untyped, untyped]?) -> Conversation
       def store_entries: () -> StoreEntriesContext
@@ -579,6 +581,7 @@ module CybrosAgent
       def update: (
         String public_id,
         ?expected_lock_version: Integer?,
+        ?delivery_mode: String?,
         ?text: String?,
         ?entries: Array[untyped],
         ?model: String?,

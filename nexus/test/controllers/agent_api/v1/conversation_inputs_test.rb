@@ -508,8 +508,42 @@ class AgentAPI::V1::ConversationInputsTest < ActionDispatch::IntegrationTest
     assert_equal 1, conversation.conversation_inputs.count, "every refusal posts nothing"
   end
 
-  # The canonical ISO string of the resolved time is in the idempotency
-  # envelope (decision 17): a replay naming another time is a mismatch.
+  test "relative scheduled input retries preserve the first deadline after time advances" do
+    conversation = create_conversation!(title: "timed")
+    accepted_at = Time.current.floor
+    body = { input: { text: "later", deliver_in: "20m" } }
+    first = nil
+    travel_to accepted_at do
+      post conversation_inputs_path(conversation), headers: auth("relative-key"), as: :json, params: body
+      assert_response :accepted
+      assert_equal "false", response.headers["Idempotency-Replayed"]
+      first = response.parsed_body
+      assert_equal accepted_at + 20.minutes, Time.iso8601(first.dig("input", "deliver_at"))
+    end
+
+    [2.seconds, 21.minutes].each do |elapsed|
+      travel_to accepted_at + elapsed do
+        post conversation_inputs_path(conversation), headers: auth("relative-key"), as: :json, params: body
+        assert_response :accepted
+        assert_equal "true", response.headers["Idempotency-Replayed"]
+        assert_equal first, response.parsed_body
+      end
+    end
+
+    post conversation_inputs_path(conversation), headers: auth("relative-key"), as: :json,
+      params: { input: { text: "later", deliver_in: "1200s" } }
+    assert_response :accepted, "equivalent durations express the same intent"
+    assert_equal first, response.parsed_body
+
+    post conversation_inputs_path(conversation), headers: auth("relative-key"), as: :json,
+      params: { input: { text: "later", deliver_in: "21m" } }
+    assert_response :conflict
+    assert_equal "idempotency_envelope_mismatch", response.parsed_body.dig("error", "code")
+    assert_equal 1, conversation.conversation_inputs.count
+    assert_equal accepted_at + 20.minutes, conversation.conversation_inputs.sole.deliver_at
+  end
+
+  # Equivalent absolute instants share a digest; a different instant refuses.
   test "the resolved time is in the create envelope: a replay naming another time is a mismatch" do
     conversation = create_conversation!(title: "timed")
     post conversation_inputs_path(conversation), headers: auth("d-key"), as: :json,

@@ -10,7 +10,7 @@ class Admin::ModelProviders::DefinitionsController < Admin::ModelProviders::Base
       result = ModelProviders::SetDefinition.call(account: account, provider_id: provider_id,
         definition: @form.definition, expected_lock_version: expected_lock_version(fields))
       if result.done?
-        redirect_to admin_model_provider_path(provider_id), notice: "Provider connection saved.", status: :see_other
+        redirect_to admin_model_provider_path(provider_id), notice: t("admin.model_providers.connection_saved"), status: :see_other
       else
         configuration_error(@form, result)
       end
@@ -24,7 +24,7 @@ class Admin::ModelProviders::DefinitionsController < Admin::ModelProviders::Base
     result = ModelProviders::ResetDefinition.call(account: account, provider_id: provider_id,
       expected_lock_version: expected_lock_version(fields))
     if result.done?
-      redirect_to admin_model_providers_path, notice: "Provider definition reset. Stored credentials have been kept.", status: :see_other
+      redirect_to admin_model_providers_path, notice: t("admin.model_providers.connection_reset"), status: :see_other
     else
       @form = build_form
       configuration_error(@form, result)

@@ -31,7 +31,7 @@ class WorkspaceRemovalTest < Minitest::Test
     # A fresh active Workspace used only by this guard scenario.
     guard = source_client.workspaces.create(
       name: "Removal guard #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     assert_equal source.public_id, guard.owner.public_id
 
     # Live ownership blocks removal with the transfer-first conflict.

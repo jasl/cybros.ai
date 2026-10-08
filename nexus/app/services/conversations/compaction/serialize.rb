@@ -54,7 +54,7 @@ module Conversations
       # verbatim on every Long and the post-prune floor ratcheted. `bytes` is
       # the stored size of every output body in the chain, keyed by row — one
       # SQL sum, never a body load; a rendering carries pointers.
-      LoopHistory = Data.define(:rounds, :entries, :fans, :bytes, :current_call_ids, :compacted_readers) do
+      LoopHistory = Data.define(:rounds, :entries, :fans, :bytes, :current_call_ids, :compacted_readers, :receipts) do
         def tail_index = Serialize.tail_index(request_sizes)
 
         # The fan in the target's read slots has not yet had its first
@@ -74,7 +74,9 @@ module Conversations
           cleared = Prune.cleared_count(rounds)
           rounds.each_with_index.map do |round, index|
             bytes.fetch(round.id, 0) + fan_of(round).sum do |tool|
-              Serialize.arguments_bytes(tool) + (index < cleared && clears?(tool) ? CLEARED_BYTES : bytes.fetch(tool.id, 0))
+              receipt = receipt_for(round, tool)
+              output_size = receipt ? receipt.payload.fetch("output").bytesize : bytes.fetch(tool.id, 0)
+              Serialize.arguments_bytes(tool) + (index < cleared && !receipt && clears?(tool) ? CLEARED_BYTES : output_size)
             end
           end
         end
@@ -86,7 +88,8 @@ module Conversations
         # that settled without a result is never cleared, so it frees nothing.
         def prunable_bytes
           rounds[Prune.cleared_count(rounds)...prune_index].to_a.sum do |round|
-            fan_of(round).select { |tool| clears?(tool) }.sum { |tool| bytes.fetch(tool.id, 0) - CLEARED_BYTES }
+            fan_of(round).select { |tool| !receipt_for(round, tool) && clears?(tool) }
+              .sum { |tool| bytes.fetch(tool.id, 0) - CLEARED_BYTES }
           end
         end
 
@@ -105,7 +108,7 @@ module Conversations
               cleared_ids: (cleared ? candidates.map(&:id) : []))
             results = candidates.flat_map do |round|
               Array(consumed[round.id]&.result_items) + AgentRuns::RoundReplay.call(round, fan_by_call_id: fans.fetch(round.id, {}),
-                tips_by_call_key: tips, cleared: cleared).result_items
+                tips_by_call_key: tips, cleared: cleared, receipts: receipts.fetch(round.id, {})).result_items
             end
             ModelRequests::TokenCount.count(profile: profile, segments: Nexus::ModelRequestInput.text_segments(results))
           end
@@ -120,6 +123,12 @@ module Conversations
           end
 
           def clears?(tool) = AgentRuns::RoundReplay::Pairing.clears?(tool)
+
+          def receipt_for(round, tool)
+            reader = compacted_readers[round.id]
+            paired = reader && reader.compacted_fan.value?(tool) ? reader.tool_receipts : receipts.fetch(round.id, {})
+            paired[tool.tool_call_id]
+          end
       end
 
       module_function
@@ -176,6 +185,10 @@ module Conversations
         rounds = chain(node)
         preload_rounds(rounds)
         fans = AgentRuns::RoundReplay.fans_of(rounds)
+        receipts = AgentRuns::Steers::ToolReceipts.by_source(rounds)
+        current_receipts = AgentRuns::Steers::ToolReceipts.for_consumer(node)
+        source = AgentRuns::InputComposition.source_round(node)
+        receipts[source.id] = current_receipts if source && current_receipts.any?
         steers = AgentRuns::Steers::Landed.texts_by_round(rounds)
         readers = AgentRuns::InputComposition.readers_by_round(rounds)
         compacted_readers = readers.select { |_, reader| reader.compacted_fan.any? }
@@ -185,12 +198,13 @@ module Conversations
         seed = seed_of(node.agent_run.conversation_turn_variant) if rounds.any? { |round| seed_model_task?(round) }
         rendered = rounds.filter_map do |round|
           entry = render_round(round, fans.fetch(round.id, {}), prompt: (seed if seed_model_task?(round)),
-            steers: steers.fetch(round.id, []), material: material.fetch(round.id, []), bytes: bytes)
+            steers: steers.fetch(round.id, []), material: material.fetch(round.id, []), bytes: bytes,
+            receipts: receipts.fetch(round.id, {}))
           [round, entry] if entry
         end
         current_call_ids = AgentRuns::InputComposition.sources_for(node).select(&:tool_call?).map(&:id).to_set
         LoopHistory.new(rounds: rendered.map(&:first), entries: rendered.map(&:last), fans: fans, bytes: bytes,
-          current_call_ids: current_call_ids, compacted_readers: compacted_readers)
+          current_call_ids: current_call_ids, compacted_readers: compacted_readers, receipts: receipts)
       end
 
       # THE STORED SIZES the rows' output bodies carry: one SQL sum for the
@@ -232,6 +246,7 @@ module Conversations
         rounds = mainline_rounds(loops.values).transform_values { |rows| kept_rounds(rows) }
         preload_rounds(rounds.values.flatten)
         fans = AgentRuns::RoundReplay.fans_of(rounds.values.flatten)
+        receipts = AgentRuns::Steers::ToolReceipts.by_source(rounds.values.flatten)
         steers = AgentRuns::Steers::Landed.texts_by_round(rounds.values.flatten)
         material = delivered_material(rounds.values.flatten)
         bytes = output_bytes(fans.values.flat_map(&:values))
@@ -249,7 +264,8 @@ module Conversations
           else
             rounds.fetch(agent_run.id, []).filter_map do |round|
               render_round(round, fans.fetch(round.id, {}), prompt: (seed if seed_model_task?(round)),
-                steers: steers.fetch(round.id, []), material: material.fetch(round.id, []), bytes: bytes)
+                steers: steers.fetch(round.id, []), material: material.fetch(round.id, []), bytes: bytes,
+                receipts: receipts.fetch(round.id, {}))
             end
           end
         end
@@ -316,7 +332,7 @@ module Conversations
         ).map(&:turn)
       end
 
-      # The mainline in chain order — row order IS the chain.
+      # The first source defines order, including inserted immediate steers.
       def mainline_rounds(loops)
         return {} if loops.empty?
 
@@ -324,6 +340,7 @@ module Conversations
           .where(agent_run_id: loops.map(&:id), continuation_source: AgentRuns::Tasks::Compile::ROUND)
           .order(:id)
           .group_by(&:agent_run_id)
+          .transform_values { |rows| AgentRuns::InputComposition.order_rounds(rows) }
       end
 
       # The in-turn cut (`ChatHistory#round_segments`' rule): the newest
@@ -437,7 +454,7 @@ module Conversations
       # `steers` are the round's landed steers, each its own `User:`.
       # `bytes` is the fan's stored output sizes by row; a lone call
       # answers its own read.
-      def render_round(source, fan, prompt: nil, steers: [], material: [], bytes: output_bytes(fan.values))
+      def render_round(source, fan, prompt: nil, steers: [], material: [], bytes: output_bytes(fan.values), receipts: {})
         parts = ["## Round #{source.node_key}"]
         carried = carried_summary(source)
         parts << "#{SUMMARY_LEAD}\n#{carried}" if carried.present?
@@ -447,7 +464,7 @@ module Conversations
         steers.each { |steer| parts << "User:\n#{steer}" }
         answer = body_text(source, "output")
         parts << "Assistant:\n#{answer}" if answer.present?
-        results = fan_results(fan, bytes)
+        results = fan_results(fan, bytes, receipts: receipts)
         parts << results if results.present?
         parts.length > 1 ? parts.join("\n\n") : nil
       end
@@ -457,23 +474,28 @@ module Conversations
       # the person's answer and a model's words remain verbatim.
       def delivered_material(rounds, readers: AgentRuns::InputComposition.readers_by_round(rounds))
         deliveries = AgentRuns::InputComposition.delivered_sources_by_round(rounds, readers: readers)
+        receipts = {}
         readers.each do |id, reader|
           if reader.compacted_source
-            deliveries[id] = reader.paired_sources.map { |tip| [tip, false] } + deliveries.fetch(id)
+            pending = reader.tool_receipts
+            receipts[id] = pending.values.map { |item| "Tool #{item.payload.fetch("name")}: #{item.payload.fetch("output")}" }
+            consumed = reader.paired_sources.reject { |tip| pending.key?(tip.tool_call_id) }
+            deliveries[id] = consumed.map { |tip| [tip, false] } + deliveries.fetch(id)
           end
         end
         sources = deliveries.values.flatten(1).map(&:first).uniq(&:id)
         tools, words = sources.partition(&:tool_call?)
         AgentRuns::InputComposition.preload_material(words)
         bytes = output_bytes(tools)
-        deliveries.transform_values do |rows|
-          rows.map do |tip, boundary|
+        deliveries.to_h do |id, rows|
+          rendered = rows.map do |tip, boundary|
             if tip.tool_call?
               pointer(tip, bytes.fetch(tip.id, 0))
             else
               "User:\n#{AgentRuns::TaskResultEnvelope.for(tip, boundary: boundary)}"
             end
           end
+          [id, receipts.fetch(id, []) + rendered]
         end
       end
 
@@ -482,8 +504,11 @@ module Conversations
       # and the tail alike, since a summary is read INSTEAD of the history
       # and a tail body could only arrive as the summariser's paraphrase,
       # which is a wrong value, never a shorter one.
-      def fan_results(fan, bytes)
-        fan.values.sort_by(&:id).map { |tool| pointer(tool, bytes.fetch(tool.id, 0)) }.join("\n\n")
+      def fan_results(fan, bytes, receipts: {})
+        fan.values.sort_by(&:id).map do |tool|
+          receipt = receipts[tool.tool_call_id]
+          receipt ? "Tool #{tool.called_name}: #{receipt.payload.fetch("output")}" : pointer(tool, bytes.fetch(tool.id, 0))
+        end.join("\n\n")
       end
 
       # THE OUTCOME BESIDE THE SIZE: `→ 0 bytes` alone read the same for a

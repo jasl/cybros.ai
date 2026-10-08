@@ -107,6 +107,76 @@ class AgentAPI::V1::ConversationSteeringGuardTest < ActionDispatch::IntegrationT
     assert_equal "steering", input.state
   end
 
+  test "immediate steer keeps its guarded execution and wakes its scheduler" do
+    clear_enqueued_jobs
+    assert_enqueued_with(job: AgentRuns::ScheduleJob, args: [@seam.agent_run.id]) do
+      steer(mode: "steer_now", key: "immediate")
+      assert_response :accepted
+    end
+    accepted = response.parsed_body.fetch("input")
+    assert_equal "steer_now", accepted.fetch("delivery_mode")
+    assert_equal "steering", accepted.fetch("state")
+    assert_equal @seam.agent_run.public_id, accepted.fetch("expected_steering_run_public_id")
+
+    assert_no_enqueued_jobs do
+      steer(mode: "steer_now", key: "immediate")
+      assert_response :accepted
+      assert_equal accepted, response.parsed_body.fetch("input")
+    end
+  end
+
+  test "send now upgrades a held input without changing its content target or identity" do
+    steer
+    input = ConversationInput.find_by!(public_id: response.parsed_body.dig("input", "public_id"))
+    original = input.attributes.except("delivery_mode", "updated_at", "lock_version")
+    body_id = input.content_body.id
+    version = input.lock_version
+    path = "#{conversation_inputs_path(@conversation)}/#{input.public_id}"
+    clear_enqueued_jobs
+
+    assert_enqueued_with(job: AgentRuns::ScheduleJob, args: [@seam.agent_run.id]) do
+      patch path, headers: auth, as: :json,
+        params: { input: { delivery_mode: "steer_now", expected_lock_version: version } }
+      assert_response :success
+    end
+    assert_equal original, input.reload.attributes.except("delivery_mode", "updated_at", "lock_version")
+    assert_equal "steer_now", input.delivery_mode
+    assert_equal body_id, input.content_body.id
+    assert_equal "only this execution", input.text
+    assert_equal "steer_now", @conversation.conversation_event_items.where(item_type: "input_edited").sole.payload.fetch("delivery_mode")
+
+    assert_no_difference "ConversationEventItem.count" do
+      patch path, headers: auth, as: :json, params: { input: { delivery_mode: "steer_now" } }
+      assert_response :success
+    end
+    patch path, headers: auth, as: :json,
+      params: { input: { delivery_mode: "steer_now", expected_lock_version: version } }
+    assert_response :conflict
+    assert_equal "stale_object", response.parsed_body.dig("error", "code")
+  end
+
+  test "send now cannot edit held content or turn a queued row into a different target" do
+    steer
+    input = ConversationInput.find_by!(public_id: response.parsed_body.dig("input", "public_id"))
+    path = "#{conversation_inputs_path(@conversation)}/#{input.public_id}"
+    patch path, headers: auth, as: :json, params: { input: { delivery_mode: "steer_now", text: "replace" } }
+    assert_response :conflict
+    assert_equal "steering_held", response.parsed_body.dig("error", "code")
+    assert_equal ["steer", "only this execution"], [input.reload.delivery_mode, input.text]
+
+    patch path, headers: auth, as: :json, params: { input: { delivery_mode: "queue" } }
+    assert_response :unprocessable_content
+    assert_equal "steer", input.reload.delivery_mode
+
+    post conversation_inputs_path(@conversation), headers: auth("queued"), as: :json,
+      params: { input: { text: "next turn", delivery_mode: "queue" } }
+    queued = response.parsed_body.dig("input", "public_id")
+    patch "#{conversation_inputs_path(@conversation)}/#{queued}", headers: auth, as: :json,
+      params: { input: { delivery_mode: "steer_now" } }
+    assert_response :unprocessable_content
+    assert_equal "queue", ConversationInput.find_by!(public_id: queued).delivery_mode
+  end
+
   test "regeneration reads only its own correction and ending the old loop cancels its guard" do
     steer
     assert_response :accepted

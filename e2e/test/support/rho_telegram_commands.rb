@@ -8,11 +8,11 @@ module E2E
       loop_id = running.active_variant.run_public_id
 
       queued_text = "!mock reply=queued-answer -- answer in the next turn"
-      @runtime.consume(update(2, queued_text))
+      receive(update(2, queued_text))
       steer_text = "!mock reply=steered-answer -- use the revised instruction now"
       steering_update = update(3, "/steer #{steer_text}")
-      @runtime.consume(steering_update)
-      @runtime.consume(steering_update)
+      receive(steering_update)
+      receive(steering_update)
       inputs = chat.inputs.list.items
       assert_equal [queued_text, steer_text], inputs.map(&:text)
       assert_equal %w[queue steer], inputs.map(&:delivery_mode)
@@ -20,7 +20,7 @@ module E2E
       assert_equal 1, chat.turns.list.items.count { |turn| turn.kind == "direct_reply" }
       assert_equal "awaiting_input", telegram_question_task(running).status
 
-      @runtime.consume(update(4, "/answer #{question_id} Continue"))
+      receive(update(4, "/answer #{question_id} Continue"))
       replies = await("the steered answer and the queued turn") do
         tick
         rows = chat.turns.list.items.select { |turn| turn.kind == "direct_reply" && turn.status == "completed" }
@@ -73,7 +73,7 @@ module E2E
         text = "/#{command} !mock tool_call=bash:#{arguments} -- explain the shared topic"
         assert_includes telegram_control(id, text, chat: -10, topic: 7), "not available in Telegram"
         boot_runtime(allowed: [101, 102])
-        @runtime.consume(update(id, text, chat: -10, topic: 7))
+        receive(update(id, text, chat: -10, topic: 7))
       end
 
       assert_equal chat.public_id, current("-10:7")
@@ -97,19 +97,19 @@ module E2E
     def test_telegram_stop_targets_current_or_replied_work_without_touching_other_conversations
       boot_runtime(allowed: [101])
       unrelated, unrelated_turn, = telegram_held_parent(1)
-      @runtime.consume(update(2, "/new"))
+      receive(update(2, "/new"))
       earlier, earlier_turn, _, earlier_source = telegram_held_parent(3)
-      @runtime.consume(update(4, "/new"))
+      receive(update(4, "/new"))
       chat, running, = telegram_held_parent(5)
       refute_equal earlier.public_id, chat.public_id
       assert_equal chat.public_id, current("101:0")
 
       current_stop = update(6, "/stop")
       @bridge.lose_next_stop_ack = true
-      assert_raises(Rho::ConnectionError) { @runtime.consume(current_stop) }
+      assert_raises(Rho::ConnectionError) { receive(current_stop) }
       boot_runtime(allowed: [101])
-      @runtime.consume(current_stop)
-      @runtime.consume(current_stop)
+      receive(current_stop)
+      receive(current_stop)
       assert_equal [running.active_variant.run_public_id], @bridge.stops
       await("Stop settles only the current request") do
         chat.turns.list.items.find { |turn| turn.public_id == running.public_id }&.status == "canceled"
@@ -119,10 +119,10 @@ module E2E
       earlier_stop = update(7, "/stop")
       earlier_stop.fetch("message")["reply_to_message"] = earlier_source
       @bridge.lose_next_stop_ack = true
-      assert_raises(Rho::ConnectionError) { @runtime.consume(earlier_stop) }
+      assert_raises(Rho::ConnectionError) { receive(earlier_stop) }
       boot_runtime(allowed: [101])
-      @runtime.consume(earlier_stop)
-      @runtime.consume(earlier_stop)
+      receive(earlier_stop)
+      receive(earlier_stop)
       assert_equal [running.active_variant.run_public_id, earlier_turn.active_variant.run_public_id], @bridge.stops
       await("reply Stop settles only the original earlier execution") do
         earlier.turns.list.items.find { |turn| turn.public_id == earlier_turn.public_id }&.status == "canceled"
@@ -145,7 +145,7 @@ module E2E
           text = "!mock tool_call=#{script} reply=#{reply} -- keep the main request open"
           text = "@rho_bot\n#{text}" if chat.negative?
           incoming = update(id, text, user: user, chat: chat, topic: topic, mention: chat.negative?)
-          @runtime.consume(incoming)
+          receive(incoming)
           conversation_id = current("#{chat}:#{topic || 0}", user: user)
           conversation = @workspace.conversation(conversation_id)
           question_id, question = await("the main request's Telegram question") do

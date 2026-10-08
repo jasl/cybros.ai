@@ -39,7 +39,7 @@ module Rho
         execution_control_refusal(update, question.fetch("run_public_id"), question.fetch("workspace_public_id"))
       end
 
-      def task_target(update, task_id: nil, allow_pending_media: false)
+      def task_target(update, task_id: nil, allow_pending_inputs: false)
         return referenced_task(update, task_id) if task_id
 
         route = room(update)
@@ -55,9 +55,9 @@ module Rho
           key ||= document.fetch("requests").reverse_each.find { |_request_id, row| row.fetch("conversation_id") == id && row["run_id"] && !row["execution_conversation_id"] }&.first
         end
         request = report_id ? document.fetch("work").fetch(report_id) : key && document.fetch("requests").fetch(key)
-        pending_media = allow_pending_media && request && !request["input_id"] &&
-          document.fetch("pending_media").values.any? { |row| row["request_id"] == key }
-        unless request && (request["run_id"] || pending_media)
+        pending_inputs = allow_pending_inputs && request && !request["input_id"] &&
+          document.fetch("pending_inputs").values.any? { |row| row["request_id"] == key }
+        unless request && (request["run_id"] || pending_inputs)
           raise Rho::Error, "No known execution is available. Use /queue for waiting requests or reply to the original task."
         end
         raise Rho::Error, refusal if (refusal = request_control_refusal(update, request))
@@ -208,7 +208,7 @@ module Rho
             if report
               work.merge!(row.slice("owner_id", "route_key", "room_key", "conversation_id", "workspace_public_id", "requester_speaker_public_id", "run_id"), "parent_report" => true)
             else
-              work["request_id"] = key
+              work["request_id"] ||= key
             end
             work["turn_id"] = answer.fetch("turn").fetch("public_id") if answer["turn"]
             work["run_id"] = answer.fetch("run").fetch("public_id") if answer["run"]
@@ -258,8 +258,7 @@ module Rho
               row["run_id"] ||= payload.fetch("run_public_id") if row && !row["parent_report"]
             end
           when "input_deleted"
-            row = document.fetch("requests").values.find { |item| item["input_id"] == input_id }
-            row["retired"] = true if row
+            document.fetch("requests").each_value { |item| item["retired"] = true if item["input_id"] == input_id }
           else
             nil
           end
@@ -268,6 +267,7 @@ module Rho
         def link_work(document)
           requests = document.fetch("requests")
           sources = requests.filter_map { |key, row| [row.fetch("run_id"), key] if row["run_id"] }.to_h
+          accepted = requests.values.group_by { |request| request["input_id"] }
           # Event order places source materialization before derived acceptance;
           # later acknowledgement can therefore resolve the chain in one pass.
           document.fetch("work").each do |input_id, row|
@@ -277,8 +277,7 @@ module Rho
             key = row["request_id"]
             next unless key
 
-            request = requests.fetch(key)
-            if request["input_id"] == input_id
+            accepted.fetch(input_id, []).each do |request|
               request["turn_id"] ||= row["turn_id"]
               request["run_id"] ||= row["run_id"]
             end

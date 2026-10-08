@@ -211,11 +211,102 @@ class Conversations::Compaction::RoundRepairTest < ActiveJob::TestCase
       "the provider's refusal is its own kind: nothing pre-send saw this wall"
   end
 
+  test "a smaller loaded context can recover through one summary without changing the configured window" do
+    catalog = DevModelLane.windowed_catalog(input_tokens: 128_000)
+    selected = { "model" => DevModelLane::WINDOWED_TEXT_MODEL }
+
+    ModelCatalog.stub(:current, catalog) do
+      agent_run = create_loop!(
+        model("round1", "model" => selected, "prompt" => "Earlier work #{BULK * 4}"),
+        model("round2", "model" => selected, "prompt" => "Continue #{BULK * 4}", "retry" => 2)
+      )
+      run!(agent_run, "round1", "The earlier work is complete.")
+      round2 = node(agent_run, "round2")
+      original_tokens = request_tokens(round2)
+      assert_operator original_tokens, :>, 32_768
+      assert_operator original_tokens, :<, 128_000
+      assert_nil round2.compaction, "the configured window lets the request reach the provider"
+
+      local_overflow!(agent_run, "round2", original_tokens)
+
+      assert_equal "queued", round2.reload.status
+      assert_equal 0, round2.auto_retries_used
+      assert_equal "k1", round2.compaction["summary_source"]
+      schedule!(agent_run)
+      assert_operator request_tokens(node(agent_run, "k1")), :<, 32_768
+      run!(agent_run, "k1", "The earlier work is complete; continue the current request.")
+      assert_operator request_tokens(round2.reload), :<, 32_768
+      run!(agent_run, "round2", "Work complete.")
+
+      assert_equal "completed", round2.reload.status
+      assert_equal 1, agent_run.conversation_event_items.where(item_type: "context_compacted").count
+      assert_equal 128_000, DevModelLane.selection(workload: "text_generation", account: @account,
+        model: selected.fetch("model")).capabilities.limits.planning_input_bound,
+        "a provider refusal does not rewrite operator configuration"
+    end
+  end
+
+  test "an output default larger than the loaded context fails boundedly when the summary cannot fit" do
+    catalog = DevModelLane.windowed_catalog(input_tokens: 128_000)
+    model_ref = DevModelLane::WINDOWED_TEXT_MODEL
+    definition = catalog.models.fetch(model_ref)
+    capabilities = definition.fetch("capabilities")
+    generation = capabilities.fetch("generation_parameters")
+    definition = definition.merge("capabilities" => capabilities.merge(
+      "limits" => capabilities.fetch("limits").merge("output_tokens" => 32_768),
+      "generation_parameters" => generation.merge("max_output_tokens" =>
+        generation.fetch("max_output_tokens").merge("default" => 32_768, "maximum" => 32_768))
+    ))
+    catalog = catalog.with(models: catalog.models.merge(model_ref => definition))
+    selected = { "model" => model_ref }
+
+    ModelCatalog.stub(:current, catalog) do
+      agent_run = create_loop!(
+        model("round1", "model" => selected, "prompt" => "Earlier work",
+          "configuration" => { "max_output_tokens" => 256 }),
+        model("round2", "model" => selected, "prompt" => "Continue", "retry" => 2)
+      )
+      run!(agent_run, "round1", "The earlier work is complete.")
+      round2 = node(agent_run, "round2")
+      assert_equal 32_768, round2.selected_model_invocation.request_options.fetch("max_output_tokens")
+      local_overflow!(agent_run, "round2", request_tokens(round2), output_tokens: 32_768)
+      schedule!(agent_run)
+      summarizer = node(agent_run, "k1")
+      assert_equal 32_768, summarizer.selected_model_invocation.request_options.fetch("max_output_tokens")
+
+      local_overflow!(agent_run, "k1", request_tokens(summarizer), output_tokens: 32_768)
+      schedule!(agent_run)
+      assert_equal "failed", summarizer.reload.status
+      assert_equal :resolved, AgentRuns::Graph.settlement_of(summarizer)
+      assert_equal 0, summarizer.auto_retries_used
+      local_overflow!(agent_run, "round2", request_tokens(round2.reload), output_tokens: 32_768)
+
+      assert_equal "failed", round2.reload.status
+      assert_equal "provider_context_overflow", round2.error_key
+      assert_equal 0, round2.auto_retries_used
+      assert_equal ["k1"], agent_run.agent_run_tasks.where(continuation_source: "branch").pluck(:node_key)
+      assert_equal 1, agent_run.conversation_event_items.where(item_type: "context_compacted").count
+    end
+  end
+
+  test "a local context refusal respects disabled compaction" do
+    agent_run = loop_at_the_wall(bulk: "Continue the work", compaction: { "mode" => "off" }, retry_budget: 2)
+    schedule!(agent_run)
+
+    local_overflow!(agent_run, "round2", 40_000)
+
+    round2 = node(agent_run, "round2")
+    assert_equal "failed", round2.status
+    assert_equal "provider_context_overflow", round2.error_key
+    assert_equal 0, round2.auto_retries_used
+    assert_nil agent_run.agent_run_tasks.find_by(node_key: "k1")
+  end
+
   # A repair is armed at most once per wall on this arm too — the mark is
   # the same fence. A second length refusal after a summary means the
   # summary itself does not fit, and the round dies honestly.
   test "a second length refusal after a repair fails rather than arming again" do
-    agent_run = loop_at_the_wall(bulk: "start the work")
+    agent_run = loop_at_the_wall(bulk: "start the work", retry_budget: 2)
     schedule!(agent_run)
     overflow!(agent_run, "round2")
     # The converge path arms; it does not drain. The summarizer waits for
@@ -226,6 +317,7 @@ class Conversations::Compaction::RoundRepairTest < ActiveJob::TestCase
     overflow!(agent_run, "round2")
 
     assert_equal "failed", node(agent_run, "round2").reload.status
+    assert_equal 0, node(agent_run, "round2").auto_retries_used
     assert_equal 1, agent_run.agent_run_tasks.where(node_key: "k1").count,
       "compacting a compaction is a loop, not a repair"
   end
@@ -348,4 +440,22 @@ class Conversations::Compaction::RoundRepairTest < ActiveJob::TestCase
       trigger: Conversations::Compaction::Trigger.wall(node(agent_run, "round2"))
     )
   end
+
+  private
+
+    def request_tokens(round)
+      profile = DevModelLane.profile_for("#{round.provider_id}/#{round.model_ref}")
+      input = Nexus::InputEntries.from(entries: round_request_entries(round), workload: "text_generation")
+      ModelRequests::TokenCount.count(profile: profile,
+        segments: Nexus::ModelRequestInput.text_segments(input)).tokens
+    end
+
+    def local_overflow!(agent_run, key, input_tokens, output_tokens: 256)
+      apply_via(step_attempt(agent_run, key), json_response(400, {
+        "error" => { "type" => "invalid_request_error",
+                     "message" => "prompt (#{input_tokens} tokens) + max tokens (#{output_tokens}) " \
+                                  "exceeds the context (32768); requests are never truncated" },
+      }))
+      AgentRuns::ConvergeTerminalSteps.call
+    end
 end

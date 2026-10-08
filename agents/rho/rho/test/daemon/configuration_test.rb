@@ -141,7 +141,7 @@ class DaemonConfigurationTest < Minitest::Test
     # checkpoint store for its placed runner, so the store's two hidden
     # names (`checkpoints`, `checkpoint_restore`) announce beside the coding set.
     assert_equal %w[bash checkpoint_restore checkpoints code edit environment_bind file_import file_publish files_bytes find grep list_processes ls process_log read
-                    read_process skill start_process stop_process write],
+                    read_process skill start_process stop_process web_fetch write],
       tools.map { |entry| entry.fetch("name") }, "the runner address: this machine's tools, never the kernel's"
     tools.each do |entry|
       assert_equal %w[kind destructive effect_scope idempotency reconciliation], entry.fetch("effect_profile").keys
@@ -154,8 +154,9 @@ class DaemonConfigurationTest < Minitest::Test
       end
 
       expected = %w[name effect_profile description input_schema]
-      assert_equal expected.sort, entry.keys.sort,
-        "no environment tool declares a park of its own"
+      expected << "timeout_ms" if entry.fetch("name") == "web_fetch"
+      assert_equal expected.sort, entry.keys.sort
+      assert_equal 60_000, entry.fetch("timeout_ms") if entry.fetch("name") == "web_fetch"
       assert_equal "object", entry.fetch("input_schema").fetch("type")
       refute_empty entry.fetch("description")
     end

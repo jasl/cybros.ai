@@ -7,7 +7,9 @@ class AgentAPI::V1::Executors::OperationsController < AgentAPI::V1::Executors::B
 
     result = operation_access(token).read do |node|
       Executors::Outcome.accepted(Executors::TaskOperations::Trace.snapshot(node,
-        after: operation_position(:after, default: 0), limit: operation_position(:limit, default: 100)))
+        after: operation_position(:after, default: 0),
+        limit: limit_param(default: Executors::TaskOperations::Trace::PAGE_SIZE,
+          max: Executors::TaskOperations::Trace::MAX_PAGE_SIZE)))
     end
     render_operation_result(result) { |value| render json: { operations: value } }
   end

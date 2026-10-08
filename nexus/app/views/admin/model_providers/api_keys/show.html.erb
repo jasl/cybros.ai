@@ -1,6 +1,6 @@
-<% content_for :title, "#{model_provider_name(@provider.fetch(:id))} API key" %>
+<% content_for :title, t("admin.model_providers.api_keys.show.provider_api_key", provider: (model_provider_name(@provider.fetch(:id)))) %>
 
 <div class="space-y-8">
-  <%= render "admin/model_providers/header", provider: @provider, title: "API key", current: :credentials, description: "Connect this installation using your provider API key." %>
+  <%= render "admin/model_providers/header", provider: @provider, title: t("admin.model_providers.api_keys.show.api_key"), current: :credentials, description: t("admin.model_providers.api_keys.show.connect_this_installation_using_your_provider_api_key") %>
   <%= render "admin/model_providers/api_key", provider: @provider %>
 </div>

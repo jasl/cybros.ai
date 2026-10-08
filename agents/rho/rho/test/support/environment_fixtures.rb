@@ -46,7 +46,7 @@ module RhoTest
         row = CybrosAgent::Api::StoreEntry.new(public_id: "se-#{@sequence}", namespace: namespace, key: key,
           lock_version: 0, created_at: "2026-09-17T00:00:00Z", updated_at: "2026-09-17T00:00:00Z", value: value)
         @rows << row
-        row
+        CybrosAgent::Api::StoreEntriesContext::Created.new(store_entry: row, replayed: false)
       end
 
       def update(public_id, value:, lock_version:)

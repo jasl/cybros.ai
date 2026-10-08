@@ -70,16 +70,16 @@ class ModelRequests::WireLoweringTest < ActiveSupport::TestCase
     assert_equal %w[json_schema], ModelRequests::WireLowering.allowed_output_formats("anthropic_messages")
   end
 
-  test "cache breakpoints are the anthropic_messages wire's alone" do
+  test "cache breakpoints are carried by Messages and Bedrock Converse" do
     SimpleInference::ApiFormat::FORMATS.each do |adapter_profile|
-      assert_equal adapter_profile == "anthropic_messages",
+      assert_equal %w[anthropic_messages bedrock_converse].include?(adapter_profile),
         ModelRequests::WireLowering.carries_cache_breakpoints?(adapter_profile), adapter_profile
     end
   end
 
   # PROMPT CACHING IS EVERY TEXT WIRE'S PROPERTY (owner 2026-09-16): the
   # provider caches a stable prefix on every text lane — explicitly marked
-  # on the one breakpoint wire, implicitly everywhere else — and no other
+  # on the breakpoint wires, implicitly everywhere else — and no other
   # workload has a prompt to cache. The breakpoint predicate above is the
   # narrower fact Build places by.
   test "prompt caching is carried by every text wire and no other" do

@@ -33,4 +33,12 @@
       <%= t("layouts.application.settings") %>
     <% end %>
   </li>
+  <% if Current.user&.admin? %>
+    <li>
+      <%= link_to admin_users_path, class: "gap-2.5" do %>
+        <span class="iconify lucide--shield size-4" aria-hidden="true"></span>
+        <%= t("layouts.application.administration") %>
+      <% end %>
+    </li>
+  <% end %>
 </ul>

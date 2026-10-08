@@ -147,12 +147,8 @@ class AgentRuns::RoundReplayTest < ActiveSupport::TestCase
   private
 
     def round_for(envelope, text:, calls:, replay: nil, only_pairs: false)
-      composition = AgentRuns::RoundReplay.allocate
-      composition.instance_variable_set(:@node, Node.new(output_body: Body.new(effective_text: text)))
-      composition.instance_variable_set(:@fan_by_call_id, {})
-      composition.instance_variable_set(:@tips_by_call_key, {})
-      composition.instance_variable_set(:@cleared, false)
-      composition.instance_variable_set(:@replay, replay)
+      composition = AgentRuns::RoundReplay.new(Node.new(output_body: Body.new(effective_text: text)),
+        fan_by_call_id: {}, replay: replay)
       composition.instance_variable_set(:@trace_envelope, envelope)
       composition.instance_variable_set(:@round_calls,
         calls.map { |id| { "id" => id, "name" => "read_file", "arguments" => "{}" } })

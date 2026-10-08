@@ -52,6 +52,35 @@ class ExtensionTest < Minitest::Test
     assert_equal 1, driver.stops
   end
 
+  def test_startup_checks_and_releases_the_browser_without_creating_a_browsing_session
+    driver = BrowserTest::FakeDriver.new
+    Rho::Browser.driver_factory = -> { driver }
+    result = Rho::Runner::Extensions::Loader.call(builtin: [Rho::Browser])
+    startup = result.committed.fetch(0).lifecycle.find { |hook| hook.event == :startup }
+
+    startup.handler.call
+
+    assert_equal 1, driver.starts
+    assert_equal 1, driver.stops
+    assert_empty driver.pages
+    refute Rho::Browser.session.started?
+  end
+
+  def test_startup_failure_provides_repair_guidance_and_releases_the_failed_driver
+    driver = BrowserTest::FakeDriver.new(fail_starts: 1)
+    Rho::Browser.driver_factory = -> { driver }
+    result = Rho::Runner::Extensions::Loader.call(builtin: [Rho::Browser])
+    startup = result.committed.fetch(0).lifecycle.find { |hook| hook.event == :startup }
+
+    error = assert_raises(Rho::Runner::Extensions::PrerequisiteError) { startup.handler.call }
+
+    assert_includes error.message, "playwright install chromium"
+    assert_includes error.message, "Playwright driver command"
+    assert_includes error.message, "enable the plugin again"
+    refute driver.started?
+    assert_nil error.cause
+  end
+
   # The shutdown hook fires BEFORE the pool drains, so a worker can still
   # dequeue a browser call while the host is going away. It must be
   # refused, not handed a fresh Session that launches a Chromium nothing

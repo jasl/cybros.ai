@@ -1,14 +1,14 @@
 <%= turbo_frame_tag "provider_authorization", class: "block" do %>
   <div class="space-y-5">
     <%= render "layouts/shared/flash" if turbo_frame_request? %>
-    <section aria-label="Subscription" class="space-y-5 rounded-box border border-base-300 bg-base-200 p-5 sm:p-6">
+    <section aria-label="<%= t("admin.model_providers.authorization.subscription") %>" class="space-y-5 rounded-box border border-base-300 bg-base-200 p-5 sm:p-6">
       <div class="flex items-start gap-3">
         <span class="iconify <%= authorization.fetch(:state) == "authorized" ? "lucide--circle-check text-success" : "lucide--key-round text-base-content/60" %> mt-0.5 size-5 shrink-0" aria-hidden="true"></span>
         <div class="min-w-0 space-y-2">
           <h2 class="font-medium" role="status"><%= provider_authorization_label(authorization) %></h2>
-          <p class="text-sm leading-relaxed text-base-content/60">Subscription credentials are stored in Nexus. Agents use the connection without receiving its tokens.</p>
+          <p class="text-sm leading-relaxed text-base-content/60"><%= t("admin.model_providers.authorization.subscription_credentials_are_stored_in_brand_agents_use_the", brand: t("brand.name")) %></p>
           <% unless provider.fetch(:enabled) %>
-            <p class="text-sm text-base-content/70">Connecting successfully will enable this provider.</p>
+            <p class="text-sm text-base-content/70"><%= t("admin.model_providers.authorization.connecting_successfully_will_enable_this_provider") %></p>
           <% end %>
         </div>
       </div>
@@ -19,7 +19,7 @@
 
       <%= render "admin/model_providers/authorization_actions", provider: provider, authorization: authorization %>
       <% if authorization.fetch(:state) == "authorized" && local_assigns.fetch(:show_models_link, !turbo_frame_request?) %>
-        <%= link_to "Manage models", admin_model_provider_path(provider.fetch(:id), anchor: "provider-models"), class: "link text-sm", data: { turbo_frame: "_top" } %>
+        <%= link_to t("admin.model_providers.authorization.manage_models"), admin_model_provider_path(provider.fetch(:id), anchor: "provider-models"), class: "link text-sm", data: { turbo_frame: "_top" } %>
       <% end %>
     </section>
   </div>

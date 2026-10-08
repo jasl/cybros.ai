@@ -62,7 +62,8 @@ module Conversations
               provider_id: selection.provider_id,
               model_id: selection.execution_profile.model_pin,
               reasoning_enabled: selection.reasoning.enabled,
-              capability: selection.capabilities.reasoning_replay
+              capability: selection.capabilities.reasoning_replay,
+              allow_empty_thinking_signature: selection.execution_profile.wire_option(:allow_empty_thinking_signature) == true
             )
           )
         end

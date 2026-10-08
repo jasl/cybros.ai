@@ -38,7 +38,7 @@ class InferenceRequestHostsTest < Minitest::Test
     E2E.enable_dev_lane!
     @workspace = @client.workspaces.create(
       name: "InferenceRequest hosts #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @lane = @client.workspace(@workspace.public_id).inference_requests
   end
 

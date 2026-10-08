@@ -150,7 +150,7 @@ module NexusDoubles
         @conversation_input_ids[conversation] ||= "cin-#{@conversation_inputs.length}"
         return respond(202, { "input" => {
           "public_id" => "cin-#{@conversation_inputs.length}", "queue_position" => @conversation_inputs.length - 1,
-          "state" => fields.fetch("delivery_mode", "queue") == "steer" ? "steering" : "pending",
+          "state" => %w[steer steer_now].include?(fields.fetch("delivery_mode", "queue")) ? "steering" : "pending",
           "kind" => fields.fetch("kind", "direct_reply"), "role" => "user",
           "delivery_mode" => fields.fetch("delivery_mode", "queue"), "text" => fields["text"],
           "origin" => "person", "lock_version" => 0, "created_at" => "2026-09-06T00:00:00Z",

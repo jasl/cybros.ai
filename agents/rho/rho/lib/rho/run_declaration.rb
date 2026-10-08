@@ -217,14 +217,14 @@ module Rho
 
     # THE GUIDELINE: how to use the tools together, and what the kernel's delivered answers
     # are. Runner-independent, so it is rho's `system_prompt` slot on its profile — written
-    # at boot beside the declaration (`Bindings#declare`) and compiled by the kernel as the
+    # at boot and after Settings changes (`Bindings#declare`) and compiled by the kernel as the
     # first system-role item of every assembled turn, inside the stable prefix. The
     # per-request lead below is developer-role and carries only what changes per turn or per
     # runner. The one other reader is the STANDALONE seed (`instructions`): a standalone
     # run passes no assembler and reads no slot until the kernel's assembly compiler. The
     # runner facts that left the kernel's `task` bytes live here under rho's OWN names — a
     # file or a few greps are your own work, a process is for a server — style-neutral: the
-    # slot is written once per boot and never rendered under an alias, so it names no kernel
+    # slot is never rendered under an alias, so it names no kernel
     # tool a preset re-spells ("another agent", never `task`/`Agent`).
     GUIDELINE = <<~TEXT.strip.freeze
       Some tool schemas are available through tool discovery. Find the capability you need, then invoke the exact returned callable with the tool invocation tool or from code when available. Choose an environment when creating work; an omitted choice inherits the parent's environment. Each accepted task keeps its environment and tool authority, and code or delegated work inherits that frozen surface. Different tasks in one run can use different explicitly selected environments. Inspect available Runners before creating work elsewhere. A person's default Runner change affects future work only. Discovery does not grant new tools or change an accepted target.
@@ -331,7 +331,7 @@ module Rho
     # A standalone seed carries the same source intentions as the profile.
     # `served` describes the selected remote Runner only for application policy;
     # Nexus owns importing its schemas. Raw callers retain their instructions.
-    def steps(prompt:, model:, registry:, environment: nil, instructions: nil,
+    def steps(prompt:, model:, registry:, environment: nil, instructions: nil, system_prompt: GUIDELINE,
               kernel_tools: [], kernel_aliases: [], runner_executor_public_ids: [], runner_tool_names: nil,
               key: "work", served: nil, prompt_mechanism: nil, hints: [], code_mode: true, runner_executor_public_id: nil)
       # The environment rides even under caller instructions; it is
@@ -343,7 +343,8 @@ module Rho
       # compiles the guideline from rho's `system_prompt` slot; the lead
       # rides in the prompt (`led`). `hints` are the model row's lines.
       guidance = assembled?(prompt_mechanism) ? "" :
-        self.instructions(registry: registry, environment: environment, instructions: instructions, hints: hints, code_mode: code_mode)
+        self.instructions(registry: registry, environment: environment, instructions: instructions,
+          system_prompt: system_prompt, hints: hints, code_mode: code_mode)
       raise ArgumentError, "a served Runner list requires runner_executor_public_id" if served && runner_executor_public_id.nil?
 
       declared = declaration(registry: registry, kernel_tools: kernel_tools, kernel_aliases: kernel_aliases,
@@ -401,10 +402,10 @@ module Rho
     # Raw seeds retain their environment in the system field across compaction.
     # Stable guidance precedes tool snippets, environment and per-model hints so
     # switching a Runner does not invalidate the beginning of that field.
-    def instructions(registry:, environment: nil, instructions: nil, hints: [], code_mode: true)
+    def instructions(registry:, environment: nil, instructions: nil, system_prompt: GUIDELINE, hints: [], code_mode: true)
       lines = tool_lines(registry, code_mode: code_mode)
       guidance = instructions ? [instructions] :
-        [lines && GUIDELINE, (ExecutionPolicy.context(kind: "standalone") if lines), lines]
+        [system_prompt, ExecutionPolicy.context(kind: "standalone"), lines]
       [
         *guidance,
         environment && environment_block(registry, environment),
@@ -468,8 +469,8 @@ module Rho
     # THE STANDALONE SEED'S SYSTEM FIELD on a runner elsewhere: the
     # guideline or the caller's own words precede the snapshot and hints.
     # The environment stays in this system field across compaction.
-    def remote_instructions(environment, instructions: nil, hints: [])
-      [*(instructions ? [instructions] : [GUIDELINE, ExecutionPolicy.context(kind: "standalone")]),
+    def remote_instructions(environment, instructions: nil, system_prompt: GUIDELINE, hints: [])
+      [*(instructions ? [instructions] : [system_prompt, ExecutionPolicy.context(kind: "standalone")]),
        (snapshot_block(environment) if snapshot_block(environment) != ""), hint_block(hints)].compact.join("\n\n")
     end
 

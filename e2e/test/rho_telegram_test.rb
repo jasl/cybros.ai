@@ -11,9 +11,54 @@ class RhoTelegramTest < E2E::RhoTelegramCase
   include E2E::RhoTelegramReminders
   include E2E::RhoTelegramDestinations
 
+  def test_a_configured_message_burst_survives_adapter_restart_as_one_input
+    assert_equal 2, @core.telegram_settings.dig("configuration", "input_debounce_seconds")
+    configured = @core.configure_telegram("input_debounce_seconds" => 10)
+    assert configured.fetch("saved")
+    assert configured.fetch("applied")
+    delay = @core.telegram_settings.dig("configuration", "input_debounce_seconds")
+    assert_equal 10, delay
+    boot_runtime(allowed: [101], input_debounce_seconds: delay)
+    first = update(1, "Please write a report")
+    second = update(2, "!mock reply=batched-correction -- Actually, make it a short note")
+    @runtime.consume(first)
+    chat = @workspace.conversation(current("101:0"))
+    assert_empty chat.inputs.list.items
+    assert_empty chat.turns.list.items
+    sleep 1
+    @runtime.consume(second)
+    boot_runtime(allowed: [101], input_debounce_seconds: delay)
+    tick
+    assert_empty chat.inputs.list.items
+    assert_empty chat.turns.list.items
+    answer = await("the restarted adapter to admit the assembled burst") do
+      tick
+      chat.turns.list.items.find { |turn| turn.kind == "direct_reply" && turn.status == "completed" }
+    end
+    material = request_text(answer)
+    assert_includes material, first.dig("message", "text")
+    assert_includes material, second.dig("message", "text")
+    assert_operator material.index("Please write a report"), :<, material.index("Actually, make it a short note")
+    assert_equal 1, chat.events(limit: 100).count { |event| event.type == "input_accepted" }
+    assert_equal "Mock: batched-correction", answer.active_variant.content
+    await("one Telegram answer for the whole burst") { tick; @telegram.formal(101).length == 1 }
+    @core.configure_telegram("input_debounce_seconds" => 0)
+    delay = @core.telegram_settings.dig("configuration", "input_debounce_seconds")
+    assert_equal 0, delay
+    boot_runtime(allowed: [101], input_debounce_seconds: delay)
+    @runtime.consume(update(3, "!mock reply=immediate-answer -- send without a timer pass"))
+    assert_empty @state.read.fetch("pending_inputs")
+    assert_equal 2, chat.events(limit: 100).count { |event| event.type == "input_accepted" }
+    await("the zero-delay answer reaches Telegram") do
+      tick
+      @telegram.formal(101).any? { |_method, params| params[:text] == "Mock: immediate-answer" }
+    end
+    assert_empty @logs
+  end
+
   def test_allowed_speakers_group_privacy_replay_and_supplementary_delivery
     boot_runtime(allowed: [])
-    @runtime.consume(update(1, "Do not admit this stranger", user: 999, chat: 999))
+    receive(update(1, "Do not admit this stranger", user: 999, chat: 999))
     assert_empty @state.read.fetch("speakers")
     assert_empty @state.read.fetch("routes")
     assert_empty @core.conversations.fetch("conversations")
@@ -28,10 +73,13 @@ class RhoTelegramTest < E2E::RhoTelegramCase
     discover = CGI.escape(JSON.generate("query" => "skill"))
     private_update = update(2, "!mock tool_call=tool_search:#{discover} reply=private-answer -- private question")
     @bridge.lose_next_ack = true
-    assert_raises(Rho::ConnectionError) { @runtime.consume(private_update) }
-    assert_equal private_update.fetch("update_id"), @state.read.fetch("pending_update").fetch("update").fetch("update_id")
-    @runtime.consume(private_update)
-    assert_empty @telegram.calls.select { |method, _params| method == "sendMessage" },
+    receive(private_update)
+    assert @state.read.fetch("pending_inputs").fetch(private_update.fetch("update_id").to_s).fetch("submission")
+    assert_nil @state.read["pending_update"], "the source is durable before Telegram advances its offset"
+    assert_equal "Rho::ConnectionError", @logs.pop.last.fetch(:reason)
+    receive(private_update)
+    assert_empty @telegram.calls.select { |method, params| method == "sendMessage" && params[:parse_mode] != "HTML" &&
+      params.dig(:reply_parameters, :message_id) == private_update.dig("message", "message_id") },
       "an ordinary direct reply must not start with a task receipt"
     private_id = current("101:0")
     private_chat = @workspace.conversation(private_id)
@@ -57,7 +105,7 @@ class RhoTelegramTest < E2E::RhoTelegramCase
     end
     assert_equal 1, replies.length,
       "the direct answer is the only message for an ordinary request"
-    @runtime.consume(private_update)
+    receive(private_update)
     tick
     assert_equal 1, @telegram.formal(101).length
     assert_equal 1, private_chat.events(limit: 100).count { |event| event.type == "input_accepted" }
@@ -74,15 +122,15 @@ class RhoTelegramTest < E2E::RhoTelegramCase
   def test_workspace_selection_preserves_original_work_across_chat_switch_and_daemon_restart
     boot_runtime(allowed: [101, 102])
     original_workspace = @workspace.public_id
-    @runtime.consume(update(1, "/new", chat: -10, topic: 7))
-    @runtime.consume(update(2, "/new", chat: -10, topic: 8))
+    receive(update(1, "/new", chat: -10, topic: 7))
+    receive(update(2, "/new", chat: -10, topic: 8))
     untouched_topic = current("-10:8")
     selected_workspace = nil
     original_conversation = nil
 
     assert_supplementary_delivery(answer_id: 100) do |conversation_id, question_id|
       original_conversation = conversation_id
-      @runtime.consume(update(8, "/workspace create Project two"))
+      receive(update(8, "/workspace create Project two"))
       selected_workspace = @state.read.fetch("routes").fetch("101:0").fetch("workspace_public_id")
       refute_equal original_workspace, selected_workspace
       created = @client.workspaces.fetch(selected_workspace)
@@ -93,7 +141,7 @@ class RhoTelegramTest < E2E::RhoTelegramCase
       assert @state.read.fetch("routes").fetch("101:0").fetch("conversations").key?(conversation_id)
       assert_equal original_workspace, @daemon.status.fetch("workspace").fetch("public_id")
 
-      @runtime.consume(update(9, "/workspace use #{selected_workspace}", chat: -10, topic: 7))
+      receive(update(9, "/workspace use #{selected_workspace}", chat: -10, topic: 7))
       assert_equal selected_workspace, @state.read.fetch("routes").fetch(telegram_route_key("-10:7")).fetch("workspace_public_id")
       assert_equal untouched_topic, current("-10:8")
       assert_equal original_workspace, @core.conversation(untouched_topic).fetch("workspace_public_id")
@@ -139,7 +187,7 @@ class RhoTelegramTest < E2E::RhoTelegramCase
       "The waited child stays in its original workspace"
 
     selected_chat = @client.workspace(selected_workspace).conversation(current("101:0"))
-    @runtime.consume(update(101, "!mock reply=selected-workspace -- a new workspace question"))
+    receive(update(101, "!mock reply=selected-workspace -- a new workspace question"))
     assert_equal "Mock: selected-workspace", completed_reply(selected_chat).active_variant.content
     await("new workspace final delivery") do
       tick
@@ -172,9 +220,9 @@ class RhoTelegramTest < E2E::RhoTelegramCase
     end
     assert_includes successful_tool_output(recovered, "bash"), "original-workspace-after-restart"
 
-    @runtime.consume(update(102, "/workspace list"))
+    receive(update(102, "/workspace list"))
     assert_nil @state.read["pending_update"]
-    @runtime.consume(update(103, "/workspace use #{original_workspace}"))
+    receive(update(103, "/workspace use #{original_workspace}"))
     assert_equal original_workspace, @state.read.fetch("routes").fetch("101:0").fetch("workspace_public_id")
     output, status = @daemon.cli("workspaces", "use", original_workspace)
     assert_predicate status, :success?, output
@@ -185,7 +233,7 @@ class RhoTelegramTest < E2E::RhoTelegramCase
 
   def test_a_waited_child_question_remains_answerable_when_the_new_default_is_unavailable
     boot_runtime(allowed: [101])
-    @runtime.consume(update(1, "/new"))
+    receive(update(1, "/new"))
     original_id = current("101:0")
     original = @workspace.conversation(original_id)
     selected_id = @core.create_workspace(name: "Temporary default").fetch("public_id")
@@ -209,7 +257,7 @@ class RhoTelegramTest < E2E::RhoTelegramCase
     end
     assert_equal original_id, pending.fetch("conversation_id")
     assert_equal @workspace.public_id, pending.fetch("workspace_public_id")
-    @runtime.consume(update(2, "/answer #{question_id} Yes, continue."))
+    receive(update(2, "/answer #{question_id} Yes, continue."))
     assert @state.read.fetch("questions").fetch(question_id).fetch("resolved")
     assert_equal "Mock: parent-finished", completed_reply(original).active_variant.content
     child = original.children.items.find { |row| row.parent&.label == "asking-child" }
@@ -223,7 +271,7 @@ class RhoTelegramTest < E2E::RhoTelegramCase
   def test_another_surface_resolves_a_question_and_archive_restore_restarts_following
     boot_runtime(allowed: [101])
     arguments = CGI.escape(JSON.generate("prompt" => "Which database should I use?"))
-    @runtime.consume(update(1, "!mock tool_call=ask tool_args=#{arguments} reply=answered-elsewhere -- choose a database"))
+    receive(update(1, "!mock tool_call=ask tool_args=#{arguments} reply=answered-elsewhere -- choose a database"))
     conversation_id = current("101:0")
     chat = @workspace.conversation(conversation_id)
     question_id, question = await("a delivered Telegram question") do
@@ -242,7 +290,7 @@ class RhoTelegramTest < E2E::RhoTelegramCase
       "message_id" => question.fetch("message_ids").first, "from" => @bot.merge("is_bot" => true),
       "text" => reply_message.fetch(:text),
     }
-    @runtime.consume(stale)
+    receive(stale)
     assert_equal before, chat.events(limit: 100).count { |event| event.type == "input_accepted" },
       "answering an expired Telegram question must not become an ordinary new turn"
 
@@ -295,7 +343,7 @@ class RhoTelegramTest < E2E::RhoTelegramCase
       @telegram.formal(101).any? { |_method, params| params[:text] == "Mock: after-restore" }
     end
     assert_equal conversation_id, current("101:0")
-    @runtime.consume(update(3, "/new"))
+    receive(update(3, "/new"))
     refute_equal conversation_id, current("101:0")
     open_console(conversation_id)
     assert @browser.page.has_field?("Message", disabled: false, wait: E2E::RhoDaemon::WATCH_TIMEOUT),
@@ -306,7 +354,7 @@ class RhoTelegramTest < E2E::RhoTelegramCase
 
   def test_a_rate_limited_answer_is_not_sent_after_another_surface_replaces_its_variant
     boot_runtime(allowed: [101])
-    @runtime.consume(update(1, "!mock reply=obsolete-answer -- answer to revise"))
+    receive(update(1, "!mock reply=obsolete-answer -- answer to revise"))
     conversation_id = current("101:0")
     chat = @workspace.conversation(conversation_id)
     original = completed_reply(chat)

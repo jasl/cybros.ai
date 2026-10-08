@@ -5,23 +5,20 @@
 
 <div class="space-y-8">
   <header class="space-y-4">
-    <%= render "shared/back_navigation", path: admin_users_path, label: "Members" %>
+    <%= render "shared/back_navigation", path: admin_users_path, label: t("admin.users.show.members") %>
     <div class="space-y-1">
       <h1 class="text-xl font-medium tracking-tight wrap-anywhere"><%= member_name %></h1>
-      <p class="text-sm text-base-content/60">Member administration</p>
+      <p class="text-sm text-base-content/60"><%= t("admin.users.show.member_administration") %></p>
     </div>
   </header>
 
   <section>
-    <h2 class="mb-2 text-xs font-medium text-base-content/60">Membership</h2>
+    <h2 class="mb-2 text-xs font-medium text-base-content/60"><%= t("admin.users.show.membership") %></h2>
     <%= render "shared/facts_panel", facts: member_facts(@member) %>
     <% if @member.agent? %>
       <% if @member.steward && !@member.steward.active? %>
         <p class="mt-2 text-sm text-warning">
-          The steward is not active: member/data access and new task admission are blocked until
-          the steward is reactivated or restored, or the agent is reassigned to an active
-          steward. Existing exact-epoch executor transport is not fenced by this steward state and
-          may continue reconciliation.
+          <%= t("admin.users.show.the_steward_is_not_active_member_data_access_and") %>
         </p>
       <% end %>
     <% end %>
@@ -29,15 +26,15 @@
 
   <% if @member.agent? && administrable %>
     <section>
-      <h2 class="mb-2 text-xs font-medium text-base-content/60">Steward</h2>
+      <h2 class="mb-2 text-xs font-medium text-base-content/60"><%= t("admin.users.show.steward") %></h2>
       <div class="rounded-box border border-base-300 bg-base-200">
         <% steward_description = if @member.removed?
-          "Reassignment keeps the Agent removed and its old credentials invalid. The new steward can restore it and reconnect the program."
+          t("admin.users.show.reassignment_keeps_the_agent_removed_and_its_old_credentials")
         else
-          "Choose the active human member responsible for this agent."
+          t("admin.users.show.choose_the_active_human_member_responsible_for_this_agent")
         end %>
-        <%= render layout: "shared/action_row", locals: { title: "Reassign steward", description: steward_description } do %>
-          <%= link_to "Reassign steward", admin_user_steward_path(@member), class: "btn btn-sm btn-ghost" %>
+        <%= render layout: "shared/action_row", locals: { title: t("admin.users.show.reassign_steward"), description: steward_description } do %>
+          <%= link_to t("admin.users.show.reassign_steward"), admin_user_steward_path(@member), class: "btn btn-sm btn-ghost" %>
         <% end %>
       </div>
     </section>
@@ -46,38 +43,34 @@
   <% if @member.removed? %>
     <% if @member.agent? %>
       <p class="text-sm text-base-content/60">
-        This agent membership is removed. Its access and credentials are revoked immediately,
-        and related conversations are force-stopped in the background.
-        Its registration is retained for reconnecting.
+        <%= t("admin.users.show.this_agent_membership_is_removed_its_access_and_credentials") %>
       </p>
     <% else %>
       <p class="text-sm text-base-content/60">
-        This membership is removed. Their own access ended immediately and the email address stays
-        reserved. Agents and Runners they manage are shutting down;
-        restoring the Human does not cancel that shutdown.
+        <%= t("admin.users.show.this_membership_is_removed_their_own_access_ended_immediately") %>
       </p>
     <% end %>
   <% elsif !administrable %>
     <p class="text-sm text-base-content/60">
       <% if @member.owner? %>
-        The owner cannot be administered. Ownership moves only through an explicit transfer.
+        <%= t("admin.users.show.the_owner_cannot_be_administered_ownership_moves_only_through") %>
       <% elsif @member == actor %>
-        You cannot administer your own membership.
+        <%= t("admin.users.show.you_cannot_administer_your_own_membership") %>
       <% end %>
     </p>
   <% end %>
 
   <% if administrable && @member.removed? %>
     <section>
-      <h2 class="mb-2 text-xs font-medium text-base-content/60">Lifecycle</h2>
+      <h2 class="mb-2 text-xs font-medium text-base-content/60"><%= t("admin.users.show.lifecycle") %></h2>
       <div class="rounded-box border border-base-300 bg-base-200">
         <% restore_description = if @member.agent?
-          "Restores the agent profile. Old credentials remain invalid; reconnect the program to resume access."
+          t("admin.users.show.restores_the_agent_profile_old_credentials_remain_invalid_reconnect")
         else
-          "Reopens this Human's access with the existing sign-in; previously revoked credentials stay revoked. Managed resources still finish the accepted shutdown episode and reconnect explicitly when ready."
+          t("admin.users.show.reopens_this_human_s_access_with_the_existing_sign")
         end %>
-        <%= render layout: "shared/action_row", locals: { title: "Restore", description: restore_description } do %>
-          <%= button_to "Restore", admin_user_restoration_path(@member), method: :post, class: "btn btn-ghost btn-sm" %>
+        <%= render layout: "shared/action_row", locals: { title: t("admin.users.show.restore"), description: restore_description } do %>
+          <%= button_to t("admin.users.show.restore"), admin_user_restoration_path(@member), method: :post, class: "btn btn-ghost btn-sm" %>
         <% end %>
       </div>
     </section>
@@ -86,42 +79,42 @@
   <% if administrable && !@member.removed? %>
     <% if @member.human? && !@member.owner? %>
       <section>
-        <h2 class="mb-2 text-xs font-medium text-base-content/60">Role</h2>
+        <h2 class="mb-2 text-xs font-medium text-base-content/60"><%= t("admin.users.show.role") %></h2>
         <%= form_with url: admin_user_role_path(@member), method: :patch, scope: :role do |form| %>
           <div class="rounded-box border border-base-300 bg-base-200">
-            <%= render layout: "shared/form_row", locals: { form:, attribute: :role, label: "Role" } do %>
-              <%= form.select :role, User::Role::ASSIGNABLE_ROLES.map { |role| [role.capitalize, role] }, { selected: @member.role }, class: "select select-sm w-full" %>
+            <%= render layout: "shared/form_row", locals: { form:, attribute: :role, label: t("admin.users.show.role") } do %>
+              <%= form.select :role, User::Role::ASSIGNABLE_ROLES.map { |role| [t("members.role_options.#{role}"), role] }, { selected: @member.role }, class: "select select-sm w-full" %>
             <% end %>
           </div>
           <div class="mt-3 flex justify-end">
-            <%= form.submit "Update role", class: "btn btn-primary btn-sm" %>
+            <%= form.submit t("admin.users.show.update_role"), class: "btn btn-primary btn-sm" %>
           </div>
         <% end %>
       </section>
     <% end %>
 
     <section>
-      <h2 class="mb-2 text-xs font-medium text-base-content/60">Lifecycle</h2>
+      <h2 class="mb-2 text-xs font-medium text-base-content/60"><%= t("admin.users.show.lifecycle") %></h2>
       <div class="rounded-box border border-base-300 bg-base-200">
         <% if @member.active? && @member.human? %>
-          <%= render layout: "shared/action_row", locals: { title: "Suspend", description: "Immediately signs the member out everywhere; reversible." } do %>
-            <%= button_to "Suspend", admin_user_suspension_path(@member), method: :post, class: "btn btn-ghost btn-sm", data: { turbo_confirm: "Suspend #{@member.display_name}? Their sessions become invalid immediately." } %>
+          <%= render layout: "shared/action_row", locals: { title: t("admin.users.show.suspend"), description: t("admin.users.show.immediately_signs_the_member_out_everywhere_reversible") } do %>
+            <%= button_to t("admin.users.show.suspend"), admin_user_suspension_path(@member), method: :post, class: "btn btn-ghost btn-sm", data: { turbo_confirm: t("admin.users.show.suspend_member_their_sessions_become_invalid_immediately", member: (@member.display_name)) } %>
           <% end %>
         <% elsif @member.suspended? %>
-          <%= render layout: "shared/action_row", locals: { title: "Reactivate", description: "Restores access; previous sessions stay revoked." } do %>
-            <%= button_to "Reactivate", admin_user_activation_path(@member), method: :post, class: "btn btn-ghost btn-sm" %>
+          <%= render layout: "shared/action_row", locals: { title: t("admin.users.show.reactivate"), description: t("admin.users.show.restores_access_previous_sessions_stay_revoked") } do %>
+            <%= button_to t("admin.users.show.reactivate"), admin_user_activation_path(@member), method: :post, class: "btn btn-ghost btn-sm" %>
           <% end %>
         <% end %>
         <% removal_description = if @member.agent?
-          "Revokes the agent's access and credentials immediately, then force-stops related conversations in the background."
+          t("admin.users.show.revokes_the_agent_s_access_and_credentials_immediately_then")
         else
-          "Ends this Human's access now. Their managed Agents and Runners stop accepting new work and shut down asynchronously. The email address stays reserved; restoring the Human does not cancel that shutdown."
+          t("admin.users.show.ends_this_human_s_access_now_their_managed_agents")
         end %>
-        <%= render layout: "shared/action_row", locals: { title: "Remove", description: removal_description } do %>
+        <%= render layout: "shared/action_row", locals: { title: t("admin.users.show.remove"), description: removal_description } do %>
           <% if @member.agent? %>
-            <%= button_to "Remove", admin_user_removal_path(@member), method: :post, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: "Remove #{member_name}? Its credentials stop working immediately and related conversations are force-stopped in the background." } %>
+            <%= button_to t("admin.users.show.remove"), admin_user_removal_path(@member), method: :post, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("admin.users.show.remove_member_its_credentials_stop_working_immediately_and_related", member: (member_name)) } %>
           <% else %>
-            <%= button_to "Remove", admin_user_removal_path(@member), method: :post, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: "Remove #{member_name}? Their own access ends immediately, and Agents and Runners they manage begin shutting down. Restoring them later does not cancel that shutdown." } %>
+            <%= button_to t("admin.users.show.remove"), admin_user_removal_path(@member), method: :post, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("admin.users.show.remove_member_their_own_access_ends_immediately_and_agents", member: (member_name)) } %>
           <% end %>
         <% end %>
       </div>
@@ -129,10 +122,10 @@
 
     <% if actor.owner? && @member.role == "admin" && @member.active? && @member.human? %>
       <section>
-        <h2 class="mb-2 text-xs font-medium text-base-content/60">Ownership</h2>
+        <h2 class="mb-2 text-xs font-medium text-base-content/60"><%= t("admin.users.show.ownership") %></h2>
         <div class="rounded-box border border-base-300 bg-base-200">
-          <%= render layout: "shared/action_row", locals: { title: "Transfer ownership", description: "You become an administrator; #{member_name} becomes the owner." } do %>
-            <%= button_to "Transfer ownership", admin_user_ownership_transfer_path(@member), method: :post, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: "Transfer ownership to #{member_name}? You will become an administrator." } %>
+          <%= render layout: "shared/action_row", locals: { title: t("admin.users.show.transfer_ownership"), description: t("admin.users.show.you_become_an_administrator_member_becomes_the_owner", member: (member_name)) } do %>
+            <%= button_to t("admin.users.show.transfer_ownership"), admin_user_ownership_transfer_path(@member), method: :post, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("admin.users.show.transfer_ownership_to_member_you_will_become_an_administrator", member: (member_name)) } %>
           <% end %>
         </div>
       </section>

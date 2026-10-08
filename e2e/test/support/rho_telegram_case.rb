@@ -148,8 +148,8 @@ module E2E
       end
 
       def assert_group_privacy(marker, skill)
-        @runtime.consume(update(3, "/observe on", chat: -10, topic: 7))
-        @runtime.consume(update(4, "A shared background fact", user: 102, chat: -10, topic: 7))
+        receive(update(3, "/observe on", chat: -10, topic: 7))
+        receive(update(4, "A shared background fact", user: 102, chat: -10, topic: 7))
         observer = @workspace.conversation(@state.read.fetch("rooms").fetch("-10:7").fetch("conversation_id"))
         refute_equal current("101:0"), observer.public_id
         observed = await("observed message") { observer.turns.list.items.first }
@@ -170,7 +170,7 @@ module E2E
         refute names.any? { |name| name.start_with?("skill_", "conversation_") }
         refute_includes names, "skill", "the group has no kernel skill loader"
         refute_includes names, "tool_search", "the group cannot discover the private profile's skills"
-        @runtime.consume(update(5, "@rho_bot\n!mock reply=group-answer -- group question", chat: -10, topic: 7, mention: true))
+        receive(update(5, "@rho_bot\n!mock reply=group-answer -- group question", chat: -10, topic: 7, mention: true))
         chat = @workspace.conversation(current("-10:7"))
         refute_equal observer.public_id, chat.public_id
         reply = completed_reply(chat)
@@ -188,7 +188,7 @@ module E2E
       end
 
       def assert_supplementary_delivery(answer_id: 8, check_late_control: false, by_task_id: false)
-        @runtime.consume(update(6, "/new"))
+        receive(update(6, "/new"))
         conversation_id = current("101:0")
         chat = @workspace.conversation(conversation_id)
         initial_sends = @telegram.formal(101).length
@@ -197,7 +197,7 @@ module E2E
         background = CGI.escape(JSON.generate("code" => script))
         foreground = CGI.escape(JSON.generate("prompt" => "Finish the original answer?"))
         incoming = update(7, "!mock tool_call=code:#{background}&ask:#{foreground} reply=finished -- original answer")
-        @runtime.consume(incoming)
+        receive(incoming)
         question_id, question = await("the foreground Telegram question") do
           tick
           @state.read.fetch("questions").find do |_id, row|
@@ -213,7 +213,7 @@ module E2E
         assert_empty chat.events(limit: 100).select { |event| event.type == "input_accepted" && event.payload["origin"] == "task_result" }
         assert_equal initial_sends, @telegram.formal(101).length
         yield(conversation_id, question_id) if block_given?
-        @runtime.consume(update(answer_id, "/answer #{question_id} Finish"))
+        receive(update(answer_id, "/answer #{question_id} Finish"))
         replies = await("two separate completed answers") do
           rows = chat.turns.list.items.select { |turn| turn.kind == "direct_reply" && turn.status == "completed" }
           rows if rows.length == 2
@@ -311,11 +311,11 @@ module E2E
         @telegram_bootstrapped_users ||= [101]
         @telegram_bootstrapped_chats ||= []
         (allowed - @telegram_bootstrapped_users).each do |user|
-          @runtime.consume(update(["allow-user", user], "/access users add #{user}"))
+          receive(update(["allow-user", user], "/access users add #{user}"))
           @telegram_bootstrapped_users << user
         end
         unless @telegram_bootstrapped_chats.include?(-10)
-          @runtime.consume(update(["allow-chat", -10], "/access chats add -10"))
+          receive(update(["allow-chat", -10], "/access chats add -10"))
           @telegram_bootstrapped_chats << -10
         end
       end
@@ -344,6 +344,18 @@ module E2E
         selected.fetch("current")
       end
       def tick = @runtime.tick
+
+      # Existing control journeys send separate messages. Cross the channel's
+      # quiet window through its public timer before their next action. Burst
+      # journeys call consume/tick directly to exercise the window itself.
+      def receive(incoming)
+        @runtime.consume(incoming)
+        row = @state.read.fetch("pending_inputs")[incoming.fetch("update_id").to_s]
+        return unless row && !row["media"]
+
+        sleep [row.fetch("ready_at") - Time.now.to_f + 0.05, 0].max
+        tick
+      end
 
       def completed_reply(chat)
         await("completed reply") do

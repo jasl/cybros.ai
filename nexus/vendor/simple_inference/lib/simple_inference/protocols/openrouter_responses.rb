@@ -17,6 +17,7 @@ module SimpleInference
     #   usage hash, and reasoning_details ride the assistant message so a
     #   subsequent turn can echo them back.
     class OpenRouterResponses < OpenAICompatibleResponses
+      def self.protocol_option_keys = superclass.protocol_option_keys
       # The :exacto discipline (owner ruling 2026-08-14): the broker routes
       # within the model's :exacto quality-sorted pool, and the variant rides
       # the model string itself (the registry model_pin). Every request still

@@ -10,6 +10,7 @@ module HouseholdTest
   Row = Data.define(:public_id, :namespace, :key, :value, :lock_version)
   Page = Data.define(:items)
   Created = Data.define(:schedule)
+  StoreCreated = Data.define(:store_entry)
   Schedule = Data.define(:public_id, :last_execution)
   Execution = Data.define(:child_conversation_public_id)
   Parent = Data.define(:public_id)
@@ -45,6 +46,7 @@ module HouseholdTest
 
       id = SecureRandom.uuid_v7
       rows[id] = Row.new(public_id: id, namespace: namespace, key: key, value: value, lock_version: 0)
+      StoreCreated.new(store_entry: rows.fetch(id))
     end
     def update(id, value:, lock_version:)
       prior = rows.fetch(id)

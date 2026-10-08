@@ -1,6 +1,7 @@
 module TelegramStateSupport
   Row = Data.define(:public_id, :namespace, :key, :lock_version, :value)
   Page = Data.define(:items, :next_after)
+  Created = Data.define(:store_entry)
 
   class Store
     attr_reader :rows, :writes
@@ -20,6 +21,7 @@ module TelegramStateSupport
       id = "store-#{@rows.length + 1}"
       @writes << value
       @rows[id] = Row.new(public_id: id, namespace: namespace, key: key, lock_version: 0, value: copy(value))
+      Created.new(store_entry: @rows.fetch(id))
     end
 
     def update(id, value:, lock_version:)

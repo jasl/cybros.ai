@@ -23,6 +23,7 @@ module ModelCatalog
         SimpleInference::Client.new(
           execution_profile: profile,
           base_url: base_url,
+          authentication: profile.authentication,
           adapter: ModelInvocations::ExecutionAdapter.for(host),
           # Both axes, from the lane's own declaration. The total bounds the
           # exchange; the idle bound is what makes a provider that accepts
@@ -30,7 +31,7 @@ module ModelCatalog
           timeout: profile.total_execution_deadline_seconds,
           **idle_bound(profile, streaming),
           **credential_options(credential),
-          headers: consumer_headers(profile, credential, invocation)
+          headers: profile.request_headers.merge(consumer_headers(profile, credential, invocation))
         )
       end
 

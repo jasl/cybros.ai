@@ -7,7 +7,7 @@ x-logging: &logging
     max-file: "3"
 
 x-nexus: &nexus
-  image: "${CYBROS_IMAGE_NAMESPACE:-jasl123}/cybros-nexus:${CYBROS_IMAGE_TAG:-latest}"
+  image: "${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}:${CYBROS_IMAGE_TAG:-latest}"
   entrypoint: []
   environment: &nexus-environment
     RAILS_ENV: production
@@ -32,7 +32,7 @@ services:
   # Prepare the image users' writable bind mounts once, including restored data.
   # PostgreSQL's official entrypoint prepares its own directory and UID.
   data_init:
-    image: "${CYBROS_IMAGE_NAMESPACE:-jasl123}/cybros-nexus:${CYBROS_IMAGE_TAG:-latest}"
+    image: "${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}:${CYBROS_IMAGE_TAG:-latest}"
     user: "0:0"
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -43,7 +43,7 @@ services:
     logging: *logging
 
   db:
-    image: postgres:18
+    image: "${CYBROS_POSTGRES_IMAGE:-postgres:18}"
     restart: unless-stopped
     environment:
       PGDATA: /var/lib/postgresql/data/18
@@ -101,7 +101,7 @@ services:
     command: ["./bin/model_runner"]
 
   rho:
-    image: "${CYBROS_IMAGE_NAMESPACE:-jasl123}/cybros-rho:${CYBROS_IMAGE_TAG:-latest}"
+    image: "${CYBROS_RHO_IMAGE_REPOSITORY:-jasl123/cybros-rho}:${CYBROS_IMAGE_TAG:-latest}"
     restart: unless-stopped
     stop_grace_period: 30s
     depends_on:

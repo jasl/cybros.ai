@@ -24,8 +24,8 @@ module CybrosAgent
         @workspace_public_id = required_string_snapshot(workspace_public_id, "workspace_public_id")
       end
 
-      def list(workload: nil, after: nil, limit: nil)
-        page(InferenceRequestSummary, @dispatch.call(path, params: query(workload:, after:, limit:)), "inference_requests")
+      def list(workload: nil, after: nil, limit: nil, order: nil)
+        page(InferenceRequestSummary, @dispatch.call(path, params: query(workload:, after:, limit:, order:)), "inference_requests")
       end
 
       # Estimate the submitted text locally against the currently selected

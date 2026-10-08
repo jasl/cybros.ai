@@ -5,6 +5,10 @@ module Rho
 
     type document = Hash[String, untyped]
 
+    module Locales
+      ENGLISH: Hash[String, String]
+    end
+
     def self.register: (Rho::Extensions::Api api) -> untyped
     def self.configure: (untyped request, untyped context, Coordinator coordinator) -> untyped
     def self.change_access: (untyped request, Coordinator coordinator) -> untyped
@@ -72,6 +76,7 @@ module Rho
       KEYS: Array[String]
       attr_reader owner_id: String?
       attr_reader stale_after: Integer
+      attr_reader input_debounce_seconds: Integer
       attr_reader transcription_model: String
       attr_reader speech_model: String
       attr_reader token_env: String
@@ -146,10 +151,10 @@ module Rho
       def answer_reply: (Update update) -> bool
     end
 
-    module MediaWorkflow
+    module InputWorkflow
       DOWNLOAD_LIMIT: Integer
       PENDING_LIMIT: Integer
-      def discard_media: (String route_key, ?request_id: String?) -> untyped
+      def discard_pending_inputs: (String route_key, ?request_id: String?) -> untyped
     end
 
     module SpeechWorkflow
@@ -163,7 +168,7 @@ module Rho
       def request_control_refusal: (Update update, document request) -> String?
       def question_refusal: (Update update, document question, ?approval: bool) -> String?
       def task_status: (Update update, String task_id) -> String
-      def task_target: (Update update, ?task_id: String?, ?allow_pending_media: bool) -> document
+      def task_target: (Update update, ?task_id: String?, ?allow_pending_inputs: bool) -> document
     end
 
     module ParticipationWorkflow
@@ -180,7 +185,7 @@ module Rho
     end
 
     class Runtime
-      include MediaWorkflow
+      include InputWorkflow
       include SpeechWorkflow
       include SessionWorkflow
       include QueueWorkflow

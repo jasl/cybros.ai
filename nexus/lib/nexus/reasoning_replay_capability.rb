@@ -12,6 +12,7 @@ module Nexus
     # message's reasoning field, DeepSeek's plain-text reasoning item.
     NATIVE_FORMATS = %w[
       anthropic_thinking responses_reasoning gemini_thought chat_reasoning responses_reasoning_text
+      pi_thinking bedrock_reasoning
     ].freeze
     FORMATS = (NATIVE_FORMATS + %w[none]).freeze
     # A row that states no format replays nothing: there is no portable

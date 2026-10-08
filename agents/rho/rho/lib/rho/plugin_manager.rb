@@ -35,7 +35,7 @@ module Rho
             candidate.source.fetch("kind") != "builtin" && runtime_source(candidate) == failure.source
           end
           { id: descriptor&.id || failure.source, source: failure.source,
-            message: "Plugin failed to load or start (#{failure.error_class})." }
+            message: failure.public_message }
         end
         rows = (saved.catalog.descriptors.keys | saved.plugins.keys).map do |id|
           plugin_row(id, saved: saved, config: config, loaded: loaded, failures: runtime_failures)

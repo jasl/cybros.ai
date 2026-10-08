@@ -30,6 +30,8 @@ module ModelProviders
         return result(:not_found)
       end
       return result(:provider_disabled) unless catalog.policies[@provider_id]&.enabled
+      base_url = ModelCatalog.model_base_url(@model_ref, snapshot: catalog)
+      return result(:endpoint_unconfigured) if base_url.nil?
 
       @profile = bounded_profile(provider, model)
       return result(:test_input_unavailable) unless test_input_available?
@@ -43,7 +45,7 @@ module ModelProviders
       end
 
       client = ModelCatalog::AssembleClient.call(
-        profile: @profile, base_url: provider.fetch("base_url"), credential: credential.credential,
+        profile: @profile, base_url: base_url, credential: credential.credential,
         host: "solid_queue", streaming: @profile.streams?
       )
       release_database_connections

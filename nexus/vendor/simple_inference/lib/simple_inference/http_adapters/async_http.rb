@@ -135,7 +135,7 @@ module SimpleInference
           status = response.status.to_i
           headers = normalize_headers(response.headers)
 
-          if Internal::Envelope.new(status: status, headers: headers, body: nil).sse?
+          if Internal::Envelope.new(status: status, headers: headers, body: nil).streaming?
             while (chunk = read_chunk(response.body, read_deadline))
               yield chunk
             end

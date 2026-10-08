@@ -3,16 +3,16 @@
 <%= turbo_frame_tag "settings", data: { turbo_action: "replace" } do %>
   <div class="space-y-8">
     <header class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight">Settings</h1>
-      <p class="text-sm text-base-content/60">Manage your profile, sign-in credentials, and active sessions.</p>
+      <h1 class="text-xl font-medium tracking-tight"><%= t("settings.shell.settings") %></h1>
+      <p class="text-sm text-base-content/60"><%= t("settings.shell.manage_your_profile_sign_in_credentials_and_active_sessions") %></p>
     </header>
 
-    <nav class="tabs tabs-border tabs-sm overflow-x-auto" aria-label="Settings">
-      <%= link_to "Profile", settings_path, class: class_names("tab", "tab-active": current == :profile), aria: { current: ("page" if current == :profile) } %>
-      <%= link_to "Email", settings_email_path, class: class_names("tab", "tab-active": current == :email), aria: { current: ("page" if current == :email) } %>
-      <%= link_to "Password", settings_password_path, class: class_names("tab", "tab-active": current == :password), aria: { current: ("page" if current == :password) } %>
-      <%= link_to "Sessions", settings_sessions_path, class: class_names("tab", "tab-active": current == :sessions), aria: { current: ("page" if current == :sessions) } %>
-      <%= link_to "Tokens", settings_tokens_path, class: class_names("tab", "tab-active": current == :tokens), aria: { current: ("page" if current == :tokens) } %>
+    <nav class="tabs tabs-border tabs-sm overflow-x-auto" aria-label="<%= t("settings.shell.settings") %>">
+      <%= link_to t("settings.shell.profile"), settings_path, class: class_names("tab", "tab-active": current == :profile), aria: { current: ("page" if current == :profile) } %>
+      <%= link_to t("settings.shell.email"), settings_email_path, class: class_names("tab", "tab-active": current == :email), aria: { current: ("page" if current == :email) } %>
+      <%= link_to t("settings.shell.password"), settings_password_path, class: class_names("tab", "tab-active": current == :password), aria: { current: ("page" if current == :password) } %>
+      <%= link_to t("settings.shell.sessions"), settings_sessions_path, class: class_names("tab", "tab-active": current == :sessions), aria: { current: ("page" if current == :sessions) } %>
+      <%= link_to t("settings.shell.tokens"), settings_tokens_path, class: class_names("tab", "tab-active": current == :tokens), aria: { current: ("page" if current == :tokens) } %>
     </nav>
 
     <%= render "layouts/shared/flash" %>
@@ -20,12 +20,12 @@
 
     <% if current == :profile && Current.user.admin? %>
       <section class="border-t border-base-300 pt-6">
-        <h2 class="text-sm font-medium">System settings</h2>
-        <p class="mt-1 text-sm text-base-content/60">As an administrator, you can configure models and installation-wide settings.</p>
+        <h2 class="text-sm font-medium"><%= t("settings.shell.system_settings") %></h2>
+        <p class="mt-1 text-sm text-base-content/60"><%= t("settings.shell.as_an_administrator_you_can_configure_models_and_installation") %></p>
         <div class="mt-4 flex flex-wrap gap-2">
-          <%= link_to "Model providers", admin_model_providers_path, class: "btn btn-sm", data: { turbo_frame: "_top" } %>
-          <%= link_to "Cost unit", admin_cost_unit_path, class: "btn btn-sm", data: { turbo_frame: "_top" } %>
-          <%= link_to "Retention", admin_retention_path, class: "btn btn-sm", data: { turbo_frame: "_top" } %>
+          <%= link_to t("settings.shell.model_providers"), admin_model_providers_path, class: "btn btn-sm", data: { turbo_frame: "_top" } %>
+          <%= link_to t("settings.shell.cost_unit"), admin_cost_unit_path, class: "btn btn-sm", data: { turbo_frame: "_top" } %>
+          <%= link_to t("settings.shell.retention"), admin_retention_path, class: "btn btn-sm", data: { turbo_frame: "_top" } %>
         </div>
       </section>
     <% end %>

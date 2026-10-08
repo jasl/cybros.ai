@@ -73,6 +73,44 @@ module CybrosAgent
     class ModelCatalog
       PATH: String
 
+      type reasoning_capability = {
+        "supported" => bool,
+        "default_enabled" => bool?,
+        "disable_supported" => bool,
+        "efforts" => Array[String],
+        "default_effort" => String?
+      }
+      type generation_parameter = {
+        "kind" => String,
+        "default" => (String | Integer | Float)?,
+        "minimum" => (Integer | Float)?,
+        "maximum" => (Integer | Float)?,
+        "allowed_values" => Array[String | Integer | Float]?
+      }
+      type capability_limits = {
+        ?"input_tokens" => Integer,
+        ?"output_tokens" => Integer,
+        ?"combined_input_output_tokens" => Integer,
+        ?"effective_input_tokens" => Integer,
+        ?"input_bytes" => Integer,
+        ?"input_characters" => Integer,
+        ?"audio_duration_seconds" => Integer,
+        ?"result_count" => Integer,
+        ?"embedding_dimensions" => Array[Integer]
+      }
+      type capabilities = {
+        ?"tool_calls" => bool,
+        ?"streaming" => bool,
+        ?"prompt_caching" => bool,
+        ?"input_modalities" => Array[String],
+        ?"output_modalities" => Array[String],
+        ?"reasoning_modes" => Array[String],
+        ?"reasoning" => reasoning_capability,
+        ?"generation_parameters" => Hash[String, generation_parameter],
+        ?"service_tiers" => Array[String],
+        ?"limits" => capability_limits
+      }
+
       class Pricing < Data
         attr_reader state: String
         attr_reader unit: String?
@@ -92,11 +130,11 @@ module CybrosAgent
         attr_reader visible: bool
         attr_reader available: bool
         attr_reader unavailable_reason: String?
-        attr_reader capabilities: Hash[String, untyped]
+        attr_reader capabilities: capabilities
         attr_reader pricing: Pricing
 
         def self.new: (ref: String, provider: String, workload: String, visible: bool, available: bool,
-                       ?unavailable_reason: String?, ?capabilities: Hash[String, untyped],
+                       ?unavailable_reason: String?, ?capabilities: capabilities,
                        pricing: Pricing) -> instance
         def available?: () -> bool
         def visible?: () -> bool

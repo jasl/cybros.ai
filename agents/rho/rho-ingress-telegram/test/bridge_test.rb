@@ -473,6 +473,51 @@ class TelegramBridgeTest < Minitest::Test
     refute_includes @bridge.progress(run).fetch("action"), "unknown_future_error"
   end
 
+  def test_overflow_attention_and_progress_explain_server_limits_without_provider_details
+    task = Task.new(key: "r1", kind: "model_task", status: "failed", error: {
+      "key" => "provider_context_overflow", "detail" => "private upstream body",
+    })
+    @client.loops = [held_loop("failed", "conversation", nil).with(tasks: [task])]
+    run = { "run_status" => "needs_attention", "tasks" => [
+      { "task_key" => "r1", "kind" => "model_task", "status" => "failed", "error_key" => "provider_context_overflow" },
+    ] }
+
+    [@bridge.pending("conversation").first.fetch("question"), @bridge.progress(run).fetch("action")].each do |message|
+      assert_includes message, "Nexus Settings > Model providers > Edit model > Context and capabilities"
+      assert_includes message, "Combined context window"
+      assert_includes message, "Input token limit or Combined context window"
+      assert_includes message, "server's actual limit (use only one)"
+      assert_includes message, "Output token limit"
+      assert_includes message, "lower the requested output budget"
+      refute_includes message, "private upstream body"
+    end
+  end
+
+  def test_settled_overflows_do_not_hide_the_failure_that_still_needs_attention
+    [{ on_failure: "absorb" }, { failure_resolution: "abandoned" }].each do |fields|
+      old = Task.new(key: "r1", kind: "model_task", status: "failed", error: { "key" => "provider_context_overflow" }, **fields)
+      current = Task.new(key: "r2", kind: "model_task", status: "failed", error: { "key" => "provider_model_unavailable" })
+      @client.loops = [held_loop("failed", "conversation", nil).with(tasks: [old, current])]
+      run = { "run_status" => "needs_attention", "tasks" => [old, current].map do |task|
+        task.to_h.transform_keys(&:to_s).merge("error_key" => task.error.fetch("key"))
+      end }
+
+      [@bridge.pending("conversation").first.fetch("question"), @bridge.progress(run).fetch("action")].each do |message|
+        assert_includes message, "credentials and model settings in Nexus"
+        refute_includes message, "Context and capabilities"
+      end
+    end
+  end
+
+  def test_automatic_context_recovery_does_not_ask_for_model_settings_changes
+    run = { "run_status" => "running", "tasks" => [
+      { "task_key" => "r1", "kind" => "model_task", "status" => "waiting", "error_key" => "provider_context_overflow" },
+      { "task_key" => "summary", "kind" => "model_task", "status" => "running" },
+    ] }
+
+    assert_equal "Thinking", @bridge.progress(run).fetch("action")
+  end
+
   def test_failed_child_attention_does_not_offer_a_retry_command_for_the_current_parent
     @client.parents = { "child" => "conversation", "conversation" => nil }
     @client.loops = [held_loop("failed-child", "child", nil).with(tasks: [

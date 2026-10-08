@@ -45,7 +45,7 @@ module Rho
         # Following is idempotent. A lost attach reply retries this exact saved
         # source and workspace; it must not freeze an ambiguous Stop-style control.
         @bridge.attach(id, workspace_public_id: workspace_id)
-        discard_media(update.route_key)
+        discard_pending_inputs(update.route_key)
         text = "Resumed conversation #{id}. Earlier work still reports back here."
         @state.change do |document|
           saved = document.fetch("routes").fetch(update.route_key)

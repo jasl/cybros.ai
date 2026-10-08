@@ -39,13 +39,19 @@ module CybrosAgent
     end
 
     class StoreEntriesContext
+      class Created < Data
+        attr_reader store_entry: StoreEntry
+        attr_reader replayed: bool
+        def replayed?: () -> bool
+      end
+
       include WorkspaceProjections
 
       attr_reader path: String
 
       def initialize: (dispatch: _Dispatch, path: String) -> void
-      def list: (?after: String?, ?limit: Integer?) -> Page[StoreEntrySummary]
-      def create: (namespace: String, key: String, value: untyped, idempotency_key: String) -> StoreEntry
+      def list: (?after: String?, ?limit: Integer?, ?order: String?) -> Page[StoreEntrySummary]
+      def create: (namespace: String, key: String, value: untyped, idempotency_key: String) -> Created
       def fetch: (String public_id) -> StoreEntry
       def update: (String public_id, value: untyped, lock_version: Integer) -> StoreEntry
       def delete: (String public_id, lock_version: Integer) -> nil

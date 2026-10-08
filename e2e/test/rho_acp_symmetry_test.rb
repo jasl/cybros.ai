@@ -71,7 +71,7 @@ class RhoAcpSymmetryTest < Minitest::Test
       steward_client = CybrosAgent::Client.new(base_url: base_url, credential: steward.member_token)
       room = steward_client.workspaces.create(
         name: "ACP symmetry room #{SecureRandom.hex(3)}", access_mode: "account_wide", idempotency_key: SecureRandom.uuid
-      ).public_id
+      ).workspace.public_id
       scratch = Dir.mktmpdir("rho-acp-symmetry")
       # THE PROJECT, outside both homes (a home is a protected root, and
       # B's `session/new` refuses a cwd under one) and REALPATH'd (macOS's

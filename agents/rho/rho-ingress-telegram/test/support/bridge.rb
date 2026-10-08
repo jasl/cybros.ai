@@ -1,10 +1,14 @@
 module TelegramBridgeSupport
   Host = Data.define(:home, :member_plane)
   Page = Data.define(:items, :next_after)
-  HeldLoop = Data.define(:public_id, :turn, :tasks)
+  HeldLoop = Data.define(:public_id, :turn, :tasks) do
+    def repairable_tasks
+      tasks.select { |task| %w[failed timed_out uncertain].include?(task.status) && task.failure_resolution.nil? && task.on_failure != "absorb" }
+    end
+  end
   TurnOwner = Data.define(:conversation_public_id)
-  Task = Data.define(:key, :status, :kind, :addressed_to, :error) do
-    def initialize(kind: "tool_task", addressed_to: nil, error: nil, **) = super
+  Task = Data.define(:key, :status, :kind, :addressed_to, :error, :on_failure, :failure_resolution) do
+    def initialize(kind: "tool_task", addressed_to: nil, error: nil, on_failure: nil, failure_resolution: nil, **) = super
     def await? = kind == "await_task"
   end
   Parent = Data.define(:public_id)

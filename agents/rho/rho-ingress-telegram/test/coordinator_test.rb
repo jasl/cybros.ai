@@ -229,10 +229,11 @@ class TelegramCoordinatorTest < Minitest::Test
     with_worker do
       connect(@store_a, "profile-a")
       @clients.fetch(0).polls.pop
-      configure(configuration: { "owner_id" => "7", "stale_after" => 30 })
+      configure(configuration: { "owner_id" => "7", "stale_after" => 30, "input_debounce_seconds" => 0 })
       assert_equal 1, @clients.length
       assert_equal "7", status.dig("configuration", "owner_id")
       assert_equal 30, status.dig("configuration", "stale_after")
+      assert_equal 0, status.dig("configuration", "input_debounce_seconds")
       assert_equal 100, status.fetch("offset")
       assert_equal "running", status.fetch("connection")
       assert_empty @events.select { |kind, _number, _thread| kind == :closed }

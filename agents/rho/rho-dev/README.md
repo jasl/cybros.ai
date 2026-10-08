@@ -61,7 +61,8 @@ rho do "…"                 # open a conversation and print its ids (conversati
                            # --until CMD --attempts N (the acceptance check; `rho say` lands with the next check)
 rho say <id> "..."         # say something to a run or conversation this daemon follows
                            # (--mode steer lands at the running turn's next model boundary,
-                           # the default; --mode queue waits for the turn boundary;
+                           # the default; --mode steer_now reads it while supported tools keep running;
+                           # --mode queue waits for the turn boundary;
                            # --to @handle|<id> names who answers this turn — group chat;
                            # --in DURATION | --at TIME schedules it)
 rho stop <conversation> [TASK]  # cancel the conversation's unfinished work; a task key cancels one branch
@@ -207,7 +208,9 @@ the same input door a model's `send` uses, the row stamped `origin:
 person` and bare in the model's history, where a peer's is wrapped
 `<message from=… kind=…>`. `steer`, the default, lands at the running
 turn's next model boundary; with nothing running it simply starts the
-next turn. `--mode queue` waits for the turn boundary. `--attach shot.png`
+next turn. `--mode steer_now` requests an immediate model round while supported
+tools keep running, preserving their execution and the original turn's final join.
+`--mode queue` waits for the turn boundary. `--attach shot.png`
 QUEUES the turn: a picture never rides a steer (`--mode steer --attach` is
 refused with the kernel's word); the daemon stages the bytes on its member
 plane as rho's own user and prints `attached: shot.png (image/png, 184

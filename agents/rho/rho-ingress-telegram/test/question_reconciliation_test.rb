@@ -4,7 +4,7 @@ class TelegramQuestionReconciliationTest < Minitest::Test
   include TelegramRuntimeSupport
 
   def test_a_sent_local_notice_becomes_the_addressed_question_without_duplicate_delivery
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @bridge.pending_rows = [local_notice]
     @runtime.tick
     id, local = @state.read.fetch("questions").first
@@ -37,7 +37,7 @@ class TelegramQuestionReconciliationTest < Minitest::Test
     @runtime = runtime
     publish_addressed_question
 
-    @runtime.consume(telegram_message(2, "Continue", reply_to: old_message_id))
+    receive(telegram_message(2, "Continue", reply_to: old_message_id))
 
     assert_equal [["answer", "loop-1", "ask-1", "Continue", "workspace-home"]], @bridge.decisions
     assert_equal 1, @bridge.inputs.length
@@ -55,7 +55,7 @@ class TelegramQuestionReconciliationTest < Minitest::Test
     @runtime = runtime
     message_id = (@state.read.fetch("questions").fetch(id).fetch("message_ids") - local.fetch("message_ids")).fetch(0)
 
-    @runtime.consume(telegram_message(2, "Continue", reply_to: message_id))
+    receive(telegram_message(2, "Continue", reply_to: message_id))
 
     assert_equal [["answer", "loop-1", "ask-1", "Continue", "workspace-home"]], @bridge.decisions
     assert_equal 1, @bridge.inputs.length
@@ -83,7 +83,7 @@ class TelegramQuestionReconciliationTest < Minitest::Test
 
     @runtime = runtime
     publish_addressed_question
-    @runtime.consume(telegram_message(2, "/answer #{id} Continue"))
+    receive(telegram_message(2, "/answer #{id} Continue"))
     @bridge.pending_rows = []
     @now += Rho::IngressTelegram::Runtime::RECONCILE_INTERVAL
     @runtime.tick
@@ -135,14 +135,14 @@ class TelegramQuestionReconciliationTest < Minitest::Test
     assert_includes question.fetch("message_ids"), local.fetch("message_ids").first
     sent = @client.calls.find { |method, fields| method == "sendMessage" && fields[:text].to_s.include?("Approve the original tool call?") }
     assert_equal ["approve:#{id}", "deny:#{id}"], sent.last.fetch(:reply_markup).fetch("inline_keyboard").flatten.map { |button| button.fetch("callback_data") }
-    @runtime.consume(telegram_message(2, "/approve #{id}"))
+    receive(telegram_message(2, "/approve #{id}"))
     assert_equal [["approve", "loop-1", "ask-1", "workspace-home"]], @bridge.decisions
   end
 
   private
 
     def publish_local_notice
-      @runtime.consume(telegram_message(1, "start"))
+      receive(telegram_message(1, "start"))
       @bridge.pending_rows = [local_notice]
       @runtime.tick
       @state.read.fetch("questions").first

@@ -218,6 +218,9 @@ models:
         format: chat_reasoning
         required_for_tool_rounds: true
   openrouter/z-ai/glm-5.2:exacto:
+    token_counter:
+      kind: huggingface
+      tokenizer_id: zai-org/GLM-5.2
     pricing:
       account_unit: USD
       schedule:
@@ -262,6 +265,9 @@ models:
   # so 0.3 / 1.2 stand and the cache read is the peak 0.006 — a base-window
   # read of 0.15 is not a drift.
   openrouter/deepseek/deepseek-v4.1-flash:
+    token_counter:
+      kind: huggingface
+      tokenizer_id: deepseek-ai/DeepSeek-V4.1-Flash
     pricing:
       account_unit: USD
       schedule:
@@ -299,6 +305,9 @@ models:
   # (api-docs.deepseek.com, the same page the direct `deepseek-v4-pro`
   # row reads).
   openrouter/deepseek/deepseek-v4-pro-0813:
+    token_counter:
+      kind: huggingface
+      tokenizer_id: deepseek-ai/DeepSeek-V4-Pro-0813
     pricing:
       account_unit: USD
       schedule:
@@ -327,6 +336,11 @@ models:
   # at 02:12 UTC) with no `overrides` object — the latest read stands, and
   # the 0.07 / 0.2333 that stood here was an older read still.
   openrouter/z-ai/glm-5.3-flash:
+    # These official GLM releases have byte-identical tokenizer.json files;
+    # config/tokenizers.json pins their shared vocabulary once.
+    token_counter:
+      kind: huggingface
+      tokenizer_id: zai-org/GLM-5.2
     pricing:
       account_unit: USD
       schedule:
@@ -352,6 +366,9 @@ models:
   # Limits and rates are the broker's inventory on 2026-09-10; text
   # only, because that is all the broker lists for this model.
   openrouter/z-ai/glm-5.3:
+    token_counter:
+      kind: huggingface
+      tokenizer_id: zai-org/GLM-5.2
     pricing:
       account_unit: USD
       schedule:
@@ -379,6 +396,9 @@ models:
       reasoning_replay:
         format: chat_reasoning
   openrouter/tencent/hy3:exacto:
+    token_counter:
+      kind: huggingface
+      tokenizer_id: tencent/Hy3
     pricing:
       account_unit: USD
       schedule:
@@ -475,6 +495,11 @@ models:
   # parameter. Declare the independent switch; do not invent an effort vocabulary
   # or a token-budget selection surface. Returned reasoning still replays.
   openrouter/qwen/qwen3.8-flash:
+    # The official Qwen Flash-Next model card identifies Flash as the
+    # API version based on these weights. Max has no such tokenizer claim.
+    token_counter:
+      kind: huggingface
+      tokenizer_id: Qwen/Qwen3.8-Flash-Next
     pricing:
       account_unit: USD
       schedule:

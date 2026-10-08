@@ -8,7 +8,7 @@ class TelegramUnsupportedSideCommandsTest < Minitest::Test
     sources.each_with_index do |source, index|
       %w[side btw].each_with_index do |command, offset|
         id = index * 2 + offset + 1
-        @runtime.consume(telegram_message(id, "/#{command}@rho_bot Explain this", **source))
+        receive(telegram_message(id, "/#{command}@rho_bot Explain this", **source))
         assert_includes @state.read.fetch("deliveries").fetch("control:#{id}").fetch("text"), "not available in Telegram"
       end
     end
@@ -23,13 +23,13 @@ class TelegramUnsupportedSideCommandsTest < Minitest::Test
   end
 
   def test_disabled_commands_and_replays_keep_current_work_and_delivery_unchanged
-    @runtime.consume(telegram_message(1, "Keep working"))
+    receive(telegram_message(1, "Keep working"))
     routes, requests, inputs = @state.read.values_at("routes", "requests") + [@bridge.inputs.dup]
     %w[side btw].each_with_index do |command, index|
       update = telegram_message(index + 2, "/#{command} Explain the current work", reply_to: 1, reply_user: 1)
-      @runtime.consume(update)
+      receive(update)
       @runtime = runtime
-      @runtime.consume(update)
+      receive(update)
     end
 
     assert_equal routes, @state.read.fetch("routes")
@@ -53,11 +53,11 @@ class TelegramUnsupportedSideCommandsTest < Minitest::Test
       update.fetch("message").delete("text")
       update.fetch("message").merge!("caption" => "/#{command} Explain this image",
         "photo" => [{ "file_id" => "photo", "width" => 100, "height" => 100, "file_size" => 20 }])
-      @runtime.consume(update)
+      receive(update)
       assert_includes @state.read.fetch("deliveries").fetch("control:#{index + 1}").fetch("text"), "not available in Telegram"
     end
 
-    assert_empty @state.read.fetch("pending_media")
+    assert_empty @state.read.fetch("pending_inputs")
     assert_empty @bridge.inputs
     assert_empty @bridge.opened
     assert_empty @bridge.speakers

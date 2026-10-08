@@ -201,6 +201,7 @@ module Conversations
             replay_windows = mainline_rounds(loops.values).transform_values { |rows| replay_window(rows) }
             rounds = replay_windows.values.flat_map(&:rounds)
             fans = AgentRuns::RoundReplay.fans_of(rounds)
+            receipts = AgentRuns::Steers::ToolReceipts.by_source(rounds)
             result_round_ids = replay_windows.values.flat_map { |part| part.rounds.drop(part.cleared).map(&:id) }
             # ONE walk per assembly over every `task` call in the window: a
             # later turn pairs a blocking call with its branch's last word,
@@ -212,6 +213,7 @@ module Conversations
             steers = AgentRuns::Steers::Landed.texts_by_round(rounds)
             readers = AgentRuns::InputComposition.readers_by_round(rounds)
             material = AgentRuns::InputComposition.material_by_round(rounds, readers: readers)
+            material_uploads = readers.values.flat_map(&:delivered_uploads).index_by(&:public_id)
             pair_sources = if reference_variant || AgentRuns::RoundReplay.native_replay?(replay)
               readers.select { |_, reader| reader.compacted_fan.any? }.transform_values(&:compacted_source)
             else
@@ -252,7 +254,7 @@ module Conversations
                 else
                   round_segments(turn, replay_windows.fetch(loops[variant_id].id) { replay_window([]) }, fans, tips,
                     round_traces, steers, material, paired, pair_traces, carries, opening: opening,
-                    reference: reference_variant.present?)
+                    reference: reference_variant.present?, receipts: receipts, material_uploads: material_uploads)
                 end
               end
               lead = Preface.lead_pairs(prefaces[variant_id])
@@ -395,8 +397,7 @@ module Conversations
             ).call
           end
 
-          # The mainline in chain order — one continuation per round, appended
-          # as the loop grew, so row order IS the chain.
+          # Immediate steers can insert before a queued older continuation.
           def mainline_rounds(loops)
             return {} if loops.empty?
 
@@ -404,6 +405,7 @@ module Conversations
               .where(agent_run_id: loops.map(&:id), continuation_source: AgentRuns::Tasks::Compile::ROUND)
               .order(:id)
               .group_by(&:agent_run_id)
+              .transform_values { |rows| AgentRuns::InputComposition.order_rounds(rows) }
           end
 
           # The in-turn summary cuts: the newest round whose summary ARRIVED
@@ -432,16 +434,20 @@ module Conversations
             ReplayWindow.new(rounds: rounds, summary: nil, cleared: Compaction::Prune.cleared_count(rounds))
           end
 
-          def round_segments(turn, window, fans, tips, traces, steers, material, paired, pair_traces, carries, opening: [], reference: false)
+          def round_segments(turn, window, fans, tips, traces, steers, material, paired, pair_traces, carries, opening: [], reference: false, receipts: {}, material_uploads: {})
             lead = window.summary ? [in_turn_summary(window.summary)] : opening
             lead + window.rounds.each_with_index.flat_map do |round, index|
               Array(compacted_pair_segment(paired[round.id], pair_traces[round.id], carries)) + material.fetch(round.id, []).map do |message|
-                Segment.plain(message.role, nil, parts: message.parts, alone: true)
+                parts = message.parts.flat_map do |part|
+                  part.type == Nexus::InputParts::UPLOAD ?
+                    AttachmentLine.parts([material_uploads.fetch(part.upload_public_id)], carries: carries) : [part]
+                end
+                Segment.plain(message.role, nil, parts: parts, alone: true)
               end +
                 steers.fetch(round.id, []).map { |text| Segment.plain(SEED_ROLE, text, alone: true) } +
                 Array(round_segment(turn, round, fans.fetch(round.id, {}), tips,
                   traces[round.selected_model_invocation_id], carries, cleared: index < window.cleared,
-                  reference: reference))
+                  reference: reference, receipts: receipts.fetch(round.id, {})))
             end
           end
 
@@ -474,7 +480,7 @@ module Conversations
           # labelled round's ride `trailing`, or it said none) gets no text
           # part: a fence the ladder lands then stands alone, as the loop
           # lane's host sends it, never beside an empty part it would join.
-          def round_segment(turn, round, fan, tips, trace, carries, cleared: false, reference: false)
+          def round_segment(turn, round, fan, tips, trace, carries, cleared: false, reference: false, receipts: {})
             # Invocation publication precedes run adoption. While the task is
             # still live, its invocation can already hold calls or a trace but
             # the run owns no corresponding output/fan yet. Capture only the
@@ -482,7 +488,7 @@ module Conversations
             return nil if reference && !round.terminal?
 
             rendered = AgentRuns::RoundReplay.call(round, fan_by_call_id: fan, tips_by_call_key: tips,
-              cleared: cleared, reference: reference)
+              cleared: cleared, reference: reference, receipts: receipts)
             return nil if rendered.empty?
 
             Segment.round(turn.role, rendered.text, calls: rendered.call_items, trailing: rendered.trailing,

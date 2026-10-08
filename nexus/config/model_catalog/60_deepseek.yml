@@ -17,6 +17,9 @@ models:
   # Flash price. The page also accepts two legacy names for the same
   # service; this catalog names the current id alone.
   deepseek/deepseek-flash:
+    token_counter:
+      kind: huggingface
+      tokenizer_id: deepseek-ai/DeepSeek-V4.1-Flash
     # THE PEAK RATES, deliberately (the page's USD figures, re-read
     # 2026-09-14). DeepSeek bills peak/off-peak, off-peak at half of peak;
     # peak = Monday–Friday 01:00–04:00 and 06:00–10:00 UTC (7 of 24 hours).
@@ -78,6 +81,9 @@ models:
   # flash row states (off-peak would be 0.022/0.66/1.98); the same 1M
   # shared window and 384K ceiling; no vision on this id.
   deepseek/deepseek-v4-pro:
+    token_counter:
+      kind: huggingface
+      tokenizer_id: deepseek-ai/DeepSeek-V4-Pro-0813
     pricing:
       account_unit: USD
       schedule:

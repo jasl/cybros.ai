@@ -1,0 +1,113 @@
+---
+en:
+  helpers:
+    model_providers:
+      names:
+        openai_api: OpenAI
+        anthropic: Anthropic
+        gemini: Google Gemini
+        codex_subscription: OpenAI Codex
+        openrouter: OpenRouter
+        deepseek: DeepSeek
+        xai: xAI
+      protocols:
+        openai_compatible_chat: OpenAI-compatible Chat
+        openai_responses: OpenAI Responses
+        anthropic_messages: Anthropic Messages
+        gemini_generate_content: Google Gemini
+        openrouter_chat: OpenRouter Chat
+        deepseek_responses: DeepSeek Responses
+        xai_responses: xAI Responses
+        openai_images: OpenAI Images
+        openai_audio_speech: OpenAI Text to speech
+        openai_audio_transcriptions: OpenAI Speech to text
+        openai_embeddings: OpenAI Embeddings
+        gemini_embeddings: Gemini Embeddings
+        codex_responses: Codex Responses
+        mistral_chat: Mistral Chat
+        bedrock_converse: Amazon Bedrock Converse
+        pi_messages: Pi Messages
+      rates:
+        input_per_mtok: Input per 1M tokens
+        output_per_mtok: Output per 1M tokens
+        cached_input_per_mtok: Cached input per 1M tokens
+        cache_write_per_mtok: Cache write per 1M tokens
+        cache_write_1h_per_mtok: 1-hour cache write per 1M tokens
+        input_cache_hit_per_mtok: Cache hit per 1M tokens
+        input_cache_miss_per_mtok: Cache miss per 1M tokens
+        per_image: Per image
+        per_mchar: Per 1M characters
+        per_minute: Per audio minute
+        long_context_threshold_tokens: Long context threshold (tokens)
+        long_context_input_multiplier: Long context input multiplier
+        long_context_output_multiplier: Long context output multiplier
+      connection_test:
+        succeeded: Connection succeeded. The model accepted the test request.
+        model_not_found: The provider reports that this model no longer exists or
+          is no longer served.
+        not_found: This model is no longer configured. Return to model settings.
+        provider_disabled: Enable this provider before testing its connection.
+        missing_credential: Save the provider's credentials before testing.
+        endpoint_unconfigured: Configure this provider's endpoint before testing.
+        reauthorization_required: Sign in to the provider again before testing.
+        credential_unusable: The provider credential is not ready. Reconnect and try
+          again.
+        model_plane_unavailable: The model catalog is currently unavailable.
+        test_input_unavailable: This model needs additional workload settings before
+          a connection test can run.
+        request_invalid: The configured model cannot accept this test. Review its
+          protocol and capabilities.
+        authentication_failed: The provider rejected authentication or access. Check
+          credentials and model permissions.
+        quota_exceeded: The provider rejected this request because of billing or quota
+          limits.
+        rate_limited: The provider rate-limited this request. Try again later.
+        provider_error: The provider could not complete the test. Check its service
+          status and model configuration.
+        timed_out: The test timed out. The model has not been marked invalid.
+        connection_failed: Could not connect to the provider. Check the saved endpoint
+          and network.
+        invalid_response: The provider returned a response this protocol could not
+          read.
+        request_rejected: The provider declined the test request.
+      credentials:
+        sign_in_required: Sign-in required
+        not_required: No credentials needed
+        api_key_saved: API key saved
+        api_key_needed: API key needed
+        not_connected: Not connected
+      subscription:
+        connected: Subscription connected
+        not_connected: No subscription connected
+      discovery:
+        stale: These settings changed while the directory was being fetched. Fetch
+          again to update model availability.
+        invalid: The directory was fetched, but model availability could not be saved.
+          Review the provider's model configuration.
+        unsupported_protocol: This provider does not support model discovery. Enter
+          a model ID manually.
+        missing_credential: Save usable credentials before fetching the directory,
+          or enter a model ID manually.
+        unavailable: The provider's model directory could not be fetched. It may be
+          unavailable or unsupported. Try again or enter a model ID manually.
+      pricing:
+        token_rates: "%{unit} %{input} input / %{output} output per 1M tokens"
+        estimated_cost: Estimated usage cost in %{unit}
+        unmetered: No cost estimate configured. Recorded usage is still tracked.
+        known_free: No usage cost in the configured catalog
+        unavailable: Cost estimate unavailable. Recorded usage is still tracked.
+      sign_in:
+        renewing: "%{brand} is renewing the connection. No action is needed."
+        waiting_for_owner: Another administrator started this sign-in. Only that
+          administrator can see its authorization code.
+        exchanging_code: Sign-in approved. %{brand} is finishing the connection.
+        enter_code: Open the authorization page, sign in to your provider account,
+          and enter this code.
+        preparing: Preparing sign-in. Your authorization code will appear here shortly.
+        completed: This sign-in finished. The current subscription status is shown above.
+        expired: This sign-in expired.
+        superseded: A newer sign-in replaced this one.
+        revoked: This sign-in was stopped.
+        device_code_not_enabled: Device sign-in is not enabled for this account.
+          Enable it with your provider before connecting.
+        failed: Sign-in did not complete.

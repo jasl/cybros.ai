@@ -18,7 +18,7 @@ class AgentAPI::V1::Workspaces::Conversations::BaseController <
       result = command.call(conversation: conversation)
       if result.accepted?
         render json: {
-          conversation: AgentAPI::ConversationPresenter.full(result.value.reload),
+          conversation: AgentAPI::ConversationPresenter.full(result.value.reload, acting_user: acting_user),
         }
       else
         render_refusal(result.outcome)

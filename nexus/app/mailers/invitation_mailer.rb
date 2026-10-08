@@ -7,6 +7,6 @@ class InvitationMailer < ApplicationMailer
     return if @invitation.nil?
 
     @acceptance_url = join_url(token: @invitation.acceptance_token)
-    mail to: @invitation.email
+    mail to: @invitation.email, subject: t("invitation_mailer.acceptance.subject", brand: t("brand.name"))
   end
 end

@@ -1,7 +1,7 @@
 {
   "id": "rho.browser",
   "display_name": "Browser",
-  "description": "Browser tools with idle cleanup and a Playwright driver.",
+  "description": "Open websites, read and interact with pages, fill forms, and capture screenshots.",
   "configuration_version": 1,
   "configuration_schema": {
     "type": "object",

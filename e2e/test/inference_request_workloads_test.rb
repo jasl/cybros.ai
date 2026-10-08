@@ -32,7 +32,7 @@ class InferenceRequestWorkloadsTest < Minitest::Test
     E2E.hosts.start
     @workspace = @client.workspaces.create(
       name: "InferenceRequest workloads #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @lane = @client.workspace(@workspace.public_id).inference_requests
   end
 

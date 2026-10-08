@@ -86,7 +86,9 @@ class WorkspaceLifecycleTest < Minitest::Test
 
     # Exact replay is the first response the caller can observe. It proves
     # the required Human owner and immutable creator.
-    created = @source_client.workspaces.create(name: name, metadata: metadata, idempotency_key: create_key)
+    replayed = @source_client.workspaces.create(name: name, metadata: metadata, idempotency_key: create_key)
+    assert replayed.replayed?
+    created = replayed.workspace
     assert_contract_state(created.state)
     assert_equal "active", created.state
     assert_contract_access_mode(created.access_mode)
@@ -163,7 +165,7 @@ class WorkspaceLifecycleTest < Minitest::Test
     entry = recipient_context.store_entries.create(
       namespace: "e2e", key: "after-restore", value: { "kept" => true },
       idempotency_key: SecureRandom.uuid
-    )
+    ).store_entry
     assert_equal({ "kept" => true }, entry.value)
 
     # The store's other two hosts ride the restored Workspace: a conversation's entries are the
@@ -177,7 +179,7 @@ class WorkspaceLifecycleTest < Minitest::Test
     conversation_entry = conversation_entries.create(
       namespace: "e2e", key: "in-conversation", value: { "host" => "conversation" },
       idempotency_key: SecureRandom.uuid
-    )
+    ).store_entry
     assert_equal({ "host" => "conversation" }, conversation_entry.value)
     taken = assert_raises(CybrosAgent::Api::Conflict) do
       conversation_entries.create(
@@ -192,7 +194,7 @@ class WorkspaceLifecycleTest < Minitest::Test
     mine_key = SecureRandom.uuid
     mine = @recipient_client.profile.store_entries.create(
       namespace: "e2e", key: "mine", value: { "whose" => "recipient" }, idempotency_key: mine_key
-    )
+    ).store_entry
     assert_equal({ "whose" => "recipient" }, mine.value)
     retried = assert_raises(CybrosAgent::Api::Conflict) do
       @recipient_client.profile.store_entries.create(
@@ -231,7 +233,7 @@ class WorkspaceLifecycleTest < Minitest::Test
     # A second row proves delete acceptance from archived as well.
     second = @recipient_client.workspaces.create(
       name: "Lifecycle second row #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     second_context = @recipient_client.workspace(second.public_id)
     second_context.archive(lock_version: second.lock_version)
     second_archived = await_state("archived", client: @recipient_client, public_id: second.public_id)

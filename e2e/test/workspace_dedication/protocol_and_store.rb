@@ -19,14 +19,17 @@ class WorkspaceDedicationTest
       def verify_store_entry_crud_prelude(entries)
         value = { "pinned" => { "answer" => 42 } }
         create_key = SecureRandom.uuid
-        created = entries.create(namespace: "e2e", key: "pinned", value: value, idempotency_key: create_key)
+        receipt = entries.create(namespace: "e2e", key: "pinned", value: value, idempotency_key: create_key)
+        refute receipt.replayed?
+        created = receipt.store_entry
         assert_equal value, created.value
 
         # Same key, exact envelope: the stored creation replays instead of a
         # second row. A different digest under the same key is refused, and a
         # fresh key against the same (namespace, key) loses to key_taken.
         replayed = entries.create(namespace: "e2e", key: "pinned", value: value, idempotency_key: create_key)
-        assert_equal created.public_id, replayed.public_id
+        assert replayed.replayed?
+        assert_equal created.public_id, replayed.store_entry.public_id
         mismatch = assert_raises(CybrosAgent::Api::Conflict) do
           entries.create(namespace: "e2e", key: "pinned", value: { "pinned" => false }, idempotency_key: create_key)
         end
@@ -117,11 +120,11 @@ class WorkspaceDedicationTest
         value = { "scratch" => [1, 2, 3] }
         conversation_entry = conversation_entries.create(
           namespace: "e2e", key: "shared-pair", value: value, idempotency_key: SecureRandom.uuid
-        )
+        ).store_entry
         assert_equal value, conversation_entry.value
         workspace_entry = workspace.store_entries.create(
           namespace: "e2e", key: "shared-pair", value: { "level" => "workspace" }, idempotency_key: SecureRandom.uuid
-        )
+        ).store_entry
         refute_equal conversation_entry.public_id, workspace_entry.public_id, "one pair, two hosts, two rows"
         conversation_ids = conversation_entries.list.items.map(&:public_id)
         assert_includes conversation_ids, conversation_entry.public_id
@@ -146,13 +149,13 @@ class WorkspaceDedicationTest
         own_key = SecureRandom.uuid
         own = fence_client.profile.store_entries.create(
           namespace: "e2e", key: "own", value: { "agent" => true }, idempotency_key: own_key
-        )
+        ).store_entry
         assert_equal({ "agent" => true }, own.value)
         refute_includes steward_client.profile.store_entries.list.items.map(&:key), "own",
           "an Agent's profile store is not its steward's"
         steward_own = steward_client.profile.store_entries.create(
           namespace: "e2e", key: "steward-own", value: { "human" => true }, idempotency_key: SecureRandom.uuid
-        )
+        ).store_entry
         assert_equal({ "human" => true }, steward_own.value)
         agent_keys = fence_client.profile.store_entries.list.items.map(&:key)
         assert_includes agent_keys, "own"

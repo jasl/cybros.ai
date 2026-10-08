@@ -153,11 +153,11 @@ plain world running beside them.
   it as `needs_person`.
 - The floor row is text-only (`deepseek-flash` declares no image input). The run notes attribute its code-from-image
   passes to OCR tools in the container; the compact records retain the passes, not that tool trace.
-- Retained records and scorecards: [ACP floor](../../e2e/evals/runs/2026-09-18-acp-floor/),
-  [ACP glm](../../e2e/evals/runs/2026-09-18-acp-glm/),
-  [ACP kimi](../../e2e/evals/runs/2026-09-18-acp-kimi/) and
-  [plain floor](../../e2e/evals/runs/2026-09-18-score-floor/), with the generated
-  [trend table](../../e2e/evals/runs/LEDGER.md). Each contains 63 unique `(task, model, style, run)` rows covering
+- Locally retained records and scorecards: ACP floor (`2026-09-18-acp-floor`),
+  ACP glm (`2026-09-18-acp-glm`), ACP kimi (`2026-09-18-acp-kimi`) and
+  plain floor (`2026-09-18-score-floor`), with the generated trend table
+  (`LEDGER.md`). These records are not included in the public checkout. Each
+  scorecard contains 63 unique `(task, model, style, run)` rows covering
   the same 21 tasks and runs 1–3. All use bench digest `e90719a7c42711c8bbc1362b8a0b920b1ddca95ec756debf09fe0995fbb294e7`.
   The archive check reproduced the four scorecards byte-for-byte from those records with the offline renderer
   used for that check; this document update did not run a new measurement.

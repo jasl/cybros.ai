@@ -1,3 +1,4 @@
+import { locale, statusText, t } from "./i18n.js";
 import { bearer, call, follow, health, artifactBytes, Refused } from "./api.js";
 import { el, state, prose, conversationButton, titleOf, modelRef, turnCard, roundCard, taskDetail, isTerminal, preserveTurnArtifacts } from "./views.js";
 import { approvalControls, approvalNotice, executionControls } from "./controls.js";
@@ -7,12 +8,14 @@ import { createSettings } from "./settings.js";
 import { runnerChoice } from "./settings_state.js";
 import { createLogin } from "./login.js";
 import { createConversationMetrics } from "./conversation_usage.js";
-import { createComposer } from "./composer.js";
+import { createComposer, pendingInputLabel, latestPendingSteer } from "./composer.js";
 
 const CONTROL_VERSION = 4;
 const PAGE_SIZE = 40;
-const DETACHED_MESSAGE = "This conversation is not attached. Use Refresh to reconnect.";
+const DETACHED_MESSAGE = t("console.this_conversation_is_not_attached_use_refresh_to");
 const root = document.getElementById("root");
+document.title = t("brand.rho");
+document.documentElement.lang = locale;
 const app = {
   screen: "connect", status: null, selected: null, conversation: null,
   conversations: [], listAfter: null, archived: false, models: [], runners: [],
@@ -34,12 +37,12 @@ const button = (text, action, attrs = {}) => el("button", { type: "button", text
 function errorMessage(error) {
   if (error.name === "AbortError") return;
   if (error instanceof Refused && error.status === 401) {
-    disconnect("Your Nexus authorization is no longer available. Sign in again.");
+    disconnect(t("console.your_nexus_authorization_is_no_longer_available_sign"));
     return;
   }
   app.error = error.code === "member_plane_unavailable"
-    ? "rho lost its Nexus connection. Sign out and reconnect with Nexus."
-    : error.message || "The request failed. Try again.";
+    ? t("console.rho_lost_its_nexus_connection_sign_out_and")
+    : error.message || t("console.the_request_failed_try_again");
   paintStatus();
 }
 
@@ -57,8 +60,8 @@ function conversationError(error, view) {
     app.snapshot = null; app.asks = []; app.inputs = []; app.live = ""; app.reasoning = "";
     ui.renameArea.replaceChildren();
     app.connection = access === "read-only"
-      ? "This conversation is read-only. Use Refresh to check access again."
-      : "This conversation is unavailable. Your draft is kept. Use Refresh to check again.";
+      ? t("console.this_conversation_is_read_only_use_refresh_to")
+      : t("console.this_conversation_is_unavailable_your_draft_is_kept");
     paintAsks(); paintInputs(); paintExecution(); paintLive(); paintControls();
   }
   errorMessage(error);
@@ -80,32 +83,32 @@ async function logout() {
 // The composer and shell live until disconnect. Streams update only their
 // message, so an arriving token cannot replace a textarea or steal focus.
 function mount() {
-  const { message, model, approval, codeMode, send, stop, composer } = createComposer({
+  const { message, model, approval, codeMode, delivery, send, sendNow, stop, composer } = createComposer({
     onMessage: (value) => { app.drafts.set(draftKey(), value); resizeComposer(); paintControls(); },
-    onChange: paintControls, onSubmit: sendMessage, onStop: stopConversation,
+    onChange: paintControls, onSubmit: sendMessage, onSendNow: sendMessageNow, onStop: stopConversation,
   });
   const runner = el("select", { id: "runner", required: true, onchange: () => {
     const selected = app.runners.find((row) => row.public_id === runner.value);
     runner.dataset.edited = "true"; ui.directory.value = "";
-    ui.directory.placeholder = selected?.root || "Runner's default directory"; paintControls();
-  } }, el("option", { value: "", text: "Loading runners…" }));
-  const directory = el("input", { id: "directory", placeholder: "Runner's default directory" });
-  const list = el("nav", { "aria-label": "Conversation list" });
-  const moreList = button("More conversations", () => refreshList(true).catch(errorMessage), { hidden: true });
+    ui.directory.placeholder = selected?.root || t("common.runner_s_default_directory"); paintControls();
+  } }, el("option", { value: "", text: t("console.loading_runners") }));
+  const directory = el("input", { id: "directory", placeholder: t("common.runner_s_default_directory") });
+  const list = el("nav", { "aria-label": t("console.conversation_list") });
+  const moreList = button(t("console.more_conversations"), () => refreshList(true).catch(errorMessage), { hidden: true });
   const archived = el("input", { type: "checkbox", id: "archived", onchange: () => {
     app.archived = archived.checked; refreshList().catch(errorMessage);
   } });
-  const menu = button("Conversations", () => openRail(true), { class: "mobile-only", "aria-expanded": "false", "aria-controls": "conversation-rail" });
-  const rail = el("aside", { class: "rail", id: "conversation-rail", "aria-label": "Conversations" },
-    button("Close conversations", () => openRail(false), { class: "mobile-only" }),
-    button("New conversation", () => selectConversation(null), { class: "wide" }),
-    el("label", { class: "check", for: "archived" }, archived, "Archived conversations"), list, moreList);
-  const title = el("h2", { text: "New conversation" });
+  const menu = button(t("common.conversations"), () => openRail(true), { class: "mobile-only", "aria-expanded": "false", "aria-controls": "conversation-rail" });
+  const rail = el("aside", { class: "rail", id: "conversation-rail", "aria-label": t("common.conversations") },
+    button(t("common.close_conversations"), () => openRail(false), { class: "mobile-only" }),
+    button(t("common.new_conversation"), () => selectConversation(null), { class: "wide" }),
+    el("label", { class: "check", for: "archived" }, archived, t("console.archived_conversations")), list, moreList);
+  const title = el("h2", { text: t("common.new_conversation") });
   const bound = el("p", { class: "muted bound-runner" });
   const metrics = createConversationMetrics();
-  const rename = button("Rename", showRename);
-  const archive = button("Archive", archiveConversation);
-  const jobs = button("Scheduled jobs", () => {
+  const rename = button(t("console.rename"), showRename);
+  const archive = button(t("common.archive"), archiveConversation);
+  const jobs = button(t("common.scheduled_jobs"), () => {
     const view = app.view; const target = scopedTarget();
     openSchedules({ shell: ui.shell, call, target, signal: view.signal, active: () => current(view),
       writable: () => current(view) && conversationControls(app.conversation, app.access).writable,
@@ -115,37 +118,37 @@ function mount() {
   });
   const headingActions = el("div", { class: "heading-actions" }, jobs, rename, archive);
   const renameArea = el("div", { class: "rename-area" });
-  const newOptions = el("details", { class: "working-options" }, el("summary", { text: "Working location" }), el("div", { class: "new-options" },
-    el("label", { for: "runner", text: "Runner" }, runner),
-    el("label", { for: "directory", text: "Working directory" }, directory)));
+  const newOptions = el("details", { class: "working-options" }, el("summary", { text: t("console.working_location") }), el("div", { class: "new-options" },
+    el("label", { for: "runner", text: t("console.runner") }, runner),
+    el("label", { for: "directory", text: t("console.working_directory") }, directory)));
   const messages = el("div", { class: "messages" });
-  const moreTurns = button("Load more messages", loadMoreTurns, { hidden: true });
+  const moreTurns = button(t("console.load_more_messages"), loadMoreTurns, { hidden: true });
   const liveText = el("div", { class: "markdown" });
   const reasoning = el("div", { class: "reasoning-text" });
-  const thinking = el("details", { class: "activity", hidden: true }, el("summary", { text: "Reasoning" }), reasoning);
-  const live = el("article", { class: "message assistant live", "aria-label": "Current response", hidden: true },
-    el("header", {}, el("strong", { text: "rho" }), el("span", { class: "muted", text: "Working…" })), liveText, thinking);
+  const thinking = el("details", { class: "activity", hidden: true }, el("summary", { text: t("console.reasoning") }), reasoning);
+  const live = el("article", { class: "message assistant live", "aria-label": t("console.current_response"), hidden: true },
+    el("header", {}, el("strong", { text: t("brand.rho") }), el("span", { class: "muted", text: t("common.working") })), liveText, thinking);
   const pending = el("div", { class: "pending-inputs" });
-  const transcript = el("div", { class: "transcript", role: "region", "aria-label": "Conversation history", tabindex: "0" },
+  const transcript = el("div", { class: "transcript", role: "region", "aria-label": t("console.conversation_history"), tabindex: "0" },
     moreTurns, messages, live, pending);
-  const asks = el("div", { class: "asks", "aria-label": "Waiting for you" });
+  const asks = el("div", { class: "asks", "aria-label": t("console.waiting_for_you") });
   const error = el("p", { class: "error-banner bad", role: "alert", hidden: true });
   const connection = el("p", { class: "connection muted", role: "status", hidden: true });
   const ingress = el("p", { class: "connection muted", role: "status", hidden: true });
   const execution = el("div");
   const setupNotice = el("div", { class: "setup-notice", role: "status", hidden: true });
-  const jump = button("Jump to latest", () => { transcript.scrollTop = transcript.scrollHeight; jump.hidden = true; }, { class: "jump", hidden: true });
+  const jump = button(t("console.jump_to_latest"), () => { transcript.scrollTop = transcript.scrollHeight; jump.hidden = true; }, { class: "jump", hidden: true });
   transcript.addEventListener("scroll", () => { jump.hidden = app.asks.length > 0 || nearBottom(); });
-  const stage = el("section", { class: "stage", "aria-label": "Conversation" },
+  const stage = el("section", { class: "stage", "aria-label": t("console.conversation") },
     el("header", { class: "conversation-heading" }, el("div", { class: "conversation-title-block" }, title, bound), headingActions, metrics.element), renameArea,
     setupNotice, error, connection, ingress, execution, transcript, jump, asks, newOptions, composer);
-  const healthStatus = el("span", { class: "muted", text: "Connecting…" });
-  const shell = el("div", { class: "shell" }, el("header", { class: "bar" }, menu, el("h1", { text: "rho" }),
-    healthStatus, el("span", { class: "spacer" }), button("Settings", () => ui.settings.open()), button("Refresh", refresh),
-    button("Sign out", logout)), el("main", { class: "split" }, rail, stage));
-  const backdrop = button("Close conversations", () => openRail(false), { class: "backdrop", tabindex: "-1", hidden: true });
+  const healthStatus = el("span", { class: "muted", text: t("common.connecting") });
+  const shell = el("div", { class: "shell" }, el("header", { class: "bar" }, menu, el("h1", { text: t("brand.rho") }),
+    healthStatus, el("span", { class: "spacer" }), button(t("common.settings"), () => ui.settings.open()), button(t("console.refresh"), refresh),
+    button(t("console.sign_out"), logout)), el("main", { class: "split" }, rail, stage));
+  const backdrop = button(t("common.close_conversations"), () => openRail(false), { class: "backdrop", tabindex: "-1", hidden: true });
   shell.append(backdrop);
-  ui = { shell, message, model, runner, directory, approval, codeMode, send, stop, composer, list, moreList, archived,
+  ui = { shell, message, model, runner, directory, approval, codeMode, delivery, send, sendNow, stop, composer, list, moreList, archived,
     menu, rail, backdrop, title, bound, metrics, headingActions, jobs, rename, archive, renameArea, newOptions, messages,
     moreTurns, live, liveText, thinking, reasoning, pending, transcript, asks, error, connection, ingress, execution, healthStatus, jump };
   shell.addEventListener("keydown", (event) => {
@@ -177,7 +180,7 @@ function paintStatus() {
   if (!ui || app.screen !== "console") return;
   ui.error.textContent = app.error; ui.error.hidden = !app.error;
   ui.connection.textContent = app.connection; ui.connection.hidden = !app.connection;
-  ui.healthStatus.textContent = app.status?.workspace?.state === "adopted" ? "Connected" : app.status?.workspace?.state || "Connecting…";
+  ui.healthStatus.textContent = app.status?.workspace?.state === "adopted" ? t("console.connected") : statusText(app.status?.workspace?.state) || t("common.connecting");
 }
 function running() { return !!app.conversation?.active_turn_public_id; }
 function paintControls() {
@@ -187,34 +190,37 @@ function paintControls() {
   const ingresses = app.conversation?.ingresses || [];
   ui.ingress.hidden = !ingresses.length;
   ui.ingress.textContent = ingresses.length
-    ? `${ingresses.map((entry) => entry.label).join(" · ")} — Continue in the original channel. This page is read-only.${controls.stop ? " Stop remains available." : ""}` : "";
+    ? t("console.continue_in_the_original_channel_this_page_is", { value1: ingresses.map((entry) => entry.label).join(" · "), value2: controls.stop ? t("console.stop_remains_available") : "" }) : "";
   ui.send.disabled = app.busy || (app.selected && !controls.send) || !ui.message.value.trim() || !ui.model.value || ui.model.selectedOptions[0]?.disabled || (!app.selected && !ui.runner.value);
-  ui.send.textContent = app.busy ? "Sending…" : "Send";
-  ui.send.title = running() ? "Queue this message after the current response" : "Send message";
+  ui.send.textContent = app.busy ? t("console.sending") : t("common.send");
+  ui.send.title = running() ? t(ui.delivery.value === "steer" ? "console.steer_current_work" : "console.queue_this_message_after_the_current_response") : t("console.send_message");
+  ui.sendNow.hidden = !app.selected || (!running() && !latestPendingSteer(app.inputs));
+  ui.sendNow.disabled = app.busy || !controls.send || (ui.message.value.trim() ? ui.send.disabled : !latestPendingSteer(app.inputs));
   // A final reply does not mean its conversation-lifetime background work ended.
   ui.stop.hidden = !app.selected || !controls.stop; ui.stop.disabled = app.stopping === true;
-  ui.stop.title = "Stop all work in this conversation, including background work";
-  ui.stop.textContent = app.stopping ? "Stopping…" : "Stop";
+  ui.stop.title = t("console.stop_all_work_in_this_conversation_including_background");
+  ui.stop.textContent = app.stopping ? t("console.stopping") : t("common.stop");
   ui.message.disabled = archived || ingresses.length > 0;
   ui.model.disabled = ingresses.length > 0; ui.approval.disabled = ingresses.length > 0;
   ui.codeMode.input.disabled = !!app.selected && !controls.send;
+  ui.delivery.disabled = !!app.selected && !controls.send;
   ui.newOptions.hidden = !!app.selected;
   ui.runner.disabled = !!app.selected; ui.directory.disabled = !!app.selected;
   ui.headingActions.hidden = !app.selected;
   ui.rename.disabled = !controls.writable; ui.archive.disabled = !controls.writable;
   ui.jobs.disabled = !app.conversation || app.access === "unavailable";
   if (!controls.writable) ui.renameArea.replaceChildren();
-  ui.archive.textContent = archived ? "Restore" : "Archive";
-  ui.title.textContent = app.conversation ? titleOf(app.conversation) : "New conversation";
+  ui.archive.textContent = archived ? t("console.restore") : t("common.archive");
+  ui.title.textContent = app.conversation ? titleOf(app.conversation) : t("common.new_conversation");
   const runner = app.conversation?.default_runner;
   const runnerName = app.runners.find((row) => row.public_id === runner?.executor_public_id)?.display_name;
-  ui.bound.textContent = app.selected ? `${runnerName || runner?.executor_public_id || "No default Runner"}${archived ? " · Archived" : ""}` : "rho uses your default runner and working location.";
+  ui.bound.textContent = app.selected ? `${runnerName || runner?.executor_public_id || t("console.no_default_runner")}${archived ? t("console.archived") : ""}` : t("console.rho_uses_your_default_runner_and_working_location");
   ui.metrics.update(app.conversation, app.access);
 }
 function paintList() {
   const focusId = document.activeElement?.dataset.conversationId;
   ui.list.replaceChildren(...app.conversations.map((row) => conversationButton(row, row.public_id === app.selected, selectConversation)));
-  if (!app.conversations.length) ui.list.append(el("p", { class: "muted", text: app.archived ? "No archived conversations." : "Your conversations will appear here." }));
+  if (!app.conversations.length) ui.list.append(el("p", { class: "muted", text: app.archived ? t("console.no_archived_conversations") : t("console.your_conversations_will_appear_here") }));
   if (focusId) [...ui.list.querySelectorAll("button")].find((node) => node.dataset.conversationId === focusId)?.focus();
   ui.moreList.hidden = !app.listAfter;
 }
@@ -224,28 +230,28 @@ async function loadChoices() {
   try {
     [models, runners] = await Promise.all([call("/models?workload=text_generation"), call("/runners")]);
   } catch (error) {
-    if (!app.models.length) ui.model.replaceChildren(el("option", { value: "", text: "Models unavailable" }));
-    if (!app.runners.length) ui.runner.replaceChildren(el("option", { value: "", text: "Runners unavailable" }));
+    if (!app.models.length) ui.model.replaceChildren(el("option", { value: "", text: t("console.models_unavailable") }));
+    if (!app.runners.length) ui.runner.replaceChildren(el("option", { value: "", text: t("console.runners_unavailable") }));
     paintControls();
     throw error;
   }
   app.models = models.models; app.runners = runners.runners;
   const selectedModel = ui.model.value || (!app.selected && app.settings?.settings.default_model);
-  ui.model.replaceChildren(el("option", { value: "", text: app.models.length ? "Choose a model" : "No available models" }),
+  ui.model.replaceChildren(el("option", { value: "", text: app.models.length ? t("console.choose_a_model") : t("console.no_available_models") }),
     ...app.models.map((row) => el("option", { value: row.ref, text: row.display_name ? `${row.display_name} · ${row.ref}` : row.ref })));
   setModel(selectedModel);
   const selectedRunner = ui.runner.value;
-  ui.runner.replaceChildren(el("option", { value: "", text: "Choose a runner" }),
+  ui.runner.replaceChildren(el("option", { value: "", text: t("console.choose_a_runner") }),
     ...app.runners.map((row) => el("option", { value: row.public_id,
-      text: `${row.display_name || row.public_id}${row.own ? " · This machine" : ""}${row.presence ? ` · ${row.presence}` : ""}` })));
+      text: `${row.display_name || row.public_id}${row.own ? t("console.this_machine") : ""}${row.presence ? ` · ${statusText(row.presence)}` : ""}` })));
   const chosen = runnerChoice(app.runners, { current: selectedRunner,
     defaultRunner: ui.settings.status()?.defaults?.runner_executor_public_id, edited: !!ui.runner.dataset.edited });
-  if (chosen) { ui.runner.value = chosen.public_id; ui.directory.placeholder = chosen.root || "Runner's default directory"; }
+  if (chosen) { ui.runner.value = chosen.public_id; ui.directory.placeholder = chosen.root || t("common.runner_s_default_directory"); }
   paintControls(); paintStatus();
 }
 function setModel(ref) {
   if (ref && ![...ui.model.options].some((option) => option.value === ref)) {
-    ui.model.append(el("option", { value: ref, text: `${ref} · unavailable`, disabled: true }));
+    ui.model.append(el("option", { value: ref, text: t("common.unavailable_item", { name: ref }), disabled: true }));
   }
   ui.model.value = ref || "";
 }
@@ -276,7 +282,7 @@ async function selectConversation(id, { navigate = true, workspace = null } = {}
   app.detached = false;
   app.conversation = null; app.turns = []; app.beforeTurn = null; app.moreTurns = false;
   app.asks = []; app.inputs = []; app.snapshot = null; app.live = ""; app.reasoning = ""; app.settledExecution = null;
-  app.error = ""; app.connection = id ? "Loading conversation…" : ""; app.refreshing = false; app.stopping = false;
+  app.error = ""; app.connection = id ? t("console.loading_conversation") : ""; app.refreshing = false; app.stopping = false;
   app.askSignature = null; app.inputSignature = null; app.executionSignature = null;
   ui.renameArea.replaceChildren(); ui.messages.replaceChildren(); ui.asks.replaceChildren(); ui.pending.replaceChildren();
   ui.execution.replaceChildren();
@@ -291,7 +297,7 @@ async function selectConversation(id, { navigate = true, workspace = null } = {}
   }
   if (ui.shell.classList.contains("rail-open")) openRail(false);
   paintControls(); paintList(); paintStatus();
-  if (!id) { ui.messages.append(state("Start a conversation", el("p", { text: "Choose a model and runner, then tell rho what you need." }))); ui.message.focus(); return; }
+  if (!id) { ui.messages.append(state(t("console.start_a_conversation"), el("p", { text: t("console.choose_a_model_and_runner_then_tell_rho") }))); ui.message.focus(); return; }
   try {
     await call("/followers/attach", { method: "POST", body: { ...scopedTarget(id), host_type: "conversation" }, signal: view.signal });
     if (!current(view)) return;
@@ -351,7 +357,7 @@ async function refreshConversation(view = app.view) {
     const runs = new Set(app.turns.map((turn) => turn.active_variant?.run_public_id).filter(Boolean));
     if (app.snapshot?.run_public_id) runs.add(app.snapshot.run_public_id);
     app.asks = asks.asks.filter((ask) => runs.has(ask.run_public_id));
-    app.inputs = inputs.inputs.filter((input) => ["pending", "blocked", "held"].includes(input.state));
+    app.inputs = inputs.inputs.filter((input) => ["pending", "steering", "blocked", "held"].includes(input.state));
     if (!app.conversation.active_turn_public_id) app.stopping = false;
     app.connection = app.detached ? DETACHED_MESSAGE : "";
     paintMessages(); paintAsks(); paintInputs(); paintControls(); paintStatus(); paintLive(); paintExecution();
@@ -413,7 +419,7 @@ function paintMessages() {
   for (const [id, entry] of app.messageNodes) {
     if (!surviving.has(id)) { entry.node.remove(); app.messageNodes.delete(id); }
   }
-  if (!app.turns.length && !ui.messages.childElementCount) ui.messages.append(el("p", { class: "empty", text: "No messages yet." }));
+  if (!app.turns.length && !ui.messages.childElementCount) ui.messages.append(el("p", { class: "empty", text: t("console.no_messages_yet") }));
   if (app.turns.length) for (const node of ui.messages.querySelectorAll(":scope > .empty")) node.remove();
   ui.moreTurns.hidden = !app.moreTurns;
   if (pinned) ui.transcript.scrollTop = ui.transcript.scrollHeight;
@@ -485,7 +491,7 @@ function beginFollow(view) {
 }
 function reconnect(view) {
   if (!current(view) || app.reconnect || app.access !== "ready") return;
-  app.connection = "Connection interrupted. Reconnecting…"; paintStatus();
+  app.connection = t("console.connection_interrupted_reconnecting"); paintStatus();
   app.reconnect = setTimeout(async () => {
     app.reconnect = null;
     if (!current(view)) return;
@@ -494,7 +500,22 @@ function reconnect(view) {
   }, 2000);
 }
 
-async function sendMessage(event) {
+async function sendMessageNow(event) {
+  event.preventDefault();
+  if (ui.sendNow.disabled || ui.sendNow.hidden) return;
+  if (ui.message.value.trim()) return sendMessage(event, "steer_now");
+  const input = latestPendingSteer(app.inputs);
+  const id = app.selected; const view = app.view;
+  app.busy = true; app.error = ""; paintControls(); paintStatus();
+  try {
+    await call("/inputs/update", { method: "POST", body: { ...scopedTarget(id), host_type: "conversation",
+      input_public_id: input.public_id, delivery_mode: "steer_now" }, conversation: id });
+    if (current(view)) { await refreshConversation(view); beginFollow(view); }
+  } catch (error) { conversationError(error, view); }
+  finally { app.busy = false; paintControls(); }
+}
+
+async function sendMessage(event, mode = ui.delivery.value) {
   event.preventDefault();
   if (ui.send.disabled) return;
   const text = ui.message.value; const id = app.selected; const view = app.view;
@@ -502,7 +523,7 @@ async function sendMessage(event) {
   const codeMode = ui.codeMode.value();
   app.busy = true; app.error = ""; paintControls(); paintStatus();
   try {
-    const body = id ? { ...scopedTarget(id), text, model, approval_mode, delivery_mode: "queue" }
+    const body = id ? { ...scopedTarget(id), text, model, approval_mode, delivery_mode: mode }
       : { prompt: text, model, approval_mode, default_runner_executor_public_id: ui.runner.value };
     if (codeMode !== undefined) body.code_mode = codeMode;
     if (!id && ui.directory.value.trim()) body.environment = { root: ui.directory.value.trim() };
@@ -512,7 +533,7 @@ async function sendMessage(event) {
       // Freeze the current default only for this create, so a later retry
       // cannot create again in a different workspace after a default change.
       const workspace = id ? app.workspace : (await call("/workspaces")).workspace?.public_id;
-      if (!workspace) throw new Error("Choose an available workspace with rho workspaces use, then try again.");
+      if (!workspace) throw new Error(t("console.choose_an_available_workspace_with_rho_workspaces_use"));
       request = app.submissions.prepare(path, body, workspace);
     }
     const result = await call(request.path, { method: "POST", body: request.body, conversation: id });
@@ -553,8 +574,8 @@ function showRename() {
       if (current(view)) { ui.renameArea.replaceChildren(); await refreshConversation(view); }
       await refreshList();
     } catch (error) { conversationError(error, view); submit.disabled = false; }
-  } }, el("label", { for: "conversation-title", text: "Conversation title" }), field,
-  el("button", { type: "submit", text: "Save title" }), button("Cancel rename", () => ui.renameArea.replaceChildren())));
+  } }, el("label", { for: "conversation-title", text: t("console.conversation_title") }), field,
+  el("button", { type: "submit", text: t("console.save_title") }), button(t("console.cancel_rename"), () => ui.renameArea.replaceChildren())));
   field.focus(); field.select();
 }
 async function archiveConversation() {
@@ -579,7 +600,7 @@ function paintAsks() {
   ui.asks.replaceChildren(...app.asks.map((ask) => {
     const key = `${ask.run_public_id}:${ask.task_key}`;
     const card = el("section", { class: "ask-card", "data-task-key": ask.task_key },
-      el("h3", { text: ask.kind === "approval" ? "Approval required" : "rho needs your answer" }));
+      el("h3", { text: ask.kind === "approval" ? t("console.approval_required") : t("console.rho_needs_your_answer") }));
     if (ask.kind === "approval") {
       card.append(approvalControls(ask, (path, body) => respond(ask, path, body, card)));
     } else {
@@ -588,7 +609,7 @@ function paintAsks() {
       const question = typeof ask.prompt === "string" ? ask.prompt : JSON.stringify(ask.prompt || "");
       card.append(prose(question), el("form", { onsubmit: (event) => {
         event.preventDefault(); if (field.value.trim()) respond(ask, "/answer", { content: field.value }, card);
-      } }, el("label", { for: field.id, text: "Answer" }), field, el("button", { type: "submit", text: "Send answer" })));
+      } }, el("label", { for: field.id, text: t("console.answer") }), field, el("button", { type: "submit", text: t("console.send_answer") })));
     }
     for (const control of card.querySelectorAll("button,textarea")) control.disabled = !writable;
     return card;
@@ -615,7 +636,7 @@ function paintInputs() {
   if (app.inputSignature === signature) return;
   app.inputSignature = signature;
   ui.pending.replaceChildren(...app.inputs.map((input) => el("article", { class: "message user pending" },
-    el("header", {}, el("strong", { text: input.blocked_reason ? "Message waiting" : "Message queued" })),
+    el("header", {}, el("strong", { text: pendingInputLabel(input) })),
     prose(input.text), input.blocked_reason ? el("p", { class: "warn", text: input.blocked_reason }) : null)));
 }
 function paintExecution() {
@@ -641,7 +662,7 @@ function paintExecution() {
 
 async function loadActivity(runId, target, before = null) {
   const view = app.view;
-  const loading = el("p", { class: "muted", text: "Loading activity…" }); target.append(loading);
+  const loading = el("p", { class: "muted", text: t("console.loading_activity") }); target.append(loading);
   try {
     const values = { ...scopedTarget(runId), limit: 20 }; if (before) values.before = before;
     const { transcript } = await call(query("/runs/transcript", values), { signal: view.signal });
@@ -649,8 +670,8 @@ async function loadActivity(runId, target, before = null) {
     loading.remove();
     const rows = transcript.rounds.map((round) => roundCard(round, runId, openTask, openArtifact));
     if (before) target.prepend(...rows); else target.append(...rows);
-    if (!transcript.rounds.length) target.append(el("p", { class: "muted", text: "No recorded tool activity." }));
-    if (transcript.has_older) target.prepend(button("Earlier activity", (event) => {
+    if (!transcript.rounds.length) target.append(el("p", { class: "muted", text: t("console.no_recorded_tool_activity") }));
+    if (transcript.has_older) target.prepend(button(t("console.earlier_activity"), (event) => {
       event.currentTarget.remove(); loadActivity(runId, target, transcript.next_before);
     }));
   } catch (error) { if (current(view)) { loading.textContent = error.message; errorMessage(error); } }
@@ -660,8 +681,8 @@ async function openTask(runId, taskKey) {
   try {
     const { task } = await call(query("/runs/task", { ...scopedTarget(runId), task_key: taskKey }), { signal: view.signal });
     if (!current(view)) return;
-    const dialog = el("dialog", { class: "task-dialog", "aria-label": "Task output" },
-      button("Close output", () => dialog.close()), taskDetail(task, openArtifact));
+    const dialog = el("dialog", { class: "task-dialog", "aria-label": t("console.task_output") },
+      button(t("console.close_output"), () => dialog.close()), taskDetail(task, openArtifact));
     dialog.addEventListener("close", () => dialog.remove(), { once: true });
     ui.shell.append(dialog); dialog.showModal();
   } catch (error) { if (current(view)) errorMessage(error); }
@@ -674,10 +695,10 @@ async function openArtifact(artifact, target, trigger, download = false) {
     if (!current(view) || !target.isConnected) return;
     if (target.dataset.objectUrl) { URL.revokeObjectURL(target.dataset.objectUrl); app.objects.delete(target.dataset.objectUrl); }
     const url = URL.createObjectURL(blob); app.objects.add(url); target.dataset.objectUrl = url;
-    const name = artifact.filename || artifact.path?.split("/").pop() || "artifact";
+    const name = artifact.filename || artifact.path?.split("/").pop() || t("console.artifact");
     const image = !download && blob.type.startsWith("image/");
-    const link = el("a", { href: url, download: name, text: `Save ${name}` });
-    target.replaceChildren(image ? el("img", { src: url, alt: name }) : el("p", { class: "muted", text: `${name} · ${blob.size.toLocaleString()} bytes` }),
+    const link = el("a", { href: url, download: name, text: t("console.save", { name: name }) });
+    target.replaceChildren(image ? el("img", { src: url, alt: name }) : el("p", { class: "muted", text: t("console.artifact_size", { name, size: blob.size.toLocaleString(locale) }) }),
       link);
     if (download) link.click();
   } catch (error) { if (current(view)) { target.textContent = error.message; errorMessage(error); } }
@@ -742,8 +763,8 @@ async function boot() {
   let facts = {};
   try { facts = await health(); } catch { /* The connect screen remains usable. */ }
   if (facts.control_version && facts.control_version !== CONTROL_VERSION) {
-    root.hidden = false; root.replaceChildren(state("This page was built for a different daemon",
-      el("p", { text: `The page speaks control version ${CONTROL_VERSION}; this daemon speaks ${facts.control_version}. Update whichever is older.` })));
+    root.hidden = false; root.replaceChildren(state(t("console.this_page_was_built_for_a_different_daemon"),
+      el("p", { text: t("console.the_page_speaks_control_version_this_daemon_speaks", { CONTROL_VERSION: CONTROL_VERSION, control_version: facts.control_version }) })));
     return;
   }
   if (!location.pathname.endsWith("/auth/callback") && bearer.get()) return enter();

@@ -136,10 +136,13 @@ module Rho
               schedule = SCHEDULE_FIELDS.to_h { |key| [key.to_sym, body[key]] }.compact
               next Rho::Daemon::Refusal.malformed("deliver_at and deliver_in are strings") unless
                 schedule.values.all?(String)
-              next Rho::Daemon::Refusal.malformed("text is required, or deliver_at / deliver_in") if
-                text.strip.empty? && schedule.empty?
+              mode = body["delivery_mode"]
+              next Rho::Daemon::Refusal.malformed("delivery_mode must be steer_now") if mode && mode != "steer_now"
+              next Rho::Daemon::Refusal.malformed("text is required, or deliver_at / deliver_in / delivery_mode") if
+                text.strip.empty? && schedule.empty? && !mode
 
               fields = text.strip.empty? ? schedule : schedule.merge(text: text)
+              fields[:delivery_mode] = mode if mode
               [200, { input: input_row(inputs.update(input_public_id, **fields)) }]
             end
           end

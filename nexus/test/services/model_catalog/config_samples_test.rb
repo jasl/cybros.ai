@@ -162,6 +162,12 @@ class ModelCatalog::ConfigSamplesTest < ActiveSupport::TestCase
       "local/qwen3.6-35b-a3b" => "Qwen/Qwen3.6-35B-A3B",
       "local/qwen3.5-9b" => "Qwen/Qwen3.5-9B",
     }
+    counters = {
+      "local/qwen3.8-flash-next" => "Qwen/Qwen3.8-Flash-Next",
+      "local/qwen3.8-27b" => "Qwen/Qwen3.8-Flash-Next",
+      "local/qwen3.6-35b-a3b" => "Qwen/Qwen3.5-9B",
+      "local/qwen3.5-9b" => "Qwen/Qwen3.5-9B",
+    }
     with_overrides(SAMPLES.to_h { |name| [name, uncommented(name)] }) do |candidate|
       provider = candidate.providers.fetch("local")
       assert_equal 1, provider.fetch("concurrency_limit")
@@ -170,6 +176,8 @@ class ModelCatalog::ConfigSamplesTest < ActiveSupport::TestCase
           model: candidate.models.fetch(ref))
 
         assert_equal wire_id, profile.model_pin
+        assert_equal "huggingface", profile.token_counter.kind
+        assert_equal counters.fetch(ref), profile.token_counter.tokenizer_id
         assert_equal "openai_compatible_chat", profile.adapter_profile
         assert_equal "qwen3_5", profile.wire_options[:prompt_format]
         assert_equal "chat_template_kwargs", profile.wire_options[:reasoning_control]

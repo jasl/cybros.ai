@@ -1,4 +1,6 @@
 require "test_helper"
+require "tempfile"
+require "tmpdir"
 
 # C2-4 WP-B: the local profile/token-count estimate. Exact lanes use their
 # declared tokenizer; other lanes return a conservative advisory value.
@@ -167,6 +169,82 @@ class ModelRequests::TokenCountTest < ActiveSupport::TestCase
     assert_equal ModelRequests::TokenCount::UNAVAILABLE, result.refusal
   end
 
+  test "HF counts only supplied text without the tokenizer's added boundary tokens" do
+    tokenizer = Tokenizers::Tokenizer.new(Tokenizers::Models::WordLevel.new(
+      vocab: { "[UNK]" => 0, "hello" => 1, "[BOS]" => 2, "[EOS]" => 3 }, unk_token: "[UNK]"
+    ))
+    tokenizer.post_processor = Tokenizers::Processors::TemplateProcessing.new(
+      single: "[BOS] $A [EOS]", special_tokens: [["[BOS]", 2], ["[EOS]", 3]]
+    )
+    assert_equal [2, 1, 3], tokenizer.encode("hello").ids
+
+    with_local_tokenizer(tokenizer.to_s) do |candidate|
+      counted = ModelRequests::TokenCount.count(profile: candidate, segments: ["hello", "hello"])
+
+      assert_predicate counted, :exact?
+      assert_equal 2 + envelope(2), counted.tokens
+    end
+  end
+
+  test "an invalid local tokenizer reports unavailability without another counter" do
+    with_local_tokenizer("invalid tokenizer JSON") do |candidate|
+      counted = ModelRequests::TokenCount.count(profile: candidate, segments: ["hello"])
+
+      refute_predicate counted, :counted?
+      assert_equal ModelRequests::TokenCount::UNAVAILABLE, counted.refusal
+    end
+  end
+
+  test "the shipped open weight models select their installed vocabulary for estimates and history budgets" do
+    bindings = {
+      "deepseek/deepseek-flash" => "deepseek-ai/DeepSeek-V4.1-Flash",
+      "deepseek/deepseek-v4-pro" => "deepseek-ai/DeepSeek-V4-Pro-0813",
+      "openrouter/deepseek/deepseek-v4.1-flash" => "deepseek-ai/DeepSeek-V4.1-Flash",
+      "openrouter/deepseek/deepseek-v4-pro-0813" => "deepseek-ai/DeepSeek-V4-Pro-0813",
+      "openrouter/z-ai/glm-5.2:exacto" => "zai-org/GLM-5.2",
+      "openrouter/z-ai/glm-5.3" => "zai-org/GLM-5.2",
+      "openrouter/z-ai/glm-5.3-flash" => "zai-org/GLM-5.2",
+      "openrouter/tencent/hy3:exacto" => "tencent/Hy3",
+      "openrouter/qwen/qwen3.8-flash" => "Qwen/Qwen3.8-Flash-Next",
+    }
+    bindings.each do |model_ref, tokenizer_id|
+      selected = profile(model_ref)
+      assert_equal "huggingface", selected.token_counter.kind
+      assert_equal tokenizer_id, selected.token_counter.tokenizer_id
+      counted = ModelRequests::TokenCount.count(profile: selected, segments: ["Hello world", "你好，世界"])
+
+      # These fixed strings encode to two and three tokens in each pinned
+      # vocabulary. The shared chat allowance is separate from that text count.
+      assert_predicate counted, :exact?, model_ref
+      assert_equal 5 + envelope(2), counted.tokens, model_ref
+      assert_equal 3 + envelope(1), Conversations::ContextAssembly::FillCost.call("你好，世界", selected), model_ref
+    end
+  end
+
+  test "the local Qwen examples count with their installed vocabularies" do
+    Dir.mktmpdir do |dir|
+      %w[models providers].each do |name|
+        sample = Rails.root.join("config.d/#{name}.yml.sample").read
+        body = sample.split(/^schema_version:.*\n/, 2).fetch(1)
+        File.write(File.join(dir, "#{name}.yml"),
+          "schema_version: #{ModelCatalog::FileBase::SCHEMA_VERSION}\n" +
+            body.lines.map { |line| line.sub(/\A# ?/, "") }.join)
+      end
+      catalog = ModelCatalog::FileBase.compile(root: Rails.root.join("config/model_catalog"),
+        override_dir: dir, env: "development")
+      %w[local/qwen3.8-flash-next local/qwen3.8-27b local/qwen3.6-35b-a3b local/qwen3.5-9b].each do |ref|
+        selected = ModelCatalog::ProfileBuilder.call(model_ref: ref,
+          provider: catalog.providers.fetch("local"), model: catalog.models.fetch(ref))
+        counted = ModelRequests::TokenCount.count(profile: selected, segments: ["Hello world"])
+
+        assert_predicate counted, :counted?, ref
+        assert_predicate counted, :exact?, ref
+        assert_equal 2 + envelope(1), counted.tokens, ref
+        assert_equal 3 + envelope(1), Conversations::ContextAssembly::FillCost.call("你好，世界", selected), ref
+      end
+    end
+  end
+
   # The registry declares data; nothing is inferred from a model name. The
   # binding's own model table diverges from upstream on at least one row, so
   # a name-derived encoding would be a guess wearing an audited fact's name.
@@ -181,4 +259,15 @@ class ModelRequests::TokenCountTest < ActiveSupport::TestCase
       assert_equal !counter.anchored?, result.exact?, candidate.profile_id
     end
   end
+
+  private
+
+    def with_local_tokenizer(contents)
+      Tempfile.create(["counter", ".json"]) do |file|
+        file.write(contents)
+        file.flush
+        candidate = bare_profile.with(token_counter: { kind: "huggingface", tokenizer_id: SecureRandom.uuid })
+        ModelRequests::TokenCount.stub(:tokenizer_path, file.path) { yield candidate }
+      end
+    end
 end

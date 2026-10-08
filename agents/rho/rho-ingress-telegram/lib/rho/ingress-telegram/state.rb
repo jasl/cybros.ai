@@ -15,12 +15,15 @@ module Rho
       end
 
       def defaults(document)
+        if document.fetch("pending_media", {}).any?
+          raise Rho::StateError, Locales::ENGLISH.fetch("input_state_incompatible")
+        end
         document["offset"] ||= nil
         %w[routes speakers deliveries questions].each { |name| document[name] ||= {} }
         document.fetch("routes").each_value do |route|
           raise Rho::StateError, "telegram: route owner_id is required" if route["owner_id"].to_s.empty?
         end
-        document["pending_media"] ||= {}
+        document["pending_inputs"] ||= {}
         document["rooms"] ||= {}
         document["requests"] ||= {}
         document["work"] ||= {}

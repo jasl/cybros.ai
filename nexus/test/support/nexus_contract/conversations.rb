@@ -31,7 +31,7 @@ module Nexus
         # predates — which is why the lists are published as fixtures to
         # read, never as sets to enumerate against.
         def conversations
-          basic, full, spawned = conversation_presenter_fixtures
+          basic, full, spawned, forked = conversation_presenter_fixtures
           guarded_input = conversation_input_fixture(expected_steering_run_public_id: "01900000-0000-7000-8000-000000000091")
           input = conversation_input_fixture
           steps_input = conversation_input_fixture(steps: [
@@ -196,7 +196,8 @@ module Nexus
             "rendered_estimate_mechanisms" => %w[assembly default],
             "event_projection" => events_fixture.fetch("events").first.keys,
             # `side=1` lists side conversations only; the default hides them.
-            "list_filters" => %w[order after limit side],
+            "list_filters" => %w[order_by order after limit side],
+            "list_order_by" => AgentAPI::ConversationListing::ORDER_COLUMNS.keys,
             "list_directions" => AgentAPI::KeysetPagination::DIRECTIONS.keys,
             "error_codes" => CONVERSATION_ERROR_STATUSES.keys,
             "error_statuses" => CONVERSATION_ERROR_STATUSES,
@@ -222,6 +223,7 @@ module Nexus
             # THE PARENT FACTS: a spawned child's listing row — `parent` as one block; `/children`
             # lists these.
             "spawned_child_fixture" => spawned,
+            "forked_conversation_fixture" => forked,
             "parent_projection" => spawned.fetch("parent").keys,
             "valid_turns_fixture" => turns_fixture,
             "valid_inputs_fixture" => inputs_fixture,

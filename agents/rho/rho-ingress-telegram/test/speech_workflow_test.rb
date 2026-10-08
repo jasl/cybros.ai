@@ -89,10 +89,10 @@ class TelegramSpeechWorkflowTest < Minitest::Test
     assert_equal "1", voice.fetch(:chat_id)
     voice_id = @client.last_message_id
     assert_equal "report:#{report_id}", @state.read.fetch("messages").fetch("1:0:#{voice_id}")
-    @runtime.consume(telegram_message(3, "/new"))
-    @runtime.consume(telegram_message(4, "/stop", reply_to: voice_id))
+    receive(telegram_message(3, "/new"))
+    receive(telegram_message(4, "/stop", reply_to: voice_id))
     assert_equal [["summary-loop", "run", "workspace-home"]], @bridge.stop_calls
-    @runtime.consume(telegram_message(5, "Explain the spoken report", reply_to: voice_id))
+    receive(telegram_message(5, "Explain the spoken report", reply_to: voice_id))
     assert_equal "conversation-1", @bridge.inputs.fetch("telegram:42:5:input").fetch(:conversation_id)
   end
 
@@ -105,7 +105,7 @@ class TelegramSpeechWorkflowTest < Minitest::Test
     assert_equal Rho::IngressTelegram::Render.chunks(text).map(&:text).join, pieces.join
     assert pieces.all? { |piece| piece.bytesize <= 2_000 }
     assert_operator pieces.length, :>, 1
-    @runtime.consume(telegram_message(3, "/stop"))
+    receive(telegram_message(3, "/stop"))
     refute @state.read.fetch("deliveries").values.any? { |row| row["voice"] }
     assert_equal 1, @bridge.instance_variable_get(:@canceled).length
   end
@@ -166,8 +166,8 @@ class TelegramSpeechWorkflowTest < Minitest::Test
   private
 
     def open_with_mode(mode)
-      @runtime.consume(telegram_message(1, "/voice #{mode}"))
-      @runtime.consume(telegram_message(2, "Hello"))
+      receive(telegram_message(1, "/voice #{mode}"))
+      receive(telegram_message(2, "Hello"))
       @state.change { |document| document.fetch("deliveries").clear }
     end
 

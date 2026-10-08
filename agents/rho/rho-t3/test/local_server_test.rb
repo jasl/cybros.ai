@@ -48,9 +48,34 @@ class LocalServerTest < Minitest::Test
       TCPServer.open("127.0.0.1", 0) do |socket|
         native = Rho::T3::NativeEnvironment.new(root: root, work_root: File.join(root, "work"))
         server = Rho::T3::LocalServer.new(settings: settings(server: "local", listen_port: socket.addr[1]), native: native)
-        error = assert_raises(Rho::T3::Error) { server.start }
+        error = assert_raises(Rho::Runner::Extensions::PrerequisiteError) { server.start }
         assert_includes error.message, "already in use"
+        assert_includes error.message, "Choose another listen port"
         refute socket.closed?
+      end
+    end
+  end
+
+  def test_an_unavailable_local_runtime_reports_installation_guidance_without_a_raw_error
+    Dir.mktmpdir do |root|
+      native = Rho::T3::NativeEnvironment.new(root: root, work_root: File.join(root, "work"))
+      port = TCPServer.open("127.0.0.1", 0) { |socket| socket.addr[1] }
+      server = Rho::T3::LocalServer.new(settings: settings(server: "local", listen_port: port), native: native)
+      original = Rho::Runner::OwnedProcess.method(:spawn)
+      Rho::Runner::OwnedProcess.singleton_class.send(:remove_method, :spawn)
+      Rho::Runner::OwnedProcess.define_singleton_method(:spawn) { |*| raise Errno::ENOENT, "synthetic private subprocess detail" }
+      begin
+        error = assert_raises(Rho::Runner::Extensions::PrerequisiteError) { server.start }
+
+        assert_includes error.message, "Install T3 and Node.js"
+        assert_includes error.message, "enable the plugin again"
+        refute_includes error.message, "synthetic private subprocess detail"
+        assert_nil error.cause
+        refute server.running?
+      ensure
+        server.stop
+        Rho::Runner::OwnedProcess.singleton_class.send(:remove_method, :spawn)
+        Rho::Runner::OwnedProcess.define_singleton_method(:spawn, original)
       end
     end
   end

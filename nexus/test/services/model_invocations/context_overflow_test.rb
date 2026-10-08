@@ -20,9 +20,7 @@ class ModelInvocations::ContextOverflowTest < ActiveSupport::TestCase
     )
   end
 
-  # TIER 1: exact equality on the provider's own code, and the only arm
-  # with no string matching in it. On the Responses family a length rejection arrives as a
-  # 200 with a failed run inside the stream, not as a 400 at all.
+  # A Responses failure inside an already-started stream retains its exact code.
   test "the Responses family is typed, and it is not an HTTP error" do
     failed = SimpleInference::Protocols::OpenAIResponses::ResponseFailedError.new(
       "Your input exceeds the context window of this model.",
@@ -63,6 +61,39 @@ class ModelInvocations::ContextOverflowTest < ActiveSupport::TestCase
     end
   end
 
+  test "HTTP context errors recognise exact provider codes and types" do
+    [
+      { "code" => "context_length_exceeded", "type" => "invalid_request_error" },
+      { "code" => 400, "type" => "exceed_context_size_error" },
+    ].each do |fields|
+      body = { "error" => fields.merge("message" => "The request does not fit.") }
+      assert_equal "provider_context_overflow", classify(http(400, body)), fields.inspect
+      assert_equal "provider_http_error", classify(http(429, body)),
+        "an error code does not bypass the HTTP status gate"
+    end
+
+    assert_equal "provider_http_error", classify(http(400, {
+      "error" => { "code" => "not_context_length_exceeded", "type" => "invalid_request_error",
+                   "message" => "Invalid context_length_exceeded option" },
+    })), "typed values are matched exactly, never as words in another error"
+  end
+
+  # Strata rejects prompt plus output before starting either its Chat or Messages stream.
+  # https://github.com/Niko1221/Strata/blob/fb58e0dbc8399662c0e47c76578c6e878b14f6cf/serve/server.py#L3264-L3275
+  # llama.cpp: https://github.com/ggml-org/llama.cpp/blob/71ad0590f4808b6202f9213d166913858c73b1bc/tools/server/server-context.cpp#L3565-L3570
+  test "local servers report a prompt or combined request larger than their loaded context" do
+    [
+      "prompt (33000 tokens) leaves no room to answer in the context (32768); requests are never truncated",
+      "prompt (30000 tokens) + max tokens (4096) exceeds the context (32768); requests are never truncated. " \
+        "Send a smaller max_tokens (at most 2744 here)",
+      "request (40000 tokens) exceeds the available context size (32768 tokens), try increasing it",
+    ].each do |message|
+      assert_equal "provider_context_overflow", classify(http(400, {
+        "error" => { "type" => "invalid_request_error", "message" => message },
+      })), message
+    end
+  end
+
   # THE EXCLUSIONS RUN FIRST, and they exist because a throttled request
   # compacted is a conversation shrunk for no reason at all.
   test "a throttled or unavailable provider is never read as too long" do
@@ -99,6 +130,12 @@ class ModelInvocations::ContextOverflowTest < ActiveSupport::TestCase
         "echo" => "prompt is too long: please compact me" },
       message: "Invalid request")
     assert_equal "provider_http_error", classify(echoed)
+
+    local_echo = http(400,
+      { "error" => { "type" => "invalid_request_error", "message" => "Invalid value for 'model'" },
+        "echo" => "prompt (40000 tokens) leaves no room to answer in the context (32768)" },
+      message: "Invalid request")
+    assert_equal "provider_http_error", classify(local_echo)
   end
 
   # This repo's own re-audit records `model_context_window_exceeded` as a

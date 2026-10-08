@@ -45,6 +45,28 @@ class ApiModelCatalogTest < Minitest::Test
     refute_predicate model, :tool_calls?
   end
 
+  def test_semantic_controls_preserve_defaults_bounds_and_explicit_false
+    capabilities = ROW.fetch("capabilities").merge(
+      "reasoning" => { "supported" => true, "default_enabled" => false, "disable_supported" => true,
+        "efforts" => %w[low high], "default_effort" => "low" },
+      "generation_parameters" => {
+        "max_output_tokens" => { "kind" => "integer", "default" => nil, "minimum" => 16,
+          "maximum" => nil, "allowed_values" => nil },
+        "output_format" => { "kind" => "output_format", "default" => "text", "minimum" => nil,
+          "maximum" => nil, "allowed_values" => %w[text json_schema] },
+      },
+      "service_tiers" => ["priority"],
+      "limits" => { "input_tokens" => 64_000, "effective_input_tokens" => 48_000 }
+    )
+    model = catalog([[200, {}, { "models" => [ROW.merge("capabilities" => capabilities)] }]]).list.fetch(0)
+
+    assert_equal capabilities, model.capabilities
+    assert_equal false, model.capabilities.dig("reasoning", "default_enabled")
+    assert model.capabilities.fetch("generation_parameters").fetch("max_output_tokens").key?("maximum")
+    assert_nil model.capabilities.dig("generation_parameters", "max_output_tokens", "maximum")
+    refute model.capabilities.fetch("limits").key?("output_tokens")
+  end
+
   def test_workload_narrows_the_member_listing_without_an_availability_selector
     catalog([[200, {}, { "models" => [ROW] }]]).list(workload: "text_generation")
 

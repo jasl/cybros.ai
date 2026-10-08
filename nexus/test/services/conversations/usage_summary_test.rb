@@ -16,7 +16,7 @@ class Conversations::UsageSummaryTest < ActiveJob::TestCase
   end
 
   test "an unused conversation reports zero cumulative usage without inventing occupancy" do
-    document = AgentAPI::ConversationPresenter.full(@conversation)
+    document = AgentAPI::ConversationPresenter.full(@conversation, acting_user: @human)
     usage = document.fetch(:usage_summary)
 
     assert_equal 0, usage.fetch("request_count")
@@ -50,7 +50,7 @@ class Conversations::UsageSummaryTest < ActiveJob::TestCase
     assert_equal true, usage.fetch("cost_complete")
     assert_operator usage.fetch("cost_amount").to_d, :>, 0
     assert_equal "USD", usage.fetch("cost_unit")
-    assert_equal 26, AgentAPI::ConversationPresenter.full(@conversation.reload).dig(:context, :used_tokens),
+    assert_equal 26, AgentAPI::ConversationPresenter.full(@conversation.reload, acting_user: @human).dig(:context, :used_tokens),
       "occupancy describes the newest request, not all requests this conversation paid for"
 
     expected = [direct.active_variant.model_invocation.public_id, agent_run.model_invocations.sole.public_id]
@@ -261,7 +261,7 @@ class Conversations::UsageSummaryTest < ActiveJob::TestCase
   private
 
     def summary(conversation = @conversation)
-      AgentAPI::ConversationPresenter.full(conversation.reload).fetch(:usage_summary)
+      AgentAPI::ConversationPresenter.full(conversation.reload, acting_user: @human).fetch(:usage_summary)
     end
 
     def receipts = UsageRecord.where(conversation_public_id: @conversation.public_id)

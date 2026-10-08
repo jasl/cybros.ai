@@ -74,7 +74,7 @@ class ApiStoreEntriesTest < Minitest::Test
     entry = entries([[201, {}, { "store_entry" => FULL }]]).create(
       namespace: "notes", key: "pinned", value: { "token" => "rt-stored.secret" },
       idempotency_key: "key-1"
-    )
+    ).store_entry
 
     assert_equal :post, request.fetch(:method)
     assert_equal ENTRIES_PATH, request.fetch(:path)
@@ -92,7 +92,7 @@ class ApiStoreEntriesTest < Minitest::Test
   # keyword, and an explicit nil MUST travel as null rather than vanish.
   def test_create_sends_an_explicit_nil_value_as_json_null
     entry = entries([[201, {}, { "store_entry" => SUMMARY.merge("value" => nil) }]])
-      .create(namespace: "notes", key: "pinned", value: nil, idempotency_key: "key-1")
+      .create(namespace: "notes", key: "pinned", value: nil, idempotency_key: "key-1").store_entry
 
     body = request.fetch(:body).fetch("store_entry")
     assert body.key?("value"), "the value field must be present even when null"

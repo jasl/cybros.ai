@@ -4,8 +4,8 @@ class TelegramLocalSettingsTest < Minitest::Test
   include TelegramRuntimeSupport
 
   def test_settings_reply_uses_the_senders_route_without_selecting_the_replied_task
-    @runtime.consume(mention(1, user: 1))
-    @runtime.consume(mention(2, user: 2))
+    receive(mention(1, user: 1))
+    receive(mention(2, user: 2))
     @state.change do |document|
       document.fetch("routes").fetch("-10:4:1").merge!(
         "model" => "owner/model", "workspace_public_id" => "workspace-home", "voice" => "off")
@@ -16,10 +16,10 @@ class TelegramLocalSettingsTest < Minitest::Test
     routes = @state.read.fetch("routes")
     requests = @state.read.fetch("requests")
 
-    @runtime.consume(telegram_message(3, "/settings", chat: -10, topic: 4, reply_to: 2, reply_user: 2))
-    @runtime.consume(telegram_message(4, "/settings", user: 2, chat: -10, topic: 4, reply_to: 1, reply_user: 1))
-    @runtime.consume(telegram_message(5, "/observe status", user: 2, chat: -10, topic: 4, reply_to: 1, reply_user: 1))
-    @runtime.consume(telegram_message(6, "/observe off", user: 2, chat: -10, topic: 4, reply_to: 1, reply_user: 1))
+    receive(telegram_message(3, "/settings", chat: -10, topic: 4, reply_to: 2, reply_user: 2))
+    receive(telegram_message(4, "/settings", user: 2, chat: -10, topic: 4, reply_to: 1, reply_user: 1))
+    receive(telegram_message(5, "/observe status", user: 2, chat: -10, topic: 4, reply_to: 1, reply_user: 1))
+    receive(telegram_message(6, "/observe off", user: 2, chat: -10, topic: 4, reply_to: 1, reply_user: 1))
 
     assert_includes feedback(3), "owner/model"
     assert_includes feedback(3), "Home (workspace-home)"
@@ -42,10 +42,10 @@ class TelegramLocalSettingsTest < Minitest::Test
 
   def test_settings_and_observe_queries_ignore_unknown_bot_reply_targets
     @client.admin = true
-    @runtime.consume(telegram_message(1, "/observe on", chat: -10, topic: 4))
+    receive(telegram_message(1, "/observe on", chat: -10, topic: 4))
     ["/settings", "/observe", "/observe status"].each_with_index do |command, index|
       id = index + 2
-      @runtime.consume(telegram_message(id, command, user: 2, chat: -10, topic: 4, reply_to: 999))
+      receive(telegram_message(id, command, user: 2, chat: -10, topic: 4, reply_to: 999))
       assert_includes feedback(id), "Observe: on"
       assert_equal "-10:4:2", @state.read.fetch("deliveries").fetch("control:#{id}").fetch("route_key")
     end
@@ -57,20 +57,20 @@ class TelegramLocalSettingsTest < Minitest::Test
 
   def test_observe_replies_change_only_the_original_topic_and_keep_task_authority
     @client.admin = true
-    @runtime.consume(mention(1, user: 2))
-    @runtime.consume(telegram_message(2, "/observe on", chat: -10, topic: 4, reply_to: 1, reply_user: 2))
+    receive(mention(1, user: 2))
+    receive(telegram_message(2, "/observe on", chat: -10, topic: 4, reply_to: 1, reply_user: 2))
     assert_equal true, @state.read.fetch("rooms").dig("-10:4", "observe")
     assert_equal "-10:4:1", @state.read.fetch("deliveries").fetch("control:2").fetch("route_key")
 
-    @runtime.consume(telegram_message(3, "/observe status", user: 2, chat: -10, topic: 4, reply_to: 999))
+    receive(telegram_message(3, "/observe status", user: 2, chat: -10, topic: 4, reply_to: 999))
     assert_includes feedback(3), "Observe: on"
-    @runtime.consume(telegram_message(4, "/observe off", chat: -10, topic: 5, reply_to: 1, reply_user: 2))
+    receive(telegram_message(4, "/observe off", chat: -10, topic: 5, reply_to: 1, reply_user: 2))
     assert_equal true, @state.read.fetch("rooms").dig("-10:4", "observe")
     assert_equal false, @state.read.fetch("rooms").dig("-10:5", "observe")
-    @runtime.consume(telegram_message(5, "/observe off", chat: -10, topic: 4, reply_to: 999))
+    receive(telegram_message(5, "/observe off", chat: -10, topic: 4, reply_to: 999))
     assert_equal false, @state.read.fetch("rooms").dig("-10:4", "observe")
 
-    @runtime.consume(telegram_message(6, "/stop", user: 2, chat: -10, topic: 4, reply_to: 999))
+    receive(telegram_message(6, "/stop", user: 2, chat: -10, topic: 4, reply_to: 999))
     assert_includes feedback(6), "not linked to a known task"
     assert_empty @bridge.stops
     assert_equal 1, @bridge.inputs.length
@@ -91,7 +91,7 @@ class TelegramLocalSettingsTest < Minitest::Test
       result
     end
     update = telegram_message(1, "/observe on", chat: -10, topic: 4, reply_to: 999)
-    assert_raises(Rho::ConnectionError) { @runtime.consume(update) }
+    assert_raises(Rho::ConnectionError) { receive(update) }
     persisted = @state.read
     assert_equal true, persisted.fetch("rooms").dig("-10:4", "observe")
     assert_equal "applied", persisted.fetch("pending_update").fetch("control_status")
@@ -102,8 +102,8 @@ class TelegramLocalSettingsTest < Minitest::Test
     @client.admin = false
     @state = Rho::IngressTelegram::State.new(store: TelegramStateSupport.document(@home))
     @runtime = runtime
-    @runtime.consume(update)
-    @runtime.consume(update)
+    receive(update)
+    receive(update)
 
     assert_equal false, @state.read.fetch("rooms").dig("-10:4", "observe")
     assert_equal result, feedback(1)

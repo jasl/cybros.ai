@@ -1,14 +1,14 @@
-<% content_for :title, "My runners" %>
+<% content_for :title, t("runners.index.my_runners") %>
 
 <div class="space-y-8">
   <header class="flex flex-wrap items-end justify-between gap-3">
     <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight">My runners</h1>
+      <h1 class="text-xl font-medium tracking-tight"><%= t("runners.index.my_runners") %></h1>
       <p class="text-sm text-base-content/60">
-        Machines you manage as execution capacity — runners and tools providers. Scope controls who can discover them for new work.
+        <%= t("runners.index.machines_you_manage_as_execution_capacity_runners_and_tools") %>
       </p>
     </div>
-    <%= link_to "Connect runner", oauth_device_path, class: "btn btn-primary btn-sm" %>
+    <%= link_to t("runners.index.connect_runner"), oauth_device_path, class: "btn btn-primary btn-sm" %>
   </header>
 
   <% if @runners.any? %>
@@ -16,12 +16,12 @@
       <table class="table">
         <thead>
           <tr>
-            <th>Machine</th>
-            <th>Scope</th>
-            <th>Credential readiness</th>
-            <th>Registered</th>
-            <th>Presence</th>
-            <th class="text-end">Actions</th>
+            <th><%= t("runners.index.machine") %></th>
+            <th><%= t("runners.index.scope") %></th>
+            <th><%= t("runners.index.credential_readiness") %></th>
+            <th><%= t("runners.index.registered") %></th>
+            <th><%= t("runners.index.presence") %></th>
+            <th class="text-end"><%= t("runners.index.actions") %></th>
           </tr>
         </thead>
         <tbody>
@@ -34,7 +34,7 @@
               </td>
               <td>
                 <span class="<%= badge_classes(runner.account_wide?, tone: :info, extra: "whitespace-nowrap") %>">
-                  <%= runner.account_wide? ? "Account-wide" : "Private" %>
+                  <%= runner.account_wide? ? t("runners.index.account_wide") : t("runners.index.private") %>
                 </span>
               </td>
               <td>
@@ -43,25 +43,25 @@
                 </span>
               </td>
               <td class="text-base-content/60 whitespace-nowrap" title="<%= runner.created_at.iso8601 %>">
-                <%= time_ago_in_words(runner.created_at) %> ago
+                <%= t("runners.index.elapsed_ago", elapsed: (time_ago_in_words(runner.created_at))) %>
               </td>
               <td class="text-base-content/60 whitespace-nowrap" title="<%= runner.last_seen_at&.iso8601 %>">
                 <%= presence_label(runner) %>
               </td>
               <td class="text-end">
                 <div class="flex justify-end gap-1">
-                  <%= button_to "Revoke credentials",
+                  <%= button_to t("runners.index.revoke_credentials"),
                     runner_credentials_path(runner),
                     method: :delete,
                     class: "btn btn-ghost btn-sm",
-                    aria: { label: "Revoke credentials for #{runner.display_name}" },
-                    data: { turbo_confirm: "Revoke credentials for #{runner.display_name}? It stops working immediately and keeps its registration — starting the same Runner product and connecting again restores it." } %>
-                  <%= button_to "Revoke runner",
+                    aria: { label: t("runners.index.revoke_credentials_for_name", name: (runner.display_name)) },
+                    data: { turbo_confirm: t("runners.index.revoke_credentials_for_name_it_stops_working_immediately_and", name: (runner.display_name)) } %>
+                  <%= button_to t("runners.index.revoke_runner"),
                     runner_path(runner),
                     method: :delete,
                     class: "btn btn-error btn-soft btn-sm",
-                    aria: { label: "Revoke #{runner.display_name}" },
-                    data: { turbo_confirm: "Revoke #{runner.display_name}? This cannot be undone: the machine loses this identity and reconnecting registers a new runner." } %>
+                    aria: { label: t("runners.index.revoke_name", name: (runner.display_name)) },
+                    data: { turbo_confirm: t("runners.index.revoke_name_this_cannot_be_undone_the_machine_loses", name: (runner.display_name)) } %>
                 </div>
               </td>
             </tr>
@@ -70,10 +70,10 @@
       </table>
     </section>
 
-    <%= render "shared/pagination_footer", pagy: @runners_pagy, noun: "runners", aria_label: "Runner pages" %>
+    <%= render "shared/pagination_footer", pagy: @runners_pagy, noun: "runners", aria_label: t("runners.index.runner_pages") %>
   <% else %>
     <%= render "shared/empty_state",
-      title: "No runners connected",
-      description: "A runner connects itself. Start it on the machine you want to connect and follow the link it prints — it opens this installation with the code already filled in." %>
+      title: t("runners.index.no_runners_connected"),
+      description: t("runners.index.a_runner_connects_itself_start_it_on_the_machine") %>
   <% end %>
 </div>

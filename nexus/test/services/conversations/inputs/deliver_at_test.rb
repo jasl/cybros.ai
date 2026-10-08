@@ -10,7 +10,7 @@ require "test_helper"
 class Conversations::Inputs::DeliverAtTest < ActiveSupport::TestCase
   NOW = Time.utc(2026, 9, 16, 9, 0, 0)
 
-  def parse(at: nil, in_: nil) = Conversations::Inputs::DeliverAt.parse(at: at, in_: in_, now: NOW)
+  def parse(at: nil, in_: nil) = Conversations::Inputs::DeliverAt.parse(at: at, in_: in_)
 
   test "an absolute time with Z or an offset resolves to that instant; fractional seconds are kept" do
     {
@@ -55,7 +55,8 @@ class Conversations::Inputs::DeliverAtTest < ActiveSupport::TestCase
     { "90s" => 90, "20m" => 20 * 60, "2h" => 2 * 3600, "1d" => 86_400, "0s" => 0 }.each do |wire, seconds|
       reading = parse(in_: wire)
       assert_nil reading.refusal, wire
-      assert_equal NOW + seconds, reading.time, wire
+      assert_equal seconds, reading.delay_seconds, wire
+      assert_equal NOW + seconds, reading.resolve(now: NOW), wire
     end
 
     ["20 m", "1w", "-5m", "m", "1.5h", "1000000000s", "20", "in 30m"].each do |wire|

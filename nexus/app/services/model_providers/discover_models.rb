@@ -26,6 +26,7 @@ module ModelProviders
       catalog = ModelSelection::Resolver.effective_provider_catalog(@account, ModelCatalog.current, @provider_id)
       provider = catalog.providers[@provider_id]
       return failure(:not_found) if provider.nil?
+      return failure(:endpoint_unconfigured) if provider.fetch("base_url").nil?
       return failure(:unsupported_protocol) if provider.fetch("api_format") == "codex_responses"
 
       lane = ModelCatalog::ProfileBuilder.credential_lane(provider)
@@ -37,8 +38,9 @@ module ModelProviders
 
       format = provider.fetch("api_format")
       prefix = format.start_with?("gemini_") ? "/v1beta" : "/v1"
-      config = SimpleInference::Config.new(base_url: provider.fetch("base_url"), api_prefix: prefix)
-      request_headers = headers(format, credential)
+      config = SimpleInference::Config.new(base_url: provider.fetch("base_url"), api_prefix: prefix,
+        api_key: credential&.secret, authentication: provider["authentication"], headers: provider.fetch("request_headers", {}))
+      request_headers = headers(format, config)
       release_connection
       models = fetch_directory("#{config.base_url}#{config.api_prefix}/models", request_headers, format)
       available_ids = models.pluck(:id).to_set
@@ -134,17 +136,15 @@ module ModelProviders
         end
       end
 
-      def headers(format, credential)
-        result = { "accept" => "application/json" }
-        result["anthropic-version"] = "2023-06-01" if format == "anthropic_messages"
-        return result if credential.nil?
-
-        key = credential.secret
-        case format
-        when "anthropic_messages" then result.merge("x-api-key" => key)
-        when "gemini_generate_content", "gemini_embeddings" then result.merge("x-goog-api-key" => key)
-        else result.merge("authorization" => "Bearer #{key}")
+      def headers(format, config)
+        scheme = case format
+        when "anthropic_messages" then "x-api-key"
+        when "gemini_generate_content", "gemini_embeddings" then "x-goog-api-key"
+        else "bearer"
         end
+        result = config.authentication_headers(default: scheme).transform_keys(&:downcase)
+        result["anthropic-version"] = "2023-06-01" if format == "anthropic_messages"
+        result
       end
 
       def directory_page(body, format)

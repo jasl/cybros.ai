@@ -48,7 +48,9 @@ A language runtime keeps its execution state while yielding `request` or `observ
 to the bridge; it returns `finished` or `failed`. The control reactor accepts
 operations and records observations under the same claim. Unknown submit or
 observation responses can be read through their existing durable receipts, without
-resubmitting effects or restarting source. A lost VM is not reconstructed: its
+resubmitting effects or restarting source. A throttled observation honors
+`Retry-After` before retrying the same position, while cancellation and claim
+renewal remain active. A lost VM is not reconstructed: its
 invocation fails, and owner loss follows Nexus's ordinary effect-aware expiry.
 
 Handlers run as Async fibers on fixed native worker threads. Startup admission

@@ -38,6 +38,12 @@ The distribution includes this plugin, disabled by default. Enable it in
 Settings → Plugins or with `rho extensions enable rho.acp-client`; configuration
 remains available while disabled. Changes are saved immediately; replacing its process-wide child sessions
 requires restarting rho, which keeps current calls on their existing configuration.
+An enabled plugin checks configured executable paths and the child environment's
+`PATH` before making delegation available. A missing executable leaves the plugin
+inactive with guidance to install the runtime or correct the command and `PATH`.
+The check starts no ACP child. Relative commands or relative `PATH` entries depend
+on the conversation's working directory and are checked when that session starts;
+arguments, protocol support, and login are also checked at session startup.
 
 ## The rows — `plugins["rho.acp-client"].configuration.agents`
 

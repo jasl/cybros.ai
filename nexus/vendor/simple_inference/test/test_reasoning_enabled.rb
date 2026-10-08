@@ -169,7 +169,7 @@ class TestReasoningEnabled < Minitest::Test
     end
 
     assert_raises(SimpleInference::ConfigurationError) do
-      profile_for("openai_compatible_chat", wire_options: { reasoning_control: "enable_thinking" })
+      profile_for("openai_compatible_chat", wire_options: { reasoning_control: "unsupported_thinking_control" })
     end
     assert_raises(SimpleInference::ConfigurationError) do
       profile_for("openrouter_chat", wire_options: { reasoning_control: "chat_template_kwargs" })

@@ -147,6 +147,25 @@ WS     /agent_api/v1/cable
   (`member.public_id`) and its peers' — and its own steward's — from
   `GET …/workspaces/{id}/principals`.
 
+The working, archived and child lists accept `order_by=public_id|last_activity_at`
+and `order=asc|desc`; the defaults are `public_id` and `asc`. Activity order uses
+`public_id` as the tie-breaker in the same direction. For a recent-first sidebar,
+request `order_by=last_activity_at&order=desc`. Continue with the returned
+`pagination.next_after`, keeping both ordering parameters unchanged. A cursor
+for another key shape or direction returns `400 parameter_invalid`; unknown
+ordering values do too. The activity cursor retains timestamp microseconds.
+Pagination reads current activity: a conversation that becomes active between
+requests can move across the page boundary, so a sidebar refreshes from its
+first page to incorporate new activity.
+
+Both Basic and Full include `source_conversation_public_id: UUID | null`: the
+direct source of an ordinary fork or Side, including a Side created from an
+empty conversation. It is derived from the direct ancestry edge, independently
+of the turn's original owner, and is null for roots and when the current caller
+cannot read the source or the source is tombstoned. An archived readable source
+is still named. This field does not change `parent`, which describes a spawned
+subagent, or the captured `forked_from_turn_public_id` and variant.
+
 The DEFAULT list is the working surface — unarchived, top-level, and
 never a SIDE conversation (`side: true`, below); `?side=1` lists the
 workspace's sides only, any parent — a side is a child row a UI may
@@ -372,7 +391,7 @@ or inspect them with their workspace tools. Nexus does not execute or parse
 arbitrary documents. Native PDFs carry their original bytes, with no text
 extraction or page rendering, under the existing inline media bound.
 A steer takes none — `attachments` beside
-`delivery_mode: steer` refuses `422 attachments_not_steerable`; `rho`'s
+`delivery_mode: steer|steer_now` refuses `422 attachments_not_steerable`; `rho`'s
 `--attach` implies `--mode queue`. `attachments` never ride beside raw
 `entries` (`400 parameter_invalid`): the raw grammar places its own
 `{"type": "upload"}` parts, and the door binds what those placed. The
@@ -623,9 +642,14 @@ for `last_turn` reasoning replay.
   Human — a group's environment is the conversation's, not each agent's.
 - `delivery_mode` — `queue` (default: an idle recipient begins
   immediately, a busy one at the next turn boundary — and what the
-  kernel's own mail always is) or `steer` (bind to the in-flight reply;
+  kernel's own mail always is), `steer` (bind to the in-flight reply at the next model boundary),
+  or `steer_now` (also advance past a waiting tool fan immediately, with truthful pending-call
+  receipts). The tools continue under their original execution ownership, and their actual
+  results are consumed once when available. The original continuation still joins the tools
+  and any inserted work before final delivery. An already-sent model request stays immutable.
+  For either steering mode,
   a principal's input steers — a person's, or an agent's `send` with
-  `steer` — never the kernel's mail). A steer is a redirect, so it needs
+  a steering mode — never the kernel's mail. A steer is a redirect, so it needs
   something to redirect: with a reply in flight the row is held
   `steering` against that turn; with the lane IDLE there is nothing to
   redirect and the row simply queues (`pending`) — the words are still
@@ -642,7 +666,7 @@ for `last_turn` reasoning replay.
   different candidate, a tool-less reply or a run that has already delivered,
   stopped or begun canceling refuses `409 steering_target_changed`; it never
   queues instead. The selector is a canonicalized UUID (`400 parameter_invalid`
-  when malformed), requires `delivery_mode: steer` (`422 steering_guard_requires_steer`),
+  when malformed), requires `delivery_mode: steer|steer_now` (`422 steering_guard_requires_steer`),
   and is not admitted on the standalone run door. It is fixed on the accepted
   input and included in its idempotency envelope; exact receipt replay still
   returns the original acceptance after the execution ends. If the target ends
@@ -678,9 +702,13 @@ for `last_turn` reasoning replay.
   drain until the time passes — it neither heads nor blocks the queue before then; when due it drains in read
   order and wakes an idle conversation (the receipt's own path). More than two minutes past: `422
   deliver_at_in_past`; more than ten years ahead: `422 deliver_at_too_far`; both fields: `422 deliver_at_ambiguous`.
-  `queue` only: beside `delivery_mode: steer` it refuses `422 deliver_at_not_steerable`. The kernel's own mail never
+  `queue` only: beside `delivery_mode: steer|steer_now` it refuses `422 deliver_at_not_steerable`. The kernel's own mail never
   carries one. A scheduled row counts toward `input_queue_limit` while it waits. Conversation door only: the run
-  door refuses it by name. The listing shows `deliver_at` on the row.
+  door refuses it by name. The listing shows `deliver_at` on the row. Create receipts digest
+  the authored absolute instant or relative duration. A relative duration resolves only on
+  first execution: retrying the same key and duration returns the original input and deadline,
+  even after that deadline passes. Equivalent durations (`20m` and `1200s`) share intent;
+  a different duration or switching between absolute and relative intent is a mismatch.
 - `context_mode` — `assembled` (default: the kernel compiles history +
   prompt, adjacent same-role messages merged for the wire) or `raw`
   (reply lane only: `entries` is the verbatim message array; no history,
@@ -1082,9 +1110,14 @@ can still be delivered. The queue editing verbs are:
   path**: the edit is the fix, the row returns to `pending`, and the
   drain re-judges it. Rescheduling it into the future immediately lets
   other due rows drain; the edited row still wakes at its new time.
-  `kind`, `role`, `delivery_mode`, and the sender
-  stamp are create-frozen; a held steer refuses `steering_held` — cancel
-  it instead.
+  `kind`, `role`, and the sender stamp are create-frozen. A held steer's only timing edit is
+  `input: {delivery_mode: "steer_now"}`, optionally with `expected_lock_version`.
+  This promotes the existing row and wakes its execution without changing its content or target.
+  Repeating that promotion while the row remains held is accepted; an already-consumed row is
+  `404 not_found`. Other fields beside the promotion refuse `409 steering_held`; changing a
+  queued row's delivery mode or downgrading an immediate steer refuses `422 validation_failed`
+  naming `delivery_mode`. Other edits of held steers still refuse `steering_held`; `DELETE`
+  cancels one.
   A model-control edit can omit the reference, such as
   `model: {reasoning_enabled: false}`. Omitted or `null` controls keep the
   queued selection; naming a different reference resets unspecified controls
@@ -2231,7 +2264,8 @@ the conversation and bumps nothing.
 - `POST .../memory/grep` — `{memory: {pattern, path?, ignore_case?, limit?}}`;
   200 `{matches: [{path, line_number, text}], truncated}`. Search is a bounded
   regular expression over lines, ordered by logical path then line. `limit`
-  defaults to 100 and is clamped to 1–500; lines are capped at 500 characters.
+  defaults to 100 and accepts 1–500; malformed, nonpositive, or larger scalar values return
+  `400 parameter_invalid`. Lines are capped at 500 characters.
 - `POST .../memory/edit` — `{memory: {path, old_text, new_text, expected_public_id,
   expected_lock_version}}`; 200 `{memory: ...}`. The exact passage must occur
   once. Stale versions refuse before matching; no match or multiple matches

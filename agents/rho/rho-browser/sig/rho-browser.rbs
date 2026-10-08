@@ -17,6 +17,7 @@ module Rho
     def self.close!: () -> untyped
     def self.reset!: () -> untyped
     def self.register: (Rho::Runner::Extensions::Api) -> untyped
+    def self.check_prerequisites: () -> untyped
 
     class Driver
       ENV_KEY: String

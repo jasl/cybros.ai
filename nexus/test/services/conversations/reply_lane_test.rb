@@ -113,7 +113,7 @@ class Conversations::ReplyLaneTest < ActiveJob::TestCase
     # is why it must be asserted HERE — at the end of the one test that
     # produces one — rather than from a hand-built row that could carry
     # fields the recorder never writes.
-    context = AgentAPI::ConversationPresenter.full(@conversation.reload).fetch(:context)
+    context = AgentAPI::ConversationPresenter.full(@conversation.reload, acting_user: @human).fetch(:context)
     assert_equal "dev", context.dig(:as_of_model, :provider_id)
     assert_equal "mock-text", context.dig(:as_of_model, :model_ref),
       "the receipt names one catalog key; the wire splits it the way every model block is split"
@@ -126,10 +126,10 @@ class Conversations::ReplyLaneTest < ActiveJob::TestCase
     # confirmation reads this one number.
     record = UsageRecord.where(id: Conversations::Compaction::LastUsage.for_conversation(@conversation).record.id)
     record.update_all(cache_read_tokens: nil)
-    assert_not AgentAPI::ConversationPresenter.full(@conversation.reload).fetch(:context).key?(:cache_read_tokens),
+    assert_not AgentAPI::ConversationPresenter.full(@conversation.reload, acting_user: @human).fetch(:context).key?(:cache_read_tokens),
       "no number reported, no key"
     record.update_all(cache_read_tokens: 300)
-    assert_equal 300, AgentAPI::ConversationPresenter.full(@conversation.reload).fetch(:context).fetch(:cache_read_tokens)
+    assert_equal 300, AgentAPI::ConversationPresenter.full(@conversation.reload, acting_user: @human).fetch(:context).fetch(:cache_read_tokens)
   end
 
   # Cross-model reasoning, stage 1: the provenance sidecar freezes the

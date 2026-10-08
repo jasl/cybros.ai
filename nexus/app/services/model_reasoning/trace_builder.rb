@@ -30,6 +30,10 @@ module ModelReasoning
       "deepseek_responses" => "responses_reasoning_text",
       "openai_compatible" => "chatcompletions_reasoning_content",
       "openrouter_chat" => "chat_reasoning",
+      "openai_compatible_chat" => "chat_reasoning",
+      "mistral_chat" => "chat_reasoning",
+      "pi_messages" => "pi_thinking",
+      "bedrock_converse" => "bedrock_reasoning",
     }.freeze
 
     # Signatures are not interchangeable across families: replay re-emits
@@ -37,6 +41,8 @@ module ModelReasoning
     SIGNATURE_KINDS = {
       "anthropic_messages" => "anthropic_signature",
       "gemini_generate_content" => "gemini_thought_signature",
+      "pi_messages" => "pi_thinking_signature",
+      "bedrock_converse" => "bedrock_reasoning_signature",
     }.freeze
 
     class << self

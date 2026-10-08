@@ -18,7 +18,10 @@ module Rho
         return if running?
 
         @native.prepare
-        raise Error, "The local T3 port is already in use" if listening?
+        if listening?
+          raise Runner::Extensions::PrerequisiteError,
+            "The local T3 port is already in use. Choose another listen port in the T3 plugin settings or stop the existing service, then enable the plugin again."
+        end
 
         @process = Runner::OwnedProcess.spawn(@native.environment,
           "t3", "serve", "--host", "127.0.0.1", "--port", @settings.listen_port.to_s,
@@ -26,16 +29,29 @@ module Rho
           in: File::NULL, out: File::NULL, err: File::NULL, unsetenv_others: true)
         deadline = monotonic + START_TIMEOUT
         loop do
-          raise Error, "The local T3 process exited during startup" unless running?
+          unless running?
+            raise Runner::Extensions::PrerequisiteError,
+              "The local T3 process exited during startup. Run `t3 serve` in the same environment to check its runtime, repair the installation, then enable the plugin again."
+          end
           break if listening?
-          raise Error, "The local T3 service did not listen before the startup timeout" if monotonic >= deadline
+          if monotonic >= deadline
+            raise Runner::Extensions::PrerequisiteError,
+              "The local T3 service did not listen before the startup timeout. Check `t3 serve` in the same environment and the configured listen port, then enable the plugin again."
+          end
 
           sleep(POLL_SECONDS)
         end
         nil
       rescue Errno::ENOENT
         stop
-        raise Error, "The local T3 executable is not installed or its runtime is unavailable", cause: nil
+        raise Runner::Extensions::PrerequisiteError,
+          "The local T3 executable is not installed or its runtime is unavailable. Install T3 and Node.js in the runner environment, " \
+          "make `t3` available on PATH, then enable the plugin again.", cause: nil
+      rescue Errno::EACCES
+        stop
+        raise Runner::Extensions::PrerequisiteError,
+          "The local T3 service could not access its executable or files. Check executable permissions and access to the T3 plugin directory, " \
+          "then enable the plugin again.", cause: nil
       rescue Exception
         stop
         raise

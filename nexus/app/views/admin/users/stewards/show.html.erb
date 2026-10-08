@@ -1,12 +1,12 @@
-<% content_for :title, "Reassign steward" %>
+<% content_for :title, t("admin.users.stewards.show.reassign_steward") %>
 
 <div class="space-y-8">
   <header class="space-y-4">
     <%= render "shared/back_navigation", path: admin_user_path(@member), label: member_display_name(@member) %>
     <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight">Reassign steward</h1>
+      <h1 class="text-xl font-medium tracking-tight"><%= t("admin.users.stewards.show.reassign_steward") %></h1>
       <p class="text-sm text-base-content/60">
-        Choose the active human member responsible for <%= member_display_name(@member) %>.
+        <%= t("admin.users.stewards.show.choose_the_active_human_member_responsible_for_member", member: (member_display_name(@member))) %>
       </p>
     </div>
   </header>
@@ -14,8 +14,7 @@
   <% if @member.removed? %>
     <div role="alert" class="alert alert-warning">
       <span>
-        Reassignment keeps the Agent removed and its old credentials invalid. The new
-        steward can restore it and reconnect the program.
+        <%= t("admin.users.stewards.show.reassignment_keeps_the_agent_removed_and_its_old_credentials") %>
       </span>
     </div>
   <% end %>
@@ -39,14 +38,14 @@
             </div>
             <div class="list-col-wrap justify-self-start sm:justify-self-end sm:[grid-row-start:1]">
               <% if candidate == @member.steward %>
-                <span class="badge badge-ghost badge-sm">Current steward</span>
+                <span class="badge badge-ghost badge-sm"><%= t("admin.users.stewards.show.current_steward") %></span>
               <% else %>
-                <%= button_to "Assign",
+                <%= button_to t("admin.users.stewards.show.assign"),
                   admin_user_steward_path(@member),
                   method: :patch,
                   params: { steward: { steward_public_id: candidate.public_id } },
                   class: "btn btn-sm btn-primary",
-                  aria: { label: "Assign #{candidate.display_name} as steward" } %>
+                  aria: { label: t("admin.users.stewards.show.assign_member_as_steward", member: (candidate.display_name)) } %>
               <% end %>
             </div>
           </li>
@@ -54,11 +53,11 @@
       </ul>
     <% else %>
       <div class="px-4 py-10 text-center">
-        <p class="text-sm font-medium">No matching members</p>
-        <p class="mt-1 text-sm text-base-content/60">Try a different name or email address.</p>
+        <p class="text-sm font-medium"><%= t("admin.users.stewards.show.no_matching_members") %></p>
+        <p class="mt-1 text-sm text-base-content/60"><%= t("admin.users.stewards.show.try_a_different_name_or_email_address") %></p>
       </div>
     <% end %>
   </section>
 
-  <%= render "shared/pagination_footer", pagy: @stewards_pagy, noun: "eligible members", aria_label: "Steward candidates pages" %>
+  <%= render "shared/pagination_footer", pagy: @stewards_pagy, noun: "eligible_members", aria_label: t("admin.users.stewards.show.steward_candidates_pages") %>
 </div>

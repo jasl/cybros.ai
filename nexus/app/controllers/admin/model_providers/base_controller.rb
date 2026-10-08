@@ -58,8 +58,7 @@ class Admin::ModelProviders::BaseController < Admin::BaseController
 
     def configuration_error(form, result, template: :show)
       stale = result.outcome == :stale
-      form.errors.add(:base, stale ? "These settings changed in another session. Reload the page before saving again." :
-        "The definition could not be saved. Check the protocol, URL, capabilities and any pricing formula.")
+      form.errors.add(:base, stale ? :stale_configuration : :invalid_definition)
       render template, status: stale ? :conflict : :unprocessable_entity
     end
 

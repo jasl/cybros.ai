@@ -43,7 +43,7 @@ class ProviderFloorTest < Minitest::Test
     E2E.hosts.start
     @workspace = @client.workspaces.create(
       name: "Provider floor #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
-    )
+    ).workspace
     @lane = @client.workspace(@workspace.public_id).inference_requests
   end
 

@@ -16,9 +16,9 @@ class TelegramParticipationWorkflowTest < Minitest::Test
     refute group_room["observe"]
     assert_empty @bridge.opened
     assert_empty @bridge.inference_requests
-    @runtime.consume(telegram_message(4, "/mode active"))
+    receive(telegram_message(4, "/mode active"))
     assert_includes @state.read.fetch("deliveries").fetch("control:4").fetch("text"), "only available in groups"
-    @runtime.consume(telegram_message(5, "/mode", chat: -10, topic: 5))
+    receive(telegram_message(5, "/mode", chat: -10, topic: 5))
     assert_includes @state.read.fetch("deliveries").fetch("control:5").fetch("text"), "Mode: assistant"
   end
 
@@ -193,8 +193,8 @@ class TelegramParticipationWorkflowTest < Minitest::Test
   end
 
   def test_owner_private_workspace_and_model_are_not_room_defaults
-    @runtime.consume(telegram_message(1, "/workspace use Project"))
-    @runtime.consume(telegram_message(2, "/model vendor/model"))
+    receive(telegram_message(1, "/workspace use Project"))
+    receive(telegram_message(2, "/model vendor/model"))
     @client.admin = true
     group_message(3, "/observe on")
     group_message(4, "/mode active")
@@ -237,8 +237,8 @@ class TelegramParticipationWorkflowTest < Minitest::Test
     enable_participation
     group_message(3, "A group topic", user: 2)
     advance
-    @runtime.consume(telegram_message(4, "/ignore add 2", date: @now.to_i))
-    @runtime.consume(telegram_message(5, "/ignore remove 2", date: @now.to_i))
+    receive(telegram_message(4, "/ignore add 2", date: @now.to_i))
+    receive(telegram_message(5, "/ignore remove 2", date: @now.to_i))
     advance(30)
     assert_equal 1, @bridge.participation_cancels.length
     assert_equal 1, @bridge.inference_requests.length
@@ -262,10 +262,10 @@ class TelegramParticipationWorkflowTest < Minitest::Test
       result
     end
     update = telegram_message(4, "/ignore add 2", date: @now.to_i)
-    assert_raises(Rho::ConnectionError) { @runtime.consume(update) }
+    assert_raises(Rho::ConnectionError) { receive(update) }
     @runtime = runtime
-    @runtime.consume(update)
-    @runtime.consume(telegram_message(5, "/ignore remove 2", date: @now.to_i))
+    receive(update)
+    receive(telegram_message(5, "/ignore remove 2", date: @now.to_i))
     advance(30)
     assert_equal 1, @bridge.participation_cancels.length
     assert_nil group_room.fetch("participation")["candidate"]
@@ -281,7 +281,7 @@ class TelegramParticipationWorkflowTest < Minitest::Test
     key = group_room.fetch("participation").fetch("candidate").fetch("key")
     assert_equal "pending", @state.read.fetch("deliveries").fetch(key).fetch("status")
     calls = sent_texts.count("A short useful reply")
-    @runtime.consume(telegram_message(4, "/access chats remove -10", date: @now.to_i))
+    receive(telegram_message(4, "/access chats remove -10", date: @now.to_i))
     advance(30)
     assert_nil @state.read.fetch("deliveries")[key]
     assert_equal calls, sent_texts.count("A short useful reply")

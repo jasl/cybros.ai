@@ -101,6 +101,49 @@ class ExtensionTest < Minitest::Test
     assert_equal ["plain"], result.registry.entries.fetch(0).klass::SCHEMA.fetch("properties").fetch("agent").fetch("enum")
   end
 
+  def test_startup_rejects_a_missing_enabled_executable_with_repair_guidance
+    row = RhoAcpClientTest.raw_row("plain").merge("command" => "/missing/rho-test-acp")
+    result = load({ "missing" => row })
+    startup = result.committed.fetch(0).lifecycle.find { |hook| hook.event == :startup }
+
+    error = assert_raises(Rho::Runner::Extensions::PrerequisiteError) { startup.handler.call }
+
+    assert_includes error.message, "ACP agent missing"
+    assert_includes error.message, "Install its runtime"
+    assert_includes error.message, "command and PATH"
+    assert_empty Rho::AcpClient.report.fetch("sessions")
+  end
+
+  def test_startup_uses_the_configured_child_path_without_launching_the_agent
+    Dir.mktmpdir do |root|
+      executable = File.join(root, "fixture-acp")
+      marker = File.join(root, "launched")
+      File.write(executable, "#!/bin/sh\ntouch #{marker}\n")
+      File.chmod(0o700, executable)
+      row = RhoAcpClientTest.raw_row("plain").merge("command" => "fixture-acp", "env" => { "PATH" => root })
+      result = load({ "available" => row,
+        "disabled" => row.merge("command" => "/missing/disabled-acp", "enabled" => false) })
+      startup = result.committed.fetch(0).lifecycle.find { |hook| hook.event == :startup }
+
+      startup.handler.call
+
+      refute File.exist?(marker)
+      assert_empty Rho::AcpClient.report.fetch("sessions")
+      File.chmod(0o600, executable)
+      assert_raises(Rho::Runner::Extensions::PrerequisiteError) { startup.handler.call }
+    end
+  end
+
+  def test_startup_defers_working_directory_dependent_executables_to_the_session
+    base = RhoAcpClientTest.raw_row("plain")
+    result = load({ "relative" => base.merge("command" => "./project-agent"),
+      "relative-path" => base.merge("command" => "project-agent", "env" => { "PATH" => "./bin" }) })
+
+    result.committed.fetch(0).lifecycle.find { |hook| hook.event == :startup }.handler.call
+
+    assert_empty Rho::AcpClient.report.fetch("sessions")
+  end
+
   # ONLY WHERE THE HOST SERVES THE RUNNER ADDRESS: an
   # agent-mode daemon keeps the verb and the routes and registers no tool.
   def test_an_agent_mode_host_gets_the_verb_and_no_tool

@@ -256,6 +256,19 @@ module TelegramRuntimeSupport
 
   private
 
+    # Most workflow examples start with an admitted text message. Advance the
+    # injected clock through its quiet window without also sending deliveries.
+    # Burst timing tests call consume/tick directly instead.
+    def receive(update)
+      @runtime.consume(update)
+      row = @state.read.fetch("pending_inputs")[update.fetch("update_id").to_s]
+      return unless row && !row["media"]
+
+      @now = [@now, row.fetch("ready_at")].max
+      key, head = @state.read.fetch("pending_inputs").find { |_id, item| item.fetch("route_key") == row.fetch("route_key") }
+      @runtime.send(:advance_input, key, head) unless head["media"]
+    end
+
     def runtime(default_model: nil)
       logger = Object.new
       logger.define_singleton_method(:warn) { |*| }

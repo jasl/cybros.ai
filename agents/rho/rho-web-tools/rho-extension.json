@@ -15,7 +15,7 @@
     },
     "additionalProperties": false
   },
-  "default_enabled": false,
+  "default_enabled": true,
   "modes": [
     "full",
     "runner"

@@ -90,7 +90,7 @@ module ModelRequests
           tokenizer = huggingface_tokenizer(tokenizer_id)
           return Result.refused(UNAVAILABLE) if tokenizer.nil?
 
-          Result.counted(segments.sum { |text| tokenizer.encode(text).ids.length }, exact: true)
+          Result.counted(segments.sum { |text| tokenizer.encode(text, add_special_tokens: false).ids.length }, exact: true)
         end
 
         # A byte-level tokenizer emits at most one token per byte. Chat
@@ -115,8 +115,10 @@ module ModelRequests
         def huggingface_tokenizer(tokenizer_id)
           @huggingface_tokenizers ||= Concurrent::Map.new do |map, id|
             path = tokenizer_path(id)
-            map[id] = if File.exist?(path)
+            map[id] = begin
               Tokenizers.from_file(path.to_s).tap { |t| t.encode_special_tokens = true }
+            rescue Tokenizers::Error, SystemCallError
+              nil
             end
           end
           @huggingface_tokenizers[tokenizer_id]

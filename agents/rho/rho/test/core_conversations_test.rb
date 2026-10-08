@@ -61,6 +61,22 @@ class CoreConversationsTest < Minitest::Test
     assert_equal 3, seen.grep(/\APOST /).length
   end
 
+  def test_send_now_uses_the_same_input_door_and_cannot_bypass_attachment_or_schedule_guards
+    seen = []
+    announce(endpoint: recording_routed_endpoint(seen, {
+      "POST /say" => [[200, { "input" => { "public_id" => "in-1" } }]],
+      "POST /inputs/update" => [[200, { "input" => { "public_id" => "in-2", "delivery_mode" => "steer_now" } }]],
+    }))
+    core.say("c-1", "read now", mode: "steer_now", wait: false)
+    core.update_input("c-1", "in-2", delivery_mode: "steer_now", host_type: "conversation")
+    assert_raises(Rho::Error) { core.say("c-1", "look", mode: "steer_now", upload_public_ids: ["upload-one"]) }
+    assert_raises(Rho::Error) { core.say("c-1", "later", mode: "steer_now", deliver_in: "5m") }
+    bodies = seen.grep(/\APOST /).map { |request| JSON.parse(request.partition("\r\n\r\n").last) }
+    assert_equal ["steer_now", "steer_now"], bodies.map { |body| body.fetch("delivery_mode") }
+    assert_equal "in-2", bodies.last.fetch("input_public_id")
+    refute bodies.last.key?("text")
+  end
+
   def test_the_durable_conversation_primitives_preserve_pages_rows_and_named_fields
     seen = []
     row = { "public_id" => "c-1", "title" => "Research",

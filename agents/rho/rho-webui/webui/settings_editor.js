@@ -1,20 +1,21 @@
+import { t } from "./i18n.js";
 import { el } from "./views.js";
 import { jsonSetting, settingsChanges } from "./settings_state.js";
 
 const groups = [
-  ["Agent behavior", [
-    ["fallback_model", "Fallback model", "text", "Optional provider/model for the existing refusal and overload fallback."],
-    ["adaptations", "Model adaptations", "text", "auto, off, or an installed adaptation row name."],
-    ["adaptations_dir", "Local adaptations directory", "text"],
-    ["kernel_tools", "Nexus tools", "lines", "One canonical tool name per line. Changes apply to new runs; an existing run keeps its captured tool list."],
+  [t("settings_editor.agent_behavior"), [
+    ["fallback_model", t("settings_editor.fallback_model"), "text", t("settings_editor.optional_provider_model_for_the_existing_refusal_and")],
+    ["adaptations", t("settings_editor.model_adaptations"), "text", t("settings_editor.auto_off_or_an_installed_adaptation_row_name")],
+    ["adaptations_dir", t("settings_editor.local_adaptations_directory"), "text"],
+    ["kernel_tools", t("settings_editor.nexus_tools"), "lines", t("settings_editor.one_canonical_tool_name_per_line_changes_apply")],
   ]],
-  ["Tools and working location", [
-    ["runner", "Default runner", "runner", "Used for future requests without an explicit Runner. Existing accepted tasks keep their original Runner."],
-    ["workspace", "Default workspace", "workspace", "Used for new conversations. Leave automatic to use rho's dedicated workspace."],
-    ["tools_root", "Default working directory", "text", "Used when no environment or conversation directory is selected."],
+  [t("settings_editor.tools_and_working_location"), [
+    ["runner", t("settings_editor.default_runner"), "runner", t("settings_editor.used_for_future_requests_without_an_explicit_runner")],
+    ["workspace", t("settings_editor.default_workspace"), "workspace", t("settings_editor.used_for_new_conversations_leave_automatic_to_use")],
+    ["tools_root", t("settings_editor.default_working_directory"), "text", t("settings_editor.used_when_no_environment_or_conversation_directory_is")],
   ]],
-  ["Connection", [
-    ["nexus_public_url", "Nexus browser URL", "text", "The address your browser can reach, including any deployment path prefix."],
+  [t("settings_editor.connection"), [
+    ["nexus_public_url", t("settings_editor.nexus_browser_url"), "text", t("settings_editor.the_address_your_browser_can_reach_including_any")],
   ]],
 ];
 
@@ -31,7 +32,7 @@ export function editedSetting(kind, text, label) {
     case "lines": return text.split("\n").map((line) => line.trim()).filter(Boolean);
     case "number": {
       const value = Number(text);
-      if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${label} must be a positive whole number.`);
+      if (!Number.isSafeInteger(value) || value <= 0) throw new Error(t("settings_editor.must_be_a_positive_whole_number", { label: label }));
       return value;
     }
     default: return text.trim() || null;
@@ -47,8 +48,8 @@ export function settingsEditor({ save, showError }) {
   const forms = [];
   const deployment = el("dl", { class: "settings-facts" });
   const element = el("details", { class: "settings-details settings-advanced" },
-    el("summary", { text: "More settings" }),
-    el("p", { class: "muted", text: "Agent behavior, tools and working-location defaults are already prepared. Change these only when you need a different setup. Saving applies your changes immediately." }));
+    el("summary", { text: t("settings_editor.more_settings") }),
+    el("p", { class: "muted", text: t("settings_editor.agent_behavior_tools_and_working_location_defaults_are") }));
 
   for (const [title, definitions] of groups) {
     const controls = [];
@@ -91,11 +92,11 @@ export function settingsEditor({ save, showError }) {
       if (hint) fields.append(el("p", { class: "faint", text: hint }));
       if (known) fields.append(known);
     }
-    fields.append(el("button", { type: "submit", text: `Save ${title.toLowerCase()}` }));
+    fields.append(el("button", { type: "submit", text: t("settings_editor.save", { value1: title.toLowerCase() }) }));
     forms.push(entry); element.append(form);
   }
-  element.append(el("details", { class: "settings-details" }, el("summary", { text: "Deployment information" }),
-    el("p", { class: "faint", text: "Process role, listening address and installed runtime paths are controlled by your deployment." }), deployment));
+  element.append(el("details", { class: "settings-details" }, el("summary", { text: t("settings_editor.deployment_information") }),
+    el("p", { class: "faint", text: t("settings_editor.process_role_listening_address_and_installed_runtime_paths") }), deployment));
 
   function update(answer, available = choices) {
     document = answer; observed = answer.settings; choices = available;
@@ -103,21 +104,23 @@ export function settingsEditor({ save, showError }) {
       for (const { key, kind, input, known } of controls) {
         if (known) {
           const configured = answer.configured?.[key];
-          known.textContent = configured?.length ? `Configured: ${configured.join(", ")}` : "No saved entries.";
+          known.textContent = configured?.length ? t("settings_editor.configured", { value1: configured.join(", ") }) : t("settings_editor.no_saved_entries");
         }
         if (dirty.has(key)) continue;
         const value = observed[key];
         if (kind === "runner" || kind === "workspace") {
           const rows = kind === "runner" ? choices.runners : choices.workspaces;
-          input.replaceChildren(el("option", { value: "", text: kind === "runner" ? "Automatic · rho's own runner" : "Automatic · rho's workspace" }),
+          input.replaceChildren(el("option", { value: "", text: kind === "runner" ? t("settings_editor.automatic_rho_s_own_runner") : t("settings_editor.automatic_rho_s_workspace") }),
             ...rows.map((row) => el("option", { value: row.public_id, text: row.display_name || row.name || row.public_id })));
-          if (value && !rows.some((row) => row.public_id === value)) input.append(el("option", { value, text: `${value} · currently unavailable` }));
+          if (value && !rows.some((row) => row.public_id === value)) input.append(el("option", { value, text: t("settings_editor.currently_unavailable", { value: value }) }));
         }
         input.value = displayValue(kind, value);
       }
     }
     deployment.replaceChildren(...Object.entries(answer.deployment || {}).flatMap(([key, value]) => [
-      el("dt", { text: key.replaceAll("_", " ") }), el("dd", { text: typeof value === "object" ? JSON.stringify(value) : String(value ?? "Not set") }),
+      el("dt", { text: t(`settings_editor.deployment.${key}`, {}, key) }),
+      el("dd", { text: typeof value === "boolean" ? t(`common.boolean_${value}`)
+        : typeof value === "object" ? JSON.stringify(value) : String(value ?? t("common.not_set")) }),
     ]));
   }
 

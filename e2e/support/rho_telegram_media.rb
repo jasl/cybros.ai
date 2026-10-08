@@ -66,7 +66,7 @@ module E2E
       assert_equal ["document-notes"], @telegram.downloads
 
       arguments = CGI.escape(JSON.generate("upload" => reference))
-      @runtime.consume(update(2, "!mock tool_call=file_import:#{arguments} reply=file-imported -- import the previous attachment"))
+      receive(update(2, "!mock tool_call=file_import:#{arguments} reply=file-imported -- import the previous attachment"))
       imported = media_reply(conversation, "file-imported")
       assert_includes successful_tool_output(imported, "file_import"), "Imported notes.md"
       imported_loop = @workspace.runs.run(imported.active_variant.run_public_id)
@@ -85,7 +85,7 @@ module E2E
         ["write", { "path" => report, "content" => pdf }],
         ["file_publish", { "path" => report }],
       ].map { |name, args| "#{name}:#{CGI.escape(JSON.generate(args))}" }.join(",")
-      @runtime.consume(update(3, "!mock tool_call=#{script} reply=report-ready -- read the imported notes and publish the PDF"))
+      receive(update(3, "!mock tool_call=#{script} reply=report-ready -- read the imported notes and publish the PDF"))
       finished = media_reply(conversation, "report-ready")
       assert_includes successful_tool_output(finished, "read"), marker
       successful_tool_output(finished, "write")
@@ -135,7 +135,7 @@ module E2E
       assert_equal "document", sent.fetch(:field)
       assert_equal bytes, sent.fetch(:bytes).b
       assert @telegram.formal(101).any? { |_method, params| params.fetch(:text) == "Mock: voice-answer" }, "text remains available beside speech"
-      assert_empty @state.read.fetch("pending_media")
+      assert_empty @state.read.fetch("pending_inputs")
       assert_equal ["voice-note"], @telegram.downloads
 
       @runtime.consume(incoming)
@@ -156,7 +156,7 @@ module E2E
       @runtime.consume(incoming)
       conversation = @workspace.conversation(current("101:0"))
       tick
-      pending = @state.read.fetch("pending_media").fetch(incoming.fetch("update_id").to_s)
+      pending = @state.read.fetch("pending_inputs").fetch(incoming.fetch("update_id").to_s)
       inference_request_id = pending.fetch("inference_request_id")
       transcription = await("the real transcription starts before Telegram admits its input") do
         row = @workspace.inference_requests.fetch(inference_request_id)
@@ -172,11 +172,11 @@ module E2E
 
       following = update(2, "!mock reply=following-message -- preserve the message after the voice")
       @runtime.consume(following)
-      assert_equal 2, @state.read.fetch("pending_media").length
+      assert_equal 2, @state.read.fetch("pending_inputs").length
       stop = update(3, "/stop")
       stop.fetch("message")["reply_to_message"] = incoming.fetch("message")
       @runtime.consume(stop)
-      assert_equal [following.fetch("update_id").to_s], @state.read.fetch("pending_media").keys
+      assert_equal [following.fetch("update_id").to_s], @state.read.fetch("pending_inputs").keys
       settled = await("the original transcription settles after exact Stop") do
         row = @workspace.inference_requests.fetch(inference_request_id)
         row if %w[completed canceled failed].include?(row.status)
@@ -199,7 +199,7 @@ module E2E
       assert_equal 1, conversation.turns.list.items.length
       assert_equal 1, @workspace.inference_requests.list(workload: "transcription").items.length
       assert_equal ["voice-to-cancel"], @telegram.downloads
-      assert_empty @state.read.fetch("pending_media")
+      assert_empty @state.read.fetch("pending_inputs")
       assert_empty @logs
     ensure
       stop_group_work(conversation)

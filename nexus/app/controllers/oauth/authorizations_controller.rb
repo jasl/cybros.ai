@@ -12,7 +12,7 @@ class OAuth::AuthorizationsController < OAuth::BrowserController
     by: -> { Current.user.public_id },
     with: -> { head :too_many_requests }
 
-  rescue_from OAuth::InvalidRequest, with: -> { render plain: "Invalid authorization request", status: :bad_request }
+  rescue_from OAuth::InvalidRequest, with: -> { render plain: t("oauth.authorization_invalid"), status: :bad_request }
 
   def show
     # A native same-origin consent POST needs its browser Origin for Rails
@@ -54,7 +54,7 @@ class OAuth::AuthorizationsController < OAuth::BrowserController
       attributes = OAuth::ConnectionRequest::FIELDS.to_h { |field| [field, scalar_field(field)] }.compact
       @authorization_request = OAuth::ConnectionRequest.new(attributes.merge(flow: :authorization_code))
       unless @authorization_request.valid?
-        render plain: "Invalid authorization request", status: :bad_request
+        render plain: t("oauth.authorization_invalid"), status: :bad_request
       end
     end
 

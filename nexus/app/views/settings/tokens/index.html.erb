@@ -1,12 +1,12 @@
-<% content_for :title, "Settings" %>
+<% content_for :title, t("settings.tokens.index.settings") %>
 
 <%= render layout: "settings/shell", locals: { current: :tokens } do %>
   <div class="space-y-8">
     <section class="space-y-4">
       <div>
-        <h2 class="text-xs font-medium text-base-content/60">New token</h2>
+        <h2 class="text-xs font-medium text-base-content/60"><%= t("settings.tokens.index.new_token") %></h2>
         <p class="mt-1 text-sm text-base-content/60">
-          Personal access tokens authenticate automation acting as you. The token is shown exactly once.
+          <%= t("settings.tokens.index.personal_access_tokens_authenticate_automation_acting_as_you_the") %>
         </p>
       </div>
 
@@ -15,13 +15,13 @@
     Turbo's snapshot pipeline prevents it from appearing in a cached page. %>
       <%= form_with url: settings_tokens_path, scope: :token, data: { turbo: false } do |form| %>
         <div class="rounded-box border border-base-300 bg-base-200">
-          <%= render layout: "shared/form_row", locals: { form:, attribute: :name, label: "Name" } do %>
+          <%= render layout: "shared/form_row", locals: { form:, attribute: :name, label: t("settings.tokens.index.name") } do %>
             <%= validated_field form, :text_field, :name, Array(@invalid_token&.errors&.full_messages_for(:name)), size: :sm, value: @token_form.fetch(:name), required: true, maxlength: AccessToken::NAME_MAX_LENGTH %>
           <% end %>
-          <%= render layout: "shared/form_row", locals: { form:, attribute: :note, label: "Note (optional)" } do %>
+          <%= render layout: "shared/form_row", locals: { form:, attribute: :note, label: t("settings.tokens.index.note_optional") } do %>
             <%= validated_field form, :text_field, :note, Array(@invalid_token&.errors&.full_messages_for(:note)), size: :sm, value: @token_form.fetch(:note), maxlength: AccessToken::NOTE_MAX_LENGTH %>
           <% end %>
-          <%= render layout: "shared/form_row", locals: { form:, attribute: :current_password, label: "Current password" } do %>
+          <%= render layout: "shared/form_row", locals: { form:, attribute: :current_password, label: t("settings.tokens.index.current_password") } do %>
             <%= validated_field form, :password_field, :current_password, @current_password_errors, size: :sm, required: true, autocomplete: "current-password", maxlength: 72 %>
           <% end %>
           <% plane_errors = Array(@invalid_token&.errors&.full_messages_for(:credential_plane)) %>
@@ -30,10 +30,10 @@
             class: "grid min-w-0 gap-3 px-4 py-4 sm:grid-cols-2 sm:items-center sm:gap-6",
             aria: { invalid: plane_errors.any?.to_s, describedby: (plane_errors_id if plane_errors.any?) }
           ) do %>
-            <legend class="sr-only">Token kind</legend>
+            <legend class="sr-only"><%= t("settings.tokens.index.token_kind") %></legend>
             <div class="min-w-0">
-              <p class="text-sm" aria-hidden="true">Token kind</p>
-              <p class="text-xs text-base-content/60">A member token automates your own account<%= "; a platform token reaches installation administration" if Current.user.admin? %>.</p>
+              <p class="text-sm" aria-hidden="true"><%= t("settings.tokens.index.token_kind") %></p>
+              <p class="text-xs text-base-content/60"><%= t(Current.user.admin? ? "settings.tokens.index.admin_token_scope" : "settings.tokens.index.member_token_scope") %></p>
               <%= validator_hints(plane_errors, id: plane_errors_id) %>
             </div>
             <div class="flex flex-wrap justify-start gap-4 sm:justify-end">
@@ -41,21 +41,21 @@
               <% planes.each do |plane| %>
                 <label class="label cursor-pointer gap-2 py-0 text-sm">
                   <%= radio_button_tag "token[credential_plane]", plane, @token_form.fetch(:credential_plane) == plane, id: "token_plane_#{plane}", class: "radio radio-sm" %>
-                  <%= plane %>
+                  <%= t("credential_planes.#{plane}") %>
                 </label>
               <% end %>
             </div>
           <% end %>
         </div>
         <div class="mt-3 flex justify-end">
-          <%= form.submit "Create token", class: "btn btn-primary btn-sm" %>
+          <%= form.submit t("settings.tokens.index.create_token"), class: "btn btn-primary btn-sm" %>
         </div>
       <% end %>
     </section>
 
     <section class="space-y-4">
       <div>
-        <h2 class="text-xs font-medium text-base-content/60">Your tokens</h2>
+        <h2 class="text-xs font-medium text-base-content/60"><%= t("settings.tokens.index.your_tokens") %></h2>
       </div>
 
       <% if @tokens.any? %>
@@ -63,33 +63,33 @@
           <table class="table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Kind</th>
-                <th>Created</th>
-                <th>Last used</th>
-                <th class="text-end">Action</th>
+                <th><%= t("settings.tokens.index.name") %></th>
+                <th><%= t("settings.tokens.index.kind") %></th>
+                <th><%= t("settings.tokens.index.created") %></th>
+                <th><%= t("settings.tokens.index.last_used") %></th>
+                <th class="text-end"><%= t("settings.tokens.index.action") %></th>
               </tr>
             </thead>
             <tbody>
               <% @tokens.each do |token| %>
-                <% token_target = "#{token.name} (Token ID #{token.lookup_id})" %>
+                <% token_target = t("settings.tokens.index.token_identity", name: (token.name), token_id: (token.lookup_id)) %>
                 <tr data-token-id="<%= token.public_id %>">
                   <td>
                     <span class="block font-medium"><%= token.name %></span>
-                    <span class="mt-1 block text-xs text-base-content/60">Token ID <code class="break-all font-mono"><%= token.lookup_id %></code></span>
+                    <span class="mt-1 block text-xs text-base-content/60"><%= t("settings.tokens.index.token_id") %> <code class="break-all font-mono"><%= token.lookup_id %></code></span>
                   </td>
                   <td>
-                    <span class="badge badge-ghost badge-sm"><%= token.credential_plane %></span>
+                    <span class="badge badge-ghost badge-sm"><%= t("credential_planes.#{token.credential_plane}") %></span>
                   </td>
-                  <td class="text-base-content/60" title="<%= token.created_at.iso8601 %>"><%= time_ago_in_words(token.created_at) %> ago</td>
+                  <td class="text-base-content/60" title="<%= token.created_at.iso8601 %>"><%= t("settings.tokens.index.elapsed_ago", elapsed: (time_ago_in_words(token.created_at))) %></td>
                   <td class="text-base-content/60">
-                    <%= token.last_used_at ? "#{time_ago_in_words(token.last_used_at)} ago" : "Never" %>
+                    <%= token.last_used_at ? t("settings.tokens.index.elapsed_ago", elapsed: (time_ago_in_words(token.last_used_at))) : t("settings.tokens.index.never") %>
                   </td>
                   <td class="text-end">
                     <% if token.revoked? %>
-                      <span class="badge badge-ghost badge-sm">Revoked</span>
+                      <span class="badge badge-ghost badge-sm"><%= t("settings.tokens.index.revoked") %></span>
                     <% else %>
-                      <%= button_to "Revoke", settings_token_revocation_path(token), method: :post, class: "btn btn-ghost btn-sm", aria: { label: "Revoke #{token_target}" }, data: { turbo_confirm: "Revoke #{token_target}? Automation using it stops authenticating immediately." } %>
+                      <%= button_to t("settings.tokens.index.revoke"), settings_token_revocation_path(token), method: :post, class: "btn btn-ghost btn-sm", aria: { label: t("settings.tokens.index.revoke_token", token: (token_target)) }, data: { turbo_confirm: t("settings.tokens.index.revoke_token_automation_using_it_stops_authenticating_immediately", token: (token_target)) } %>
                     <% end %>
                   </td>
                 </tr>
@@ -97,9 +97,9 @@
             </tbody>
           </table>
         </div>
-        <%= render "shared/pagination_footer", pagy: @tokens_pagy, noun: "tokens", aria_label: "Token pages" %>
+        <%= render "shared/pagination_footer", pagy: @tokens_pagy, noun: "tokens", aria_label: t("settings.tokens.index.token_pages") %>
       <% else %>
-        <p class="text-sm text-base-content/60">No tokens yet.</p>
+        <p class="text-sm text-base-content/60"><%= t("settings.tokens.index.no_tokens_yet") %></p>
       <% end %>
     </section>
   </div>

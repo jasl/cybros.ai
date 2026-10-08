@@ -121,6 +121,9 @@ module Rho
 
             sleep 0.25
           end
+        rescue CybrosAgent::Api::RateLimited => error
+          wait_for_retry(error.retry_after)
+          retry
         rescue CybrosAgent::Api::Conflict, CybrosAgent::TransportError => error
           if error in CybrosAgent::Api::Conflict
             raise unless error.code == "operation_position_changed"
@@ -129,6 +132,21 @@ module Rho
           raise error if trace.empty?
 
           trace
+        end
+
+        # The worker retains its live invocation while the control reactor
+        # keeps renewing and checking the claim. A throttle rejects this read;
+        # retry its unchanged position, never the source or accepted children.
+        def wait_for_retry(seconds)
+          context = ExecutionContext.current
+          until_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
+          loop do
+            context&.raise_if_cancelled!
+            remaining = until_at - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            break unless remaining.positive?
+
+            sleep [remaining, 0.25].min
+          end
         end
 
         def snapshot(after: nil)

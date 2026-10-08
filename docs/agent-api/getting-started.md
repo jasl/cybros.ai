@@ -152,7 +152,9 @@ Use `kind: "message"` when you want to record speech without starting a model
 reply. Use `delivery_mode: "steer"` for text intended for the next model boundary
 of a running loop; an ordinary steer can fall back to the queue if that loop
 ends. Add `expected_steering_run_public_id` when the instruction must apply
-only to that exact execution. Attachments use queued inputs and the
+only to that exact execution. Use `steer_now` to insert a model boundary while
+its long tools remain pending; the same tools continue and deliver their results later.
+Attachments use queued inputs and the
 [upload resource](v1/uploads.md).
 
 ## Follow acceptance through final content
@@ -191,7 +193,7 @@ backing execution.
 
 | Need | Integration |
 | --- | --- |
-| Tools | Declare authorized tool schemas on the Profile; `defer_loading` can expose them through tool search. Separately announce external tools on their executor and implement claim/result handling. Fetch kernel tools from the [kernel tool catalog](v1/runs.md#the-kernel-tool-catalog--the-bytes-a-task-must-send); do not invent their schema bytes. |
+| Tools | Declare authorized tool schemas on the Profile; `defer_loading` can expose them through tool search. Separately announce external tools on their executor and implement claim/result handling. Fetch kernel tools from the [kernel tool catalog](v1/runs.md#the-kernel-tool-catalog-and-imports); do not invent their schema bytes. |
 | Human decisions | Configure approval mode and rules, then expose the loop's approval and question resolution operations in the application. These waits keep their ordinary task states and deadlines. |
 | Delegation or parallel work | Use [orchestration](../orchestration.md) to choose `task`, Agent code, `spawn`, `send`, and `wait`, including the independent waiting, lifetime, and wake options. |
 | A later instruction in the same conversation | Use a queued input with `deliver_at`. Use an absolute time when the request must replay after a lost response. |

@@ -25,9 +25,31 @@ class DaemonHostFollowersTest < Minitest::Test
     assert_equal "pending", JSON.parse(queued.body).dig("input", "state")
     assert_equal "queue", api.run_inputs.fetch(1).dig("input", "delivery_mode")
 
+    immediate = request(daemon, :post, "/say", token: bearer(daemon),
+      body: { public_id: "al-1", text: "read this while the command runs", delivery_mode: "steer_now" })
+    assert_equal "200", immediate.code, immediate.body
+    assert_equal "steer_now", api.run_inputs.fetch(2).dig("input", "delivery_mode")
+
     assert_equal "400", request(daemon, :post, "/say", token: bearer(daemon),
       body: { public_id: "al-1", text: "x", delivery_mode: "later" }).code
     assert_equal "400", request(daemon, :post, "/say", token: bearer(daemon), body: { public_id: "al-1", text: " " }).code
+  end
+
+  def test_conversation_send_now_keeps_its_text_mode_and_target_without_stopping_work
+    api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE)
+    daemon = member_ready(boot, api)
+    store.remember(conversation_host("c-1"), workspace: "ws-1", turn: "t-1", run_public_id: "al-1", model: "openrouter/x")
+
+    response = request(daemon, :post, "/say", token: bearer(daemon), body: {
+      public_id: "c-1", text: "Use the shorter output", delivery_mode: "steer_now", wait: false,
+      expected_steering_run_public_id: "al-1",
+    })
+
+    assert_equal "200", response.code, response.body
+    assert_equal "steering", JSON.parse(response.body).dig("input", "state")
+    input = api.conversation_inputs.last.fetch("input")
+    assert_equal ["Use the shorter output", "steer_now", "al-1"], input.values_at("text", "delivery_mode", "expected_steering_run_public_id")
+    refute api.requests.any? { |path, _| path.end_with?("/stop", "/cancel") }
   end
 
   # `rho say --in|--at`: the two

@@ -3,12 +3,12 @@ module E2E
     def test_group_memory_is_one_database_source_across_requesters_new_tasks_and_restart
       boot_runtime(allowed: [101, 102])
       marker = "group-fact-#{SecureRandom.hex(6)}"
-      @runtime.consume(update("memory-owner", "@rho_bot\n!mock reply=ready -- start", chat: -10, topic: 7, mention: true))
+      receive(update("memory-owner", "@rho_bot\n!mock reply=ready -- start", chat: -10, topic: 7, mention: true))
       owner_id = current("-10:7")
       completed_reply(@workspace.conversation(owner_id))
       assert_includes telegram_control("memory-write", "/memory write group/team.md #{marker}", chat: -10, topic: 7), "Write completed"
       owner_row = @core.memory_read(owner_id, path: "group/team.md")
-      @runtime.consume(update("memory-member", "@rho_bot\n!mock reply=member -- recall", user: 102, chat: -10, topic: 7, mention: true))
+      receive(update("memory-member", "@rho_bot\n!mock reply=member -- recall", user: 102, chat: -10, topic: 7, mention: true))
       member_id = current("-10:7", user: 102)
       member_turn = completed_reply(@workspace.conversation(member_id))
       assert_includes request_text(member_turn), marker
@@ -36,7 +36,7 @@ module E2E
       @state = telegram_state
       boot_runtime(allowed: [101, 102])
       refute @core.followers.any? { |row| row.fetch("public_id") == owner_id }
-      @runtime.consume(update("memory-cache-recall", "@rho_bot\n!mock reply=recovered-memory -- recall",
+      receive(update("memory-cache-recall", "@rho_bot\n!mock reply=recovered-memory -- recall",
         chat: -10, topic: 7, mention: true))
       assert_equal owner_id, current("-10:7"), "the Nexus route survives the disposable follower cache"
       recovered = await("the saved route attaches with its database memory after cache loss") do
@@ -59,7 +59,7 @@ module E2E
       boot_runtime(allowed: [101, 102])
       secret = "owner-memory-#{SecureRandom.hex(6)}"
       @memory << @human.profile.memory.write("user/#{secret}.md", secret, expected_public_id: nil, expected_lock_version: nil)
-      @runtime.consume(update("person-first", "!mock reply=first -- hello", user: 102, chat: 102))
+      receive(update("person-first", "!mock reply=first -- hello", user: 102, chat: 102))
       first_id = current("102:0")
       first_turn = completed_reply(@workspace.conversation(first_id))
       refute_includes request_text(first_turn), secret
@@ -68,7 +68,7 @@ module E2E
       telegram_control("person-new", "/new", user: 102, chat: 102)
       second_id = current("102:0")
       refute_equal first_id, second_id
-      @runtime.consume(update("person-recall", "!mock reply=second -- recall", user: 102, chat: 102))
+      receive(update("person-recall", "!mock reply=second -- recall", user: 102, chat: 102))
       request = request_text(completed_reply(@workspace.conversation(second_id)))
       assert_includes request, marker
       refute_includes request, secret

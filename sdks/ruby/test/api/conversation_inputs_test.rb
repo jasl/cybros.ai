@@ -4,6 +4,16 @@ require_relative "../support/conversation_fixtures"
 class ApiConversationInputsTest < Minitest::Test
   include CybrosAgentTest::ConversationFixtures
 
+  def test_send_now_promotes_the_existing_input_without_reposting_content
+    fixture = contract.fetch("valid_input_fixture")
+    public_id = fixture.fetch("input").fetch("public_id")
+    chat([[200, {}, fixture]]).inputs.update(public_id, delivery_mode: "steer_now", expected_lock_version: 3)
+
+    assert_equal :patch, request.fetch(:method)
+    assert_equal "#{PATH}/inputs/#{public_id}", request.fetch(:path)
+    assert_equal({ "delivery_mode" => "steer_now", "expected_lock_version" => 3 }, request.fetch(:body).fetch("input"))
+  end
+
   def test_create_reads_replay_from_the_header_while_preserving_the_accepted_status
     fixture = contract.fetch("valid_input_fixture")
     first = chat([[202, { "Idempotency-Replayed" => "false" }, fixture]]).inputs.create(

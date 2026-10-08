@@ -11,6 +11,6 @@ class AgentAPI::V1::Workspaces::Conversations::DefaultRunnersController <
   private
 
     def render_selected_host(conversation)
-      render json: { conversation: AgentAPI::ConversationPresenter.full(conversation.reload) }
+      render json: { conversation: AgentAPI::ConversationPresenter.full(conversation.reload, acting_user: acting_user) }
     end
 end

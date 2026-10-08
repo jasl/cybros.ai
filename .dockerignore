@@ -47,6 +47,7 @@
 **/*.py[cod]
 install/test
 install/stack/test
+install/stack/updater
 install/stack/test.sh
 install/stack/wizard_test.py
 install/stack/data

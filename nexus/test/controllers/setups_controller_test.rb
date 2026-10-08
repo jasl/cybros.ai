@@ -98,7 +98,7 @@ class SetupsControllerTest < ActionDispatch::IntegrationTest
     Account.destroy_all
 
     get setup_path
-    assert_select "input[name='setup[account_name]'][value=?]", Setup::DEFAULT_ACCOUNT_NAME
+    assert_select "input[name='setup[account_name]'][value=?]", Setup.default_account_name
   end
 
   test "a blank installation name falls back to the default" do
@@ -107,7 +107,7 @@ class SetupsControllerTest < ActionDispatch::IntegrationTest
     post setup_path, params: { setup: valid_setup_params.merge(account_name: "") }
 
     assert_redirected_to root_path
-    assert_equal Setup::DEFAULT_ACCOUNT_NAME, Account.sole.name
+    assert_equal Setup.default_account_name, Account.sole.name
   end
 
   test "a setup secret parameter is ignored when none is configured" do

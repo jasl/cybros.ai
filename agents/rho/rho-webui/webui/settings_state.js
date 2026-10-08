@@ -1,19 +1,20 @@
+import { t } from "./i18n.js";
 // Setup is a projection of the connected services, never a saved wizard step.
 export function setupProgress(status, telegram) {
-  if (!status?.connected) return { step: "connection", title: "Connect rho to Nexus", ready: false };
+  if (!status?.connected) return { step: "connection", title: t("settings_state.connect_rho_to_nexus"), ready: false };
   const telegramPrompt = telegramSetupPrompt(telegram);
   if (telegramPrompt) return { step: "telegram", title: telegramPrompt, ready: false };
   if (!status.model?.ready) {
-    return { step: "model", title: status.model?.eligible?.length ? "Choose your default model" : "To do: configure a model in Nexus", ready: false };
+    return { step: "model", title: status.model?.eligible?.length ? t("settings_state.choose_your_default_model") : t("settings_state.to_do_configure_a_model_in_nexus"), ready: false };
   }
-  return { step: "ready", title: "rho is ready to use", ready: true };
+  return { step: "ready", title: t("common.rho_is_ready_to_use"), ready: true };
 }
 
 export function telegramSetupPrompt(telegram) {
   if (telegram === null) return null;
-  if (!telegram?.enabled || !telegram.token?.present) return "Connect your Telegram bot";
-  if (!telegram.configuration?.owner_id) return "Bind your Telegram account";
-  return telegram.connection === "running" ? null : "Check your Telegram connection";
+  if (!telegram?.enabled || !telegram.token?.present) return t("settings_state.connect_your_telegram_bot");
+  if (!telegram.configuration?.owner_id) return t("settings_state.bind_your_telegram_account");
+  return telegram.connection === "running" ? null : t("settings_state.check_your_telegram_connection");
 }
 
 // An existing choice always wins. An unavailable choice needs a deliberate
@@ -36,8 +37,8 @@ export function settingsChanges(previous, edited) {
 export function jsonSetting(text, label) {
   let value;
   try { value = JSON.parse(text); }
-  catch { throw new Error(`${label} must be valid JSON.`); }
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} must be a JSON object.`);
+  catch { throw new Error(t("settings_state.must_be_valid_json", { label: label })); }
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(t("settings_state.must_be_a_json_object", { label: label }));
   return value;
 }
 

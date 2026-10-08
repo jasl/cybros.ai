@@ -272,16 +272,18 @@ module Rho
 
           def declare_locked(client, force: false, publish: nil)
             declaration = profile_declaration(client, runner_candidates(client))
+            system_prompt = @config.system_prompt
             summarizer = summarizer_text(declaration.fetch(:compaction_policy))
             plan = named_plan(client, declaration, publish: publish)
             written = [@lineage.identity&.user_public_id, RunDeclaration.digest(declaration.fetch(:tool_definitions)),
                        summarizer ? Digest::SHA256.hexdigest(summarizer) : SUMMARIZER_ABSENT,
+                       Digest::SHA256.hexdigest(system_prompt),
                        Digest::SHA256.hexdigest(JSON.generate(declaration.except(:tool_definitions))), plan.digest]
             return :unchanged if !force && written == @declared
 
             edge = declare_named(client, plan)
             profile = client.profile.declare_configuration(**declaration, prompt_documents: {
-              "system_prompt" => { "content" => RunDeclaration::GUIDELINE },
+              "system_prompt" => { "content" => system_prompt },
               "summarizer" => summarizer && { "content" => summarizer },
             })
             @declared_models = { default_model: profile.configuration.default_model,

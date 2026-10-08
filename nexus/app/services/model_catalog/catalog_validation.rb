@@ -14,8 +14,8 @@ module ModelCatalog
     # writable flat as well as nested — the compiler folds the flat form in
     # before anything reads it.
     MODEL_ENTRY_KEYS = (%w[
-      api_format model_id display_name capabilities pricing deadline_seconds
-      wire_options native_cost_contract
+      api_format model_id display_name capabilities pricing deadline_seconds base_url
+      wire_options native_cost_contract token_counter request_headers
     ] + CAPABILITY_KEYS).freeze
     # Mirrors the ModelCapabilityLimits members; every reviewed bound the
     # profile declares is restated here.
@@ -77,6 +77,9 @@ module ModelCatalog
         unless unknown.empty?
           raise CompileError, "model #{model_ref}: unknown keys #{unknown.sort.join(", ")}"
         end
+        if entry.key?("base_url")
+          Nexus::ProviderDefinition.normalize_endpoint(entry.fetch("base_url"), label: "model #{model_ref}")
+        end
 
         # A model may override its provider's wire — that is how one provider
         # serves images and embeddings beside its text lanes — but only with
@@ -96,6 +99,8 @@ module ModelCatalog
         unless entry["pricing"].nil?
           PricingValidation.validate(model_ref, entry.fetch("pricing"), profiles)
         end
+      rescue Nexus::ProviderDefinition::Invalid => error
+        raise CompileError, error.message
       end
 
       # The wire's own answers, which is what a capability declaration is
@@ -108,7 +113,14 @@ module ModelCatalog
         format = entry["api_format"] || provider["api_format"]
         return {} unless SimpleInference::ApiFormat.known?(format)
 
-        SimpleInference::ApiFormat.defaults(format).merge(format_name: format)
+        defaults = SimpleInference::ApiFormat.defaults(format).merge(format_name: format)
+        if format == "anthropic_messages" &&
+            ProfileBuilder.wire_options(defaults, provider, entry)[:anthropic_thinking_control] == "budget"
+          defaults = defaults.merge(reasoning_options: defaults.fetch(:reasoning_options).merge(
+            "efforts" => SimpleInference::Protocols::AnthropicMessages::THINKING_BUDGETS.keys
+          ))
+        end
+        defaults
       end
 
       def validate_selectors(selectors, models, providers)
@@ -280,8 +292,10 @@ module ModelCatalog
         "anthropic_thinking" => %w[anthropic_messages],
         "responses_reasoning" => %w[openai_responses codex_responses xai_responses],
         "gemini_thought" => %w[gemini_generate_content],
-        "chat_reasoning" => %w[openrouter_chat],
+        "chat_reasoning" => %w[openrouter_chat openai_compatible_chat mistral_chat],
         "responses_reasoning_text" => %w[deepseek_responses],
+        "pi_thinking" => %w[pi_messages],
+        "bedrock_reasoning" => %w[bedrock_converse],
       }.freeze
       # The format is the row's replay shape (how much is replayed is the
       # kernel's rule, the same on every row), and `required_for_tool_rounds`

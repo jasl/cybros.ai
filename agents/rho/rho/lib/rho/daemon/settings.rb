@@ -19,7 +19,7 @@ module Rho
           raise Settings::AnnouncementError, "Settings were applied locally, but platform announcement failed (#{error.class.name}).", cause: nil
         end
         log.info("settings.applied", keys: changes)
-      rescue Settings::PreparationError
+      rescue Settings::PreparationError, Rho::Runner::Extensions::PrerequisiteError
         @config.apply(previous)
         raise
       end
@@ -80,11 +80,16 @@ module Rho
                 end
                 changed << id if failed_extension?(id)
                 retired = replace_extensions(reloaded: changed, managed: sources)
-              rescue Settings::PreparationError => error
+              rescue Settings::PreparationError, Rho::Runner::Extensions::PrerequisiteError => error
                 @config.apply(previous)
+                warning = if error in Rho::Runner::Extensions::PrerequisiteError
+                  error.message
+                else
+                  "Package selection was saved but could not be applied (#{error.class.name})."
+                end
                 next({ saved: true, applied: false,
                   restart_required: (error in Settings::RestartRequired),
-                  warning: "Package selection was saved but could not be applied (#{error.class.name})." })
+                  warning: warning })
               end
               outcome = { saved: true, applied: true, restart_required: false,
                 cleanup_pending: retired.reject { |api| api.resources.disposed? }.map(&:extension_name),
@@ -146,10 +151,19 @@ module Rho
           routes = Routes.new(routes: core_routes + candidate.routes, context: @context,
             lineage: @lineage, bearer: @bearer, browser_login: @browser_login)
           page = webui(candidate)
-          added.each { |api| start_registration(api) }
+          added.each do |api|
+            start_registration(api)
+          rescue StandardError, ScriptError => error
+            failure = Rho::Runner::Extensions::Loader::Failure.new(
+              source: api.source, error_class: error.class.name, message: error.message)
+            @loaded.failures.replace((@loaded.failures + [failure]).reverse.uniq(&:source).reverse)
+            raise
+          end
           yield if block_given?
         rescue StandardError, ScriptError => error
           added.reverse_each { |api| api.resources.retire }
+          raise if error in Rho::Runner::Extensions::PrerequisiteError
+
           raise Settings::PreparationError, "Extension preparation failed (#{error.class.name}): #{error.message}"
         end
 
@@ -183,10 +197,15 @@ module Rho
         if candidate.failures.any?
           (candidate.registrations - reusable).reverse_each { |api| api.resources.retire }
           @loaded.failures.replace((@loaded.failures + candidate.failures).reverse.uniq(&:source).reverse)
+          if candidate.failures.any?(&:prerequisite?)
+            raise Rho::Runner::Extensions::PrerequisiteError, candidate.failures.map(&:public_message).join("; ")
+          end
           raise Settings::PreparationError, candidate.failures.map(&:message).join("; ")
         end
         candidate
       rescue Rho::Runner::Extensions::RegistrationError => error
+        raise if error in Rho::Runner::Extensions::PrerequisiteError
+
         raise Settings::PreparationError, error.message
       end
 

@@ -50,7 +50,7 @@ class TelegramFollowerRefreshTest < Minitest::Test
   end
 
   def test_thirteen_idle_histories_do_not_repeat_turn_and_input_reads_every_five_seconds
-    13.times { |index| @runtime.consume(telegram_message(index + 1, "/new")) }
+    13.times { |index| receive(telegram_message(index + 1, "/new")) }
     @runtime.tick
     11.times { tick_after(5) }
 
@@ -64,7 +64,7 @@ class TelegramFollowerRefreshTest < Minitest::Test
   end
 
   def test_absent_local_followers_use_the_same_bounded_refresh_and_restart_reads_immediately
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @bridge.run_rows = {}
     @runtime.tick
     11.times { tick_after(5) }
@@ -79,8 +79,8 @@ class TelegramFollowerRefreshTest < Minitest::Test
   end
 
   def test_a_new_event_refreshes_an_old_conversation_and_delivers_its_background_answer
-    @runtime.consume(telegram_message(1, "start"))
-    @runtime.consume(telegram_message(2, "/new"))
+    receive(telegram_message(1, "start"))
+    receive(telegram_message(2, "/new"))
     @runtime.tick
     @bridge.turn_rows["conversation-1"] = [turn(0, "Late background answer")]
     @bridge.run_rows = {
@@ -97,7 +97,7 @@ class TelegramFollowerRefreshTest < Minitest::Test
   end
 
   def test_history_keeps_paging_without_another_event_until_the_position_stops_advancing
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @bridge.page_size = 2
     @bridge.turn_rows["conversation-1"] = 5.times.map { |position| turn(position, "inherited").merge("inherited" => true) }
     @runtime.tick
@@ -111,7 +111,7 @@ class TelegramFollowerRefreshTest < Minitest::Test
   end
 
   def test_a_failed_input_refresh_retries_with_the_same_event_sequence
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @bridge.snapshot_failure = Rho::ConnectionError.new("temporary input read failure")
     @runtime.define_singleton_method(:sleep) { |_seconds| }
     @runtime.tick
@@ -124,7 +124,7 @@ class TelegramFollowerRefreshTest < Minitest::Test
   end
 
   def test_child_questions_refresh_while_the_parent_event_sequence_stays_unchanged
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @runtime.tick
     @bridge.pending_rows = [{ "workspace_public_id" => "workspace-home", "run_public_id" => "child-loop",
       "task_key" => "ask", "kind" => "ask", "question" => "Which child option?" }]
@@ -140,7 +140,7 @@ class TelegramFollowerRefreshTest < Minitest::Test
   end
 
   def test_recovered_projection_changes_and_lost_followers_are_not_unchanged_history
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @runtime.tick
     @bridge.current = @bridge.current.merge("turn" => "recovered-turn", "status" => "running", "complete" => false)
     tick_after(5)
@@ -154,7 +154,7 @@ class TelegramFollowerRefreshTest < Minitest::Test
   end
 
   def test_new_voice_input_mapping_is_refreshed_without_waiting_for_a_follower_wake
-    @runtime.consume(telegram_message(1, "start"))
+    receive(telegram_message(1, "start"))
     @runtime.tick
     event_reads_before_voice = reads(:events)
     @state.change do |document|

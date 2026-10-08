@@ -272,7 +272,7 @@ module Rho
             route.merge!("current" => child, "workspace_public_id" => workspace_id)
             document.fetch("pending_update").merge!("conversation_id" => child, "control_status" => "applied", "control_result" => text)
           end
-          discard_media(update.route_key)
+          discard_pending_inputs(update.route_key)
           text
         end
 
