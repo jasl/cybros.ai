@@ -35,8 +35,7 @@ class DeploymentUpgradeTest < ApplicationSystemTestCase
       assert_equal [:status], client.calls.map { |call| call.fetch(:operation) }
       capture_layout("available")
 
-      click_button "Check for updates"
-      assert_no_text "Checking the configured image sources…"
+      check_for_updates
       assert_button "Start upgrade", disabled: false
       assert client.calls.any? { |call| call.fetch(:operation) == :check }
       find_button("Start upgrade").send_keys(:enter)
@@ -95,8 +94,7 @@ class DeploymentUpgradeTest < ApplicationSystemTestCase
         uncheck "Back up the database before upgrading"
         assert_button "Start upgrade", disabled: true
         assert_text "Check for updates again to use this backup choice."
-        click_button "Check for updates"
-        assert_no_text "Checking the configured image sources…"
+        check_for_updates
         assert_unchecked_field "Back up the database before upgrading"
         assert_text "Database backup is skipped for this upgrade."
         assert_no_selector "[data-preflight-check=installation_space]"
@@ -142,8 +140,7 @@ class DeploymentUpgradeTest < ApplicationSystemTestCase
         assert_text "Required: 2,097,152 bytes"
       end
       assert_button "Start upgrade", disabled: true
-      click_button "Check for updates"
-      assert_no_text "Checking the configured image sources…"
+      check_for_updates
       assert_text "Upgrade blocked"
       assert_button "Start upgrade", disabled: true
       capture_layout("blocked")
@@ -211,6 +208,15 @@ class DeploymentUpgradeTest < ApplicationSystemTestCase
   end
 
   private
+
+    def check_for_updates
+      previous_body = find("body", visible: :all).native
+      click_button "Check for updates"
+      # The check reloads the same URL. Wait for its new document before asking
+      # Chrome to inspect visibility on nodes the navigation may have detached.
+      assert_selector("body", visible: :all) { |body| body.native != previous_body }
+      assert_no_text "Checking the configured image sources…"
+    end
 
     def capture_layout(state)
       assert_no_overflow
