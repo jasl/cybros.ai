@@ -1,0 +1,6 @@
+{
+  "id": "e2e.lifecycle",
+  "default_enabled": false,
+  "configuration_version": 1,
+  "configuration_schema": { "type": "object", "properties": {} }
+}

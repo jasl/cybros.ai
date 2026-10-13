@@ -1,0 +1,11 @@
+{
+  "enabled": false,
+  "public_rooms": { "hall": "fixture-worker" },
+  "sources": ["fixture-observer", "fixture-check-in", "fixture-worker-report"],
+  "working_days": [1, 2, 3, 4, 5],
+  "starts_at": "08:00",
+  "ends_at": "18:00",
+  "utc_offset": "+08:00",
+  "fresh_for_seconds": 900,
+  "remind_every_seconds": 3600
+}

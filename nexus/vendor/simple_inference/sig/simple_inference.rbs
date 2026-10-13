@@ -1,0 +1,369 @@
+module SimpleInference
+  VERSION: String
+
+  class Error < StandardError
+  end
+
+  class CapabilityError < Error
+  end
+
+  class ValidationError < Error
+  end
+
+  class ConfigurationError < ValidationError
+  end
+
+  class HTTPError < Error
+    attr_reader response: Response
+
+    def initialize: (String message, response: Response) -> void
+    def status: () -> Integer
+    def headers: () -> Hash[String, untyped]
+    def body: () -> untyped
+    def raw_body: () -> String
+  end
+
+  class TimeoutError < Error
+  end
+
+  class ConnectionError < Error
+  end
+
+  class DecodeError < Error
+  end
+
+  class StreamError < Error
+  end
+
+  class Response
+    attr_reader status: Integer
+    attr_reader headers: Hash[String, untyped]
+    attr_reader body: untyped
+    attr_reader raw_body: String
+
+    def initialize: (status: Integer, headers: Hash[untyped, untyped], body: untyped, raw_body: String) -> void
+    def success?: () -> bool
+    def to_h: () -> Hash[Symbol, untyped]
+  end
+
+  class Config
+    attr_reader base_url: String
+    attr_reader api_key: String?
+    attr_reader api_prefix: String
+    attr_reader adapter: HTTPAdapter
+    attr_reader raise_on_error: bool
+    attr_reader timeout: Numeric?
+    attr_reader open_timeout: Numeric?
+    attr_reader read_timeout: Numeric?
+
+    def initialize: (base_url: untyped, ?api_key: untyped, ?api_prefix: untyped, ?base_url_included_api_prefix: bool?, ?timeout: Numeric?, ?open_timeout: Numeric?, ?read_timeout: Numeric?, ?adapter: HTTPAdapter?, ?raise_on_error: bool, ?headers: Hash[untyped, untyped]) -> void
+    def headers: () -> Hash[String, untyped]
+    def base_url_included_api_prefix?: () -> bool
+  end
+
+  # The consumer's closed (provider, adapter_profile, protocol_route,
+  # workload, credential lane) tuple plus the validated facts the request
+  # path relies on — a Data value; every member is a reader.
+  class ExecutionProfile
+    ADAPTER_PROFILES: Array[String]
+    PROTOCOL_ROUTES: Array[String]
+    MULTIPART_PROTOCOL_ROUTES: Array[String]
+    WORKLOADS: Array[String]
+    MODEL_RUNNER_ASYNC_HTTP_PAIR: untyped
+    SOLID_QUEUE_HTTPX_PAIR: untyped
+    EXECUTION_PAIRS: Array[untyped]
+    CREDENTIAL_LANES: Array[String]
+    CAPABILITIES: Array[String]
+    INPUT_MODALITIES: Array[String]
+    OUTPUT_MODALITIES: Array[String]
+    PATH_WIRE_OPTION_KEYS: Array[Symbol]
+    BOOLEAN_WIRE_OPTION_KEYS: Array[Symbol]
+    STRING_WIRE_OPTION_KEYS: Array[Symbol]
+    WIRE_OPTION_KEYS: Array[Symbol]
+    MAX_TOTAL_EXECUTION_DEADLINE_SECONDS: Integer
+    DEFAULT_STREAM_IDLE_TIMEOUT_SECONDS: Integer
+    REASONING_OPTION_KINDS: Array[String]
+    REASONING_OPTION_VALUES: Hash[String, Array[String]]
+
+    attr_reader profile_id: String
+    attr_reader provider_id: String
+    attr_reader adapter_profile: String
+    attr_reader protocol_route: String
+    attr_reader workload: String
+    attr_reader model_pin: String
+    attr_reader credential_lane: String
+    attr_reader total_execution_deadline_seconds: Numeric
+    attr_reader stream_idle_timeout_seconds: Numeric
+    attr_reader primary_execution_pair: untyped
+    attr_reader allowed_execution_pairs: Array[untyped]
+    attr_reader capabilities: Array[String]
+    attr_reader input_modalities: Array[String]
+    attr_reader output_modalities: Array[String]
+    attr_reader service_tiers: Array[String]
+    attr_reader generation_parameters: Hash[String, untyped]
+    attr_reader wire_options: Hash[Symbol, untyped]
+    attr_reader input_media: Hash[String, untyped]
+    attr_reader reasoning_options: Hash[String, Array[String]]
+    attr_reader local_safety_limits: untyped
+    attr_reader native_cost_contract: untyped
+    attr_reader token_counter: untyped
+
+    def self.streams?: (capabilities: Array[String], wire_options: Hash[Symbol, untyped]) -> bool
+    def initialize: (
+      profile_id: untyped, provider_id: untyped, adapter_profile: untyped, protocol_route: untyped,
+      workload: untyped, model_pin: untyped, credential_lane: untyped,
+      total_execution_deadline_seconds: untyped, primary_execution_pair: untyped,
+      allowed_execution_pairs: untyped, ?stream_idle_timeout_seconds: Numeric?,
+      ?capabilities: Array[untyped], ?input_modalities: Array[untyped], ?output_modalities: Array[untyped],
+      ?service_tiers: Array[untyped], ?generation_parameters: Hash[untyped, untyped],
+      ?wire_options: Hash[untyped, untyped], ?input_media: Hash[untyped, untyped],
+      ?reasoning_options: Hash[untyped, untyped], ?local_safety_limits: Hash[untyped, untyped],
+      ?native_cost_contract: untyped, ?token_counter: untyped
+    ) -> void
+    def mime_allowlist: (untyped modality) -> Array[String]?
+    def capability_enabled?: (untyped key) -> bool
+    def streaming?: () -> bool
+    def streams?: () -> bool
+    def multipart?: () -> bool
+    def input_modality_enabled?: (untyped kind) -> bool
+    def wire_option: (Symbol key) -> untyped
+    def reasoning_option_values: (untyped kind) -> Array[String]
+  end
+
+  class Client
+    attr_reader config: Config
+    attr_reader execution_profile: ExecutionProfile
+
+    def initialize: (execution_profile: ExecutionProfile, **untyped connection) -> void
+    def adapter: () -> HTTPAdapter
+    def responses: () -> Resources::Responses
+    def images: () -> Resources::Images
+    def audio: () -> Resources::Audio
+    def embeddings: () -> Resources::Embeddings
+    def execute: (CompiledRequest) -> untyped
+  end
+
+  class CompiledRequest
+    attr_reader http_method: Symbol
+    attr_reader path: String
+    attr_reader headers: Hash[String, untyped]
+    attr_reader payload: String
+    attr_reader expect_json: bool
+
+    def initialize: (http_method: Symbol, path: String, headers: Hash[String, untyped], payload: String, stream: bool, expect_json: bool) { (Config, CompiledRequest) -> untyped } -> void
+    def stream?: () -> bool
+    def execute: (Config) -> untyped
+  end
+
+  class HTTPAdapter
+    # request envelope keys: :method, :url, :headers, :body, :timeout, :open_timeout, :read_timeout
+    # response envelope: { status: Integer, headers: Hash, body: String? }
+    def call: (Hash[Symbol, untyped]) -> Hash[Symbol, untyped]
+    def call_stream: (Hash[Symbol, untyped]) ?{ (String) -> void } -> Hash[Symbol, untyped]
+  end
+
+  module HTTPAdapters
+    class Default < HTTPAdapter
+    end
+
+    class HTTPX < HTTPAdapter
+      def initialize: (?timeout: Numeric?, ?client: untyped, ?stream_client: untyped) -> void
+    end
+  end
+
+  module Protocols
+    class Base
+      def self.protocol_option_keys: () -> Array[Symbol]
+      def self.request_option_keys: () -> Array[Symbol]
+
+      def initialize: (?config: Config?, **untyped connection) -> void
+      def config: () -> Config
+    end
+    # Concrete protocols (AnthropicMessages, GeminiGenerateContent,
+    # OpenAIResponses, CodexResponses, OpenAICompatibleResponses and its
+    # chat-family subclasses, plus the images/audio/embeddings one-shots)
+    # subclass Base; text-generation protocols expose #create and #stream.
+  end
+
+  module Resources
+    class Responses
+      def initialize: (client: Client) -> void
+      def create: (model: String, input: untyped, **untyped) -> ::SimpleInference::Responses::Result
+      def stream: (model: String, input: untyped, **untyped) -> ::SimpleInference::Responses::Stream
+      def compile: (model: String, input: untyped, stream: bool, **untyped) -> CompiledRequest
+    end
+
+    class Images
+      def initialize: (client: Client) -> void
+      def generate: (model: String, ?prompt: String?, ?input: untyped, **untyped) -> ::SimpleInference::Images::Result
+    end
+
+    class Audio
+      def initialize: (client: Client) -> void
+      def speech: () -> untyped         # exposes #create(model:, input:, voice:, **) -> Audio::SpeechResult
+      def transcriptions: () -> untyped # exposes #create(model:, file:, **) -> Audio::TranscriptionResult
+    end
+
+    class Embeddings
+      def initialize: (client: Client) -> void
+      def create: (model: String, input: untyped, **untyped) -> ::SimpleInference::Embeddings::Result
+    end
+  end
+
+  module Responses
+    class Refusal
+      MEANINGS: Hash[String, String]
+
+      attr_reader category: String?
+      attr_reader explanation: String?
+
+      def self.for_finish: (Hash[String, String] table, String? finish_detail, ?category: untyped, ?explanation: untyped) -> Refusal?
+      def initialize: (?category: untyped, ?explanation: untyped) -> void
+    end
+
+    class Result
+      attr_reader id: String?
+      attr_reader output_text: String
+      attr_reader output_items: Array[Hash[String, untyped]]
+      attr_reader tool_calls: Array[Hash[String, untyped]]
+      attr_reader usage: Hash[String, untyped]?
+      attr_reader finish_reason: String?
+      attr_reader finish_detail: String?
+      attr_reader refusal: Refusal?
+      attr_reader assistant_message: Hash[String, untyped]
+      attr_reader provider_response: Response?
+      attr_reader provider_format: String
+
+      def initialize: (output_text: String, output_items: Array[Hash[untyped, untyped]], tool_calls: Array[Hash[untyped, untyped]], usage: Hash[untyped, untyped]?, finish_reason: String?, finish_detail: String?, provider_response: Response?, provider_format: String, ?id: String?, ?assistant_message: Hash[untyped, untyped], ?refusal: Refusal?) -> void
+      def self.tool_calls_from_output_items: (untyped) -> Array[Hash[String, untyped]]
+    end
+
+    # Each event is a Data value; `type` is the OpenAI Responses spelling.
+    module Events
+      class TextDelta
+        attr_reader delta: String
+
+        def initialize: (delta: untyped) -> void
+        def type: () -> String
+      end
+
+      class ReasoningDelta
+        attr_reader delta: String
+        attr_reader kind: String
+        attr_reader item_id: String?
+
+        def initialize: (delta: untyped, ?kind: untyped, ?item_id: String?) -> void
+        def type: () -> String
+      end
+
+      class ToolCallDelta
+        attr_reader item_id: String?
+        attr_reader call_id: String?
+        attr_reader name: String?
+        attr_reader delta: String
+
+        def initialize: (item_id: String?, delta: untyped, ?call_id: String?, ?name: String?) -> void
+        def type: () -> String
+      end
+
+      class ToolCallDone
+        attr_reader item_id: String?
+        attr_reader call_id: String?
+        attr_reader name: String?
+        attr_reader arguments: String
+
+        def initialize: (item_id: String?, arguments: untyped, ?call_id: String?, ?name: String?) -> void
+        def type: () -> String
+      end
+
+      class Completed
+        attr_reader result: Result
+
+        def initialize: (result: Result) -> void
+        def type: () -> String
+      end
+    end
+
+    class Stream
+      include Enumerable[untyped]
+
+      def initialize: () { (untyped) -> untyped } -> void
+
+      def each: () { (untyped) -> void } -> Result?
+              | () -> Enumerator[untyped, Result?]
+      def text: () -> String
+      def output_text: () -> String
+      def final_result: () -> Result?
+    end
+  end
+
+  module Images
+    class Result
+      def initialize: (images: Array[Hash[untyped, untyped]], usage: untyped, provider_response: untyped, provider_format: String, ?output_text: String?) -> void
+
+      attr_reader images: Array[Hash[String, untyped]]
+      attr_reader usage: untyped
+      attr_reader output_text: String?
+      attr_reader provider_response: untyped
+      attr_reader provider_format: String
+    end
+  end
+
+  module Audio
+    class SpeechResult
+      def initialize: (audio: String, mime_type: String, provider_response: untyped, provider_format: String) -> void
+
+      attr_reader audio: String
+      attr_reader mime_type: String
+      attr_reader provider_response: untyped
+      attr_reader provider_format: String
+    end
+
+    class TranscriptionResult
+      def initialize: (text: String, usage: untyped, provider_response: untyped, provider_format: String) -> void
+
+      attr_reader text: String
+      attr_reader usage: untyped
+      attr_reader provider_response: untyped
+      attr_reader provider_format: String
+    end
+  end
+
+  module Embeddings
+    class Result
+      def initialize: (embeddings: Array[Hash[untyped, untyped]], usage: untyped, provider_response: untyped, provider_format: String, ?requested_dimension: Integer?) -> void
+
+      attr_reader embeddings: Array[Hash[String, untyped]]
+      attr_reader usage: untyped
+      attr_reader provider_response: untyped
+      attr_reader provider_format: String
+      attr_reader requested_dimension: Integer?
+    end
+  end
+
+  module FinishQuality
+    OUTPUT_BUDGET_EXHAUSTED: String
+    CONTEXT_WINDOW_EXHAUSTED: String
+    REFUSED: String
+    BLOCKED: String
+    QUALITIES: Array[String]
+    DECLINED: Array[String]
+
+    def self.for: (adapter_profile: untyped, detail: untyped) -> String?
+    def self.declined?: (Hash[String, String] table, untyped detail) -> bool
+  end
+
+  # Normalization helpers for OpenAI-compatible chat-completion payloads
+  # (used internally by the chat-family protocols; public for consumers that
+  # inspect raw chat bodies).
+  module OpenAI
+    def self?.chat_completion_content: (untyped) -> String?
+    def self?.chat_completion_finish_reason: (untyped) -> String?
+    def self?.chat_completion_usage: (untyped) -> Hash[String, untyped]?
+    def self?.chat_completion_logprobs: (untyped) -> Array[Hash[untyped, untyped]]?
+    def self?.chat_completion_chunk_delta: (untyped) -> String?
+    def self?.chat_completion_chunk_refusal_delta: (untyped) -> String?
+    def self?.chat_completion_chunk_reasoning_delta: (untyped) -> String?
+    def self?.normalize_content: (untyped) -> String?
+  end
+end

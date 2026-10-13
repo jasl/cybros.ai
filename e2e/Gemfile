@@ -1,0 +1,53 @@
+source "https://rubygems.org"
+
+gem "rake", "~> 13.0"
+
+gem "minitest", "~> 6.0"
+# Stubbing and the ActiveSupport toolbox stay available so journeys never
+# hand-roll their own utilities.
+gem "minitest-mock"
+gem "activesupport"
+# The terminal-bench family reads harbor's `task.toml` (e2e/support/evals/terminal_bench.rb):
+# the real grammar, pure Ruby, so a malformed file is refused by the parser and never by a guess.
+gem "toml-rb"
+gem "capybara"
+gem "selenium-webdriver"
+
+gem "rubocop", "~> 1.21", require: false
+gem "rubocop-rails-omakase", require: false
+
+# The fake provider is a standalone rack process on its own loopback port —
+# never mounted inside Nexus. The predecessor shipped its mock as controllers
+# in the production app (`app/controllers/mock_llm/`), which put test-only
+# endpoints in the production image; this side keeps them out of it entirely.
+gem "rack", ">= 3.2"
+gem "puma", ">= 7.1"
+
+# The gem's realtime client is opt-in and consumer-supplied , so a
+# consumer of it declares the stack — and this harness is one. The rehearsal
+# client that used to live in support/ is gone; the journeys drive the shipped
+# client, which is the only way a journey proves anything about it.
+gem "async-websocket"
+
+gem "cybros_agent", path: "../sdks/ruby"
+gem "cmctl", path: "../cmctl"
+# The harness loads rho-runner's lib by load path (the kernel-tool-names
+# pin and the task bench assemble rho's registry in-process), so the
+# runner's own runtime dependencies have to resolve in THIS bundle too —
+# the path gem declares them once instead of copying the gemspec here.
+gem "rho-runner", path: "../agents/rho/rho-runner"
+gem "rho-codemode", path: "../agents/rho/rho-codemode"
+# The ACP pair rides the same way: the scripted client and the fixture agent read the
+# wire's names off the agent gem by load path, and the client extension's
+# rows are what the lanes write into a home — so both resolve in THIS
+# bundle, each declaring its own runtime dependencies once. Both depend
+# on rho, which therefore rides as a path gem too; the journeys still
+# spawn the shipped `rho` from ITS bundle, never this one.
+gem "rho", path: "../agents/rho/rho"
+gem "rho-webui", path: "../agents/rho/rho-webui"
+gem "rho-ingress-telegram", path: "../agents/rho/rho-ingress-telegram"
+gem "rho-acp", path: "../agents/rho/rho-acp"
+gem "rho-acp-client", path: "../agents/rho/rho-acp-client"
+# Provider wire journeys and the opt-in manual smoke exercise drive the
+# adapter directly; recorded response replay is intentionally not maintained.
+gem "simple_inference", path: "../nexus/vendor/simple_inference"

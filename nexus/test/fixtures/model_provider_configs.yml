@@ -1,0 +1,5 @@
+# Deliberately empty: the baseline is NO enabled lanes, and every test that
+# enables one (DevModelLane.ensure_enabled!, EnableLane) starts from that
+# baseline. Declaring the fixture file makes the table fixture-managed, so
+# non-transactional test classes that COMMIT an enablement are reset by the
+# fixture reload instead of leaking a policy row into later tests (WP7d).

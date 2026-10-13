@@ -1,0 +1,70 @@
+# The official `mcp` gem ships no RBS; the two superclasses rho-mcp reaches
+# for are declared here, minimally, so the packaged surface validates.
+module MCP
+  VERSION: String
+
+  class Client
+    class Stdio
+      def initialize: (command: String, ?args: Array[String], ?env: Hash[String, String]?, ?read_timeout: Float?, ?max_line_bytes: Integer) -> void
+      def close: () -> untyped
+      def start: () -> untyped
+      def send_notification: (notification: untyped) -> nil
+      def connected?: () -> bool
+    end
+
+    class HTTP
+      MAX_MESSAGE_BYTES: Integer
+      def initialize: (url: String, ?headers: Hash[String, String], ?oauth: untyped, ?max_message_bytes: Integer, ?max_reconnection_wait: Numeric) ?{ (untyped faraday) -> void } -> void
+      def close: () -> untyped
+      def connected?: () -> bool
+      def oauth: () -> untyped
+
+      private
+
+      def run_step_up_flow!: (forbidden_error: untyped) -> untyped
+    end
+
+    class RequestHandlerError < StandardError
+      def error_type: () -> Symbol
+      def original_error: () -> untyped
+    end
+
+    # The OAuth members rho-mcp couples to, pinned
+    # by `test_the_oauth_members_exist_on_the_pinned_gem`.
+    module OAuth
+      class Provider
+        def initialize: (client_metadata: Hash[String, untyped], redirect_uri: String, redirect_handler: untyped, callback_handler: untyped, ?scope: String?, ?storage: untyped, ?client_id_metadata_document_url: String?, ?authorization_request_validator: untyped) -> void
+        def client_metadata: () -> Hash[String, untyped]
+        def redirect_uri: () -> String
+        def redirect_handler: () -> untyped
+        def callback_handler: () -> untyped
+        def storage: () -> untyped
+        def authorization_request_validator: () -> untyped
+        def tokens: () -> untyped
+        def access_token: () -> String?
+      end
+
+      class Flow
+        class AuthorizationError < StandardError
+        end
+        class AuthorizationRefusedError < AuthorizationError
+        end
+        def initialize: (provider: untyped, ?http_client_factory: untyped) -> void
+        def run!: (server_url: String, ?resource_metadata_url: String?, ?scope: String?) -> Symbol
+      end
+
+      class AuthorizationRequest
+        def authorization_server: () -> String?
+        def scopes: () -> Array[String]
+        def server_url: () -> String?
+        def resource: () -> String?
+      end
+
+      module Discovery
+        def self.parse_www_authenticate: (String? header) -> Hash[String, String]
+        def self.secure_url?: (untyped url) -> bool
+        def self.canonicalize_url: (untyped url) -> String
+      end
+    end
+  end
+end

@@ -1,0 +1,5 @@
+/.env
+/.env.new
+/secrets.env
+/secrets.env.new
+/data/

@@ -1,0 +1,89 @@
+{
+  "removal_envelope": [
+    "user"
+  ],
+  "user_projection": [
+    "public_id",
+    "kind",
+    "role",
+    "status",
+    "display_name"
+  ],
+  "error_codes": [
+    "administrator_required",
+    "installation_owner",
+    "installation_owner_protected",
+    "last_active_admin",
+    "user_not_active",
+    "user_not_administrable",
+    "workspace_ownership_transfer_required"
+  ],
+  "error_statuses": {
+    "administrator_required": 403,
+    "installation_owner": 409,
+    "installation_owner_protected": 403,
+    "last_active_admin": 409,
+    "user_not_active": 409,
+    "user_not_administrable": 403,
+    "workspace_ownership_transfer_required": 409
+  },
+  "valid_removal_fixture": {
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000040",
+      "kind": "human",
+      "role": "member",
+      "status": "removed",
+      "display_name": "Removed fixture member"
+    }
+  },
+  "valid_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "workspace_ownership_transfer_required",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_status_fixture": {
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000040",
+      "kind": "human",
+      "role": "member",
+      "status": "zz_unknown_value",
+      "display_name": "Removed fixture member"
+    }
+  },
+  "unknown_kind_fixture": {
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000040",
+      "kind": "zz_unknown_value",
+      "role": "member",
+      "status": "removed",
+      "display_name": "Removed fixture member"
+    }
+  },
+  "unknown_role_fixture": {
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000040",
+      "kind": "human",
+      "role": "zz_unknown_value",
+      "status": "removed",
+      "display_name": "Removed fixture member"
+    }
+  },
+  "unknown_error_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_value_fixture": "zz_unknown_value",
+  "unknown_value_behavior": "carry_unknown",
+  "unknown_field_behavior": "ignore"
+}

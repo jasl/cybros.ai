@@ -1,0 +1,63 @@
+schema_version: cybros.model_catalog.v1
+# Explicit model facts shared by provider routes. Serving limits may override
+# the complete limits block; protocol options and pricing stay on each route.
+model_definitions:
+  claude-opus-5-5:
+    capabilities:
+      # Text, images and native PDF documents in; text out. Images use the
+      # wire's resize bound; PDF documents retain their original bytes.
+      input_modalities: [image, file]
+      # 1M context by default with no beta header, 128K max output on the
+      # synchronous Messages API (the overview; 300K on Batch under the
+      # `output-300k-2026-03-24` beta is not a row field).
+      limits:
+        input_tokens: 1000000
+        output_tokens: 128000
+      # Adaptive thinking steered by `effort` — low, medium, high, xhigh,
+      # max. The provider defaults to `medium`; this catalog selects `high`
+      # consistently across Anthropic models. Thinking is always enabled.
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: high
+  claude-fable-5:
+    capabilities:
+      # Text, images and PDF documents in. Only images use the wire's
+      # preparation dimension; PDF bytes are sent intact.
+      input_modalities: [image, file]
+      # Reviewed 2026-08-13; limits mirror the lane's reviewed ceiling.
+      limits:
+        input_tokens: 1000000
+        output_tokens: 128000
+      # The family vocabulary: adaptive thinking (always on for this model)
+      # steered by `effort`, default `high`, per the vendor's page.
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: high
+  claude-fable-5-1:
+    capabilities:
+      # Text, images and PDF documents in; text out.
+      input_modalities: [image, file]
+      # 1M context by default, up to 128k output tokens per request (the
+      # migration guide); the 512-token cache minimum and the Fable 5
+      # tokenizer are the wire's, not the row's.
+      limits:
+        input_tokens: 1000000
+        output_tokens: 128000
+      # Adaptive thinking steered by `effort` — low, medium, high, xhigh,
+      # max, default `high` (the overview); thinking is always enabled.
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: high
+  claude-sonnet-5:
+    capabilities:
+      limits:
+        input_tokens: 1000000
+        output_tokens: 128000
+      # The family vocabulary: adaptive thinking (on by default for this
+      # model) steered by `effort`, default `high`, per the vendor's page.
+      # Sonnet 5 accepts thinking.type disabled (platform.claude.com/docs/en/
+      # build-with-claude/thinking-troubleshooting, read 2026-10-06).
+      reasoning:
+        disable_supported: true
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: high

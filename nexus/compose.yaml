@@ -1,0 +1,115 @@
+# Self-hosted Nexus: `install -m 600 env.sample .env.docker`, fill in the documented
+# secrets, then `docker compose --env-file .env.docker up --build`. The app
+# publishes on http://localhost:${NEXUS_PORT:-3300}; the first boot opens setup.
+
+name: "cybros_nexus"
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app: &default-app
+  build:
+    context: .
+    dockerfile: ./Dockerfile
+  env_file: ".env.docker"
+  environment:
+    PGHOST: db
+    PGUSER: postgres
+    PGPASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.docker}"
+    RAILS_ENV: production
+    SOLID_QUEUE_IN_PUMA: "false"
+  entrypoint: [ ]
+  logging: *default-logging
+  volumes:
+    - storage:/rails/storage
+    # - ./shared/storage:/rails/storage
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    volumes:
+      - postgres:/var/lib/postgresql
+      # Bind mounts are opt-in; prepare the host directory ownership and permissions first.
+      # - ./shared/postgres:/var/lib/postgresql
+    environment:
+      PGDATA: /var/lib/postgresql/data/18
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.docker}"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+
+  migrator:
+    <<: *default-app
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    command:
+      - "./bin/rails"
+      - "db:prepare"
+
+  app:
+    <<: *default-app
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    ports:
+      # Direct LAN access example. When you add a host reverse proxy, prefer a
+      # loopback-only publish such as `127.0.0.1:8080:80` instead.
+      - "${NEXUS_PORT:-3300}:80"
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost/up || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    command:
+      - "./bin/thrust"
+      - "./bin/rails"
+      - "server"
+
+  jobs:
+    <<: *default-app
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    command:
+      - "./bin/jobs"
+
+  # Fiber-based LLM execution host: claims admitted streaming text work via
+  # LISTEN/NOTIFY and runs each provider call on a fiber. When this service
+  # is down the jobs service executes the same work at reduced concurrency
+  # (and without the durable streaming narration), so it restarts and
+  # upgrades independently. stop_grace_period covers the host's own drain
+  # (25s natural finish + 5s hard abort) — the predecessor ran under
+  # Docker's default 10s and its drain never got to finish.
+  model_runner:
+    <<: *default-app
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    stop_grace_period: 35s
+    command:
+      - "./bin/model_runner"
+
+volumes:
+  postgres:
+  storage:

@@ -1,0 +1,107 @@
+<% content_for :title, t("admin.deployments.show.system_upgrade") %>
+<% candidate = @deployment&.candidate %>
+<% busy = @deployment&.active_operation.present? %>
+<% current = deployment_up_to_date?(@deployment) %>
+<% ready = @deployment&.preflight&.ready || false %>
+<% backup = @deployment&.preflight ? @deployment.preflight.backup : true %>
+
+<div class="space-y-6" data-controller="deployment"
+  data-deployment-status-url-value="<%= api_v1_admin_deployment_path %>"
+  data-deployment-upgrades-url-value="<%= api_v1_admin_deployment_upgrades_path %>"
+  data-deployment-page-url-value="<%= admin_deployment_path %>"
+  data-deployment-upgrade-pages-url-value="<%= admin_deployment_upgrades_path %>"
+  data-deployment-receipt-value="<%= @upgrade ? API::DeploymentPresenter.receipt(@upgrade).to_json : "{}" %>"
+  data-deployment-upgrade-ready-value="<%= ready %>"
+  data-deployment-checked-backup-value="<%= backup %>"
+  data-deployment-messages-value="<%= t("deployment.messages").to_json %>"
+  data-deployment-locale-value="<%= I18n.locale %>"
+  data-deployment-phase-labels-value="<%= deployment_phase_labels.to_json %>"
+  data-deployment-status-labels-value="<%= deployment_status_labels.to_json %>">
+  <header>
+    <h1 class="text-2xl font-semibold tracking-tight"><%= t("admin.deployments.show.system_upgrade") %></h1>
+    <p class="mt-2 max-w-3xl text-sm text-base-content/65"><%= t("admin.deployments.show.inspect_a_release_and_upgrade_brand_agent_applications_are", brand: t("brand.name")) %></p>
+  </header>
+
+  <p class="rounded-box border border-error/30 bg-error/5 p-4 text-sm text-error" role="alert"
+    data-deployment-target="notice" <%= "hidden" unless @deployment_error %>><%= @deployment_error&.message %></p>
+
+  <% if @deployment && !@deployment.supported %>
+    <section class="rounded-box border border-base-300 bg-base-100 p-5 sm:p-6" aria-labelledby="upgrade-unsupported-heading">
+      <h2 id="upgrade-unsupported-heading" class="text-lg font-semibold"><%= t("admin.deployments.show.online_upgrade_is_not_configured") %></h2>
+      <p class="mt-2 max-w-3xl text-sm text-base-content/65"><%= t("admin.deployments.show.use_this_installation_s_documented_command_line_upgrade_method", brand: t("brand.name")) %></p>
+    </section>
+  <% elsif @deployment %>
+    <section class="rounded-box border border-base-300 bg-base-100 p-5 sm:p-6" aria-labelledby="image-sources-heading">
+      <h2 id="image-sources-heading" class="text-lg font-semibold"><%= t("admin.deployments.show.image_sources") %></h2>
+      <dl class="mt-3 grid gap-3 sm:grid-cols-2">
+        <% @deployment.sources.each do |image| %>
+          <div class="min-w-0">
+            <dt class="text-sm font-medium"><%= image.name %></dt>
+            <dd class="mt-1 font-mono text-xs break-all text-base-content/65"><%= image.reference %></dd>
+          </div>
+        <% end %>
+      </dl>
+    </section>
+    <div class="grid gap-5 lg:grid-cols-2">
+      <section class="min-w-0 rounded-box border border-base-300 bg-base-100 p-5 sm:p-6" aria-labelledby="installed-release-heading">
+        <h2 id="installed-release-heading" class="mb-3 text-lg font-semibold"><%= t("admin.deployments.show.installed_release") %></h2>
+        <%= render "admin/deployments/release", release: @deployment.installed %>
+      </section>
+      <section class="min-w-0 rounded-box border border-base-300 bg-base-100 p-5 sm:p-6" aria-labelledby="available-release-heading">
+        <%= form_with url: admin_deployment_release_check_path, class: "mb-4 space-y-3", data: { action: "submit->deployment#check", turbo: false } do %>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="available-release-heading" class="text-lg font-semibold"><%= t("admin.deployments.show.available_release") %></h2>
+            <button type="submit" class="btn btn-sm btn-outline" data-deployment-target="checkButton" <%= "disabled" if busy %>><%= t("admin.deployments.show.check_for_updates") %></button>
+          </div>
+          <%= hidden_field_tag "release_check[backup]", "false", id: nil %>
+          <label class="flex items-start gap-3 text-sm">
+            <%= check_box_tag "release_check[backup]", "true", backup, class: "checkbox checkbox-sm mt-0.5", disabled: busy,
+              data: { deployment_target: "backupChoice", action: "deployment#backupChanged" } %>
+            <span><%= t("admin.deployments.show.back_up_the_database_before_upgrading") %></span>
+          </label>
+          <p class="text-xs text-base-content/60"><%= t("admin.deployments.show.changing_this_choice_requires_another_release_check") %></p>
+          <p class="text-sm text-base-content/70" data-deployment-target="backupCheckNotice" role="status" hidden><%= t("admin.deployments.show.check_for_updates_again_to_use_this_backup_choice") %></p>
+        <% end %>
+        <% if candidate %>
+          <%= render "admin/deployments/release", release: candidate.target %>
+          <p class="mt-3 text-xs break-words text-base-content/60"><%= t("admin.deployments.show.checked_checked_at", checked_at: (candidate.checked_at)) %></p>
+          <% if (source_url = deployment_source_url(candidate)) %>
+            <%= link_to t("admin.deployments.show.view_source"), source_url, class: "link mt-2 inline-block text-sm", target: "_blank", rel: "noopener noreferrer" %>
+          <% end %>
+          <% if current %>
+            <p class="mt-3 text-sm" role="status"><%= t("admin.deployments.show.this_release_is_already_installed") %></p>
+          <% end %>
+        <% else %>
+          <p class="text-sm text-base-content/60"><%= t("admin.deployments.show.check_for_updates_to_inspect_a_release_opening_this") %></p>
+        <% end %>
+      </section>
+    </div>
+    <%= render "admin/deployments/preflight", preflight: @deployment.preflight %>
+    <% if candidate && !current %>
+      <section class="rounded-box border border-base-300 bg-base-100 p-5 sm:p-6" aria-labelledby="start-upgrade-heading">
+        <h2 id="start-upgrade-heading" class="text-lg font-semibold"><%= t("admin.deployments.show.install_this_release") %></h2>
+        <p class="mt-2 max-w-3xl text-sm text-base-content/70"><%= t("admin.deployments.show.brand_and_its_background_workers_will_stop_during_the", brand: t("brand.name")) %></p>
+        <%= form_with url: admin_deployment_upgrades_path, class: "mt-4",
+          data: { action: "submit->deployment#upgrade", turbo: false, deployment_target: "upgradeForm" } do %>
+          <%= hidden_field_tag :idempotency_key, @upgrade_key %>
+          <%= hidden_field_tag :backup, backup, data: { deployment_target: "backupField" } %>
+          <%= hidden_field_tag "candidate[release]", candidate.target.release %>
+          <% candidate.target.images.each do |image| %>
+            <%= hidden_field_tag "candidate[images][][name]", image.name, id: nil %>
+            <%= hidden_field_tag "candidate[images][][reference]", image.reference, id: nil %>
+          <% end %>
+          <button type="submit" class="btn btn-primary" data-deployment-target="upgradeButton" <%= "disabled" if busy || !ready %>><%= t("admin.deployments.show.start_upgrade") %></button>
+        <% end %>
+      </section>
+    <% end %>
+  <% else %>
+    <p class="text-sm text-base-content/65"><%= t("admin.deployments.show.the_installation_updater_could_not_be_reached_its_command", brand: t("brand.name")) %></p>
+    <%= link_to t("admin.deployments.show.try_again"), admin_deployment_path, class: "btn btn-sm btn-outline", data: { turbo: false } %>
+  <% end %>
+
+  <div class="flex flex-wrap items-center gap-3" data-deployment-target="pendingActions" hidden>
+    <button type="button" class="btn btn-sm btn-outline" data-action="deployment#recover"><%= t("admin.deployments.show.check_request_status") %></button>
+    <button type="button" class="btn btn-sm btn-outline" data-action="deployment#retry"><%= t("admin.deployments.show.retry_the_same_request") %></button>
+  </div>
+  <%= render "admin/deployments/progress", upgrade: @upgrade %>
+</div>

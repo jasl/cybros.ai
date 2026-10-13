@@ -1,0 +1,29 @@
+source "https://rubygems.org"
+
+# Specify this gem's dependencies in rho-mcp.gemspec.
+gemspec
+
+# The SDK and the runner ride alongside in this monorepo; released versions
+# come from rubygems once the gems cut releases.
+gem "cybros_agent", path: "../../../sdks/ruby"
+gem "rho-runner", path: "../rho-runner"
+
+# The development group: a checkout's suite, never an installed prefix's
+# (the installer runs `--without development test`).
+group :development do
+  gem "rake", "~> 13.0"
+
+  gem "minitest", "~> 6.0"
+
+  # ONE LOOPBACK STREAMABLE-HTTP SERVER in the suite:
+  # the gem's own `StreamableHTTPTransport` is a Rack app, mounted under
+  # puma so the SDK's SSE path runs end to end on `net_http` — the
+  # open-stream handler and the legacy session expiry included. The e2e
+  # fixture's http entry point runs under this bundle too.
+  gem "puma", ">= 7.1", require: false
+  gem "rack", ">= 3.2", require: false
+
+  gem "rbs", require: false
+  gem "rubocop", "~> 1.21", require: false
+  gem "rubocop-rails-omakase", require: false
+end

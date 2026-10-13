@@ -1,0 +1,69 @@
+# Command line
+
+Three command-line tools, each with its own home and credentials. `COMMAND help` and `COMMAND help SUBCOMMAND` list the options available to your configuration.
+
+## `rho`
+
+The agent application's control plane. In the Docker stack, run it as `./cybros rho …` from the installation directory.
+
+| Command | Purpose |
+| --- | --- |
+| `rho server [--mode full\|agent\|runner] [--bind] [--port] [--display-name]` | Start the foreground daemon |
+| `rho setup [--nexus-url URL]`, `rho setup model`, `rho setup telegram [--finish]` | Guided terminal setup, or one section of it |
+| `rho connect`, `rho disconnect`, `rho status` | Pairing and connection state |
+| `rho console --open` | Open the browser page's public URL |
+| `rho run "…" [--model] [--workspace] [--runner] [--dir] [--attach] [-p] [--output-format json\|stream-json] [--timeout] [--code-mode\|--no-code-mode]` | One noninteractive request; see [Terminal requests](../use/terminal-requests.md) |
+| `rho models [--workload …]` | Usable models from Nexus |
+| `rho workspaces`, `rho workspaces create NAME`, `rho workspaces use ID` | Workspaces and the saved default |
+| `rho runners`, `rho runners use ID\|--none` | Eligible runners and the saved default |
+| `rho memory CONVERSATION ls\|read\|grep\|write\|edit\|delete [--speaker SPEAKER_UUID]` | [Memory documents](../use/files-images-memory.md#memory) |
+| `rho memory-review CONVERSATION status\|enable\|disable\|resume` | Optional [background memory review](../use/files-images-memory.md#background-memory-review) |
+| `rho jobs CONVERSATION create\|list\|history\|pause\|resume\|cancel` | Schedules |
+| `rho extensions list\|enable\|disable\|configure` | Plugins and their settings |
+| `rho settings [JSON]` | Core settings |
+| `rho mcp …`, `rho mcp probe`, `rho mcp login\|logout` | MCP servers |
+| `rho web fetch URL` | What the `web_fetch` tool would read |
+| `rho telegram status` | Shared Telegram Connections, status and update offsets |
+| `rho t3 token` | Save or issue the T3 service bearer |
+| `rho call_tool`, `rho fetch`, `rho ps`, `rho logs` | Operator calls on a runner: a routed tool, file bytes, processes, process logs |
+| `rho agents`, `rho env`, `rho runner`, `rho processes` | Management verbs of the shipped gems |
+| `rho version`, `rho doctor [--strict]`, `rho update [--dry-run\|--rollback]`, `rho uninstall` | The installation |
+| `rho-acp [--mode] [--model] [--runner]`, `rho-acp connect` | The ACP server for editors |
+
+Conversational verbs beyond `run` (`do`, `say`, `watch`, `approve`, …) belong to `rho-dev`, a development gem the distribution does not carry.
+
+`rho setup telegram` configures a shared Connection and, with the daemon running, binds an existing Bot to an explicit chat/topic and owner. `--finish` binds a saved enabled Connection without prompting for its token. See [Telegram](../use/telegram.md).
+
+`rho-dev` also provides `rho skills` to list Agent, workspace and local project skills. `rho skills push DIR`, `rho skills show NAME` and `rho skills rm NAME` use this rho Agent's `agent/skills/` by default. Add `--scope workspace` to manage shared workspace skills.
+
+## `./cybros`
+
+The stack's management script, in the installation directory.
+
+| Command | Purpose |
+| --- | --- |
+| `instructions` | Browser URLs and setup steps |
+| `status`, `logs [nexus\|rho]`, `manager logs` | Health and logs |
+| `up`, `stop` | Start and stop, preserving data |
+| `setup`, `setup model`, `setup telegram` | Guided terminal setup |
+| `connect` | Re-pair rho |
+| `rho …`, `cmctl …` | Run the bundled tools |
+| `check`, `update [RELEASE] [--no-backup]`, `upgrade-status`, `upgrade-log`, `upgrade-resume ID`, `update-manager` | Upgrades; see [Status, logs and upgrades](../operate/status-logs-upgrades.md) |
+| `backup`, `backups`, `restore BACKUP_ID DIRECTORY` | Snapshots; see [Backup and restore](../operate/backup-and-restore.md) |
+| `compose …`, `manager …` | Ordinary Compose for operator repairs |
+
+Installer options: `--dir`, `--yes`, `--no-start`, `--upgrade-manager`, `--help`.
+
+## `cmctl`
+
+The human operator CLI over the Platform API; see [cmctl](../operate/cmctl.md).
+
+| Command | Purpose |
+| --- | --- |
+| `cmctl login --url URL --email EMAIL`, `cmctl logout`, `cmctl status` | The saved operator session |
+| `cmctl setup --url URL` | Guided provider and model setup |
+| `cmctl providers`, `cmctl provider add\|edit\|show\|enable\|disable\|discover\|reset ID`, `cmctl provider key set ID` | Provider connections and keys |
+| `cmctl models [--available] [--workload …]`, `cmctl model add\|edit\|hide\|unhide\|test\|invalidate\|restore\|remove\|reset REF` | Model definitions |
+| `cmctl account cost-unit UNIT`, `cmctl account retention [DAYS\|off]` | Account settings |
+
+`CMCTL_HOME` or `--home DIR` selects the connection; each home holds one login.

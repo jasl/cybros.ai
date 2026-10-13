@@ -1,0 +1,37 @@
+module Rho
+  class Core
+    module Bots
+      def bot_detail: (agent_public_id: String) -> Hash[String, untyped]
+      def bot_history: (agent_public_id: String, ?after: String?, ?limit: Integer?, ?archived: bool?) -> Hash[String, untyped]
+      def ensure_bot_current: (agent_public_id: String, operation_id: String) -> Hash[String, untyped]
+      def new_bot_conversation: (agent_public_id: String, operation_id: String, ?home_workspace_public_id: untyped) -> Hash[String, untyped]
+      def resume_bot_conversation: (agent_public_id: String, operation_id: String, conversation_public_id: String, workspace_public_id: String) -> Hash[String, untyped]
+      def fork_bot_conversation: (agent_public_id: String, operation_id: String, conversation_public_id: String, workspace_public_id: String,
+                                 turn_public_id: String, ?variant_public_id: String?) -> Hash[String, untyped]
+
+      private
+
+      def bot_read: (String action, **untyped) -> Hash[String, untyped]
+      def bot_write: (String action, **untyped) -> Hash[String, untyped]
+    end
+
+    include Bots
+  end
+
+  class Daemon
+    class HostFollowers
+      module Bots
+        BOT_CONVERSATIONS_NAMESPACE: String
+        BOT_OPERATION_RETENTION: Integer
+        BOT_COMMAND_FIELDS: Hash[String, Array[String]]
+
+        def register_bots: (untyped api) -> untyped
+        def bot_detail: (untyped request, untyped ctx) -> untyped
+        def bot_history: (untyped request, untyped ctx) -> untyped
+        def bot_command: (untyped request, untyped ctx, String action) -> untyped
+        def bot_settings_gate: (untyped client, String agent_public_id) { () -> untyped } -> untyped
+      end
+      include Bots
+    end
+  end
+end

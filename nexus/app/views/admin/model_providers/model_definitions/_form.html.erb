@@ -1,0 +1,61 @@
+<% definitions = model_definition_defaults(form.model_definitions) %>
+<% fallback = model_definition_default({}) %>
+<% defaults = definitions.fetch(form.inherit.to_s, fallback) %>
+<% limits_overridden = model_form_limits_overridden?(form) %>
+<%= form_with model: form, scope: :model_definition, url: admin_model_provider_model_definition_path(provider.fetch(:id)), method: creating ? :post : :patch, class: "space-y-5",
+  data: { controller: "model-definition", model_definition_definitions_value: definitions, model_definition_fallback_value: fallback,
+    model_definition_empty_limits_value: form.empty_limits_override?, model_definition_other_limits_value: form.original_limits.except(*Admin::ModelProviders::ModelForm::LIMIT_FIELDS).any?,
+    model_definition_current_media_value: form.input_modalities,
+    model_definition_messages_value: { textOnly: model_default_copy("media_text_only_hint"), additionalMedia: model_default_copy("media_additional_saved", values: "%{values}") } } do |f| %>
+  <%= render "admin/model_providers/form_errors", form: form, reload_path: creating ? new_admin_model_provider_model_definition_path(provider.fetch(:id)) : admin_model_provider_model_definition_path(provider.fetch(:id), model: form.model) %>
+  <%= f.hidden_field :expected_lock_version %>
+  <%= f.hidden_field :model unless creating %>
+  <%= f.hidden_field :reset_limits, value: form.reset_limits.to_s, data: { model_definition_target: "resetLimits" } %>
+  <%= f.hidden_field :limits_edited, value: form.limits_edited.to_s, data: { model_definition_target: "limitsEdited" } %>
+  <section class="overflow-hidden rounded-box border border-base-300 bg-base-200" aria-label="<%= t("admin.model_providers.model_definitions.form.model_settings") %>">
+    <%= render "shared/form_row", form: f, attribute: :inherit, label: t("admin.model_providers.model_definitions.form.model_definition"), description: t("admin.model_providers.model_definitions.form.model_definition_hint") do %>
+      <%= f.select :inherit, [[t("admin.model_providers.model_definitions.form.custom_definition"), ""], *form.inheritance_choices], {}, class: "select select-sm w-full",
+        data: { model_definition_target: "inherit", action: "change->model-definition#definitionChanged" } %>
+    <% end %>
+    <%= render "shared/form_row", form: f, attribute: :model_id, label: t("admin.model_providers.model_definitions.form.model_id"), description: t("admin.model_providers.model_definitions.form.the_exact_model_id_accepted_by_the_provider_including") do %>
+      <%= validated_field f, :text_field, :model_id, form.errors[:model_id], required: true, autocomplete: "off", spellcheck: false, size: :sm %>
+    <% end %>
+    <%= render "shared/form_row", form: f, attribute: :display_name, label: t("admin.model_providers.model_definitions.form.display_name"), description: t("admin.model_providers.model_definitions.form.an_optional_friendly_model_name") do %>
+      <%= validated_field f, :text_field, :display_name, form.errors[:display_name], size: :sm %>
+    <% end %>
+  </section>
+  <%= tag.section class: "rounded-box border border-base-300 bg-base-200 p-4", hidden: !definitions.key?(form.inherit.to_s),
+    aria: { label: model_default_copy("definition_defaults") }, data: { model_definition_target: "defaults" } do %>
+    <h2 class="text-sm font-medium"><%= model_default_copy("definition_defaults") %></h2>
+    <p class="mt-1 text-xs text-base-content/60"><%= model_default_copy("definition_defaults_hint") %></p>
+    <dl class="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2" data-model-definition-target="facts">
+      <% defaults.fetch("facts").each do |fact| %>
+        <div class="min-w-0">
+          <dt class="text-xs text-base-content/60 wrap-anywhere"><%= fact.fetch("label") %></dt>
+          <dd class="mt-1 text-sm wrap-anywhere"><%= fact.fetch("value") %></dd>
+        </div>
+      <% end %>
+    </dl>
+    <%= tag.p model_default_copy("definition_defaults_empty"), class: "mt-3 text-sm text-base-content/60", hidden: defaults.fetch("facts").any?, data: { model_definition_target: "emptyFacts" } %>
+  <% end %>
+  <%= render "capabilities", form: form, f: f, defaults: defaults, limits_overridden: limits_overridden %>
+  <details class="rounded-box border border-base-300 bg-base-200" <%= "open" if form.pricing_mode == "custom" %>>
+    <summary class="cursor-pointer p-4 text-sm font-medium"><%= t("admin.model_providers.model_definitions.form.optional_cost_estimate") %></summary>
+    <p class="px-4 pb-3 text-xs leading-relaxed text-base-content/60"><%= t("admin.model_providers.model_definitions.form.pricing_helps_estimate_spending_it_is_optional_and_does") %></p>
+    <%= render "shared/form_row", form: f, attribute: :pricing_mode, label: t("admin.model_providers.model_definitions.form.pricing") do %>
+      <%= f.select :pricing_mode, [[t("admin.model_providers.model_definitions.form.no_cost_estimate"), "none"], [t("admin.model_providers.model_definitions.form.keep_current_pricing"), "preserve"], [t("admin.model_providers.model_definitions.form.use_the_rates_below"), "custom"]], {}, class: "select select-sm w-full" %>
+    <% end %>
+    <%= render "shared/form_row", form: f, attribute: :pricing_unit, label: t("admin.model_providers.model_definitions.form.cost_unit"), description: t("admin.model_providers.model_definitions.form.for_example_usd_the_account_must_use_the_same") do %>
+      <%= validated_field f, :text_field, :pricing_unit, form.errors[:pricing_unit], autocomplete: "off", size: :sm %>
+    <% end %>
+    <% form.rate_fields.each do |attribute| %>
+      <%= render "shared/form_row", form: f, attribute: attribute, label: model_rate_label(attribute) do %>
+        <%= validated_field f, :text_field, attribute, form.errors[attribute], inputmode: "decimal", autocomplete: "off", size: :sm %>
+      <% end %>
+    <% end %>
+  </details>
+  <div class="flex flex-wrap items-center justify-end gap-2">
+    <%= link_to t("admin.model_providers.model_definitions.form.cancel"), admin_model_provider_path(provider.fetch(:id)), class: "btn btn-ghost btn-sm" %>
+    <%= f.submit t("admin.model_providers.model_definitions.form.save_model"), class: "btn btn-primary btn-sm" %>
+  </div>
+<% end %>

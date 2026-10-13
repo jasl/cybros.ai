@@ -1,0 +1,28 @@
+source "https://rubygems.org"
+
+# Specify this gem's dependencies in rho-acp.gemspec.
+gemspec
+
+gem "cmctl", path: "../../../cmctl"
+
+# rho rides alongside in this monorepo, and its own gemspec resolves the
+# SDK and the runner by path; released versions come from rubygems once
+# the gems cut releases. rho's Gemfile never names this gem back: a
+# surface gem depends on the body, never the other way round.
+gem "rho", path: "../rho"
+gem "cybros_agent", path: "../../../sdks/ruby"
+gem "rho-runner", path: "../rho-runner"
+
+# The development group: a checkout's suite, never an installed prefix's
+# (the installer runs `--without development test`).
+# The suite runs over rho's test support tree (`test/test_helper.rb`
+# requires it by relative path).
+group :development do
+  gem "rake", "~> 13.0"
+
+  gem "minitest", "~> 6.0"
+
+  gem "rbs", require: false
+  gem "rubocop", "~> 1.21", require: false
+  gem "rubocop-rails-omakase", require: false
+end

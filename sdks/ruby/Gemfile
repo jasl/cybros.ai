@@ -1,0 +1,17 @@
+source "https://rubygems.org"
+
+# Specify this gem's dependencies in cybros_agent.gemspec.
+gemspec
+
+gem "irb"
+gem "rake", "~> 13.0"
+
+gem "minitest", "~> 6.0"
+
+# The realtime module rides Async's websocket stack; kept on
+# hand so that slice lands against the dependency it was designed for.
+gem "async-websocket"
+
+gem "rbs", require: false
+gem "rubocop", "~> 1.21", require: false
+gem "rubocop-rails-omakase", require: false

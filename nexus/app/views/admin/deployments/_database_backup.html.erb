@@ -1,0 +1,17 @@
+<%# locals: (backup:, requested:) %>
+<section aria-labelledby="database-backup-heading" class="mt-5 rounded-lg border border-base-300 p-4"
+  data-deployment-target="databaseBackup" <%= "hidden" unless backup || requested == false %>>
+  <h3 id="database-backup-heading" class="font-medium"><%= t("admin.deployments.database_backup.upgrade_database_backup") %></h3>
+  <p class="mt-2 text-sm" data-deployment-target="backupAvailability"><%= requested == false ? t("admin.deployments.database_backup.skipped_for_this_upgrade") : (backup&.available ? t("admin.deployments.database_backup.available_on_the_installation_host") : t("admin.deployments.database_backup.no_longer_retained")) %></p>
+  <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2" data-deployment-target="backupDetails" <%= "hidden" unless backup %>>
+    <div class="min-w-0">
+      <dt class="text-base-content/60"><%= t("admin.deployments.database_backup.created") %></dt>
+      <dd class="mt-1 break-words" data-deployment-target="backupCreatedAt"><%= backup&.created_at %></dd>
+    </div>
+    <div class="min-w-0">
+      <dt class="text-base-content/60"><%= t("admin.deployments.database_backup.size") %></dt>
+      <dd class="mt-1 break-words" data-deployment-target="backupSize"><%= t("admin.deployments.database_backup.size_bytes", size: (number_with_delimiter(backup.size_bytes))) if backup %></dd>
+    </div>
+  </dl>
+  <p class="mt-3 text-sm text-base-content/65" data-deployment-target="backupHelp" <%= "hidden" unless backup %>><%= t("admin.deployments.database_backup.this_database_only_backup_excludes_uploaded_files_application_files") %></p>
+</section>

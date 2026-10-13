@@ -1,0 +1,4 @@
+cache:
+  store: memory
+  debug: true
+  ttl: 60

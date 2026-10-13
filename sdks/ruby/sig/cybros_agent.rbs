@@ -1,0 +1,135 @@
+module CybrosAgent
+  VERSION: String
+
+  class Error < StandardError
+    def initialize: (?String? message) -> void
+    def retry_after: () -> Integer?
+    def code: () -> String?
+  end
+
+  module Redacted
+    def to_s: () -> String
+    def pretty_print: (untyped printer) -> void
+
+    private
+
+    def redacted: (?hidden: Array[Symbol], **untyped fields) -> String
+  end
+
+  JSON_MEDIA: String
+  ANY_MEDIA: String
+
+  class TransportError < Error
+  end
+
+  class RequestNotSentError < TransportError
+  end
+
+  interface _Headers
+    def each: () { (String field, String value) -> untyped } -> untyped
+  end
+
+  class Response < Data
+    include Redacted
+
+    attr_reader status: Integer
+    attr_reader headers: _Headers
+    attr_reader body: untyped
+
+    def self.new: (Integer status, _Headers headers, untyped body) -> instance
+                | (status: Integer, headers: _Headers, body: untyped) -> instance
+    def self.[]: (Integer status, _Headers headers, untyped body) -> instance
+               | (status: Integer, headers: _Headers, body: untyped) -> instance
+    def self.members: () -> [:status, :headers, :body]
+
+    def members: () -> [:status, :headers, :body]
+    def inspect: () -> String
+    def retry_after: () -> Integer
+    def etag: () -> String?
+    def idempotency_replayed?: () -> bool
+  end
+
+  # Where HttpTransport streams a response body, chunk by chunk (an IO);
+  # the _Transport port the device flow speaks never streams.
+  interface _Sink
+    def write: (String chunk) -> Integer
+  end
+
+  interface _Transport
+    def call: (
+      String path,
+      ?method: Symbol,
+      ?credential: String?,
+      ?body: Hash[String, untyped]?,
+      ?form: Hash[Symbol, untyped]?,
+      ?params: Hash[String, untyped]?,
+      ?headers: Hash[String, String],
+      timeout: Numeric,
+      ?accept: String
+    ) -> Response
+  end
+
+  class HttpTransport
+    DEFAULT_OPERATION_TIMEOUT: Integer
+    TOTAL_TIMEOUT_MULTIPLIER: Integer
+    METHODS: Array[Symbol]
+    REQUEST_NOT_SENT_ERRORS: Array[untyped]
+    RAW_TRANSPORT_ERRORS: Array[untyped]
+
+    def initialize: (base_url: String, ?timeout: Numeric) -> void
+    def call: (
+      String path,
+      ?method: Symbol,
+      ?credential: String?,
+      ?body: Hash[String, untyped]?,
+      ?form: Hash[Symbol, untyped]?,
+      ?params: Hash[String, untyped]?,
+      ?headers: Hash[String, String],
+      timeout: Numeric,
+      ?accept: String,
+      ?sink: _Sink?
+    ) -> Response
+  end
+
+  module HttpDeadline
+    module InstanceMethods
+    end
+  end
+
+  module Redaction
+    SECRET_PATTERN: Regexp
+    SECRET_KEY: Regexp
+    REPLACEMENT: String
+
+    def self.call: (untyped value) -> String
+  end
+
+  module SizeBounds
+    ENVELOPE_BOUND: Integer
+
+    def self?.canonical_bytesize: (untyped value) -> Integer
+    def self?.canonical: (untyped value) -> untyped
+  end
+
+  class Planes < Data
+    attr_reader client: Client?
+    attr_reader executor_client: ExecutorClient?
+    attr_reader runner_client: ExecutorClient?
+
+    def self.new: (Client? client, ExecutorClient? executor_client, ExecutorClient? runner_client) -> instance
+                | (client: Client?, executor_client: ExecutorClient?, runner_client: ExecutorClient?) -> instance
+    def self.[]: (Client? client, ExecutorClient? executor_client, ExecutorClient? runner_client) -> instance
+               | (client: Client?, executor_client: ExecutorClient?, runner_client: ExecutorClient?) -> instance
+    def self.members: () -> [:client, :executor_client, :runner_client]
+
+    def members: () -> [:client, :executor_client, :runner_client]
+  end
+
+  def self.planes_for: (
+    DeviceFlow::Credentials credentials,
+    base_url: String,
+    ?transport: _Transport?,
+    **untyped
+  ) -> Planes
+
+end

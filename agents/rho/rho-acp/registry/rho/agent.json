@@ -1,0 +1,18 @@
+{
+  "id": "rho",
+  "name": "rho",
+  "version": "0.1.0",
+  "description": "rho as an ACP agent: the daemon started, paired and served by rho-acp.",
+  "repository": "https://github.com/jasl/cybros.ai",
+  "authors": [
+    "jasl"
+  ],
+  "license": "MIT",
+  "license_url": "https://github.com/jasl/cybros.ai/blob/main/LICENSE.md",
+  "distribution": {
+    "local": {
+      "cmd": "rho-acp",
+      "args": []
+    }
+  }
+}

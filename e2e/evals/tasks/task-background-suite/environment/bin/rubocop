@@ -1,0 +1,11 @@
+#!/bin/sh
+# The lint stand-in: names two real offences in app/models/user.rb.
+echo "Inspecting 1 file"
+echo "C"
+echo ""
+echo "Offenses:"
+echo ""
+grep -n "  $" app/models/user.rb | sed 's/^\([0-9]*\):.*$/app\/models\/user.rb:\1:1: C: Layout\/TrailingWhitespace: Trailing whitespace detected./'
+grep -n "== true" app/models/user.rb | sed 's/^\([0-9]*\):.*$/app\/models\/user.rb:\1:1: C: Style\/RedundantCondition: Remove the == true./'
+echo ""
+echo "1 file inspected, 2 offenses detected"

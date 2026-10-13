@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bundler/setup"
+# The same two lines exe/rho runs, for the same reason: a console that
+# drives the browser from a shell with no locale hits the same dead reader
+# thread the daemon did.
+Encoding.default_external = Encoding::UTF_8
+require "rho"
+Rho::Locale.ensure_utf8!
+
+# You can add fixtures and/or initialization code here to make experimenting
+# with your gem easier. You can also use a different console, if you like.
+
+require "irb"
+IRB.start(__FILE__)

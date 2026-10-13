@@ -1,0 +1,41 @@
+system:
+  account: cybros
+  display_name: System
+  handle: system
+  kind: agent
+  role: system
+
+owner:
+  account: cybros
+  identity: owner
+  display_name: Owner
+  handle: owner
+  kind: human
+  role: owner
+
+member:
+  account: cybros
+  identity: member
+  display_name: Member
+  handle: member
+  kind: human
+  role: member
+
+agent:
+  account: cybros
+  display_name: Fixture Agent
+  handle: fixture-agent
+  kind: agent
+  role: member
+  steward: owner
+  agent_identifier: fixture-agent-installation
+
+# Owns the personal fixture Workspace, keeping ordinary member removal free
+# of the spec 02 ownership guard for unrelated suites.
+curator:
+  account: cybros
+  identity: curator
+  display_name: Curator
+  handle: curator
+  kind: human
+  role: member

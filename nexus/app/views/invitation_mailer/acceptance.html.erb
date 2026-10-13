@@ -1,0 +1,6 @@
+<p>
+  <%= t("invitation_mailer.acceptance.introduction", account: @invitation.account.name, role: t("members.roles.#{@invitation.role}"), brand: t("brand.name")) %>
+</p>
+<p>
+  <%= t("invitation_mailer.acceptance.accept_before_html", link: link_to(t("invitation_mailer.acceptance.accept_invitation"), @acceptance_url), expires_at: l(@invitation.expires_at, format: :long)) %>
+</p>

@@ -1,0 +1,15 @@
+module CybrosAgent
+  module Toolsets
+    ORCHESTRATION: Array[String]
+    CONVERSATION: Array[String]
+    HISTORY: Array[String]
+    MEMORY: Array[String]
+    DISCOVERY: Array[String]
+    SKILLS: Array[String]
+    SETS: Hash[Symbol, Array[String]]
+    ALL: Array[String]
+
+    def self.names: (*(Symbol | String | Array[Symbol | String]) sets) -> Array[String]
+    def self.verify: (Client client, *(Symbol | String) sets) -> Array[String]
+  end
+end

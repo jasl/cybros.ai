@@ -1,0 +1,10 @@
+# Hourly bounded cleanup of expired loop-append replay evidence. Receipt
+# expiry affects storage only and never touches the graph it described.
+class AgentRunAppendReceipts::ReapJob < ApplicationJob
+  BATCH = 1_000
+
+  def perform
+    reaped = AgentRunAppendReceipt.reap(batch: BATCH)
+    self.class.perform_later if reaped == BATCH
+  end
+end

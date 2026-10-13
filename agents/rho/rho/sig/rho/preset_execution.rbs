@@ -1,0 +1,8 @@
+module Rho
+  module PresetExecution
+    def self.limit_memory: (Hash[String, untyped]? authored, ceiling: Hash[String, untyped]?) -> Hash[String, untyped]?
+    def self.declaration: (preset: AgentPresets::Entry, base: Hash[Symbol, untyped], ?kernel_tool_names: Hash[String, String]) -> Hash[Symbol, untyped]
+    def self.selection: (body: Hash[String, untyped], declaration: Hash[Symbol, untyped], ?prior: Hash[String, untyped]?, ?inherited_model: String?) -> Hash[Symbol, untyped]
+    def self.overrides: (body: Hash[String, untyped]) -> Hash[Symbol, untyped]
+  end
+end

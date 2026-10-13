@@ -1,0 +1,9 @@
+module Rho
+  class Core
+    include Mcp
+
+    module Mcp
+      def refresh_mcp: (String name) -> Hash[String, untyped]
+    end
+  end
+end

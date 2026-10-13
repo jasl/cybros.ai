@@ -1,0 +1,26 @@
+{
+  "name": "app",
+  "private": true,
+  "scripts": {
+    "build": "bun bun.config.js",
+    "build:css": "bun run node_modules/@tailwindcss/cli/dist/index.mjs -i ./app/assets/stylesheets/application.tailwind.css -o ./app/assets/builds/application.css --minify",
+    "lint:js": "bun run node_modules/eslint/bin/eslint.js app/javascript test/js --max-warnings=0 --no-error-on-unmatched-pattern",
+    "test:js": "bun test test/js"
+  },
+  "dependencies": {
+    "@hotwired/stimulus": "^3.2.2",
+    "@hotwired/turbo-rails": "^8.0.23",
+    "@iconify-json/lucide": "^1.2.139",
+    "@iconify/tailwind4": "^1.2.3",
+    "@tailwindcss/cli": "^4.3.3",
+    "@tailwindcss/typography": "^0.5.20",
+    "daisyui": "^5.7.47",
+    "tailwindcss": "^4.3.3",
+    "tailwindcss-motion": "^1.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "cybros-guides",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --bun node_modules/vitepress/bin/vitepress.js dev . --host 127.0.0.1",
+    "build": "bun --bun node_modules/vitepress/bin/vitepress.js build .",
+    "preview": "bun --bun node_modules/vitepress/bin/vitepress.js preview ."
+  },
+  "devDependencies": {
+    "vitepress": "^2.0.0-alpha.20"
+  }
+}

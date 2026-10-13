@@ -1,0 +1,32 @@
+# Credentialed offline catalog lane for settings and provider metadata tests.
+schema_version: cybros.model_catalog.v1
+providers:
+  test_api:
+    display_name: Test API
+    base_url: http://127.0.0.1:3000/test-api
+    api_format: openai_responses
+    credentials: api_key
+models:
+  test_api/text:
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0.5"
+          output_per_mtok: "1.5"
+    capabilities:
+      input_modalities: [image]
+      output_modalities: [text]
+      limits:
+        input_tokens: 8192
+        output_tokens: 2048
+      reasoning:
+        efforts: [low, medium, high]
+        default_effort: medium
+  test_api/alternate:
+    capabilities:
+      output_modalities: [text]
+      limits:
+        input_tokens: 4096
+        output_tokens: 1024

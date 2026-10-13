@@ -1,0 +1,171 @@
+---
+en:
+  admin:
+    cost_units:
+      show:
+        cost_unit: Cost unit
+        configure_model_providers: Configure model providers
+        the_included_model_pricing_uses_usd: The included model pricing uses USD.
+        set_this_installation_s_cost_unit_it_cannot_be: Set this installation's cost unit? It cannot be
+          changed after saving.
+        set_cost_unit: Set cost unit
+        usage_costs_use_usd_by_default_this_advanced_setting: Usage costs use USD by default. This advanced
+          setting shows the unit chosen for this installation.
+        account_cost_unit: Account cost unit
+        this_value_is_set_once_and_cannot_be_changed: This value is set once and cannot be changed. %{brand}
+          does not convert between units.
+        this_installation_has_no_cost_unit_yet_use_usd: >-
+          This installation has no cost unit yet. Use USD for the included pricing, or match your custom
+          pricing. The unit is set once and cannot be changed.
+    invitations:
+      index:
+        invitations: Invitations
+        email: Email
+        role: Role
+        create_invitation: Create invitation
+        send_invitation: Send invitation
+        pending: Pending
+        all: All
+        send_email: Send email
+        resend: Resend
+        revoke: Revoke
+        revoke_and_create_a_replacement_before_sharing: Revoke and create a replacement before sharing.
+        resend_before_sharing_this_link: Resend before sharing this link.
+        invitations_pages: Invitations pages
+        invite_people_by_email_each_address_holds_one_current: Invite people by email; each address holds
+          one current invitation
+        outbound_email_is_not_configured_so_invitations_are_not: >-
+          Outbound email is not configured, so invitations are not emailed — share each unexpired invitation's
+          link manually instead.
+        expired: Expired
+        link_only: Link only
+        invitation_link: Invitation link
+        copy: Copy
+        no_pending_invitations_expired_invitations_remain_available_under_all: No pending invitations.
+          Expired invitations remain available under All.
+        no_invitations_members_appear_on_the_members_page_once: No invitations. Members appear on the
+          Members page once they accept.
+        invitation_filters: Invitation filters
+        resend_in_seconds: Resend in %{seconds}s
+        revoke_the_invitation_for_email_every_shared_or_emailed: Revoke the invitation for %{email}? Every
+          shared or emailed link stops working.
+        invitation_link_for_email: Invitation link for %{email}
+        invited_by_inviter: Invited by %{inviter}
+        email_requested_elapsed_ago: Email requested %{elapsed} ago
+        expires_in_remaining: Expires in %{remaining}
+    retentions:
+      show:
+        retention_settings: Retention settings
+        default_90_days_leave_blank_to_disable_automatic_cleanup: 'Default: 90 days. Leave blank to disable
+          automatic cleanup.'
+        keep_execution_details_for_days: Keep execution details for (days)
+        save_retention_settings: Save retention settings
+        keep_conversation_messages_readable_and_searchable_automatically_remove_old: >-
+          Keep conversation messages readable and searchable. Automatically remove old execution details
+          to reduce storage use.
+        retention_settings_could_not_be_saved_check_the_field: Retention settings could not be saved.
+          Check the field below.
+        cleanup_removes_eligible_execution_traces_and_tool_details_after: >-
+          Cleanup removes eligible execution traces and tool details after work has finished. Conversation
+          text remains readable and searchable. Increasing this period cannot restore details already
+          removed.
+    users:
+      index:
+        members: Members
+        new_member: New member
+        members_pages: Members pages
+        people_and_agents_in_this_installation: People and agents in this installation
+        member: Member
+        email: Email
+        role: Role
+        status: Status
+        joined: Joined
+        agent: agent
+      new:
+        new_member: New member
+        members: Members
+        display_name: Display name
+        email: Email
+        role: Role
+        temporary_password: Temporary password
+        repeat_temporary_password: Repeat temporary password
+        create_member: Create member
+        mail_less_onboarding_convey_the_temporary_password_out_of: >-
+          Mail-less onboarding: convey the temporary password out of band. The member must change it at
+          first sign-in.
+        the_member_could_not_be_created_check_the_fields: The member could not be created — check the
+          fields below.
+      show:
+        members: Members
+        choose_the_active_human_member_responsible_for_this_agent: Choose the active human member responsible
+          for this agent.
+        reassignment_keeps_the_agent_removed_and_its_old_credentials: >-
+          Reassignment keeps the Agent removed and its old credentials invalid. The new steward can restore
+          it and reconnect the program.
+        reassign_steward: Reassign steward
+        reopens_this_human_s_access_with_the_existing_sign: >-
+          Reopens this Human's access with the existing sign-in; previously revoked credentials stay revoked.
+          Managed resources still finish the accepted shutdown episode and reconnect explicitly when ready.
+        restores_the_agent_profile_old_credentials_remain_invalid_reconnect: Restores the agent profile.
+          Old credentials remain invalid; reconnect the program to resume access.
+        restore: Restore
+        role: Role
+        update_role: Update role
+        immediately_signs_the_member_out_everywhere_reversible: Immediately signs the member out everywhere;
+          reversible.
+        suspend: Suspend
+        restores_access_previous_sessions_stay_revoked: Restores access; previous sessions stay revoked.
+        reactivate: Reactivate
+        ends_this_human_s_access_now_their_managed_agents: >-
+          Ends this Human's access now. Their managed Agents and Runners stop accepting new work and shut
+          down asynchronously. The email address stays reserved; restoring the Human does not cancel that
+          shutdown.
+        revokes_the_agent_s_access_and_credentials_immediately_then: >-
+          Revokes the agent's access and credentials immediately, then force-stops related conversations
+          in the background.
+        remove: Remove
+        transfer_ownership: Transfer ownership
+        member_administration: Member administration
+        membership: Membership
+        the_steward_is_not_active_member_data_access_and: >-
+          The steward is not active: member/data access and new task admission are blocked until the steward
+          is reactivated or restored, or the agent is reassigned to an active steward. Existing exact-epoch
+          executor transport is not fenced by this steward state and may continue reconciliation.
+        steward: Steward
+        this_agent_membership_is_removed_its_access_and_credentials: >-
+          This agent membership is removed. Its access and credentials are revoked immediately, and related
+          conversations are force-stopped in the background. Its registration is retained for reconnecting.
+        this_membership_is_removed_their_own_access_ended_immediately: >-
+          This membership is removed. Their own access ended immediately and the email address stays reserved.
+          Agents and Runners they manage are shutting down; restoring the Human does not cancel that shutdown.
+        the_owner_cannot_be_administered_ownership_moves_only_through: The owner cannot be administered.
+          Ownership moves only through an explicit transfer.
+        you_cannot_administer_your_own_membership: You cannot administer your own membership.
+        lifecycle: Lifecycle
+        ownership: Ownership
+        suspend_member_their_sessions_become_invalid_immediately: Suspend %{member}? Their sessions become
+          invalid immediately.
+        remove_member_its_credentials_stop_working_immediately_and_related: >-
+          Remove %{member}? Its credentials stop working immediately and related conversations are force-stopped
+          in the background.
+        remove_member_their_own_access_ends_immediately_and_agents: >-
+          Remove %{member}? Their own access ends immediately, and Agents and Runners they manage begin
+          shutting down. Restoring them later does not cancel that shutdown.
+        you_become_an_administrator_member_becomes_the_owner: You become an administrator; %{member} becomes
+          the owner.
+        transfer_ownership_to_member_you_will_become_an_administrator: Transfer ownership to %{member}?
+          You will become an administrator.
+      stewards:
+        show:
+          reassign_steward: Reassign steward
+          assign: Assign
+          steward_candidates_pages: Steward candidates pages
+          reassignment_keeps_the_agent_removed_and_its_old_credentials: >-
+            Reassignment keeps the Agent removed and its old credentials invalid. The new steward can
+            restore it and reconnect the program.
+          current_steward: Current steward
+          no_matching_members: No matching members
+          try_a_different_name_or_email_address: Try a different name or email address.
+          assign_member_as_steward: Assign %{member} as steward
+          choose_the_active_human_member_responsible_for_member: Choose the active human member responsible
+            for %{member}.

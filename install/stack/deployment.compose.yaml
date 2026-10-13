@@ -1,0 +1,35 @@
+# Managed overlay: application activation writes both immutable references to
+# images.env. Ordinary starts must use the same references as the updater.
+x-nexus-image: &nexus-image
+  image: "${CYBROS_NEXUS_IMAGE:-${CYBROS_NEXUS_IMAGE_REPOSITORY:-jasl123/cybros-nexus}:${CYBROS_IMAGE_TAG:-latest}}"
+
+# Unset uses Nexus's loopback/private-network callback defaults. An explicit
+# dotenv list remains authoritative, including over an older base Compose file.
+x-nexus-environment: &nexus-environment
+  NEXUS_OAUTH_REDIRECT_URIS:
+
+services:
+  data_init:
+    <<: *nexus-image
+  migrator:
+    <<: *nexus-image
+    environment: *nexus-environment
+  nexus:
+    <<: *nexus-image
+    environment:
+      <<: *nexus-environment
+      NEXUS_DEPLOYMENT_SOCKET: /run/cybros-updater/updater.sock
+    volumes:
+      - ./data/updater-ipc:/run/cybros-updater
+  jobs:
+    <<: *nexus-image
+    environment: *nexus-environment
+  model_runner:
+    <<: *nexus-image
+    environment: *nexus-environment
+  rho:
+    image: "${CYBROS_RHO_IMAGE:-${CYBROS_RHO_IMAGE_REPOSITORY:-jasl123/cybros-rho}:${CYBROS_IMAGE_TAG:-latest}}"
+    environment:
+      RHO_DEPLOYMENT_SOCKET: /run/cybros-updater/updater.sock
+    volumes:
+      - ./data/updater-ipc:/run/cybros-updater

@@ -1,0 +1,10 @@
+module Rho
+  module ExecutionPolicy
+    PROMPT: String
+    MESSAGING: String
+    MESSAGING_DIRECT: String
+    def self.messaging: (subagent: bool) -> String
+    def self.context: (kind: String) -> String
+    def self.context_block: () -> Hash[String, String]
+  end
+end

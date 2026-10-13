@@ -1,0 +1,41 @@
+module Rho
+  module Codemode
+    VERSION: String
+    NAME: String
+    def self.register: (untyped api) -> void
+
+    class State < Data
+      attr_reader status: String
+      attr_reader requests: Array[Hash[String, untyped]]
+      attr_reader pending: Array[String]
+      attr_reader result: Hash[String, untyped]?
+      attr_reader error: Hash[String, untyped]?
+    end
+
+    class Runtime
+      def initialize: (?timeout_ms: Integer, ?heap_bytes: Integer) -> void
+      def call: (program: Hash[String, untyped], ?cancelled: ^() -> bool) ?{ (State) -> Array[Hash[String, untyped]] } -> State
+    end
+
+    class Authoring
+      class Declaration < Data
+        attr_reader name: String
+        attr_reader canonical: String
+        attr_reader input_schema: Hash[String, untyped]
+      end
+      INSTRUCTIONS: String
+      def self.catalog: (tools: Array[untyped]) -> Array[Declaration]
+    end
+
+    class Code
+      NAME: String
+      BINDING_ID: String
+      DESCRIPTION: String
+      SCHEMA: Hash[String, untyped]
+      EFFECT_PROFILE: Hash[String, untyped]
+      PROMPT_SNIPPET: String
+      def initialize: (env: untyped) -> void
+      def call: (Hash[String, untyped] args) -> untyped
+    end
+  end
+end

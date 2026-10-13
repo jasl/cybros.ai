@@ -1,0 +1,59 @@
+<section class="rounded-box border border-base-300 bg-base-200" aria-label="<%= model_default_copy("context_limits") %>">
+  <h2 class="p-4 text-sm font-medium"><%= model_default_copy("context_limits") %></h2>
+  <p class="px-4 pb-3 text-xs text-base-content/60"><%= model_default_copy("leave_fields_blank_to_use_protocol_defaults_enter_the") %></p>
+  <% [["input_tokens", model_default_copy("input_token_limit")], ["output_tokens", model_default_copy("output_token_limit")], ["combined_input_output_tokens", model_default_copy("combined_context_window")], ["effective_input_tokens", model_default_copy("advisory_input_threshold")]].each do |attribute, label| %>
+    <% limit = defaults.fetch("limits").fetch(attribute) %>
+    <% hint_id = f.field_id(attribute, :default) %>
+    <%= render "shared/form_row", form: f, attribute: attribute, label: label, description: { "combined_input_output_tokens" => model_default_copy("a_shared_input_output_window_clear_the_separate_input"), "effective_input_tokens" => model_default_copy("optional_planning_threshold_at_or_below_the_input_or") }[attribute] do %>
+      <%= validated_field f, :number_field, attribute, form.errors[attribute], min: 1, step: 1, size: :sm, placeholder: limits_overridden ? "" : limit.fetch("placeholder"),
+        aria: { invalid: form.errors[attribute].any?.to_s, describedby: [hint_id, (f.field_id(attribute, :errors) if form.errors[attribute].any?)].compact.join(" ") },
+        data: { model_definition_target: "limit", limit: attribute, action: "input->model-definition#limitsChanged change->model-definition#limitsChanged" } %>
+      <p id="<%= hint_id %>" class="mt-1 text-xs text-base-content/60" data-model-definition-target="limitHint" data-limit="<%= attribute %>"><%= limit.fetch(limits_overridden ? "overridden" : "inherited") %></p>
+    <% end %>
+  <% end %>
+  <div class="px-4 pb-4">
+    <%= button_tag model_default_copy("use_model_limits"), type: "button", class: "btn btn-sm btn-ghost", hidden: !limits_overridden,
+      data: { model_definition_target: "restoreLimits", action: "model-definition#useModelLimits" } %>
+  </div>
+</section>
+<section class="rounded-box border border-base-300 bg-base-200" aria-label="<%= model_default_copy("capabilities") %>">
+  <h2 class="p-4 text-sm font-medium"><%= model_default_copy("capabilities") %></h2>
+  <% [["tool_calls", model_default_copy("tool_calls")], ["streaming", model_default_copy("streaming")]].each do |attribute, label| %>
+    <% capability = defaults.fetch("booleans").fetch(attribute) %>
+    <% hint_id = f.field_id(attribute, :default) %>
+    <%= render "shared/form_row", form: f, attribute: attribute, label: label do %>
+      <%= f.select attribute, [[capability.fetch("label"), ""], [model_default_copy("supported"), "true"], [model_default_copy("disabled"), "false"]], {}, class: "select select-sm w-full",
+        aria: { describedby: hint_id }, data: { model_definition_target: "boolean", capability: attribute } %>
+      <p id="<%= hint_id %>" class="mt-1 text-xs text-base-content/60" data-model-definition-target="booleanHint" data-capability="<%= attribute %>"><%= capability.fetch("hint") %></p>
+    <% end %>
+  <% end %>
+</section>
+<section class="rounded-box border border-base-300 bg-base-200" aria-label="<%= model_default_copy("input_media") %>">
+  <h2 class="p-4 text-sm font-medium"><%= model_default_copy("input_media") %></h2>
+  <p class="px-4 pb-3 text-xs text-base-content/60"><%= model_default_copy("media_override_hint") %></p>
+  <% inherited = form.input_modalities_mode == "inherit" %>
+  <% selected_media = inherited ? defaults.fetch("media").fetch("values") : form.input_modalities %>
+  <%= render "shared/form_row", form: f, attribute: :input_modalities_mode, label: model_default_copy("media_mode") do %>
+    <%= f.select :input_modalities_mode, [[model_default_copy("media_inherit"), "inherit"], [model_default_copy("media_custom"), "custom"]], {}, class: "select select-sm w-full",
+      aria: { describedby: f.field_id(:input_modalities_mode, :default) }, data: { model_definition_target: "mediaMode", action: "change->model-definition#mediaModeChanged" } %>
+    <p id="<%= f.field_id(:input_modalities_mode, :default) %>" class="mt-1 text-xs text-base-content/60" data-model-definition-target="mediaHint">
+      <%= defaults.fetch("media").fetch(inherited ? "inherited" : "custom") %>
+      <%= model_default_copy("media_text_only_hint") if !inherited && selected_media.empty? %>
+    </p>
+  <% end %>
+  <%= hidden_field_tag "model_definition[input_modalities][]", "", id: nil %>
+  <div class="grid gap-3 px-4 py-4 sm:grid-cols-2">
+    <% Admin::ModelProviders::ModelForm::MEDIA_FIELDS.each do |kind| %>
+      <%= label_tag f.field_id(:input_modalities, kind), class: "label cursor-pointer justify-start gap-3 whitespace-normal text-sm" do %>
+        <%= check_box_tag "model_definition[input_modalities][]", kind, selected_media.include?(kind), id: f.field_id(:input_modalities, kind), disabled: inherited, class: "checkbox checkbox-sm",
+          data: { model_definition_target: "media", action: "change->model-definition#paintMedia" } %>
+        <%= t("admin.model_providers.model_definitions.form.media_types").fetch(kind.to_sym) %>
+      <% end %>
+    <% end %>
+  </div>
+  <div data-model-definition-target="extraMedia">
+    <% form.input_modalities.excluding(*Admin::ModelProviders::ModelForm::MEDIA_FIELDS).each do |kind| %>
+      <%= hidden_field_tag "model_definition[input_modalities][]", kind, id: nil, disabled: inherited %>
+    <% end %>
+  </div>
+</section>

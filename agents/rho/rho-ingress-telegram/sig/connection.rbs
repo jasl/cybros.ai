@@ -1,0 +1,30 @@
+module Rho
+  module IngressTelegram
+    class ConnectionState
+      def initialize: (store: Rho::StoreDocument) -> void
+      def read: () -> document
+      def change: () { (document) -> untyped } -> document
+      def bind: (String | Integer bot_id) ?{ () -> untyped } -> document
+      def stage: (update: document, agent_public_id: String?) -> document
+      def consumed: (Integer update_id) -> document
+    end
+
+    class Connection
+      attr_reader client: untyped
+      attr_reader state: ConnectionState
+      def initialize: (public_id: String, client: untyped, state: ConnectionState,
+        bindings: ^() -> Hash[String, untyped], log: untyped, ?clock: ^() -> Numeric,
+        ?admit_identity: (^(document) -> untyped)?) -> void
+      def bot: () -> document?
+      def status: () -> String
+      def identify: (document bot) -> document
+      def start: () -> void
+      def close: () -> void
+      def poll: () -> untyped
+      def consume: (document update) -> untyped
+      def ready?: (document entry, ?progress: bool) -> bool
+      def with_send: [T] (document entry, ?progress: bool) { (untyped) -> T } -> T?
+      def throttle: (Numeric seconds) -> document
+    end
+  end
+end

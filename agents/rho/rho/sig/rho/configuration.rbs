@@ -1,0 +1,79 @@
+module Rho
+  module Configuration
+    class Resolved < Data
+      attr_reader overrides: untyped
+      attr_reader value: untyped
+      attr_reader diagnostics: Array[Diagnostic]
+      def self.new: (overrides: untyped, value: untyped, diagnostics: Array[Diagnostic]) -> instance
+    end
+
+    class Diagnostic < Data
+      attr_reader path: Array[String]
+      attr_reader reason: String
+      attr_reader fallback: String
+      def self.new: (path: Array[String], reason: String, fallback: String) -> instance
+    end
+
+    class Secret < Data
+      attr_reader path: Array[String]
+      attr_reader set: bool
+      def self.new: (path: Array[String], set: bool) -> instance
+    end
+
+    class View < Data
+      attr_reader schema: Hash[String, untyped]
+      attr_reader overrides: Hash[String, untyped]
+      attr_reader value: Hash[String, untyped]
+      attr_reader diagnostics: Array[Diagnostic]
+      attr_reader secrets: Array[Secret]
+      def self.new: (schema: Hash[String, untyped], overrides: Hash[String, untyped], value: Hash[String, untyped], diagnostics: Array[Diagnostic], secrets: Array[Secret]) -> instance
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    def self.migrate: (untyped document, from: Integer, to: Integer, steps: Hash[Integer, ^(untyped) -> untyped]) -> untyped
+    def self.copy: (untyped value) -> untyped
+    def self.load_migrations: (String path) -> Hash[Integer, ^(untyped) -> untyped]
+
+    class Schema
+      attr_reader schema: Hash[String, untyped]
+      def initialize: (Hash[untyped, untyped] schema) -> void
+      def normalize: (untyped raw) -> Resolved
+      def edit: (untyped raw, operations: Array[Hash[untyped, untyped]]) -> Resolved
+      def view: (Resolved resolved) -> View
+
+      private
+
+      def public_value: (untyped value) -> Hash[String, untyped]
+      def write: (Hash[String, untyped] document, Array[String] path, untyped value) -> untyped
+      def remove: (Hash[String, untyped] document, Array[String] path) -> untyped
+    end
+
+    class Node
+      MISSING: Object
+      TYPES: Array[String]
+      KEYWORDS: Array[String]
+      OBJECT: untyped
+
+      def initialize: (Hash[String, untyped] schema) -> void
+      def object?: () -> bool
+      def object_value?: (untyped value) -> bool
+      def child: (String key) -> Node
+      def at: (Array[String] path) -> Node
+      def resolve: (untyped raw, Array[String] path) -> Resolved
+      def public_schema: (?bool inherited_secret) -> Hash[String, untyped]
+      def redact: (untyped value) -> untyped
+      def secret_fields: (untyped value, Array[String] path, Array[Secret] result) -> Array[Secret]
+
+      private
+
+      def public_annotation: (untyped value) -> untyped
+      def validation_schema: () -> Hash[String, untyped]
+      def resolve_object: (Hash[String, untyped] raw, Array[String] path) -> Resolved
+      def resolve_array: (Array[untyped] raw, Array[String] path) -> Resolved
+      def fallback: (Array[Diagnostic] diagnostics, Array[String] path) -> Resolved
+      def reason: (untyped raw) -> String
+      def diagnostic: (Array[String] path, String reason) -> Diagnostic
+      def secret?: () -> bool
+    end
+  end
+end

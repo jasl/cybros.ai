@@ -1,0 +1,476 @@
+{
+  "pass": [
+    {
+      "reply": "lib/charlie.rb",
+      "why": "Bare one-line answer naming only charlie.rb; alpha.rb and bravo.rb never appear."
+    },
+    {
+      "reply": "Answer: `lib/charlie.rb`",
+      "why": "'Answer:' prefix with a code span; charlie.rb is the only file named."
+    },
+    {
+      "reply": "charlie.rb defines `run`.",
+      "why": "Path without lib/; charlie.rb is named as the definer and no other file is mentioned."
+    },
+    {
+      "reply": "Only lib/charlie.rb defines a method called `run`.",
+      "why": "Exclusive claim naming charlie.rb alone."
+    },
+    {
+      "reply": "I read lib/alpha.rb, lib/bravo.rb and lib/charlie.rb. Only lib/charlie.rb defines `run`.",
+      "why": "alpha.rb/bravo.rb appear only in the reading list; the following sentence is an exclusive claim for charlie.rb."
+    },
+    {
+      "reply": "`lib/charlie.rb` defines `run` (`Charlie.run`). `lib/alpha.rb` defines `start`, and `lib/bravo.rb` defines `go`.",
+      "why": "alpha.rb and bravo.rb are each paired with their real method (start, go), never with run."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb and lib/bravo.rb do not.",
+      "why": "alpha.rb and bravo.rb are explicitly negated."
+    },
+    {
+      "reply": "| File | Method |\n|---|---|\n| lib/alpha.rb | `start` |\n| lib/bravo.rb | `go` |\n| lib/charlie.rb | `run` |\n\n`lib/charlie.rb` is the only file that defines `run`.",
+      "why": "Table maps alpha.rb->start, bravo.rb->go, charlie.rb->run; followed by an exclusive claim."
+    },
+    {
+      "reply": "| File | Defines `run`? |\n|---|---|\n| alpha.rb | No (`start`) |\n| bravo.rb | No (`go`) |\n| charlie.rb | Yes |",
+      "why": "Yes/No table under a column header naming run: only the charlie.rb row says Yes; alpha/bravo rows say No with their real methods."
+    },
+    {
+      "reply": "## Files defining `run`\n\n- `lib/charlie.rb`\n\n## Other files\n\n- `lib/alpha.rb` — `Alpha.start`\n- `lib/bravo.rb` — `Bravo.go`",
+      "why": "The heading that names run lists only charlie.rb; alpha/bravo sit under a second heading paired with start/go."
+    },
+    {
+      "reply": "Files defining `run`:\n- lib/charlie.rb\n\nlib/alpha.rb defines `start` and lib/bravo.rb defines `go`.",
+      "why": "List under the run heading holds only charlie.rb; alpha/bravo appear afterwards with their real methods."
+    },
+    {
+      "reply": "`run` is defined only in lib/charlie.rb.",
+      "why": "Token before the name, with 'only' making it exclusive; no other file named."
+    },
+    {
+      "reply": "Neither lib/alpha.rb nor lib/bravo.rb defines `run`; lib/charlie.rb does (`def self.run = \"charlie\"`).",
+      "why": "Neither/nor negation of alpha/bravo, then charlie.rb affirmed; quoted source line matches the fixture."
+    },
+    {
+      "reply": "`run` is not in alpha.rb or bravo.rb — only in charlie.rb.",
+      "why": "Token before the names but negated for alpha/bravo; exclusive for charlie.rb."
+    },
+    {
+      "reply": "status:    completed\nOnly **lib/charlie.rb** defines a method called `run`:\n\n- `lib/alpha.rb` → `Alpha.start`\n- `lib/bravo.rb` → `Bravo.go`\n- `lib/charlie.rb` → `Charlie.run` ✅",
+      "why": "Real-reply style with the status prefix: exclusive claim plus arrow list mapping each file to its real method."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb has `start` instead, and lib/bravo.rb has `go` instead.",
+      "why": "alpha/bravo mentioned only to say what they define instead."
+    },
+    {
+      "reply": "I opened all three files.\n\n`Alpha.start` lives in lib/alpha.rb and `Bravo.go` in lib/bravo.rb — neither is `run`.\n\nThe `run` method is in lib/charlie.rb: `def self.run = \"charlie\"`.",
+      "why": "Multi-paragraph: method code spans precede the file names for alpha/bravo, then an explicit 'neither is run'; charlie.rb affirmed last."
+    },
+    {
+      "reply": "Just `lib/charlie.rb`.",
+      "why": "'Just' is exclusive; charlie.rb is the only file named."
+    },
+    {
+      "reply": "lib/charlie.rb is the only one of the three with a `run` method; lib/alpha.rb and lib/bravo.rb define `start` and `go` respectively.",
+      "why": "Exclusive claim; alpha/bravo paired with start/go via 'respectively'."
+    },
+    {
+      "reply": "The answer is charlie.rb — `Charlie.run`. alpha.rb → `Alpha.start`, bravo.rb → `Bravo.go`.",
+      "why": "charlie.rb named as the answer; alpha/bravo arrow-mapped to their real methods."
+    },
+    {
+      "reply": "- lib/alpha.rb: no `run` (defines `start`)\n- lib/bravo.rb: no `run` (defines `go`)\n- lib/charlie.rb: yes, `run`",
+      "why": "The run token appears on the alpha/bravo lines but negated ('no `run`'); only charlie.rb gets 'yes'."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb does not define `run`; it defines `start`. lib/bravo.rb doesn't either — it defines `go`.",
+      "why": "Anaphora is negated ('doesn't either'); alpha/bravo also paired with start/go."
+    },
+    {
+      "reply": "Unlike lib/alpha.rb (`start`) and lib/bravo.rb (`go`), lib/charlie.rb defines `run`.",
+      "why": "'Unlike' contrast with the real methods in parentheses; only charlie.rb defines run."
+    },
+    {
+      "reply": "### Answer\n\n`lib/charlie.rb` defines `run`.\n\n### Details\n\n| File | Method |\n|---|---|\n| `lib/alpha.rb` | `Alpha.start` |\n| `lib/bravo.rb` | `Bravo.go` |\n| `lib/charlie.rb` | `Charlie.run` |",
+      "why": "Headings plus a table whose Method column pairs alpha/bravo with Alpha.start/Bravo.go."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run` — not lib/alpha.rb, not lib/bravo.rb.",
+      "why": "alpha/bravo appear only in 'not X' negations."
+    },
+    {
+      "reply": "No `run` in lib/alpha.rb or lib/bravo.rb; lib/charlie.rb defines it.",
+      "why": "Negated token before alpha/bravo; charlie.rb affirmed via 'it'."
+    },
+    {
+      "reply": "You asked which of lib/alpha.rb, lib/bravo.rb and lib/charlie.rb defines `run`: it is lib/charlie.rb alone.",
+      "why": "Restates the question (alpha.rb ... defines `run` appear in one clause) but the answer is charlie.rb with 'alone'."
+    },
+    {
+      "reply": "Of the three, only **`lib/charlie.rb`** defines `run`. `lib/alpha.rb` and `lib/bravo.rb` define other methods.",
+      "why": "Exclusive claim; alpha/bravo said to define other (unnamed) methods, which is true."
+    },
+    {
+      "reply": "**lib/charlie.rb** defines `run`:\n\n```ruby\nmodule Charlie\n  def self.run = \"charlie\"\nend\n```\n\nThe other two files define `Alpha.start` (lib/alpha.rb) and `Bravo.go` (lib/bravo.rb).",
+      "why": "Code block for charlie.rb; alpha/bravo appear after their real methods in parentheses (method before file)."
+    },
+    {
+      "reply": "The only file with a `run` method is charlie.rb. (alpha.rb → `Alpha.start`, bravo.rb → `Bravo.go`)",
+      "why": "Exclusive claim, then a parenthetical mapping alpha/bravo to start/go."
+    },
+    {
+      "reply": "status:    completed\n**lib/charlie.rb** defines the method `run`:\n\n- `lib/alpha.rb` defines `self.start` — no `run`\n- `lib/bravo.rb` defines `self.go` — no `run`\n- `lib/charlie.rb` defines `self.run` (returns `\"charlie\"`) ✅",
+      "why": "Real-reply style: alpha/bravo lines contain the run token only inside 'no `run`', beside their real methods."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb defines neither `go` nor `run`.",
+      "why": "The denial nearest `run` ('nor') governs it with no clause boundary between them."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb defines `start`. It does not define `run`.",
+      "why": "The pronoun clause after alpha.rb denies `run`; a carried clause can only tie, so alpha.rb stays with its own method."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb defines `start`; it has no `run`.",
+      "why": "The clause after the semicolon denies `run` of alpha.rb; alpha.rb stays with its own method."
+    },
+    {
+      "reply": "I checked lib/alpha.rb, lib/bravo.rb and lib/charlie.rb for `run`. Only lib/charlie.rb has it.",
+      "why": "`run` is what was searched for, not what a file says; the exclusive claim for charlie.rb covers the list."
+    },
+    {
+      "reply": "I looked through lib/alpha.rb, lib/bravo.rb and lib/charlie.rb for a method named `run`. It's only in lib/charlie.rb.",
+      "why": "The token is what was searched for; the next sentence claims charlie.rb exclusively."
+    },
+    {
+      "reply": "Searching lib/alpha.rb, lib/bravo.rb and lib/charlie.rb for `def self.run`: only lib/charlie.rb matches.",
+      "why": "The searched-for definition ties no file; 'only lib/charlie.rb' is the exclusive claim."
+    },
+    {
+      "reply": "## Which file defines `run`?\n\nOnly **lib/charlie.rb**. I read lib/alpha.rb and lib/bravo.rb too.",
+      "why": "A heading scopes its items, not a sentence with words of its own; the reading list carries no claim beside the exclusive answer."
+    },
+    {
+      "reply": "## `run`\n\nOnly lib/charlie.rb defines it. lib/alpha.rb and lib/bravo.rb were read as well.",
+      "why": "The sentence under the heading has its own words ('were read'); charlie.rb is claimed exclusively."
+    },
+    {
+      "reply": "Only lib/charlie.rb defines `run`.\n\nTo check for `run`, I read:\n- lib/alpha.rb\n- lib/bravo.rb",
+      "why": "The lead-in names `run` only as what was searched for, so its items are a reading list under an exclusive claim."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb defines `start`, which does something else.",
+      "why": "'does something else' is a verb with its own object, not a pro-verb for `run`."
+    },
+    {
+      "reply": "| File | What it does |\n|---|---|\n| lib/alpha.rb | defines `Alpha.start` |\n| lib/bravo.rb | defines `Bravo.go` |\n| lib/charlie.rb | defines `Charlie.run` |\n\nOnly lib/charlie.rb defines `run`.",
+      "why": "The column header 'What it does' is a label, not a pro-verb; each row pairs a file with its own method."
+    },
+    {
+      "reply": "Only lib/charlie.rb. lib/alpha.rb does `start` and lib/bravo.rb does `go`.",
+      "why": "'does `start`' has its own object; alpha.rb and bravo.rb are paired with their own methods."
+    }
+  ],
+  "fail": [
+    {
+      "reply": "lib/alpha.rb defines a method called `run`.",
+      "why": "Wrong file (alpha.rb defines start); charlie.rb never named."
+    },
+    {
+      "reply": "**`lib/bravo.rb`** defines `run` (`Bravo.run`).",
+      "why": "Wrong file (bravo.rb defines go); charlie.rb never named."
+    },
+    {
+      "reply": "All three files define `run`: lib/alpha.rb, lib/bravo.rb and lib/charlie.rb.",
+      "why": "Names all three as definers."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb does too.",
+      "why": "Anaphora: 'does too' attributes run to alpha.rb."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`, and so does bravo.rb.",
+      "why": "Anaphora: 'so does bravo.rb' attributes run to bravo.rb."
+    },
+    {
+      "reply": "Both lib/alpha.rb and lib/charlie.rb define a method called `run`.",
+      "why": "'Both ... and ...' puts alpha.rb among the definers."
+    },
+    {
+      "reply": "Files defining `run`:\n- lib/charlie.rb\n- lib/bravo.rb",
+      "why": "bravo.rb listed under a heading that names run."
+    },
+    {
+      "reply": "`run` is defined in charlie.rb and alpha.rb.",
+      "why": "Token before the names; alpha.rb included."
+    },
+    {
+      "reply": "| File | Defines `run`? |\n|---|---|\n| lib/alpha.rb | yes |\n| lib/bravo.rb | no |\n| lib/charlie.rb | yes |",
+      "why": "Table marks alpha.rb 'yes' for defining run."
+    },
+    {
+      "reply": "| File | Method |\n|---|---|\n| lib/alpha.rb | `run` |\n| lib/bravo.rb | `go` |\n| lib/charlie.rb | `run` |",
+      "why": "Table maps alpha.rb to run."
+    },
+    {
+      "reply": "Answer: lib/alpha.rb",
+      "why": "Wrong one-line answer; charlie.rb never named."
+    },
+    {
+      "reply": "None of the three files defines a method called `run`.",
+      "why": "Never names charlie.rb (and the claim is false)."
+    },
+    {
+      "reply": "Only lib/bravo.rb defines `run`.",
+      "why": "Exclusive claim for the wrong file; charlie.rb never named."
+    },
+    {
+      "reply": "Only lib/charlie.rb and lib/alpha.rb define `run`.",
+      "why": "'Only' is present but the exclusive set includes alpha.rb."
+    },
+    {
+      "reply": "## Files that define `run`\n\n1. `lib/charlie.rb`\n2. `lib/alpha.rb`",
+      "why": "alpha.rb is item 2 of a numbered list under a heading naming run."
+    },
+    {
+      "reply": "lib/alpha.rb, lib/bravo.rb and lib/charlie.rb all define `run`.",
+      "why": "'all define' covers alpha and bravo."
+    },
+    {
+      "reply": "`Charlie.run` is in lib/charlie.rb, and `Alpha.run` is in lib/alpha.rb.",
+      "why": "Code span `Alpha.run` attributes run to alpha.rb."
+    },
+    {
+      "reply": "Here is what each file defines:\n\n- `lib/alpha.rb` — `Alpha.run`\n- `lib/bravo.rb` — `Bravo.go`\n- `lib/charlie.rb` — `Charlie.run` ✅",
+      "why": "Real-reply list style, but alpha.rb's bullet says `Alpha.run`."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run` (`Charlie.run`). lib/bravo.rb also defines `run` alongside `go`.",
+      "why": "bravo.rb is paired with its real method go but also said to define run."
+    },
+    {
+      "reply": "I read the three files.\n\nlib/charlie.rb defines `run` as an endless method returning \"charlie\".\n\nlib/bravo.rb defines one as well, `Bravo.run`.",
+      "why": "Multi-paragraph anaphora: 'defines one as well, `Bravo.run`'."
+    },
+    {
+      "reply": "Both charlie.rb and bravo.rb define it: `Charlie.run` and `Bravo.run`.",
+      "why": "'Both ... and ... define it' where 'it' is run; bravo.rb included."
+    },
+    {
+      "reply": "Answer: `run` is defined in lib/alpha.rb, lib/bravo.rb, and lib/charlie.rb.",
+      "why": "Answer prefix, token before names, all three named."
+    },
+    {
+      "reply": "**lib/alpha.rb** is the one that defines a method called `run` — its `Alpha.run` returns `\"alpha\"`.",
+      "why": "Real-reply phrasing with the wrong file; charlie.rb never named."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`; lib/alpha.rb defines `start` and `run`.",
+      "why": "alpha.rb is paired with its real method start but also with run."
+    },
+    {
+      "reply": "Only lib/charlie.rb defines `run`.\n\nCorrection: lib/bravo.rb defines `run` as well.",
+      "why": "Opens with the right exclusive claim, then retracts it by attributing run to bravo.rb."
+    },
+    {
+      "reply": "| | alpha.rb | bravo.rb | charlie.rb |\n|---|---|---|---|\n| defines `run` | ✅ | ❌ | ✅ |",
+      "why": "Transposed table: the run row checks alpha.rb."
+    },
+    {
+      "reply": "Two of them do: lib/charlie.rb and lib/bravo.rb.",
+      "why": "'Two of them do' refers back to the question; bravo.rb included."
+    },
+    {
+      "reply": "lib/charlie.rb and lib/alpha.rb",
+      "why": "Bare answer listing alpha.rb beside charlie.rb."
+    },
+    {
+      "reply": "`lib/bravo.rb`",
+      "why": "Bare wrong answer; charlie.rb never named."
+    },
+    {
+      "reply": "Files defining `run`:\n\n* alpha.rb\n* charlie.rb\n\nbravo.rb defines `go`.",
+      "why": "alpha.rb listed under the run heading (bravo.rb correctly paired with go)."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`, as does lib/alpha.rb.",
+      "why": "Anaphora 'as does lib/alpha.rb'."
+    },
+    {
+      "reply": "The `run` method is defined in both `lib/alpha.rb` (`Alpha.run`) and `lib/charlie.rb` (`Charlie.run`); `lib/bravo.rb` only has `Bravo.go`.",
+      "why": "alpha.rb named as a definer; bravo.rb's 'only has' exclusivity is about go, not run."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. Same for bravo.rb.",
+      "why": "Anaphora 'Same for bravo.rb'."
+    },
+    {
+      "reply": "status:    completed\n**lib/bravo.rb** is the one that defines a method called `run`.",
+      "why": "Status-prefixed real-reply style naming the wrong file; charlie.rb never named."
+    },
+    {
+      "reply": "lib/alpha.rb: `run`\nlib/bravo.rb: `go`\nlib/charlie.rb: `run`",
+      "why": "Colon mapping assigns run to alpha.rb."
+    },
+    {
+      "reply": "Only the `Charlie` module defines `run` (`Charlie.run`).",
+      "why": "Names the module but never the file charlie.rb; per the rule a reply that never names charlie.rb fails."
+    },
+    {
+      "reply": "lib/alpha.rb and lib/bravo.rb don't define `run`.",
+      "why": "Only negations; never names charlie.rb."
+    },
+    {
+      "reply": "Not just lib/charlie.rb — lib/bravo.rb also defines `run`.",
+      "why": "'Not just' negates exclusivity and bravo.rb is said to define run."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`, and it isn't the only one: lib/alpha.rb does as well.",
+      "why": "Negated exclusivity plus anaphora 'does as well' for alpha.rb."
+    },
+    {
+      "reply": "lib/charlie.rb and lib/alpha.rb define `run`; lib/bravo.rb does not.",
+      "why": "bravo.rb correctly negated, but alpha.rb is a subject of 'define `run`'."
+    },
+    {
+      "reply": "Methods named `run` found in:\n  - charlie.rb (`Charlie.run`)\n  - bravo.rb (`Bravo.run`)\n\nalpha.rb only has `Alpha.start`.",
+      "why": "bravo.rb listed under a heading naming run (alpha.rb correctly paired with start)."
+    },
+    {
+      "reply": "lib/alpha.rb defines `run`; lib/charlie.rb defines `start`.",
+      "why": "Swaps the files: alpha.rb gets run, charlie.rb gets start."
+    },
+    {
+      "reply": "**Defines `run`:** lib/charlie.rb, lib/alpha.rb\n**Doesn't:** lib/bravo.rb",
+      "why": "Bold inline heading naming run lists alpha.rb."
+    },
+    {
+      "reply": "`run`: lib/charlie.rb, lib/bravo.rb",
+      "why": "Token-then-colon list includes bravo.rb."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb does not define `start` but defines `run`.",
+      "why": "The 'not' denies `start`; 'but' turns the sentence, and alpha.rb is still said to define `run`."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb has no `start` but has `run`.",
+      "why": "The 'no' denies `start`; after 'but' alpha.rb is said to have `run`."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`, and lib/alpha.rb, which lacks tests, defines `run` too.",
+      "why": "'lacks' speaks of tests in a relative clause; alpha.rb is still said to define `run` too."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. Not surprisingly, there is an `Alpha.run` too.",
+      "why": "The interjection's 'Not' is cut off by the comma; `Alpha.run` is spelled outside any denial."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb defines `start`. It also defines `run`.",
+      "why": "'It' is alpha.rb, the last file named; the pronoun's clause ties it to `run`."
+    },
+    {
+      "reply": "lib/alpha.rb defines `start`; it also defines `run`. lib/charlie.rb defines `run`.",
+      "why": "The clause after the semicolon says alpha.rb also defines `run`."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb defines `start`; `run` as well.",
+      "why": "'`run` as well' elides the predicate and adds `run` to alpha.rb."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb defines `start`. Also `run`.",
+      "why": "'Also `run`.' adds `run` to alpha.rb, the file the sentence before named."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. `Alpha#run` is defined as well.",
+      "why": "`Alpha#run` spells a wrong owner with the token in the instance-method form."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. There's also `Alpha::run`.",
+      "why": "`Alpha::run` spells a wrong owner with the token in the scope form."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. `alpha.run` also exists.",
+      "why": "`alpha.run` spells a wrong owner with the token in lower case."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. `Alpha.run` is there too, though not documented.",
+      "why": "The 'not' speaks of documentation after a boundary; `Alpha.run` is still claimed."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. `Alpha.run` exists, not `Alpha.start`.",
+      "why": "The denial after the comma is of `Alpha.start`; `Alpha.run` is said to exist."
+    }
+  ],
+  "undetermined": [
+    {
+      "reply": "I read lib/alpha.rb, lib/bravo.rb and lib/charlie.rb. lib/charlie.rb defines `run`.",
+      "why": "Same as the exclusive pass case minus 'only': alpha/bravo appear with no method, no negation and no exclusive claim."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. I also looked at lib/alpha.rb.",
+      "why": "alpha.rb mentioned as read; nothing said about what it defines."
+    },
+    {
+      "reply": "`lib/charlie.rb` defines `run` (`Charlie.run`). `lib/alpha.rb` is a small module as well.",
+      "why": "'as well' attaches to 'small module', not run; no method, negation or exclusivity for alpha.rb."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`.\n\n- lib/alpha.rb\n- lib/bravo.rb\n- lib/charlie.rb ✅",
+      "why": "Bare file list after a sentence (not a run heading); only charlie.rb carries a check, alpha/bravo carry nothing."
+    },
+    {
+      "reply": "charlie.rb defines `run`. What about alpha.rb? I'm not sure.",
+      "why": "Explicit uncertainty about alpha.rb; neither affirmed nor negated."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`, and lib/alpha.rb is similar.",
+      "why": "'similar' neither names a method nor negates run for alpha.rb."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb and lib/bravo.rb each define a single module method.",
+      "why": "True, but the method is unnamed and run is neither affirmed nor denied for alpha/bravo."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. See lib/alpha.rb for comparison.",
+      "why": "alpha.rb pointed to with no claim about its method."
+    },
+    {
+      "reply": "Files: lib/alpha.rb, lib/bravo.rb, lib/charlie.rb. `run` is in lib/charlie.rb.",
+      "why": "The 'Files:' heading does not name run; no exclusivity on the run sentence."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. lib/alpha.rb has a method returning `\"alpha\"`.",
+      "why": "alpha.rb's method is described by its return value, not its name; run neither affirmed nor denied."
+    },
+    {
+      "reply": "**lib/charlie.rb** defines `run`.\n\nlib/bravo.rb — worth a second look.",
+      "why": "bravo.rb flagged without any method, negation or exclusivity."
+    },
+    {
+      "reply": "Not surprisingly, lib/alpha.rb defines `run` too, as does lib/charlie.rb.",
+      "why": "The 'Not' is an interjection a comma cuts off from alpha.rb, so it denies nothing; the tie behind it is not trusted either."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`; so, not surprisingly, does lib/alpha.rb.",
+      "why": "The 'not' belongs to an interjection cut off by commas; the pro-verb behind it is not trusted either."
+    },
+    {
+      "reply": "No — lib/alpha.rb defines `run`, and so does lib/charlie.rb.",
+      "why": "The 'No' is cut off by the dash, so it denies nothing; the tie behind a far negation is not trusted either."
+    },
+    {
+      "reply": "No doubt: lib/alpha.rb defines `run`, and lib/charlie.rb defines `run`.",
+      "why": "'No doubt:' is cut off by the colon, so it denies nothing; the tie behind a far negation is not trusted either."
+    },
+    {
+      "reply": "lib/charlie.rb defines `run`. Never mind the naming, lib/alpha.rb defines `run` too.",
+      "why": "'Never mind' is cut off by the comma, so it denies nothing; the tie behind a far negation is not trusted either."
+    },
+    {
+      "reply": "I checked lib/alpha.rb, lib/bravo.rb and lib/charlie.rb for `run`. lib/charlie.rb has it.",
+      "why": "`run` is only what was searched for, and charlie.rb has it without an exclusive claim, so the other namings are unread."
+    }
+  ]
+}

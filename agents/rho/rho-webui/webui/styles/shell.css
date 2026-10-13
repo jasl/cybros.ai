@@ -1,0 +1,201 @@
+/* The frame: sidebar | main | dock, the drawer and the dock's overlay modes. */
+.frame {
+  --sidebar-width: 280px; --dock-width: 0px; --dock-float-width: 45vw;
+  position: relative; display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--dock-width);
+  height: 100dvh; overflow: hidden; background: var(--bg);
+  transition: grid-template-columns var(--dur-slow) var(--ease);
+}
+.frame--dragging { transition: none; user-select: none; cursor: col-resize; }
+/* Explicit columns: a hidden sidebar must not let the main column slide into
+   its empty track. */
+.frame > .sidebar { grid-column: 1; grid-row: 1; }
+.frame__main { grid-column: 2; grid-row: 1; position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.frame > .dock { grid-column: 3; grid-row: 1; }
+.frame__panels { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.frame__panels > * { flex: 1 1 auto; min-height: 0; }
+/* While the sidebar is hidden, pages leave room above their content for
+   the floating "Open sidebar" control. */
+.frame__leading { position: absolute; top: 11px; left: 12px; z-index: 15; }
+.frame__handle {
+  position: absolute; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 11; border-radius: var(--radius-xs);
+  transition: background var(--dur-fast) var(--ease);
+}
+.frame__handle:first-of-type { left: calc(var(--sidebar-width) - 4px); }
+.frame__handle:nth-of-type(2) { right: calc(var(--dock-width) - 4px); }
+.frame__handle:hover, .frame__handle:focus-visible { background: var(--hover-strong); outline: none; }
+.frame__handle:focus-visible { background: var(--accent); opacity: .6; }
+.frame__scrim { position: fixed; inset: 0; z-index: 29; background: var(--scrim); border: 0; }
+
+/* Sidebar. Every row puts its icon on one column — 16px wide, centred 28px
+   from the sidebar's edge — so the rail (56px, items 36px wide) shows the
+   same icons in the same places: 12px inset + 8px row padding + 8px here,
+   10px inset + 18px there. */
+.sidebar {
+  display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: 6px 12px; background: var(--sidebar);
+  border-right: .5px solid var(--line-3); font: 400 14px/22px var(--font-ui);
+}
+.sidebar__brand { display: flex; align-items: center; gap: 4px; height: 48px; flex: none; min-width: 0; }
+.sidebar__wordmark { padding-left: 8px; font: 600 15px/22px var(--font-ui); letter-spacing: .02em; }
+.sidebar__toggle, .sidebar__close { width: 36px; height: 36px; border-radius: var(--radius-md); }
+/* The workspace row reads as a select: the workspace's mark, its name and a
+   chevron inside one outlined row; the mark is 24px, so 4px of padding puts
+   its centre on the icon column. */
+.sidebar__workspace {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; height: 36px; margin: 0 0 12px; padding: 0 8px 0 4px; border: 0; flex: none;
+  border-radius: var(--radius-md); background: transparent; box-shadow: inset 0 0 0 .5px var(--line-3); color: var(--ink);
+  font: 500 14px/22px var(--font-ui); text-align: left; cursor: pointer; transition: background var(--dur-fast) var(--ease);
+}
+.sidebar__workspace:hover, .sidebar__workspace[aria-expanded="true"] { background: var(--hover); }
+.sidebar__workspace > .icon { color: var(--ink-3); flex: none; margin-left: auto; }
+.sidebar__workspace-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sidebar__close { display: none; }
+.sidebar__new {
+  display: flex; align-items: center; gap: 8px; height: 36px; margin: 0 0 12px; padding: 0 10px 0 8px; flex: none;
+  border-radius: var(--radius-md); font: 500 14px/22px var(--font-ui); color: var(--ink); background: var(--elevated);
+  box-shadow: inset 0 0 0 .5px var(--line-3); transition: background var(--dur-fast) var(--ease);
+}
+.sidebar__new:hover { background: var(--nav-hover); }
+.sidebar__panels { display: flex; flex-direction: column; gap: 4px; flex: none; }
+.sidebar__panels:empty { display: none; }
+.sidebar__panels:not(:empty) { margin-bottom: 8px; }
+.panel-row {
+  display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 7px 8px; border-radius: var(--radius-md); width: 100%;
+  font: 400 14px/22px var(--font-ui); color: var(--ink); text-align: left; transition: background var(--dur-fast) var(--ease);
+}
+.panel-row:hover, .panel-row[aria-current="page"] { background: var(--hover); }
+.panel-row .icon { color: var(--ink-2); }
+.panel-row__badge { margin-left: auto; }
+.sidebar__browser { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.sidebar__foot { display: flex; flex-direction: column; gap: 4px; flex: none; margin: 4px 0; }
+.sidebar__foot-row { display: flex; align-items: center; gap: 8px; }
+.sidebar__settings {
+  display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 10px 0 8px; border-radius: var(--radius-md); flex: 1 1 auto; min-width: 0;
+  font: 400 14px/22px var(--font-ui); color: var(--ink); text-align: left; transition: background var(--dur-fast) var(--ease);
+}
+.sidebar__settings:hover, .sidebar__settings[aria-current="page"] { background: var(--hover); }
+.sidebar__settings .icon { color: var(--ink-2); }
+.sidebar__connection { flex: none; }
+
+/* Rail: the same rows in the same order — the toggle, the workspace mark,
+   New, the panels, Settings — each a 36px square on the icon column. */
+.sidebar--rail { padding: 6px 10px; align-items: center; }
+.sidebar--rail .sidebar__brand { justify-content: center; }
+.sidebar--rail .sidebar__wordmark, .sidebar--rail .sidebar__brand .grow, .sidebar--rail .sidebar__workspace-name, .sidebar--rail .sidebar__workspace > .icon { display: none; }
+.sidebar--rail .sidebar__workspace { width: 36px; padding: 0; justify-content: center; box-shadow: none; }
+.sidebar--rail .sidebar__new { width: 36px; padding: 0; justify-content: center; box-shadow: none; background: transparent; }
+.sidebar--rail .sidebar__new:hover { background: var(--hover); }
+.sidebar--rail .sidebar__new-label, .sidebar--rail .sidebar__settings-label, .sidebar--rail .sidebar__browser, .sidebar--rail .sidebar__connection,
+.sidebar--rail .panel-row__label, .sidebar--rail .panel-row__badge { display: none; }
+.sidebar--rail .sidebar__panels { width: 100%; align-items: center; }
+.sidebar--rail .panel-row { width: 36px; height: 36px; min-height: 0; padding: 0; justify-content: center; }
+.sidebar--rail .sidebar__foot { margin-top: auto; width: 100%; align-items: center; }
+.sidebar--rail .sidebar__foot-row { justify-content: center; }
+.sidebar--rail .sidebar__settings { width: 36px; height: 36px; padding: 0; justify-content: center; flex: none; }
+
+/* Drawer (narrow viewports) */
+.frame[data-sidebar="hidden"] .sidebar { display: none; }
+.frame[data-sidebar="hidden"].frame--drawer .sidebar {
+  display: flex; position: fixed; inset: 0 auto 0 0; width: min(280px, 88vw); z-index: 30; box-shadow: var(--elev-prominent); border-right: 0;
+}
+.frame--drawer .sidebar__close { display: inline-flex; }
+.frame--drawer .sidebar__toggle { display: none; }
+
+/* Dock */
+.dock {
+  display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); border-left: .5px solid var(--line-3);
+}
+.dock--overlay {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 10; width: var(--dock-float-width); border-left: 0; box-shadow: var(--elev-prominent);
+}
+.dock--fullscreen { position: fixed; inset: 0; z-index: 40; width: auto; border-left: 0; }
+.dock__strip { display: flex; align-items: center; gap: 4px; padding: 10px 8px 0 8px; flex: none; }
+.dock__tabs { display: flex; gap: 4px; min-width: 0; flex: 1 1 auto; overflow-x: auto; scrollbar-width: none; }
+.dock__tabs::-webkit-scrollbar { display: none; }
+.dock__tab { position: relative; display: flex; align-items: center; height: 28px; min-width: 80px; max-width: 170px; border-radius: var(--radius-sm); flex: none; }
+.dock__tab + .dock__tab::before { content: ""; position: absolute; left: -2px; top: 7px; bottom: 7px; width: .5px; background: var(--line-2); }
+.dock__tab--active + .dock__tab::before, .dock__tab--active::before { display: none; }
+.dock__tab--active { background: var(--chip-active); }
+.dock__tab-button { display: flex; align-items: center; height: 100%; min-width: 0; flex: 1 1 auto; padding: 0 24px 0 10px; font: 400 13px/20px var(--font-ui); color: var(--ink-2); border-radius: inherit; }
+.dock__tab--active .dock__tab-button { color: var(--ink); }
+.dock__tab-title { overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent); }
+.dock__tab-close {
+  position: absolute; right: 4px; top: 4px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: var(--radius-xs); color: var(--ink-3); opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.dock__tab-close .icon { width: 12px; height: 12px; }
+.dock__tab:hover .dock__tab-close, .dock__tab--active .dock__tab-close, .dock__tab-close:focus-visible { opacity: 1; }
+.dock__tab-close:hover { background: var(--hover-strong); color: var(--ink); }
+.dock__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.dock__pane { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 12px 16px 24px; }
+.dock__guide { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 0 24px; margin: auto 0; transform: translateY(-5%); text-align: center; }
+.dock__guide-icon .icon { width: 56px; height: 56px; color: var(--line-4); }
+.dock__guide-title { font: 500 16px/24px var(--font-ui); }
+.dock__guide-description { font: 400 13px/20px var(--font-ui); color: var(--ink-3); max-width: 36ch; }
+.dock__guide-entries { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 360px; }
+.dock__guide-entry {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-xl); text-align: left; box-shadow: inset 0 0 0 .5px var(--line-3);
+  transition: background var(--dur-fast) var(--ease);
+}
+.dock__guide-entry:hover { background: var(--hover); }
+.dock__guide-entry:disabled { opacity: .5; }
+.dock__guide-glyph { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--module); flex: none; }
+.dock__guide-text { display: flex; flex-direction: column; min-width: 0; }
+.dock__guide-entry-title { font: 500 14px/22px var(--font-ui); }
+.dock__guide-entry-description { font: 400 13px/20px var(--font-ui); color: var(--ink-3); }
+
+/* The Settings page: the sections down one side, the chosen one beside them;
+   below 768px the sections become a row of chips over the section. */
+.settings-page { display: grid; grid-template-columns: 188px minmax(0, 1fr); gap: 24px; align-items: start; min-width: 0; }
+.settings-page__nav { display: flex; flex-direction: column; gap: 2px; min-width: 0; position: sticky; top: 0; }
+.settings-page__tab {
+  display: block; width: 100%; height: 36px; padding: 7px 12px; border-radius: var(--radius-md); font: 400 14px/22px var(--font-ui); text-align: left;
+  color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: background var(--dur-fast) var(--ease);
+}
+.settings-page__tab:hover { background: var(--nav-hover); }
+.settings-page__tab--active { background: var(--nav-active); }
+.settings-page__main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.settings-page__section-title { font: 500 16px/24px var(--font-ui); }
+.settings-page__content { min-width: 0; }
+.settings-page__content > * { display: flex; flex-direction: column; gap: 16px; }
+@media (max-width: 767px) {
+  .settings-page { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .settings-page__nav { flex-direction: row; flex-wrap: wrap; gap: 4px; position: static; }
+  .settings-page__tab { width: auto; height: 30px; padding: 4px 12px; border-radius: var(--radius-pill); font-size: 13px; }
+}
+
+/* Boot page */
+.boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: var(--bg); color: var(--ink); z-index: 50; }
+.boot__wordmark { font: 600 16px/24px var(--font-ui); letter-spacing: .08em; }
+.boot__spinner {
+  --boot-arc: 72deg; width: 20px; height: 20px; border-radius: 50%; position: relative;
+  background: conic-gradient(var(--ink) var(--boot-arc), transparent 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+  animation: spin .8s linear infinite;
+}
+.boot__spinner::before { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--line-2); }
+.boot__hint { font: 400 12px/18px var(--font-ui); color: var(--ink-3); }
+.boot__failure { font: 600 14px/22px var(--font-ui); }
+.boot__lines { list-style: none; display: flex; flex-direction: column; gap: 8px; max-width: 480px; font: 400 12px/18px var(--font-ui); color: var(--ink-3); }
+.boot__line--failed { color: var(--bad); }
+
+/* Login */
+.login { display: flex; flex-direction: column; gap: 12px; width: min(400px, 100% - 32px); margin: 10vh auto; }
+.login__brand { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.login__wordmark { font: 600 20px/28px var(--font-ui); letter-spacing: .04em; }
+.login__title { font: 500 20px/28px var(--font-ui); }
+.login__description { font: 400 14px/22px var(--font-ui); color: var(--ink-2); }
+.login__nexus { font-size: 12px; line-height: 18px; color: var(--ink-3); overflow-wrap: anywhere; }
+.login__progress { font: 400 13px/20px var(--font-ui); color: var(--ink-2); }
+.login__actions { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.login__gate { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.login__gate .btn--ghost { align-self: center; }
+.login__device { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: var(--radius-lg); background: var(--module); margin-top: 8px; }
+.login__device-title { font: 500 14px/22px var(--font-ui); }
+.login__code { display: inline-block; font: 500 24px/32px var(--font-code); letter-spacing: .08em; }
+
+.sidebar__bots { list-style: none; display: flex; flex-direction: column; gap: 4px; padding: 0 0 0 24px; }
+.sidebar__bots:not(:empty) { margin-top: 4px; }
+.sidebar__bot { display: flex; align-items: center; min-width: 0; border-radius: var(--radius-md); transition: background var(--dur-fast) var(--ease); }
+.sidebar__bot:hover, .sidebar__bot:focus-within { background: var(--hover); }
+.sidebar__bot-name { min-width: 0; flex: 1; text-align: left; padding: 7px 8px; border-radius: var(--radius-md); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar__bot:hover .sidebar__bot-name, .sidebar__bot:focus-within .sidebar__bot-name { color: var(--ink); }
+.sidebar__bot .btn--icon { width: 28px; height: 28px; flex: none; }

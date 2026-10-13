@@ -1,0 +1,91 @@
+schema_version: cybros.model_catalog.v1
+# Explicit model facts shared by provider routes. Serving limits may override
+# the complete limits block; protocol options and pricing stay on each route.
+model_definitions:
+  gpt-6-astra:
+    capabilities:
+      input_modalities: [image, file]
+      limits:
+        # The shared window, the price step as the planning bound, and the
+        # output ceiling (the gpt-6.1-sol row's notes).
+        combined_input_output_tokens: 1050000
+        effective_input_tokens: 272000
+        output_tokens: 128000
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: medium
+  gpt-image-2-2026-04-21:
+    capabilities:
+      input_modalities: [image]
+      limits:
+        result_count: 1
+  gpt-image-2.5-sunburst-2026-09-08:
+    capabilities:
+      input_modalities: [image]
+      limits:
+        result_count: 1
+  gpt-image-2.5-flare-2026-09-08:
+    capabilities:
+      input_modalities: [image]
+      limits:
+        result_count: 1
+  gpt-4o-mini-tts-2025-12-15:
+    capabilities:
+      limits:
+        input_bytes: 2000
+        # The Create Speech API's character bound. The deployment's
+        # input_bytes cap is narrower; the profile enforces both before IO.
+        input_characters: 4096
+  gpt-4o-mini-transcribe-2025-12-15:
+    capabilities:
+      input_modalities: [audio]
+  text-embedding-3-large:
+    capabilities:
+      limits:
+        input_tokens: 8191
+        input_bytes: 8191
+  gpt-6.1-sol:
+    capabilities:
+      input_modalities: [image, file]
+      limits:
+        # The hard window includes input and output. The documented
+        # 922,000 max input is the difference at maximum output, so it
+        # needs no separate copy. Keep the existing 272K planning bound
+        # at the long-context price step; it is a soft cap, not max input.
+        combined_input_output_tokens: 1050000
+        effective_input_tokens: 272000
+        output_tokens: 128000
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: medium
+  gpt-6-luna:
+    capabilities:
+      input_modalities: [image, file]
+      limits:
+        # The shared window, the price step as the planning bound, and the
+        # output ceiling (the gpt-6.1-sol row's notes).
+        combined_input_output_tokens: 1050000
+        effective_input_tokens: 272000
+        output_tokens: 128000
+      reasoning:
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: medium
+  gpt-image-2:
+    capabilities:
+      input_modalities: [image]
+      limits:
+        result_count: 1
+  gpt-6-sol:
+    capabilities:
+      input_modalities: [image]
+      limits:
+        # The long-context price step is the advisory input planning bound;
+        # the combined token window remains the hard limit.
+        combined_input_output_tokens: 1050000
+        effective_input_tokens: 272000
+        output_tokens: 128000
+      reasoning:
+        disable_supported: true
+        efforts: [low, medium, high, xhigh, max]
+        default_effort: medium
+        default_enabled: true

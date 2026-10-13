@@ -1,0 +1,11 @@
+module Rho
+  class ConversationTitles
+    INPUT_CHARACTERS: Integer
+    TITLE_CHARACTERS: Integer
+    WAIT_SECONDS: Integer
+    INSTRUCTIONS: String
+
+    def initialize: (config: Config | Config::Current, log: untyped, ?clock: ^() -> Time, ?sleeper: ^(Numeric) -> untyped) -> void
+    def accept: (policy: HostPolicy, conversation: untyped, input: untyped, text: String, model: String?, workspace: untyped, spawn: untyped, ?blocked: bool) -> nil
+  end
+end

@@ -1,0 +1,11 @@
+# Kimi uses the default tool names and prompt behavior; the row carries no text.
+# Its entry keeps moonshotai/kimi-k3 off the default row: a strong model reads a
+# row of its own, so a text measured for it never reaches a model on the default.
+format: 1
+row: kimi-k3
+models:
+  - moonshotai/kimi-k3
+tool_style: [nexus]
+tool_descriptions: []
+summarizer_prompt: null
+lead_hints: []

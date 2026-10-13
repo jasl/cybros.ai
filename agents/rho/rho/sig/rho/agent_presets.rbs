@@ -1,0 +1,70 @@
+module Rho
+  class AgentPresets
+    class Error < ArgumentError
+    end
+
+    NAMESPACE: String
+    KEY: String
+    MAX_PROMPT_BYTES: Integer
+    DEFAULT_CONFIGURATION: Hash[String, untyped]
+    MODEL_SCHEMA: Hash[String, untyped]
+    TOOL_NAMES_SCHEMA: Hash[String, untyped]
+    MEMORY_SCOPES: Array[String]
+    MEMORY_LIMIT_SCHEMA: Hash[String, untyped]
+    CONFIGURATION_SCHEMA: Hash[String, untyped]
+    AUTHORED_SCHEMA: untyped
+    ROLE_SCHEMA: untyped
+    SEEDS: Array[Hash[String, untyped]]
+
+    class Role < ::Data
+      attr_reader name: String
+      attr_reader description: String
+      def self.new: (name: String, description: String) -> instance
+      def to_h: () -> Hash[Symbol, String]
+    end
+
+    class Entry < ::Data
+      attr_reader public_id: String
+      attr_reader name: String
+      attr_reader description: String
+      attr_reader configuration: Hash[String, untyped]
+      attr_reader role: Role?
+      def self.new: (public_id: String, name: String, description: String, configuration: Hash[String, untyped], role: Role?) -> instance
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    def initialize: (store: ^() -> untyped) -> void
+    def list: () -> Array[Entry]
+    def fetch: (String public_id) -> Entry
+    def create: (name: untyped, description: untyped, ?configuration: untyped) -> Entry
+    def replace: (String public_id, name: untyped, description: untyped, configuration: untyped) -> Entry
+    def duplicate: (String public_id, name: untyped) -> Entry
+    def remove: (String public_id) -> Entry
+    def publish: (String public_id, name: untyped, description: untyped) -> Entry
+    def unpublish: (String public_id) -> Entry
+    def main_preset_public_id: () -> String
+    def default_bot_preset_public_id: () -> String
+    def select_main: (String public_id) -> Entry
+    def select_default_bot: (String public_id) -> Entry
+    def select_defaults: (Hash[String, String] fields) -> nil
+
+    private
+
+    def document: () -> Hash[String, untyped]
+    def entry: (Hash[String, untyped] row) -> Entry
+    def find: (Hash[String, untyped] catalog, String public_id) -> Hash[String, untyped]
+    def authored: (name: untyped, description: untyped, configuration: untyped) -> Hash[String, untyped]
+    def validate: (untyped schema, Hash[String, untyped] value) -> void
+    def validate_memory_limit: (Hash[String, untyped]? limit) -> void
+    def insert: (Hash[String, untyped] fields) -> Entry
+    def change_entry: (String public_id) { (Hash[String, untyped], Hash[String, untyped]) -> untyped } -> Entry
+    def change: () { (Hash[String, untyped]) -> untyped } -> Hash[String, untyped]
+    def select: (String public_id, String key) -> Entry
+
+    module Portable
+      DIRECTORIES: Array[String]
+      def self.load: (untyped text, format: String, ?filename: String) -> Hash[Symbol, untyped]
+      def self.dump: (Entry entry, format: String) -> String
+    end
+  end
+end

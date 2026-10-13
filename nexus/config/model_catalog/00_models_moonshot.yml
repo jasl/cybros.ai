@@ -1,0 +1,15 @@
+schema_version: cybros.model_catalog.v1
+# Explicit model facts shared by provider routes. Serving limits may override
+# the complete limits block; protocol options and pricing stay on each route.
+model_definitions:
+  kimi-k3:
+    capabilities:
+      input_modalities: [image]
+      limits:
+        input_tokens: 1048576
+        output_tokens: 943718
+      reasoning:
+        disable_supported: true
+        efforts: [low, high, max]
+        default_effort: low
+        default_enabled: true

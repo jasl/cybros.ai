@@ -1,0 +1,542 @@
+[
+  {
+    "id": "rho.agents",
+    "display_name": "Agents",
+    "category": "agents",
+    "description": "List, synchronize, and publish named agents with their own instructions and model choices.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.checkpoints",
+    "display_name": "Checkpoints",
+    "category": "tools",
+    "description": "Capture workspace file changes so a conversation can restore an earlier state.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 7
+        },
+        "max_file_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2097152
+        },
+        "max_tree_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 268435456
+        },
+        "capture_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.coding",
+    "display_name": "Coding",
+    "category": "tools",
+    "description": "Read, edit, and search workspace files, and run shell commands.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "bash_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 540,
+          "default": 120
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.compaction",
+    "display_name": "Compaction",
+    "category": "conversation",
+    "description": "Summarize earlier conversation history when the model context needs room.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "kernel",
+            "delegate"
+          ],
+          "default": "kernel"
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "title": "Summary model",
+          "description": "Writes history summaries; unset inherits the conversation's model or the default model.",
+          "x-rho-choices": {
+            "source": "models",
+            "workload": "text_generation"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.console_link",
+    "display_name": "Console Link",
+    "category": "interface",
+    "description": "Open this agent's browser console to chat and manage settings.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.conventions",
+    "display_name": "Conventions",
+    "category": "conversation",
+    "description": "Load workspace instructions from AGENTS.md and CLAUDE.md into each conversation.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.default_runner",
+    "display_name": "Default Runner",
+    "category": "system",
+    "description": "Choose the runner that executes tools for new work.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.environment",
+    "display_name": "Environment",
+    "category": "system",
+    "description": "Manage working directories and connect editor or remote execution environments.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.guard",
+    "display_name": "Guard",
+    "category": "system",
+    "description": "Apply built-in command safeguards and protect the running installation from agent edits.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.images",
+    "display_name": "Images",
+    "category": "tools",
+    "description": "Generate images with the configured image model and attach reference images.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "title": "Image model",
+          "x-rho-choices": {
+            "source": "models",
+            "workload": "image_generation"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.lifecycle_hooks",
+    "display_name": "Lifecycle Hooks",
+    "category": "conversation",
+    "description": "Run configured tools at conversation and turn lifecycle events.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "turn_start": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300000
+            }
+          },
+          "required": [
+            "tool",
+            "timeout_ms"
+          ],
+          "additionalProperties": false,
+          "x-rho-atomic": true
+        },
+        "pre_compact": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300000
+            }
+          },
+          "required": [
+            "tool",
+            "timeout_ms"
+          ],
+          "additionalProperties": false,
+          "x-rho-atomic": true
+        },
+        "post_compact": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300000
+            }
+          },
+          "required": [
+            "tool",
+            "timeout_ms"
+          ],
+          "additionalProperties": false,
+          "x-rho-atomic": true
+        },
+        "stop": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300000
+            },
+            "max_continuations": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            }
+          },
+          "required": [
+            "tool",
+            "timeout_ms",
+            "max_continuations"
+          ],
+          "additionalProperties": false,
+          "x-rho-atomic": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.memory_review",
+    "display_name": "Memory review",
+    "category": "conversation",
+    "description": "Review reusable knowledge from completed work",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "auto_enable": {
+          "type": "boolean",
+          "default": false,
+          "title": "Review every conversation",
+          "description": "Turn memory review on for each conversation at its first completed reply, unless that conversation switched it off. One extra model call per reply."
+        },
+        "path": {
+          "type": "string",
+          "default": "speaker/review.md",
+          "title": "Memory document",
+          "description": "The scoped document reviews keep, for example speaker/review.md; it needs a writable root in the conversation."
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "title": "Review model",
+          "description": "Writes the review; unset uses each completed reply's model.",
+          "x-rho-choices": {
+            "source": "models",
+            "workload": "text_generation"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.ops",
+    "display_name": "Ops",
+    "category": "system",
+    "description": "Manage conversations, runs, workspaces, and models through the console and CLI.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.packages",
+    "display_name": "Packages",
+    "category": "system",
+    "description": "Install, check, enable, and roll back locally developed extension packages.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.processes",
+    "display_name": "Processes",
+    "category": "tools",
+    "description": "Start, inspect, and stop background processes and read their output.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.schedules",
+    "display_name": "Schedules",
+    "category": "conversation",
+    "description": "Schedule agent tasks and manage recurring work.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.setup",
+    "display_name": "Setup",
+    "category": "interface",
+    "description": "Guide account connection, model selection, and optional Telegram setup.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.todo",
+    "display_name": "Todo",
+    "category": "tools",
+    "description": "Maintain a task checklist while the agent works.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
+    "id": "rho.until",
+    "display_name": "Until",
+    "category": "conversation",
+    "description": "Repeat work until a configured acceptance command succeeds or the attempt limit is reached.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "default_enabled": true,
+    "modes": [
+      "full",
+      "agent"
+    ],
+    "requires": [],
+    "restart_only": false
+  }
+]

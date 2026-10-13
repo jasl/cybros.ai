@@ -1,0 +1,7 @@
+{
+  "contract": "nexus/v1",
+  "unknown_version_fixture": "nexus/v999",
+  "unknown_version_behavior": "reject",
+  "unknown_value_fixture": "zz_unknown_value",
+  "unknown_behavior_is_per_shape": true
+}

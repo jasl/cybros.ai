@@ -1,0 +1,91 @@
+#!/usr/bin/env ruby
+
+require_relative "../config/boot"
+require "digest"
+require "fileutils"
+require "httpx"
+require "json"
+require "tempfile"
+require "tokenizers"
+
+# Installation owns revision and checksum verification. Model requests only
+# load these local JSON files; they never download or recheck artifact hashes.
+class TokenizerDownloader
+  ROOT = File.expand_path("..", __dir__)
+  Artifact = Data.define(:repository, :revision, :tokenizer_sha256, :license, :license_sha256)
+  class Error < StandardError; end
+
+  # HF's large-file CDN stalls over negotiated HTTP/2 with this HTTPX version.
+  # Use HTTP/1.1 for installation downloads; provider transports are independent.
+  def initialize(manifest_path: File.join(ROOT, "config/tokenizers.json"),
+    directory: File.join(ROOT, "vendor/tokenizers"), output: $stdout,
+    client: HTTPX.plugin(:follow_redirects).with(max_redirects: 5,
+      ssl: { alpn_protocols: ["http/1.1"] },
+      timeout: { connect_timeout: 10, read_timeout: 60, operation_timeout: 120 }))
+    @artifacts = JSON.parse(File.read(manifest_path), symbolize_names: true).map { |entry| Artifact.new(**entry) }
+    @directory = directory
+    @output = output
+    @client = client
+  end
+
+  def call(check: false)
+    FileUtils.mkdir_p(@directory) unless check
+    @artifacts.each do |artifact|
+      stem = File.join(@directory, artifact.repository.tr("/", "_"))
+      install(artifact, "tokenizer.json", artifact.tokenizer_sha256, "#{stem}.json", check: check)
+      install(artifact, "LICENSE", artifact.license_sha256, "#{stem}.LICENSE", check: check)
+      @output.puts "Verified #{artifact.repository} (#{artifact.license})"
+    end
+  end
+
+  private
+
+    def install(artifact, filename, checksum, target, check:)
+      if File.file?(target) && Digest::SHA256.file(target).hexdigest == checksum
+        verify_tokenizer(target) if filename == "tokenizer.json"
+      elsif check
+        raise Error, "Missing or mismatched #{target}; run bin/download-tokenizers"
+      else
+        url = "https://huggingface.co/#{artifact.repository}/resolve/#{artifact.revision}/#{filename}"
+        @output.puts "Downloading #{artifact.repository}/#{filename}"
+        response = @client.get(url)
+        response.raise_for_status
+        body = response.body.to_s
+        unless Digest::SHA256.hexdigest(body) == checksum
+          raise Error, "Checksum mismatch for #{artifact.repository}/#{filename}; existing file was preserved"
+        end
+
+        # Rename on the destination filesystem only after the complete download
+        # passes verification, so an interrupted update leaves the old file usable.
+        Tempfile.create([File.basename(target), ".download"], @directory, binmode: true) do |file|
+          file.write(body)
+          file.flush
+          verify_tokenizer(file.path) if filename == "tokenizer.json"
+          file.chmod(0o644)
+          file.close
+          File.rename(file.path, target)
+        end
+      end
+    rescue HTTPX::Error => error
+      raise Error, "#{artifact.repository}/#{filename}: #{error.message}"
+    end
+
+    def verify_tokenizer(path)
+      Tokenizers.from_file(path).encode("Hello, 世界", add_special_tokens: false)
+    rescue Tokenizers::Error => error
+      raise Error, "Cannot load tokenizer #{File.basename(path)}: #{error.message}"
+    end
+end
+
+if $PROGRAM_NAME == __FILE__
+  $stdout.sync = true
+  unless ARGV.empty? || ARGV == ["--check"]
+    abort "Usage: bin/download-tokenizers [--check]"
+  end
+
+  begin
+    TokenizerDownloader.new.call(check: ARGV == ["--check"])
+  rescue TokenizerDownloader::Error, HTTPX::Error, SystemCallError => error
+    abort "Tokenizer preparation failed: #{error.message}"
+  end
+end

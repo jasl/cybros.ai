@@ -1,0 +1,3 @@
+<p>
+  <%= t("passwords_mailer.reset.instructions_html", link: link_to(t("passwords_mailer.reset.reset_link"), edit_password_url(token: @identity.password_reset_token))) %>
+</p>

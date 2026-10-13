@@ -1,0 +1,9 @@
+module Rho
+  module Locales
+    ENGLISH: Hash[String, String]
+  end
+
+  module FailureHints
+    def self.for: (String? key) -> String?
+  end
+end

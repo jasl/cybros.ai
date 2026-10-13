@@ -1,0 +1,54 @@
+# Deployment-local SELECTOR overlay. Unlike providers and models there is
+# nothing shipped to merge with — naming a selector here is the whole of its
+# definition, and naming it twice REPLACES it wholesale (never a recursive
+# merge).
+#
+# `config.d` IS FLAT — a subdirectory inside it is refused, not read. One
+# environment tier merges after the generic tier, most specific wins:
+#   config.d/model_selectors.yml        generic
+#   config.d/model_selectors.<env>.yml  only in that environment
+# Recognized environments: development, test, production. A file whose suffix
+# looks like an environment but names none refuses compilation rather than
+# silently running everywhere.
+#
+# A selector is an ORDERED candidate list. Acceptance walks it once and
+# freezes the first candidate that passes every gate — the lane is enabled,
+# a credential resolves, the provider is healthy — so order is policy, not
+# preference. A candidate that fails is skipped; an exhausted list refuses.
+#
+# THIS REPOSITORY SHIPS NO SELECTOR. Routing policy
+# is a deployment decision: which models to try, and in what order, is not
+# something a library can be right about. So the names below define nothing
+# until you uncomment them — and a caller that names a selector nobody defined
+# is refused `unknown_model_selector` at acceptance, before any provider call.
+#
+# COPY THIS FILE AND NOTHING CHANGES. Delete the leading "# " from the
+# selector you mean to own, and expect to state its whole candidate list: an
+# overlay REPLACES a selector outright rather than adding to it.
+schema_version: cybros.model_catalog.v1
+
+# selectors:
+#   # A bare model ref is the whole candidate: reasoning enablement and effort
+#   # use the model's defaults. These local refs are declared in
+#   # models.yml.sample. Keep only the models your server actually serves.
+#   # The order is a deployment choice, not a model-quality benchmark.
+#   interactive_chat:
+#     - local/qwen3.8-flash-next
+#     - local/qwen3.8-27b
+#
+#   # Simple agent-driven scheduled work, not general conversation fallback.
+#   scheduled_tasks:
+#     - local/qwen3.6-35b-a3b
+#
+#   # Low-cost image recognition; the backend must actually serve images.
+#   visual_recognition:
+#     - local/qwen3.5-9b
+#
+#   # Pin enablement and effort independently. The two forms mix freely inside
+#   # one list, and the model must declare the effort you pin. These invented models
+#   # demonstrate the grammar only; they are not local Qwen recommendations.
+#   summarization:
+#     - model: local/example-options
+#       reasoning_enabled: true
+#       reasoning_effort: low
+#     - local/example-text

@@ -1,0 +1,13 @@
+module Rho
+  module BotPolicy
+    KERNEL_TOOLS: Array[String]
+    DELEGATION_TOOLS: Array[String]
+    SUBAGENT_TOOLS: Array[String]
+    MEMORY_CONTEXT_LIMIT: Hash[String, untyped]
+
+    def self.conversation: (Hash[Symbol, untyped] configuration, subagent: bool, runner_names: Array[String]) -> Hash[Symbol, untyped]
+    def self.external: (Hash[Symbol, untyped] configuration, send_targets: Array[CybrosAgent::Api::NamedAgent],
+                        spawn_roles: Array[Hash[String, untyped]],
+                        wire_names: Hash[String, String]) -> Hash[Symbol, untyped]
+  end
+end
