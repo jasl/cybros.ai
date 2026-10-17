@@ -14,7 +14,7 @@
     "@iconify/tailwind4": "^1.2.3",
     "@tailwindcss/cli": "^4.3.3",
     "@tailwindcss/typography": "^0.5.20",
-    "daisyui": "^5.7.47",
+    "daisyui": "^5.7.50",
     "tailwindcss": "^4.3.3",
     "tailwindcss-motion": "^1.1.1"
   },
