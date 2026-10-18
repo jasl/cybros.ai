@@ -1,0 +1,14 @@
+<%= render layout: "workspaces/data/shell", locals: { workspace: @workspace, data_writable: @data_writable, error: @error, validation_errors: @validation_errors, title: @document.path } do %>
+  <%= link_to t("data_console.memory.back"), workspace_memory_documents_path(@workspace), class: "link link-hover text-sm" %>
+  <p class="text-sm text-base-content/60"><%= t("data_console.memory.metadata", version: @document.lock_version, bytes: @document.bytesize, time: l(@document.memory_document_version.created_at, format: :long)) %></p>
+  <p class="font-mono text-xs wrap-anywhere"><%= @document.public_id %></p>
+  <% if @document.description.present? %><p class="text-sm wrap-anywhere"><%= @document.description %></p><% end %>
+  <pre class="rounded-box bg-base-200 p-4 whitespace-pre-wrap wrap-anywhere text-sm"><%= @document.content %></pre>
+  <% if @data_writable %>
+    <div class="flex flex-wrap gap-3">
+      <%= link_to t("data_console.edit"), edit_workspace_memory_document_path(@workspace, path: @document.path), class: "btn btn-primary btn-sm" %>
+      <%= button_to t("data_console.delete"), workspace_memory_document_path(@workspace), method: :delete, params: { memory: { path: @document.path, expected_public_id: @document.public_id, expected_lock_version: @document.lock_version } }, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("data_console.memory.delete_confirmation") } %>
+    </div>
+  <% end %>
+  <p class="text-xs text-base-content/60"><%= t("data_console.memory.retention") %></p>
+<% end %>

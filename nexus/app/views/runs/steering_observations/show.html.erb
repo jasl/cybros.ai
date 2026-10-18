@@ -1,0 +1,47 @@
+<% content_for :title, t("run_steering.follow") %>
+<%= tag.div class: "mx-auto max-w-3xl space-y-6", data: run_refresh_data(@run) do %>
+  <%= render "runs/header", run: @run, actions: @actions %>
+  <section class="space-y-4" aria-labelledby="correction-observation-heading" data-input-id="<%= @input_public_id %>">
+    <div class="space-y-2">
+      <h2 id="correction-observation-heading" class="text-lg font-medium"><%= t("run_steering.follow") %></h2>
+      <p class="text-sm wrap-anywhere"><%= t("run_steering.identifier", id: @input_public_id) %></p>
+      <p class="text-sm wrap-anywhere"><%= t("run_steering.target", id: @run.public_id) %></p>
+    </div>
+    <% if @observation.waiting? %>
+      <p class="badge badge-outline"><%= t("run_steering.states.waiting") %></p>
+      <p class="text-sm text-base-content/60"><%= t("run_steering.waiting_scope") %></p>
+      <p class="whitespace-pre-wrap wrap-anywhere"><%= @observation.input.text %></p>
+      <p class="text-sm"><%= t("run_steering.modes.#{@observation.input.delivery_mode}") %></p>
+      <% if @run.conversation.writable_by?(Current.user) %>
+        <div class="flex flex-wrap items-center gap-3">
+          <% unless @run.conversation.archived? %>
+            <%= button_to t("run_steering.cancel"), run_steer_cancellation_path(@run, @observation.input.public_id, return_to: params[:return_to]), class: "btn btn-outline", form: { data: { turbo: false } } %>
+          <% end %>
+        </div>
+      <% end %>
+      <p class="text-sm text-base-content/60"><%= t("run_steering.timing_scope") %></p>
+    <% elsif @observation.consumed? %>
+      <p class="badge badge-outline"><%= t("run_steering.states.consumed") %></p>
+      <p class="text-sm text-base-content/60"><%= t("run_steering.consumed_scope") %></p>
+      <% if @observation.task %>
+        <%= link_to t("run_steering.consuming_task"), run_task_path(@run, @observation.task.node_key, return_to: request.fullpath), class: "btn btn-outline" %>
+      <% else %>
+        <p class="text-sm text-base-content/60"><%= t("run_steering.task_unavailable") %></p>
+      <% end %>
+    <% elsif @observation.canceled? %>
+      <p class="badge badge-outline"><%= t("run_steering.states.canceled") %></p>
+      <p class="text-sm text-base-content/60"><%= t("run_steering.canceled_scope") %></p>
+    <% else %>
+      <p class="badge badge-outline"><%= t("run_steering.states.unknown") %></p>
+      <% if @observation.accepted? %>
+        <p class="text-sm text-base-content/60"><%= t("run_steering.accepted_unknown") %></p>
+      <% else %>
+        <p class="text-sm text-base-content/60"><%= t("run_steering.unknown_scope") %></p>
+      <% end %>
+    <% end %>
+    <% if @candidate_read %>
+      <%= link_to t("run_steering.original_candidate"), conversation_turn_variant_path(@run.conversation, @run.turn.public_id, @run.variant.public_id, return_to: request.fullpath), class: "link link-hover text-sm" %>
+    <% end %>
+    <p class="text-sm text-base-content/60"><%= t("run_steering.retention_scope") %></p>
+  </section>
+<% end %>

@@ -1,0 +1,64 @@
+en:
+  work_console:
+    work: Work
+    resources: Resources
+    overview: Overview
+    attention: Needs attention
+    conversations: Conversations
+    runs: Runs
+    tools: Tool connections
+    usage: Usage
+    workspace: Workspace
+    all_workspaces: All accessible workspaces
+    status: Status
+    all_statuses: All statuses
+    kind: Run type
+    all_kinds: All runs
+    conversation: Conversation
+    standalone: Standalone run
+    run_label: "Run %{id}"
+    runs_description: Inspect conversation executions and standalone work you can read.
+    from: Created from (UTC, inclusive)
+    to: Created before (UTC, exclusive)
+    needs_inspection: Needs inspection
+    apply: Apply filters
+    reset: Reset
+    no_runs: No runs to show.
+    no_conversations: No recent conversations in this workspace.
+    all_conversations: View all conversations
+    all_runs: View all runs
+    next_page: Next page
+    attention_reason: "Needs attention: %{reason}"
+    attention_description: Decide approvals, answer questions, or review work that needs recovery.
+    actionable: I can act
+    following: Work I can read
+    no_attention: No decisions match this view.
+    inspect_blocked: Inspect other blocked runs
+    question: Question
+    approval: Approval
+    recovery: Recovery
+    open_task: Open task
+    workspace_work: Work in this workspace
+    workspace_work_description: View conversations and runs, or open items that need attention.
+    workspace_overview: Overview
+    workspace_settings: Settings
+    workspace_recent: Recent work
+    error:
+      title: This page could not be loaded
+      retry: Try again
+      reset_filters: Reset filters
+      details: Technical details
+      codes:
+        not_found: This work is unavailable or you no longer have access.
+        parameter_missing: A required value is missing. Check the form and try again.
+        parameter_invalid: Some filters are invalid. Reset the filters, then check your choices and date range.
+        bad_request: This request could not be read. Return to the previous page and try again.
+        model_plane_unavailable: The model catalog is temporarily unavailable. Try again later.
+    statuses:
+      pending: Pending
+      running: Running
+      paused: Paused
+      needs_attention: Needs attention
+      canceling: Stopping
+      completed: Completed
+      canceled: Canceled

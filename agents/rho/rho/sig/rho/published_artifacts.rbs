@@ -1,0 +1,12 @@
+module Rho
+  class PublishedArtifacts
+    def initialize: (untyped workspace) -> void
+    def collect: (run_public_id: String?, ?results: Array[CybrosAgent::Api::CallbackResult]) -> Array[CybrosAgent::Api::UploadRef]
+
+    private
+
+    def run_files: (String public_id) -> Array[CybrosAgent::Api::UploadRef]
+    def result_files: (CybrosAgent::Api::CallbackResult result) -> Array[CybrosAgent::Api::UploadRef]
+    def capture_blocks: (untyped content) -> Array[Hash[String, untyped]]
+  end
+end

@@ -1,0 +1,15 @@
+<%= render layout: "workspaces/data/shell", locals: { workspace: @workspace, data_writable: @data_writable, error: @error, validation_errors: @validation_errors, title: @entry.key } do %>
+  <%= link_to t("data_console.store.back"), workspace_store_entries_path(@workspace, namespace: @entry.namespace), class: "link link-hover text-sm" %>
+  <p class="font-mono text-sm wrap-anywhere"><%= @entry.namespace %></p>
+  <p class="font-mono text-xs wrap-anywhere"><%= @entry.public_id %></p>
+  <p class="text-xs text-base-content/60"><%= t("data_console.store.metadata", version: @entry.lock_version, time: l(@entry.updated_at, format: :long)) %></p>
+  <pre class="rounded-box bg-base-200 p-4 whitespace-pre-wrap wrap-anywhere text-sm"><%= JSON.pretty_generate(@entry.value) %></pre>
+  <p class="text-sm text-base-content/70"><%= t("data_console.store.description") %></p>
+  <% if @conflict %><%= link_to t("data_console.read_saved"), workspace_store_entry_path(@workspace, @entry.public_id), class: "link link-hover" %><% end %>
+  <% if @data_writable && !@error %>
+    <div class="flex flex-wrap gap-3">
+      <%= link_to t("data_console.edit"), edit_workspace_store_entry_path(@workspace, @entry.public_id), class: "btn btn-primary btn-sm" %>
+      <%= button_to t("data_console.delete"), workspace_store_entry_path(@workspace, @entry.public_id), method: :delete, params: { store_entry: { lock_version: @entry.lock_version } }, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("data_console.store.delete_confirmation") } %>
+    </div>
+  <% end %>
+<% end %>

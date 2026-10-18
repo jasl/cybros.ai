@@ -1,0 +1,232 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@plugin "tailwindcss-motion";
+@plugin "daisyui";
+@plugin "@iconify/tailwind4" {
+  prefixes: lucide;
+}
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+  "Segoe UI", Roboto, "Helvetica Neue", Arial,
+  "Noto Sans", "Liberation Sans",
+  "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC",
+  "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans CJK JP", "Noto Sans JP",
+  "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  --font-title: var(--font-sans);
+}
+
+/* ===========================================
+   CJK Typography Optimization
+   Supports: Chinese (zh), Japanese (ja), English (en)
+   =========================================== */
+
+@layer base {
+  html {
+    @apply font-sans antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Selection style */
+  ::selection {
+    @apply bg-primary/30;
+  }
+
+  /* Low-DPI screen optimization */
+  @media (max-resolution: 1.5dppx) {
+    html {
+      @apply subpixel-antialiased;
+    }
+  }
+
+  /* Pragmatic global CJK defaults:
+     - Primary target: zh+en and ja+en mixed UIs
+     - Goal: long tokens (URLs/model names) wrap instead of overflowing */
+  :where(:lang(zh), :lang(ja)) {
+    @apply wrap-break-word;
+  }
+
+  /* Slightly better underline spacing for CJK */
+  :where(:lang(zh), :lang(ja)) a {
+    text-underline-offset: 0.2em;
+  }
+
+  /* Chinese: looser line-breaking; optional autospace (Chromium) */
+  :lang(zh) {
+    line-break: loose;
+  }
+  @supports (text-autospace: ideograph-alpha) {
+    :lang(zh) {
+      text-autospace: ideograph-alpha ideograph-numeric;
+    }
+  }
+
+  /* Japanese-specific text styles */
+  :lang(ja) {
+    line-break: strict;
+    font-feature-settings: 'palt' 1, 'kern' 1;
+  }
+
+  /* Progressive enhancement: phrase-based line breaking (CSS Text L4, Chromium) */
+  @supports (word-break: auto-phrase) {
+    :lang(ja) {
+      word-break: auto-phrase;
+    }
+  }
+
+  /* English optimizations */
+  :lang(en) {
+    @apply hyphens-auto;
+  }
+
+  /* Ruby annotation support */
+  ruby {
+    ruby-align: space-between;
+  }
+  rt {
+    font-size: 0.5em;
+    font-weight: normal;
+  }
+}
+
+/* ===========================================
+   Custom Scrollbar - Auto-hide
+   Shows on hover/focus, hides when idle
+   =========================================== */
+
+@utility scrollbar-auto-hide {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+
+  &:hover,
+  &:focus-within {
+    scrollbar-color: oklch(from var(--color-base-content) l c h / 0.3) transparent;
+  }
+
+  /* WebKit scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 3px;
+    transition: background-color 0.3s ease;
+  }
+
+  &:hover::-webkit-scrollbar-thumb,
+  &:focus-within::-webkit-scrollbar-thumb {
+    background-color: oklch(from var(--color-base-content) l c h / 0.3);
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(from var(--color-base-content) l c h / 0.5);
+  }
+}
+
+@plugin "daisyui/theme" {
+  name: "dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+
+  /* Graphite Dark: flat near-black console surfaces, hairline borders,
+     high-contrast neutral primary, emerald accent */
+  --color-base-100: oklch(18% 0.004 285);
+  --color-base-200: oklch(21% 0.004 285);
+  --color-base-300: oklch(26.5% 0.005 285);
+  --color-base-content: oklch(87% 0.004 285);
+
+  --color-primary: oklch(93% 0.004 285);
+  --color-primary-content: oklch(20% 0.004 285);
+
+  --color-secondary: oklch(75% 0.01 285);
+  --color-secondary-content: oklch(20% 0.004 285);
+
+  --color-accent: oklch(73% 0.14 162);
+  --color-accent-content: oklch(20% 0.03 162);
+
+  --color-neutral: oklch(24% 0.004 285);
+  --color-neutral-content: oklch(87% 0.004 285);
+
+  --color-info: oklch(72% 0.11 235);
+  --color-info-content: oklch(20% 0.03 235);
+
+  --color-success: oklch(72% 0.14 162);
+  --color-success-content: oklch(20% 0.03 162);
+
+  --color-warning: oklch(80% 0.13 85);
+  --color-warning-content: oklch(22% 0.04 85);
+
+  --color-error: oklch(66% 0.18 25);
+  --color-error-content: oklch(18% 0.03 25);
+
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+
+  --depth: 0;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  /* Graphite Light: clean neutral surfaces, ink primary, emerald accent */
+  --color-base-100: oklch(99% 0.001 285);
+  --color-base-200: oklch(96.5% 0.002 285);
+  --color-base-300: oklch(91.5% 0.004 285);
+  /* 20% keeps text-base-content/60 at or above 4.5:1 (WCAG AA for normal
+     text) on both base-100 and base-200 */
+  --color-base-content: oklch(20% 0.006 285);
+
+  --color-primary: oklch(23% 0.006 285);
+  --color-primary-content: oklch(98.5% 0.001 285);
+
+  --color-secondary: oklch(45% 0.01 285);
+  --color-secondary-content: oklch(98.5% 0.001 285);
+
+  --color-accent: oklch(58% 0.12 162);
+  --color-accent-content: oklch(98.5% 0.005 162);
+
+  /* Soft gray so menu-active and neutral surfaces read as a quiet pill,
+     not an ink block, on the light console */
+  --color-neutral: oklch(93% 0.003 285);
+  --color-neutral-content: oklch(24% 0.006 285);
+
+  --color-info: oklch(55% 0.13 240);
+  --color-info-content: oklch(98.5% 0.002 240);
+
+  --color-success: oklch(51% 0.11 162);
+  --color-success-content: oklch(98.5% 0.005 162);
+
+  --color-warning: oklch(75% 0.14 85);
+  --color-warning-content: oklch(24% 0.05 85);
+
+  --color-error: oklch(53% 0.17 25);
+  --color-error-content: oklch(98.5% 0.01 25);
+
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+
+  --depth: 0;
+  --noise: 0;
+}

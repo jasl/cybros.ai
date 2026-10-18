@@ -1,0 +1,52 @@
+<% content_for :title, t("work_console.overview") %>
+<div class="space-y-6">
+  <header class="space-y-3">
+    <h1 class="text-xl font-medium"><%= t("work_console.overview") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("management_console.window", at: l(@as_of, format: :short)) %></p>
+    <div class="flex flex-wrap gap-4 text-sm">
+      <%= link_to "#{t('layouts.application.agents')} · #{number_with_delimiter(@agent_count)}", agents_path, class: "link link-hover" %>
+      <%= link_to "#{t('layouts.application.workspaces')} · #{number_with_delimiter(@workspace_count)}", workspaces_path, class: "link link-hover" %>
+    </div>
+  </header>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <section class="space-y-2 rounded-box border border-base-300 p-5">
+      <h2 class="font-medium"><%= t("management_console.conversation_usage") %></h2>
+      <p><%= t("management_console.usage_counts", requests: number_with_delimiter(@usage.fetch("request_count")), tokens: number_with_delimiter(@usage.fetch("total_tokens"))) %></p>
+      <p class="text-sm text-base-content/60"><%= t("management_console.usage_scope") %></p>
+    </section>
+    <section class="space-y-2 rounded-box border border-base-300 p-5">
+      <h2 class="font-medium"><%= t("management_console.known_cost") %></h2>
+      <p class="text-2xl"><%= @usage.fetch("cost_amount") %> <%= Current.account.cost_unit.presence || t("work_recovery.cost_limit.unit_missing") %></p>
+      <% unless @usage.fetch("cost_complete") %><p class="text-sm text-warning"><%= t("conversation_console.cost_incomplete") %></p><% end %>
+      <%= link_to t("usage_reports.title"), usage_path, class: "link link-hover text-sm" %>
+    </section>
+  </div>
+  <% if @attention_tasks.any? %>
+    <section class="space-y-3" aria-label="<%= t('work_console.attention') %>">
+      <h2 class="font-medium"><%= link_to t("work_console.attention"), attention_path, class: "link link-hover" %></h2>
+      <ul class="divide-y divide-base-300 rounded-box border border-base-300">
+        <% @attention_tasks.each do |task| %>
+          <li class="flex flex-wrap justify-between gap-3 p-4">
+            <div class="min-w-0 space-y-1">
+              <%= link_to "#{work_run_title(task.run)} · #{task.node_key}", run_task_path(task.run, task.node_key, return_to: root_path), class: "link link-hover wrap-anywhere" %>
+              <p class="text-sm text-base-content/60 wrap-anywhere"><%= task.run.workspace.name %></p>
+            </div>
+            <span class="text-sm"><%= work_status_label(task.status) %></span>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+  <section class="space-y-3" aria-labelledby="recent-work-heading">
+    <h2 id="recent-work-heading" class="font-medium"><%= t("management_console.recent_work") %></h2>
+    <div class="divide-y divide-base-300 rounded-box border border-base-300">
+      <%= render @recent_work %>
+      <% if @recent_work.empty? %><p class="p-4 text-base-content/60"><%= t("management_console.no_work") %></p><% end %>
+    </div>
+  </section>
+  <div class="flex flex-wrap gap-3">
+    <%= link_to t("management_console.connect"), agent_connection_path, class: "btn btn-primary" %>
+    <%= link_to t("management_console.create_workspace"), new_workspace_path, class: "btn btn-outline" %>
+    <% if @needs_model_provider %><%= link_to t("management_console.configure_models"), admin_model_providers_path, class: "btn btn-outline" %><% end %>
+  </div>
+</div>

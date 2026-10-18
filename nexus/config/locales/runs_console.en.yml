@@ -1,0 +1,97 @@
+en:
+  runs_console:
+    title: "Run %{id}"
+    task_title: "Task %{key}"
+    back: Back to work
+    overview: Overview
+    transcript: Transcript
+    graph: Graph
+    tasks: Tasks
+    task: Task
+    kind: Kind
+    views: Run views
+    conversation: Conversation
+    status: Status
+    attention: Attention reason (protocol)
+    failure: Failure reason (protocol)
+    model: Model
+    tool: Tool
+    identifier: Run ID
+    actor: Execution principal
+    started: Started
+    completed: Finished
+    not_started: Not started
+    not_finished: Not finished
+    all_rounds: Browse transcript
+    all_tasks: Browse all tasks
+    created: Created
+    updated: Updated
+    none: None
+    pause: Pause
+    resume: Resume
+    stop: Stop
+    approve: Approve
+    deny: Deny
+    retry: Retry
+    abandon: Abandon
+    actions: Available actions
+    answer: Your answer
+    send_answer: Send answer
+    suggested_answers: "Suggested answers: %{options}"
+    confirm_stop: Stop this Run and cancel its active work?
+    confirm_deny: Deny this tool call?
+    confirm_retry: Retry this task with a new execution attempt?
+    confirm_uncertain_retry: "This task may already have produced an external effect. Retry only if you have checked that repeating it is appropriate. Retry now?"
+    confirm_abandon: Leave this failure unresolved by execution and continue the Run?
+    command_accepted: Command accepted. The latest execution state is shown below.
+    command_refused: "The command could not be applied: %{reason}. Refresh to see the latest state."
+    details_pruned: Execution details have expired. The Run summary and any retained conversation text remain available.
+    protocol_summary: Execution summary
+    task_detail: Full task details
+    prompt: Input
+    recorded_usage: Latest recorded model attempt
+    no_usage: Token usage has not been recorded for this attempt.
+    tokens:
+      input_tokens: Input tokens
+      output_tokens: Output tokens
+      total_tokens: Total tokens
+      cache_read_tokens: Cache read tokens
+      cache_creation_tokens: Cache creation tokens
+    tool_input: "Arguments for %{name}"
+    effect_profile: Tool effects
+    output: Output
+    sealed_request: Sealed model request
+    sealed_request_description: The entries and options captured when this model request was sealed.
+    request_not_sealed: This task has no sealed model request yet.
+    next_page: Next page
+    older: Older rounds
+    no_tasks: No tasks in this page.
+    no_rounds: No model rounds in this transcript window. Open Tasks to inspect other work.
+    dependencies: Depends on
+    graph_navigation: Scroll the dependency graph and open a task to inspect it
+    task_kinds:
+      model_task: Model call
+      tool_task: Tool call
+      await_task: Waiting for input
+      join_task: Join
+      delegation_task: Delegation
+    graph_window: This page shows a bounded part of the graph. Only dependencies between tasks on this page are drawn. Open a task to inspect all of its dependencies.
+    no_local_dependencies: No dependencies within this page
+    deliverable: Deliverable
+    mermaid: Mermaid source for this page
+    live: Live updates connected
+    connecting: Connecting live updates…
+    disconnected: Live updates disconnected. Reconnecting…
+    updates_waiting: Updates are waiting. Send or clear your unsent answer to refresh.
+    refresh: Refresh
+  work_console:
+    statuses:
+      waiting: Waiting
+      queued: Queued
+      needs_approval: Needs approval
+      awaiting_input: Awaiting input
+      dispatched: Dispatched
+      failed: Failed
+      timed_out: Timed out
+      uncertain: Uncertain
+      skipped: Skipped

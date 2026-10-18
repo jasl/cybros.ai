@@ -1,0 +1,26 @@
+# A two-task sample of harbor's terminal-bench@2.0 form (the pinned commit's
+# `version = "1.0"`, NO [task] table), for the loader's unit test alone.
+# Nothing here is their bytes; the shapes are.
+version = "1.0"
+
+[metadata]
+author_name = "sample"
+author_email = "sample@example.invalid"
+difficulty = "medium"
+category = "sample"
+tags = ["sample"]
+expert_time_estimate_min = 10.0
+junior_time_estimate_min = 30.0
+
+[verifier]
+timeout_sec = 900.0
+
+[agent]
+timeout_sec = 900.0
+
+[environment]
+build_timeout_sec = 600.0
+docker_image = "example.invalid/alpha-one:20251031"
+cpus = 1
+memory = "2G"
+storage = "10G"

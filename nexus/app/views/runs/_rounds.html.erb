@@ -1,0 +1,15 @@
+  <% transcript.rounds.each do |round| %>
+    <article class="space-y-3 rounded-box border border-base-300 p-4" data-task-key="<%= round.fetch(:task_key) %>">
+      <header class="flex flex-wrap gap-3"><%= link_to round.fetch(:task_key), run_task_path(run, round.fetch(:task_key), return_to: request.fullpath), class: "link link-hover font-mono" %><span class="badge badge-outline"><%= work_status_label(round.fetch(:status)) %></span></header>
+      <%= render "work/content", text: round[:text_preview], raw: false if round[:text_preview].present? %>
+      <%= render "runs/usage", usage: round[:usage] if round[:usage].present? %>
+      <% if round.dig(:calls, :count).to_i.positive? %>
+        <ul class="space-y-2 border-l border-base-300 pl-4"><% round.fetch(:calls).fetch(:items).each do |call| %><li>
+          <%= link_to call[:title].presence || call[:name].presence || call.fetch(:task_key), run_task_path(run, call.fetch(:task_key), return_to: request.fullpath), class: "link link-hover" %>
+          <span class="text-sm text-base-content/60"><%= work_status_label(call.fetch(:status)) %></span>
+          <%= render "work/content", text: call[:output_preview], raw: false if call[:output_preview].present? %>
+        </li><% end %></ul>
+      <% end %>
+    </article>
+  <% end %>
+  <% if transcript.rounds.empty? %><p class="text-base-content/60"><%= t("runs_console.no_rounds") %></p><% end %>

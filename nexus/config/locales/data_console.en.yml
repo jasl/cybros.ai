@@ -1,0 +1,102 @@
+en:
+  pagination:
+    nouns:
+      store_entries:
+        one: Store entry
+        other: Store entries
+  data_console:
+    title: Workspace data
+    description: Manage the Memory, character and Store owned by this workspace. Personal, Agent and Conversation data have their own scopes.
+    back: Back to workspace data
+    read_only: This workspace is readable but is not currently writable.
+    edit: Edit
+    delete: Delete
+    filter: Filter
+    clear: Clear
+    read_saved: Read the saved value
+    memory:
+      title: Workspace Memory
+      description: Text documents under workspace/. Each new turn can read their current contents.
+      new: New memory document
+      open: Open document
+      edit: Edit memory document
+      back: Back to Workspace Memory
+      empty: No memory documents in this workspace.
+      path: Document path
+      path_help: Use workspace/ followed by a document name, such as workspace/notes.md. The path cannot be renamed after creation.
+      skill_description: Skill description
+      description_help: Required only for workspace/skills/<name>. Leave it empty for ordinary memory documents.
+      content: Memory content
+      metadata: "Version %{version} · %{bytes} bytes · Written %{time}"
+      save: Save memory document
+      saved: Memory document saved.
+      deleted: Memory document deleted.
+      retention: Saving replaces the current content. There is no version history or recycle bin.
+      delete_confirmation: Delete this memory document? There is no recycle bin.
+      override_help: Ordinary kernel memory management is unavailable while a tool provider serves this workspace's memory. An exact workspace/skills/ path keeps its existing kernel access.
+    character:
+      title: Workspace character
+      description: The workspace prompt document used by prompt templates that include the character slot.
+      edit: Edit character
+      back: Back to Workspace character
+      content: Character content
+      empty: This workspace has no character document.
+      metadata: "Version %{version} · %{bytes} bytes · Role: %{role}"
+      replace_help: Saving replaces the current character, including changes saved by another editor. Empty text is a saved document; Delete removes it. The version counts writes and is not an edit conflict check.
+      save: Save character
+      saved: Character saved.
+      delete: Delete character
+      deleted: Character deleted.
+      delete_confirmation: Delete the character document? There is no version history or recycle bin.
+    store:
+      title: Workspace Store
+      description: Applications may use these namespaced JSON values. Editing or deleting a value can change an application's saved state. Store values are not injected as memory.
+      new: New Store entry
+      edit: Edit Store entry
+      back: Back to Workspace Store
+      empty: No Store entries match this namespace.
+      namespace: Namespace
+      key: Key
+      value: JSON value
+      value_help: Enter any valid JSON value, including null, false or an array. JSON null is a value, not a deletion.
+      identity_help: Namespace and key cannot be renamed after creation.
+      metadata: "Version %{version} · Updated %{time}"
+      pages: Store pages
+      save: Save Store entry
+      saved: Store entry saved.
+      deleted: Store entry deleted.
+      delete_confirmation: Delete this Store entry? Applications may depend on it, and there is no recycle bin.
+    attachments:
+      title: Attachments in retained content
+      description: Attachments belong to retained messages and results. Open a Conversation to preview or download its attachments, or inspect Run and Task content. This workspace has no separate file directory.
+      conversations: Browse Conversations
+      runs: Browse Runs
+    errors:
+      not_authorized: This workspace is not currently writable. Your draft has been kept.
+      workspace_not_active: This workspace is not currently writable. Your draft has been kept.
+      workspace_agent_identifier_mismatch: This workspace does not allow this Agent to write.
+      stale_object: The saved value changed or was deleted. Your draft and its original version are kept. Read the saved value before starting a fresh edit; this submission cannot overwrite it.
+      invalid_precondition: The saved document identity or version is missing or invalid. Read the document again before starting a fresh edit.
+      memory_overridden: "Memory is served by %{detail}. Ordinary kernel memory management is unavailable."
+      memory_path_invalid: Use a valid workspace/ document path.
+      memory_scope_unavailable: This page manages only this workspace's workspace/ scope.
+      memory_not_found: The memory document no longer exists.
+      memory_content_invalid: Enter text for the memory document.
+      memory_description_invalid: Ordinary documents cannot have a description. Skill descriptions must be text within 1,024 bytes.
+      memory_full: This workspace has reached its 64-document memory limit.
+      memory_document_too_large: The memory document exceeds the 64 KiB content limit.
+      skill_name_invalid: Use a valid skill name after workspace/skills/.
+      skill_scope_unavailable: Skills cannot be stored in this scope.
+      skill_description_required: Enter a description for this skill document.
+      prompt_document_invalid: The character could not be saved. Check its text and role.
+      prompt_document_too_large: The character exceeds the 64 KiB content limit.
+      prompt_document_macro_unknown: "Unknown macro: %{detail}. Your draft has been kept."
+      prompt_slot_unavailable: This prompt slot is not available on this workspace.
+      prompt_document_not_found: The character document no longer exists.
+      invalid: The Store entry could not be saved. Check the fields below.
+      invalid_json: Enter valid JSON. Your original text has been kept.
+      unsupported_json: This JSON cannot be stored. Exponent-form numbers, U+0000 and invalid UTF-8 are unsupported; represent an exponent-form number as a string.
+      invalid_idempotency_key: The create request key is missing or invalid. Start a new entry form.
+      idempotency_envelope_mismatch: This create request already saved different fields. Your draft has been kept. Open a new entry form to create a different value.
+      entry_limit_reached: This workspace has reached its 64-entry Store limit.
+      key_taken: This namespace and key already exist. Open that entry to edit it.

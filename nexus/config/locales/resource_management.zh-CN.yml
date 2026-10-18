@@ -1,0 +1,31 @@
+zh-CN:
+  resource_management:
+    overview: 概况
+    management: 管理
+    view_runner: 查看 Runner
+    runner_runs: "与 %{name} 相关的运行"
+    attention_runs: 需要检查的运行
+    attention_runs_description: 显示你可读取且记录了待处理原因的运行，其中也可能包括你无权修改的运行。可操作的任务仍在待处理页。
+    reconnect: "在运行中的程序里重新连接，即可替换凭据。现有连接和共享设置会保留。"
+    revoked_registration: "此连接已永久移除。请重新连接程序，并在应用中选择新连接。"
+    revoke_credentials_description: "让此连接的密钥失效。连接仍保留，程序可重新连接，或使用新创建的专属 Runner 密钥。"
+    revoke_credentials_confirm: "撤销 %{name} 的全部密钥？现有密钥立即失效，连接保留以便重新连接。"
+    revoke_registration_description: "永久移除此连接并使其密钥失效。程序再次连接时会创建新连接。"
+    revoke_registration_confirm: "永久移除 %{name} 的连接？此连接无法恢复。"
+    effects: "进行中的工作可能继续，直到停止或超时。机器上已经完成的修改不会撤销。"
+  runner_connection:
+    description: 在工作文件所在的机器、容器或虚拟机上接入执行资源。
+    deployed: 连接已部署的程序
+    deploy_instructions: 按部署指南安装并启动 Runner，然后在程序中发起连接。打开程序提供的验证链接，或在下方输入设备码。
+    deployment_guide: Runner 部署指南
+    enter_code: 我已有设备码
+    scope: 新的独立 Runner 默认仅供你管理的 Agent 使用。账号管理员接入自己管理的 Runner 时可选择账号共享。重新连接保留现有使用范围。
+    bundled: 如果 Agent 应用已经接入了自带 Runner，可直接在 Runners 中找到它，无需重复创建。
+    private: 为 Agent 创建私有 Runner
+    private_instructions: 选择你管理的独立 Agent，创建私有 Runner 并签发传输 API 密钥，再按程序的配置说明导入密钥。命名 Agent 共享所属应用的 Runner 使用范围。
+    create_for: "为 %{name} 创建私有 Runner"
+    no_agents: 你还没有活跃的独立 Agent，请先创建 Agent 身份。
+    check: 检查连接并开始使用
+    check_instructions: 程序领取凭证后，打开 Runner 详情查看凭证、最近联系和保存的能力。这些事实不能证明执行成功。请在应用或 SDK 中为新工作选择 Runner，再在此检查对应的运行和任务。
+    refresh: 刷新连接状态
+    key_created: 请保存此密钥并导入 Runner 程序。签发密钥不会启动程序，也不能证明工具可用。

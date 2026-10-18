@@ -1,0 +1,34 @@
+{
+  "id": "rho.browser",
+  "display_name": "Browser",
+  "category": "tools",
+  "description": "Open websites, read and interact with pages, fill forms, and capture screenshots.",
+  "configuration_version": 1,
+  "configuration_schema": {
+    "type": "object",
+    "properties": {
+      "idle_seconds": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "default": 600,
+        "title": "Idle timeout (seconds)"
+      },
+      "playwright_cli": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "title": "Playwright driver command",
+        "description": "Optional explicit driver command; otherwise use the installed driver discovery."
+      }
+    },
+    "additionalProperties": false
+  },
+  "default_enabled": false,
+  "modes": [
+    "full",
+    "runner"
+  ],
+  "requires": [],
+  "restart_only": true
+}

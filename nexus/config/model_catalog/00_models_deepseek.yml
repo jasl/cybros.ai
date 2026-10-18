@@ -1,0 +1,36 @@
+schema_version: cybros.model_catalog.v1
+# Explicit model facts shared by provider routes. Serving limits may override
+# the complete limits block; protocol options and pricing stay on each route.
+model_definitions:
+  deepseek-v4.1-flash:
+    token_counter:
+      kind: huggingface
+      tokenizer_id: deepseek-ai/DeepSeek-V4.1-Flash
+    capabilities:
+      limits:
+        # SHARED by DeepSeek's own wording: "The total length of input tokens
+        # and generated tokens is limited by the model's context length."
+        # The list-models reference gives exact binary-unit values for both
+        # models (read 2026-10-05): https://api-docs.deepseek.com/api/list-models/
+        # Responses accepts max_output_tokens, including reasoning tokens:
+        # https://api-docs.deepseek.com/api/create-response/
+        combined_input_output_tokens: 1048576
+        output_tokens: 393216
+      reasoning:
+        disable_supported: true
+        efforts: [minimal, low, medium, high, xhigh, max]
+        default_effort: low
+        default_enabled: true
+  deepseek-v4-pro-0813:
+    token_counter:
+      kind: huggingface
+      tokenizer_id: deepseek-ai/DeepSeek-V4-Pro-0813
+    capabilities:
+      limits:
+        combined_input_output_tokens: 1048576
+        output_tokens: 393216
+      reasoning:
+        disable_supported: true
+        efforts: [minimal, low, medium, high, xhigh, max]
+        default_effort: low
+        default_enabled: true

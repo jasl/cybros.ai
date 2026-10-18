@@ -1,0 +1,25 @@
+en:
+  work_recovery:
+    cost_limit:
+      title: Edit cost limit
+      explanation: This limit applies to the Conversation's recorded known cost. Calls
+        already admitted may still finish; unpriced and free calls keep their normal
+        behavior.
+      no_restart: Raising or clearing the limit does not restart work. Retry the original
+        held Task, or use the application or SDK to continue a direct reply that has no Run. Completed tools and
+        their results are preserved.
+      amount: Cost limit (%{unit})
+      unit_missing: unit not configured
+      no_unit: The Account has no cost unit configured. A nonempty limit cannot be
+        saved until it is configured.
+      amount_help: Enter a nonnegative amount with at most 18 decimal places. Leave
+        blank to remove the limit. Zero blocks new priced calls.
+      save: Save cost limit
+      save_current: Save my draft using the current version
+      saved: Cost limit saved. Retry the original Task or continue through the application or SDK
+        when ready.
+      conflict: The Conversation changed since you opened this form. Your amount is
+        preserved. Compare the current limit before saving your draft against its
+        latest version.
+      current: 'Current limit: %{amount} %{unit}'
+      failed: This model call stopped because the Conversation cost limit was reached.

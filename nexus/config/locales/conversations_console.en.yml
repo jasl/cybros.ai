@@ -1,0 +1,90 @@
+en:
+  conversation_console:
+    conversations: Conversations
+    conversation: Conversation
+    untitled: Untitled conversation
+    workspace: Workspace
+    all_workspaces: All readable workspaces
+    answerer: Answering member
+    status: Status
+    last_activity: Last activity
+    archived: Archived
+    open: Open
+    archive_filter: Archive
+    archive_options:
+      exclude: Open conversations
+      include: Open and archived
+      only: Archived conversations
+    search: Search history
+    filter: Apply filters
+    search_scope: Search conversation titles and history in this workspace.
+    scope_description: Conversations in this workspace. Open a conversation to see its subagent and side conversations.
+    search_results: Search results
+    no_matches: No matching history.
+    more_results: More results
+    empty: No conversations found
+    empty_description: Conversations created by your applications appear here when you can read them.
+    pages: Conversation pages
+    related: Related work
+    children: Subagent conversations
+    branches: Forked conversations
+    sides: Side conversations
+    source: Fork source
+    parent: Parent conversation
+    export: Download diagnostics
+    usage: Recorded usage
+    recorded_tokens: Recorded tokens
+    recorded_attempts: Recorded model attempts
+    known_cost: Known recorded cost
+    cost_limit: Conversation cost limit
+    no_limit: No limit
+    usage_scope: Usage attributed to this conversation. Inherited and spawned work retain their own attribution.
+    cost_incomplete: Some model attempts have unknown costs. The known amount is not the complete cost.
+    history: Conversation history
+    history_pages: History pages
+    older: Older turns
+    newer: Newer turns
+    inherited: Inherited
+    excluded_from_context: Excluded from model context
+    variants: Message versions
+    variant_pages: Message version pages
+    active_variant: Displayed answer
+    running_variant: Reply in progress
+    view_run: Inspect run
+    current_execution: Current execution
+    background_input: Background task result · show details
+    prompt: Input
+    no_content: No text has been recorded for this version.
+    attachments: Attachments
+    preview: Preview
+    details_pruned: Execution details were removed by retention. The retained content is still available.
+    no_history: No visible turns
+    no_history_description: Accepted conversation history will appear here.
+    invalid_filters: Choose a valid search and archive filter.
+    invalid_history: Choose a valid history position.
+    turn_status:
+      pending: Pending
+      running: Running
+      completed: Completed
+      failed: Failed
+      canceled: Canceled
+      timed_out: Timed out
+    variant_status:
+      pending: Pending
+      running: Running
+      completed: Completed
+      failed: Failed
+      canceled: Canceled
+      timed_out: Timed out
+    turn_kind:
+      message: Message
+      direct_reply: Reply
+      compaction_summary: Compaction summary
+  pagination:
+    nouns:
+      conversations:
+        one: conversation
+        other: conversations
+      variants:
+        one: message version
+        other: message versions

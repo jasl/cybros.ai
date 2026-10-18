@@ -1,0 +1,79 @@
+<% content_for :title, conversation_title(@conversation) %>
+<div class="space-y-6" data-controller="work-refresh" data-work-refresh-channel-value="AgentAPI::V1::ConversationEventsChannel" data-work-refresh-workspace-id-value="<%= @conversation.workspace.public_id %>" data-work-refresh-resource-id-value="<%= @conversation.public_id %>">
+  <header class="space-y-3">
+    <%= render "shared/back_navigation", path: work_return_path(workspace_conversations_path(@conversation.workspace)), label: t("shared.back_navigation.back") %>
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-medium tracking-tight wrap-anywhere"><%= conversation_title(@conversation) %></h1>
+        <p class="mt-1 text-sm text-base-content/60"><%= @conversation.answering_user.display_name %> · <%= t(@conversation.archived? ? "conversation_console.archived" : "conversation_console.open") %></p>
+      </div>
+      <%= link_to t("conversation_console.export"), conversation_export_path(@conversation), class: "btn btn-ghost btn-sm", data: { turbo: false } %>
+    </div>
+    <nav class="flex flex-wrap gap-4 text-sm" aria-label="<%= t("conversation_console.related") %>">
+      <%= link_to @conversation.workspace.name, workspace_path(@conversation.workspace), class: "link link-hover" %>
+      <% if @conversation.writable_by?(Current.user) %>
+        <%= link_to t("conversation_cancellation.title"), new_conversation_cancellation_path(@conversation, return_to: request.fullpath), class: "link link-hover" %>
+        <% unless @conversation.archived? %><%= link_to t("conversation_management.title.edit"), edit_conversation_title_path(@conversation, return_to: params[:return_to]), class: "link link-hover" %><% end %>
+        <% unless @conversation.subagent? || @conversation.side? %>
+          <% if @conversation.archived? %>
+            <%= link_to t("conversation_management.unarchive.title"), new_conversation_unarchive_path(@conversation, return_to: params[:return_to]), class: "link link-hover" %>
+          <% else %>
+            <%= link_to t("conversation_management.archive.title"), new_conversation_archive_path(@conversation, return_to: params[:return_to]), class: "link link-hover" %>
+          <% end %>
+        <% end %>
+      <% end %>
+      <%= link_to t("conversation_inputs.title"), conversation_inputs_path(@conversation, return_to: request.fullpath), class: "link link-hover" %>
+      <% if @current_run %><%= link_to t("conversation_console.current_execution"), run_path(@current_run, return_to: request.fullpath), class: "link link-hover" %><% end %>
+      <%= link_to t("conversation_console.children"), conversation_children_path(@conversation, return_to: request.fullpath), class: "link link-hover" %>
+      <%= link_to t("conversation_console.branches"), conversation_branches_path(@conversation, return_to: request.fullpath), class: "link link-hover" %>
+      <%= link_to t("conversation_console.sides"), conversation_sides_path(@conversation, return_to: request.fullpath), class: "link link-hover" %>
+      <%= link_to t("schedules_console.schedules"), conversation_schedules_path(@conversation, return_to: request.fullpath), class: "link link-hover" %>
+      <% if @source_id %><%= link_to t("conversation_console.source"), conversation_path(@source_id, return_to: request.fullpath), class: "link link-hover" %><% end %>
+      <% if @parent %><%= link_to t("conversation_console.parent"), conversation_path(@parent, return_to: request.fullpath), class: "link link-hover" %><% end %>
+    </nav>
+    <%= render "work/live_status" %>
+  </header>
+  <section class="space-y-2" aria-label="<%= t("conversation_console.usage") %>">
+    <%= render "shared/facts_panel", facts: {
+      t("conversation_console.recorded_tokens") => number_with_delimiter(@usage.fetch("total_tokens")),
+      t("conversation_console.recorded_attempts") => number_with_delimiter(@usage.fetch("request_count")),
+      t("conversation_console.known_cost") => "#{@usage.fetch('cost_amount')} #{@conversation.account.cost_unit}",
+      t("conversation_console.cost_limit") => @conversation.cost_limit ? "#{@conversation.cost_limit.to_s('F')} #{@conversation.account.cost_unit}" : t("conversation_console.no_limit"),
+    } %>
+    <p class="text-sm text-base-content/60"><%= t("conversation_console.usage_scope") %></p>
+    <% if @conversation.writable_by?(Current.user) %>
+      <%= link_to t("work_recovery.cost_limit.title"), edit_conversation_cost_limit_path(@conversation, return_to: request.fullpath), class: "link link-hover text-sm" %>
+    <% end %>
+    <% unless @usage.fetch("cost_complete") %><p class="text-sm text-warning"><%= t("conversation_console.cost_incomplete") %></p><% end %>
+  </section>
+  <nav class="flex justify-between gap-3" aria-label="<%= t("conversation_console.history_pages") %>">
+    <% if @page.has_older %><%= link_to t("conversation_console.older"), conversation_path(@conversation, before_position: @page.before_position, return_to: params[:return_to]), class: "btn btn-ghost btn-sm" %><% end %>
+    <% if @page.has_newer %><%= link_to t("conversation_console.newer"), conversation_path(@conversation, after_position: @page.after_position, return_to: params[:return_to]), class: "btn btn-ghost btn-sm" %><% end %>
+  </nav>
+  <section class="space-y-4" aria-label="<%= t("conversation_console.history") %>">
+    <% @page.turns.each do |turn| %>
+      <article id="turn-<%= turn.fetch(:public_id) %>" data-turn-id="<%= turn.fetch(:public_id) %>" class="space-y-3 rounded-box border border-base-300 bg-base-200 p-4">
+        <header class="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <div class="flex flex-wrap items-center gap-2">
+            <strong><%= turn.dig(:speaker, :display_name) || t("conversation_console.turn_kind.#{turn.fetch(:kind)}") %></strong>
+            <span class="text-base-content/60"><%= l(turn.fetch(:created_at), format: :short) %></span>
+            <% if turn.fetch(:inherited) %><span class="badge badge-outline"><%= t("conversation_console.inherited") %></span><% end %>
+            <% if turn.fetch(:visibility) == "excluded_from_context" %><span class="badge badge-outline"><%= t("conversation_console.excluded_from_context") %></span><% end %>
+          </div>
+          <%= link_to t("conversation_console.variants"), conversation_turn_variants_path(@conversation, turn.fetch(:public_id), return_to: request.fullpath), class: "link link-hover" %>
+        </header>
+        <% if turn[:active_variant] %><%= render "conversations/variant", variant: turn.fetch(:active_variant), run_public_id: @page.runs[turn.fetch(:active_variant).fetch(:public_id)], origin: turn[:origin], kind: turn.fetch(:kind) %><% end %>
+        <% if turn[:active_variant] && @page.cost_refused_variant_ids.include?(turn.fetch(:active_variant).fetch(:public_id)) %>
+          <%= render "conversations/direct_reply_recovery", conversation: @conversation, turn_public_id: turn.fetch(:public_id), return_to: request.fullpath %>
+        <% end %>
+        <% if turn[:running_variant] %>
+          <div class="border-t border-base-300 pt-3">
+            <h3 class="mb-2 text-sm font-medium"><%= t("conversation_console.running_variant") %></h3>
+            <%= render "conversations/variant", variant: turn.fetch(:running_variant), run_public_id: @page.runs[turn.fetch(:running_variant).fetch(:public_id)], origin: turn[:origin], kind: turn.fetch(:kind) %>
+          </div>
+        <% end %>
+      </article>
+    <% end %>
+    <% if @page.turns.empty? %><%= render "shared/empty_state", title: t("conversation_console.no_history"), description: t("conversation_console.no_history_description") %><% end %>
+  </section>
+</div>

@@ -1,0 +1,169 @@
+{
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/fields/{field}",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture/variants/fixture/fields/steers",
+        member.workspace("fixture").unwrap().conversation("fixture").unwrap()
+            .turns().turn("fixture").unwrap().variant("fixture").unwrap().field("steers", &Default::default())
+    );
+    operation!(
+        "DELETE /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{public_id}",
+        "DELETE",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .turn("fixture")
+            .unwrap()
+            .delete()
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .list(&Default::default())
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{public_id}",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .turn("fixture")
+            .unwrap()
+            .fetch(&Default::default())
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture/variants",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .turn("fixture")
+            .unwrap()
+            .variants()
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/reasoning",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture/variants/fixture/reasoning",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .turn("fixture")
+            .unwrap()
+            .variant("fixture")
+            .unwrap()
+            .reasoning(&Default::default())
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/request",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture/variants/fixture/request",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .turn("fixture")
+            .unwrap()
+            .variant("fixture")
+            .unwrap()
+            .request()
+    );
+    operation!(
+        "PATCH /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{public_id}",
+        "PATCH",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .turn("fixture")
+            .unwrap()
+            .set_view_state(&Default::default())
+    );
+    operation!(
+        "PATCH /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{public_id}",
+        "PATCH",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture/variants/fixture",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .turn("fixture")
+            .unwrap()
+            .variant("fixture")
+            .unwrap()
+            .set_view_state(&Default::default())
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/edit",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture/edit",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .turn("fixture")
+            .unwrap()
+            .edit(&Default::default())
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/regeneration",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture/regeneration",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .turn("fixture")
+            .unwrap()
+            .regenerate(&Default::default(), "operation-key")
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/activation",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/turns/fixture/variants/fixture/activation",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .turns()
+            .turn("fixture")
+            .unwrap()
+            .variant("fixture")
+            .unwrap()
+            .activate()
+    );
+}

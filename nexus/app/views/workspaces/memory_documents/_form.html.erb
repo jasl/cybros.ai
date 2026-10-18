@@ -1,0 +1,23 @@
+<%# locals: (workspace:, draft:, creating:, data_writable:, conflict: false, error: nil, memory_overridden: false) %>
+<%= link_to t("data_console.memory.back"), workspace_memory_documents_path(workspace), class: "link link-hover text-sm" %>
+<% if conflict %><%= link_to t("data_console.read_saved"), workspace_memory_document_path(workspace, path: draft["path"]), class: "link link-hover text-sm", target: "_blank", rel: "noopener" %><% end %>
+<%= form_with url: creating ? workspace_memory_documents_path(workspace) : workspace_memory_document_path(workspace), method: creating ? :post : :patch, scope: :memory, class: "space-y-4" do |form| %>
+  <%= form.hidden_field :expected_public_id, value: draft["expected_public_id"] %>
+  <%= form.hidden_field :expected_lock_version, value: draft["expected_lock_version"] %>
+  <div>
+    <%= form.label :path, t("data_console.memory.path"), class: "mb-1 block text-sm font-medium" %>
+    <%= form.text_field :path, value: draft["path"], readonly: !creating || !data_writable, required: true, class: "input w-full font-mono text-sm", aria: { describedby: "memory-path-help" } %>
+    <p id="memory-path-help" class="mt-1 text-xs text-base-content/60"><%= t("data_console.memory.path_help") %></p>
+  </div>
+  <div>
+    <%= form.label :description, t("data_console.memory.skill_description"), class: "mb-1 block text-sm font-medium" %>
+    <%= form.text_area :description, value: draft["description"], rows: 2, readonly: !data_writable || memory_overridden, class: "textarea w-full text-sm", aria: { describedby: "memory-description-help" } %>
+    <p id="memory-description-help" class="mt-1 text-xs text-base-content/60"><%= t("data_console.memory.description_help") %></p>
+  </div>
+  <div>
+    <%= form.label :content, t("data_console.memory.content"), class: "mb-1 block text-sm font-medium" %>
+    <%= form.text_area :content, value: draft["content"], rows: 16, readonly: !data_writable || memory_overridden, class: "textarea w-full font-mono text-sm", aria: { invalid: error.present?.to_s } %>
+  </div>
+  <p class="text-xs text-base-content/60"><%= t("data_console.memory.retention") %></p>
+  <% if data_writable && !memory_overridden %><%= form.submit t("data_console.memory.save"), class: "btn btn-primary btn-sm" %><% end %>
+<% end %>

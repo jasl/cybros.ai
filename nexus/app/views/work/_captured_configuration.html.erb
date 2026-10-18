@@ -1,0 +1,11 @@
+<%# locals: (configuration:, initial_model:, actual_model:, model_selection:, fallback_models:, approval_mode:, conversation_reach:) %>
+<section class="min-w-0 space-y-3 rounded-box border border-base-300 p-4" aria-label="<%= t('work_reading.captured_configuration') %>">
+  <h2 class="font-medium"><%= t("work_reading.captured_configuration") %></h2>
+  <p class="text-xs text-base-content/60"><%= t("work_reading.capture_description") %></p>
+  <%= render "shared/facts_panel", facts: captured_configuration_facts(configuration, initial_model: initial_model, actual_model: actual_model, model_selection: model_selection, fallback_models: fallback_models, approval_mode: approval_mode, conversation_reach: conversation_reach) %>
+  <% if configuration %>
+    <details><summary class="cursor-pointer text-sm"><%= t("work_reading.capture_details") %></summary><%= render "work/copyable_text", text: JSON.pretty_generate(configuration.as_json) %></details>
+  <% else %>
+    <p class="text-sm text-base-content/60"><%= t("work_reading.capture_unavailable") %></p>
+  <% end %>
+</section>

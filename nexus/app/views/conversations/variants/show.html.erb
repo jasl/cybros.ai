@@ -1,0 +1,21 @@
+<% content_for :title, t("schedules_console.exact_result") %>
+<div class="mx-auto max-w-4xl space-y-6" data-controller="work-refresh" data-work-refresh-channel-value="AgentAPI::V1::ConversationEventsChannel" data-work-refresh-workspace-id-value="<%= @conversation.workspace.public_id %>" data-work-refresh-resource-id-value="<%= @conversation.public_id %>">
+  <header class="space-y-3">
+    <%= render "shared/back_navigation", path: work_return_path(conversation_path(@conversation, around_turn_public_id: @result.entry.turn.public_id)), label: t("schedules_console.back_to_result_source") %>
+    <h1 class="text-xl font-medium"><%= t("schedules_console.exact_result") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("schedules_console.exact_result_description") %></p>
+    <p class="font-mono text-xs text-base-content/60 wrap-anywhere"><%= @result.variant.fetch(:public_id) %></p>
+    <%= render "work/live_status" %>
+  </header>
+  <% captured = @result.variant_record %>
+  <%= current_agent_configuration_link(captured.turn.answering_user, class: "link link-hover text-sm") if captured %>
+  <details class="rounded-box border border-base-300 p-4">
+    <summary class="cursor-pointer font-medium"><%= t("work_reading.captured_configuration") %></summary>
+    <%= render "work/captured_configuration", configuration: captured&.agent_configuration, initial_model: captured, actual_model: @current_model, model_selection: captured&.model_selection, fallback_models: captured&.fallback_models, approval_mode: @result.run&.approval_mode || captured&.agent_configuration&.approval_mode, conversation_reach: @result.run&.conversation_reach || captured&.agent_configuration&.conversation_reach %>
+  </details>
+  <% if @result.cost_refused %><%= render "conversations/direct_reply_recovery", conversation: @conversation, turn_public_id: @result.entry.turn.public_id, return_to: request.fullpath %><% end %>
+  <article class="rounded-box border border-base-300 bg-base-200 p-4" data-turn-id="<%= @result.entry.turn.public_id %>">
+    <%= render "conversations/variant", variant: @result.variant, run_public_id: @result.run&.public_id, origin: @result.entry.turn.origin, kind: @result.entry.turn.kind %>
+  </article>
+  <%= link_to t("conversation_reading.open_conversation"), conversation_path(@conversation, around_turn_public_id: @result.entry.turn.public_id, return_to: request.fullpath), class: "btn btn-outline btn-sm" %>
+</div>

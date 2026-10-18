@@ -1,0 +1,7 @@
+<% content_for :title, t("runs_console.transcript") %>
+<%= tag.div class: "space-y-6", data: run_refresh_data(@run) do %>
+  <%= render "runs/header", run: @run, actions: @actions %>
+  <h2 class="text-lg font-medium"><%= t("runs_console.transcript") %></h2>
+  <% if @transcript.has_older %><%= link_to t("runs_console.older"), run_transcript_path(@run, **run_console_parameters.merge("before" => @transcript.next_before)), class: "btn btn-ghost btn-sm" %><% end %>
+  <%= render "runs/rounds", run: @run, transcript: @transcript %>
+<% end %>

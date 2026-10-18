@@ -1,0 +1,22 @@
+<% content_for :title, t("agents.api_keys.create") %>
+
+<div class="space-y-6">
+  <%= render "shared/back_navigation", path: keys_path, label: t("agents.api_keys.kinds.#{key_kind}") %>
+  <div class="space-y-1">
+    <h1 class="text-xl font-medium tracking-tight"><%= t("agents.api_keys.create") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("agents.api_keys.purposes.#{key_kind}") %></p>
+  </div>
+  <% if @form_error %><p role="alert" class="text-sm text-error"><%= @form_error %></p><% end %>
+  <%# The one-time secret stays outside Turbo's snapshot pipeline. %>
+  <%= form_with model: @token, url: keys_path, scope: :api_key, data: { turbo: false } do |form| %>
+    <div class="rounded-box border border-base-300 bg-base-200">
+      <%= render layout: "shared/form_row", locals: { form:, attribute: :name, label: t("agents.api_keys.name") } do %>
+        <%= validated_field form, :text_field, :name, @token.errors.full_messages_for(:name), size: :sm, required: true, maxlength: AccessToken::NAME_MAX_LENGTH %>
+      <% end %>
+      <%= render layout: "shared/form_row", locals: { form:, attribute: :note, label: t("agents.api_keys.note") } do %>
+        <%= validated_field form, :text_field, :note, @token.errors.full_messages_for(:note), size: :sm, maxlength: AccessToken::NOTE_MAX_LENGTH %>
+      <% end %>
+    </div>
+    <div class="mt-3 flex justify-end"><%= form.submit t("agents.api_keys.create"), class: "btn btn-primary btn-sm" %></div>
+  <% end %>
+</div>

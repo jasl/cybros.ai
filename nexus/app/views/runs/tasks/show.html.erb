@@ -1,0 +1,25 @@
+<% content_for :title, t("runs_console.task_title", key: @task.node_key) %>
+<%= tag.div class: "space-y-6", data: run_refresh_data(@run) do %>
+  <%= render "runs/header", run: @run, actions: @actions %>
+  <h2 class="text-lg font-medium font-mono wrap-anywhere"><%= @task.node_key %> <span class="badge badge-outline"><%= work_status_label(@detail.fetch(:status)) %></span></h2>
+  <%= render "shared/facts_panel", facts: {
+    t("runs_console.kind") => t("runs_console.task_kinds.#{@task.task_kind}"),
+    t("runs_console.model") => @detail.dig(:model, :model).presence || t("runs_console.none"),
+    t("runs_console.tool") => @task.tool_name.presence || t("runs_console.none"),
+    t("runs_console.started") => @task.started_at ? l(@task.started_at, format: :long) : t("runs_console.not_started"),
+    t("runs_console.completed") => @task.completed_at ? l(@task.completed_at, format: :long) : t("runs_console.not_finished"),
+  } %>
+  <% if @task.model_task? %><%= render "runs/usage", usage: @usage %><% end %>
+  <% if @detail[:error] %><p class="alert alert-warning"><span><%= t("runs_console.failure") %>: <code><%= @detail.dig(:error, :key) %></code> <%= @detail.dig(:error, :detail) %></span></p><% end %>
+  <% if @task.model_task? && @task.error_key == Conversation::COST_LIMIT_REACHED && @run.conversation %><%= render "conversations/cost_recovery", conversation: @run.conversation, return_to: request.fullpath %><% end %>
+  <% if @detail[:prompt].present? %><section class="space-y-2"><h3 class="font-medium"><%= t("runs_console.prompt") %></h3><%= render "work/content", text: @detail.fetch(:prompt) %></section><% end %>
+  <% if @detail[:tool_input] %><section class="space-y-2"><h3 class="font-medium"><%= t("runs_console.tool_input", name: @task.tool_name) %></h3><%= render "work/copyable_text", text: JSON.pretty_generate(@detail.fetch(:tool_input)) %></section><% end %>
+  <% if @detail[:effect_profile] %><section class="space-y-2"><h3 class="font-medium"><%= t("runs_console.effect_profile") %></h3><pre class="overflow-x-auto whitespace-pre-wrap break-words text-sm"><%= JSON.pretty_generate(@detail.fetch(:effect_profile)) %></pre></section><% end %>
+  <%= render "runs/tasks/actions", run: @run, task: @task, detail: @detail, actions: @actions %>
+  <%= render "runs/tasks/recovery", run: @run, task: @task, cancel_branch: @cancel_branch,
+    compact: @compact, compaction_step: @compaction_step, compaction_state: @compaction_state %>
+  <% if @detail[:output].present? %><section class="space-y-2"><h3 class="font-medium"><%= t("runs_console.output") %></h3><%= render "work/content", text: @detail.fetch(:output) %></section><% end %>
+  <%= render "work/attachments", attachments: @attachments %>
+  <% if @task.model_task? %><%= link_to t("runs_console.sealed_request"), run_task_request_path(@run, @task.node_key, return_to: request.fullpath), class: "btn btn-ghost btn-sm" %><% end %>
+  <details class="rounded-box border border-base-300 p-4"><summary class="cursor-pointer font-medium"><%= t("runs_console.task_detail") %></summary><pre class="mt-3 overflow-x-auto whitespace-pre-wrap break-words text-xs"><%= JSON.pretty_generate(@detail) %></pre></details>
+<% end %>

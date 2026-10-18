@@ -1,0 +1,6 @@
+module Rho
+  module Speakers
+    def self.owner: (client: CybrosAgent::Client, agent_public_id: String) -> CybrosAgent::Api::IngressSpeaker
+    def self.memory_context: (?audience: String) -> Hash[String, untyped]
+  end
+end

@@ -1,0 +1,339 @@
+require "test_helper"
+
+class ClaimOrchestrationTest < Minitest::Test
+  State = Data.define(:status, :requests, :result, :error)
+
+  class Runtime
+    attr_reader :threads, :programs, :events
+    attr_accessor :result
+
+    def initialize
+      @threads = []
+      @programs = []
+      @events = []
+      @result = { "content" => [{ "type" => "text", "text" => "done" }], "structured_content" => nil }
+    end
+
+    def call(program:, cancelled:)
+      @threads << Thread.current
+      @programs << program
+      raise "cancellation reached VM" if cancelled.call
+
+      @events.concat(yield(State.new(status: "request", requests: [{ "key" => "op_0",
+        "request" => { "kind" => "tool", "name" => "child", "input" => {} } }], result: nil, error: nil)))
+      @events.concat(yield(State.new(status: "observe", requests: [], result: nil, error: nil)))
+      State.new(status: "finished", requests: [], result: @result, error: nil)
+    end
+  end
+
+  class Transport
+    ENVIRONMENT = { "default_runner_executor_public_id" => "runner-a",
+      "executors" => [{ "runner_executor_public_id" => "runner-a", "environment" => { "root" => "/captured/project" } }],
+      "skills" => [{ "callable" => "read_skill", "name" => "review", "source" => "runner", "executor_public_id" => "runner-a" }] }.freeze
+
+    attr_accessor :child_done, :unknown_submit, :cancel_on_submit, :expire_on_submit, :context, :paginate,
+      :submit_refusal, :submit_status, :observe_changed, :observe_retry_after, :park_seconds
+    attr_reader :calls, :commits, :trace, :submits, :observation_times
+
+    def initialize
+      @calls = []
+      @commits = []
+      @trace = []
+      @submits = 0
+      @claims = 0
+      @child_done = true
+      @observation_times = []
+      @park_seconds = 60
+    end
+
+    def call(path, **request)
+      @calls << [path, request, Thread.current]
+      body = case path
+      when %r{/claim\z}
+        if request[:method] == :get
+          { "claim" => { "active" => true } }
+        else
+          @claims += 1
+          claim(path, token: "proof-#{@claims}")
+        end
+      when %r{/operations\z}
+        if request.fetch(:method, :get) == :get
+          after = (request[:params] || {}).fetch("after", 0)
+          events = @trace.select { |event| event.fetch("position") > after }
+          page = @paginate ? events.first(1) : events
+          return CybrosAgent::Response.new(status: 200, headers: {}, body: {
+            "operations" => { "context" => { "tools" => [{ "name" => "child" }], "model_defaults" => { "model" => "test" },
+              "environment" => ENVIRONMENT },
+              "trace" => page, "position" => @trace.length,
+              "next_after" => page.length < events.length ? page.last.fetch("position") : nil } })
+        end
+        @submits += 1
+        if @submit_refusal
+          return CybrosAgent::Response.new(status: @submit_status || 409, headers: {}, body: {
+            "error" => { "code" => @submit_refusal, "message" => "Refused" } })
+        end
+        operation = request.fetch(:body).fetch("operation")
+        event = operation.merge("type" => "operation", "position" => @trace.length + 1, "receipt" => { "tasks" => ["child"] })
+        @trace << event
+        @context.cancel(:canceled) if @cancel_on_submit
+        @context.cancel(:deadline) if @expire_on_submit
+        if @unknown_submit
+          @unknown_submit = false
+          raise CybrosAgent::TransportError, "response lost after acceptance"
+        end
+        { "operation" => event }
+      when %r{/observation\z}
+        @observation_times << Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        if @observe_retry_after
+          retry_after = @observe_retry_after
+          @observe_retry_after = nil
+          return CybrosAgent::Response.new(status: 429, headers: { "Retry-After" => retry_after.to_s }, body: {
+            "error" => { "code" => "rate_limited", "message" => "Rate limit exceeded" } })
+        end
+        if @child_done && @trace.none? { |event| event["type"] == "observation" }
+          @trace << { "type" => "observation", "position" => @trace.length + 1, "key" => "op_0", "outcome" => { "content" => "child done" } }
+          if @observe_changed
+            @observe_changed = false
+            return CybrosAgent::Response.new(status: 409, headers: {}, body: {
+              "error" => { "code" => "operation_position_changed", "message" => "Refetch observations" } })
+          end
+          { "observation" => @trace.last, "position" => @trace.length }
+        else
+          { "observation" => nil, "position" => @trace.length }
+        end
+      when %r{/extend\z}
+        claim(path, token: request.fetch(:body).fetch("claim_token"))
+      when %r{/commit\z}
+        @commits << [path, request.fetch(:body)]
+        @child_done = true if path.include?("/child/")
+        { "task" => { "status" => "completed" } }
+      else
+        raise "unexpected request #{path}"
+      end
+      CybrosAgent::Response.new(status: 200, headers: {}, body: body)
+    end
+
+    private
+
+      def claim(path, token:)
+        parent = path.include?("/parent/")
+        { "task" => { "kind" => "tool_call", "workspace_public_id" => "workspace", "run_public_id" => "run_public_id",
+          "conversation_public_id" => nil, "parent_public_id" => nil, "task_key" => parent ? "parent" : "child",
+          "tool_name" => parent ? "orchestrator" : "child", "tool_input" => {}, "claimed" => true,
+          "timeout_ms" => (@park_seconds * 1000).to_i },
+          "claim" => { "claim_token" => token, "deadline_at" => (Time.now + @park_seconds).iso8601(3) } }
+      end
+  end
+
+  class Log
+    attr_reader :warnings
+    def initialize = @warnings = []
+    def info(*, **) = nil
+    def warn(*args, **fields) = @warnings << [args, fields]
+  end
+
+  def setup
+    @transport = Transport.new
+    @runtime = Runtime.new
+    @pool = Rho::Runner::Pool.new(worker_threads: 1)
+    executor = CybrosAgent::ExecutorClient.new(base_url: "http://nexus.test", transport: @transport,
+      credential_provider: -> { "executor-token" })
+    parent = Rho::Runner::Toolset::Tool.new(name: "orchestrator", description: "orchestrator",
+      parameters: { "type" => "object" }, handler: lambda { |_input, context|
+        @transport.context = context
+        context.orchestration.run(program: { "source" => "test" }, runtime: @runtime)
+      })
+    child = Rho::Runner::Toolset::Tool.new(name: "child", description: "child", parameters: { "type" => "object" },
+      handler: ->(_input, _context) { Rho::Runner::Result.ok("child done") })
+    tools = Rho::Runner::Toolsets.fixed(toolset: Rho::Runner::Toolset.new("orchestrator" => parent, "child" => child))
+    @log = Log.new
+    @run = Rho::Runner::TaskRun.new(executor: executor, pool: @pool, toolsets: tools, log: @log)
+  end
+
+  def teardown = @pool.stop
+
+  def test_one_worker_keeps_the_live_parent_and_executes_its_child_before_one_final_commit
+    @transport.child_done = false
+    Async do |reactor|
+      reactor.with_timeout(3) do
+        parent = reactor.async { task("parent") }
+        sleep(0.01) until @transport.submits.positive?
+        assert_equal 1, @pool.in_flight
+        assert_equal :done, task("child")
+        assert_equal :done, parent.wait
+      end
+    end
+    assert_equal 1, @transport.submits
+    assert_equal 1, @runtime.programs.length, "source is invoked once under one claim"
+    assert_equal %w[child parent], @transport.commits.map { |path, _| path.split("/")[-2] }
+    final = @transport.commits.last.last
+    assert_equal [{ "type" => "text", "text" => "done" }], final.fetch("content")
+    assert final.key?("structured_content")
+    assert_nil final.fetch("structured_content")
+    assert @runtime.threads.none? { |thread| thread == Thread.current }
+    assert @transport.calls.all? { |_, _, thread| thread == Thread.current }
+    assert_equal [{ "name" => "child" }], @runtime.programs.first.fetch("tools")
+    assert_equal({ "model" => "test" }, @runtime.programs.first.fetch("model_defaults"))
+    assert_equal Transport::ENVIRONMENT, @runtime.programs.first.fetch("environment")
+  end
+
+  def test_a_ready_outcome_preserves_resource_links_and_false_in_the_same_claim
+    @runtime.result = { "content" => [{ "type" => "resource_link", "uri" => "nexus://uploads/artifact", "name" => "report" }],
+      "structured_content" => false }
+    assert_equal :done, task("parent")
+    assert_equal 1, @transport.commits.length
+    assert_equal @runtime.result, @transport.commits.last.last.slice("content", "structured_content")
+  end
+
+  def test_an_unknown_submit_response_reads_its_receipt_without_restarting_or_resubmitting
+    @transport.unknown_submit = true
+    task("parent")
+    assert_equal 1, @runtime.programs.length
+    assert_equal 1, @transport.submits
+    assert_equal "completed", @transport.commits.last.last.fetch("outcome")
+    assert_empty @log.warnings
+  end
+
+  def test_a_limited_observation_waits_then_retries_the_same_position_while_renewing_its_claim
+    @transport.observe_retry_after = 2
+    @transport.park_seconds = 1.5
+
+    assert_equal :done, task("parent")
+
+    observations = @transport.calls.select { |path, _, _| path.end_with?("/observation") }
+    assert_equal 2, observations.length
+    assert_equal observations.first[1].fetch(:body), observations.last[1].fetch(:body),
+      "the observation position and original claim survive the throttle"
+    assert_operator @transport.observation_times.last - @transport.observation_times.first, :>=, 2
+    renewals = @transport.calls.select { |path, _, _| path.end_with?("/extend") }
+    refute_empty renewals, "the control reactor renews during Retry-After"
+    assert renewals.all? { |_, request, _| request.fetch(:body).fetch("claim_token") == "proof-1" }
+    assert_equal 1, @runtime.programs.length
+    assert_equal 1, @transport.submits
+    assert_equal 1, @transport.commits.length
+    assert_equal "completed", @transport.commits.last.last.fetch("outcome")
+    assert_equal %w[operation observation], @runtime.events.map { |event| event.fetch(:type) }
+    assert @transport.calls.all? { |_, _, thread| thread == Thread.current }
+    assert_empty @log.warnings
+  end
+
+  def test_canceling_a_limited_observation_stops_the_live_handler_before_retry_after
+    @transport.observe_retry_after = 60
+    Async do |reactor|
+      reactor.with_timeout(3) do
+        parent = reactor.async { task("parent") }
+        sleep 0.01 until @transport.observation_times.any?
+        sleep 0.05
+        assert_empty @transport.commits, "a throttle must leave the invocation running"
+        assert @pool.cancel(run_public_id: "run_public_id", task_key: "parent")
+        assert_equal :done, parent.wait
+      end
+    end
+
+    assert_equal 1, @runtime.programs.length
+    assert_equal 1, @transport.submits
+    assert_equal 1, @transport.observation_times.length
+    assert_equal 1, @transport.commits.length
+    assert_equal "failed", @transport.commits.last.last.fetch("outcome")
+    assert_match(/interrupted/, @transport.commits.last.last.fetch("content"))
+    assert_equal 0, @pool.in_flight
+  end
+
+  def test_cancellation_during_a_control_request_stops_before_observation_or_a_second_operation
+    @transport.cancel_on_submit = true
+    task("parent")
+    assert_equal 1, @transport.submits
+    assert_equal "failed", @transport.commits.last.last.fetch("outcome")
+    assert_match(/interrupted/, @transport.commits.last.last.fetch("content"))
+    refute @transport.calls.any? { |path, _, _| path.end_with?("/observation") }
+  end
+
+  def test_a_deadline_returns_an_ordinary_timeout_and_never_restarts_the_handler
+    @transport.expire_on_submit = true
+    assert_equal :done, task("parent")
+    final = @transport.commits.last.last
+    assert_equal "completed", final.fetch("outcome")
+    assert final.fetch("is_error")
+    assert_match(/timed out/, final.fetch("content"))
+    assert_equal ["operation"], @transport.trace.map { |event| event.fetch("type") }
+    assert_equal 1, @runtime.programs.length
+    assert_equal 0, @pool.in_flight
+  end
+
+  def test_existing_operation_history_cannot_reconstruct_a_lost_execution
+    task("parent")
+    @transport.paginate = true
+    task("parent")
+    assert_equal 1, @runtime.programs.length
+    assert_equal 1, @transport.submits
+    assert_equal "failed", @transport.commits.last.last.fetch("outcome")
+    assert_match(/previous execution state is unavailable/, @transport.commits.last.last.fetch("content"))
+  end
+
+  def test_a_stale_claim_does_not_run_or_observe_more_work
+    @transport.submit_refusal = "not_claimant"
+    task("parent")
+    assert_equal 1, @transport.submits
+    assert_equal 1, @runtime.programs.length
+    refute @transport.calls.any? { |path, _, _| path.end_with?("/observation") }
+    assert_equal "failed", @transport.commits.last.last.fetch("outcome")
+    assert_equal 0, @pool.in_flight
+  end
+
+  def test_an_operation_mismatch_fails_the_parent_without_executing_or_observing_more_work
+    @transport.submit_refusal = "operation_mismatch"
+    task("parent")
+    assert_equal 1, @transport.submits
+    assert_equal "failed", @transport.commits.last.last.fetch("outcome")
+  end
+
+  def test_a_definite_invalid_or_oversized_request_fails_without_resubmitting
+    @transport.submit_refusal = "invalid_operation"
+    [400, 422, 413].each do |status|
+      @transport.submit_status = status
+      task("parent")
+      assert_equal "failed", @transport.commits.last.last.fetch("outcome"), "HTTP #{status} refused acceptance"
+    end
+    assert_equal 3, @transport.submits
+    assert_equal 3, @transport.commits.length
+    assert_empty @transport.trace
+  end
+
+  def test_authority_and_server_failures_end_this_invocation_without_source_replay
+    @transport.submit_refusal = "invalid_operation"
+    [401, 403, 404, 409, 503].each do |status|
+      @transport.submit_status = status
+      task("parent")
+    end
+    assert_equal 5, @transport.submits
+    assert_equal 5, @runtime.programs.length
+    assert @transport.commits.all? { |_, body| body.fetch("outcome") == "failed" }
+    assert_equal 0, @pool.in_flight
+  end
+
+  def test_a_changed_position_reads_the_saved_observation_into_the_same_invocation
+    @transport.observe_changed = true
+    task("parent")
+    assert_equal 2, @transport.calls.count { |path, request, _| path.end_with?("/operations") && request.fetch(:method, :get) == :get }
+    assert_equal 1, @runtime.programs.length
+    assert_equal %w[operation observation], @runtime.events.map { |event| event.fetch(:type) }
+    assert_equal 1, @transport.submits
+    assert_equal "completed", @transport.commits.last.last.fetch("outcome")
+  end
+
+  def test_dropping_oversized_structure_keeps_the_result_resource_links
+    link = { "type" => "resource_link", "uri" => "nexus://uploads/artifact", "name" => "report" }
+    @runtime.result = { "content" => [link], "structured_content" => "x" * 1_048_576 }
+    task("parent")
+    result = @transport.commits.last.last
+    assert_equal link, result.fetch("content").first
+    assert_match(/structured content omitted/, result.fetch("content").last.fetch("text"))
+    refute result.key?("structured_content")
+  end
+
+  private
+
+    def task(key)
+      @run.call(run_public_id: "run_public_id", task_key: key)
+    end
+end

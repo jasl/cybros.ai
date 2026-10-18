@@ -1,0 +1,12 @@
+<% content_for :title, t("conversation_console.variants") %>
+<div class="space-y-6">
+  <%= render "shared/back_navigation", path: work_return_path(conversation_path(@conversation, around_turn_public_id: @entry.turn.public_id)), label: conversation_title(@conversation) %>
+  <h1 class="text-xl font-medium tracking-tight"><%= t("conversation_console.variants") %></h1>
+  <% @variants.each do |variant| %>
+    <article class="rounded-box border border-base-300 bg-base-200 p-4">
+      <%= render "conversations/variant", variant: variant, run_public_id: @runs[variant.fetch(:public_id)], origin: @entry.turn.origin, kind: @entry.turn.kind %>
+      <%= link_to t("conversation_history.open_candidate"), conversation_turn_variant_path(@conversation, @entry.turn.public_id, variant.fetch(:public_id), return_to: request.fullpath), class: "btn btn-ghost btn-sm mt-3" %>
+    </article>
+  <% end %>
+  <%= render "shared/pagination_footer", pagy: @variants_pagy, noun: "variants", aria_label: t("conversation_console.variant_pages") %>
+</div>

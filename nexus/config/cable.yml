@@ -1,0 +1,57 @@
+# DEVELOPMENT RUNS THE SAME MULTI-PROCESS SHAPE AS PRODUCTION, so it needs the
+# same bus. Rails ships `async` here, which is an IN-PROCESS pubsub: a broadcast
+# from `bin/model_runner` or `bin/jobs` reaches nobody connected to Puma. Since
+# the model runner is the process that streams a turn's deltas, `async` meant
+# realtime silently did not work at all outside production — verified by probe:
+# two `bin/rails runner` processes, one subscribing and one broadcasting, and
+# the subscriber saw nothing. The cable database was already configured for
+# development; only this line was still Rails' single-process default.
+development:
+  adapter: solid_cable
+  connects_to:
+    database:
+      writing: cable
+  polling_interval: 0.1.seconds
+  message_retention: 1.day
+  # Same reason as production below.
+  autotrim: false
+  # The gem's default is 100 rows per pass, which a single streaming turn
+  # outruns in ten seconds. Sized against the producer, not against the default.
+  trim_batch_size: 5000
+
+# TEST STAYS IN-PROCESS, deliberately: everything runs in one process there and
+# an in-memory bus is what makes a broadcast assertion deterministic rather than
+# a poll with a timeout.
+#
+# `connects_to` is still declared, and it is not decoration: solid_cable binds
+# `SolidCable::Record` from THIS key alone, whatever the adapter, so without it
+# the model silently resolves to the PRIMARY database — which is where a test
+# reaching for `solid_cable_messages` was really looking, while the table sat
+# in the cable database next door. config/database.yml has always said a test
+# can address those tables; this is the line that makes that true.
+test:
+  adapter: test
+  connects_to:
+    database:
+      writing: cable
+  # Same as the other two, and here it also buys determinism: with autotrim on,
+  # the gem's job only trims with probability `trim_chance / trim_batch_size`,
+  # so a reclamation test would pass about one run in fifty.
+  autotrim: false
+
+production:
+  adapter: solid_cable
+  connects_to:
+    database:
+      writing: cable
+  polling_interval: 0.1.seconds
+  message_retention: 1.day
+  # Trimming is a scheduled job, never synchronous on the broadcasting thread.
+  # solid_cable defaults autotrim on and calls TrimJob.perform_now inline on
+  # EVERY broadcast, so leaving it unset would put a delete pass in the hot
+  # path of a fan-out — the cost scaling with the traffic it is meant to clean
+  # up after. The replacement runs from config/recurring.yml.
+  autotrim: false
+  # The gem's default is 100 rows per pass, which a single streaming turn
+  # outruns in ten seconds. Sized against the producer, not against the default.
+  trim_batch_size: 5000

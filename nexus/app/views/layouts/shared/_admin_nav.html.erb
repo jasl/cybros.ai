@@ -1,0 +1,60 @@
+<ul class="menu w-full gap-0.5 px-0">
+  <li class="mb-2">
+    <%= link_to root_path, class: "gap-2.5 text-base-content/70" do %>
+      <span class="iconify lucide--arrow-left size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.back_to_console") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to admin_model_usage_path, class: class_names("gap-2.5", "menu-active": current_page?(admin_model_usage_path)), aria: { current: ("page" if current_page?(admin_model_usage_path)) } do %>
+      <span class="iconify lucide--chart-no-axes-combined size-4" aria-hidden="true"></span>
+      <%= t("work_console.usage") %>
+    <% end %>
+  </li>
+  <li>
+    <% providers_current = controller_path.start_with?("admin/model_providers") %>
+    <%= link_to admin_model_providers_path, class: class_names("gap-2.5", "menu-active": providers_current), aria: { current: ("page" if providers_current) } do %>
+      <span class="iconify lucide--plug-zap size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.model_providers") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to admin_cost_unit_path, class: class_names("gap-2.5", "menu-active": current_page?(admin_cost_unit_path)), aria: { current: ("page" if current_page?(admin_cost_unit_path)) } do %>
+      <span class="iconify lucide--circle-dollar-sign size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.cost_unit") %>
+    <% end %>
+  </li>
+  <li>
+    <% users_current = controller_path == "admin/users" || controller_path.start_with?("admin/users/") %>
+    <%= link_to admin_users_path, class: class_names("gap-2.5", "menu-active": users_current), aria: { current: ("page" if users_current) } do %>
+      <span class="iconify lucide--users size-4" aria-hidden="true"></span>
+      <%= t("admin.users.index.users") %>
+    <% end %>
+  </li>
+  <li>
+    <% agents_current = controller_path == "admin/agents" || controller_path.start_with?("admin/agents/") %>
+    <%= link_to admin_agents_path, class: class_names("gap-2.5", "menu-active": agents_current), aria: { current: ("page" if agents_current) } do %>
+      <span class="iconify lucide--bot size-4" aria-hidden="true"></span>
+      <%= t("admin.agents.index.agents") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to admin_invitations_path, class: class_names("gap-2.5", "menu-active": current_page?(admin_invitations_path)), aria: { current: ("page" if current_page?(admin_invitations_path)) } do %>
+      <span class="iconify lucide--mail-plus size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.invitations") %>
+    <% end %>
+  </li>
+  <li>
+    <% deployment_current = controller_path == "admin/deployments" || controller_path.start_with?("admin/deployment/") %>
+    <%= link_to admin_deployment_path, class: class_names("gap-2.5", "menu-active": deployment_current), aria: { current: ("page" if deployment_current) } do %>
+      <span class="iconify lucide--download size-4" aria-hidden="true"></span>
+      <%= t("layouts.shared.admin_nav.system_upgrade") %>
+    <% end %>
+  </li>
+  <li>
+    <%= link_to admin_retention_path, class: class_names("gap-2.5", "menu-active": current_page?(admin_retention_path)), aria: { current: ("page" if current_page?(admin_retention_path)) } do %>
+      <span class="iconify lucide--archive size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.retention") %>
+    <% end %>
+  </li>
+</ul>

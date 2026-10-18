@@ -1,0 +1,8 @@
+<%# locals: (conversation:, return_to:) %>
+<div class="space-y-2 rounded-box border border-warning/40 bg-warning/10 p-3 text-sm" data-cost-recovery>
+  <p><%= t("work_recovery.cost_limit.failed") %></p>
+  <p><%= t("work_recovery.cost_limit.no_restart") %></p>
+  <% if conversation.writable_by?(Current.user) %>
+    <%= link_to t("work_recovery.cost_limit.title"), edit_conversation_cost_limit_path(conversation, return_to: return_to), class: "link link-hover" %>
+  <% end %>
+</div>

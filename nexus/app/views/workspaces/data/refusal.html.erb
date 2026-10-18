@@ -1,0 +1,14 @@
+<%= render layout: "workspaces/data/shell", locals: { workspace: @workspace, data_writable: @data_writable, error: @error, validation_errors: @validation_errors, title: t("data_console.title") } do %>
+  <%= link_to t("data_console.back"), workspace_data_path(@workspace), class: "link link-hover" %>
+  <% if @memory_overridden %>
+    <p class="text-sm text-base-content/70"><%= t("data_console.memory.override_help") %></p>
+    <%= form_with url: workspace_memory_document_path(@workspace), method: :get, class: "space-y-3" do |form| %>
+      <%= form.label :path, t("data_console.memory.path"), class: "block text-sm font-medium" %>
+      <%= form.text_field :path, value: "workspace/skills/", class: "input w-full font-mono text-sm", required: true %>
+      <div class="flex flex-wrap gap-3">
+        <%= form.submit t("data_console.memory.open"), class: "btn btn-sm" %>
+        <% if @data_writable %><%= form.submit t("data_console.memory.new"), formaction: new_workspace_memory_document_path(@workspace), class: "btn btn-sm" %><% end %>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

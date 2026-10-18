@@ -1,0 +1,33 @@
+<% content_for :title, t("conversation_reading.follow_title") %>
+<div class="mx-auto max-w-3xl space-y-6" data-controller="work-refresh" data-work-refresh-channel-value="AgentAPI::V1::ConversationEventsChannel" data-work-refresh-workspace-id-value="<%= @conversation.workspace.public_id %>" data-work-refresh-resource-id-value="<%= @conversation.public_id %>">
+  <header class="space-y-2">
+    <%= render "shared/back_navigation", path: work_return_path(conversation_path(@conversation)), label: t("shared.back_navigation.back") %>
+    <h1 class="text-xl font-medium"><%= t("conversation_reading.follow_title") %></h1>
+    <p class="text-sm wrap-anywhere"><%= @configuration_answerer.display_name %> · <%= params[:id] %></p>
+    <%= current_agent_configuration_link(@configuration_answerer, class: "link text-sm") %>
+    <%= link_to t("conversation_inputs.title"), conversation_inputs_path(@conversation, return_to: request.fullpath), class: "link text-sm" %>
+    <%= render "work/live_status" %>
+  </header>
+  <% if @input %>
+    <section class="space-y-3" aria-label="<%= t("conversation_reading.acceptance") %>" data-input-id="<%= @input.public_id %>">
+      <p class="badge badge-outline"><%= t("conversation_reading.states.#{@input.state}") %></p>
+      <p class="whitespace-pre-wrap wrap-anywhere"><%= @input.text %></p>
+      <% if @input.deliver_at %><p class="text-sm"><%= t("conversation_inputs.deliver_at") %> <time datetime="<%= @input.deliver_at.iso8601 %>"><%= @input.deliver_at.iso8601 %></time></p><% end %>
+      <%= render "work/attachments", attachments: @input_attachments %>
+      <% if @input.blocked_reason %><p role="alert" class="text-sm text-warning"><%= t("conversation_reading.refused", reason: conversation_input_refusal(@input.blocked_reason)) %></p><% end %>
+      <% if @conversation.writable_by?(Current.user) && !@conversation.archived? && conversation_input_cancellable?(@input) %>
+        <div class="flex flex-wrap items-center gap-3">
+          <%= button_to t("conversation_inputs.cancel"), conversation_input_cancellation_path(@conversation, @input.public_id, return_to: params[:return_to]), class: "btn btn-outline", form: { data: { turbo: false } } %>
+        </div>
+        <p class="text-sm text-base-content/60"><%= t("conversation_inputs.cancel_scope") %></p>
+      <% end %>
+      <p class="text-sm text-base-content/60"><%= t("conversation_reading.accepted_scope") %></p>
+    </section>
+  <% else %>
+    <section class="space-y-4" aria-label="<%= t("conversation_reading.result") %>" data-turn-id="<%= @entry.turn.public_id %>">
+      <p class="text-sm text-base-content/60"><%= t("conversation_reading.original_result") %></p>
+      <%= render "conversations/variant", variant: @variant, run_public_id: @run&.public_id, origin: @entry.turn.origin, kind: @entry.turn.kind %>
+      <%= link_to t("conversation_reading.open_conversation"), conversation_path(@conversation, around_turn_public_id: @entry.turn.public_id, return_to: request.fullpath), class: "btn btn-outline" %>
+    </section>
+  <% end %>
+</div>

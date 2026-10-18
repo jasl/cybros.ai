@@ -1,0 +1,48 @@
+module CybrosAgent
+
+  # Gem-shipped test support, required by name; not loaded by `cybros_agent`.
+  module TestSupport
+    class FakeRealtime
+      class Recorded < Data
+        attr_reader channel: String
+        attr_reader params: Hash[Symbol | String, untyped]
+      end
+
+      attr_reader subscriptions: Array[Recorded]
+
+      def initialize: () -> void
+      def connect: (?welcome_timeout: Numeric?) -> self
+      def connect_for_feed: (?welcome_timeout: Numeric?) -> self
+      def connected?: () -> bool
+      def subscribe: (
+        channel: String, ?params: Hash[Symbol | String, untyped]?, ?timeout: Numeric?
+      ) -> FakeSubscription
+      def unsubscribe: (FakeSubscription subscription) -> nil
+      def deliver: (String channel, untyped message, ?params: Hash[Symbol | String, untyped]) -> Integer
+      def close: () -> nil
+      def closed?: () -> bool
+      def inspect: () -> String
+    end
+
+    class FakeSubscription
+      include Enumerable[untyped]
+
+      attr_reader channel: String
+      attr_reader params: Hash[Symbol | String, untyped]
+
+      def initialize: (client: FakeRealtime, channel: String, params: Hash[Symbol | String, untyped]) -> void
+      def each: () { (untyped message) -> untyped } -> nil
+      def pop: () -> untyped
+      def unsubscribe: () -> nil
+      def closed?: () -> bool
+      def matches?: (String channel, Hash[Symbol | String, untyped]? params) -> bool
+      def deliver: (untyped message) -> nil
+      def finish: () -> nil
+
+      private
+
+      def normalize: (Hash[Symbol | String, untyped]? params) -> Hash[String, untyped]
+    end
+  end
+
+end

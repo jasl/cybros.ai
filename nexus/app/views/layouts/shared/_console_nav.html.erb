@@ -1,0 +1,42 @@
+<% groups = [
+  [t("work_console.work"), [
+    [t("work_console.overview"), root_path, "lucide--house", controller_path == "dashboard"],
+    [t("management_console.connect"), agent_connection_path, "lucide--plug", controller_path == "agent_connections"],
+    [t("layouts.application.agents"), agents_path, "lucide--bot", controller_path == "agents" || controller_path.start_with?("agents/")],
+    [t("layouts.application.workspaces"), workspaces_path, "lucide--folders", controller_path == "workspaces" || controller_path.start_with?("workspaces/", "conversations", "runs")],
+  ]],
+  [t("work_console.resources"), [
+    [t("layouts.application.runners"), runners_path, "lucide--server", ["runners", "runner_connections"].include?(controller_path) || controller_path.start_with?("runners/")],
+    [t("work_console.attention"), attention_path, "lucide--circle-help", controller_path == "attention" || controller_path.start_with?("attention/")],
+    [t("usage_reports.title"), usage_path, "lucide--chart-no-axes-combined", controller_path == "usage_reports"],
+    [t("work_console.tools"), settings_mcp_connections_path, "lucide--plug", controller_path.start_with?("settings/mcp_connections")],
+  ]],
+] %>
+<ul class="menu w-full gap-0.5 px-0">
+  <% groups.each do |heading, items| %>
+    <li class="menu-title mt-2 text-xs"><%= heading %></li>
+    <% items.each do |label, path, icon, active| %>
+      <li>
+        <%= link_to path, class: class_names("gap-2.5", "menu-active": active), aria: { current: ("page" if active) } do %>
+          <span class="iconify <%= icon %> size-4" aria-hidden="true"></span>
+          <%= label %>
+        <% end %>
+      </li>
+    <% end %>
+  <% end %>
+  <li class="mt-3">
+    <% settings_active = controller_path.start_with?("settings/") && !controller_path.start_with?("settings/mcp_connections") %>
+    <%= link_to settings_path, class: class_names("gap-2.5", "menu-active": settings_active), aria: { current: ("page" if settings_active) } do %>
+      <span class="iconify lucide--settings-2 size-4" aria-hidden="true"></span>
+      <%= t("layouts.application.settings") %>
+    <% end %>
+  </li>
+  <% if Current.user&.admin? %>
+    <li>
+      <%= link_to admin_model_usage_path, class: "gap-2.5" do %>
+        <span class="iconify lucide--shield size-4" aria-hidden="true"></span>
+        <%= t("layouts.application.administration") %>
+      <% end %>
+    </li>
+  <% end %>
+</ul>

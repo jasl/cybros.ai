@@ -1,0 +1,225 @@
+module CybrosAgent
+  module Platform
+    class Agent < Data
+      attr_reader public_id: String
+      attr_reader handle: String?
+      attr_reader display_name: String
+      attr_reader status: String
+      attr_reader agent_identifier: String?
+      attr_reader named_agent_scope: String?
+      attr_reader description: String?
+      attr_reader derived_from_public_id: String?
+      def self.new: (public_id: String, handle: String?, display_name: String, status: String, agent_identifier: String?, named_agent_scope: String?, description: String?, derived_from_public_id: String?) -> instance
+    end
+
+    class ApplicationConnection < Data
+      attr_reader executor_public_id: String
+      attr_reader owner_agent_public_id: String
+      attr_reader status: String
+      attr_reader credential_readiness: String
+      attr_reader presence: String
+      attr_reader last_seen_at: String?
+      attr_reader connected_at: String?
+      def self.new: (executor_public_id: String, owner_agent_public_id: String, status: String, credential_readiness: String, presence: String, last_seen_at: String?, connected_at: String?) -> instance
+    end
+
+    class AgentDetail < Data
+      attr_reader public_id: String
+      attr_reader handle: String?
+      attr_reader display_name: String
+      attr_reader status: String
+      attr_reader agent_identifier: String?
+      attr_reader named_agent_scope: String?
+      attr_reader description: String?
+      attr_reader derived_from_public_id: String?
+      attr_reader application_connection: ApplicationConnection?
+      def self.new: (public_id: String, handle: String?, display_name: String, status: String, agent_identifier: String?, named_agent_scope: String?, description: String?, derived_from_public_id: String?, application_connection: ApplicationConnection?) -> instance
+    end
+
+    class AgentConfigurationSnapshot < Data
+      attr_reader agent: Agent
+      attr_reader configuration: Api::AgentConfiguration
+      attr_reader prompt_documents: Array[Api::PromptDocument]
+      attr_reader agent_updated_at: String
+      attr_reader measured_at: String
+      def self.new: (agent: Agent, configuration: Api::AgentConfiguration, prompt_documents: Array[Api::PromptDocument], agent_updated_at: String, measured_at: String) -> instance
+    end
+
+    class PrivateRunner < Data
+      attr_reader public_id: String
+      attr_reader display_name: String
+      attr_reader status: String
+      attr_reader registration_identifier: String
+      attr_reader assignment_scope: String
+      attr_reader assignment_agent_public_id: String
+      def self.new: (public_id: String, display_name: String, status: String, registration_identifier: String, assignment_scope: String, assignment_agent_public_id: String) -> instance
+    end
+
+    class APIKey < Data
+      attr_reader public_id: String
+      attr_reader name: String
+      attr_reader note: String?
+      attr_reader plane: String
+      attr_reader created_at: String
+      attr_reader last_used_at: String?
+      attr_reader revoked_at: String?
+      attr_reader usable: bool
+      def self.new: (public_id: String, name: String, note: String?, plane: String, created_at: String, last_used_at: String?, revoked_at: String?, usable: bool) -> instance
+    end
+
+    class APIKeyGrant < Data
+      include Redacted
+      def inspect: () -> String
+      attr_reader api_key: APIKey
+      attr_reader secret: String
+      def self.new: (api_key: APIKey, secret: String) -> instance
+    end
+
+    class UsageCounters < Data
+      attr_reader request_count: Integer
+      attr_reader input_tokens: Integer
+      attr_reader cache_read_tokens: Integer
+      attr_reader cache_creation_tokens: Integer
+      attr_reader output_tokens: Integer
+      attr_reader reasoning_tokens: Integer
+      attr_reader total_tokens: Integer
+      attr_reader cost_amount: String
+      attr_reader cost_complete: bool
+      def self.new: (request_count: Integer, input_tokens: Integer, cache_read_tokens: Integer, cache_creation_tokens: Integer, output_tokens: Integer, reasoning_tokens: Integer, total_tokens: Integer, cost_amount: String, cost_complete: bool) -> instance
+    end
+
+    class UsageReport < Data
+      attr_reader unit: String
+      attr_reader series: Array[UsagePoint]
+      attr_reader totals: UsageCounters
+      def self.new: (unit: String, series: Array[UsagePoint], totals: UsageCounters) -> instance
+    end
+
+    class DeploymentImage < Data
+      attr_reader name: String
+      attr_reader reference: String
+      def self.new: (name: String, reference: String) -> instance
+    end
+
+    class DeploymentRelease < Data
+      attr_reader release: String
+      attr_reader images: Array[DeploymentImage]
+      def self.new: (release: String, images: Array[DeploymentImage]) -> instance
+    end
+
+    class DeploymentCandidate < Data
+      attr_reader release: String
+      attr_reader images: Array[DeploymentImage]
+      attr_reader checked_at: String
+      attr_reader source_revision: String?
+      attr_reader source_url: String?
+      def self.new: (release: String, images: Array[DeploymentImage], checked_at: String, source_revision: String?, source_url: String?) -> instance
+    end
+
+    class DeploymentCheck < Data
+      attr_reader name: String
+      attr_reader status: String
+      attr_reader message: String?
+      attr_reader next_step: String?
+      attr_reader available_bytes: Integer?
+      attr_reader required_bytes: Integer?
+      def self.new: (name: String, status: String, message: String?, next_step: String?, available_bytes: Integer?, required_bytes: Integer?) -> instance
+    end
+
+    class DeploymentPreflight < Data
+      attr_reader checked_at: String
+      attr_reader ready: bool
+      attr_reader backup: bool
+      attr_reader checks: Array[DeploymentCheck]
+      def self.new: (checked_at: String, ready: bool, backup: bool, checks: Array[DeploymentCheck]) -> instance
+    end
+
+    class DeploymentBackup < Data
+      attr_reader created_at: String
+      attr_reader size_bytes: Integer
+      attr_reader available: bool
+      def self.new: (created_at: String, size_bytes: Integer, available: bool) -> instance
+    end
+
+    class DeploymentError < Data
+      attr_reader code: String
+      attr_reader message: String
+      attr_reader operation_id: String?
+      def self.new: (code: String, message: String, operation_id: String?) -> instance
+    end
+
+    class DeploymentUpgrade < Data
+      attr_reader id: String
+      attr_reader idempotency_key: String
+      attr_reader actor_public_id: String?
+      attr_reader target: DeploymentRelease
+      attr_reader previous: DeploymentRelease?
+      attr_reader phase: String
+      attr_reader status: String
+      attr_reader accepted_at: String
+      attr_reader updated_at: String
+      attr_reader completed_at: String?
+      attr_reader error: DeploymentError?
+      attr_reader recovery: String?
+      attr_reader log_cursor: String?
+      attr_reader backup: bool
+      attr_reader database_backup: DeploymentBackup?
+      def self.new: (id: String, idempotency_key: String, actor_public_id: String?, target: DeploymentRelease, previous: DeploymentRelease?, phase: String, status: String, accepted_at: String, updated_at: String, completed_at: String?, error: DeploymentError?, recovery: String?, log_cursor: String?, backup: bool, database_backup: DeploymentBackup?) -> instance
+    end
+
+    class DeploymentState < Data
+      attr_reader supported: bool
+      attr_reader sources: Array[DeploymentImage]
+      attr_reader installed: DeploymentRelease?
+      attr_reader candidate: DeploymentCandidate?
+      attr_reader preflight: DeploymentPreflight?
+      attr_reader active_operation: DeploymentUpgrade?
+      attr_reader last_operation: DeploymentUpgrade?
+      def self.new: (supported: bool, sources: Array[DeploymentImage], installed: DeploymentRelease?, candidate: DeploymentCandidate?, preflight: DeploymentPreflight?, active_operation: DeploymentUpgrade?, last_operation: DeploymentUpgrade?) -> instance
+    end
+
+    class DeploymentLogEntry < Data
+      attr_reader cursor: String
+      attr_reader text: String?
+      def self.new: (cursor: String, text: String?) -> instance
+    end
+
+    class DeploymentLog < Data
+      attr_reader entries: Array[DeploymentLogEntry]
+      attr_reader next_cursor: String?
+      attr_reader operation: DeploymentUpgrade
+      def self.new: (entries: Array[DeploymentLogEntry], next_cursor: String?, operation: DeploymentUpgrade) -> instance
+    end
+
+    class DeploymentEvent < Data
+      attr_reader event: String
+      attr_reader id: String?
+      attr_reader log: DeploymentLog?
+      attr_reader error: DeploymentError?
+      attr_reader data: untyped
+      def self.new: (event: String, id: String?, log: DeploymentLog?, error: DeploymentError?, data: untyped) -> instance
+    end
+
+    class DeploymentAccepted < Data
+      attr_reader upgrade: DeploymentUpgrade
+      attr_reader status: Integer
+      attr_reader location: String?
+      def self.new: (upgrade: DeploymentUpgrade, status: Integer, location: String?) -> instance
+    end
+
+    class UsagePoint < Data
+      attr_reader bucket_start_at: String
+      attr_reader request_count: Integer
+      attr_reader input_tokens: Integer
+      attr_reader cache_read_tokens: Integer
+      attr_reader cache_creation_tokens: Integer
+      attr_reader output_tokens: Integer
+      attr_reader reasoning_tokens: Integer
+      attr_reader total_tokens: Integer
+      attr_reader cost_amount: String
+      attr_reader cost_complete: bool
+      def self.new: (bucket_start_at: String, request_count: Integer, input_tokens: Integer, cache_read_tokens: Integer, cache_creation_tokens: Integer, output_tokens: Integer, reasoning_tokens: Integer, total_tokens: Integer, cost_amount: String, cost_complete: bool) -> instance
+    end
+
+  end
+end

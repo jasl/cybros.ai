@@ -1,0 +1,19 @@
+<% content_for :title, t("agents.api_keys.created") %>
+
+<div class="space-y-6">
+  <div class="space-y-1">
+    <h1 class="text-xl font-medium tracking-tight"><%= t("agents.api_keys.created") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("agents.api_keys.save_once", name: @token.name) %></p>
+  </div>
+  <div class="rounded-box border border-base-300 bg-base-200 px-4 py-4">
+    <div class="flex min-w-0 gap-2" data-controller="clipboard" data-clipboard-copied-value="<%= t("clipboard.copied") %>">
+      <%= text_field_tag :api_key_secret, @secret, readonly: true, class: "input input-sm min-w-0 w-full flex-1 font-mono text-xs", data: { clipboard_target: "source" }, aria: { label: t("agents.api_keys.secret") }, id: nil %>
+      <button type="button" class="btn btn-primary btn-sm shrink-0" data-clipboard-target="button" data-action="clipboard#copy"><%= t("settings.tokens.reveal.copy") %></button>
+    </div>
+  </div>
+  <% if @private_runner %>
+    <p class="text-sm text-base-content/60"><%= t("runner_connection.key_created") %></p>
+    <%= link_to t("resource_management.view_runner"), runner_path(@private_runner), class: "btn btn-outline btn-sm" %>
+  <% end %>
+  <div class="flex justify-end"><%= link_to t("settings.tokens.reveal.done"), keys_path, class: "btn btn-ghost btn-sm" %></div>
+</div>

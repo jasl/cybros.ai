@@ -1,0 +1,6 @@
+#!/bin/sh
+# The suite stand-in: slow on purpose, so nothing may wait on it.
+case "$1" in
+  test) sleep 40; echo "Run options: --seed 4242"; echo "20 runs, 61 assertions, 0 failures, 0 errors, 0 skips";;
+  *) echo "usage: bin/rails test" >&2; exit 2;;
+esac

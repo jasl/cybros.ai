@@ -1,0 +1,15 @@
+<%= render layout: "workspaces/data/shell", locals: { workspace: @workspace, data_writable: @data_writable, error: @error, validation_errors: @validation_errors, title: t("data_console.character.title") } do %>
+  <p class="text-sm text-base-content/70"><%= t("data_console.character.description") %></p>
+  <% if @document %>
+    <p class="text-sm text-base-content/60"><%= t("data_console.character.metadata", version: @document.version, bytes: @document.bytesize, role: t("personas.roles.#{@document.role}")) %></p>
+    <pre class="rounded-box bg-base-200 p-4 whitespace-pre-wrap wrap-anywhere text-sm"><%= @document.content %></pre>
+  <% else %>
+    <p class="text-sm text-base-content/60"><%= t("data_console.character.empty") %></p>
+  <% end %>
+  <% if @data_writable %>
+    <div class="flex flex-wrap gap-3">
+      <%= link_to t("data_console.character.edit"), edit_workspace_character_path(@workspace), class: "btn btn-primary btn-sm" %>
+      <% if @document %><%= button_to t("data_console.character.delete"), workspace_character_path(@workspace), method: :delete, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("data_console.character.delete_confirmation") } %><% end %>
+    </div>
+  <% end %>
+<% end %>

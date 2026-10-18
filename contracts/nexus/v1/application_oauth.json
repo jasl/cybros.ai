@@ -1,0 +1,166 @@
+{
+  "client_id": "cybros-application",
+  "scope": "application",
+  "grant_types": [
+    "authorization_code",
+    "refresh_token",
+    "urn:ietf:params:oauth:grant-type:device_code"
+  ],
+  "code_exchange_request": {
+    "client_id": "cybros-application",
+    "grant_type": "authorization_code",
+    "code": "fixture-code",
+    "redirect_uri": "http://127.0.0.1:49152/callback",
+    "code_verifier": "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
+  },
+  "device_authorization_request": {
+    "client_id": "cybros-application",
+    "scope": "application",
+    "connection_mode": "login"
+  },
+  "refresh_token_request": {
+    "client_id": "cybros-application",
+    "grant_type": "refresh_token",
+    "refresh_token": "fixture-platform-refresh-token"
+  },
+  "valid_login_only_fixture": {
+    "access_token": "fixture-platform-token",
+    "plane": "platform",
+    "refresh_token": "fixture-platform-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600,
+    "scope": "application",
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Fixture operator",
+      "role": "owner"
+    }
+  },
+  "valid_runtime_fixture": {
+    "access_token": "fixture-platform-token",
+    "plane": "platform",
+    "refresh_token": "fixture-platform-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600,
+    "scope": "application",
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Fixture operator",
+      "role": "owner"
+    },
+    "agent_public_id": "01900000-0000-7000-8000-000000000020",
+    "agent": {
+      "access_token": "fixture-member-token",
+      "plane": "member",
+      "executor_access_token": "fixture-executor-token",
+      "refresh_token": "fixture-refresh-token",
+      "token_type": "Bearer",
+      "expires_in": 1209600
+    },
+    "runner": {
+      "access_token": "fixture-executor-token",
+      "plane": "executor_transport",
+      "refresh_token": "fixture-refresh-token",
+      "token_type": "Bearer",
+      "expires_in": 1209600
+    }
+  },
+  "valid_refresh_fixture": {
+    "access_token": "fixture-rotated-platform-token",
+    "plane": "platform",
+    "refresh_token": "fixture-rotated-platform-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600,
+    "scope": "application",
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Fixture operator",
+      "role": "owner"
+    }
+  },
+  "unknown_plane_fixture": {
+    "access_token": "fixture-platform-token",
+    "plane": "zz_unknown_value",
+    "refresh_token": "fixture-platform-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600,
+    "scope": "application",
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Fixture operator",
+      "role": "owner"
+    }
+  },
+  "unknown_scope_fixture": {
+    "access_token": "fixture-platform-token",
+    "plane": "platform",
+    "refresh_token": "fixture-platform-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600,
+    "scope": "zz_unknown_value",
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Fixture operator",
+      "role": "owner"
+    }
+  },
+  "unknown_token_type_fixture": {
+    "access_token": "fixture-platform-token",
+    "plane": "platform",
+    "refresh_token": "fixture-platform-refresh-token",
+    "token_type": "zz_unknown_value",
+    "expires_in": 1209600,
+    "scope": "application",
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Fixture operator",
+      "role": "owner"
+    }
+  },
+  "unknown_child_plane_fixture": {
+    "access_token": "fixture-platform-token",
+    "plane": "platform",
+    "refresh_token": "fixture-platform-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600,
+    "scope": "application",
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Fixture operator",
+      "role": "owner"
+    },
+    "agent_public_id": "01900000-0000-7000-8000-000000000020",
+    "agent": {
+      "access_token": "fixture-member-token",
+      "plane": "zz_unknown_value",
+      "executor_access_token": "fixture-executor-token",
+      "refresh_token": "fixture-refresh-token",
+      "token_type": "Bearer",
+      "expires_in": 1209600
+    },
+    "runner": {
+      "access_token": "fixture-executor-token",
+      "plane": "executor_transport",
+      "refresh_token": "fixture-refresh-token",
+      "token_type": "Bearer",
+      "expires_in": 1209600
+    }
+  },
+  "unknown_role_fixture": {
+    "access_token": "fixture-platform-token",
+    "plane": "platform",
+    "refresh_token": "fixture-platform-refresh-token",
+    "token_type": "Bearer",
+    "expires_in": 1209600,
+    "scope": "application",
+    "user": {
+      "public_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Fixture operator",
+      "role": "zz_unknown_value"
+    }
+  },
+  "unknown_authority_behavior": "reject_response",
+  "unknown_role_behavior": "carry_unknown",
+  "ambiguous_rotation_behavior": "authorization_lost_without_retry",
+  "refresh_lineage_behavior": "independent_primary_agent_runner"
+}

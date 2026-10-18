@@ -1,0 +1,32 @@
+<%= render layout: "budgets/shell", locals: { target: @budget_target, personal: @budget_personal, back_path: @budget_back_path, title: t(@budget_personal ? "budget_console.my_balance" : "budget_console.title", name: @budget_target.display_name), error: @error } do %>
+  <p class="text-xs text-base-content/60"><%= t("budget_console.measured_at", time: @measured_at.utc.iso8601) %></p>
+  <section class="space-y-3 rounded-box border border-base-300 p-4" aria-labelledby="current-budget-title">
+    <h2 id="current-budget-title" class="font-medium"><%= t("budget_console.current") %></h2>
+    <% if @current_budget %>
+      <%= render "budgets/window", budget: @current_budget %>
+      <%= link_to t("budget_console.ledger"), budget_detail_path(@current_budget.fetch(:public_id)), class: "link link-hover text-sm", data: { turbo_frame: "_top" } %>
+    <% else %>
+      <p class="text-sm"><%= t("budget_console.uncapped") %></p>
+    <% end %>
+  </section>
+  <% unless @budget_personal %><%= link_to t("budget_console.open"), budget_new_path, class: "btn btn-primary btn-sm", data: { turbo_frame: "_top" } %><% end %>
+  <h2 class="font-medium"><%= t("budget_console.history") %></h2>
+  <%= form_with url: budget_collection_path, method: :get, data: { turbo_frame: "_top" }, class: "flex flex-wrap items-end gap-3" do |form| %>
+    <div><%= form.label :order, t("budget_console.order"), class: "mb-1 block text-sm" %><%= form.select :order, [[t("budget_console.ascending"), "asc"], [t("budget_console.descending"), "desc"]], { selected: params[:order] || "asc" }, class: "select select-sm" %></div>
+    <div><%= form.label :limit, t("budget_console.page_size"), class: "mb-1 block text-sm" %><%= form.number_field :limit, value: params[:limit] || 25, min: 1, max: 100, class: "input input-sm w-24" %></div>
+    <%= form.submit t("budget_console.apply"), class: "btn btn-sm" %>
+  <% end %>
+  <div class="divide-y divide-base-300 rounded-box border border-base-300">
+    <% @budgets.each do |budget| %>
+      <article class="min-w-0 space-y-3 p-4">
+        <%= link_to budget.fetch(:public_id), budget_detail_path(budget.fetch(:public_id)), class: "link link-hover font-mono text-sm wrap-anywhere", data: { turbo_frame: "_top" } %>
+        <%= render "budgets/window", budget: budget %>
+      </article>
+    <% end %>
+    <% if @budgets.empty? %><p class="p-4 text-sm text-base-content/60"><%= t("budget_console.empty") %></p><% end %>
+  </div>
+  <nav class="flex flex-wrap gap-4 text-sm" aria-label="<%= t('budget_console.history_pages') %>">
+    <% if params[:after].present? %><%= link_to t("budget_console.first_page"), budget_collection_path(limit: params[:limit], order: params[:order]), class: "link link-hover", data: { turbo_frame: "_top" } %><% end %>
+    <% if @page.next_after %><%= link_to t("budget_console.next_page"), budget_collection_path(limit: params[:limit], order: params[:order], after: @page.next_after), class: "link link-hover", data: { turbo_frame: "_top" } %><% end %>
+  </nav>
+<% end %>

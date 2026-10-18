@@ -1,0 +1,19 @@
+module Rho
+  class Deployment
+    HELPER: String
+    REQUEST_LIMIT: Integer
+    RESPONSE_LIMIT: Integer
+
+    def self.register: (Extensions::Api api) -> untyped
+    def initialize: (?environment: untyped, ?helper: String) -> void
+    def status: () -> untyped
+    def check: (String tag) -> untyped
+    def upgrade: (Hash[String, untyped] document) -> untyped
+    def receipt: (String operation_id) -> untyped
+    def log: (String operation_id, String? cursor) -> untyped
+
+    private
+
+    def request: (String operation, ?Hash[String, untyped] attributes) -> untyped
+  end
+end

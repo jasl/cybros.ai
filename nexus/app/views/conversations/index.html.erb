@@ -1,0 +1,43 @@
+<% content_for :title, t("conversation_console.conversations") %>
+<div class="space-y-6">
+  <header class="space-y-1">
+    <h1 class="text-xl font-medium tracking-tight"><%= t("conversation_console.conversations") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("conversation_console.scope_description") %></p>
+  </header>
+  <%= render "workspaces/navigation", workspace: @workspace, current: :work %>
+  <%= render "workspaces/work_navigation", workspace: @workspace %>
+  <%= form_with url: workspace_conversations_path(@workspace), method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
+    <div><%= form.label :archived, t("conversation_console.archive_filter"), class: "label" %>
+      <%= form.select :archived, %w[exclude include only].map { |value| [t("conversation_console.archive_options.#{value}"), value] }, { selected: @archive }, class: "select select-sm" %></div>
+    <div><%= form.label :answering_user_public_id, t("conversation_history.answerer"), class: "label" %>
+      <%= form.select :answering_user_public_id, @answerers, { include_blank: t("conversation_history.all_answerers"), selected: params[:answering_user_public_id] }, class: "select select-sm" %></div>
+    <div><%= form.label :query, t("conversation_console.search"), class: "label" %>
+      <%= form.search_field :query, value: @query, class: "input input-sm", aria: { describedby: "search-scope" } %></div>
+    <%= form.submit t("conversation_console.filter"), class: "btn btn-primary btn-sm" %>
+  <% end %>
+  <p id="search-scope" class="text-sm text-base-content/60"><%= t("conversation_console.search_scope") %></p>
+  <% if @search %>
+    <section class="space-y-3" aria-label="<%= t("conversation_console.search_results") %>">
+      <% @search.fetch(:matches).each do |match| %>
+        <article class="rounded-box border border-base-300 bg-base-200 p-4">
+          <% target = if match.fetch("field") == "title"
+            conversation_path(match.fetch("conversation_public_id"), return_to: request.fullpath)
+          else
+            conversation_turn_variant_field_path(match.fetch("conversation_public_id"), match.fetch("turn_public_id"), match.fetch("variant_public_id"), match.fetch("field"), location: match.fetch("location"), return_to: request.fullpath)
+          end %>
+          <%= link_to match.fetch("title").presence || t("conversation_console.untitled"), target, class: "link link-hover font-medium" %>
+          <p class="text-sm text-base-content/60"><%= t("conversation_history.fields.#{match.fetch('field')}") %></p>
+          <p class="mt-2 whitespace-pre-wrap wrap-anywhere"><%= match.fetch("excerpt") %></p>
+          <% if match.fetch("truncated") %><p class="text-sm text-base-content/60"><%= t("conversation_history.excerpt") %></p><% end %>
+        </article>
+      <% end %>
+      <% if @search.fetch(:matches).empty? %><p><%= t("conversation_console.no_matches") %></p><% end %>
+      <% if @search.dig(:pagination, :next_after) %>
+        <%= link_to t("conversation_console.more_results"), workspace_conversations_path(@workspace, @list_options.except("page").merge(after: @search.dig(:pagination, :next_after))), class: "btn btn-ghost btn-sm" %>
+      <% end %>
+    </section>
+  <% else %>
+    <%= render "conversations/list", conversations: @conversations, return_to: request.fullpath %>
+    <%= render "shared/pagination_footer", pagy: @conversations_pagy, noun: "conversations", aria_label: t("conversation_console.pages") %>
+  <% end %>
+</div>

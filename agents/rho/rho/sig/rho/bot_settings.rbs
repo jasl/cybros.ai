@@ -1,0 +1,22 @@
+module Rho
+  class BotSettings
+    CONVERSATION_METADATA_KEY: String
+    NAMESPACE: String
+    AUDIENCES: Array[String]
+    KEEP: Object
+
+    class Snapshot < ::Data
+      attr_reader home_workspace_public_id: String?
+      attr_reader audience: String
+      attr_reader preset_public_id: String?
+      attr_reader welcome_message: String?
+      attr_reader subagent: bool
+      def self.new: (home_workspace_public_id: String?, audience: String, ?preset_public_id: String?, ?welcome_message: String?, ?subagent: bool) -> instance
+      def to_h: () -> Hash[String, untyped]
+    end
+
+    def initialize: (store: ^() -> untyped, agent_public_id: String) -> void
+    def read: () -> Snapshot
+    def replace: (?home_workspace_public_id: String? | Object, ?audience: String | Object, ?preset_public_id: String? | Object, ?welcome_message: String? | Object, ?subagent: bool | Object) -> Snapshot
+  end
+end

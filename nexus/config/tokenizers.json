@@ -1,0 +1,44 @@
+[
+  {
+    "repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+    "revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+    "tokenizer_sha256": "c90dfa01249db1be4245780a052ede752e1361c612ac6d08e2bdada7d599476b",
+    "license": "MIT",
+    "license_sha256": "f2c6c602815669d292889e5be8c802f2ed950653b77999b1584e8e6aed25d040"
+  },
+  {
+    "repository": "deepseek-ai/DeepSeek-V4-Pro-0813",
+    "revision": "72e1d3230f6c080a530b0a1d46f8eb4602340597",
+    "tokenizer_sha256": "8f9f37ca37fdc4f5fd36d5cf4d3b0e8392edb4e894fd10cc0d70b4957c8633cf",
+    "license": "MIT",
+    "license_sha256": "f2c6c602815669d292889e5be8c802f2ed950653b77999b1584e8e6aed25d040"
+  },
+  {
+    "repository": "zai-org/GLM-5.2",
+    "revision": "cf457fa734ab149ffef225f80893eb38c6ff5cdc",
+    "tokenizer_sha256": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d",
+    "license": "MIT",
+    "license_sha256": "f4a18c6ae40b0a8e7d2b7667f52f6e1994e54a46430d2e172b73cb8c9b5eb0d7"
+  },
+  {
+    "repository": "tencent/Hy3",
+    "revision": "a960ebc3da325ba167f069f76c41eb62c9280d22",
+    "tokenizer_sha256": "446e0b59cd941637c0ddfd84e12ee1f49480fd12097f86a9d2fec8ebd0c7ff6c",
+    "license": "Apache-2.0",
+    "license_sha256": "76a14d21e741dbbf1572e9c0e6bb809a9bd76f5b4da64a0b89e7331cc77ea84a"
+  },
+  {
+    "repository": "Qwen/Qwen3.8-Flash-Next",
+    "revision": "de4b8e4d43b917e7706784d8bb445c9af86a3540",
+    "tokenizer_sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+    "license": "Qwen Community License 1.0",
+    "license_sha256": "a0dc422560841fd68e06d974907f8b4c709bca44a67daad2b528437bdf676c08"
+  },
+  {
+    "repository": "Qwen/Qwen3.5-9B",
+    "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+    "tokenizer_sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+    "license": "Apache-2.0",
+    "license_sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a"
+  }
+]

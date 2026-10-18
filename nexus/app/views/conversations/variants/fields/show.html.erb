@@ -1,0 +1,23 @@
+<% content_for :title, t("conversation_history.fields.#{@result.fetch(:field)}") %>
+<div class="mx-auto max-w-4xl space-y-6">
+  <header class="space-y-3">
+    <%= render "shared/back_navigation", path: work_return_path(conversation_path(@conversation)), label: t("conversation_history.back_to_search") %>
+    <h1 class="text-xl font-medium"><%= t("conversation_history.fields.#{@result.fetch(:field)}") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("conversation_history.window_description") %></p>
+    <p class="font-mono text-xs text-base-content/60 wrap-anywhere"><%= @result.fetch(:variant_public_id) %></p>
+    <% if @result.fetch(:inherited) %><p class="text-sm text-base-content/60"><%= t("conversation_history.inherited") %></p><% end %>
+  </header>
+  <article class="rounded-box border border-base-300 bg-base-200 p-4" data-history-field="<%= @result.fetch(:field) %>">
+    <% if @result.fetch(:text).empty? %>
+      <p class="text-base-content/60"><%= t("conversation_history.empty") %></p>
+    <% else %>
+      <p class="whitespace-pre-wrap wrap-anywhere"><%= @result.fetch(:text) %></p>
+    <% end %>
+  </article>
+  <nav class="flex flex-wrap gap-3" aria-label="<%= t("conversation_history.navigation") %>">
+    <% if @result.dig(:pagination, :next_after) %>
+      <%= link_to t("conversation_history.continue"), conversation_turn_variant_field_path(@conversation, @result.fetch(:turn_public_id), @result.fetch(:variant_public_id), @result.fetch(:field), after: @result.dig(:pagination, :next_after), return_to: params[:return_to]), class: "btn btn-primary btn-sm", rel: "next" %>
+    <% end %>
+    <%= link_to t("conversation_history.context"), conversation_path(@conversation, around_turn_public_id: @result.fetch(:turn_public_id), return_to: request.fullpath), class: "btn btn-outline btn-sm" %>
+  </nav>
+</div>

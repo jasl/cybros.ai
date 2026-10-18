@@ -1,0 +1,29 @@
+module Rho
+  module Gateway
+    module DeliveryTime
+      def self.duration_seconds: (String? value) -> Integer
+      UNITS: Hash[String, Integer]
+      AT: Regexp
+      USAGE: String
+      def self.resolve: (String expression, now: Numeric) -> String
+    end
+
+    class Commands
+      class Definition < Data
+        attr_reader name: String
+        attr_reader aliases: Array[String]
+        attr_reader usage: String
+        attr_reader description: String
+        attr_reader managed: bool
+        def self.new: (name: String, ?aliases: Array[String], usage: String, description: String, managed: bool) -> instance
+      end
+
+      DEFINITIONS: Array[Definition]
+      HELP: String
+      TASK_ID: Regexp
+      def self.task_reference?: (String text) -> bool
+      def initialize: (untyped runtime) -> void
+      def call: (untyped update, String name, String argument) -> untyped
+    end
+  end
+end

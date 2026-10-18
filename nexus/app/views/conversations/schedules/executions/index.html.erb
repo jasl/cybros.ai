@@ -1,0 +1,16 @@
+<% content_for :title, t("schedules_console.execution_history") %>
+<div class="space-y-6">
+  <header class="space-y-2">
+    <%= render "shared/back_navigation", path: work_return_path(conversation_schedule_path(@conversation, @job)), label: schedule_title(@job) %>
+    <h1 class="text-xl font-medium"><%= t("schedules_console.execution_history") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("schedules_console.execution_scope") %></p>
+  </header>
+  <%= render "schedules/read_state", read_at: @read_at, refresh_path: conversation_schedule_executions_path(@conversation, @job, schedule_list_parameters.merge(after: params[:after])) %>
+  <% @executions.each do |execution| %>
+    <%= render "schedules/execution", execution: execution, return_to: request.fullpath %>
+  <% end %>
+  <% if @executions.empty? %><p class="text-sm text-base-content/60"><%= t("schedules_console.no_visible_execution") %></p><% end %>
+  <% if @page.next_after %>
+    <%= link_to t("schedules_console.next_page"), conversation_schedule_executions_path(@conversation, @job, schedule_list_parameters.merge(after: @page.next_after)), class: "btn btn-outline btn-sm" %>
+  <% end %>
+</div>

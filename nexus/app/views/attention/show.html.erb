@@ -1,0 +1,42 @@
+<% content_for :title, t("work_console.attention") %>
+<div class="space-y-6">
+  <header class="space-y-2">
+    <h1 class="text-xl font-medium"><%= t("work_console.attention") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("work_console.attention_description") %></p>
+  </header>
+  <%= form_with url: attention_path, method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
+    <label class="form-control min-w-0 space-y-1">
+      <span class="text-xs text-base-content/70"><%= t("work_console.workspace") %></span>
+      <%= form.select :workspace_public_id, @workspaces.map { |workspace| [workspace.name, workspace.public_id] }, { include_blank: t("work_console.all_workspaces"), selected: @workspace&.public_id }, class: "select w-full" %>
+    </label>
+    <label class="form-control min-w-0 space-y-1">
+      <span class="text-xs text-base-content/70"><%= t("work_console.attention") %></span>
+      <%= form.select :view, [[t("work_console.actionable"), "actionable"], [t("work_console.following"), "following"]], { selected: @attention_view }, class: "select w-full" %>
+    </label>
+    <%= form.submit t("work_console.apply"), class: "btn btn-primary btn-sm" %>
+  <% end %>
+  <% if @page.records.empty? %>
+    <p class="rounded-box border border-base-300 p-6 text-base-content/60"><%= t("work_console.no_attention") %></p>
+  <% else %>
+    <div class="divide-y divide-base-300 rounded-box border border-base-300">
+      <% @page.records.each do |task| %>
+        <% run = task.run %>
+        <article class="space-y-2 p-4" data-run-id="<%= run.public_id %>" data-task-key="<%= task.node_key %>">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <%= link_to task.tool_name.presence || (task.asking? ? t("work_console.question") : task.node_key), run_task_path(run, task.node_key, return_to: request.fullpath), class: "link link-hover font-medium wrap-anywhere" %>
+            <span class="badge badge-outline"><%= t("work_console.#{task.held? ? 'approval' : (task.status == 'awaiting_input' ? 'question' : 'recovery')}") %></span>
+          </div>
+          <p class="text-sm text-base-content/60"><%= link_to run.workspace.name, workspace_path(run.workspace), class: "link link-hover" %> · <%= link_to work_run_title(run), run_path(run, return_to: request.fullpath), class: "link link-hover" %></p>
+          <% summary = @summaries.fetch(task.id) %>
+          <% if summary.fetch(:text).present? %><p class="whitespace-pre-wrap text-sm wrap-anywhere"><%= summary.fetch(:text) %><% if summary.fetch(:truncated) %>… <span class="text-xs text-base-content/60"><%= t("work_reading.truncated") %></span><% end %></p><% end %>
+          <p class="text-xs text-base-content/60"><%= attention_elapsed(task, as_of: @as_of, maintenance_now: @maintenance_now) %></p>
+          <%= link_to t("work_console.open_task"), run_task_path(run, task.node_key, return_to: request.fullpath), class: "btn btn-outline btn-sm" %>
+        </article>
+      <% end %>
+    </div>
+  <% end %>
+  <div class="flex flex-wrap gap-4">
+    <% if @page.next_after %><%= link_to t("work_console.next_page"), attention_path(work_list_parameters.merge(after: @page.next_after)), class: "btn btn-outline btn-sm" %><% end %>
+    <%= link_to t("work_console.inspect_blocked"), attention_runs_path(workspace_public_id: @workspace&.public_id), class: "link link-hover text-sm" %>
+  </div>
+</div>

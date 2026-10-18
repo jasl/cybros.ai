@@ -1,0 +1,5 @@
+<%# locals: (read_at:, refresh_path:) %>
+<div class="flex flex-wrap items-center gap-3 text-sm text-base-content/60">
+  <span><%= t("schedules_console.read_at", at: schedule_time(read_at)) %></span>
+  <%= link_to t("schedules_console.refresh"), refresh_path, class: "btn btn-ghost btn-sm", data: { turbo_action: "replace" } %>
+</div>

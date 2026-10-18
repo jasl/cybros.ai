@@ -1,0 +1,63 @@
+<% content_for :title, schedule_title(@job) %>
+<% detail_path = conversation_schedule_path(@conversation, @job, return_to: work_return_path(conversation_schedules_path(@conversation))) %>
+<div class="space-y-6">
+  <header class="space-y-3">
+    <%= render "shared/back_navigation", path: work_return_path(conversation_schedules_path(@conversation)), label: t("schedules_console.back_to_schedules") %>
+    <div class="flex flex-wrap items-center gap-3">
+      <h1 class="min-w-0 text-xl font-medium wrap-anywhere"><%= schedule_title(@job) %></h1>
+      <span class="badge badge-outline"><%= t("schedules_console.statuses.#{@job.status}") %></span>
+    </div>
+    <p class="text-sm"><%= link_to @conversation.workspace.name, workspace_path(@conversation.workspace), class: "link link-hover" %> · <%= link_to conversation_title(@conversation), conversation_path(@conversation, return_to: detail_path), class: "link link-hover" %></p>
+  </header>
+  <% if @command_error %><p role="alert" class="rounded-box border border-warning p-4 text-sm"><%= @command_error %></p><% end %>
+  <%= render "schedules/read_state", read_at: @read_at, refresh_path: detail_path %>
+  <section class="space-y-4 rounded-box border border-base-300 p-4" aria-labelledby="schedule-clock">
+    <h2 id="schedule-clock" class="font-medium"><%= t("schedules_console.clock") %></h2>
+    <p class="wrap-anywhere"><%= schedule_rule(@job.rule) %></p>
+    <dl class="grid gap-4 text-sm sm:grid-cols-2">
+      <div><dt class="text-base-content/60"><%= t("schedules_console.next_run") %></dt><dd><%= schedule_time(@job.next_run_at) %></dd></div>
+      <div><dt class="text-base-content/60"><%= t("schedules_console.last_enqueued") %></dt><dd><%= schedule_time(@job.last_enqueued_at) %></dd></div>
+    </dl>
+    <p class="text-sm text-base-content/60"><%= t("schedules_console.clock_description") %></p>
+    <% if @job.last_error_code %><p class="text-sm text-warning"><%= t("schedules_console.last_error") %>: <%= schedule_refusal(@job.last_error_code) %></p><% end %>
+    <% if @conversation.writable_by?(Current.user) %>
+      <div class="flex flex-wrap gap-2">
+        <% if @job.active? %><%= button_to t("schedules_console.pause"), conversation_schedule_pause_path(@conversation, @job), params: { return_to: work_return_path(conversation_schedules_path(@conversation)) }, class: "btn btn-outline btn-sm" %><% end %>
+        <% if @job.paused? %><%= button_to t("schedules_console.resume"), conversation_schedule_resume_path(@conversation, @job), params: { return_to: work_return_path(conversation_schedules_path(@conversation)) }, class: "btn btn-outline btn-sm" %><% end %>
+        <% if @job.active? || @job.paused? %>
+          <%= button_to t("schedules_console.run_now"), conversation_schedule_run_path(@conversation, @job), params: { return_to: work_return_path(conversation_schedules_path(@conversation)) }, class: "btn btn-primary btn-sm", data: { turbo_submits_with: t("schedules_console.submitting") } %>
+        <% end %>
+        <% unless @job.canceled? %>
+          <%= button_to t("schedules_console.cancel"), conversation_schedule_cancel_path(@conversation, @job), params: { return_to: work_return_path(conversation_schedules_path(@conversation)) }, class: "btn btn-outline btn-sm", form: { data: { turbo_confirm: t("schedules_console.cancel_confirmation") } } %>
+        <% end %>
+      </div>
+      <p class="text-sm text-base-content/60"><%= t("schedules_console.command_scope") %></p>
+    <% else %>
+      <p class="text-sm text-base-content/60"><%= t("schedules_console.read_only") %></p>
+    <% end %>
+  </section>
+  <section class="space-y-4" aria-labelledby="schedule-instructions">
+    <h2 id="schedule-instructions" class="font-medium"><%= t("schedules_console.saved_instructions") %></h2>
+    <dl class="grid gap-4 text-sm sm:grid-cols-2">
+      <div><dt class="text-base-content/60"><%= t("schedules_console.creator") %></dt><dd><%= @job.creating_user.display_name %></dd></div>
+      <div><dt class="text-base-content/60"><%= t("schedules_console.answerer") %></dt><dd><%= @job.answering_user.display_name %></dd></div>
+      <div><dt class="text-base-content/60"><%= t("schedules_console.model") %></dt><dd class="wrap-anywhere"><%= @projection.fetch(:model).fetch(:model) %></dd></div>
+    </dl>
+    <p class="whitespace-pre-wrap wrap-anywhere rounded-box bg-base-200 p-4"><%= @job.prompt %></p>
+    <details class="rounded-box border border-base-300 p-4">
+      <summary class="cursor-pointer text-sm font-medium"><%= t("schedules_console.saved_configuration") %></summary>
+      <pre class="mt-3 whitespace-pre-wrap wrap-anywhere text-xs"><%= JSON.pretty_generate(@projection.slice(:public_id, :model, :model_selection, :fallback_models, :configuration, :tool_names, :approval_mode, :agent_configuration)) %></pre>
+    </details>
+  </section>
+  <section class="space-y-4" aria-labelledby="schedule-latest">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 id="schedule-latest" class="font-medium"><%= t("schedules_console.last_execution") %></h2>
+      <%= link_to t("schedules_console.execution_history"), conversation_schedule_executions_path(@conversation, @job, return_to: detail_path), class: "btn btn-outline btn-sm" %>
+    </div>
+    <% if @projection[:last_execution] %>
+      <%= render "schedules/execution", execution: @projection.fetch(:last_execution), return_to: detail_path %>
+    <% else %>
+      <p class="text-sm text-base-content/60"><%= t("schedules_console.no_latest_execution") %></p>
+    <% end %>
+  </section>
+</div>

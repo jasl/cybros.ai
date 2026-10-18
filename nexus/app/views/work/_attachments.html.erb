@@ -1,0 +1,14 @@
+<%# locals: (attachments:) %>
+<% if attachments.present? %>
+  <ul class="space-y-2" aria-label="<%= t("conversation_console.attachments") %>">
+    <% attachments.each do |attachment| %>
+      <li class="flex flex-wrap items-center gap-2 text-sm">
+        <%= link_to attachment.fetch(:filename), upload_bytes_path(upload_public_id: attachment.fetch(:public_id)), class: "link link-hover min-w-0 max-w-full wrap-anywhere", data: { turbo: false } %>
+        <span class="text-base-content/60 wrap-anywhere"><%= number_to_human_size(attachment.fetch(:byte_size)) %> · <%= attachment.fetch(:content_type) %></span>
+        <% if attachment.fetch(:content_type).start_with?("image/", "video/") || attachment.fetch(:content_type) == "application/pdf" %>
+          <%= link_to t("conversation_console.preview"), upload_preview_path(upload_public_id: attachment.fetch(:public_id)), class: "link link-hover", data: { turbo: false } %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

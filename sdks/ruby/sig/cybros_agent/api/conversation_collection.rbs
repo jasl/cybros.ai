@@ -1,0 +1,13 @@
+module CybrosAgent
+  module Api
+    class Conversations
+      include ConversationProjections
+      include Fields
+
+      def initialize: (dispatch: _Dispatch) -> void
+      def list: (?after: String?, ?limit: Integer?, ?order: String?, ?order_by: String?,
+                 ?archived: bool?, ?answering_user_public_id: String?,
+                 ?metadata_key: String?, ?metadata_value: String?) -> Page[ConversationSummary]
+    end
+  end
+end

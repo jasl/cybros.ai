@@ -1,0 +1,118 @@
+<% content_for :title, @runner.display_name %>
+
+<div class="space-y-8">
+  <header class="space-y-4">
+    <%= render "shared/back_navigation", path: runners_path, label: t("runner_resources.back") %>
+    <div class="flex flex-wrap items-center gap-3">
+      <h1 class="min-w-0 text-xl font-medium tracking-tight wrap-anywhere"><%= @runner.display_name %></h1>
+      <span class="badge badge-soft"><%= machine_kind_label(@runner_facts.fetch(:kind)) %></span>
+      <span class="badge badge-ghost"><%= t("runner_resources.statuses.#{@runner_facts.fetch(:status)}") %></span>
+    </div>
+    <p class="font-mono text-xs text-base-content/60 wrap-anywhere"><%= @runner.public_id %></p>
+  </header>
+
+  <section class="space-y-3" aria-labelledby="runner-access-heading">
+    <h2 id="runner-access-heading" class="font-medium"><%= t("resource_management.overview") %></h2>
+    <p class="text-sm text-base-content/70"><%= t("runner_resources.management_scope") %></p>
+    <%= render "shared/facts_panel", facts: {
+      t("runner_resources.manager") => Current.user.display_name,
+      t("runners.index.scope") => t("runners.assignment_scopes.#{@runner_facts.fetch(:assignment_scope)}"),
+      t("runner_resources.registered_at") => l(@runner.created_at, format: :long),
+      **(@runner.assignment_agent ? { t("runner_resources.assigned_agent") => @runner.assignment_agent.display_name } : {}),
+    } %>
+    <details class="text-sm">
+      <summary class="cursor-pointer text-base-content/60"><%= t("runner_resources.current_user_eligibility") %></summary>
+      <dl class="mt-2"><dt class="sr-only"><%= t("runner_resources.current_user_eligibility") %></dt><dd data-execution-eligible="<%= @runner_facts.fetch(:eligible_for_current_user) %>"><%= t(@runner_facts.fetch(:eligible_for_current_user) ? "runner_resources.eligible" : "runner_resources.ineligible") %></dd></dl>
+    </details>
+  </section>
+
+  <section class="space-y-3" aria-labelledby="runner-connection-heading">
+    <h2 id="runner-connection-heading" class="font-medium"><%= t("runner_resources.connection_heading") %></h2>
+    <p class="text-sm text-base-content/70"><%= t("runner_resources.connection_facts") %></p>
+    <%= render "shared/facts_panel", facts: {
+      t("runners.index.credential_readiness") => t("executors.credential_readiness.#{@runner_facts.fetch(:credential_readiness)}"),
+      t("runners.index.presence") => t("runner_resources.presence.#{@runner_facts.fetch(:presence)}"),
+      t("runner_resources.last_contact") => @runner.last_seen_at ? l(@runner.last_seen_at, format: :long) : t("runner_resources.not_recorded"),
+      t("runner_resources.connected_at") => @runner_facts.fetch(:connected_at) ? l(@runner_facts.fetch(:connected_at), format: :long) : t("runner_resources.not_recorded"),
+    } %>
+    <div class="flex flex-wrap gap-2">
+      <%= link_to t("runners.index.connect_runner"), runner_connection_path, class: "btn btn-outline btn-sm" %>
+      <% if @key_agent %><%= link_to t("agents.api_keys.kinds.runner"), agent_private_runner_api_keys_path(@key_agent, @runner), class: "btn btn-outline btn-sm" %><% end %>
+    </div>
+    <p class="text-sm text-base-content/60"><%= t(@runner.active? ? "resource_management.reconnect" : "resource_management.revoked_registration") %></p>
+    <p class="text-xs text-base-content/60"><%= t("runner_resources.measured_at", time: l(@measured_at, format: :long)) %></p>
+  </section>
+
+  <section class="space-y-3" aria-labelledby="runner-work-heading">
+    <h2 id="runner-work-heading" class="font-medium"><%= t("runner_resources.related_work") %></h2>
+    <p class="text-sm text-base-content/70"><%= t("runner_resources.related_work_scope") %></p>
+    <%= link_to t("runner_resources.view_runs", count: @run_counts.values.sum), runner_runs_path(@runner), class: "btn btn-sm" %>
+    <% if @run_counts.any? %>
+      <ul class="flex flex-wrap gap-3 text-sm">
+        <% @run_counts.sort.each do |status, count| %>
+          <li><%= link_to "#{t("work_console.statuses.#{status}")} · #{count}", runner_runs_path(@runner, status: status), class: "link" %></li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+
+  <section class="space-y-3">
+    <h2 class="font-medium"><%= t("resource_management.management") %></h2>
+    <% if @runner.active? %>
+      <div class="rounded-box border border-base-300 bg-base-200">
+        <%= render layout: "shared/action_row", locals: { title: t("runners.index.revoke_credentials"), description: t("resource_management.revoke_credentials_description") } do %>
+          <%= button_to t("runners.index.revoke_credentials"), runner_credentials_path(@runner), method: :delete,
+            class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("resource_management.revoke_credentials_confirm", name: @runner.display_name) } %>
+        <% end %>
+        <%= render layout: "shared/action_row", locals: { title: t("runners.index.revoke_runner"), description: t("resource_management.revoke_registration_description") } do %>
+          <%= button_to t("runners.index.revoke_runner"), runner_path(@runner), method: :delete,
+            class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("resource_management.revoke_registration_confirm", name: @runner.display_name) } %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-sm text-base-content/60"><%= t("resource_management.revoked_registration") %></p>
+    <% end %>
+    <p class="text-sm text-base-content/60"><%= t("resource_management.effects") %></p>
+  </section>
+
+  <section class="space-y-3" aria-labelledby="runner-announcements-heading">
+    <h2 id="runner-announcements-heading" class="font-medium"><%= t("runner_resources.announcements") %></h2>
+    <p class="text-sm text-base-content/70"><%= t("runner_resources.announcement_scope") %></p>
+    <h3 class="text-sm font-medium"><%= t("runner_resources.tools") %></h3>
+    <% if @runner_facts.fetch(:served_tools).empty? %>
+      <p class="text-sm text-base-content/60"><%= t("runner_resources.no_tools") %></p>
+    <% else %>
+      <ul class="space-y-2">
+        <% @runner_facts.fetch(:served_tools).each do |tool| %>
+          <li>
+            <details class="rounded-box border border-base-300 p-3">
+              <summary class="cursor-pointer text-sm font-medium wrap-anywhere"><%= tool.fetch("name") %></summary>
+              <pre class="mt-3 max-w-full whitespace-pre-wrap break-all text-xs"><%= JSON.pretty_generate(tool) %></pre>
+            </details>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+    <h3 class="text-sm font-medium"><%= t("runner_resources.documents") %></h3>
+    <% if @runner_facts.fetch(:served_documents).empty? %>
+      <p class="text-sm text-base-content/60"><%= t("runner_resources.no_documents") %></p>
+    <% else %>
+      <ul class="space-y-2 text-sm">
+        <% @runner_facts.fetch(:served_documents).each do |document| %>
+          <li class="space-y-1 rounded-box border border-base-300 p-3">
+            <p class="font-medium wrap-anywhere"><%= document.fetch("name") %></p>
+            <p class="text-base-content/70 wrap-anywhere"><%= document.fetch("description") %></p>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+    <details class="rounded-box border border-base-300 p-3">
+      <summary class="cursor-pointer text-sm font-medium"><%= t("runner_resources.environment") %></summary>
+      <pre class="mt-3 max-w-full whitespace-pre-wrap break-all text-xs"><%= JSON.pretty_generate(@runner_facts.fetch(:environment)) %></pre>
+    </details>
+    <div class="flex flex-wrap gap-3 text-sm">
+      <%= link_to t("runner_resources.mcp_connections"), settings_mcp_connections_path, class: "link" %>
+      <%= link_to t("runner_resources.managed_tool_providers"), runners_path(kind: "tool_provider"), class: "link" %>
+    </div>
+  </section>
+</div>

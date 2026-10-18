@@ -1,0 +1,39 @@
+module CybrosAgent
+  class InputExecution
+    class Snapshot < Data
+      attr_reader execution: InputMaterialization::Result
+      attr_reader variant: Api::Variant?
+      attr_reader status: String?
+      attr_reader run_status: String?
+      attr_reader attention: Api::RunAttention?
+      attr_reader failure_reason: String?
+      attr_reader failure_reason_key: String?
+      attr_reader content: String?
+
+      def self.new: (execution: InputMaterialization::Result, variant: Api::Variant?,
+                     status: String?, run_status: String?, attention: Api::RunAttention?,
+                     failure_reason: String?, failure_reason_key: String?, content: String?) -> instance
+      def terminal?: () -> bool
+      def needs_attention?: () -> bool
+    end
+
+    def self.for_execution: (execution: InputMaterialization::Result, replay: ^(String?) -> untyped,
+                            variants: ^(String) -> Api::VariantDeck,
+                            run: ^(String) -> Api::Run, ?decisions: (^(String) -> Array[Api::Decision])?,
+                            ?position: KernelFeed::Position) -> instance
+
+    def initialize: (replay: ^(String?) -> untyped, variants: ^(String) -> Api::VariantDeck,
+                     run: ^(String) -> Api::Run, ?input_public_id: String?,
+                     ?materialization: (^(String) -> Api::InputMaterialization?)?,
+                     ?execution: InputMaterialization::Result?, ?decisions: (^(String) -> Array[Api::Decision])?,
+                     ?position: KernelFeed::Position) -> void
+    attr_reader snapshot: Snapshot?
+    def result: () -> InputMaterialization::Result?
+    def blocked_reason: () -> String?
+    def compaction: () -> InputMaterialization::Result?
+    def position: () -> KernelFeed::Position
+    def refresh: () -> self
+    def recover: () -> Snapshot?
+    def decisions: () -> Array[Api::Decision]
+  end
+end

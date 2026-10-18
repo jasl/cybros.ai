@@ -1,0 +1,70 @@
+en:
+  usage_analysis:
+    title: Work usage analysis
+    admin_title: Account model analysis
+    member_coverage: Model usage covers receipts attributed to currently readable, retained conversations, including retries. Standalone receipts without a conversation are excluded. Access changes can change this history; this is not your bill.
+    admin_coverage: Model usage across this installation over the last seven days.
+    agent_scope: "Agent scope: %{name}. Model receipts use the consumer; runs use the frozen answerer or standalone creator."
+    filters: Analysis filters
+    window_limit: Exact UTC window, inclusive start and exclusive end, up to 90 days. Default is the last seven complete UTC days. Model filters apply only to model usage.
+    group_by: Group by
+    rank_by: Sort by
+    all_request_types: All request types
+    limit: Top groups (1–50)
+    dimensions:
+      provider_id: Provider
+      catalog_model_ref: Model
+      workload: Request type
+      status: Request status
+    ranks:
+      request_count: Model requests
+      total_tokens: Tokens
+      cost_amount: Recorded cost
+    read_at: "Read at %{time}."
+    model_heading: Recorded model attempts
+    receipt_window: The window selects receipt write times. Each started attempt can produce one receipt, including failed, discarded, or abandoned attempts. An attempt failure is not a run outcome.
+    no_amount_samples: Not available
+    amount_samples: "%{count} receipts with a recorded amount."
+    amount_note: Amount samples count non-null money, including true zero. Cost completeness follows receipt evidence rules; a failed receipt without money can be complete while having no amount sample. Unknown cost never becomes a zero charge.
+    model_latency_note: Nearest-rank p50 and p95 of available integer millisecond samples. Missing values are excluded independently; zero is valid. Duration covers Dispatch IO. TTFT is captured only after a text or reasoning delta.
+    metric: Metric
+    samples: Samples
+    missing: Missing
+    milliseconds: "%{value} ms"
+    latencies:
+      duration_ms: Model duration
+      time_to_first_token_ms: Time to first token
+      delivery_ms: Run creation to delivery
+      completion_ms: Run creation to completion
+      tool_ms: Tool start to completion
+    top_groups: "Top %{shown} of %{total} model groups"
+    group_note: Totals cover the entire filtered window. Remaining groups are summarized below. Equal ranks use the dimension value as a stable tie-breaker. Open a group to see its filtered percentiles.
+    other_groups: All remaining groups
+    token_details: Recorded token details
+    execution_heading: Runs created in the window
+    run_window: This cohort uses run creation time and current content access, Workspace, and Agent scope. Provider, model, workload, and attempt-status filters do not change it. Current run states can change after creation.
+    browse_runs: Browse this run cohort
+    execution:
+      run_count: Runs in cohort
+      delivered_count: Delivered
+      undelivered_count: Not delivered
+      completed_count: Ended
+      uncompleted_count: Not ended
+      retained_run_count: Runs with retained details
+      details_pruned_run_count: Runs with pruned details
+    run_latency_note: Delivery and completion have separate clocks; background work may continue after delivery. Elapsed times are floored to whole milliseconds before nearest-rank percentiles. Unfinished clocks are missing samples.
+    tools_heading: Retained tools in this run cohort
+    tool_coverage: Counts cover the current generation of retained ToolTask rows, grouped by saved tool name. Retry clears the old generation; pruned tasks are unavailable, not zero calls. Error results from completed tools are distinct from execution failures.
+    tool_latency_note: Tool elapsed time includes dispatch wait, pauses, and result return. It is floored to whole milliseconds before nearest-rank percentiles, not pure execution time. Parallel tool times are not added into a run duration.
+    tool_totals: "%{count} retained tool tasks; %{errors} completed error results."
+    tool_groups: "Top %{shown} of %{total} tool names by task count; %{other} tasks belong to remaining names."
+    tool_name: Saved tool name
+    tool_count: Tasks
+    tool_states: Current states
+    error_results: Completed error results
+    no_tasks: No recorded rows
+    errors:
+      window_invalid: Choose a valid UTC window with the start before the end.
+      window_too_wide: Choose a window no longer than 90 days.
+      filter_unsupported: This analysis does not support that filter.
+      filter_invalid: Choose a supported grouping, ranking, and limit.

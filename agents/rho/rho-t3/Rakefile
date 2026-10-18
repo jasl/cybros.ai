@@ -1,0 +1,16 @@
+require "bundler/gem_tasks"
+require "minitest/test_task"
+require "rubocop/rake_task"
+Minitest::TestTask.create
+RuboCop::RakeTask.new
+
+task :rbs do
+  sh "bundle", "exec", "rbs", "-I", "sig", "-I", "../rho/sig", "-I", "../rho-runner/sig", "-I", "../../../sdks/ruby/sig", "validate"
+end
+
+desc "Run the browser module's tests against rho-webui's kernel"
+task :test_js do
+  sh "bun", "test", "test/webui"
+end
+
+task default: %i[test test_js rubocop rbs]

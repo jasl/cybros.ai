@@ -1,0 +1,22 @@
+<% content_for :title, t("management_console.connect") %>
+<div class="mx-auto max-w-3xl space-y-6">
+  <header class="space-y-2">
+    <h1 class="text-xl font-medium"><%= t("management_console.connect") %></h1>
+    <p class="text-base-content/70"><%= t("management_console.connect_description") %></p>
+  </header>
+  <section class="space-y-3 rounded-box border border-base-300 p-5">
+    <h2 class="font-medium"><%= t("management_console.existing_app") %></h2>
+    <p><%= t("management_console.oauth_instructions") %></p>
+    <%= link_to t("layouts.application.agents"), agents_path, class: "btn btn-outline" %>
+  </section>
+  <section class="space-y-3 rounded-box border border-base-300 p-5">
+    <h2 class="font-medium"><%= t("management_console.own_program") %></h2>
+    <p><%= t("management_console.api_instructions") %></p>
+    <%= link_to t("agents.new.title"), new_agent_path, class: "btn btn-primary" %>
+  </section>
+  <section class="space-y-3">
+    <h2 class="font-medium"><%= t("management_console.first_work") %></h2>
+    <p><%= t("management_console.first_work_instructions") %></p>
+    <%= link_to t("layouts.application.workspaces"), workspaces_path, class: "link link-hover" %>
+  </section>
+</div>

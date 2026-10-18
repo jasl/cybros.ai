@@ -1,0 +1,20 @@
+en:
+  conversation_history:
+    answerer: Default answerer
+    all_answerers: All answerers
+    back_to_search: Back to results
+    context: View context
+    continue: Continue reading
+    navigation: Content navigation
+    empty: No saved text in this window.
+    excerpt: Excerpt. Open the result to read its saved content.
+    inherited: This text is inherited from another conversation.
+    invalid_window: This content location is invalid.
+    window_description: Read the saved text from this message version. Continue reading
+      for the next part.
+    fields:
+      title: Title
+      prompt: Input
+      content: Message
+      steers: Accepted follow-up messages
+    open_candidate: Open this version

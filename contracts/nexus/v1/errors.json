@@ -1,0 +1,117 @@
+{
+  "envelope": {
+    "error": [
+      "code",
+      "message"
+    ]
+  },
+  "extended_envelopes": {
+    "edge_authoring_refused": [
+      "path"
+    ],
+    "invalid_steps": [
+      "steps"
+    ],
+    "stale_revision": [
+      "current_revision"
+    ],
+    "conversation_hosted": [
+      "conversation_public_id",
+      "turn_public_id"
+    ]
+  },
+  "family_codes": [
+    "already_claimed",
+    "bad_request",
+    "content_too_large",
+    "idempotency_envelope_mismatch",
+    "idempotency_key_required",
+    "not_addressed_here",
+    "not_claimable_kind",
+    "not_eligible",
+    "not_found",
+    "parameter_invalid",
+    "parameter_missing",
+    "rate_limited",
+    "stale_claim",
+    "stale_object",
+    "task_not_claimable",
+    "unauthorized",
+    "validation_failed"
+  ],
+  "status_by_code": {
+    "already_claimed": 409,
+    "bad_request": 400,
+    "content_too_large": 413,
+    "idempotency_envelope_mismatch": 409,
+    "idempotency_key_required": 400,
+    "not_addressed_here": 409,
+    "not_claimable_kind": 409,
+    "not_eligible": 409,
+    "not_found": 404,
+    "parameter_invalid": 400,
+    "parameter_missing": 400,
+    "rate_limited": 429,
+    "stale_claim": 409,
+    "stale_object": 409,
+    "task_not_claimable": 409,
+    "unauthorized": 401,
+    "validation_failed": 422
+  },
+  "valid_fixture": {
+    "status": 401,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "unauthorized",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "extended_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "stale_revision",
+        "message": "Fixture error",
+        "current_revision": 4
+      }
+    }
+  },
+  "rate_limited_fixture": {
+    "status": 429,
+    "headers": {
+      "Retry-After": "60"
+    },
+    "body": {
+      "error": {
+        "code": "rate_limited",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "server_failure_fixtures": [
+    {
+      "status": 500,
+      "headers": {},
+      "body": null
+    },
+    {
+      "status": 502,
+      "headers": {},
+      "body": "Bad Gateway"
+    }
+  ],
+  "unknown_code_fixture": {
+    "status": 409,
+    "headers": {},
+    "body": {
+      "error": {
+        "code": "zz_unknown_value",
+        "message": "Fixture error"
+      }
+    }
+  },
+  "unknown_code_behavior": "classify_by_http_status_and_carry_unknown_code"
+}

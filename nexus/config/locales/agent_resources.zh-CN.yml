@@ -1,0 +1,68 @@
+zh-CN:
+  agent_resources:
+    search: 搜索 Agent
+    search_placeholder: 名称或 handle
+    all_statuses: 全部状态
+    filter: 筛选
+    clear: 清除筛选
+    no_matches: 没有符合条件的 Agent
+    no_matches_hint: 尝试其他名称、handle 或状态。打开已移除的 Agent 可进行恢复。
+    index_description: "你管理的 Agent，包括应用创建的 Agent。"
+    not_declared: "未设置"
+    none: "无"
+    try_agent: "试运行此 Agent"
+    no_own_registration: "此 Agent 共用其应用的连接和 API 密钥。"
+    named_registration_description: "此 Agent 通过声明它的应用连接提供服务；其配置、提示词和记忆仍各自独立。"
+    shared_title: "共享的应用连接"
+    shared_description: "此具名 Agent 与声明它的应用归属同一管理者时，共享该应用的连接。凭据可用性与在线状态分别显示。"
+    shared_owner: "声明应用"
+    executor_id: "执行器 ID"
+    presence: "在线状态"
+    shared_readiness: "共享应用：%{readiness}"
+    shared_unavailable: "当前没有可用的共享应用连接。"
+    configuration:
+      title: "Agent 配置"
+      summary: "已保存的配置"
+      description: "这里显示 Agent 保存的设置。某次执行实际可用的能力还取决于所选工作区和 Runner。"
+      ownership: "这些设置和指令由 Agent 的应用管理，请在应用中修改。进行中的工作继续使用原有设置。"
+      default_model: "默认模型"
+      image_model: "图像模型"
+      fallback_models: "回退模型"
+      prompt_mechanism: "指令来源"
+      prompt_modes:
+        default: "Nexus 默认指令"
+        assembly: "Agent 模板"
+        raw: "应用提供的消息"
+      approval: "工具审批"
+      approval_modes:
+        bypass: "无需询问，直接允许"
+        ask: "请求审批"
+        rules: "按审批规则执行"
+      tool_sources: "工具来源"
+      tool_counts: "自定义工具：%{explicit} · Nexus 工具：%{kernel} · Runner：%{runners} · 外部工具：%{mcp}"
+      runner_imports: "自动导入的 Runner 工具"
+      all_runner_tools: "所选 Runner 提供的全部模型工具"
+      memory_limit: "记忆范围上限"
+      no_memory_limit: "无额外的 Agent 限制"
+      memory_binding: "%{scope}：%{access}"
+      memory_access:
+        read: "只读"
+        read_write: "读写"
+      conversation_reach: "会话访问范围"
+      conversation_scopes:
+        workspace: "工作区内的会话"
+        subtree: "当前会话及其子会话"
+      memory_description: "这些设置限制 Agent 可用的记忆与会话范围。实际访问还取决于所有者和会话设置。本页不展示私有笔记。"
+      agent_updated: "Agent 最后更新"
+      measured: "读取时间"
+      full: "技术配置详情"
+      prompt_documents: "已保存的指令"
+      no_documents: "此 Agent 尚未保存提示词文档。"
+      document_facts: "角色：%{role} · 版本：%{version} · %{bytes} 字节 · 写入时间：%{written}"
+    refusals:
+      not_authorized: "此 Agent 当前不具备执行资格。"
+      runner_not_eligible: "此 Runner 当前不能为该 Agent 执行。"
+      runner_not_declared: "此 Runner 不在该 Agent 声明的候选列表中。"
+      tool_not_served: "某项已声明工具已不再由其 Runner 提供。"
+      mcp_connection_unavailable: "某个已选 MCP 连接当前不可供此 Agent 使用。"
+      mcp_tool_unavailable: "某项已选 MCP 工具当前不可供此 Agent 使用。"

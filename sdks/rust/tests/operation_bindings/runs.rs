@@ -1,0 +1,335 @@
+{
+    operation!(
+        "DELETE /agent_api/v1/workspaces/{workspace_public_id}/runs/{public_id}",
+        "DELETE",
+        "/agent_api/v1/workspaces/fixture/runs/fixture",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .delete()
+    );
+    operation!(
+        "DELETE /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs/{public_id}",
+        "DELETE",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/inputs/fixture",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .inputs()
+            .input("fixture")
+            .unwrap()
+            .delete()
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/runs",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/runs",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .runs()
+            .list(&Default::default())
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{public_id}",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/runs/fixture",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .fetch()
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/events",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/events",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .events(&Default::default())
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/graph",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/graph",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .graph()
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/inputs",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .inputs()
+            .list()
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/phases",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/phases",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .phases()
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{key}",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .task("fixture")
+            .unwrap()
+            .fetch()
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/request",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture/request",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .task("fixture")
+            .unwrap()
+            .request()
+    );
+    operation!(
+        "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/transcript",
+        "GET",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/transcript",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .transcript(&Default::default())
+    );
+    operation!(
+        "PATCH /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs/{public_id}",
+        "PATCH",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/inputs/fixture",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .inputs()
+            .input("fixture")
+            .unwrap()
+            .update(&Default::default())
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .runs()
+            .create(&Default::default(), "operation-key")
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/inputs",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .inputs()
+            .create(&Default::default(), "operation-key")
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs/reorder",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/inputs/reorder",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .inputs()
+            .reorder(&Default::default())
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/pause",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/pause",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .pause(&Default::default())
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/resume",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/resume",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .resume()
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/start",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/start",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .start()
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/stop",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/stop",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .stop(&Default::default())
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .append(&Default::default(), "operation-key")
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/abandon",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture/abandon",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .task("fixture")
+            .unwrap()
+            .abandon()
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/approve",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture/approve",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .task("fixture")
+            .unwrap()
+            .approve()
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/cancel",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture/cancel",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .task("fixture")
+            .unwrap()
+            .cancel()
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/compact",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture/compact",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .task("fixture")
+            .unwrap()
+            .compact()
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/deny",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture/deny",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .task("fixture")
+            .unwrap()
+            .deny(&Default::default())
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/resolution",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture/resolution",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .task("fixture")
+            .unwrap()
+            .resolve(&Default::default())
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/retry",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture/retry",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .task("fixture")
+            .unwrap()
+            .retry(&Default::default())
+    );
+    operation!(
+        "PUT /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/default_runner",
+        "PUT",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/default_runner",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .run("fixture")
+            .unwrap()
+            .set_default_runner(&Default::default())
+    );
+}

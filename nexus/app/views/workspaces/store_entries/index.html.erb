@@ -1,0 +1,20 @@
+<%= render layout: "workspaces/data/shell", locals: { workspace: @workspace, data_writable: @data_writable, error: @error, validation_errors: @validation_errors, title: t("data_console.store.title") } do %>
+  <p class="text-sm text-base-content/70"><%= t("data_console.store.description") %></p>
+  <%= form_with url: workspace_store_entries_path(@workspace), method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
+    <div><%= form.label :namespace, t("data_console.store.namespace"), class: "mb-1 block text-sm font-medium" %><%= form.text_field :namespace, value: @namespace, class: "input input-sm w-full" %></div>
+    <%= form.submit t("data_console.filter"), class: "btn btn-sm" %>
+    <%= link_to t("data_console.clear"), workspace_store_entries_path(@workspace), class: "btn btn-ghost btn-sm" %>
+  <% end %>
+  <% if @data_writable %><%= link_to t("data_console.store.new"), new_workspace_store_entry_path(@workspace), class: "btn btn-primary btn-sm" %><% end %>
+  <div class="divide-y divide-base-300 rounded-box border border-base-300">
+    <% @entries.each do |entry| %>
+      <article class="space-y-2 p-4">
+        <p class="text-xs font-mono wrap-anywhere"><%= entry.namespace %></p>
+        <%= link_to entry.key, workspace_store_entry_path(@workspace, entry.public_id), class: "link link-hover font-mono text-sm wrap-anywhere" %>
+        <p class="text-xs text-base-content/60"><%= t("data_console.store.metadata", version: entry.lock_version, time: l(entry.updated_at, format: :long)) %></p>
+      </article>
+    <% end %>
+    <% if @entries.empty? %><p class="p-4 text-sm text-base-content/60"><%= t("data_console.store.empty") %></p><% end %>
+  </div>
+  <%= render "shared/pagination_footer", pagy: @entries_pagy, noun: "store_entries", aria_label: t("data_console.store.pages") %>
+<% end %>

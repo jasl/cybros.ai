@@ -1,0 +1,23 @@
+en:
+  pagination:
+    nouns:
+      inputs:
+        one: input
+        other: inputs
+  conversation_inputs:
+    title: Pending inputs
+    list_scope: These accepted inputs are queued or blocked. Future-dated inputs wait
+      until their delivery time; messages for the current execution are shown with
+      that execution.
+    participants: "%{author} → %{answerer}"
+    deliver_at: 'Delivery time:'
+    empty: No pending inputs
+    empty_description: There are no queued or blocked inputs here. Accepted work may
+      already appear in the Conversation history.
+    pages: Input pages
+    cancel: Cancel pending input
+    cancel_scope: Cancel removes this pending input. It does not stop work already
+      started or cancel its Schedule.
+    canceled: Pending input canceled
+    already_materialized: This input already became a turn. Its original result is
+      shown below; its execution was not stopped.

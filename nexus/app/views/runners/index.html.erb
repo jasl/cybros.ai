@@ -1,0 +1,85 @@
+<% content_for :title, t("runners.index.my_runners") %>
+
+<div class="space-y-8">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight"><%= t("runners.index.my_runners") %></h1>
+      <p class="text-sm text-base-content/60">
+        <%= t("runners.index.machines_you_manage_as_execution_capacity_runners_and_tools") %>
+      </p>
+    </div>
+    <%= link_to t("runners.index.connect_runner"), runner_connection_path, class: "btn btn-primary btn-sm" %>
+  </header>
+
+  <%= form_with url: runners_path, method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
+    <div>
+      <%= form.label :kind, t("runner_resources.kind"), class: "mb-1 block text-sm" %>
+      <%= form.select :kind, [[t("runner_resources.all_kinds"), ""], *Executor::MACHINE_KINDS.map { |kind| [machine_kind_label(kind), kind] }], { selected: @kind }, class: "select select-sm" %>
+    </div>
+    <div>
+      <%= form.label :status, t("runner_resources.status"), class: "mb-1 block text-sm" %>
+      <%= form.select :status, [[t("runner_resources.statuses.active"), "active"], [t("runner_resources.statuses.revoked"), "revoked"], [t("runner_resources.all_statuses"), "all"]], { selected: @status }, class: "select select-sm" %>
+    </div>
+    <%= form.submit t("runner_resources.filter"), class: "btn btn-sm" %>
+    <%= link_to t("runner_resources.mcp_connections"), settings_mcp_connections_path, class: "btn btn-ghost btn-sm" %>
+  <% end %>
+
+  <% if @runners.any? %>
+    <section class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-200">
+      <table class="table">
+        <thead>
+          <tr>
+            <th><%= t("runners.index.machine") %></th>
+            <th><%= t("runners.index.scope") %></th>
+            <th><%= t("runners.index.credential_readiness") %></th>
+            <th><%= t("runners.index.registered") %></th>
+            <th><%= t("runners.index.presence") %></th>
+            <th class="text-end"><%= t("runners.index.actions") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @runners.each do |runner| %>
+            <% readiness = @runner_credential_readiness.fetch(runner.id) %>
+            <tr data-runner-id="<%= runner.public_id %>">
+              <td>
+                <%= link_to runner.display_name, runner_path(runner), class: "link link-hover block font-medium wrap-anywhere" %>
+                <span class="block text-xs text-base-content/60" data-executor-kind="<%= runner.executor_kind %>"><%= machine_kind_label(runner.executor_kind) %></span>
+                <% if runner.revoked? %>
+                  <span class="badge badge-ghost badge-sm"><%= t("runner_resources.statuses.revoked") %></span>
+                <% end %>
+              </td>
+              <td>
+                <span class="<%= badge_classes(runner.account_wide?, tone: :info, extra: "whitespace-nowrap") %>">
+                  <%= t("runners.assignment_scopes.#{runner.assignment_scope}") %>
+                </span>
+                <% if runner.agent_private? %>
+                  <span class="mt-1 block text-xs text-base-content/60 wrap-anywhere"><%= t("runners.index.assigned_application", name: runner.assignment_agent.display_name) %></span>
+                <% end %>
+              </td>
+              <td>
+                <span class="<%= badge_classes(readiness == :ready, tone: :success, extra: "whitespace-nowrap") %>">
+                  <%= t("executors.credential_readiness.#{readiness}") %>
+                </span>
+              </td>
+              <td class="text-base-content/60 whitespace-nowrap" title="<%= runner.created_at.iso8601 %>">
+                <%= t("runners.index.elapsed_ago", elapsed: (time_ago_in_words(runner.created_at))) %>
+              </td>
+              <td class="text-base-content/60 whitespace-nowrap" title="<%= runner.last_seen_at&.iso8601 %>">
+                <%= presence_label(runner) %>
+              </td>
+              <td class="text-end">
+                <%= link_to t("agents.index.manage"), runner_path(runner), class: "btn btn-ghost btn-sm", aria: { label: t("agents.index.manage_member", member: runner.display_name) } %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </section>
+
+    <%= render "shared/pagination_footer", pagy: @runners_pagy, noun: "runners", aria_label: t("runners.index.runner_pages") %>
+  <% else %>
+    <%= render "shared/empty_state",
+      title: t(@kind || @status != "active" ? "runner_resources.no_matches" : "runners.index.no_runners_connected"),
+      description: t("runners.index.a_runner_connects_itself_start_it_on_the_machine") %>
+  <% end %>
+</div>

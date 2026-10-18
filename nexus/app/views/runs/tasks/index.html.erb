@@ -1,0 +1,14 @@
+<% content_for :title, t("runs_console.tasks") %>
+<%= tag.div class: "space-y-6", data: run_refresh_data(@run) do %>
+  <%= render "runs/header", run: @run, actions: @actions %>
+  <h2 class="text-lg font-medium"><%= t("runs_console.tasks") %></h2>
+  <div class="min-w-0 max-w-full overflow-x-auto rounded-box border border-base-300"><table class="table">
+    <thead><tr><th scope="col"><%= t("runs_console.task") %></th><th scope="col"><%= t("runs_console.kind") %></th><th scope="col"><%= t("runs_console.status") %></th><th scope="col"><%= t("runs_console.dependencies") %></th></tr></thead>
+    <tbody><% @tasks.each do |task| %><tr data-task-key="<%= task.fetch(:key) %>">
+      <td><%= link_to task.fetch(:key), run_task_path(@run, task.fetch(:key), return_to: request.fullpath), class: "link link-hover font-mono" %></td>
+      <td><%= t("runs_console.task_kinds.#{task.fetch(:kind)}") %></td><td><%= work_status_label(task.fetch(:status)) %></td><td class="font-mono"><%= task.fetch(:after, []).join(", ") %></td>
+    </tr><% end %></tbody>
+  </table></div>
+  <% if @tasks.empty? %><p class="text-base-content/60"><%= t("runs_console.no_tasks") %></p><% end %>
+  <% if @page.next_after %><%= link_to t("runs_console.next_page"), run_tasks_path(@run, **run_console_parameters.merge("after" => @page.next_after)), class: "btn btn-ghost btn-sm" %><% end %>
+<% end %>

@@ -1,0 +1,47 @@
+require "bundler/gem_tasks"
+require "minitest/test_task"
+
+Minitest::TestTask.create
+
+require "rubocop/rake_task"
+
+RuboCop::RakeTask.new
+
+# The SDK is a path dependency in this monorepo, so its signatures are checked
+# alongside ours: a drift in cybros_agent's surface should fail here rather
+# than at runtime in whatever process embeds this runner.
+SDK_SIG = File.expand_path("../../../sdks/ruby/sig", __dir__)
+
+desc "Validate the packaged RBS surface"
+task :rbs do
+  sh "bundle", "exec", "rbs", "-I", "sig", "-I", SDK_SIG, "validate"
+  # THE WHOLE NAMESPACE, UNDER THE WHOLE SUITE. `rbs validate` is structural —
+  # it says the sig parses and its references resolve, never that a method
+  # returns what it promises. Narrowed to two constants and one file, drift in
+  # Daemon, Connection, Authority, Cli, Lock, Log or ControlServer shipped
+  # green; the pinned rbs raises on a type error unconditionally, so every
+  # call the behavior suite already makes is a conformance check for free.
+  #
+  # Driven through RUBYOPT rather than `rbs test`, because that CLI cannot
+  # report failure: it exits with Process::Status#to_i — the raw wait status,
+  # 256 for a child that exited 1 — and POSIX truncates that to 0. Every inner
+  # code 1..255 is erased, so the one thing this step uniquely produces could
+  # never fail the build. Setting the env directly lets `sh` see minitest's
+  # own status.
+  sh(
+    {
+      "RUBYOPT" => "-rrbs/test/setup",
+      # The installer announces every hook it sets at INFO, on stdout, which
+      # lands inside any test that captures output. Its chatter is not the
+      # subject of any assertion here.
+      "RBS_TEST_LOGLEVEL" => "error",
+      "RBS_TEST_TARGET" => "Rho::*",
+      "RBS_TEST_DOUBLE_SUITE" => "minitest",
+      "RBS_TEST_OPT" => "-I sig -I #{SDK_SIG}",
+    },
+    "bundle", "exec", "ruby", "-Itest", "-Ilib", "-e",
+    'files = Dir["test/**/*_test.rb"] + Dir["test/test_*.rb"]; files.uniq.sort.each { |file| require_relative file }'
+  )
+end
+
+task default: %i[test rubocop rbs]

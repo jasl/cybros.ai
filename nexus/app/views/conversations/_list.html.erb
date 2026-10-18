@@ -1,0 +1,32 @@
+<%# locals: (conversations:, return_to: nil) %>
+<% if conversations.any? %>
+  <div class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-200">
+    <table class="table">
+      <thead><tr>
+        <th><%= t("conversation_console.conversation") %></th>
+        <th><%= t("conversation_console.workspace") %></th>
+        <th><%= t("conversation_console.answerer") %></th>
+        <th><%= t("conversation_console.status") %></th>
+        <th><%= t("conversation_console.last_activity") %></th>
+      </tr></thead>
+      <tbody>
+        <% conversations.each do |conversation| %>
+          <tr data-conversation-id="<%= conversation.public_id %>">
+            <td><%= link_to conversation_title(conversation), conversation_path(conversation, return_to: return_to), class: "link link-hover font-medium wrap-anywhere" %></td>
+            <td><%= link_to conversation.workspace.name, workspace_path(conversation.workspace), class: "link link-hover" %></td>
+            <td><%= conversation.answering_user.display_name %></td>
+            <td>
+              <%= t(conversation.archived? ? "conversation_console.archived" : "conversation_console.open") %>
+              <% if conversation.active_turn %>
+                <span class="badge badge-ghost"><%= t("conversation_console.turn_status.#{conversation.active_turn.status}") %></span>
+              <% end %>
+            </td>
+            <td class="whitespace-nowrap"><%= l(conversation.last_activity_at, format: :short) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% else %>
+  <%= render "shared/empty_state", title: t("conversation_console.empty"), description: t("conversation_console.empty_description") %>
+<% end %>

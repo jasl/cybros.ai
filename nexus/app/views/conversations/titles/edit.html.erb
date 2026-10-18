@@ -1,0 +1,30 @@
+<% content_for :title, t("conversation_management.title.edit") %>
+<div class="mx-auto max-w-2xl space-y-6">
+  <header class="space-y-2">
+    <%= render "shared/back_navigation", path: conversation_path(@conversation, return_to: work_return_path(workspace_conversations_path(@conversation.workspace))), label: conversation_title(@conversation) %>
+    <h1 class="text-xl font-medium"><%= t("conversation_management.title.edit") %></h1>
+    <p class="text-sm text-base-content/70"><%= t("conversation_management.title.explanation") %></p>
+  </header>
+  <%= render "conversations/submission_errors", errors: @form_errors || [] %>
+  <%= form_with url: conversation_title_path(@conversation), method: :patch, scope: :conversation, class: "space-y-4", data: { turbo: false } do |form| %>
+    <%= hidden_field_tag :return_to, work_return_path(workspace_conversations_path(@conversation.workspace)) %>
+    <%= form.hidden_field :lock_version, value: @submitted_lock_version %>
+    <% if @current_conversation %>
+      <section class="space-y-3 rounded-box border border-warning p-4" aria-label="<%= t("conversation_management.title.current") %>">
+        <h2 class="font-medium"><%= t("conversation_management.title.current") %></h2>
+        <p class="whitespace-pre-wrap wrap-anywhere" data-current-conversation-title><%= conversation_title(@current_conversation) %></p>
+        <p class="text-sm"><%= t("conversation_management.title.current_version", version: @current_conversation.lock_version) %></p>
+        <label class="flex items-start gap-3 text-sm">
+          <%= check_box_tag "conversation[reviewed_lock_version]", @current_conversation.lock_version, false, class: "checkbox shrink-0", required: true %>
+          <span><%= t("conversation_management.title.review_version") %></span>
+        </label>
+      </section>
+    <% end %>
+    <div class="space-y-2">
+      <%= form.label :title, t("conversation_management.title.label"), class: "label" %>
+      <%= form.text_field :title, value: @submitted_title, maxlength: 255, class: "input w-full", aria: { describedby: "conversation-title-help" } %>
+      <p id="conversation-title-help" class="text-sm text-base-content/60"><%= t("conversation_management.title.help") %></p>
+    </div>
+    <%= form.submit t("conversation_management.title.save"), class: "btn btn-primary" %>
+  <% end %>
+</div>

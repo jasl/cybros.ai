@@ -1,0 +1,75 @@
+{
+  "units": [
+    "hour",
+    "day",
+    "month"
+  ],
+  "filters": [
+    "provider_id",
+    "catalog_model_ref",
+    "workload",
+    "status"
+  ],
+  "valid_report_fixture": {
+    "report": {
+      "unit": "hour",
+      "series": [
+        {
+          "request_count": 3,
+          "input_tokens": 900,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "output_tokens": 120,
+          "reasoning_tokens": 0,
+          "total_tokens": 1020,
+          "cost_amount": "0.040500000000000001",
+          "cost_complete": true,
+          "bucket_start_at": "2026-10-15T00:00:00Z"
+        }
+      ],
+      "totals": {
+        "request_count": 3,
+        "input_tokens": 900,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 0,
+        "output_tokens": 120,
+        "reasoning_tokens": 0,
+        "total_tokens": 1020,
+        "cost_amount": "0.040500000000000001",
+        "cost_complete": true
+      }
+    }
+  },
+  "unknown_unit_fixture": {
+    "report": {
+      "unit": "zz_unknown_value",
+      "series": [
+        {
+          "request_count": 3,
+          "input_tokens": 900,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "output_tokens": 120,
+          "reasoning_tokens": 0,
+          "total_tokens": 1020,
+          "cost_amount": "0.040500000000000001",
+          "cost_complete": true,
+          "bucket_start_at": "2026-10-15T00:00:00Z"
+        }
+      ],
+      "totals": {
+        "request_count": 3,
+        "input_tokens": 900,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 0,
+        "output_tokens": 120,
+        "reasoning_tokens": 0,
+        "total_tokens": 1020,
+        "cost_amount": "0.040500000000000001",
+        "cost_complete": true
+      }
+    }
+  },
+  "unknown_unit_behavior": "carry_unknown",
+  "amount_encoding": "decimal_string"
+}

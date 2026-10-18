@@ -1,0 +1,30 @@
+zh-CN:
+  runs_console:
+    local_recovery: 恢复 Run 的局部工作
+    cancel_branch: 取消分支
+    branch_cancel_help: 取消此分支拥有的未完成工作，保留主线、分支外工作及已完成的效果。
+    confirm_cancel_branch: 确认取消此分支拥有的未完成工作？已完成的效果会保留。其他工作仍受 Run 的暂停和阻塞状态约束。直接取消 spawn 等待步骤只会结束它的短等待。
+    branch_cancel_accepted: 取消请求已接受。运行中的工作可能需要片刻才能结束，请查看下方最新状态。
+    compact: 压缩上下文
+    compaction_help: 为此排队中的模型 Task 请求历史摘要，可能产生模型用量。失败的 Task 需要先重试才能压缩。
+    confirm_compact: 确认为此排队中的模型 Task 请求历史摘要？这可能产生模型用量，并重置其提示词缓存。暂停的 Run 会保持暂停，直到你恢复运行。
+    compaction_accepted: 压缩请求已接受。请通过下方当前步骤查看进度和结果。
+    compaction_step: 查看当前压缩步骤
+    compaction_paused: 此 Run 已暂停。恢复运行后才能执行剩余压缩工作。
+    submitting: 正在提交…
+    compaction_states:
+      hook: 需要先完成压缩前置 hook，才能创建摘要。
+      hook_finished: 压缩前置 hook 已结束，摘要尚未创建。
+      waiting: 摘要尚未就绪，可打开当前步骤查看状态。
+      unavailable: 此压缩步骤尚无可用摘要，可打开它查看结果和可用的恢复操作。
+      ready: 已有可用于此 Task 历史的摘要。
+    refusal_reasons:
+      not_a_branch: 此 Task 没有可取消的分支
+      already_terminal: 此工作已结束
+      not_compactable: 只有模型 Task 可以请求压缩
+      task_not_queued: 此 Task 已不处于排队状态
+      compaction_disabled: 此 Task 已关闭压缩
+      already_compacted: 此 Task 已有压缩修复
+      compaction_unavailable_under_raw: 原始输入模式需要委托压缩
+      nothing_to_compact: 此 Task 没有可摘要的历史
+      arm_failed: 未能创建压缩步骤

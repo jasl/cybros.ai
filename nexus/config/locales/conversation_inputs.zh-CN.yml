@@ -1,0 +1,16 @@
+zh-CN:
+  pagination:
+    nouns:
+      inputs: 输入
+  conversation_inputs:
+    title: 待处理输入
+    list_scope: 这里列出已接受但仍在排队或被阻塞的输入。延迟输入到达发送时间后才进入当前队列；发送给当前执行的消息在该执行中展示。
+    participants: "%{author} → %{answerer}"
+    deliver_at: 发送时间：
+    empty: 没有待处理输入
+    empty_description: 当前没有排队或阻塞的输入。已接受的工作可能已经出现在 Conversation 历史中。
+    pages: 输入分页
+    cancel: 取消待处理输入
+    cancel_scope: 取消只移除此待处理输入，不会停止已开始的工作或取消其排程。
+    canceled: 待处理输入已取消
+    already_materialized: 此输入已成为一轮对话。下方展示其原始结果，执行没有被停止。

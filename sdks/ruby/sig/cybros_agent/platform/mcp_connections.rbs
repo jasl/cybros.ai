@@ -1,0 +1,44 @@
+module CybrosAgent
+  module Platform
+    class McpConnection < Data
+      attr_reader public_id: String
+      attr_reader name: String
+      attr_reader account_label: String?
+      attr_reader endpoint_url: String
+      attr_reader auth_type: String
+      attr_reader enabled: bool
+      attr_reader available: bool
+      attr_reader credential_configured: bool
+      attr_reader authorization_status: String
+      attr_reader authorization_expires_at: String?
+      attr_reader tools: Array[Hash[String, untyped]]
+      attr_reader catalog_refreshed_at: String?
+      attr_reader lock_version: Integer
+      def self.new: (public_id: String, name: String, account_label: String?, endpoint_url: String, auth_type: String,
+        enabled: bool, available: bool, credential_configured: bool, authorization_status: String,
+        authorization_expires_at: String?, tools: Array[Hash[String, untyped]],
+        catalog_refreshed_at: String?, lock_version: Integer) -> instance
+    end
+
+    class McpAuthorization < Data
+      attr_reader connection_public_id: String
+      attr_reader authorization_url: String
+      attr_reader expires_at: String
+      def self.new: (connection_public_id: String, authorization_url: String, expires_at: String) -> instance
+    end
+
+    class McpConnections
+      include Api::WorkspaceProjections
+      include Api::Fields
+      def initialize: (dispatch: Api::_Dispatch) -> void
+      def list: (?after: String?, ?limit: Integer?, ?order: String?) -> Api::Page[McpConnection]
+      def fetch: (String public_id) -> McpConnection
+      def create: (name: String, endpoint_url: String, auth_type: String, ?account_label: String?, ?bearer_token: String?, ?enabled: bool) -> McpConnection
+      def update: (String public_id, lock_version: Integer, ?name: String, ?account_label: String?, ?enabled: bool) -> McpConnection
+      def refresh_catalog: (String public_id, lock_version: Integer) -> McpConnection
+      def start_authorization: (String public_id, lock_version: Integer) -> McpAuthorization
+      def rotate_credential: (String public_id, lock_version: Integer, bearer_token: String) -> McpConnection
+      def clear_credential: (String public_id, lock_version: Integer) -> McpConnection
+    end
+  end
+end

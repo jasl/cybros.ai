@@ -1,0 +1,21 @@
+<% content_for :title, t("mcp_connections.new") %>
+<%= render layout: "settings/shell", locals: { current: :mcp_connections } do %>
+  <section class="space-y-4">
+    <%= link_to t("mcp_connections.back"), settings_mcp_connections_path, class: "link text-sm" %>
+    <h2 class="text-lg font-medium"><%= t("mcp_connections.new") %></h2>
+    <p class="text-sm text-base-content/70"><%= t("mcp_connections.fixed_target") %></p>
+    <%= form_with model: @connection, url: settings_mcp_connections_path, scope: :mcp_connection, class: "space-y-4", data: { controller: "conditional-fields" } do |form| %>
+      <%= render "settings/mcp_connections/errors", connection: @connection %>
+      <div><%= form.label :name, t("mcp_connections.name"), class: "label" %><%= form.text_field :name, required: true, maxlength: McpConnection::NAME_MAX_LENGTH, class: "input w-full" %></div>
+      <div><%= form.label :account_label, t("mcp_connections.account_label"), class: "label" %><%= form.text_field :account_label, maxlength: McpConnection::ACCOUNT_LABEL_MAX_LENGTH, class: "input w-full" %></div>
+      <div><%= form.label :endpoint_url, t("mcp_connections.endpoint_url"), class: "label" %><%= form.url_field :endpoint_url, required: true, class: "input w-full" %></div>
+      <div><%= form.label :auth_type, t("mcp_connections.auth_type"), class: "label" %><%= form.select :auth_type, [[t("mcp_connections.oauth"), "oauth"], [t("mcp_connections.bearer"), "bearer"], [t("mcp_connections.none"), "none"]], {}, class: "select w-full", data: { conditional_fields_target: "choice", action: "change->conditional-fields#change" } %></div>
+      <fieldset class="space-y-2" data-conditional-fields-target="fields" data-choice="bearer" <%= "hidden disabled" unless @connection.auth_type == "bearer" %>>
+        <div><%= form.label :bearer_token, t("mcp_connections.bearer_token"), class: "label" %><%= form.password_field :bearer_token, value: nil, autocomplete: "new-password", class: "input w-full" %></div>
+        <p class="text-sm text-base-content/70"><%= t("mcp_connections.secret_hint") %></p>
+      </fieldset>
+      <p class="text-sm text-base-content/70" data-conditional-fields-target="fields" data-choice="oauth" <%= "hidden" unless @connection.auth_type == "oauth" %>><%= t("mcp_connections.oauth_create_hint") %></p>
+      <%= form.submit t("mcp_connections.create"), class: "btn btn-primary" %>
+    <% end %>
+  </section>
+<% end %>

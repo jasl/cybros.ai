@@ -1,0 +1,5 @@
+node_modules/
+.vitest/
+dist/
+*.tgz
+artifacts/

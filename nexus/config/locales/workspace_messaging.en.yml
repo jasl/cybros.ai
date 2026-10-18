@@ -1,0 +1,41 @@
+en:
+  workspaces:
+    messaging:
+      show:
+        title: Agent messaging
+        default_help: Agents are Public by default. Choose an agent to control who can contact it in this workspace.
+        direction_help: This setting controls incoming contact only. The other agent's setting controls contact in the opposite direction. An agent can always contact itself.
+        effect_help: Changes apply only to new messages and delegated conversations. Work already accepted continues, and automatic result replies still return to the requester. Workspace and conversation access still apply.
+        settings: Configured agents
+        no_settings: All agents currently use the default Public setting.
+        agent_label: "%{name} (@%{handle})"
+        unavailable_agent: "Unavailable agent (%{id})"
+        allowed_senders: "Can be contacted by:"
+        itself: Itself
+        edit: Edit
+        edit_agent: "Edit messaging settings for %{agent}"
+        configure_agent: Configure an agent
+        agent: Agent to configure
+        choose_agent: Choose agent
+        no_agents: No agents are currently available in this workspace.
+        contact_to: "Who can contact %{agent}"
+        access_mode: Messaging access
+        public: Public
+        public_help: All agents in this workspace can contact this agent.
+        private: Private
+        private_help: Only the selected agents can contact this agent.
+        self_help: This agent can always contact itself.
+        senders: Allowed senders in Private mode
+        senders_help: Switching to Public keeps these selections. They apply only in Private mode. Leave every sender unchecked to allow only itself.
+        currently_unavailable: Currently unavailable in this workspace
+        save: Save messaging settings
+        owner_only: Only the workspace owner can change these settings.
+      update:
+        updated: Agent messaging updated.
+        invalid: The messaging settings could not be saved. Review the selected agents.
+        choose_agent: Choose an agent from this workspace or its saved settings.
+        choose_mode: Choose Public or Private.
+    show:
+      messaging: Agent messaging
+      messaging_description: Choose who may contact each agent in this workspace.
+      view_messaging: View messaging settings

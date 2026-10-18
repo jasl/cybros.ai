@@ -1,0 +1,8 @@
+module Rho
+  module Extensions
+    module Schedules
+      NAME: String
+      def self.register: (untyped api) -> untyped
+    end
+  end
+end

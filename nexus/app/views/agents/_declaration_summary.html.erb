@@ -1,0 +1,18 @@
+<section class="space-y-3">
+  <div>
+    <h2 class="text-xs font-medium text-base-content/60"><%= t("agent_resources.configuration.summary") %></h2>
+    <p class="mt-1 text-sm text-base-content/60"><%= t("agent_resources.configuration.description") %></p>
+  </div>
+  <%= render "shared/facts_panel", facts: {
+    t("agent_resources.configuration.default_model") => declaration.fetch(:default_model).presence || t("agent_resources.not_declared"),
+    t("agent_resources.configuration.image_model") => declaration.fetch(:image_model).presence || t("agent_resources.not_declared"),
+    t("agent_resources.configuration.fallback_models") => declaration.fetch(:fallback_models).presence&.join(", ") || t("agent_resources.none"),
+    t("agent_resources.configuration.prompt_mechanism") => agent_configuration_choice(:prompt_modes, declaration.fetch(:prompt_mechanism)),
+    t("agent_resources.configuration.approval") => agent_configuration_choice(:approval_modes, declaration.fetch(:approval_mode)),
+    t("agent_resources.configuration.tool_sources") => t("agent_resources.configuration.tool_counts", explicit: declaration.fetch(:tool_definitions).size, kernel: declaration.fetch(:kernel_tools).size, runners: declaration.fetch(:runner_executor_public_ids).size, mcp: declaration.fetch(:mcp_tools).size),
+    t("agent_resources.configuration.runner_imports") => declaration.fetch(:runner_tool_names).nil? ? t("agent_resources.configuration.all_runner_tools") : declaration.fetch(:runner_tool_names).presence&.join(", ") || t("agent_resources.none"),
+    t("agent_resources.configuration.memory_limit") => agent_memory_limit(declaration.fetch(:memory_context_limit)),
+    t("agent_resources.configuration.conversation_reach") => agent_configuration_choice(:conversation_scopes, declaration.fetch(:conversation_reach)),
+  } %>
+  <p class="text-sm text-base-content/60"><%= t("agent_resources.configuration.memory_description") %></p>
+</section>

@@ -1,0 +1,14 @@
+<%# locals: (budget:) %>
+<dl class="grid min-w-0 gap-3 text-sm sm:grid-cols-2">
+  <% %i[credited_amount debited_amount headroom cost_unit].each do |field| %>
+    <div class="min-w-0"><dt class="text-base-content/60"><%= t("budget_console.#{field}") %></dt><dd class="font-mono wrap-anywhere"><%= budget.fetch(field) %></dd></div>
+  <% end %>
+  <% %i[starts_at expires_at revoked_at].each do |field| %>
+    <div class="min-w-0"><dt class="text-base-content/60"><%= t("budget_console.#{field}") %></dt><dd class="wrap-anywhere"><%= budget[field]&.utc&.iso8601 || t("budget_console.none") %></dd></div>
+  <% end %>
+  <div><dt class="text-base-content/60"><%= t("budget_console.state") %></dt><dd><%= t("budget_console.#{budget.fetch(:usable) ? 'usable' : 'not_usable'}") %></dd></div>
+  <% if budget[:revoked_at] %>
+    <div class="min-w-0"><dt class="text-base-content/60"><%= t("budget_console.revoked_by") %></dt><dd class="font-mono wrap-anywhere"><%= budget[:revoked_by_public_id] %></dd></div>
+    <div class="min-w-0"><dt class="text-base-content/60"><%= t("budget_console.reason") %></dt><dd class="whitespace-pre-wrap wrap-anywhere"><%= budget[:revoke_reason].presence || t("budget_console.none") %></dd></div>
+  <% end %>
+</dl>

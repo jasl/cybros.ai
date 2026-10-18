@@ -1,0 +1,111 @@
+<% content_for :title, t("workspaces.messaging.show.title") %>
+
+<div class="space-y-8">
+  <header class="space-y-4">
+    <%= render "shared/back_navigation", path: workspace_path(@workspace), label: @workspace.name %>
+    <div class="space-y-2">
+      <h1 class="text-xl font-medium tracking-tight"><%= t("workspaces.messaging.show.title") %></h1>
+      <p class="text-sm text-base-content/70"><%= t("workspaces.messaging.show.default_help") %></p>
+      <p class="text-sm text-base-content/70"><%= t("workspaces.messaging.show.direction_help") %></p>
+      <p class="text-sm text-base-content/70"><%= t("workspaces.messaging.show.effect_help") %></p>
+    </div>
+  </header>
+
+  <section class="space-y-3" aria-labelledby="messaging-settings">
+    <h2 id="messaging-settings" class="text-sm font-medium"><%= t("workspaces.messaging.show.settings") %></h2>
+    <% if @agent_settings.empty? %>
+      <p class="rounded-box border border-base-300 bg-base-200 px-4 py-5 text-sm"><%= t("workspaces.messaging.show.no_settings") %></p>
+    <% else %>
+      <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200">
+        <% @agent_settings.each do |settings| %>
+          <li class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between" data-agent-id="<%= settings.agent_public_id %>">
+            <div class="min-w-0 space-y-1">
+              <p class="font-medium wrap-anywhere"><%= @agent_labels.fetch(settings.agent_public_id) { t("workspaces.messaging.show.unavailable_agent", id: settings.agent_public_id) } %></p>
+              <span class="badge badge-sm badge-ghost"><%= t("workspaces.messaging.show.#{settings.mode}") %></span>
+              <% unless @available_ids.include?(settings.agent_public_id) %>
+                <p class="text-xs text-base-content/60"><%= t("workspaces.messaging.show.currently_unavailable") %></p>
+              <% end %>
+              <% if settings.mode == "public" %>
+                <p class="text-sm text-base-content/70"><%= t("workspaces.messaging.show.public_help") %></p>
+              <% else %>
+                <p class="text-sm text-base-content/70"><%= t("workspaces.messaging.show.allowed_senders") %></p>
+                <ul class="list-inside list-disc text-sm">
+                  <li><%= t("workspaces.messaging.show.itself") %></li>
+                  <% settings.allowed_sender_public_ids.reject { |id| id == settings.agent_public_id }.each do |sender_id| %>
+                    <li class="wrap-anywhere"><%= @agent_labels.fetch(sender_id) { t("workspaces.messaging.show.unavailable_agent", id: sender_id) } %></li>
+                  <% end %>
+                </ul>
+              <% end %>
+            </div>
+            <% if @editable %>
+              <%= link_to t("workspaces.messaging.show.edit"), workspace_messaging_path(@workspace, agent_public_id: settings.agent_public_id), class: "btn btn-ghost btn-sm self-start shrink-0", aria: { label: t("workspaces.messaging.show.edit_agent", agent: @agent_labels.fetch(settings.agent_public_id, settings.agent_public_id)) } %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+
+  <% if @editable %>
+    <section class="space-y-4" aria-labelledby="messaging-editor">
+      <h2 id="messaging-editor" class="text-sm font-medium"><%= t("workspaces.messaging.show.configure_agent") %></h2>
+      <% if @agent_ids.empty? %>
+        <p class="text-sm text-base-content/70"><%= t("workspaces.messaging.show.no_agents") %></p>
+      <% else %>
+        <%= form_with url: workspace_messaging_path(@workspace), method: :get, class: "flex flex-col gap-3 sm:flex-row sm:items-end" do |form| %>
+          <div class="min-w-0 grow">
+            <%= form.label :agent_public_id, t("workspaces.messaging.show.agent"), class: "label" %>
+            <%= form.select :agent_public_id, @agent_ids.map { |id| [@agent_labels.fetch(id) { t("workspaces.messaging.show.unavailable_agent", id: id) }, id] }, { selected: @agent_public_id, prompt: t("workspaces.messaging.show.choose_agent") }, class: "select w-full", required: true %>
+          </div>
+          <%= form.submit t("workspaces.messaging.show.choose_agent"), class: "btn btn-sm btn-ghost self-start shrink-0 sm:self-auto" %>
+        <% end %>
+
+        <% if @agent_ids.include?(@agent_public_id) %>
+          <%= form_with url: workspace_messaging_path(@workspace), method: :put, scope: :messaging, class: "space-y-5 rounded-box border border-base-300 bg-base-200 p-4" do |form| %>
+            <h3 class="font-medium wrap-anywhere"><%= t("workspaces.messaging.show.contact_to", agent: @agent_labels.fetch(@agent_public_id) { t("workspaces.messaging.show.unavailable_agent", id: @agent_public_id) }) %></h3>
+            <%= form.hidden_field :agent_public_id, value: @agent_public_id %>
+            <%= form.hidden_field :lock_version, value: @submitted_lock_version %>
+            <% Array(@errors).each do |error| %>
+              <p class="field-error"><%= error %></p>
+            <% end %>
+            <fieldset class="space-y-3">
+              <legend class="mb-2 text-sm font-medium"><%= t("workspaces.messaging.show.access_mode") %></legend>
+              <label class="flex items-start gap-3">
+                <%= form.radio_button :mode, "public", checked: @mode == "public", class: "radio radio-sm mt-0.5", aria: { describedby: "messaging-public-help" } %>
+                <span class="text-sm"><%= t("workspaces.messaging.show.public") %></span>
+              </label>
+              <p id="messaging-public-help" class="text-xs text-base-content/70"><%= t("workspaces.messaging.show.public_help") %></p>
+              <label class="flex items-start gap-3">
+                <%= form.radio_button :mode, "private", checked: @mode == "private", class: "radio radio-sm mt-0.5", aria: { describedby: "messaging-private-help" } %>
+                <span class="text-sm"><%= t("workspaces.messaging.show.private") %></span>
+              </label>
+              <p id="messaging-private-help" class="text-xs text-base-content/70"><%= t("workspaces.messaging.show.private_help") %></p>
+              <p class="text-xs text-base-content/70"><%= t("workspaces.messaging.show.self_help") %></p>
+            </fieldset>
+            <fieldset class="space-y-3">
+              <legend class="mb-2 text-sm font-medium"><%= t("workspaces.messaging.show.senders") %></legend>
+              <p class="text-xs text-base-content/70"><%= t("workspaces.messaging.show.senders_help") %></p>
+              <%= hidden_field_tag "messaging[allowed_sender_public_ids][]", "" %>
+              <% (@sender_ids + @allowed_sender_public_ids).uniq.reject { |id| id == @agent_public_id }.each do |sender_id| %>
+                <label class="flex items-start gap-3">
+                  <%= check_box_tag "messaging[allowed_sender_public_ids][]", sender_id, @allowed_sender_public_ids.include?(sender_id), id: "messaging-sender-#{sender_id}", class: "checkbox checkbox-sm mt-0.5 shrink-0" %>
+                  <span class="min-w-0 text-sm wrap-anywhere">
+                    <%= @agent_labels.fetch(sender_id) { t("workspaces.messaging.show.unavailable_agent", id: sender_id) } %>
+                    <% unless @available_ids.include?(sender_id) %>
+                      <span class="block text-xs text-base-content/60"><%= t("workspaces.messaging.show.currently_unavailable") %></span>
+                    <% end %>
+                  </span>
+                </label>
+              <% end %>
+            </fieldset>
+            <div class="flex justify-end">
+              <%= form.submit t("workspaces.messaging.show.save"), class: "btn btn-primary btn-sm" %>
+            </div>
+          <% end %>
+        <% end %>
+      <% end %>
+    </section>
+  <% else %>
+    <p class="text-sm text-base-content/70"><%= t(@workspace.active? ? "workspaces.messaging.show.owner_only" : "workspaces.not_active") %></p>
+  <% end %>
+</div>

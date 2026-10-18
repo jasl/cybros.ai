@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+require "rbconfig"
+
+# Keep CI's fast contract checks explicit; the full suites remain in bin/ci.
+tests = %w[
+  test/controllers/sessions_controller_test.rb
+  test/controllers/api/v1/sessions_test.rb
+  test/controllers/oauth/token_refresh_and_revoke_test.rb
+  test/controllers/agent_api/v1/workspaces_test.rb
+  test/controllers/agent_api/v1/executors/inbox_test.rb
+  test/controllers/agent_api/v1/executors/claims_test.rb
+  test/controllers/agent_api/v1/executors/commits_test.rb
+  test/controllers/agent_api/v1/executors/claim_status_test.rb
+  test/services/model_catalog/config_samples_test.rb
+]
+
+ENV["PARALLEL_WORKERS"] ||= "1"
+ENV["RAILS_ENV"] = "test"
+Dir.chdir(File.expand_path("..", __dir__))
+# Explicit test paths skip Rails' automatic asset preparation.
+system(RbConfig.ruby, "bin/rails", "db:prepare", "test:prepare", exception: true)
+exec RbConfig.ruby, "bin/rails", "test", *tests, *ARGV

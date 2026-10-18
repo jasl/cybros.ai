@@ -1,0 +1,334 @@
+require "test_helper"
+require "tmpdir"
+require "fileutils"
+
+module TelegramRuntimeSupport
+  BOT = "019a1111-2222-7333-8444-555555555555".freeze
+  CONNECTION = "019a1111-2222-7333-8444-666666666666".freeze
+  def self.turn_id(conversation_id, position)
+    conversation_id == "conversation-1" ? "turn-#{position}" : "#{conversation_id}-turn-#{position}"
+  end
+
+  class Bridge
+    attr_reader :opened, :stops, :decisions, :speakers, :open_workspaces, :created_workspaces
+    attr_accessor :turn_rows, :pending_rows, :current, :fail_input, :fail_stop,
+      :workspace_rows, :default_workspace, :workspace_selection, :fail_workspace, :fail_open, :read_failure,
+      :bot_audience, :bot_model, :bot_subagent, :queue_rows, :fail_input_control, :event_rows, :defer_inputs
+    attr_reader :queue_reads, :queue_writes, :stop_calls, :loop_workspaces, :memory_bindings, :memory_anchors
+
+    def initialize
+      @bot_audience = "external"
+      @bot_model = "vendor/model"
+      @bot_subagent = true
+      @inputs, @opened, @stops, @decisions, @speakers = {}, {}, [], [], []
+      @turn_rows, @pending_rows = {}, []
+      @current = { "sequence" => 1, "status" => "running", "run_public_id" => "loop-1", "action" => "running a command" }
+      @workspace_rows = [{ "public_id" => "workspace-home", "name" => "Home", "status" => "active" },
+        { "public_id" => "workspace-project", "name" => "Project", "status" => "active" }]
+      @default_workspace = @workspace_rows.first
+      @open_workspaces, @created_workspaces = {}, {}
+      @queue_rows, @queue_reads, @queue_writes = {}, [], []
+      @event_rows = {}
+      @stop_calls, @loop_workspaces = [], {}
+      @memory_bindings, @memory_anchors = {}, {}
+      @bot_current = nil
+      @bot_operations = {}
+      @archived_conversations = []
+    end
+
+    def open(idempotency_key:, group:, workspace_public_id: nil, memory_context: nil, speaker_public_id: nil)
+      id = @opened[idempotency_key] ||= "conversation-#{@opened.length + 1}"
+      @open_workspaces[id] ||= workspace_public_id
+      @memory_bindings[id] = memory_context
+      if @fail_open
+        @fail_open = false
+        raise Rho::ConnectionError, "conversation accepted but response lost"
+      end
+      id
+    end
+
+    def bot_detail
+      { "bot" => { "audience" => @bot_audience, "home_workspace_public_id" => @default_workspace&.fetch("public_id"), "model" => @bot_model, "subagent" => @bot_subagent },
+        "current" => @bot_current, "effective_welcome_message" => "" }
+    end
+
+    def ensure_bot_current(operation_id:)
+      return { "selected" => @bot_current, "current" => @bot_current, "replayed" => false } if @bot_current
+
+      new_bot_conversation(operation_id: operation_id)
+    end
+
+    def new_bot_conversation(operation_id:, home_workspace_public_id: nil)
+      if (prior = @bot_operations[operation_id])
+        return { "selected" => prior, "current" => @bot_current, "replayed" => true }
+      end
+      @default_workspace = workspace(home_workspace_public_id) if home_workspace_public_id
+      @archived_conversations |= [@bot_current.fetch("public_id")] if @bot_current
+      id = open(idempotency_key: operation_id, group: true, workspace_public_id: @default_workspace.fetch("public_id"))
+      @bot_current = { "public_id" => id, "workspace_public_id" => @open_workspaces.fetch(id) }
+      @bot_operations[operation_id] = @bot_current
+      { "selected" => @bot_current, "current" => @bot_current, "replayed" => false }
+    end
+
+    def resume_bot_conversation(operation_id:, conversation_public_id:, workspace_public_id:)
+      if (prior = @bot_operations[operation_id])
+        return { "selected" => prior, "current" => @bot_current, "replayed" => true }
+      end
+      @archived_conversations |= [@bot_current.fetch("public_id")] if @bot_current && @bot_current.fetch("public_id") != conversation_public_id
+      @archived_conversations.delete(conversation_public_id)
+      @bot_current = { "public_id" => conversation_public_id, "workspace_public_id" => workspace_public_id }
+      @bot_operations[operation_id] = @bot_current
+      { "selected" => @bot_current, "current" => @bot_current, "replayed" => false }
+    end
+
+    def bot_history(after: nil, limit: 10, archived: nil)
+      rows = @opened.values.reverse.map { |id| conversation(id) }
+      rows.select! { |row| !!row["archived_at"] == archived } unless archived.nil?
+      rows = rows.drop(after.to_i)
+      { "conversations" => rows.take(limit), "pagination" => { "next_after" => ((after.to_i + limit).to_s if rows.length > limit) } }
+    end
+
+    def attach(id, workspace_public_id:)
+      @open_workspaces[id] = workspace_public_id
+      { "run" => @current }
+    end
+
+    def participation_memory(id, model:, workspace_public_id:, speaker_public_id:) = nil
+
+    def workspaces = @workspace_rows
+    def workspace_state
+      { "workspaces" => @workspace_rows, "workspace" => @default_workspace, "selection" => @workspace_selection }
+    end
+    def workspace(id) = @workspace_rows.find { |row| row.fetch("public_id") == id } || raise(Rho::Error, "Workspace not available")
+
+    def create_workspace(name:, idempotency_key:)
+      row = @created_workspaces[idempotency_key] ||= { "public_id" => "workspace-created-#{@created_workspaces.length + 1}",
+        "name" => name, "status" => "active" }
+      @workspace_rows |= [row]
+      if @fail_workspace
+        @fail_workspace = false
+        raise Rho::ConnectionError, "workspace accepted but response lost"
+      end
+      row
+    end
+
+    def conversation_workspace(id)
+      @workspace_rows.find { |row| row.fetch("public_id") == @open_workspaces.fetch(id) }
+    end
+
+    def conversation_workspace_id(id) = @open_workspaces.fetch(id)
+
+    def register_speaker(user:, owner: false)
+      @speakers << [owner, user]
+      "speaker-#{user.fetch("id")}"
+    end
+
+    def submit(id, **request)
+      unless @inputs.key?(request.fetch(:idempotency_key)) || @bot_current&.fetch("public_id") == id || request[:expected_steering_run_public_id]
+        raise Rho::Core::Refused.new("Resume this Bot conversation before sending a new input.", status: 409, code: "bot_conversation_not_current")
+      end
+      @inputs[request.fetch(:idempotency_key)] ||= request.merge(conversation_id: id)
+      if @fail_input
+        @fail_input = false
+        raise Rho::ConnectionError, "response lost after acceptance"
+      end
+      number = @inputs.keys.index(request.fetch(:idempotency_key)) + 1
+      result = { "input" => { "public_id" => "input-#{number}" } }
+      result.fetch("input")["deliver_at"] = request[:deliver_at] if request[:deliver_at]
+      unless request[:observe] || @defer_inputs || request[:deliver_at]
+        position = @inputs.values.take(number).count { |row| row.fetch(:conversation_id) == id && !row[:observe] } - 1
+        result.merge!("turn" => { "public_id" => TelegramRuntimeSupport.turn_id(id, position) }, "run" => { "public_id" => "loop-#{number}" })
+        @loop_workspaces["loop-#{number}"] = request[:workspace_public_id]
+      end
+      result
+    end
+
+    def turns(id, after_position: nil, workspace_public_id: nil)
+      raise @read_failure if @read_failure
+
+      @turn_rows.fetch(id, []).select { |row| after_position.nil? || row.fetch("position") > after_position }
+    end
+
+    def turn_source(id, position:, workspace_public_id: nil)
+      raise @read_failure if @read_failure
+
+      @turn_rows.fetch(id, []).find { |row| row.fetch("position") == position }
+    end
+
+    def turn_media(_turn, workspace_public_id:) = []
+
+    def events(id, after: nil, workspace_public_id: nil)
+      rows = @event_rows.fetch(id, [])
+      index = rows.index { |row| row.fetch("cursor") == after }
+      { "events" => index ? rows.drop(index + 1) : rows,
+        "pagination" => { "next_after" => nil, "watermark" => rows.last&.fetch("sequence") || 0 } }
+    end
+
+    def observation(id, workspace_public_id:)
+      @inputs.values.select { |row| row.fetch(:conversation_id) == id && row[:observe] }.map { |row| row.fetch(:text) }.join("\n")
+    end
+
+    def runs = @opened.values.select { |id| @inputs.values.any? { |row| row.fetch(:conversation_id) == id && !row[:observe] } }.to_h { |id| [id, @current] }
+    def progress(run) = run
+    def snapshot(_id, workspace_public_id: nil, run: nil, inputs: nil) = @current
+    def pending(_id, workspace_public_id: nil, reads: nil) = @pending_rows
+    def models = ["vendor/model"]
+    def schedules(_id, after: nil, workspace_public_id:)
+      { "schedules" => [], "pagination" => { "next_after" => nil } }
+    end
+
+    def inputs(id = nil, workspace_public_id: nil)
+      return @inputs unless id
+
+      @queue_reads << [id, workspace_public_id]
+      @queue_rows.fetch(id, [])
+    end
+
+    def update_input(id, input_id, text: nil, schedule: {}, workspace_public_id:)
+      @queue_writes << if schedule.empty?
+        [:edit, id, input_id, text, workspace_public_id]
+      else
+        [:reschedule, id, input_id, schedule, workspace_public_id]
+      end
+      row = @queue_rows.fetch(id).find { |input| input.fetch("public_id") == input_id }
+      row["text"] = text if text
+      row.merge!(schedule).merge!("state" => "pending")
+      fail_input_control_response
+      row
+    end
+
+    def delete_input(id, input_id, workspace_public_id:)
+      @queue_writes << [:cancel, id, input_id, workspace_public_id]
+      @queue_rows.fetch(id).delete_if { |input| input.fetch("public_id") == input_id }
+      fail_input_control_response
+      nil
+    end
+
+    def conversation(id, workspace_public_id: nil)
+      { "public_id" => id, "title" => "A useful conversation", "workspace_public_id" => @open_workspaces.fetch(id), "archived_at" => ("2026-10-12" if @archived_conversations.include?(id)) }
+    end
+
+    def fail_input_control_response
+      if @fail_input_control
+        @fail_input_control = false
+        raise Rho::ConnectionError, "queue control accepted but response lost"
+      end
+    end
+
+    def stop(id, host_type: "conversation", workspace_public_id: nil)
+      @stops << id
+      @stop_calls << [id, host_type, workspace_public_id]
+      if @fail_stop
+        @fail_stop = false
+        raise Rho::ConnectionError, "stop accepted but response lost"
+      end
+    end
+    def approve(id, key, workspace_public_id: nil) = @decisions << ["approve", id, key, workspace_public_id]
+    def deny(id, key, workspace_public_id: nil) = @decisions << ["deny", id, key, workspace_public_id]
+    def answer(id, key, text, workspace_public_id: nil) = @decisions << ["answer", id, key, text, workspace_public_id]
+  end
+
+  class Client
+    attr_reader :calls, :actions, :last_message_id
+    attr_accessor :failure, :action_failure, :admin, :privacy_disabled
+
+    def initialize
+      @calls = []
+      # Chat actions (typing) are recorded apart from messages, edits and
+      # drafts: they carry no content and the message sequence is what the
+      # delivery examples assert.
+      @actions = []
+      @admin = false
+    end
+
+    def call(method, params = {}, poll: false)
+      if method == "sendChatAction"
+        @actions << [method, params]
+        if @action_failure
+          error, @action_failure = @action_failure, nil
+          raise error
+        end
+        return {}
+      end
+      @calls << [method, params]
+      if @failure
+        error, @failure = @failure, nil
+        raise error
+      end
+      return { "status" => @admin ? "administrator" : "member" } if method == "getChatMember"
+      return { "id" => 42, "username" => "rho_bot", "can_read_all_group_messages" => !!@privacy_disabled } if method == "getMe"
+      return { "file_path" => "photos/synthetic.jpg" } if method == "getFile"
+
+      @last_message_id = 1_000 + @calls.length
+      { "message_id" => @last_message_id }
+    end
+  end
+
+  def setup
+    @directory = Dir.mktmpdir("rho-telegram-runtime")
+    File.chmod(0o700, @directory)
+    @home = Struct.new(:root).new(@directory)
+    @state = Rho::IngressTelegram::State.new(store: TelegramStateSupport.document(@home))
+    @connection_state = Rho::IngressTelegram::ConnectionState.new(store: TelegramStateSupport.document(@home, key: "connection"))
+    @state.change { |document| document["access"] = { "allowed_users" => ["2"], "allowed_chats" => ["-10"], "ignored_users" => [] } }
+    @settings = Rho::IngressTelegram::Settings.new({ "owner_id" => 1, "enabled" => true, "connection_public_id" => CONNECTION, "target" => { "chat_id" => "-10", "topic_id" => 4 } })
+    @bridge, @client = Bridge.new, Client.new
+    @now = 1_000.0
+    @runtime = runtime
+  end
+
+  def teardown
+    FileUtils.remove_entry(@directory)
+  end
+
+  private
+
+    # Most workflow examples start with an admitted text message. Advance the
+    # injected clock through its quiet window without also sending deliveries.
+    # Burst timing tests call consume/tick directly instead.
+    def receive(update)
+      consume(update)
+      row = @state.read.fetch("pending_inputs").values.find { |item| item["update_id"] == update.fetch("update_id") }
+      return unless row && !row["media"]
+
+      @now = [@now, row.fetch("ready_at")].max
+      key, head = @state.read.fetch("pending_inputs").find { |_id, item| item.fetch("route_key") == row.fetch("route_key") }
+      # A restarted production worker refreshes its Bot declaration before advancing inputs.
+      @runtime.send(:refresh_audience)
+      @runtime.send(:advance_input, key, head) unless head["media"]
+    end
+
+    def consume(update)
+      offset = @connection_state.read["offset"]
+      return if offset && update.fetch("update_id") < offset
+
+      @runtime.consume(update)
+      @connection_state.consumed(update.fetch("update_id"))
+      @runtime.acknowledge(update.fetch("update_id") + 1)
+    end
+
+    def runtime(default_model: nil)
+      @state.recover_deliveries
+      logger = Object.new
+      logger.define_singleton_method(:warn) { |*| }
+      result = Rho::IngressTelegram::Runtime.new(settings: @settings, state: @state, bridge: @bridge,
+        client: @client, log: logger, default_model: default_model, clock: -> { @now }, agent_public_id: BOT)
+      result.identify("id" => 42, "username" => "rho_bot")
+      result
+    end
+
+    def telegram_message(id, text, user: 1, chat: nil, topic: nil, entities: [], date: 1_000, reply_to: nil, reply_user: 42)
+      chat ||= user
+      { "update_id" => id, "message" => { "message_id" => id, "date" => date, "text" => text,
+        "from" => { "id" => user, "first_name" => "Person #{user}" },
+        "chat" => { "id" => chat, "type" => chat.negative? ? "supergroup" : "private" },
+        "message_thread_id" => topic, "is_topic_message" => (true if topic), "entities" => entities,
+        "reply_to_message" => ({ "message_id" => reply_to, "from" => { "id" => reply_user } } if reply_to) }.compact }
+    end
+
+    def turn(position, text, status: "completed", conversation_id: "conversation-1")
+      { "public_id" => TelegramRuntimeSupport.turn_id(conversation_id, position), "position" => position,
+        "variant_public_id" => "#{conversation_id}-variant-#{position}",
+        "kind" => "direct_reply", "status" => status, "text" => text }
+    end
+end

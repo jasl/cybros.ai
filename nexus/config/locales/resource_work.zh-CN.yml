@@ -1,0 +1,11 @@
+zh-CN:
+  resource_work:
+    title: Agent 工作概览
+    open: 查看工作统计
+    coverage: 仅计入你当前可读的工作。Conversation Run 按 Turn 记录的回答 Agent 归属；独立 Run 按创建者归属。
+    usage_coverage: 用量来自可读 Conversation 内归属给此 Agent 的消费记录。Human 发起的试运行计入 Human。无法归属的独立用量不在其中。未知费用不等于零，这些金额不是余额或额度。
+    agent_filter: Agent 关联
+    executor_filter: Executor 关联
+    executor_coverage: Executor 关联依据保留的 Task 目标和当前认领者。重试可能更换认领者；已清理的执行详情无法查询。
+    clear_resource: 清除资源筛选
+    trial: 试运行 Agent

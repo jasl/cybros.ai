@@ -1,0 +1,45 @@
+{
+  "task_read": {
+    "id": "resp_fake",
+    "object": "response",
+    "status": "completed",
+    "output": [
+      {
+        "type": "function_call",
+        "id": "fc_fake",
+        "call_id": "call_fake",
+        "name": "ls",
+        "arguments": "{}"
+      }
+    ],
+    "usage": {
+      "input_tokens": 6000,
+      "output_tokens": 400,
+      "total_tokens": 6400
+    }
+  },
+  "task": {
+    "id": "resp_fake",
+    "object": "response",
+    "status": "completed",
+    "output": [
+      {
+        "type": "function_call",
+        "id": "fc_fake",
+        "call_id": "call_fake",
+        "name": "delegate_task",
+        "arguments": "{\"prompt\":\"Review lib/ for N+1 queries. Answer file:line and a fix, or none.\"}"
+      }
+    ],
+    "usage": {
+      "input_tokens": 6000,
+      "output_tokens": 400,
+      "total_tokens": 6400
+    }
+  },
+  "spend_usage": {
+    "input_tokens": 6000,
+    "output_tokens": 2000000,
+    "total_tokens": 2006000
+  }
+}

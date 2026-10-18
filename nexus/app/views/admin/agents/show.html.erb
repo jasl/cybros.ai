@@ -1,0 +1,44 @@
+<% agent_name = member_display_name(@member) %>
+<% content_for :title, agent_name %>
+
+<div class="space-y-8">
+  <header class="space-y-4">
+    <%= render "shared/back_navigation", path: admin_agents_path, label: t("admin.agents.index.agents") %>
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight wrap-anywhere"><%= agent_name %></h1>
+      <p class="text-sm text-base-content/60"><%= t("admin.agents.show.description") %></p>
+    </div>
+  </header>
+
+  <section>
+    <%= render "shared/facts_panel", facts: {
+      t("admin.agents.index.manager") => @member.steward.display_name,
+      t("admin.agents.index.status") => t("members.statuses.#{@member.status}"),
+      t("admin.agents.show.added") => l(@member.created_at.to_date, format: :long),
+    } %>
+    <% unless @member.steward.active? %>
+      <p class="mt-3 text-sm text-warning"><%= t("admin.agents.show.inactive_manager") %></p>
+    <% end %>
+  </section>
+
+  <section class="rounded-box border border-base-300 bg-base-200">
+    <%= render layout: "shared/action_row", locals: { title: t("admin.agents.show.change_manager"), description: t(@member.removed? ? "admin.agents.show.reassign_removed" : "admin.agents.show.manager_description") } do %>
+      <%= link_to t("admin.agents.show.change_manager"), admin_agent_steward_path(@member), class: "btn btn-sm btn-ghost" %>
+    <% end %>
+  </section>
+
+  <% if @member.removed? %>
+    <p class="text-sm text-base-content/60"><%= t("admin.agents.show.removed_description") %></p>
+    <section class="rounded-box border border-base-300 bg-base-200">
+      <%= render layout: "shared/action_row", locals: { title: t("admin.agents.show.restore"), description: t("admin.agents.show.restore_description") } do %>
+        <%= button_to t("admin.agents.show.restore"), admin_agent_restoration_path(@member), method: :post, class: "btn btn-primary btn-sm" %>
+      <% end %>
+    </section>
+  <% else %>
+    <section class="rounded-box border border-base-300 bg-base-200">
+      <%= render layout: "shared/action_row", locals: { title: t("admin.agents.show.remove"), description: t("admin.agents.show.remove_description") } do %>
+        <%= button_to t("admin.agents.show.remove"), admin_agent_removal_path(@member), method: :post, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("admin.agents.show.remove_confirm", name: agent_name) } %>
+      <% end %>
+    </section>
+  <% end %>
+</div>

@@ -1,0 +1,23 @@
+<% content_for :title, t("work_console.error.title") %>
+<div class="space-y-5">
+  <% if @run %>
+    <%= render "shared/back_navigation", path: run_path(@run), label: t("runs_console.overview") %>
+  <% elsif @workspace %>
+    <%= render "shared/back_navigation", path: workspace_path(@workspace), label: @workspace.name %>
+  <% else %>
+    <%= render "shared/back_navigation", path: root_path, label: t("work_console.overview") %>
+  <% end %>
+  <h1 class="text-xl font-medium"><%= t("work_console.error.title") %></h1>
+  <p role="alert"><%= message %></p>
+  <% if request.get? %>
+    <% if code == :parameter_invalid %>
+      <%= link_to t("work_console.error.reset_filters"), work_reset_filters_path, class: "btn btn-outline btn-sm" %>
+    <% else %>
+      <%= link_to t("work_console.error.retry"), request.fullpath, class: "btn btn-outline btn-sm" %>
+    <% end %>
+  <% end %>
+  <details class="text-sm text-base-content/60">
+    <summary class="cursor-pointer"><%= t("work_console.error.details") %></summary>
+    <p class="mt-2"><%= code %></p>
+  </details>
+</div>

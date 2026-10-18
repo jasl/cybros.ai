@@ -1,0 +1,16 @@
+<%= render layout: "workspaces/data/shell", locals: { workspace: @workspace, data_writable: @data_writable, error: @error, validation_errors: @validation_errors, title: t("data_console.character.edit") } do %>
+  <%= link_to t("data_console.character.back"), workspace_character_path(@workspace), class: "link link-hover text-sm" %>
+  <p class="text-sm text-base-content/70"><%= t("data_console.character.replace_help") %></p>
+  <%= form_with url: workspace_character_path(@workspace), method: :put, scope: :prompt_document, class: "space-y-4" do |form| %>
+    <div>
+      <%= form.label :role, t("personas.role"), class: "mb-1 block text-sm font-medium" %>
+      <%= form.select :role, PromptDocument::ROLES.map { |role| [t("personas.roles.#{role}"), role] }, { selected: @role }, disabled: !@data_writable, class: "select w-full sm:max-w-xs" %>
+    </div>
+    <div>
+      <%= form.label :content, t("data_console.character.content"), class: "mb-1 block text-sm font-medium" %>
+      <%= form.text_area :content, value: @content, rows: 16, readonly: !@data_writable, class: "textarea w-full font-mono text-sm", aria: { describedby: "character-content-help", invalid: @error.present?.to_s } %>
+      <p id="character-content-help" class="mt-2 text-xs text-base-content/60"><%= t("personas.content_help", macros: Nexus::PromptMacros::REGISTRY.map { |name| "{{#{name}}}" }.join(", ")) %></p>
+    </div>
+    <% if @data_writable %><%= form.submit t("data_console.character.save"), class: "btn btn-primary btn-sm" %><% end %>
+  <% end %>
+<% end %>

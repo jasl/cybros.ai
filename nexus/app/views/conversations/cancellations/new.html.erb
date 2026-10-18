@@ -1,0 +1,22 @@
+<% content_for :title, t("conversation_cancellation.title") %>
+<% turbo_page_requires_reload %>
+<div class="mx-auto max-w-2xl space-y-6">
+  <header class="space-y-2">
+    <%= render "shared/back_navigation", path: work_return_path(conversation_path(@conversation)), label: t("conversation_cancellation.return_to_conversation") %>
+    <h1 class="text-xl font-medium"><%= t("conversation_cancellation.title") %></h1>
+    <p class="wrap-anywhere font-medium"><%= conversation_title(@conversation) %></p>
+  </header>
+  <div class="space-y-3 text-sm text-base-content/70">
+    <p><%= t("conversation_cancellation.scope") %></p>
+    <p><%= t("conversation_cancellation.queued") %></p>
+    <p><%= t("conversation_cancellation.preserved") %></p>
+    <p><%= t("conversation_cancellation.follow") %></p>
+  </div>
+  <% if @not_running %>
+    <p role="alert" class="alert alert-info"><%= t("conversation_cancellation.not_running") %></p>
+  <% end %>
+  <%= form_with url: conversation_cancellation_path(@conversation), class: "space-y-4", data: { turbo: false } do |form| %>
+    <%= hidden_field_tag :return_to, work_return_path(conversation_path(@conversation)) %>
+    <%= form.submit t("conversation_cancellation.submit"), class: "btn btn-error" %>
+  <% end %>
+</div>

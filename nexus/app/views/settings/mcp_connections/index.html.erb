@@ -1,0 +1,33 @@
+<% content_for :title, t("mcp_connections.title") %>
+<%= render layout: "settings/shell", locals: { current: :mcp_connections } do %>
+  <section class="space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-lg font-medium"><%= t("mcp_connections.title") %></h2>
+      <%= link_to t("mcp_connections.new"), new_settings_mcp_connection_path, class: "btn btn-primary btn-sm" %>
+    </div>
+    <p class="text-sm text-base-content/70"><%= t("mcp_connections.description") %></p>
+    <aside class="space-y-2 rounded-box border border-base-300 p-4 text-sm">
+      <p class="text-base-content/70"><%= t("runner_resources.connection_kinds") %></p>
+      <div class="flex flex-wrap gap-3">
+        <%= link_to t("runner_resources.managed_tool_providers"), runners_path(kind: "tool_provider"), class: "link", data: { turbo_frame: "_top" } %>
+        <%= link_to t("runner_resources.managed_runners"), runners_path(kind: "runner"), class: "link", data: { turbo_frame: "_top" } %>
+      </div>
+    </aside>
+    <% if @connections.empty? %>
+      <p class="rounded-box border border-base-300 p-6 text-sm"><%= t("mcp_connections.empty") %></p>
+    <% else %>
+      <ul class="divide-y divide-base-300 rounded-box border border-base-300">
+        <% @connections.each do |connection| %>
+          <li class="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div class="min-w-0">
+              <%= link_to connection.name, settings_mcp_connection_path(connection), class: "link font-medium break-words" %>
+              <p class="text-sm text-base-content/60 break-words"><%= connection.account_label %></p>
+            </div>
+            <span class="badge badge-soft"><%= t(connection.enabled? ? "mcp_connections.enabled" : "mcp_connections.disabled") %></span>
+          </li>
+        <% end %>
+      </ul>
+      <%= render "shared/pagination_footer", pagy: @pagy, noun: "mcp_connections", aria_label: t("mcp_connections.title") %>
+    <% end %>
+  </section>
+<% end %>

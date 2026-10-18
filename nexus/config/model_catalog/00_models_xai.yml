@@ -1,0 +1,46 @@
+schema_version: cybros.model_catalog.v1
+# Explicit model facts shared by provider routes. Serving limits may override
+# the complete limits block; protocol options and pricing stay on each route.
+model_definitions:
+  grok-4.6:
+    capabilities:
+      input_modalities: [image]
+      limits:
+        combined_input_output_tokens: 500000
+        effective_input_tokens: 199999
+      # The four levels the vendor page names, with its stated default
+      # (read 2026-08-21): "Grok 4.6 supports four effort levels: xhigh,
+      # high (default), medium, and low." The lane could not be asked to
+      # reason at all until this was written down — a profile row used to
+      # carry the wire's whole effort vocabulary, but selection has always
+      # read the CATALOG, and the catalog said nothing.
+      reasoning:
+        efforts: [low, medium, high, xhigh]
+        default_effort: high
+  grok-4.7:
+    capabilities:
+      # "Modalities: text, image → text"; jpg/jpeg or png, which the wire's
+      # image register bounds.
+      input_modalities: [image]
+      limits:
+        combined_input_output_tokens: 500000
+        effective_input_tokens: 199999
+      # "Reasoning efforts (supported): low, medium, high, xhigh" and
+      # "(default): high"; the reasoning guide: "Reasoning cannot be
+      # disabled", so `none` is not offered. Summaries stream on their own
+      # ("For grok-4.7, we expose summarizations of the model's internal
+      # reasoning"), and the request's `reasoning.summary` is "Only included
+      # for compatibility", so the row states no summary vocabulary.
+      reasoning:
+        efforts: [low, medium, high, xhigh]
+        default_effort: high
+  grok-imagine-image-2.0:
+    capabilities:
+      # RESULT COUNT IS A PLATFORM CAP, on the same reading as the output
+      # ceilings above: image generation bills per image, so the conservative
+      # maximum needs a bound on how many one call may produce. Nothing can
+      # currently ask for more — no shipped lane declares a generation control,
+      # so no caller can set a count and the provider default of one stands —
+      # which makes this the tightest honest number rather than a guess.
+      limits:
+        result_count: 1

@@ -1,0 +1,21 @@
+module CybrosAgent
+  module Api
+    class McpConnection < Data
+      attr_reader public_id: String
+      attr_reader name: String
+      attr_reader account_label: String?
+      attr_reader enabled: bool
+      attr_reader available: bool
+      attr_reader tools: Array[Hash[String, untyped]]
+      def self.new: (public_id: String, name: String, account_label: String?, enabled: bool, available: bool, tools: Array[Hash[String, untyped]]) -> instance
+    end
+
+    class McpConnections
+      include WorkspaceProjections
+      include Fields
+      def initialize: (dispatch: _Dispatch) -> void
+      def list: (?after: String?, ?limit: Integer?, ?order: String?, ?agent_public_id: String?) -> Page[McpConnection]
+      def fetch: (String public_id, ?agent_public_id: String?) -> McpConnection
+    end
+  end
+end

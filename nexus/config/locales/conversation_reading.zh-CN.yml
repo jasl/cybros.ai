@@ -1,0 +1,32 @@
+zh-CN:
+  conversation_reading:
+    needs_correction: 输入需要处理
+    refused: 无法继续：%{reason}
+    not_writable: 你不能在此 Conversation 中提交或修改输入。
+    refusals:
+      not_authorized: 你没有此 Conversation 或 Workspace 的写入权限。
+      answerer_not_eligible: 此 Agent 当前不能在所选 Workspace 中回答。
+      model_selection_missing: 请先选择模型，再重试此输入。
+      unknown_provider: 所选模型的提供方已不可用，请选择其他模型。
+      unknown_model: 所选模型已不在目录中，请选择其他模型。
+      model_hidden: 所选模型已被隐藏，请选择可用模型。
+      model_unavailable: 所选模型不可用，请选择其他模型或检查提供方。
+      provider_disabled: 模型提供方已停用，请选择其他模型或让管理员启用提供方。
+      missing_credential: 模型提供方没有可用凭据，请选择其他模型或让管理员配置凭据。
+      reauthorization_required: 模型提供方需要重新授权，请让管理员重新连接。
+      credential_unusable: 模型提供方凭据无法使用，请让管理员检查。
+      unsupported_workload: 此模型无法生成文本回复，请选择文本模型。
+      conversation_archived: 此 Conversation 已归档，请先取消归档，再提交或修改输入。
+      conversation_busy: 此 Conversation 正在处理回复，请等待当前执行完成。
+      run_held: 当前执行需要处理后才能继续此输入，请打开 Conversation 查看。
+      stale_object: 此输入在打开表单后发生了变化，请检查修改后再次保存。
+    follow_title: 跟随本次输入
+    acceptance: 已接受输入
+    states:
+      pending: 已接受，等待执行
+      blocked: 已阻塞，需要修正
+      steering: 已接受，等待加入当前执行
+    accepted_scope: 接受不代表完成。页面会跟随这条输入形成的 turn，并显示其原始结果。
+    result: 原始执行结果
+    original_result: 这里显示本次输入形成的原始候选结果，后续编辑和重新生成仍保留在 Conversation 历史中。
+    open_conversation: 在 Conversation 中查看此 turn

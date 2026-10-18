@@ -1,0 +1,19 @@
+<% content_for :title, t("conversation_management.archive.title") %>
+<div class="mx-auto max-w-2xl space-y-6">
+  <header class="space-y-2">
+    <%= render "shared/back_navigation", path: conversation_path(@conversation, return_to: work_return_path(workspace_conversations_path(@conversation.workspace))), label: conversation_title(@conversation) %>
+    <h1 class="text-xl font-medium"><%= t("conversation_management.archive.title") %></h1>
+    <p class="wrap-anywhere font-medium"><%= conversation_title(@conversation) %></p>
+  </header>
+  <div class="space-y-3 text-sm text-base-content/70">
+    <p><%= t("conversation_management.archive.scope") %></p>
+    <p><%= t("conversation_management.archive.side_effect") %></p>
+    <p><%= t("conversation_management.archive.accepted_work") %></p>
+    <p><%= t("conversation_management.archive.readable") %></p>
+  </div>
+  <%= render "conversations/submission_errors", errors: @form_errors || [] %>
+  <%= form_with url: conversation_archive_path(@conversation), class: "space-y-4", data: { turbo: false } do |form| %>
+    <%= hidden_field_tag :return_to, work_return_path(workspace_conversations_path(@conversation.workspace)) %>
+    <%= form.submit t("conversation_management.archive.submit"), class: "btn btn-primary" %>
+  <% end %>
+</div>

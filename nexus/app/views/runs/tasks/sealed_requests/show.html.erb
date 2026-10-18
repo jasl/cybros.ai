@@ -1,0 +1,7 @@
+<% content_for :title, t("runs_console.sealed_request") %>
+<%= tag.div class: "space-y-6", data: run_refresh_data(@run) do %>
+  <%= render "runs/header", run: @run, actions: @actions %>
+  <h2 class="text-lg font-medium"><%= t("runs_console.sealed_request") %> · <%= @task.node_key %></h2>
+  <p class="text-sm text-base-content/60"><%= t("runs_console.sealed_request_description") %></p>
+  <pre class="overflow-x-auto whitespace-pre-wrap break-words rounded-box border border-base-300 p-4 text-xs"><%= JSON.pretty_generate(@sealed_request) %></pre>
+<% end %>

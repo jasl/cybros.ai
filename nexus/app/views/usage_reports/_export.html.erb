@@ -1,0 +1,42 @@
+<details class="rounded-box border border-base-300 p-4" aria-label="<%= t('usage_reports.export') %>">
+  <summary class="cursor-pointer font-medium"><%= t("usage_reports.export") %></summary>
+  <p class="mt-3 text-sm text-base-content/60"><%= t("usage_reports.export_note") %></p>
+  <%= form_with url: path, method: :get, data: { turbo: false, controller: "usage-export", action: "submit->usage-export#sync" }, class: "mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" do |form| %>
+    <% scope.each do |name, value| %><%= form.hidden_field name, value: value %><% end %>
+    <% [:from, :to].each do |field| %>
+      <div>
+        <% value = analysis_datetime_value(analysis.public_send(field)) %>
+        <%= form.hidden_field field, value: analysis.public_send(field).iso8601(6) %>
+        <%= label_tag "#{field}_datetime", t("dashboard_work.#{field}_utc"), class: "mb-1 block text-xs font-medium" %>
+        <%= tag.input type: "datetime-local", id: "#{field}_datetime", value: value, class: "input input-sm w-full", step: "1", required: true,
+          data: { usage_export_target: "datetime", action: "input->usage-export#sync change->usage-export#sync", boundary: field, original: value, exact: analysis.public_send(field).iso8601(6) } %>
+      </div>
+    <% end %>
+    <% ModelUsageRollups::Analysis::GROUPS.each do |field| %>
+      <div>
+        <%= form.label field, t("usage_analysis.dimensions.#{field}"), class: "mb-1 block text-xs font-medium" %>
+        <% if field == "status" %>
+          <%= form.select field, UsageRecord::STATUSES.map { |status| [t("dashboard_work.admin.statuses.#{status}"), status] }, { include_blank: t("dashboard_work.admin.all_statuses"), selected: nil }, class: "select select-sm w-full" %>
+        <% elsif field == "workload" %>
+          <%= form.select field, SimpleInference::ExecutionProfile::WORKLOADS.map { |workload| [t("model_workloads.#{workload}"), workload] }, { include_blank: t("usage_analysis.all_request_types"), selected: nil }, class: "select select-sm w-full" %>
+        <% else %>
+          <%= form.text_field field, value: nil, class: "input input-sm w-full" %>
+        <% end %>
+      </div>
+    <% end %>
+    <div>
+      <%= form.label :group_by, t("usage_analysis.group_by"), class: "mb-1 block text-xs font-medium" %>
+      <%= form.select :group_by, ModelUsageRollups::Analysis::GROUPS.map { |value| [t("usage_analysis.dimensions.#{value}"), value] }, { selected: "provider_id" }, class: "select select-sm w-full" %>
+    </div>
+    <div>
+      <%= form.label :rank_by, t("usage_analysis.rank_by"), class: "mb-1 block text-xs font-medium" %>
+      <%= form.select :rank_by, ModelUsageRollups::Analysis::RANKS.map { |value| [t("usage_analysis.ranks.#{value}"), value] }, { selected: "request_count" }, class: "select select-sm w-full" %>
+    </div>
+    <div>
+      <%= form.label :limit, t("usage_analysis.limit"), class: "mb-1 block text-xs font-medium" %>
+      <%= form.number_field :limit, value: ModelUsageRollups::Analysis::DEFAULT_LIMIT, min: 1, max: ModelUsageRollups::Analysis::MAX_LIMIT, required: true, class: "input input-sm w-full" %>
+    </div>
+    <div class="flex items-end"><%= form.submit t("usage_reports.download"), name: nil, class: "btn btn-primary btn-sm w-full" %></div>
+  <% end %>
+  <p class="mt-3 text-xs text-base-content/60"><%= t("usage_reports.window_limit") %></p>
+</details>

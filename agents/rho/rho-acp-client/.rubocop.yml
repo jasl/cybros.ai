@@ -1,0 +1,55 @@
+# Omakase Ruby styling for Rails
+inherit_gem: { rubocop-rails-omakase: rubocop.yml }
+
+AllCops:
+  TargetRubyVersion: 4.0
+
+# Note: RuboCop's server mode is a CLI feature, not a config section. If you
+# need deterministic lint in constrained/sandboxed environments, prefer running
+# RuboCop with `--no-server` and a writable `--cache-root`.
+
+# Overwrite or add rules to create your own house style
+
+# # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: true
+  EnforcedStyle: no_space
+  EnforcedStyleForEmptyBrackets: no_space
+
+Style/TrailingCommaInArrayLiteral:
+  Enabled: true
+  EnforcedStyleForMultiline: diff_comma
+
+Style/TrailingCommaInHashLiteral:
+  Enabled: true
+  EnforcedStyleForMultiline: diff_comma
+
+Layout/EmptyLinesAroundAccessModifier:
+  Enabled: true
+  EnforcedStyle: around
+
+# Disallow multiple empty lines at the end of Ruby files.
+Layout/TrailingEmptyLines:
+  Enabled: true
+  EnforcedStyle: final_newline
+
+Layout/IndentationStyle:
+  Enabled: true
+  EnforcedStyle: spaces
+  IndentationWidth: 2
+
+Style/StringLiterals:
+  Enabled: true
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  Enabled: true
+  EnforcedStyle: double_quotes
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+  EnforcedStyle: never
+
+Style/MissingElse:
+  Enabled: true
+  EnforcedStyle: case

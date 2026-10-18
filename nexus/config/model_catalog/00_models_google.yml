@@ -1,0 +1,21 @@
+schema_version: cybros.model_catalog.v1
+# Explicit model facts shared by provider routes. Serving limits may override
+# the complete limits block; protocol options and pricing stay on each route.
+model_definitions:
+  gemini-3.8-flash:
+    capabilities:
+      input_modalities: [image, file]
+      limits:
+        input_tokens: 1048576
+        output_tokens: 65536
+      reasoning:
+        efforts: [low, medium, high]
+        default_effort: low
+  gemini-4-argon:
+    capabilities:
+      input_modalities: [image, file]
+      limits:
+        combined_input_output_tokens: 1048576
+      reasoning:
+        efforts: [low, medium, high]
+        default_effort: medium

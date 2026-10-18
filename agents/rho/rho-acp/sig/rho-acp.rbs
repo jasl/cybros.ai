@@ -1,0 +1,7 @@
+module Rho
+  # THE ACP AGENT SURFACE: the protocol layer and the `rho-acp` process,
+  # a peer surface over `Rho::Core` (`Agent`, sig/agent.rbs).
+  module Acp
+    VERSION: String
+  end
+end

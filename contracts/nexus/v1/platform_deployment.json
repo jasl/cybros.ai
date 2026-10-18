@@ -1,0 +1,241 @@
+{
+  "valid_state_fixture": {
+    "deployment": {
+      "supported": true,
+      "sources": [
+        {
+          "name": "nexus",
+          "reference": "registry.example/nexus@sha256:fixture"
+        }
+      ],
+      "installed": {
+        "release": "fixture-v2",
+        "images": [
+          {
+            "name": "nexus",
+            "reference": "registry.example/nexus@sha256:fixture"
+          }
+        ]
+      },
+      "candidate": {
+        "release": "fixture-v2",
+        "images": [
+          {
+            "name": "nexus",
+            "reference": "registry.example/nexus@sha256:fixture"
+          }
+        ],
+        "checked_at": "2026-10-15T00:00:00Z",
+        "source_revision": "fixture-revision",
+        "source_url": "https://example.test/releases/fixture-v2"
+      },
+      "preflight": {
+        "checked_at": "2026-10-15T00:00:00Z",
+        "ready": true,
+        "backup": true,
+        "checks": [
+          {
+            "name": "disk",
+            "status": "ready",
+            "message": "Ready",
+            "next_step": null,
+            "available_bytes": 4096,
+            "required_bytes": 1024
+          }
+        ]
+      },
+      "active_operation": null,
+      "last_operation": {
+        "id": "01900000-0000-7000-8000-000000000060",
+        "idempotency_key": "01900000-0000-7000-8000-000000000061",
+        "actor_public_id": "01900000-0000-7000-8000-000000000001",
+        "target": {
+          "release": "fixture-v2",
+          "images": [
+            {
+              "name": "nexus",
+              "reference": "registry.example/nexus@sha256:fixture"
+            }
+          ]
+        },
+        "previous": null,
+        "phase": "completed",
+        "status": "succeeded",
+        "accepted_at": "2026-10-15T00:00:00Z",
+        "updated_at": "2026-10-15T00:01:00Z",
+        "completed_at": "2026-10-15T00:01:00Z",
+        "error": null,
+        "recovery": null,
+        "log_cursor": "fixture-cursor-1",
+        "backup": true,
+        "database_backup": {
+          "created_at": "2026-10-15T00:00:30Z",
+          "size_bytes": 1024,
+          "available": true
+        }
+      }
+    }
+  },
+  "valid_upgrade_fixture": {
+    "upgrade": {
+      "id": "01900000-0000-7000-8000-000000000060",
+      "idempotency_key": "01900000-0000-7000-8000-000000000061",
+      "actor_public_id": "01900000-0000-7000-8000-000000000001",
+      "target": {
+        "release": "fixture-v2",
+        "images": [
+          {
+            "name": "nexus",
+            "reference": "registry.example/nexus@sha256:fixture"
+          }
+        ]
+      },
+      "previous": null,
+      "phase": "completed",
+      "status": "succeeded",
+      "accepted_at": "2026-10-15T00:00:00Z",
+      "updated_at": "2026-10-15T00:01:00Z",
+      "completed_at": "2026-10-15T00:01:00Z",
+      "error": null,
+      "recovery": null,
+      "log_cursor": "fixture-cursor-1",
+      "backup": true,
+      "database_backup": {
+        "created_at": "2026-10-15T00:00:30Z",
+        "size_bytes": 1024,
+        "available": true
+      }
+    }
+  },
+  "valid_log_fixture": {
+    "log": {
+      "entries": [
+        {
+          "cursor": "fixture-cursor-1",
+          "text": "Complete"
+        }
+      ],
+      "next_cursor": "fixture-cursor-1",
+      "operation": {
+        "id": "01900000-0000-7000-8000-000000000060",
+        "idempotency_key": "01900000-0000-7000-8000-000000000061",
+        "actor_public_id": "01900000-0000-7000-8000-000000000001",
+        "target": {
+          "release": "fixture-v2",
+          "images": [
+            {
+              "name": "nexus",
+              "reference": "registry.example/nexus@sha256:fixture"
+            }
+          ]
+        },
+        "previous": null,
+        "phase": "completed",
+        "status": "succeeded",
+        "accepted_at": "2026-10-15T00:00:00Z",
+        "updated_at": "2026-10-15T00:01:00Z",
+        "completed_at": "2026-10-15T00:01:00Z",
+        "error": null,
+        "recovery": null,
+        "log_cursor": "fixture-cursor-1",
+        "backup": true,
+        "database_backup": {
+          "created_at": "2026-10-15T00:00:30Z",
+          "size_bytes": 1024,
+          "available": true
+        }
+      }
+    }
+  },
+  "valid_progress_event_fixture": {
+    "event": "deployment.progress.v1",
+    "id": "fixture-cursor-1",
+    "data": {
+      "entries": [
+        {
+          "cursor": "fixture-cursor-1",
+          "text": "Complete"
+        }
+      ],
+      "next_cursor": "fixture-cursor-1",
+      "operation": {
+        "id": "01900000-0000-7000-8000-000000000060",
+        "idempotency_key": "01900000-0000-7000-8000-000000000061",
+        "actor_public_id": "01900000-0000-7000-8000-000000000001",
+        "target": {
+          "release": "fixture-v2",
+          "images": [
+            {
+              "name": "nexus",
+              "reference": "registry.example/nexus@sha256:fixture"
+            }
+          ]
+        },
+        "previous": null,
+        "phase": "completed",
+        "status": "succeeded",
+        "accepted_at": "2026-10-15T00:00:00Z",
+        "updated_at": "2026-10-15T00:01:00Z",
+        "completed_at": "2026-10-15T00:01:00Z",
+        "error": null,
+        "recovery": null,
+        "log_cursor": "fixture-cursor-1",
+        "backup": true,
+        "database_backup": {
+          "created_at": "2026-10-15T00:00:30Z",
+          "size_bytes": 1024,
+          "available": true
+        }
+      }
+    }
+  },
+  "valid_error_event_fixture": {
+    "event": "deployment.error.v1",
+    "data": {
+      "code": "updater_unavailable",
+      "message": "Fixture updater unavailable",
+      "operation_id": "01900000-0000-7000-8000-000000000060"
+    }
+  },
+  "unknown_status_fixture": {
+    "upgrade": {
+      "id": "01900000-0000-7000-8000-000000000060",
+      "idempotency_key": "01900000-0000-7000-8000-000000000061",
+      "actor_public_id": "01900000-0000-7000-8000-000000000001",
+      "target": {
+        "release": "fixture-v2",
+        "images": [
+          {
+            "name": "nexus",
+            "reference": "registry.example/nexus@sha256:fixture"
+          }
+        ]
+      },
+      "previous": null,
+      "phase": "completed",
+      "status": "zz_unknown_value",
+      "accepted_at": "2026-10-15T00:00:00Z",
+      "updated_at": "2026-10-15T00:01:00Z",
+      "completed_at": "2026-10-15T00:01:00Z",
+      "error": null,
+      "recovery": null,
+      "log_cursor": "fixture-cursor-1",
+      "backup": true,
+      "database_backup": {
+        "created_at": "2026-10-15T00:00:30Z",
+        "size_bytes": 1024,
+        "available": true
+      }
+    }
+  },
+  "unknown_event_fixture": {
+    "event": "zz_unknown_value",
+    "id": "future-cursor",
+    "data": {
+      "future": true
+    }
+  },
+  "unknown_value_behavior": "carry_unknown",
+  "cursor_behavior": "query_overrides_last_event_id",
+  "stream_behavior": "bounded_observation_without_mutation_retry"
+}

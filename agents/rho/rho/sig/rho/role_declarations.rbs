@@ -1,0 +1,12 @@
+module Rho
+  module RoleDeclarations
+    SPAWN: String
+    CHILD_MEMORY: Hash[String, untyped]
+
+    def self?.compile: (preset: AgentPresets::Entry, presets: Array[AgentPresets::Entry], base: Hash[Symbol, untyped], wire_names: Hash[String, String], ?audience: String, ?send_targets: Array[untyped]) -> Hash[Symbol, untyped]
+    def self?.resolve: (AgentPresets::Entry preset, Hash[Symbol, untyped] base, Array[Hash[String, untyped]] roles, Hash[String, String] wire_names, String audience, Array[untyped] send_targets) -> Hash[Symbol, untyped]
+    def self?.with_roles: (Hash[Symbol, untyped] declaration, Array[Hash[String, untyped]] roles, Hash[String, String] wire_names) -> Hash[Symbol, untyped]
+    def self?.spawn_alias: (Hash[String, untyped] entry, Array[Hash[String, untyped]] roles) -> Hash[String, untyped]
+    def self?.guidance: (Array[Hash[String, untyped]] roles) -> String
+  end
+end

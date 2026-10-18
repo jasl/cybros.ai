@@ -1,0 +1,30 @@
+<% content_for :title, t("agents.private_runners.title") %>
+
+<div class="space-y-6">
+  <%= render "shared/back_navigation", path: agent_path(@agent), label: @agent.display_name %>
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight"><%= t("agents.private_runners.title") %></h1>
+      <p class="text-sm text-base-content/60"><%= t("agents.private_runners.description") %></p>
+    </div>
+    <%= link_to t("agents.private_runners.create"), new_agent_private_runner_path(@agent), class: "btn btn-primary btn-sm" %>
+  </header>
+  <% if @private_runners.any? %>
+    <div class="overflow-x-auto rounded-box border border-base-300 bg-base-200">
+      <table class="table">
+        <thead><tr><th><%= t("agents.new.name") %></th><th><%= t("agents.api_keys.status") %></th><th class="text-end"><%= t("agents.api_keys.action") %></th></tr></thead>
+        <tbody>
+          <% @private_runners.each do |runner| %>
+            <tr data-runner-id="<%= runner.public_id %>">
+              <td><%= link_to runner.display_name, runner_path(runner), class: "link link-hover wrap-anywhere" %></td><td><%= t("agents.private_runners.statuses.#{runner.status}") %></td>
+              <td class="text-end"><%= link_to t("agents.api_keys.title"), agent_private_runner_api_keys_path(@agent, runner), class: "btn btn-ghost btn-sm" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <%= render "shared/pagination_footer", pagy: @runners_pagy, noun: "runners", aria_label: t("runners.index.runner_pages") %>
+  <% else %>
+    <p class="text-sm text-base-content/60"><%= t("agents.private_runners.empty") %></p>
+  <% end %>
+</div>

@@ -1,0 +1,52 @@
+module Conversations
+  class ContextAssembly
+    # WHAT THE BLOCKS READ FROM: the room, and the conversation when there
+    # is one. A Conversation is its own source. A STANDALONE loop has no
+    # conversation: history is empty (no timeline), memory is the
+    # selected workspace, Agent and Speaker roots (no conversation rows),
+    # the `character` slot and `{{workspace}}`
+    # are the room's. One value, so the slot, memory and history blocks
+    # serve a standalone seed through the same code that serves a turn —
+    # never a second assembly path. Every block and the facade take either a
+    # Conversation or a Source under the one keyword (`Source.of`).
+    Source = Data.define(:workspace, :conversation) do
+      class << self
+        def of(host)
+          case host
+          when Source then host
+          when Conversation then new(workspace: host.workspace, conversation: host)
+          else raise ArgumentError, "a Conversation or a Source, not #{host.inspect}"
+          end
+        end
+
+        def standalone(workspace) = new(workspace: workspace, conversation: nil)
+      end
+
+      def workspace_id = workspace.id
+      def conversation_id = conversation&.id
+      def timeline = conversation&.timeline
+      def standalone? = conversation.nil?
+
+      def effective_memory_context(execution_configuration:)
+        return conversation.effective_memory_context(execution_configuration: execution_configuration) if conversation
+
+        MemoryContext.constrain(configuration: nil, limit: execution_configuration&.memory_context_limit)
+      end
+
+      # Public-id snapshots keep the classification after parent or job reaping.
+      def conversation_kind
+        if standalone?
+          "standalone"
+        elsif conversation.side?
+          "side"
+        elsif conversation.scheduled_execution?
+          "scheduled"
+        elsif conversation.subagent?
+          "child"
+        else
+          "conversation"
+        end
+      end
+    end
+  end
+end

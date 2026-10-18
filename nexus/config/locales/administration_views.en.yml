@@ -1,0 +1,169 @@
+---
+en:
+  admin:
+    cost_units:
+      show:
+        cost_unit: Cost unit
+        configure_model_providers: Configure model providers
+        the_included_model_pricing_uses_usd: The included model pricing uses USD.
+        set_this_installation_s_cost_unit_it_cannot_be: Set this installation's cost unit? It cannot be
+          changed after saving.
+        set_cost_unit: Set cost unit
+        usage_costs_use_usd_by_default_this_advanced_setting: Usage costs use USD by default. This advanced
+          setting shows the unit chosen for this installation.
+        account_cost_unit: Account cost unit
+        this_value_is_set_once_and_cannot_be_changed: This value is set once and cannot be changed. %{brand}
+          does not convert between units.
+        this_installation_has_no_cost_unit_yet_use_usd: >-
+          This installation has no cost unit yet. Use USD for the included pricing, or match your custom
+          pricing. The unit is set once and cannot be changed.
+    invitations:
+      index:
+        invitations: Invitations
+        email: Email
+        role: Role
+        create_invitation: Create invitation
+        send_invitation: Send invitation
+        pending: Pending
+        all: All
+        send_email: Send email
+        resend: Resend
+        revoke: Revoke
+        revoke_and_create_a_replacement_before_sharing: Revoke and create a replacement before sharing.
+        resend_before_sharing_this_link: Resend before sharing this link.
+        invitations_pages: Invitations pages
+        invite_people_by_email_each_address_holds_one_current: Invite someone to join this Nexus installation.
+        outbound_email_is_not_configured_so_invitations_are_not: >-
+          Outbound email is not configured, so invitations are not emailed — share each unexpired invitation's
+          link manually instead.
+        expired: Expired
+        link_only: Link only
+        invitation_link: Invitation link
+        copy: Copy
+        no_pending_invitations_expired_invitations_remain_available_under_all: No pending invitations.
+          Expired invitations remain available under All.
+        no_invitations_members_appear_on_the_members_page_once: No invitations. Users appear on the
+          Users page once they accept.
+        invitation_filters: Invitation filters
+        resend_in_seconds: Resend in %{seconds}s
+        revoke_the_invitation_for_email_every_shared_or_emailed: Revoke the invitation for %{email}? Every
+          shared or emailed link stops working.
+        invitation_link_for_email: Invitation link for %{email}
+        invited_by_inviter: Invited by %{inviter}
+        email_requested_elapsed_ago: Email requested %{elapsed} ago
+        expires_in_remaining: Expires in %{remaining}
+    retentions:
+      show:
+        retention_settings: Retention settings
+        default_90_days_leave_blank_to_disable_automatic_cleanup: 'Default: 90 days. Leave blank to disable
+          automatic cleanup.'
+        keep_execution_details_for_days: Keep execution details for (days)
+        save_retention_settings: Save retention settings
+        keep_conversation_messages_readable_and_searchable_automatically_remove_old: >-
+          Keep conversation messages readable and searchable. Automatically remove old execution details
+          to reduce storage use.
+        retention_settings_could_not_be_saved_check_the_field: Retention settings could not be saved.
+          Check the field below.
+        cleanup_removes_eligible_execution_traces_and_tool_details_after: >-
+          Cleanup removes eligible execution traces and tool details after work has finished. Conversation
+          text remains readable and searchable. Increasing this period cannot restore details already
+          removed.
+    users:
+      index:
+        users: Users
+        users_pages: User pages
+        description: Manage who can sign in, their roles and account access.
+        invitations: Invitations
+        add_user: Add user
+        user: User
+        role: Role
+        status: Status
+        joined: Joined
+        actions: Actions
+        manage: Manage
+        manage_user: Manage %{name}
+        search: Search users
+        search_placeholder: Name or email
+        all_statuses: All statuses
+        apply: Apply
+        clear: Clear
+        no_users: No matching users
+        no_users_hint: Try a different name, email or status.
+      new:
+        new_member: Add user
+        members: Users
+        display_name: Display name
+        email: Email
+        role: Role
+        temporary_password: Temporary password
+        repeat_temporary_password: Confirm temporary password
+        create_member: Create user
+        mail_less_onboarding_convey_the_temporary_password_out_of: >-
+          Create an account and share the temporary password privately. The user will choose a new
+          password when they first sign in. To send an invitation instead, use Invitations.
+        the_member_could_not_be_created_check_the_fields: The user could not be created. Check the fields below.
+      show:
+        description: Manage this user's role and access.
+        details: User details
+        profile_settings: Edit your profile
+        role: Role
+        role_description: Administrators manage users and installation settings. Members use the workspace features they can access.
+        update_role: Save role
+        access: Account access
+        suspend: Suspend
+        suspend_description: Temporarily block sign-in and sign this user out of all devices.
+        suspend_confirm: Suspend %{name}? They will be signed out of all devices.
+        reactivate: Reactivate
+        reactivate_description: Allow this user to sign in again. Previous sessions stay signed out.
+        remove: Remove
+        remove_description: >-
+          Block this user's access and shut down the Agents and Runners they manage. Their email stays
+          reserved. You can restore the user later, but their Agents and Runners will need reconnecting.
+        remove_confirm: >-
+          Remove %{name}? Their access ends immediately, and their Agents and Runners begin shutting down.
+          Restoring the user later does not cancel that shutdown.
+        removed_description: >-
+          This user has been removed. Their email stays reserved. Their Agents and Runners are shutting
+          down or have stopped; restoring the user does not reconnect them.
+        restore: Restore user
+        restore_description: Allow this user to sign in again with their existing account. Their Agents and Runners must finish shutting down before reconnecting.
+        owner_protected: The owner's access and role are protected. To change the owner, open another active administrator's page and transfer ownership.
+        self_protected: You cannot change your own role or access here. Another administrator can manage them.
+        transfer_ownership: Transfer ownership
+        transfer_description: '%{name} becomes the owner. You become an administrator.'
+        transfer_confirm: Transfer ownership to %{name}? You will become an administrator.
+    agents:
+      index:
+        agents: Agents
+        agents_pages: Agent pages
+        description: Manage Agent access and the people responsible for them. Connection settings and API keys are managed by each Agent's manager.
+        agent: Agent
+        manager: Managed by
+        status: Status
+        manage_agent: Manage %{name}
+        no_agents: No Agents have been added yet.
+      show:
+        description: Manage who is responsible for this Agent and whether it can access Nexus.
+        added: Added
+        change_manager: Change manager
+        manager_description: Choose an active user to manage this Agent and its connections.
+        reassign_removed: This Agent will stay removed. Its new manager can restore it and reconnect the application.
+        inactive_manager: This Agent's manager is inactive. Restore their access or choose another manager before starting new work. Work already in progress may still report its result.
+        removed_description: This Agent has been removed and its keys no longer work. Its registration is kept so its manager can restore it and reconnect the application.
+        restore: Restore Agent
+        restore_description: Restore the Agent's profile. Its old keys remain invalid; its manager must reconnect the application.
+        remove: Remove Agent
+        remove_description: Revoke this Agent's access and keys immediately, then stop its related conversations in the background.
+        remove_confirm: Remove %{name}? Its keys stop working immediately and its related conversations will be stopped.
+      stewards:
+        show:
+          reassign_steward: Change manager
+          assign: Assign
+          steward_candidates_pages: Manager candidates
+          reassignment_keeps_the_agent_removed_and_its_old_credentials: This Agent will stay removed and its old keys will stay invalid. The new manager can restore it and reconnect the application.
+          find_manager: Find a manager
+          current_steward: Current manager
+          no_matching_members: No matching users
+          try_a_different_name_or_email_address: Try a different name or email address.
+          assign_member_as_steward: Assign %{member} as manager
+          choose_the_active_human_member_responsible_for_member: Choose an active user to manage %{member}.

@@ -1,0 +1,3 @@
+<%= render layout: "budgets/shell", locals: { target: @budget_target, personal: @budget_personal, back_path: @budget_back_path, title: t("budget_console.open"), error: @error } do %>
+  <%= render "budgets/form", draft: @draft, opening: true, cost_unit: @budget_target.account.cost_unit, error: @error %>
+<% end %>

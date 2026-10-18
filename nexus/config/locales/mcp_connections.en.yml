@@ -1,0 +1,67 @@
+en:
+  pagination:
+    nouns:
+      mcp_connections:
+        one: connection
+        other: connections
+  mcp_connections:
+    title: MCP connections
+    description: Connect remote services for your agents. Choose which connections and tools each agent uses in its application settings.
+    new: New connection
+    empty: No MCP connections yet.
+    back: All connections
+    name: Name
+    account_label: External account label
+    endpoint_url: Service URL
+    auth_type: Authentication
+    bearer: Static Bearer token
+    oauth: OAuth browser sign-in
+    none: No authentication
+    bearer_token: Bearer token
+    secret_hint: Enter the token supplied by the service. Stored credentials are encrypted and never shown again.
+    oauth_create_hint: Create the connection, then choose Authorize service to sign in with the service.
+    no_auth_needed: This service does not require authentication.
+    discovery_disabled_hint: Enable and save this connection before discovering tools.
+    fixed_target: The service URL and authentication method are fixed after creation. Use a new connection for a different service or external account.
+    create: Create connection
+    enabled: Enabled
+    disabled: Disabled
+    configured: Authentication is configured.
+    authorize: Authorize service
+    authorized: Service authorized. Discover its tools to make them available.
+    oauth_hint: Continue in the service's browser sign-in page to grant or renew access to this external account.
+    oauth_disabled_hint: Enable and save this connection before authorizing the service.
+    disconnect: Disconnect service
+    disconnect_hint: Disconnecting clears credentials stored in Nexus. Revoke access at the external service separately.
+    authorization_statuses:
+      not_authorized: Authorize the service before discovering or calling tools.
+      pending: Authorization is waiting for you to finish in the service's browser page.
+      authorized: The service is authorized.
+      refreshing: Access is being renewed. Please try again shortly.
+      reauthorization_required: Access could not be renewed. Authorize the service again.
+    missing_credential: Add a Bearer token before discovering or calling tools.
+    tools: Available tools
+    selection_hint: Discovered tools are available to your agents. Choose which connections and tools each agent uses in its application settings.
+    no_tools: Discover the service tools to make them available.
+    manage_credential: Manage credential
+    refresh: Discover tools
+    save: Save connection
+    saved: Connection saved.
+    refreshed: Tool catalog refreshed.
+    rotation_hint: Replace the token only when renewing access to the same external account. Create another connection when changing accounts.
+    rotate: Replace token
+    clear: Clear stored token
+    clear_hint: Clearing removes only the token stored in Nexus. Revoke access at the external service separately. Enabling this connection will not restore a cleared token.
+    rate_limited: Please wait before discovering tools again.
+    authorization_rate_limited: Please wait before authorizing the service again.
+    errors:
+      invalid: Check the connection fields and try again.
+      stale_object: This connection changed. Review the current values and try again.
+      not_authorized: This owner cannot currently manage the connection.
+      credential_not_applicable: This service does not use a stored credential.
+      missing_credential: Authorize the service or add its Bearer token before discovering tools.
+      authorization_pending: Authorization is still in progress. Finish the browser sign-in or try again shortly.
+      reauthorization_required: Access could not be renewed. Authorize the service again.
+      authorization_failed: The service could not be authorized. Check the service URL and try again.
+      authorization_timeout: The authorization request timed out. Authorize the service again.
+      discovery_failed: The complete tool catalog could not be read. The saved catalog is unchanged.

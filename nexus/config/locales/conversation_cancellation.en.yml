@@ -1,0 +1,14 @@
+en:
+  conversation_cancellation:
+    title: Stop conversation work
+    submit: Stop conversation work
+    scope: Stop work that exists in this Conversation when you submit, including replies, earlier background work, and work derived from those executions. Later independent work in a reused child Conversation is preserved.
+    queued: Ordinary queued inputs are kept and may start new work after this stop. Schedules are unchanged. This does not pause the Conversation.
+    preserved: Published replies, completed results, and external effects are not undone.
+    follow: After submitting, check the reply candidates and their original Runs for current status. A completed reply can remain completed after its background work is stopped; these pages do not confirm that all derived work has finished stopping.
+    accepted: Stop request accepted. Work may still be stopping, and queued inputs may start new work.
+    not_running: There is no remaining work to stop in this Conversation. Return to the Conversation to check its current state.
+    return_to_conversation: Return to conversation
+    refusals:
+      not_found: This Conversation is no longer available.
+      not_authorized: You cannot stop work in this Conversation.

@@ -1,0 +1,69 @@
+zh-CN:
+  usage_analysis:
+    title: 工作用量分析
+    admin_title: 账户模型分析
+    member_coverage: 模型用量包含当前可读且仍保留的会话所归属的收据，包含重试。不包含没有会话归属的独立执行收据；权限变化可能改变可见历史。这不是个人账单。
+    admin_coverage: 按供应商、目录模型、工作负载和尝试状态查看账户模型汇总，不展示成员活动或内容。
+    agent_scope: "Agent 范围：%{name}。模型收据按实际消费者筛选，Run 按冻结的回答者或独立执行创建者筛选。"
+    filters: 分析筛选
+    window_limit: 精确 UTC 半开窗口，包含起点、不包含终点，最多九十天；默认最近七个完整 UTC 日。模型筛选只作用于模型用量。
+    group_by: 模型尝试分组
+    rank_by: 分组排序
+    limit: 展示前几组（1–50）
+    dimensions:
+      provider_id: 供应商 ID
+      catalog_model_ref: 目录模型引用
+      workload: 工作负载
+      status: 模型尝试状态
+    ranks:
+      request_count: 已记录尝试数
+      total_tokens: 已记录 Token
+      cost_amount: 已知金额
+    read_at: "读取时刻：%{time}。"
+    model_heading: 已记录模型尝试
+    receipt_window: 窗口按收据写入时间筛选。每次实际开始的尝试可生成一条收据，包括失败、丢弃和无结果尝试。尝试失败不等于 Run 失败。
+    no_amount_samples: 没有金额记录
+    amount_samples: "%{count} 条收据具有金额记录。"
+    amount_note: 金额样本数统计非空金额，包含真实零金额。金额完整性沿用收据证据规则；失败收据即使没有金额样本也可能符合完整性规则。未知成本不会变成零扣费。
+    model_latency_note: 对已有整数毫秒样本计算最近秩 p50 和 p95。各项独立排除空值，零毫秒有效。duration 覆盖 Dispatch IO；仅捕获到文本或推理增量时才有首 Token 耗时。
+    metric: 指标
+    samples: 样本数
+    missing: 缺失数
+    milliseconds: "%{value} 毫秒"
+    latencies:
+      duration_ms: 模型请求时长
+      time_to_first_token_ms: 首 Token 耗时
+      delivery_ms: Run 创建至交付
+      completion_ms: Run 创建至结束
+      tool_ms: 工具开始至结束
+    top_groups: "模型分组：前 %{shown} 组，共 %{total} 组"
+    group_note: 总计覆盖整个筛选窗口，未展示组单独汇总。排序值相同时按维度值稳定排序；打开分组可查看该组的耗时分位数。
+    other_groups: 其余所有分组
+    token_details: 已记录 Token 明细
+    execution_heading: 窗口内创建的 Run
+    run_window: 此集合按 Run 创建时间、当前内容权限、Workspace 和 Agent 范围筛选。供应商、模型、工作负载和尝试状态不改变这个集合；Run 当前状态可能在创建之后继续变化。
+    browse_runs: 浏览此 Run 集合
+    execution:
+      run_count: 集合内 Run
+      delivered_count: 已交付
+      undelivered_count: 未交付
+      completed_count: 已结束
+      uncompleted_count: 未结束
+      retained_run_count: 保留执行明细
+      details_pruned_run_count: 已清理执行明细
+    run_latency_note: 交付与结束使用独立时钟，交付后可能仍有后台工作。先向下取整为整数毫秒，再计算最近秩分位数；尚未结束的时钟计为缺失样本。
+    tools_heading: 此 Run 集合中保留的工具
+    tool_coverage: 统计保留的 ToolTask 当前执行代，按保存的工具名分组。重试会清除旧代，已清理任务表示证据不可用而非零次调用。工具完成但返回错误内容，与执行失败分别统计。
+    tool_latency_note: 工具耗时包含派发等待、暂停与结果返回，先向下取整为整数毫秒，再计算最近秩分位数，不表示纯运行时间。并行工具耗时不相加为 Run 耗时。
+    tool_totals: "%{count} 个保留工具任务；%{errors} 个完成后的错误结果。"
+    tool_groups: "按任务数展示前 %{shown} 个工具名，共 %{total} 个；其余工具名包含 %{other} 个任务。"
+    tool_name: 保存的工具名
+    tool_count: 任务数
+    tool_states: 当前状态
+    error_results: 完成后的错误结果
+    no_tasks: 没有记录
+    errors:
+      window_invalid: 请选择有效的 UTC 窗口，起点必须早于终点。
+      window_too_wide: 请选择不超过九十天的窗口。
+      filter_unsupported: 此分析不支持该筛选条件。
+      filter_invalid: 请选择支持的分组、排序和数量。

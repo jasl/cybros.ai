@@ -1,0 +1,24 @@
+module CybrosAgent
+
+  # A MODEL PATTERN over a kernel ref's reference (the ref minus its lane
+  # segment): EXACT or a PREFIX ending in one `*` after a separator; the
+  # grammar's refusals and the specificity that ranks one reference's
+  # matches, for any consumer on demand.
+  module ModelPattern
+    STAR: String
+    DOT_STAR: String
+    SEPARATORS: Array[String]
+    RESERVED: Array[String]
+    RESERVED_CHARACTER: Regexp
+    UNPRINTABLE: Regexp
+    ALPHANUMERIC: Regexp
+
+    def self?.reference: (untyped ref) -> String?
+    def self?.refusal: (String entry) -> String?
+    def self?.prefix?: (String entry) -> bool
+    def self?.specificity: (String entry, String reference) -> Integer?
+    def self?.rank: (Array[String] entries, String reference) -> Integer?
+    def self?.covers?: (Array[String] entries, untyped ref) -> bool
+  end
+
+end

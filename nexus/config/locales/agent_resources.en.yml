@@ -1,0 +1,68 @@
+en:
+  agent_resources:
+    search: Search Agents
+    search_placeholder: Name or handle
+    all_statuses: All statuses
+    filter: Filter
+    clear: Clear
+    no_matches: No matching Agents
+    no_matches_hint: Try another name, handle or status. Open a removed Agent to restore it.
+    index_description: "Agents you manage, including those created by your applications."
+    not_declared: "Not set"
+    none: "None"
+    try_agent: "Try this Agent"
+    no_own_registration: "This Agent shares its application's connection and API keys."
+    named_registration_description: "The declaring application's connection serves this Agent. Its configuration, prompts and memory remain its own."
+    shared_title: "Shared application connection"
+    shared_description: "This Agent uses the application's connection while you manage both. Access status shows whether its credentials are valid; last seen shows recent activity."
+    shared_owner: "Declaring application"
+    executor_id: "Executor ID"
+    presence: "Presence"
+    shared_readiness: "Shared application: %{readiness}"
+    shared_unavailable: "No shared application connection is available."
+    configuration:
+      title: "Agent configuration"
+      summary: "Saved configuration"
+      description: "These are the Agent's saved settings. A selected Workspace and Runner can change what is available for a particular execution."
+      ownership: "These settings and instructions are managed by the Agent's application. Change them there; work already in progress keeps its settings."
+      default_model: "Default model"
+      image_model: "Image model"
+      fallback_models: "Fallback models"
+      prompt_mechanism: "Instructions"
+      prompt_modes:
+        default: "Nexus defaults"
+        assembly: "Agent template"
+        raw: "Application-provided messages"
+      approval: "Tool approval"
+      approval_modes:
+        bypass: "Allow without asking"
+        ask: "Ask for approval"
+        rules: "Apply approval rules"
+      tool_sources: "Tool sources"
+      tool_counts: "Custom: %{explicit} · Nexus: %{kernel} · Runners: %{runners} · External: %{mcp}"
+      runner_imports: "Automatic Runner tools"
+      all_runner_tools: "All model tools provided by the selected Runner"
+      memory_limit: "Memory scope limit"
+      no_memory_limit: "No additional Agent restriction"
+      memory_binding: "%{scope}: %{access}"
+      memory_access:
+        read: "read only"
+        read_write: "read and write"
+      conversation_reach: "Conversation access"
+      conversation_scopes:
+        workspace: "Conversations in the workspace"
+        subtree: "This conversation and its children"
+      memory_description: "These settings limit which memories and conversations the Agent can use. Access also depends on the owner and conversation settings. Private notes are not shown here."
+      agent_updated: "Agent last updated"
+      measured: "Read at"
+      full: "Technical configuration"
+      prompt_documents: "Saved instructions"
+      no_documents: "This Agent has no saved prompt documents."
+      document_facts: "Role: %{role} · Version: %{version} · %{bytes} bytes · Written %{written}"
+    refusals:
+      not_authorized: "This Agent is not currently eligible to execute."
+      runner_not_eligible: "The Runner is not currently eligible for this Agent."
+      runner_not_declared: "The Runner is not in this Agent's declared candidates."
+      tool_not_served: "A declared tool is no longer served by its Runner."
+      mcp_connection_unavailable: "A selected MCP connection is unavailable to this Agent."
+      mcp_tool_unavailable: "A selected MCP tool is unavailable to this Agent."

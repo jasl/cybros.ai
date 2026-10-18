@@ -1,0 +1,12 @@
+zh-CN:
+  usage_reports:
+    title: 工作用量
+    summary: 最近用量
+    export: 导出用量
+    window_limit: 精确 UTC 窗口，含起点、不含终点，最长 90 天。初始时间与七天摘要一致。模型筛选仅影响模型用量。
+    totals_note: 包含重试。缺失的 Token 数量和费用不会计入估算值。
+    export_note: 下载仍保留的材料，格式为 gzip JSON Lines。以下选项只影响文件，不改变七天摘要。附件字节需另行下载。
+    download: 下载报表
+    diagnostics: 下载诊断
+    data_download: 下载 Workspace 数据
+    execution: 此窗口内创建了 %{count} 个当前可读 Run，其中 %{pruned} 个的执行详情已清理。

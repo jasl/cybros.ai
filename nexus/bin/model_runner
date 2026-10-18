@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+
+# Fiber-per-attempt execution host for streaming LLM provider calls.
+# Concurrent fibers each lease database connections briefly — the connection
+# discipline releases the lease before provider IO — so the pool sizes for
+# state-transition bursts, not for in-flight stream counts.
+ENV["RAILS_DB_POOL"] ||= "16"
+
+require_relative "../config/application"
+require_relative "../lib/model_runner/rails_boot"
+
+ModelRunner::RailsBoot.install(Nexus::Application)
+
+require_relative "../config/environment"
+
+ModelRunner::Host.new.run

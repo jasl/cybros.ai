@@ -1,0 +1,9 @@
+<% content_for :title, t("dashboard_work.admin.title") %>
+<div class="space-y-6">
+  <header class="space-y-2">
+    <h1 class="text-xl font-medium"><%= t("dashboard_work.admin.title") %></h1>
+    <p class="max-w-prose text-sm text-base-content/60"><%= t("usage_analysis.admin_coverage") %></p>
+  </header>
+  <%= render "usage_reports/summary", analysis: @analysis %>
+  <%= render "usage_reports/export", analysis: @analysis, path: admin_model_usage_export_path, scope: {} %>
+</div>

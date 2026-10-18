@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>rho</title>
+    <link rel="icon" href="data:,">
+    <!-- Served from the daemon's own root, not `assets/`: that prefix earns a
+         year of `immutable` and only a fingerprinted name deserves one. -->
+    <link rel="stylesheet" href="/styles/tokens.css">
+    <link rel="stylesheet" href="/styles/base.css">
+    <link rel="stylesheet" href="/styles/icons.css">
+    <link rel="stylesheet" href="/styles/primitives.css">
+    <link rel="stylesheet" href="/styles/shell.css">
+    <link rel="stylesheet" href="/styles/conversation.css">
+    <link rel="stylesheet" href="/styles/panels.css">
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <noscript>This page needs JavaScript. Everything it does, `rho` does from a terminal.</noscript>
+    <div id="boot" class="boot" role="status" aria-live="polite">
+      <span class="boot__spinner" aria-hidden="true"></span>
+    </div>
+    <div id="root" hidden></div>
+  </body>
+</html>

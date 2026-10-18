@@ -1,0 +1,18 @@
+zh-CN:
+  conversation_history:
+    answerer: 默认回答者
+    all_answerers: 全部回答者
+    back_to_search: 返回结果列表
+    context: 查看上下文
+    continue: 继续阅读
+    navigation: 内容导航
+    empty: 此窗口没有已保存的文本。
+    excerpt: 此处为摘要，打开结果可阅读保存的原文。
+    inherited: 此内容继承自另一个会话。
+    invalid_window: 此内容位置无效。
+    window_description: 阅读此候选保存的原文，可继续查看后续内容。
+    fields:
+      title: 标题
+      prompt: 输入
+      content: 回复
+      steers: 已接受的追加消息

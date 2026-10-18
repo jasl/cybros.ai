@@ -1,0 +1,16 @@
+notes:
+  account: cybros
+  owner: member
+  name: Work notes
+  account_label: Work account
+  endpoint_url: https://notes.example.test/mcp
+  auth_type: none
+  enabled: true
+  catalog:
+    - name: search
+      description: Search notes
+      input_schema:
+        type: object
+        properties:
+          query:
+            type: string

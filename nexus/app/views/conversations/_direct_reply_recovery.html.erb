@@ -1,0 +1,6 @@
+<%# locals: (conversation:, turn_public_id:, return_to:) %>
+<div class="space-y-2">
+  <%= render "conversations/cost_recovery", conversation: conversation, return_to: return_to %>
+  <p class="text-sm text-base-content/70"><%= t("management_console.no_run_to_retry") %></p>
+  <p class="text-sm text-base-content/70"><%= t("management_console.continue_in_app") %></p>
+</div>

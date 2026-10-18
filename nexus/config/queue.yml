@@ -1,0 +1,22 @@
+default: &default
+  dispatchers:
+    - polling_interval: 1
+      batch_size: 500
+  workers:
+    # Fiber-mode execution (Solid Queue 1.6): jobs are IO-bound — provider
+    # calls, mail, database sweeps — so fibers keep one worker process busy
+    # without one OS thread per in-flight job. Requires the async gem and
+    # fiber-scoped isolated execution state (config/application.rb).
+    - queues: "*"
+      fibers: 3
+      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      polling_interval: 0.1
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default

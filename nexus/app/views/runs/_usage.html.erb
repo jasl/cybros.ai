@@ -1,0 +1,6 @@
+<section class="space-y-2">
+  <h3 class="text-sm font-medium"><%= t("runs_console.recorded_usage") %></h3>
+  <% if usage.present? %>
+    <dl class="flex flex-wrap gap-x-6 gap-y-2 text-sm"><% usage.each do |key, value| %><div><dt class="text-base-content/60"><%= t("runs_console.tokens.#{key}") %></dt><dd class="tabular-nums"><%= number_with_delimiter(value) %></dd></div><% end %></dl>
+  <% else %><p class="text-sm text-base-content/60"><%= t("runs_console.no_usage") %></p><% end %>
+</section>

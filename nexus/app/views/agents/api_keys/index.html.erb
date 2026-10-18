@@ -1,0 +1,44 @@
+<% content_for :title, t("agents.api_keys.kinds.#{key_kind}") %>
+
+<div class="space-y-6">
+  <%= render "shared/back_navigation", path: @private_runner ? runner_path(@private_runner) : agent_path(@agent), label: @private_runner&.display_name || @agent.display_name %>
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight"><%= t("agents.api_keys.kinds.#{key_kind}") %></h1>
+      <p class="text-sm text-base-content/60"><%= @private_runner&.display_name || @agent.display_name %></p>
+      <p class="text-sm text-base-content/60"><%= t("agents.api_keys.purposes.#{key_kind}") %></p>
+    </div>
+    <%= link_to t("agents.api_keys.create"), new_key_path, class: "btn btn-primary btn-sm" %>
+  </header>
+  <% if @keys.any? %>
+    <div class="overflow-x-auto rounded-box border border-base-300 bg-base-200">
+      <table class="table">
+        <thead><tr>
+          <th><%= t("agents.api_keys.name") %></th>
+          <th><%= t("agents.api_keys.status") %></th>
+          <th><%= t("agents.api_keys.last_used") %></th>
+          <th class="text-end"><%= t("agents.api_keys.action") %></th>
+        </tr></thead>
+        <tbody>
+          <% @keys.each do |key, projection| %>
+            <tr data-api-key-id="<%= key.public_id %>">
+              <td><span class="block font-medium"><%= key.name %></span><span class="block text-xs text-base-content/60"><%= key.note %></span></td>
+              <td><%= t(projection.fetch(:usable) ? "agents.api_keys.active" : "agents.api_keys.inactive") %></td>
+              <td><%= key.last_used_at ? l(key.last_used_at, format: :short) : t("agents.show.never") %></td>
+              <td class="text-end">
+                <% unless key.revoked? %>
+                  <%= button_to t("agents.api_keys.revoke"), key_revocation_path(key), method: :post,
+                    class: "btn btn-ghost btn-sm", aria: { label: t("agents.api_keys.revoke_named", name: key.name) },
+                    data: { turbo_confirm: t("agents.api_keys.revoke_confirm", name: key.name) } %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <%= render "shared/pagination_footer", pagy: @keys_pagy, noun: "api_keys", aria_label: t("agents.api_keys.pages") %>
+  <% else %>
+    <p class="text-sm text-base-content/60"><%= t("agents.api_keys.empty") %></p>
+  <% end %>
+</div>

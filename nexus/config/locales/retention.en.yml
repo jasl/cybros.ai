@@ -1,0 +1,7 @@
+en:
+  admin:
+    retentions:
+      updated: "Retention settings saved."
+  layouts:
+    application:
+      retention: "Retention settings"

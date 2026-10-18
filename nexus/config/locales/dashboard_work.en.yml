@@ -1,0 +1,88 @@
+en:
+  dashboard_work:
+    scope_heading: Work you can read
+    workspace: Workspace
+    all_workspaces: All accessible workspaces
+    workspace_limit: The selector shows the first 100 workspaces and your current selection.
+    browse_workspaces: Browse workspaces
+    from_utc: From (UTC)
+    to_utc: To (UTC)
+    granularity: Group by
+    apply: Apply
+    presets:
+      days_1: Last 24 complete hours
+      days_7: Last 7 complete days
+      days_30: Last 30 complete days
+    units:
+      hour: Hour
+      day: Day
+      month: Month
+    current_heading: Current run statuses
+    sampled_at: "Read at %{time}. Current status counts do not use the historical window."
+    attention: Runs needing attention
+    period_heading: Selected period
+    window: "%{from} up to %{to}, exclusive."
+    previous_window: "Compared with %{from} up to %{to}, exclusive."
+    created_runs: New runs
+    created_runs_note: Runs created in each UTC bucket. Open the data table to inspect a bucket or its runs.
+    active_agents: Active answering agents
+    active_agents_note: Distinct answering agents on conversation runs created in this period.
+    conversation_tokens: Recorded conversation tokens
+    conversation_cost: Known conversation cost
+    attempts_count:
+      one: 1 recorded model attempt
+      other: "%{count} recorded model attempts"
+    attempts: Model requests
+    recorded_tokens: Tokens
+    known_cost: Recorded cost
+    cost_complete: Cost evidence complete
+    cost_partial: Known portion only
+    cost_note: Known recorded amounts. Missing cost evidence remains incomplete; this is not a balance or allowance.
+    coverage: History covers currently readable, retained work. Conversation usage includes receipts attributed to those conversations, including retries; standalone usage without a conversation attribution is excluded. Access and retention changes can change the visible history.
+    tokens_note: Missing token fields contribute no recorded tokens. These totals do not prove complete token coverage.
+    data_table: View data and inspect a time bucket
+    bucket_utc: Bucket start (UTC)
+    cache_ratio: Recorded cache read / input
+    tokens:
+      input_tokens: Recorded input tokens
+      output_tokens: Recorded output tokens
+      reasoning_tokens: Recorded reasoning tokens
+      cache_read_tokens: Recorded cache read tokens
+      cache_creation_tokens: Recorded cache write tokens
+    comparison:
+      unchanged: Unchanged from previous period
+      more: "%{value} more than previous period"
+      fewer: "%{value} fewer than previous period"
+      incomplete_cost: Cost comparison unavailable while evidence is incomplete
+    unavailable: "—"
+    recent_work: Recent conversations
+    all_conversations: View conversations
+    no_conversations: No recent conversations in this scope.
+    actionable: Decisions I can make
+    no_attention: No readable runs currently need attention.
+    untitled_conversation: Untitled conversation
+    reset_window: Reset filters
+    errors:
+      window_invalid: Choose a valid UTC window aligned to the selected hour, day, or month.
+      unit_unsupported: This time grouping is not supported.
+      window_too_wide: Choose a shorter window with at most 1,000 time buckets.
+      filter_unsupported: This report does not support that filter.
+      filter_invalid: Each filter must contain a single value.
+    admin:
+      title: Model usage
+      description: Aggregate model usage across this account, without member activity or content drilldowns.
+      filters: Usage report filters
+      provider: Provider ID
+      model: Catalog model reference
+      workload: Workload
+      status: Attempt status
+      all_statuses: All statuses
+      statuses:
+        succeeded: Succeeded
+        failed: Failed
+        discarded: Discarded
+        abandoned: Abandoned
+      error_rate: Model attempt error rate
+      error_rate_note: Failed receipts divided by all receipts in this filter. This does not measure run outcomes.
+      evidence_note: Includes rolled totals and newly recorded receipts. Ongoing attempts may not have receipts yet. Comparisons use the previous equally sized UTC window.
+      attempts_note: Each recorded attempt counts once, including retries, discarded results, and abandoned attempts.

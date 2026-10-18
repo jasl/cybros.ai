@@ -1,0 +1,75 @@
+zh-CN:
+  budget_console:
+    my_balance: 我的余额
+    allowance: Agent 额度
+    balance: 余额
+    title: "%{name} · 额度"
+    detail: 额度窗口与账本
+    financial_only: 此页只显示金额和账目，不授予 Conversation、模型请求或其他活动的读取权限。
+    allowance_coverage: Agent 额度消费覆盖额度记账启用后完成的结算。已经结算的旧历史不会再次扣账。
+    measured_at: "读取于 %{time}（UTC）。金额使用 Account 计价单位，保留准确精度。"
+    current: 当前窗口
+    uncapped: 当前没有可用窗口。这一余额或额度不设置支出上限。
+    history: 全部窗口
+    empty: 此页没有窗口。
+    credited_amount: 累计记入
+    debited_amount: 累计扣除
+    headroom: 剩余金额（负数表示欠额）
+    cost_unit: Account 计价单位
+    starts_at: 开始时间
+    expires_at: 到期时间（可选）
+    revoked_at: 撤销时间
+    revoked_by: 撤销者 Human UUID
+    reason: 原因（可选）
+    none: 无
+    state: 当前可用
+    usable: 是
+    not_usable: 否
+    ledger: 查看窗口与账本
+    entries: 账目
+    no_entries: 此页没有账目。
+    entry_heading: "%{sequence} · %{kind}"
+    actor: "操作 Human：%{public_id}"
+    order: 顺序
+    ascending: 最早优先
+    descending: 最新优先
+    page_size: 每页条数
+    apply: 应用
+    history_pages: 额度窗口分页
+    entry_pages: 账目分页
+    first_page: 第一页
+    next_page: 下一页
+    back: 全部额度窗口
+    open: 开立额度窗口
+    opened: 已开立额度窗口。
+    adjust: 调整金额
+    adjusted: 已保存金额调整。
+    adjustment_kind: 调整类型
+    credit: 增加额度
+    debit: 扣减额度
+    amount: 金额
+    amount_help: 输入非负十进制金额，最多保留 18 位小数。不会进行币种换算。
+    time_help: 按 UTC 选择日期和时间，保留到秒。窗口包含开始时刻、不包含到期时刻；到期时间留空表示没有结束时间。
+    form_help: 出错后会保留输入。重复提交已经保存的同一操作不会重复记账。
+    adjust_help: 每次调整会追加账目。已到期或已撤销窗口仍可增加额度来修复欠额；已有支出保留在原窗口。
+    save_adjustment: 保存金额调整
+    revoke: 撤销窗口
+    revoked: 已撤销额度窗口。
+    revoke_help: 撤销会移除此窗口的支出上限，不会停用成员、停止执行或删除过去的支出。
+    revoke_confirmation: 撤销此窗口？其支出上限将被移除。如果没有其他可用窗口，这一余额或额度将不限制支出。
+    unavailable: 无法读取额度页面
+    kinds:
+      initial_grant: 初始额度
+      credit_adjustment: 额度增加
+      debit_adjustment: 额度扣减
+      charge: 模型费用
+      allowance_consumption: Agent 额度消费
+    errors:
+      not_authorized: 你无法管理此成员的额度。
+      invalid: 请检查金额、时间窗口和原因。已保留输入。
+      unit_unconfigured: 请先配置 Account 计价单位，再开立额度窗口。
+      overlap: 此窗口与另一个可用窗口重叠。已保留输入。
+      starts_at_taken: 已有窗口使用这个准确的开始时刻。请选择另一个开始时间。
+      insufficient_headroom: 扣减金额超过窗口的剩余额度。已保留输入。
+      already_revoked: 此窗口已经撤销。
+      conflict: 此表单已提交过不同的值。已保留输入；如需执行另一项操作，请打开新表单。

@@ -1,0 +1,24 @@
+en:
+  personas:
+    title: Persona
+    description: Save personal context or preferences for Agents. This document enters execution only when the Agent's prompt template selects the persona slot.
+    empty: You have no saved Persona document.
+    document_info: "Version %{version} · %{bytes} bytes · Written %{time}"
+    role: Prompt role
+    roles:
+      system: System
+      developer: Developer
+      user: User
+    content: Persona content
+    content_help: "Up to 64 KiB of text. Saving empty text keeps an empty document; deleting removes the slot. Supported macros: %{macros}."
+    save: Save Persona
+    saved: Persona saved.
+    delete: Delete Persona
+    deleted: Persona deleted.
+    delete_confirmation: Delete your Persona document? Future executions will see no document in this slot.
+    errors:
+      prompt_document_invalid: The Persona could not be saved. Check the prompt role and content.
+      prompt_document_too_large: The Persona exceeds the 64 KiB text limit.
+      prompt_document_macro_unknown: "Unknown macro: %{detail}. Use one of the supported macros."
+      prompt_slot_unavailable: The Persona slot is unavailable for this account.
+      prompt_document_not_found: You have no saved Persona document to delete.

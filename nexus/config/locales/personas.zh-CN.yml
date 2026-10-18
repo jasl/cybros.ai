@@ -1,0 +1,24 @@
+zh-CN:
+  personas:
+    title: Persona
+    description: 保存供 Agent 使用的个人背景或偏好。只有 Agent 的提示词模板选择 persona 槽位时，该文档才会进入执行。
+    empty: 你尚未保存 Persona 文档。
+    document_info: "版本 %{version} · %{bytes} 字节 · 写入时间 %{time}"
+    role: 提示词角色
+    roles:
+      system: System
+      developer: Developer
+      user: User
+    content: Persona 内容
+    content_help: "最多 64 KiB 文本。保存空文本会保留空文档；删除会移除该槽位。支持的宏：%{macros}。"
+    save: 保存 Persona
+    saved: Persona 已保存。
+    delete: 删除 Persona
+    deleted: Persona 已删除。
+    delete_confirmation: 删除你的 Persona 文档？后续执行将不再读取此槽位的文档。
+    errors:
+      prompt_document_invalid: 无法保存 Persona，请检查提示词角色和内容。
+      prompt_document_too_large: Persona 超过了 64 KiB 文本上限。
+      prompt_document_macro_unknown: "未知宏：%{detail}。请使用支持的宏。"
+      prompt_slot_unavailable: 此账户无法使用 Persona 槽位。
+      prompt_document_not_found: 你没有可删除的 Persona 文档。

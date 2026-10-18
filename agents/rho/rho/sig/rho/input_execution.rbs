@@ -1,0 +1,7 @@
+module Rho
+  class InputExecution
+    def initialize: (core: Core, conversation: String) -> void
+    def for_input: (input_public_id: String, position: CybrosAgent::KernelFeed::Position) -> CybrosAgent::InputExecution
+    def for_execution: (execution: CybrosAgent::InputMaterialization::Result) -> CybrosAgent::InputExecution
+  end
+end

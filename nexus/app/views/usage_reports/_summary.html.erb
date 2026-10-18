@@ -1,0 +1,20 @@
+<% usage = analysis.model_usage.totals %>
+<section class="space-y-3" aria-label="<%= t('usage_reports.summary') %>">
+  <p class="text-sm text-base-content/60"><%= t("management_console.window", at: l(analysis.as_of, format: :short)) %></p>
+  <div class="grid gap-4 sm:grid-cols-3">
+    <article class="rounded-box border border-base-300 p-4" aria-label="<%= t('dashboard_work.attempts') %>">
+      <h2 class="text-sm"><%= t("dashboard_work.attempts") %></h2>
+      <p class="mt-2 text-2xl tabular-nums"><%= number_with_delimiter(usage.fetch("request_count")) %></p>
+    </article>
+    <article class="rounded-box border border-base-300 p-4" aria-label="<%= t('dashboard_work.recorded_tokens') %>">
+      <h2 class="text-sm"><%= t("dashboard_work.recorded_tokens") %></h2>
+      <p class="mt-2 text-2xl tabular-nums"><%= number_with_delimiter(usage.fetch("total_tokens")) %></p>
+    </article>
+    <article class="rounded-box border border-base-300 p-4" aria-label="<%= t('dashboard_work.known_cost') %>">
+      <h2 class="text-sm"><%= t("dashboard_work.known_cost") %></h2>
+      <p class="mt-2 break-all text-2xl tabular-nums"><%= analysis_amount(usage, cost_unit: analysis.cost_unit) %></p>
+      <% unless usage.fetch("cost_complete") %><p class="mt-2 text-sm text-warning"><%= t("conversation_console.cost_incomplete") %></p><% end %>
+    </article>
+  </div>
+  <p class="text-xs text-base-content/60"><%= t("usage_reports.totals_note") %></p>
+</section>

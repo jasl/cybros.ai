@@ -1,0 +1,83 @@
+<% content_for :title, @list_title %>
+<div class="space-y-6">
+  <header class="space-y-2">
+    <h1 class="text-xl font-medium"><%= @list_title %></h1>
+    <p class="text-sm text-base-content/60"><%= @list_description %></p>
+    <% if @runner %>
+      <%= render "shared/back_navigation", path: runner_path(@runner), label: @runner.display_name %>
+    <% elsif @fixed_attention %>
+      <%= render "shared/back_navigation", path: attention_path(workspace_public_id: @workspace&.public_id), label: t("work_console.attention") %>
+    <% elsif @workspace %>
+      <%= link_to @workspace.name, workspace_path(@workspace), class: "link link-hover text-sm" %>
+    <% end %>
+  </header>
+  <% if @workspace_work %>
+    <%= render "workspaces/navigation", workspace: @workspace, current: :work %>
+    <%= render "workspaces/work_navigation", workspace: @workspace %>
+  <% end %>
+  <%= form_with url: @list_path, method: :get, class: "grid gap-3 sm:grid-cols-2 xl:grid-cols-5", data: { turbo_frame: "_top" } do |form| %>
+    <% [:answering_user_public_id, :agent_public_id, :executor_public_id].each do |field| %>
+      <%= form.hidden_field field, value: params[field] if params[field].present? && !(field == :executor_public_id && @runner) %>
+    <% end %>
+    <% unless @workspace_work %>
+    <label class="form-control space-y-1">
+      <span class="text-xs text-base-content/70"><%= t("work_console.workspace") %></span>
+      <%= form.select :workspace_public_id, @workspaces.map { |workspace| [workspace.name, workspace.public_id] }, { include_blank: t("work_console.all_workspaces"), selected: @workspace&.public_id }, class: "select w-full" %>
+    </label>
+    <% end %>
+    <label class="form-control space-y-1">
+      <span class="text-xs text-base-content/70"><%= t("work_console.status") %></span>
+      <%= form.select :status, Run::STATUSES.map { |status| [work_status_label(status), status] }, { include_blank: t("work_console.all_statuses"), selected: params[:status] }, class: "select w-full" %>
+    </label>
+    <label class="form-control space-y-1">
+      <span class="text-xs text-base-content/70"><%= t("work_console.kind") %></span>
+      <%= form.select :kind, [[t("work_console.all_kinds"), "all"], [t("work_console.conversation"), "conversation"], [t("work_console.standalone"), "standalone"]], { selected: params[:kind].presence || (@workspace_work ? "standalone" : "all") }, class: "select w-full" %>
+    </label>
+    <label class="form-control space-y-1">
+      <span class="text-xs text-base-content/70"><%= t("work_console.from") %></span>
+      <%= form.text_field :from, value: params[:from], placeholder: "2026-10-01T00:00:00Z", class: "input w-full" %>
+    </label>
+    <label class="form-control space-y-1">
+      <span class="text-xs text-base-content/70"><%= t("work_console.to") %></span>
+      <%= form.text_field :to, value: params[:to], placeholder: "2026-10-02T00:00:00Z", class: "input w-full" %>
+    </label>
+    <div class="flex flex-wrap items-center gap-3 sm:col-span-2 xl:col-span-5">
+      <% unless @fixed_attention %><label class="label text-sm"><%= form.check_box :attention, { checked: params[:attention] == "any", class: "checkbox checkbox-sm", include_hidden: false }, "any" %><%= t("work_console.needs_inspection") %></label><% end %>
+      <%= form.submit t("work_console.apply"), class: "btn btn-primary btn-sm" %>
+      <%= link_to t("work_console.reset"), @list_path, class: "btn btn-ghost btn-sm" %>
+    </div>
+  <% end %>
+  <% if params[:agent_public_id].present? || (params[:executor_public_id].present? && !@runner) %>
+    <div class="space-y-2 rounded-box border border-base-300 p-4 text-sm">
+      <% [:agent_public_id, :executor_public_id].each do |field| %>
+        <% if params[field].present? && !(field == :executor_public_id && @runner) %><p class="wrap-anywhere"><%= t(field == :agent_public_id ? "resource_work.agent_filter" : "resource_work.executor_filter") %>: <%= params[field] %></p><% end %>
+      <% end %>
+      <% if params[:executor_public_id].present? && !@runner %><p class="text-base-content/60"><%= t("resource_work.executor_coverage") %></p><% end %>
+      <%= link_to t("resource_work.clear_resource"), url_for(work_list_parameters.except("agent_public_id", "executor_public_id").merge(only_path: true)), class: "link" %>
+    </div>
+  <% end %>
+  <% if @runs.empty? %>
+    <p class="rounded-box border border-base-300 p-6 text-base-content/60"><%= t("work_console.no_runs") %></p>
+  <% else %>
+    <div class="divide-y divide-base-300 rounded-box border border-base-300">
+      <% @runs.each do |run| %>
+        <% projection = @projections.fetch(run.public_id) %>
+        <article class="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between" data-run-id="<%= run.public_id %>">
+          <div class="min-w-0 space-y-2">
+            <%= link_to work_run_title(run), run_path(run, return_to: request.fullpath), class: "link link-hover font-medium wrap-anywhere" %>
+            <p class="text-sm text-base-content/60"><%= link_to run.workspace.name, workspace_path(run.workspace), class: "link link-hover" %> · <%= run.standalone? ? t("work_console.standalone") : run.turn.answering_user.display_name %></p>
+            <% if (attention = projection[:attention]) %><p class="text-sm"><%= t("work_console.attention_reason", reason: attention.fetch(:reason).humanize) %></p><% end %>
+            <p class="font-mono text-xs text-base-content/50 wrap-anywhere"><%= run.public_id %></p>
+          </div>
+          <div class="space-y-2 text-sm sm:text-right">
+            <span class="badge badge-outline"><%= work_status_label(run.status) %></span>
+            <p class="text-base-content/60"><%= l(run.created_at, format: :short) %></p>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  <% end %>
+  <% if @page.next_after %>
+    <%= link_to t("work_console.next_page"), url_for(work_list_parameters.merge(after: @page.next_after, only_path: true)), class: "btn btn-outline btn-sm" %>
+  <% end %>
+</div>

@@ -1,0 +1,9 @@
+diff --git a/app/controllers/searches_controller.rb b/app/controllers/searches_controller.rb
+--- a/app/controllers/searches_controller.rb
++++ b/app/controllers/searches_controller.rb
+@@ -1,4 +1,5 @@
+ class SearchesController < ApplicationController
++  # TODO(sample): unbounded
+   def show
+     @results = Book.search(params[:q])
+   end

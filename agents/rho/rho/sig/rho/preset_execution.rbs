@@ -1,0 +1,24 @@
+module Rho
+  module PresetExecution
+    def self.limit_memory: (Hash[String, untyped]? authored, ceiling: Hash[String, untyped]?) -> Hash[String, untyped]?
+    def self.declaration: (preset: AgentPresets::Entry, base: Hash[Symbol, untyped], ?kernel_tool_names: Hash[String, String]) -> Hash[Symbol, untyped]
+    def self.selection: (body: Hash[String, untyped], declaration: Hash[Symbol, untyped], ?prior: Hash[String, untyped]?, ?inherited_model: String?) -> Hash[Symbol, untyped]
+    def self.overrides: (body: Hash[String, untyped]) -> Hash[Symbol, untyped]
+  end
+end
+
+module Rho
+  module PresetExecution
+    module Mcp
+      def self?.directory: (client: untyped, candidates: Array[CybrosAgent::Api::DiscoveredExecutor], agent_public_id: String, agent_tools: Array[Hash[String, untyped]]) -> Array[Hash[String, untyped]]
+      def self?.executor_connections: (String public_id, Array[Hash[String, untyped]] tools, runner: bool, ?label: String?) -> Array[Hash[String, untyped]]
+      def self?.callable_name: (Hash[String, String] ref, String tool_name) -> String
+      def self?.public_directory: (Array[Hash[String, untyped]] directory) -> Array[Hash[String, untyped]]
+      def self?.selected: (Array[Hash[String, untyped]] directory, Hash[String, untyped] selection) -> Array[[Hash[String, String], Hash[String, untyped]]]
+      def self?.names: (Array[Hash[String, untyped]] directory, Hash[String, untyped] selection) -> Array[String]
+      def self?.matching_names: (String pattern, Array[String] names) -> Array[String]
+      def self?.without_imports: (Array[Hash[String, untyped]] entries, Array[Hash[String, untyped]] directory) -> Array[Hash[String, untyped]]
+      def self?.apply: (Hash[Symbol, untyped] declaration, Array[Hash[String, untyped]] directory, Hash[String, untyped] selection) -> Hash[Symbol, untyped]
+    end
+  end
+end

@@ -1,0 +1,41 @@
+<% content_for :title, t("runners.index.connect_runner") %>
+<div class="mx-auto max-w-3xl space-y-6">
+  <%= render "shared/back_navigation", path: runners_path, label: t("runners.index.my_runners") %>
+  <header class="space-y-2">
+    <h1 class="text-xl font-medium"><%= t("runners.index.connect_runner") %></h1>
+    <p class="text-base-content/70"><%= t("runner_connection.description") %></p>
+  </header>
+  <section class="space-y-3 rounded-box border border-base-300 p-5">
+    <h2 class="font-medium"><%= t("runner_connection.deployed") %></h2>
+    <p><%= t("runner_connection.deploy_instructions") %></p>
+    <div class="flex flex-wrap gap-2">
+      <%= link_to t("runner_connection.deployment_guide"), "https://github.com/jasl/cybros.ai/blob/main/guides/runners/deploy.md", class: "btn btn-outline" %>
+      <%= link_to t("runner_connection.enter_code"), oauth_device_path, class: "btn btn-primary" %>
+    </div>
+    <p class="text-sm text-base-content/60"><%= t("runner_connection.scope") %></p>
+    <p class="text-sm text-base-content/60"><%= t("runner_connection.bundled") %></p>
+  </section>
+  <section class="space-y-3 rounded-box border border-base-300 p-5">
+    <h2 class="font-medium"><%= t("runner_connection.private") %></h2>
+    <p><%= t("runner_connection.private_instructions") %></p>
+    <% if @agents.any? %>
+      <ul class="divide-y divide-base-300">
+        <% @agents.each do |agent| %>
+          <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+            <span class="min-w-0 wrap-anywhere"><%= agent.display_name %></span>
+            <%= link_to t("agents.private_runners.create"), new_agent_private_runner_path(agent), class: "btn btn-outline btn-sm", aria: { label: t("runner_connection.create_for", name: agent.display_name) } %>
+          </li>
+        <% end %>
+      </ul>
+      <%= render "shared/pagination_footer", pagy: @agents_pagy, noun: "agents", aria_label: t("agents.index.agent_pages") %>
+    <% else %>
+      <p class="text-sm text-base-content/60"><%= t("runner_connection.no_agents") %></p>
+      <%= link_to t("agents.new.title"), new_agent_path, class: "btn btn-outline" %>
+    <% end %>
+  </section>
+  <section class="space-y-3">
+    <h2 class="font-medium"><%= t("runner_connection.check") %></h2>
+    <p><%= t("runner_connection.check_instructions") %></p>
+    <%= link_to t("runners.index.my_runners"), runners_path, class: "link link-hover" %>
+  </section>
+</div>

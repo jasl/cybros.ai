@@ -1,0 +1,46 @@
+en:
+  runner_resources:
+    back: Back to runners
+    kind: Machine kind
+    all_kinds: Runners and tool providers
+    status: Status
+    all_statuses: All statuses
+    statuses:
+      active: Active
+      revoked: Revoked
+    filter: Filter
+    no_matches: No matching machines
+    access_heading: Management and execution access
+    manager: Manager
+    management_scope: "The sharing setting below determines which Agents can use this machine."
+    current_user_eligibility: "Direct access as you"
+    eligible: "Allowed"
+    ineligible: "Not allowed"
+    assigned_agent: "Assigned Agent"
+    connection_heading: "Connection status"
+    connection_facts: "Access shows whether credentials are valid. Online status and last contact show the connection. Check related work to confirm that tools ran successfully."
+    presence:
+      online: Online
+      offline: Offline
+      not_yet_seen: Not yet seen
+    last_contact: Last contact
+    connected_at: "Connected since"
+    registered_at: Registered
+    not_recorded: Not recorded
+    measured_at: "Measured at %{time}"
+    related_work: "Related work"
+    related_work_scope: "Work you can view that used this machine. Work may be missing after retries or after execution details have been cleared."
+    view_runs:
+      one: View 1 related run
+      other: "View %{count} related runs"
+    announcements: "Tools and environment"
+    announcement_scope: "The most recent tools, documents and environment reported by this machine. These details may change when it reconnects."
+    tools: "Tools"
+    no_tools: "No tools reported yet."
+    documents: "Documents"
+    no_documents: "No documents reported yet."
+    environment: "Environment details"
+    mcp_connections: MCP connections
+    managed_tool_providers: Managed tool providers
+    managed_runners: Managed runners
+    connection_kinds: Manage external services here. For tools running on your own machines, use the Runner and tool provider pages below.

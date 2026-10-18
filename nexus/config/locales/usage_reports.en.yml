@@ -1,0 +1,12 @@
+en:
+  usage_reports:
+    title: Work usage
+    summary: Recent usage
+    export: Export usage
+    window_limit: "Choose up to 90 days. Times are in UTC; the end time is excluded. The dates above start with the same seven-day period as the summary."
+    export_note: "Download a detailed report of the data still available. Choose dates and optional filters for the file below. The download is compressed JSON Lines; attachments are downloaded separately."
+    totals_note: "Includes retries. Missing token counts and costs are not estimated in these totals."
+    download: Download report
+    diagnostics: Download diagnostics
+    data_download: Download Workspace data
+    execution: "%{count} readable Runs created in this window; %{pruned} have collected execution details."

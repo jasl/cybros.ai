@@ -1,0 +1,19 @@
+<div class="space-y-3">
+  <details class="min-w-0 text-sm">
+    <summary class="cursor-pointer font-medium wrap-anywhere"><%= workspace.name %> · <%= t("management_console.switch_workspace") %></summary>
+    <ul class="mt-2 flex flex-wrap gap-3">
+      <% Workspace.data_accessible_to(Current.user).browsable.order(:name, :public_id).limit(20).each do |choice| %>
+        <li class="min-w-0 wrap-anywhere"><%= link_to choice.name, workspace_path(choice), class: "link link-hover" %></li>
+      <% end %>
+      <li><%= link_to t("layouts.application.workspaces"), workspaces_path, class: "link link-hover" %></li>
+    </ul>
+  </details>
+  <nav class="flex flex-wrap gap-2 border-b border-base-300 pb-3" aria-label="<%= t("work_console.workspace") %>">
+    <% [[:overview, t("work_console.workspace_overview"), workspace_path(workspace)],
+        [:work, t("work_console.work"), workspace_conversations_path(workspace)],
+        [:data, t("data_console.title"), workspace_data_path(workspace)],
+        [:settings, t("work_console.workspace_settings"), workspace_settings_path(workspace)]].each do |key, label, path| %>
+      <%= link_to label, path, class: class_names("btn btn-sm", "btn-active": current == key, "btn-ghost": current != key), aria: { current: ("page" if current == key) } %>
+    <% end %>
+  </nav>
+</div>

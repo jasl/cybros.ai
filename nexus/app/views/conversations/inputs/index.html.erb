@@ -1,0 +1,25 @@
+<% content_for :title, t("conversation_inputs.title") %>
+<div class="mx-auto max-w-3xl space-y-6" data-controller="work-refresh" data-work-refresh-channel-value="AgentAPI::V1::ConversationEventsChannel" data-work-refresh-workspace-id-value="<%= @conversation.workspace.public_id %>" data-work-refresh-resource-id-value="<%= @conversation.public_id %>">
+  <header class="space-y-3">
+    <%= render "shared/back_navigation", path: work_return_path(conversation_path(@conversation)), label: t("shared.back_navigation.back") %>
+    <h1 class="text-xl font-medium"><%= t("conversation_inputs.title") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("conversation_inputs.list_scope") %></p>
+    <%= render "work/live_status" %>
+  </header>
+  <section class="space-y-4" aria-label="<%= t("conversation_inputs.title") %>">
+    <% @inputs.each do |input| %>
+      <article class="space-y-3 rounded-box border border-base-300 bg-base-200 p-4" data-input-id="<%= input.public_id %>">
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+          <span class="badge badge-outline"><%= t("conversation_reading.states.#{input.state}") %></span>
+          <span class="wrap-anywhere"><%= t("conversation_inputs.participants", author: input.authoring_user.display_name, answerer: input.answering_user.display_name) %></span>
+        </div>
+        <p class="whitespace-pre-wrap wrap-anywhere"><%= truncate(input.text.to_s, length: 300) %></p>
+        <% if input.deliver_at %><p class="text-sm"><%= t("conversation_inputs.deliver_at") %> <time datetime="<%= input.deliver_at.iso8601 %>"><%= input.deliver_at.iso8601 %></time></p><% end %>
+        <% if input.blocked_reason %><p class="text-sm text-warning"><%= t("conversation_reading.refused", reason: conversation_input_refusal(input.blocked_reason)) %></p><% end %>
+        <%= link_to t("conversation_reading.follow_title"), conversation_input_path(@conversation, input.public_id, return_to: request.fullpath), class: "link link-hover text-sm" %>
+      </article>
+    <% end %>
+    <% if @inputs.empty? %><%= render "shared/empty_state", title: t("conversation_inputs.empty"), description: t("conversation_inputs.empty_description") %><% end %>
+  </section>
+  <%= render "shared/pagination_footer", pagy: @inputs_pagy, noun: "inputs", aria_label: t("conversation_inputs.pages") %>
+</div>

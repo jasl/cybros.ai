@@ -1,0 +1,6 @@
+<%= t("invitation_mailer.acceptance.introduction", account: @invitation.account.name, role: t("members.roles.#{@invitation.role}"), brand: t("brand.name")) %>
+
+<%= t("invitation_mailer.acceptance.accept_before", expires_at: l(@invitation.expires_at, format: :long)) %>
+<%= @acceptance_url %>
+
+<%= t("invitation_mailer.acceptance.renewal_notice") %>

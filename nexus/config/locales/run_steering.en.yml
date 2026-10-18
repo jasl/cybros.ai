@@ -1,0 +1,41 @@
+en:
+  run_steering:
+    title: Text corrections
+    target: 'Original Run: %{id}'
+    identifier: 'Input: %{id}'
+    modes:
+      steer: At the next model boundary
+      steer_now: As soon as possible
+    timing_scope: A sent model request cannot be changed. Running tools keep their
+      work; this does not resume a paused Run or resolve an approval or failure.
+    list_scope: Waiting text corrections fixed to this Run. Ordinary queued inputs
+      and corrections for other executions are listed separately.
+    empty: No waiting corrections
+    empty_description: This list does not establish what happened to a correction
+      that is no longer waiting. Use its tracking page to inspect retained evidence.
+    pages: Text correction pages
+    follow: Follow this correction
+    cancel: Cancel correction
+    canceled: Correction canceled.
+    states:
+      waiting: Waiting
+      consumed: Added to a model request
+      canceled: Canceled
+      unknown: Processing result unknown
+    waiting_scope: Accepted for this execution and still waiting to be added to a
+      model request.
+    consumed_scope: A retained event records this correction being added to a model
+      request in the original Run. This does not prove that the model followed it,
+      that the request succeeded, or that the reply is complete.
+    consuming_task: View the model task
+    task_unavailable: The event remains, but the model task is no longer available.
+    canceled_scope: A retained event records cancellation before this correction was
+      consumed. It does not establish who canceled it or why.
+    accepted_unknown: Acceptance is recorded, but no retained evidence confirms how
+      processing ended. Do not resend solely because the waiting row is gone.
+    unknown_scope: No waiting row or sufficient retained event establishes the result.
+      This does not prove that the correction was never accepted, consumed, or canceled.
+    original_candidate: View the original candidate
+    retention_scope: This page reads current rows and retained events. Evidence can
+      expire; it is not a permanent receipt.
+    refused: 'Correction refused: %{reason}'

@@ -1,0 +1,4 @@
+en:
+  configuration_iteration:
+    current_configuration: Current Agent configuration
+    unavailable_choice: "Unavailable selection (%{id})"

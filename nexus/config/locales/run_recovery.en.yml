@@ -1,0 +1,30 @@
+en:
+  runs_console:
+    local_recovery: Recover this part of the Run
+    cancel_branch: Cancel branch
+    branch_cancel_help: Cancel unfinished work owned by this branch. The mainline and work outside the branch remain; completed effects are kept.
+    confirm_cancel_branch: Cancel unfinished work owned by this branch? Completed effects are kept. Other work remains subject to the Run's pause and attention state. A spawn wait cancels only its short wait.
+    branch_cancel_accepted: Cancellation request accepted. Running work may take a moment to settle; check its latest state below.
+    compact: Compact context
+    compaction_help: Request a summary of this queued model task's history. This may use model tokens. A failed task must be retried before it can be compacted.
+    confirm_compact: Request a summary for this queued model task? This may use model tokens and resets its prompt cache. A paused Run stays paused until you resume it.
+    compaction_accepted: Compaction request accepted. Follow the current step below to inspect its progress and result.
+    compaction_step: View current compaction step
+    compaction_paused: This Run is paused. Resume it to execute the remaining compaction work.
+    submitting: Submitting…
+    compaction_states:
+      hook: A pre-compaction hook must finish before the summary can be created.
+      hook_finished: The pre-compaction hook has finished. The summary has not been created yet.
+      waiting: The summary is not ready yet. Open the current step to inspect its state.
+      unavailable: This compaction step has no usable summary. Open it to inspect the result and available recovery actions.
+      ready: A usable summary is available for this task's history.
+    refusal_reasons:
+      not_a_branch: this task does not own a cancelable branch
+      already_terminal: this work has already finished
+      not_compactable: only model tasks can request compaction
+      task_not_queued: this task is no longer queued
+      compaction_disabled: compaction is disabled for this task
+      already_compacted: this task already has a compaction repair
+      compaction_unavailable_under_raw: raw input requires delegated compaction
+      nothing_to_compact: this task has no history to summarize
+      arm_failed: the compaction step could not be created

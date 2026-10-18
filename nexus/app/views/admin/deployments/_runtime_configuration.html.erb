@@ -1,0 +1,27 @@
+<%# locals: (web_concurrency:, rails_max_threads:, rails_db_pool:, database_pool:) %>
+<section class="rounded-box border border-base-300 bg-base-100 p-5 sm:p-6" aria-labelledby="runtime-configuration-heading">
+  <h2 id="runtime-configuration-heading" class="text-lg font-semibold"><%= t("admin.deployments.runtime_configuration.title") %></h2>
+  <p class="mt-2 max-w-3xl text-sm text-base-content/65"><%= t("admin.deployments.runtime_configuration.description") %></p>
+  <dl class="mt-4 grid gap-5 lg:grid-cols-3">
+    <div class="min-w-0" data-runtime-setting="workers">
+      <dt class="text-sm font-medium"><%= t("admin.deployments.runtime_configuration.web_workers") %> <code class="mt-1 block text-xs text-base-content/60">WEB_CONCURRENCY</code></dt>
+      <dd class="mt-2 break-words font-mono text-lg"><%= web_concurrency || t("admin.deployments.runtime_configuration.not_set") %></dd>
+      <dd class="mt-2 text-xs text-base-content/65"><%= t("admin.deployments.runtime_configuration.workers_default") %></dd>
+    </div>
+    <div class="min-w-0" data-runtime-setting="threads">
+      <dt class="text-sm font-medium"><%= t("admin.deployments.runtime_configuration.threads_per_worker") %> <code class="mt-1 block text-xs text-base-content/60">RAILS_MAX_THREADS</code></dt>
+      <dd class="mt-2 break-words font-mono text-lg"><%= rails_max_threads || t("admin.deployments.runtime_configuration.not_set") %></dd>
+      <dd class="mt-2 text-xs text-base-content/65"><%= t("admin.deployments.runtime_configuration.threads_default") %></dd>
+    </div>
+    <div class="min-w-0" data-runtime-setting="database_pool">
+      <dt class="text-sm font-medium"><%= t("admin.deployments.runtime_configuration.database_pool") %> <code class="mt-1 block text-xs text-base-content/60">RAILS_DB_POOL</code></dt>
+      <dd class="mt-2 font-mono text-lg"><%= database_pool %></dd>
+      <dd class="mt-2 text-xs text-base-content/65"><%= t("admin.deployments.runtime_configuration.pool_override", value: rails_db_pool || t("admin.deployments.runtime_configuration.not_set")) %></dd>
+      <dd class="mt-1 text-xs text-base-content/65"><%= t("admin.deployments.runtime_configuration.pool_default") %></dd>
+    </div>
+  </dl>
+  <div class="mt-5 space-y-2 border-t border-base-300 pt-4 text-sm text-base-content/75">
+    <p><%= t("admin.deployments.runtime_configuration.docker_instructions_html", command: tag.code("./cybros up")) %></p>
+    <p><%= t("admin.deployments.runtime_configuration.host_instructions") %></p>
+  </div>
+</section>

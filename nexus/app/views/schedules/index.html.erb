@@ -1,0 +1,52 @@
+<% content_for :title, t("schedules_console.schedules") %>
+<% list_path = @conversation ? conversation_schedules_path(@conversation) : workspace_schedules_path(@workspace) %>
+<div class="space-y-6">
+  <header class="space-y-2">
+    <% if @conversation %>
+      <%= render "shared/back_navigation", path: work_return_path(conversation_path(@conversation)), label: conversation_title(@conversation) %>
+    <% elsif @workspace %>
+      <%= render "shared/back_navigation", path: workspace_path(@workspace), label: @workspace.name %>
+    <% end %>
+    <h1 class="text-xl font-medium"><%= t("schedules_console.schedules") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("schedules_console.scope_description") %></p>
+  </header>
+  <% unless @conversation %>
+    <%= render "workspaces/navigation", workspace: @workspace, current: :work %>
+    <%= render "workspaces/work_navigation", workspace: @workspace %>
+  <% end %>
+  <%= form_with url: list_path, method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
+    <div><%= form.label :status, t("schedules_console.status"), class: "label" %>
+      <%= form.select :status, Schedule::STATUSES.map { |status| [t("schedules_console.statuses.#{status}"), status] }, { include_blank: t("schedules_console.all_statuses"), selected: params[:status] }, class: "select w-full" %></div>
+    <%= form.hidden_field :return_to, value: work_return_path(conversation_path(@conversation)) if @conversation %>
+    <%= form.submit t("schedules_console.filter"), class: "btn btn-primary" %>
+  <% end %>
+  <%= render "schedules/read_state", read_at: @read_at, refresh_path: url_for(schedule_list_parameters.merge(only_path: true, after: params[:after])) %>
+  <% if @schedules.empty? %>
+    <p class="rounded-box border border-base-300 p-6 text-base-content/60"><%= t("schedules_console.empty") %></p>
+  <% else %>
+    <div class="divide-y divide-base-300 rounded-box border border-base-300">
+      <% @schedules.each do |job| %>
+        <% projection = @projections.fetch(job.public_id) %>
+        <article class="flex flex-col gap-3 p-4 sm:flex-row sm:justify-between" data-schedule-id="<%= job.public_id %>">
+          <div class="min-w-0 space-y-2">
+            <%= link_to schedule_title(job), conversation_schedule_path(job.conversation, job, return_to: request.fullpath), class: "link link-hover font-medium wrap-anywhere" %>
+            <p class="text-sm text-base-content/60 wrap-anywhere"><%= job.conversation.workspace.name %> · <%= conversation_title(job.conversation) %> · <%= job.answering_user.display_name %></p>
+            <p class="text-sm wrap-anywhere"><%= schedule_rule(job.rule) %></p>
+            <% if projection[:last_execution] %>
+              <p class="text-sm text-base-content/60"><%= t("schedules_console.last_execution") %>: <%= t("schedules_console.execution_statuses.#{projection.fetch(:last_execution).fetch(:status)}") %></p>
+            <% end %>
+          </div>
+          <div class="space-y-2 text-sm sm:text-right">
+            <span class="badge badge-outline"><%= t("schedules_console.statuses.#{job.status}") %></span>
+            <p><%= t("schedules_console.next_run") %>: <%= schedule_time(job.next_run_at) %></p>
+            <% if job.last_error_code %><p class="text-warning"><%= schedule_refusal(job.last_error_code) %></p><% end %>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  <% end %>
+  <% if @page.next_after %>
+    <%= link_to t("schedules_console.next_page"), url_for(schedule_list_parameters.merge(only_path: true, after: @page.next_after)), class: "btn btn-outline btn-sm" %>
+  <% end %>
+  <p class="text-sm text-base-content/60"><%= t("management_console.schedule_help") %></p>
+</div>

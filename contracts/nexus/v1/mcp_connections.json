@@ -1,0 +1,133 @@
+{
+  "member_fixture": {
+    "mcp_connection": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "name": "Work",
+      "account_label": "Company account",
+      "enabled": true,
+      "available": true,
+      "tools": [
+        {
+          "name": "search",
+          "description": "Search documents",
+          "input_schema": {
+            "type": "object"
+          }
+        }
+      ]
+    }
+  },
+  "owner_fixture": {
+    "mcp_connection": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "name": "Work",
+      "account_label": "Company account",
+      "enabled": true,
+      "available": true,
+      "tools": [
+        {
+          "name": "search",
+          "description": "Search documents",
+          "input_schema": {
+            "type": "object"
+          }
+        }
+      ],
+      "endpoint_url": "https://tools.example/mcp",
+      "auth_type": "bearer",
+      "credential_configured": true,
+      "authorization_status": "not_applicable",
+      "authorization_expires_at": null,
+      "catalog_refreshed_at": null,
+      "lock_version": 3
+    }
+  },
+  "oauth_owner_fixture": {
+    "mcp_connection": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "name": "Work",
+      "account_label": "Company account",
+      "enabled": true,
+      "available": true,
+      "tools": [
+        {
+          "name": "search",
+          "description": "Search documents",
+          "input_schema": {
+            "type": "object"
+          }
+        }
+      ],
+      "endpoint_url": "https://tools.example/mcp",
+      "auth_type": "oauth",
+      "credential_configured": true,
+      "authorization_status": "authorized",
+      "authorization_expires_at": "2026-10-15T12:00:00Z",
+      "catalog_refreshed_at": null,
+      "lock_version": 3
+    }
+  },
+  "unknown_authorization_status_fixture": {
+    "mcp_connection": {
+      "public_id": "01900000-0000-7000-8000-000000000091",
+      "name": "Work",
+      "account_label": "Company account",
+      "enabled": true,
+      "available": true,
+      "tools": [
+        {
+          "name": "search",
+          "description": "Search documents",
+          "input_schema": {
+            "type": "object"
+          }
+        }
+      ],
+      "endpoint_url": "https://tools.example/mcp",
+      "auth_type": "oauth",
+      "credential_configured": true,
+      "authorization_status": "future_status",
+      "authorization_expires_at": "2026-10-15T12:00:00Z",
+      "catalog_refreshed_at": null,
+      "lock_version": 3
+    }
+  },
+  "authorization_fixture": {
+    "authorization": {
+      "connection_public_id": "01900000-0000-7000-8000-000000000091",
+      "authorization_url": "https://tools.example/authorize?state=fixture-state",
+      "expires_at": "2026-10-15T11:10:00Z"
+    }
+  },
+  "approval_fixture": {
+    "task": {
+      "key": "mcp-search",
+      "kind": "tool_task",
+      "lifetime": "conversation",
+      "wake": "auto",
+      "status": "needs_approval",
+      "on_failure": "halt",
+      "tool_name": "search",
+      "tool_alias": "work_search",
+      "target": {
+        "kind": "mcp",
+        "connection_public_id": "01900000-0000-7000-8000-000000000091",
+        "display_name": "Work",
+        "account_label": "Company account",
+        "tool_name": "search"
+      },
+      "visibility": "visible",
+      "created_at": "2026-10-14T00:00:00Z",
+      "tool_input": {
+        "query": "invoice"
+      },
+      "effect_profile": {
+        "kind": "write",
+        "destructive": true,
+        "effect_scope": "open",
+        "idempotency": "none",
+        "reconciliation": "none"
+      }
+    }
+  }
+}

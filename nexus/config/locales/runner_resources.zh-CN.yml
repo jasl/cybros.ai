@@ -1,0 +1,44 @@
+zh-CN:
+  runner_resources:
+    back: 返回 Runner 列表
+    kind: 机器类型
+    all_kinds: Runner 与工具提供方
+    status: 状态
+    all_statuses: 全部状态
+    statuses:
+      active: 活跃
+      revoked: 已撤销
+    filter: 筛选
+    no_matches: 没有符合条件的机器
+    access_heading: 管理关系与执行权限
+    manager: 管理者
+    management_scope: "下方的共享范围决定哪些 Agent 可以使用这台机器。"
+    current_user_eligibility: "你本人能否直接使用"
+    eligible: "允许"
+    ineligible: "不允许"
+    assigned_agent: "分配给 Agent"
+    connection_heading: "连接状态"
+    connection_facts: "访问状态表示凭据是否有效；在线状态和最近联系表示机器的连接情况。请查看相关工作，确认工具是否成功运行。"
+    presence:
+      online: 在线
+      offline: 离线
+      not_yet_seen: 尚未联系
+    last_contact: 最近联系
+    connected_at: 连接建立时间
+    registered_at: 注册时间
+    not_recorded: 未记录
+    measured_at: "读取时间：%{time}"
+    related_work: "相关工作"
+    related_work_scope: "你有权查看、且曾使用这台机器的工作。重试或执行详情被清理后，部分工作可能不再显示。"
+    view_runs: "查看 %{count} 个相关运行"
+    announcements: "工具与环境"
+    announcement_scope: "这台机器最近上报的工具、文档和环境。重新连接后，这些信息可能变化。"
+    tools: "工具"
+    no_tools: "尚未上报工具。"
+    documents: "文档"
+    no_documents: "尚未上报文档。"
+    environment: "环境详情"
+    mcp_connections: MCP 连接
+    managed_tool_providers: 受管工具提供方
+    managed_runners: 受管 Runner
+    connection_kinds: "在此管理外部服务。管理自己机器上的工具，请使用下方的 Runner 和工具提供方入口。"

@@ -1,0 +1,1902 @@
+{
+  "operations": [
+    {
+      "id": "DELETE /agent_api/v1/profile/agents/{name}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/profile/agents/{name}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/profile/prompt_documents/{slot}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/profile/prompt_documents/{slot}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/profile/store_entries/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/profile/store_entries/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/workspaces/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/workspaces/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/workspaces/{workspace_public_id}/conversations/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/workspaces/{workspace_public_id}/inference_requests/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/inference_requests/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/workspaces/{workspace_public_id}/prompt_documents/{slot}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/prompt_documents/{slot}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/workspaces/{workspace_public_id}/runs/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /agent_api/v1/workspaces/{workspace_public_id}/store_entries/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/store_entries/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /api/v1/admin/model_providers/{model_provider_id}/api_key",
+      "plane": "platform",
+      "method": "DELETE",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/api_key",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /api/v1/admin/model_providers/{model_provider_id}/authorization",
+      "plane": "platform",
+      "method": "DELETE",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/authorization",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /api/v1/admin/model_providers/{model_provider_id}/definition",
+      "plane": "platform",
+      "method": "DELETE",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/definition",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /api/v1/admin/model_providers/{model_provider_id}/model_definition",
+      "plane": "platform",
+      "method": "DELETE",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/model_definition",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /api/v1/mcp_connections/{mcp_connection_id}/credential",
+      "plane": "platform",
+      "method": "DELETE",
+      "path": "/api/v1/mcp_connections/{mcp_connection_id}/credential",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /api/v1/persona",
+      "plane": "platform",
+      "method": "DELETE",
+      "path": "/api/v1/persona",
+      "sdk_supported": true
+    },
+    {
+      "id": "DELETE /api/v1/session",
+      "plane": "platform",
+      "method": "DELETE",
+      "path": "/api/v1/session",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/attention",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/attention",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/conversations",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/conversations",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/executor",
+      "plane": "executor",
+      "method": "GET",
+      "path": "/agent_api/v1/executor",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/executor/inbox",
+      "plane": "executor",
+      "method": "GET",
+      "path": "/agent_api/v1/executor/inbox",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/attachments/{attachment_upload_public_id}/bytes",
+      "plane": "executor",
+      "method": "GET",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/attachments/{attachment_upload_public_id}/bytes",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/attachments/{upload_public_id}",
+      "plane": "executor",
+      "method": "GET",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/attachments/{upload_public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/claim",
+      "plane": "executor",
+      "method": "GET",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/claim",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/operations",
+      "plane": "executor",
+      "method": "GET",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/operations",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/executors",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/executors",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/executors/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/executors/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/mcp_connections",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/mcp_connections",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/mcp_connections/{id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/mcp_connections/{id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/model_providers",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/model_providers",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/models",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/models",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile/agents",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile/agents",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile/agents/{agent_name}/memory",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile/agents/{agent_name}/memory",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile/budgets",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile/budgets",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile/budgets/{budget_public_id}/entries",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile/budgets/{budget_public_id}/entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile/budgets/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile/budgets/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile/memory",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile/memory",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile/prompt_documents",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile/prompt_documents",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile/prompt_documents/{slot}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile/prompt_documents/{slot}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile/store_entries",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile/store_entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/profile/store_entries/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/profile/store_entries/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/runs",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/runs",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/schedules",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/schedules",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/tools",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/tools",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/uploads/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/uploads/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/uploads/{upload_public_id}/bytes",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/uploads/{upload_public_id}/bytes",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/uploads/{upload_public_id}/preview",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/uploads/{upload_public_id}/preview",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/uploads/{upload_public_id}/thumbnail",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/uploads/{upload_public_id}/thumbnail",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/work_analysis",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/work_analysis",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/work_report",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/work_report",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversation_search",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversation_search",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/archived",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/archived",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/children",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/children",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/events",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/events",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/export",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/export",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/history",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/history",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs/{input_public_id}/materialization",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs/{input_public_id}/materialization",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/regeneration_receipt",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/regeneration_receipt",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{schedule_public_id}/executions",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{schedule_public_id}/executions",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/fields/{field}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/fields/{field}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/reasoning",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/reasoning",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/request",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/request",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/inference_requests",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/inference_requests",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/inference_requests/{inference_request_public_id}/events",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/inference_requests/{inference_request_public_id}/events",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/inference_requests/{inference_request_public_id}/files/{index}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/inference_requests/{inference_request_public_id}/files/{index}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/inference_requests/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/inference_requests/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/memory",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/messaging",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/messaging",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/principals",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/principals",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/prompt_documents",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/prompt_documents",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/prompt_documents/{slot}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/prompt_documents/{slot}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/runs",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/events",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/events",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/graph",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/graph",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/phases",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/phases",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{key}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{key}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/request",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/request",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/transcript",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/transcript",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/schedules",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/schedules",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/store_entries",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/store_entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/store_entries/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/store_entries/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/account/cost_unit",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/account/cost_unit",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/account/retention",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/account/retention",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/deployment",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/deployment",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/deployment/upgrades/{id}",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/deployment/upgrades/{id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/deployment/upgrades/{upgrade_id}/log",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/deployment/upgrades/{upgrade_id}/log",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/deployment/upgrades/{upgrade_id}/stream",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/deployment/upgrades/{upgrade_id}/stream",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/model_providers",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/model_providers",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/model_providers/{id}",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/model_providers/{id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/model_providers/{model_provider_id}/authorization",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/authorization",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/model_providers/{model_provider_id}/authorization/sessions/{id}",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/authorization/sessions/{id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/model_usage/analysis",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/model_usage/analysis",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/model_usage/report",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/model_usage/report",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/models",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/models",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/users/{user_public_id}/budgets",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/users/{user_public_id}/budgets",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/users/{user_public_id}/budgets/{budget_public_id}/entries",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/users/{user_public_id}/budgets/{budget_public_id}/entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/admin/users/{user_public_id}/budgets/{public_id}",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/admin/users/{user_public_id}/budgets/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents/{agent_id}/api_keys",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents/{agent_id}/api_keys",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents/{agent_id}/budgets",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents/{agent_id}/budgets",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents/{agent_id}/budgets/{budget_public_id}/entries",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents/{agent_id}/budgets/{budget_public_id}/entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents/{agent_id}/budgets/{public_id}",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents/{agent_id}/budgets/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents/{agent_id}/configuration",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents/{agent_id}/configuration",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents/{agent_id}/executor/api_keys",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents/{agent_id}/executor/api_keys",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents/{agent_id}/private_runners",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents/{agent_id}/private_runners",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents/{agent_id}/private_runners/{id}",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents/{agent_id}/private_runners/{id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/agents/{id}",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/agents/{id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/mcp_connections",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/mcp_connections",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/mcp_connections/{id}",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/mcp_connections/{id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/persona",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/persona",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/profile",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/profile",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/profile/budgets",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/profile/budgets",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/profile/budgets/{budget_public_id}/entries",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/profile/budgets/{budget_public_id}/entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/profile/budgets/{public_id}",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/profile/budgets/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/runners",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/runners",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/runners/{id}",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/runners/{id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /api/v1/session",
+      "plane": "platform",
+      "method": "GET",
+      "path": "/api/v1/session",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /agent_api/v1/profile/store_entries/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/profile/store_entries/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /agent_api/v1/workspaces/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/workspaces/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /agent_api/v1/workspaces/{workspace_public_id}/conversations/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /agent_api/v1/workspaces/{workspace_public_id}/store_entries/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/store_entries/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /api/v1/admin/account/retention",
+      "plane": "platform",
+      "method": "PATCH",
+      "path": "/api/v1/admin/account/retention",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /api/v1/admin/users/{user_public_id}/budgets/{public_id}",
+      "plane": "platform",
+      "method": "PATCH",
+      "path": "/api/v1/admin/users/{user_public_id}/budgets/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /api/v1/agents/{agent_id}/budgets/{public_id}",
+      "plane": "platform",
+      "method": "PATCH",
+      "path": "/api/v1/agents/{agent_id}/budgets/{public_id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PATCH /api/v1/mcp_connections/{id}",
+      "plane": "platform",
+      "method": "PATCH",
+      "path": "/api/v1/mcp_connections/{id}",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/claim",
+      "plane": "executor",
+      "method": "POST",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/claim",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/commit",
+      "plane": "executor",
+      "method": "POST",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/commit",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/extend",
+      "plane": "executor",
+      "method": "POST",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/extend",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/observation",
+      "plane": "executor",
+      "method": "POST",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/observation",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/operations",
+      "plane": "executor",
+      "method": "POST",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/operations",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/executor/progress",
+      "plane": "executor",
+      "method": "POST",
+      "path": "/agent_api/v1/executor/progress",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/executor/uploads",
+      "plane": "executor",
+      "method": "POST",
+      "path": "/agent_api/v1/executor/uploads",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/agents/{agent_name}/memory",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory/delete",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/agents/{agent_name}/memory/delete",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory/edit",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/agents/{agent_name}/memory/edit",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory/grep",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/agents/{agent_name}/memory/grep",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory/show",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/agents/{agent_name}/memory/show",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/ingress_speakers",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/ingress_speakers",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/memory",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/memory",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/memory/delete",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/memory/delete",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/memory/edit",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/memory/edit",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/memory/grep",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/memory/grep",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/memory/show",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/memory/show",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/store_entries",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/store_entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/tools/assembly",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/tools/assembly",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/uploads",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/uploads",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/archival",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/archival",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/archive",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/archive",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/cancellation",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/cancellation",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/compaction",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/compaction",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/context_estimate",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/context_estimate",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/forks",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/forks",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs/reorder",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/inputs/reorder",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory/delete",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory/delete",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory/edit",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory/edit",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory/grep",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory/grep",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory/show",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory/show",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory_context",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory_context",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{schedule_public_id}/cancel",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{schedule_public_id}/cancel",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{schedule_public_id}/pause",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{schedule_public_id}/pause",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{schedule_public_id}/resume",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{schedule_public_id}/resume",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{schedule_public_id}/run",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/schedules/{schedule_public_id}/run",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/edit",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/edit",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/regeneration",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/regeneration",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/activation",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/turns/{turn_public_id}/variants/{variant_public_id}/activation",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/unarchive",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/unarchive",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/inference_requests",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/inference_requests",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/inference_requests/input_estimate",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/inference_requests/input_estimate",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/inference_requests/{inference_request_public_id}/cancellation",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/inference_requests/{inference_request_public_id}/cancellation",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/delete",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory/delete",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/edit",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory/edit",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/grep",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory/grep",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/show",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory/show",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/ownership_transfer",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/ownership_transfer",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/restoration",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/restoration",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs/reorder",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/inputs/reorder",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/pause",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/pause",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/resume",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/resume",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/start",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/start",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/stop",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/stop",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/abandon",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/abandon",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/approve",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/approve",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/cancel",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/cancel",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/compact",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/compact",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/deny",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/deny",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/resolution",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/resolution",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/retry",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/retry",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/store_entries",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/store_entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/admin/deployment/release_check",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/admin/deployment/release_check",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/admin/deployment/upgrades",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/admin/deployment/upgrades",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/admin/model_providers/{model_provider_id}/authorization",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/authorization",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/admin/model_providers/{model_provider_id}/model_definition/reset",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/model_definition/reset",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/admin/model_providers/{model_provider_id}/model_discovery",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/model_discovery",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/admin/model_providers/{model_provider_id}/model_test",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/model_test",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/admin/users/{user_public_id}/budgets",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/admin/users/{user_public_id}/budgets",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/admin/users/{user_public_id}/budgets/{budget_public_id}/revocation",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/admin/users/{user_public_id}/budgets/{budget_public_id}/revocation",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/admin/users/{user_public_id}/removal",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/admin/users/{user_public_id}/removal",
+      "sdk_supported": false,
+      "exclusion": "Typed SDK admin User removal is intentionally excluded"
+    },
+    {
+      "id": "POST /api/v1/agents",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/api_keys",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/api_keys",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/api_keys/{api_key_id}/revocation",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/api_keys/{api_key_id}/revocation",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/budgets",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/budgets",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/budgets/{budget_public_id}/revocation",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/budgets/{budget_public_id}/revocation",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/connection_revocation",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/connection_revocation",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/executor/api_keys",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/executor/api_keys",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/executor/api_keys/{api_key_id}/revocation",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/executor/api_keys/{api_key_id}/revocation",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/private_runners",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/private_runners",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys/{api_key_id}/revocation",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys/{api_key_id}/revocation",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/removal",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/removal",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/agents/{agent_id}/restoration",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/agents/{agent_id}/restoration",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/mcp_connections",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/mcp_connections",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/mcp_connections/{mcp_connection_id}/authorization",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/mcp_connections/{mcp_connection_id}/authorization",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/mcp_connections/{mcp_connection_id}/catalog_refresh",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/mcp_connections/{mcp_connection_id}/catalog_refresh",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /api/v1/session",
+      "plane": "platform",
+      "method": "POST",
+      "path": "/api/v1/session",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/executor/announcement",
+      "plane": "executor",
+      "method": "PUT",
+      "path": "/agent_api/v1/executor/announcement",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/profile/agents/{name}",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/profile/agents/{name}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/profile/configuration",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/profile/configuration",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/profile/prompt_documents/{slot}",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/profile/prompt_documents/{slot}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/workspaces/{workspace_public_id}/access_mode",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/access_mode",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/access",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/access",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/default_runner",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/default_runner",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/workspaces/{workspace_public_id}/messaging",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/messaging",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/workspaces/{workspace_public_id}/prompt_documents/{slot}",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/prompt_documents/{slot}",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/default_runner",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/default_runner",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/workspaces/{workspace_public_id}/tool_provider_overrides",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/tool_provider_overrides",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /api/v1/admin/account/cost_unit",
+      "plane": "platform",
+      "method": "PUT",
+      "path": "/api/v1/admin/account/cost_unit",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /api/v1/admin/model_providers/{model_provider_id}/api_key",
+      "plane": "platform",
+      "method": "PUT",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/api_key",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /api/v1/admin/model_providers/{model_provider_id}/definition",
+      "plane": "platform",
+      "method": "PUT",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/definition",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /api/v1/admin/model_providers/{model_provider_id}/lane",
+      "plane": "platform",
+      "method": "PUT",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/lane",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /api/v1/admin/model_providers/{model_provider_id}/model_availability",
+      "plane": "platform",
+      "method": "PUT",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/model_availability",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /api/v1/admin/model_providers/{model_provider_id}/model_definition",
+      "plane": "platform",
+      "method": "PUT",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/model_definition",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /api/v1/admin/model_providers/{model_provider_id}/model_visibility",
+      "plane": "platform",
+      "method": "PUT",
+      "path": "/api/v1/admin/model_providers/{model_provider_id}/model_visibility",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /api/v1/mcp_connections/{mcp_connection_id}/credential",
+      "plane": "platform",
+      "method": "PUT",
+      "path": "/api/v1/mcp_connections/{mcp_connection_id}/credential",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /api/v1/persona",
+      "plane": "platform",
+      "method": "PUT",
+      "path": "/api/v1/persona",
+      "sdk_supported": true
+    }
+  ]
+}

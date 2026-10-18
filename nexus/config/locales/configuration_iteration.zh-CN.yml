@@ -1,0 +1,4 @@
+zh-CN:
+  configuration_iteration:
+    current_configuration: 当前 Agent 配置
+    unavailable_choice: "不可用的选择（%{id}）"

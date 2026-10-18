@@ -1,0 +1,37 @@
+//! Typed public response documents. Unknown fields remain available in `extra`.
+use super::JsonObject;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+mod workspaces;
+pub use workspaces::*;
+mod uploads;
+pub use uploads::*;
+mod executors;
+pub use executors::*;
+mod stores;
+pub use stores::*;
+mod conversations;
+pub use conversations::*;
+mod mcp_connections;
+pub use mcp_connections::*;
+mod inference_requests;
+pub use inference_requests::*;
+mod task_operations;
+pub use task_operations::*;
+mod conversation_history;
+pub use conversation_history::*;
+mod context;
+pub use context::*;
+mod schedules;
+pub use schedules::*;
+mod profile;
+pub use profile::*;
+mod catalogs;
+pub use catalogs::*;
+mod runs;
+pub use runs::*;
+mod work;
+pub use work::*;
+mod analysis;
+pub use analysis::*;

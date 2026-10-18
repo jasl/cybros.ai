@@ -1,0 +1,11 @@
+diff --git a/app/controllers/searches_controller.rb b/app/controllers/searches_controller.rb
+--- a/app/controllers/searches_controller.rb
++++ b/app/controllers/searches_controller.rb
+@@ -1,5 +1,6 @@
+ class SearchesController < ApplicationController
+-  # TODO(sample): unbounded
++  rate_limit to: 10, within: 1.minute, only: :show
++
+   def show
+     @results = Book.search(params[:q])
+   end

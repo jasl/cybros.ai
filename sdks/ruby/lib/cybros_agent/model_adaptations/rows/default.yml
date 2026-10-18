@@ -1,0 +1,9 @@
+# Every reference no other row covers resolves here: plain kernel tool names.
+# enabled, and no extra prompt text. Model-specific changes require a row whose models cover it.
+format: 1
+row: default
+models: []
+tool_style: [nexus]
+tool_descriptions: []
+summarizer_prompt: null
+lead_hints: []

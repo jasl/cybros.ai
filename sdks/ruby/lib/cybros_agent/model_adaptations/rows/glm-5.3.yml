@@ -1,0 +1,12 @@
+# GLM uses the default tool names and prompt behavior. The entry is EXACT:
+# z-ai/glm-5.3-flash is another reference and resolves to the default row.
+# Widening it (`z-ai/glm-5.3:*` for the broker's variants) changes which
+# models read this row.
+format: 1
+row: glm-5.3
+models:
+  - z-ai/glm-5.3 # exact: the kernel's ref minus its provider segment
+tool_style: [nexus]
+tool_descriptions: []
+summarizer_prompt: null
+lead_hints: []

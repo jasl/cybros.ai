@@ -1,0 +1,20 @@
+<%# locals: (title:, workspace:, data_writable:, error: nil, validation_errors: nil) %>
+<% content_for :title, "#{title} · #{workspace.name}" %>
+<div class="space-y-6">
+  <header class="space-y-3">
+    <%= render "shared/back_navigation", path: workspace_path(workspace), label: workspace.name %>
+    <h1 class="text-xl font-medium wrap-anywhere"><%= title %></h1>
+    <%= render "workspaces/state_badge", workspace: workspace %>
+  </header>
+  <%= render "workspaces/navigation", workspace: workspace, current: :data %>
+  <% unless data_writable %>
+    <p role="status" class="alert alert-soft"><%= t("data_console.read_only") %></p>
+  <% end %>
+  <% if error %>
+    <div role="alert" class="alert alert-error alert-soft block space-y-2">
+      <p><%= error %></p>
+      <% if validation_errors.present? %><ul class="list-inside list-disc"><% validation_errors.each do |error| %><li><%= error %></li><% end %></ul><% end %>
+    </div>
+  <% end %>
+  <%= yield %>
+</div>

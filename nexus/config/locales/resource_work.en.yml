@@ -1,0 +1,11 @@
+en:
+  resource_work:
+    title: Agent work overview
+    open: Open work statistics
+    coverage: Only work you can currently read is included. Conversation runs use the answering agent recorded on their turn; standalone runs use their creator.
+    usage_coverage: Usage includes receipts attributed to this agent as consumer within conversations you can read. Human-submitted trials are attributed to the Human. Unattributed standalone usage is excluded. Unknown cost is not zero, and these amounts are not a balance or allowance.
+    agent_filter: Agent association
+    executor_filter: Executor association
+    executor_coverage: Executor association uses retained task targets and current claimants. Retrying a task can replace its claimant; collected task details are unavailable.
+    clear_resource: Clear resource filters
+    trial: Try an Agent

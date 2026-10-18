@@ -1,0 +1,8 @@
+<section class="space-y-3">
+  <h2 class="font-medium"><%= t("management_console.recent_work") %></h2>
+  <div class="divide-y divide-base-300 rounded-box border border-base-300">
+    <%= render recent_work %>
+    <% if recent_work.empty? %><p class="p-4 text-sm text-base-content/60"><%= t("management_console.no_work") %></p><% end %>
+  </div>
+  <%= link_to t("resource_work.title"), agent_work_report_path(agent), class: "link link-hover text-sm" %>
+</section>

@@ -1,0 +1,22 @@
+<%# locals: (execution:, return_to:) %>
+<article class="space-y-3 rounded-box border border-base-300 p-4" data-execution-id="<%= execution.fetch(:child_conversation_public_id) %>">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <%= link_to t("schedules_console.child_conversation"), conversation_path(execution.fetch(:child_conversation_public_id), return_to: return_to), class: "link link-hover font-medium" %>
+    <span class="badge badge-outline"><%= t("schedules_console.execution_statuses.#{execution.fetch(:status)}") %></span>
+  </div>
+  <dl class="grid gap-2 text-sm sm:grid-cols-2">
+    <div><dt class="text-base-content/60"><%= t("schedules_console.scheduled_for") %></dt><dd><%= schedule_time(execution.fetch(:scheduled_for)) %></dd></div>
+    <div><dt class="text-base-content/60"><%= t("schedules_console.created_at") %></dt><dd><%= schedule_time(execution.fetch(:created_at)) %></dd></div>
+  </dl>
+  <p class="font-mono text-xs text-base-content/50 wrap-anywhere"><%= execution.fetch(:input_public_id) %></p>
+  <div class="flex flex-wrap gap-3 text-sm">
+    <% if %w[queued blocked].include?(execution.fetch(:status)) && execution[:input_public_id] %>
+      <%= link_to t("schedules_console.view_input"), conversation_input_path(execution.fetch(:child_conversation_public_id), execution.fetch(:input_public_id), return_to: return_to), class: "btn btn-outline btn-sm" %>
+    <% elsif execution[:variant_public_id] %>
+      <%= link_to t("schedules_console.view_result"), conversation_turn_variant_path(execution.fetch(:child_conversation_public_id), execution.fetch(:turn_public_id), execution.fetch(:variant_public_id), return_to: return_to), class: "btn btn-outline btn-sm" %>
+    <% end %>
+    <% if execution[:run_public_id] %>
+      <%= link_to t("schedules_console.view_run"), run_path(execution.fetch(:run_public_id), return_to: return_to), class: "btn btn-ghost btn-sm" %>
+    <% end %>
+  </div>
+</article>

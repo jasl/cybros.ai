@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+
+# default_external + LANG for the children, so a bash tool's ruby/git/python
+# inherit UTF-8 — as exe/rho does.
+Encoding.default_external = Encoding::UTF_8
+require_relative "../lib/rho/acp"
+Rho::Locale.ensure_utf8!
+
+# THE ACP AGENT PROCESS: stdout is the wire, stderr is everything else.
+# `rho-acp [--mode bypass|ask|rules] [--model M] [--runner ID]` serves the
+# surface on stdio until EOF or a signal (exit 0); `rho-acp connect` runs
+# the ceremony on plain stdio; a usage error is the usage on stderr, exit 1.
+exit Rho::Acp::Agent::Cli.run(ARGV)

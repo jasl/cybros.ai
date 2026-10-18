@@ -1,0 +1,96 @@
+module CybrosAgent
+  module Platform
+    module AgentProjections
+      include Api::WorkspaceProjections
+      include Api::Fields
+    end
+
+    module AdministrationProjections
+      include Api::WorkspaceProjections
+      include Api::Fields
+    end
+
+    module DeploymentProjections
+      include Api::WorkspaceProjections
+      include Api::Fields
+    end
+
+    class Agents
+      include AgentProjections
+      PATH: String
+      def initialize: (dispatch: Api::_Dispatch) -> void
+      def list: (?after: String?, ?limit: Integer?) -> Api::Page[Agent]
+      def create: (display_name: String) -> Agent
+      def agent: (String public_id) -> AgentContext
+    end
+
+    class AgentContext
+      include AgentProjections
+      def initialize: (dispatch: Api::_Dispatch, path: String) -> void
+      def fetch: () -> AgentDetail
+      def configuration: () -> AgentConfigurationSnapshot
+      def budgets: () -> Budgets
+      def revoke_connection: () -> Agent
+      def remove: () -> Agent
+      def restore: () -> Agent
+      def api_keys: () -> APIKeys
+      def executor_api_keys: () -> APIKeys
+      def private_runners: () -> PrivateRunners
+    end
+
+    class PrivateRunners
+      include AgentProjections
+      def initialize: (dispatch: Api::_Dispatch, path: String) -> void
+      def list: (?after: String?, ?limit: Integer?) -> Api::Page[PrivateRunner]
+      def create: (display_name: String) -> PrivateRunner
+      def runner: (String public_id) -> PrivateRunnerContext
+    end
+
+    class PrivateRunnerContext
+      include AgentProjections
+      def initialize: (dispatch: Api::_Dispatch, path: String) -> void
+      def fetch: () -> PrivateRunner
+      def api_keys: () -> APIKeys
+    end
+
+    class APIKeys
+      include AgentProjections
+      def initialize: (dispatch: Api::_Dispatch, path: String, plane: String) -> void
+      def list: (?after: String?, ?limit: Integer?) -> Api::Page[APIKey]
+      def create: (name: String, ?note: String?) -> APIKeyGrant
+      def revoke: (String public_id) -> nil
+    end
+
+    class ModelUsage
+      include AdministrationProjections
+      def initialize: (dispatch: Api::_Dispatch) -> void
+      def report: (from: String, to: String, ?unit: String?, ?provider_id: String?, ?catalog_model_ref: String?, ?workload: String?, ?status: String?) -> UsageReport
+    end
+
+    class Deployment
+      include DeploymentProjections
+      PATH: String
+      def initialize: (dispatch: Api::_Dispatch) -> void
+      def fetch: () -> DeploymentState
+      def check_release: (?tag: String, ?backup: bool, ?timeout: Numeric) -> DeploymentState
+      def upgrade: (candidate: Hash[String, untyped], idempotency_key: String, ?backup: bool) -> DeploymentAccepted
+      def operation: (String public_id) -> DeploymentOperation
+    end
+
+    class DeploymentOperation
+      include DeploymentProjections
+      def initialize: (dispatch: Api::_Dispatch, path: String) -> void
+      def fetch: () -> DeploymentUpgrade
+      def log: (?cursor: String?) -> DeploymentLog
+      def stream: (?cursor: String?, ?last_event_id: String?) { (DeploymentEvent) -> void } -> nil
+    end
+  end
+
+  class PlatformClient < Api::BaseClient
+    include Api::WorkspaceProjections
+    def agents: () -> Platform::Agents
+    def budgets: (String user_public_id) -> Platform::Budgets
+    def model_usage: () -> Platform::ModelUsage
+    def deployment: () -> Platform::Deployment
+  end
+end

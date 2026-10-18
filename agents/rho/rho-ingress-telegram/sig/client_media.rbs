@@ -1,0 +1,9 @@
+module Rho
+  module IngressTelegram
+    class Client
+      def upload: (String method, Hash[untyped, untyped] params, bytes: String, filename: String,
+                   content_type: String, field: String | Symbol) -> untyped
+      def download: (String file_path, max_bytes: Integer) -> String
+    end
+  end
+end

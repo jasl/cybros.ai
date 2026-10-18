@@ -1,0 +1,11 @@
+<% content_for :title, t("resource_work.title") %>
+<div class="space-y-6">
+  <header class="space-y-2">
+    <%= link_to @agent.display_name, agent_path(@agent), class: "link link-hover text-sm" %>
+    <h1 class="text-xl font-medium"><%= t("resource_work.title") %></h1>
+    <p class="max-w-prose text-sm text-base-content/60"><%= t("resource_work.usage_coverage") %></p>
+  </header>
+  <%= render "usage_reports/summary", analysis: @analysis %>
+  <p class="text-sm"><%= t("usage_reports.execution", count: @analysis.execution.run_count, pruned: @analysis.execution.details_pruned_run_count) %></p>
+  <%= render "usage_reports/export", analysis: @analysis, path: usage_export_path, scope: { agent_public_id: @agent.public_id } %>
+</div>

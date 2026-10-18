@@ -1,0 +1,75 @@
+en:
+  budget_console:
+    my_balance: My balance
+    allowance: Agent allowance
+    balance: Balance
+    title: "%{name} · Budgets"
+    detail: Budget window and ledger
+    financial_only: These pages show amounts and financial entries. They do not grant access to conversations, model requests, or other activity.
+    allowance_coverage: Agent allowance consumption covers settlements made after allowance accounting was enabled. Previously settled history is not charged again.
+    measured_at: "Read at %{time} (UTC). Amounts are exact in the Account cost unit."
+    current: Current window
+    uncapped: There is no current usable window. Spending has no budget cap from this balance or allowance.
+    history: All windows
+    empty: No windows on this page.
+    credited_amount: Total credited
+    debited_amount: Total debited
+    headroom: Remaining amount (negative means a deficit)
+    cost_unit: Account cost unit
+    starts_at: Starts at
+    expires_at: Expires at (optional)
+    revoked_at: Revoked at
+    revoked_by: Revoked by Human UUID
+    reason: Reason (optional)
+    none: None
+    state: Usable now
+    usable: "Yes"
+    not_usable: "No"
+    ledger: View window and ledger
+    entries: Ledger entries
+    no_entries: No entries on this page.
+    entry_heading: "%{sequence} · %{kind}"
+    actor: "Human actor: %{public_id}"
+    order: Order
+    ascending: Earliest first
+    descending: Latest first
+    page_size: Per page
+    apply: Apply
+    history_pages: Budget window pages
+    entry_pages: Ledger entry pages
+    first_page: First page
+    next_page: Next page
+    back: All budget windows
+    open: Open budget window
+    opened: Budget window opened.
+    adjust: Adjust amount
+    adjusted: Adjustment saved.
+    adjustment_kind: Adjustment kind
+    credit: Add credit
+    debit: Deduct credit
+    amount: Amount
+    amount_help: Enter a nonnegative decimal amount with at most 18 decimal places. No currency conversion is performed.
+    time_help: Choose the date and time in UTC, including seconds. The start is inclusive and the expiry is exclusive; leave expiry blank for no end.
+    form_help: Your input is kept after an error. Retrying the same saved operation does not apply it twice.
+    adjust_help: Adjustments append a ledger entry. Expired and revoked windows can still receive a credit to repair a deficit; existing spending stays in its original window.
+    save_adjustment: Save adjustment
+    revoke: Revoke window
+    revoked: Budget window revoked.
+    revoke_help: Revocation removes this window's spending cap. It does not suspend the member, stop execution, or erase past spending.
+    revoke_confirmation: Revoke this window? Its spending cap will be removed. Without another usable window, this balance or allowance has no spending cap.
+    unavailable: Budget page unavailable
+    kinds:
+      initial_grant: Initial grant
+      credit_adjustment: Credit adjustment
+      debit_adjustment: Debit adjustment
+      charge: Model cost
+      allowance_consumption: Agent allowance consumption
+    errors:
+      not_authorized: You cannot manage this member's budget.
+      invalid: Check the amount, time window, and reason. Your input has been kept.
+      unit_unconfigured: Configure the Account cost unit before opening a budget.
+      overlap: This window overlaps another usable window. Your input has been kept.
+      starts_at_taken: A window already starts at this exact time. Choose another start.
+      insufficient_headroom: This deduction exceeds the window's remaining amount. Your input has been kept.
+      already_revoked: This window has already been revoked.
+      conflict: This form was already submitted with different values. Your input has been kept; open a new form for a different operation.

@@ -1,0 +1,9 @@
+<%# locals: (errors:) %>
+<% if errors.any? %>
+  <div role="alert" class="rounded-box border border-error/30 bg-error/10 p-4">
+    <h2 class="font-medium"><%= t("conversation_reading.needs_correction") %></h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-sm wrap-anywhere">
+      <% errors.each do |error| %><li><%= error %></li><% end %>
+    </ul>
+  </div>
+<% end %>

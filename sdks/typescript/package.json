@@ -1,0 +1,55 @@
+{
+  "name": "@cybros/agent",
+  "version": "0.1.0",
+  "description": "Typed server SDK for the Nexus Agent, Executor and Platform APIs",
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@11.11.0",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./realtime": {
+      "types": "./dist/realtime.d.ts",
+      "import": "./dist/realtime.js"
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json",
+    "typecheck": "pnpm run build && tsc -p tsconfig.check.json",
+    "test": "vitest run",
+    "test:node": "node --test test/runtime.mjs",
+    "test:package": "tsx scripts/package-smoke.ts",
+    "check": "pnpm run typecheck && pnpm run test && pnpm run test:node && pnpm run test:package"
+  },
+  "peerDependencies": {
+    "ws": "^8.18.0"
+  },
+  "peerDependenciesMeta": {
+    "ws": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4",
+    "ws": "^8.18.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jasl/cybros.ai.git",
+    "directory": "sdks/typescript"
+  }
+}

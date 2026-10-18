@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+package_root="$(pwd)/target/package/cybros-agent-0.1.0"
+consumer_root="$(mktemp -d "${TMPDIR:-/tmp}/cybros-rust-consumer.XXXXXX")"
+trap 'rm -rf "$consumer_root"' EXIT
+mkdir -p "$consumer_root/src"
+cat > "$consumer_root/Cargo.toml" <<TOML
+[package]
+name = "cybros-package-consumer"
+version = "0.0.0"
+edition = "2024"
+[dependencies]
+cybros-agent = { path = "$package_root" }
+[features]
+realtime = ["cybros-agent/realtime"]
+TOML
+printf '%s\n' '#![allow(dead_code)]' > "$consumer_root/src/guide.rs"
+awk '/^```rust$/ { copying = 1; next } /^```$/ && copying { exit } copying' ../../guides/build/sdk-rust.md >> "$consumer_root/src/guide.rs"
+cat > "$consumer_root/src/main.rs" <<'RUST'
+mod guide;
+use cybros_agent::{Client, ExecutorClient, PlatformClient, Field};
+use cybros_agent::types::requests::{CreateInput, ContextEstimate};
+fn main() -> cybros_agent::Result<()> {
+    let _ = Client::new("https://nexus.example", "member")?.workspace("workspace")?.conversation("conversation")?;
+    let _ = ExecutorClient::new("https://nexus.example", "executor")?.inbox_task("run", "task")?;
+    let _ = PlatformClient::new("https://nexus.example", "human")?.agents();
+    let _ = CreateInput { text: Field::Value("hello".into()), ..Default::default() };
+    let _ = ContextEstimate { prompt: Field::Value("hello".into()), render: Field::Value(true), ..Default::default() };
+    #[cfg(feature="realtime")]
+    let _ = cybros_agent::realtime::CableClient::member("https://nexus.example", "member")?;
+    Ok(())
+}
+RUST
+CARGO_TARGET_DIR="$(pwd)/target/package-consumer" cargo check --offline --manifest-path "$consumer_root/Cargo.toml"
+CARGO_TARGET_DIR="$(pwd)/target/package-consumer" cargo check --offline --manifest-path "$consumer_root/Cargo.toml" --all-features

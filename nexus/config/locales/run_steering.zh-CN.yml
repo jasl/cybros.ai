@@ -1,0 +1,31 @@
+zh-CN:
+  run_steering:
+    title: 文本纠正
+    target: 原 Run：%{id}
+    identifier: Input：%{id}
+    modes:
+      steer: 下一个模型边界
+      steer_now: 尽快处理
+    timing_scope: 已发出的模型请求不能修改。运行中的工具继续工作；此操作不会恢复已暂停的 Run，也不会处理审批或失败。
+    list_scope: 此处仅列出固定到此 Run、仍在等待的文本纠正。普通排队输入与其他执行的纠正另行查看。
+    empty: 没有等待中的纠正
+    empty_description: 此列表不能说明已消失的纠正如何结束。请打开该纠正的追踪页查看保留的证据。
+    pages: 文本纠正分页
+    follow: 追踪此纠正
+    cancel: 取消纠正
+    canceled: 已取消纠正。
+    states:
+      waiting: 等待处理
+      consumed: 已加入模型请求
+      canceled: 已取消
+      unknown: 无法确认处理结果
+    waiting_scope: 已为这次执行接受，仍在等待加入模型请求。
+    consumed_scope: 保留的事件表明，此纠正已加入原 Run 的一次模型请求。这不证明模型遵从了纠正、请求已成功或回复已完成。
+    consuming_task: 查看消费它的模型 Task
+    task_unavailable: 事件仍然保留，但对应的模型 Task 已不可用。
+    canceled_scope: 保留的事件表明，此纠正在消费前被取消。无法据此确定取消者或原因。
+    accepted_unknown: 已有接受记录，但没有足够的保留证据确认处理结果。不要仅因等待行消失而再次发送。
+    unknown_scope: 没有等待行或足够的保留事件可以确认结果。这不证明纠正从未被接受、消费或取消。
+    original_candidate: 查看原候选
+    retention_scope: 此页面读取当前行与保留事件。证据可能过期，它不是永久回执。
+    refused: 纠正被拒绝：%{reason}

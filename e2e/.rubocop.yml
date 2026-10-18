@@ -1,0 +1,68 @@
+# Omakase Ruby styling for Rails
+inherit_gem: { rubocop-rails-omakase: rubocop.yml }
+
+AllCops:
+  TargetRubyVersion: 4.0
+  # The evals corpus's fixture environments are the MODEL's material, not
+  # ours: a lint stand-in that reports a trailing space needs a file with
+  # one, a debugging task needs a bug (e2e/evals/tasks/<task>/environment/).
+  # The tasks' own Ruby (expected.rb, verification.rb, environment.rb)
+  # keeps the house style. The task probe's fixture projects
+  # (support/task_bench/fixtures/) are the model's material the same way: a
+  # nine-file lib/ to fan over, a method nothing calls.
+  # artifacts/ is gitignored scratch — a run's outputs, and at times a whole
+  # checkout a batch compared against — never code of this tree.
+  Exclude:
+    - "evals/tasks/**/environment/**/*"
+    - "support/task_bench/fixtures/**/*"
+    - "artifacts/**/*"
+
+# Note: RuboCop's server mode is a CLI feature, not a config section. If you
+# need deterministic lint in constrained/sandboxed environments, prefer running
+# RuboCop with `--no-server` and a writable `--cache-root`.
+
+# Overwrite or add rules to create your own house style
+
+# # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: true
+  EnforcedStyle: no_space
+  EnforcedStyleForEmptyBrackets: no_space
+
+Style/TrailingCommaInArrayLiteral:
+  Enabled: true
+  EnforcedStyleForMultiline: diff_comma
+
+Style/TrailingCommaInHashLiteral:
+  Enabled: true
+  EnforcedStyleForMultiline: diff_comma
+
+Layout/EmptyLinesAroundAccessModifier:
+  Enabled: true
+  EnforcedStyle: around
+
+# Disallow multiple empty lines at the end of Ruby files.
+Layout/TrailingEmptyLines:
+  Enabled: true
+  EnforcedStyle: final_newline
+
+Layout/IndentationStyle:
+  Enabled: true
+  EnforcedStyle: spaces
+  IndentationWidth: 2
+
+Style/StringLiterals:
+  Enabled: true
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  Enabled: true
+  EnforcedStyle: double_quotes
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+  EnforcedStyle: never
+
+Style/MissingElse:
+  Enabled: true
+  EnforcedStyle: case

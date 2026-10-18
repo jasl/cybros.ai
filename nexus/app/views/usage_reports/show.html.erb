@@ -1,0 +1,12 @@
+<% content_for :title, t("usage_reports.title") %>
+<div class="space-y-6">
+  <header class="space-y-2">
+    <%= render "shared/back_navigation", path: @return_to || (@workspace ? workspace_path(@workspace) : root_path), label: t("work_reading.back_to_overview") %>
+    <h1 class="text-xl font-medium"><%= t("usage_reports.title") %></h1>
+    <% if @workspace %><p class="wrap-anywhere"><%= @workspace.name %></p><% end %>
+    <% if @agent %><p class="wrap-anywhere"><%= @agent.display_name %></p><% end %>
+    <p class="max-w-prose text-sm text-base-content/60"><%= t("usage_analysis.member_coverage") %></p>
+  </header>
+  <%= render "usage_reports/summary", analysis: @analysis %>
+  <%= render "usage_reports/export", analysis: @analysis, path: usage_export_path, scope: { workspace_public_id: @workspace&.public_id, agent_public_id: @agent&.public_id }.compact %>
+</div>

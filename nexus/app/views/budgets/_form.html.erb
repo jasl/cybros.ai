@@ -1,0 +1,20 @@
+<%# locals: (draft:, opening:, cost_unit:, budget: nil, error: nil) %>
+<%= link_to t("budget_console.back"), budget_collection_path, class: "link link-hover text-sm", data: { turbo_frame: "_top" } %>
+<p class="text-sm"><%= t("budget_console.cost_unit") %>: <span class="font-mono wrap-anywhere"><%= cost_unit || t("budget_console.none") %></span></p>
+<p class="text-sm text-base-content/70"><%= t("budget_console.form_help") %></p>
+<%= form_with url: opening ? budget_collection_path : budget_detail_path(budget.fetch(:public_id)), method: opening ? :post : :patch, scope: :budget, data: { turbo_frame: "_top" }, class: "space-y-4" do |form| %>
+  <%= form.hidden_field :operation_key, value: draft["operation_key"] %>
+  <% if opening %>
+    <% %w[starts_at expires_at].each do |field| %>
+      <div><%= form.label field, t("budget_console.#{field}"), class: "mb-1 block text-sm font-medium" %><%= form.datetime_local_field field, value: budget_datetime_value(draft[field]), step: 1, required: field == "starts_at", class: "input w-full font-mono text-sm", aria: { describedby: "budget-time-help" } %></div>
+    <% end %>
+    <p id="budget-time-help" class="text-xs text-base-content/60"><%= t("budget_console.time_help") %></p>
+  <% else %>
+    <p class="text-sm"><%= t("budget_console.adjust_help") %></p>
+    <div><%= form.label :kind, t("budget_console.adjustment_kind"), class: "mb-1 block text-sm font-medium" %><%= form.select :kind, [[t("budget_console.credit"), "credit"], [t("budget_console.debit"), "debit"]], { selected: draft["kind"] }, class: "select w-full sm:max-w-xs" %></div>
+  <% end %>
+  <div><%= form.label :amount, t("budget_console.amount"), class: "mb-1 block text-sm font-medium" %><%= form.text_field :amount, value: draft["amount"], required: true, inputmode: "decimal", class: "input w-full font-mono", aria: { describedby: "budget-amount-help", invalid: error.present?.to_s } %></div>
+  <p id="budget-amount-help" class="text-xs text-base-content/60"><%= t("budget_console.amount_help") %></p>
+  <div><%= form.label :reason, t("budget_console.reason"), class: "mb-1 block text-sm font-medium" %><%= form.text_area :reason, value: draft["reason"], rows: 3, maxlength: UsageBudgets::REASON_MAX_LENGTH, class: "textarea w-full" %></div>
+  <%= form.submit t(opening ? "budget_console.open" : "budget_console.save_adjustment"), class: "btn btn-primary btn-sm" %>
+<% end %>

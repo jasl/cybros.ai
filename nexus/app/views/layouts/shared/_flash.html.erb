@@ -1,0 +1,16 @@
+<% if flash[:notice].present? || flash[:alert].present? %>
+  <div class="w-full space-y-2">
+    <% if flash[:notice].present? %>
+      <div role="alert" class="alert alert-success alert-soft">
+        <span class="iconify lucide--circle-check size-5" aria-hidden="true"></span>
+        <span><%= flash[:notice] %></span>
+      </div>
+    <% end %>
+    <% if flash[:alert].present? %>
+      <div role="alert" class="alert alert-error alert-soft">
+        <span class="iconify lucide--circle-alert size-5" aria-hidden="true"></span>
+        <span><%= flash[:alert] %></span>
+      </div>
+    <% end %>
+  </div>
+<% end %>

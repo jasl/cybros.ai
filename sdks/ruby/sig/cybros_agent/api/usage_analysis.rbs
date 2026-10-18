@@ -1,0 +1,124 @@
+module CybrosAgent
+  module Api
+    class AnalysisPercentiles < Data
+      attr_reader sample_count: Integer
+      attr_reader missing_count: Integer
+      attr_reader p50: Integer?
+      attr_reader p95: Integer?
+    end
+
+    class AnalysisCounters < Data
+      attr_reader request_count: Integer
+      attr_reader input_tokens: Integer
+      attr_reader cache_read_tokens: Integer
+      attr_reader cache_creation_tokens: Integer
+      attr_reader output_tokens: Integer
+      attr_reader reasoning_tokens: Integer
+      attr_reader total_tokens: Integer
+      attr_reader cost_amount: String
+      attr_reader cost_complete: bool
+      attr_reader amount_sample_count: Integer
+    end
+
+    class AnalysisModelLatency < Data
+      attr_reader duration_ms: AnalysisPercentiles
+      attr_reader time_to_first_token_ms: AnalysisPercentiles
+    end
+
+    class AnalysisGroup < Data
+      attr_reader value: String
+      attr_reader totals: AnalysisCounters
+    end
+
+    class AnalysisBreakdown < Data
+      attr_reader group_by: String
+      attr_reader rank_by: String
+      attr_reader limit: Integer
+      attr_reader total_group_count: Integer
+      attr_reader groups: Array[AnalysisGroup]
+      attr_reader other: AnalysisCounters
+    end
+
+    class AnalysisModelUsage < Data
+      attr_reader totals: AnalysisCounters
+      attr_reader status_counts: Hash[String, Integer]
+      attr_reader latency: AnalysisModelLatency
+      attr_reader breakdown: AnalysisBreakdown
+    end
+
+    class ModelUsageAnalysis < Data
+      attr_reader from: String
+      attr_reader to: String
+      attr_reader as_of: String
+      attr_reader cost_unit: String?
+      attr_reader model_usage: AnalysisModelUsage
+    end
+
+    class AnalysisExecutionLatency < Data
+      attr_reader delivery_ms: AnalysisPercentiles
+      attr_reader completion_ms: AnalysisPercentiles
+    end
+
+    class AnalysisToolGroup < Data
+      attr_reader tool_name: String
+      attr_reader task_count: Integer
+      attr_reader status_counts: Hash[String, Integer]
+      attr_reader error_result_count: Integer
+      attr_reader latency: AnalysisPercentiles
+    end
+
+    class AnalysisTools < Data
+      attr_reader task_count: Integer
+      attr_reader status_counts: Hash[String, Integer]
+      attr_reader error_result_count: Integer
+      attr_reader latency: AnalysisPercentiles
+      attr_reader total_group_count: Integer
+      attr_reader groups: Array[AnalysisToolGroup]
+      attr_reader other_task_count: Integer
+    end
+
+    class AnalysisExecution < Data
+      attr_reader run_count: Integer
+      attr_reader retained_run_count: Integer
+      attr_reader details_pruned_run_count: Integer
+      attr_reader status_counts: Hash[String, Integer]
+      attr_reader delivered_count: Integer
+      attr_reader undelivered_count: Integer
+      attr_reader completed_count: Integer
+      attr_reader uncompleted_count: Integer
+      attr_reader latency: AnalysisExecutionLatency
+      attr_reader tools: AnalysisTools
+    end
+
+    class WorkAnalysis < Data
+      attr_reader from: String
+      attr_reader to: String
+      attr_reader as_of: String
+      attr_reader cost_unit: String?
+      attr_reader model_usage: AnalysisModelUsage
+      attr_reader workspace_public_id: String?
+      attr_reader agent_public_id: String?
+      attr_reader execution: AnalysisExecution
+    end
+
+    module UsageAnalysisProjections
+      include Parsing
+      SHAPES: Hash[Class, Hash[Symbol, untyped]]
+    end
+
+    class WorkQueries
+      include UsageAnalysisProjections
+      def analysis: (?workspace_public_id: String?, ?agent_public_id: String?, ?from: String?, ?to: String?,
+        ?group_by: String?, ?rank_by: String?, ?limit: Integer?, ?provider_id: String?, ?catalog_model_ref: String?,
+        ?workload: String?, ?status: String?) -> WorkAnalysis
+    end
+  end
+
+  module Platform
+    class ModelUsage
+      include Api::UsageAnalysisProjections
+      def analysis: (?from: String?, ?to: String?, ?group_by: String?, ?rank_by: String?, ?limit: Integer?,
+        ?provider_id: String?, ?catalog_model_ref: String?, ?workload: String?, ?status: String?) -> Api::ModelUsageAnalysis
+    end
+  end
+end

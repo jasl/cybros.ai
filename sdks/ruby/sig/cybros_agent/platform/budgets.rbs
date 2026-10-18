@@ -1,0 +1,79 @@
+module CybrosAgent
+  module Platform
+    class Budget < Data
+      attr_reader public_id: String
+      attr_reader user_public_id: String
+      attr_reader user_kind: String
+      attr_reader credited_amount: String
+      attr_reader debited_amount: String
+      attr_reader headroom: String
+      attr_reader cost_unit: String
+      attr_reader starts_at: String
+      attr_reader expires_at: String?
+      attr_reader revoked_at: String?
+      attr_reader revoked_by_public_id: String?
+      attr_reader revoke_reason: String?
+      attr_reader usable: bool
+    end
+
+    class BudgetEntry < Data
+      attr_reader sequence: Integer
+      attr_reader kind: String
+      attr_reader amount: String
+      attr_reader reason: String?
+      attr_reader operation_key: String
+      attr_reader created_at: String
+    end
+
+    class BudgetLedgerEntry < Data
+      attr_reader public_id: String
+      attr_reader sequence: Integer
+      attr_reader kind: String
+      attr_reader amount: String
+      attr_reader cost_unit: String
+      attr_reader actor_public_id: String?
+      attr_reader reason: String?
+      attr_reader created_at: String
+    end
+
+    class BudgetAdjustment < Data
+      attr_reader budget: Budget
+      attr_reader entry: BudgetEntry
+    end
+
+    class BudgetRead < Data
+      attr_reader budget: Budget
+      attr_reader measured_at: String
+    end
+
+    class BudgetOverview < Data
+      attr_reader user_public_id: String
+      attr_reader user_kind: String
+      attr_reader cost_unit: String?
+      attr_reader measured_at: String
+      attr_reader current_budget: Budget?
+      attr_reader items: Array[Budget]
+      attr_reader next_after: String?
+    end
+
+    module BudgetProjections
+      include Api::WorkspaceProjections
+      include Api::Fields
+      SHAPES: Hash[Class, Hash[Symbol, untyped]]
+    end
+
+    class BudgetReads
+      include BudgetProjections
+      def initialize: (dispatch: Api::_Dispatch, path: String) -> void
+      def list: (?after: String?, ?limit: Integer?, ?order: String?) -> BudgetOverview
+      def fetch: (String public_id) -> BudgetRead
+      def entries: (String public_id, ?after: String?, ?limit: Integer?, ?order: String?) -> Api::Page[BudgetLedgerEntry]
+    end
+
+    class Budgets < BudgetReads
+      def open: (amount: String, starts_at: String, idempotency_key: String, ?expires_at: String?, ?reason: String?) -> Budget
+      def adjust: (String public_id, kind: String, amount: String, idempotency_key: String, ?reason: String?) -> BudgetAdjustment
+      def revoke: (String public_id, idempotency_key: String, ?reason: String?) -> Budget
+    end
+  end
+end

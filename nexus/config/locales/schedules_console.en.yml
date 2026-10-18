@@ -1,0 +1,76 @@
+en:
+  schedules_console:
+    schedules: Schedules
+    scope_description: Browse saved schedules in conversations you can read. Each execution has its own access permissions.
+    workspace: Workspace
+    all_workspaces: All readable workspaces
+    status: Schedule status
+    all_statuses: All statuses
+    filter: Apply filters
+    empty: No readable schedules match these filters.
+    untitled: Untitled schedule
+    not_set: None
+    next_page: Next page
+    refresh: Refresh
+    read_at: "Read at %{at}"
+    back_to_schedules: Back to schedules
+    clock: Timing
+    next_run: Next run
+    last_enqueued: Last triggered
+    last_error: Last scheduling issue
+    clock_description: Completed refers to the schedule. Check the latest execution to see whether the work has finished successfully.
+    pause: Pause schedule
+    resume: Resume schedule
+    cancel: Cancel schedule
+    run_now: Run now
+    submitting: Submitting…
+    command_accepted: Schedule command accepted.
+    command_scope: Pause stops future runs. Work already started continues. Run now starts an extra run without changing the schedule. If the response is lost, check the history before trying again.
+    cancel_confirmation: Cancel this schedule and remove its waiting input? Work that has already started continues; use its ordinary Stop control to stop it.
+    read_only: You can read this schedule, but cannot change it.
+    saved_instructions: Saved instructions
+    creator: Created by
+    answerer: Answering agent
+    model: Saved model
+    saved_configuration: Saved execution configuration
+    last_execution: Latest execution
+    execution_history: Execution history
+    execution_scope: Each run has its own conversation. Its result stays linked here even if you continue that conversation or regenerate a reply.
+    no_visible_execution: No executions are available to view.
+    no_latest_execution: No latest execution is available. Check the history for earlier runs.
+    child_conversation: Open execution conversation
+    scheduled_for: Scheduled for
+    created_at: Created at
+    view_input: View waiting input
+    view_result: View result
+    view_run: Inspect run
+    exact_result: Execution result
+    exact_result_description: This is the reply produced by this execution. Later replies or regenerated versions do not replace it here.
+    back_to_result_source: Back to previous page
+    statuses:
+      active: Active
+      paused: Paused
+      canceled: Canceled
+      completed: Completed
+    execution_statuses:
+      queued: Queued
+      blocked: Blocked
+      pending: Pending
+      running: Running
+      paused: Paused
+      needs_attention: Needs attention
+      canceling: Stopping
+      completed: Completed
+      failed: Failed
+      timed_out: Timed out
+      canceled: Canceled
+    rules:
+      once: "Once at %{at}"
+      interval: "Every %{seconds} seconds, starting %{at}"
+      daily: "Daily at %{time} (%{zone})"
+    refusals:
+      execution_in_progress: The previous execution is still unfinished. Open its input or run before trying again.
+      schedule_finished: This schedule is already completed or canceled.
+      not_authorized: The current member or original creator can no longer write to this conversation.
+      answerer_not_eligible: The saved answering agent is no longer eligible for this conversation.
+      invalid_input: The saved input could not be accepted. Review the schedule through your agent application.

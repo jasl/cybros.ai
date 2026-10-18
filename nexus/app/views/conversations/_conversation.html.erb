@@ -1,0 +1,7 @@
+<article class="flex flex-wrap items-start justify-between gap-3 p-4">
+  <div class="min-w-0 space-y-1">
+    <%= link_to conversation_title(conversation), conversation_path(conversation, return_to: request.fullpath), class: "link link-hover font-medium wrap-anywhere" %>
+    <p class="text-sm text-base-content/60"><%= conversation.workspace.name %> · <%= t(conversation.archived? ? "conversation_console.archived" : "conversation_console.open") %></p>
+  </div>
+  <time class="text-sm text-base-content/60" datetime="<%= conversation.last_activity_at.iso8601 %>"><%= l(conversation.last_activity_at, format: :short) %></time>
+</article>

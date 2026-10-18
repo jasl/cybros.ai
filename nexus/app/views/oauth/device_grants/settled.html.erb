@@ -1,0 +1,69 @@
+<% subject = device_grant_subject(@grant) %>
+<% content_for :title, t("oauth.device_grants.settled.device_connection") %>
+<% content_for :page_owned_flash, "oauth-device-grant" %>
+
+<div class="mx-auto max-w-xl space-y-6">
+  <header class="space-y-1">
+    <h1 class="text-2xl font-semibold tracking-tight"><%= t("oauth.device_grants.settled.device_connection") %></h1>
+  </header>
+
+  <section aria-label="<%= t("oauth.device_grants.settled.connection_status") %>" class="rounded-box border border-base-300 bg-base-200">
+    <div class="space-y-3 px-5 py-5 text-sm leading-relaxed sm:px-6">
+      <% if flash[:alert].present? %>
+        <div role="alert" class="alert alert-error alert-soft">
+          <span class="iconify lucide--circle-alert size-5" aria-hidden="true"></span>
+          <span class="hyphens-none"><%= flash[:alert] %></span>
+        </div>
+      <% end %>
+
+      <% case @grant.status %>
+      <% when "connected" %>
+        <p class="hyphens-none font-medium"><%= t("oauth.device_grants.settled.connection_ready_waiting_for_the_subject_to_finish_connecting", subject: (subject)) %></p>
+        <% if @grant.runner_only_connection? %>
+          <% machine = device_grant_machine_label(@grant) %>
+          <p class="hyphens-none text-base-content/60">
+            <% if @grant.agent_private_runner_connection? %>
+              <%= t("oauth.device.agent_private_runner") %>
+            <% elsif @grant.selects_account_wide? %>
+              <%= t("oauth.device_grants.settled.this_subject_will_be_available_account_wide_for_authorized", subject: (machine)) %>
+            <% else %>
+              <%= t("oauth.device_grants.settled.this_subject_will_be_private_to_agents_managed_by", subject: (machine)) %>
+            <% end %>
+          </p>
+        <% elsif @grant.combined_connection? %>
+          <p class="hyphens-none text-base-content/60"><%= t("oauth.device.combined_runner") %></p>
+        <% end %>
+        <p class="hyphens-none text-base-content/60">
+          <%= t("oauth.device_grants.settled.nothing_is_saved_until_the_program_finishes_you_can") %>
+        </p>
+      <% when "canceled" %>
+        <p class="hyphens-none"><%= t("oauth.device_grants.settled.this_connection_was_canceled_no_credential_was_shared_with", subject: (subject)) %></p>
+      <% when "expired" %>
+        <p class="hyphens-none"><%= t("oauth.device_grants.settled.this_request_expired_return_to_the_subject_and_start", subject: (subject)) %></p>
+      <% when "consumed" %>
+        <p class="hyphens-none"><%= t("oauth.device_grants.settled.this_connection_is_complete_the_subject_collected_its_credential", subject: (subject)) %></p>
+      <% when "invalidated" %>
+        <p class="hyphens-none"><%= t("oauth.device_grants.settled.this_request_became_invalid_before_the_subject_finished_connecting", subject: (subject)) %></p>
+      <% else %>
+        <p class="hyphens-none"><%= t("oauth.device_grants.settled.this_connection_is_no_longer_pending") %></p>
+      <% end %>
+    </div>
+
+    <footer class="flex flex-col gap-3 border-t border-base-300 px-5 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:px-6">
+      <% if @grant.runner_only_connection? %>
+        <%= link_to t("runners.index.my_runners"), runners_path, class: "btn btn-ghost btn-sm" %>
+        <% if @connected_runner %>
+          <%= link_to t("resource_management.view_runner"), runner_path(@connected_runner), class: "btn btn-primary btn-sm" %>
+        <% end %>
+      <% end %>
+      <% if @grant.connected? %>
+        <%= link_to t("runner_connection.refresh"), oauth_device_grant_path(@grant), class: "btn btn-outline btn-sm" %>
+        <%= form_with url: oauth_device_grant_cancellation_path(@grant) do |form| %>
+          <%= hidden_field_tag :return_to, oauth_device_grant_path(@grant) %>
+          <%= form.submit t("oauth.device_grants.settled.cancel_connection"), name: nil, class: "btn btn-ghost btn-sm w-full sm:w-auto" %>
+        <% end %>
+      <% end %>
+      <%= link_to t("oauth.device_grants.settled.back_to_code_entry"), oauth_device_path, class: "btn btn-ghost btn-sm" %>
+    </footer>
+  </section>
+</div>

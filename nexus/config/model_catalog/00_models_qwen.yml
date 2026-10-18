@@ -1,0 +1,28 @@
+schema_version: cybros.model_catalog.v1
+# Explicit model facts shared by provider routes. Serving limits may override
+# the complete limits block; protocol options and pricing stay on each route.
+model_definitions:
+  qwen3.8-max-0902:
+    capabilities:
+      input_modalities: [image]
+      limits:
+        combined_input_output_tokens: 1000000
+        output_tokens: 131072
+      reasoning:
+        efforts: [minimal, low, medium, high, xhigh]
+        default_effort: xhigh
+        default_enabled: true
+  qwen3.8-flash-next:
+    # The official Qwen Flash-Next model card identifies Flash as the
+    # API version based on these weights. Max has no such tokenizer claim.
+    token_counter:
+      kind: huggingface
+      tokenizer_id: Qwen/Qwen3.8-Flash-Next
+    capabilities:
+      input_modalities: [image]
+      limits:
+        combined_input_output_tokens: 1000000
+        output_tokens: 131072
+      reasoning:
+        disable_supported: true
+        default_enabled: true

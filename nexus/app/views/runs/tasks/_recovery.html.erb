@@ -1,0 +1,25 @@
+<% if cancel_branch || compact || compaction_step %>
+  <section class="space-y-3 rounded-box border border-base-300 p-4" aria-labelledby="task-recovery-heading">
+    <h3 id="task-recovery-heading" class="font-medium"><%= t("runs_console.local_recovery") %></h3>
+    <% if cancel_branch %>
+      <p class="text-sm text-base-content/70"><%= t("runs_console.branch_cancel_help") %></p>
+      <%= button_to t("runs_console.cancel_branch"), run_task_cancel_path(run, task.node_key, return_to: work_return_path(run_tasks_path(run))),
+        class: "btn btn-warning btn-outline btn-sm", form: { data: { turbo_confirm: t("runs_console.confirm_cancel_branch") } },
+        data: { turbo_submits_with: t("runs_console.submitting") } %>
+    <% end %>
+    <% if compact %>
+      <p class="text-sm text-base-content/70"><%= t("runs_console.compaction_help") %></p>
+      <%= button_to t("runs_console.compact"), run_task_compact_path(run, task.node_key, return_to: work_return_path(run_tasks_path(run))),
+        class: "btn btn-sm", form: { data: { turbo_confirm: t("runs_console.confirm_compact") } },
+        data: { turbo_submits_with: t("runs_console.submitting") } %>
+    <% end %>
+    <% if compaction_step %>
+      <p class="text-sm" role="status"><%= t("runs_console.compaction_states.#{compaction_state}") %></p>
+      <%= link_to t("runs_console.compaction_step"), run_task_path(run, compaction_step.node_key, return_to: request.fullpath), class: "link" %>
+      <span class="badge badge-outline"><%= work_status_label(compaction_step.status) %></span>
+    <% end %>
+    <% if run.paused? && (compact || compaction_step) %>
+      <p class="text-sm text-base-content/70"><%= t("runs_console.compaction_paused") %></p>
+    <% end %>
+  </section>
+<% end %>

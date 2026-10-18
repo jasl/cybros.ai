@@ -1,0 +1,17 @@
+<%# locals: (target:, personal:, back_path:, title:, error: nil) %>
+<% content_for :title, title %>
+<% content = capture do %>
+  <section class="min-w-0 space-y-5">
+    <% unless personal %><%= render "shared/back_navigation", path: back_path, label: target.display_name %><% end %>
+    <h1 class="text-xl font-medium wrap-anywhere"><%= title %></h1>
+    <p class="text-sm text-base-content/70"><%= t("budget_console.financial_only") %></p>
+    <% if target.agent? %><p class="text-sm text-base-content/70"><%= t("budget_console.allowance_coverage") %></p><% end %>
+    <% if error %><div role="alert" class="alert alert-error alert-soft"><%= error %></div><% end %>
+    <%= yield %>
+  </section>
+<% end %>
+<% if personal %>
+  <%= render layout: "settings/shell", locals: { current: :budgets } do %><%= content %><% end %>
+<% else %>
+  <%= content %>
+<% end %>

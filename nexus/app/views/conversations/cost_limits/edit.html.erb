@@ -1,0 +1,36 @@
+<% content_for :title, t("work_recovery.cost_limit.title") %>
+<div class="mx-auto max-w-2xl space-y-6">
+  <%= render "shared/back_navigation", path: work_return_path(conversation_path(@conversation)), label: conversation_title(@conversation) %>
+  <h1 class="text-xl font-medium"><%= t("work_recovery.cost_limit.title") %></h1>
+  <p class="text-sm text-base-content/70"><%= t("work_recovery.cost_limit.explanation") %></p>
+  <p class="text-sm text-base-content/70"><%= t("work_recovery.cost_limit.no_restart") %></p>
+  <section class="space-y-2" aria-label="<%= t("conversation_console.usage") %>">
+    <%= render "shared/facts_panel", facts: {
+      t("conversation_console.known_cost") => "#{@usage.fetch('cost_amount')} #{@conversation.account.cost_unit}",
+      t("conversation_console.cost_limit") => @current_limit&.to_s("F") || t("conversation_console.no_limit"),
+    } %>
+    <p class="text-sm text-base-content/60"><%= t("conversation_console.usage_scope") %></p>
+    <% unless @usage.fetch("cost_complete") %><p class="text-sm text-warning"><%= t("conversation_console.cost_incomplete") %></p><% end %>
+    <% if @conversation.account.cost_unit.blank? %><p class="text-sm text-warning"><%= t("work_recovery.cost_limit.no_unit") %></p><% end %>
+  </section>
+  <% if @form_errors.present? %>
+    <div role="alert" class="alert alert-error"><ul><% @form_errors.each do |error| %><li><%= error %></li><% end %></ul></div>
+  <% end %>
+  <% if @current_conversation %>
+    <p class="text-sm"><%= t("work_recovery.cost_limit.current", amount: @current_conversation.cost_limit&.to_s("F") || t("conversation_console.no_limit"), unit: @conversation.account.cost_unit) %></p>
+  <% end %>
+  <%= form_with url: conversation_cost_limit_path(@conversation), method: :patch, scope: :cost_limit, class: "space-y-4" do |form| %>
+    <%= hidden_field_tag :return_to, work_return_path(conversation_path(@conversation)) %>
+    <%= form.hidden_field :lock_version, value: @submitted_lock_version %>
+    <div class="space-y-2">
+      <%= form.label :amount, t("work_recovery.cost_limit.amount", unit: @conversation.account.cost_unit.presence || t("work_recovery.cost_limit.unit_missing")), class: "label" %>
+      <%= form.text_field :amount, value: @submitted_amount, inputmode: "decimal", class: "input w-full", aria: { describedby: "cost-limit-help" } %>
+      <p id="cost-limit-help" class="text-sm text-base-content/60"><%= t("work_recovery.cost_limit.amount_help") %></p>
+    </div>
+    <% if @current_conversation %>
+      <%= button_tag t("work_recovery.cost_limit.save_current"), name: "cost_limit[lock_version]", value: @current_conversation.lock_version, class: "btn btn-primary" %>
+    <% else %>
+      <%= form.submit t("work_recovery.cost_limit.save"), class: "btn btn-primary" %>
+    <% end %>
+  <% end %>
+</div>

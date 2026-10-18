@@ -1,0 +1,86 @@
+<% content_for :title, t("agents.index.my_agents") %>
+
+<div class="space-y-8">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight"><%= t("agents.index.my_agents") %></h1>
+      <p class="text-sm text-base-content/60"><%= t("agent_resources.index_description") %></p>
+    </div>
+    <%= link_to t("agents.index.connect_agent"), agent_connection_path, class: "btn btn-primary btn-sm" %>
+  </header>
+
+  <%= render "agents/filters", path: agents_path, query_max_length: AgentsController::SEARCH_QUERY_MAX_LENGTH %>
+
+  <% if @agents.any? %>
+    <section class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-200">
+      <table class="table">
+        <thead>
+          <tr>
+            <th><%= t("agents.index.program") %></th>
+            <th><%= t("agents.index.defined_by") %></th>
+            <th><%= t("agents.index.status") %></th>
+            <th><%= t("agents.index.registration") %></th>
+            <th><%= t("agents.index.credential_readiness") %></th>
+            <th class="text-end"><%= t("agents.index.action") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @agents.each do |agent| %>
+            <% address = @agent_addresses[agent.id] %>
+            <% readiness = @agent_credential_readiness.fetch(address&.id, :no_credential) %>
+            <tr data-agent-id="<%= agent.public_id %>">
+              <td>
+                <%= link_to agent.display_name, agent_path(agent), class: "link link-hover block font-medium wrap-anywhere" %>
+                <span class="block text-xs text-base-content/60 wrap-anywhere">@<%= agent.handle %></span>
+                <% if agent.description.present? %>
+                  <span class="block text-sm text-base-content/60 wrap-anywhere"><%= agent.description %></span>
+                <% end %>
+              </td>
+              <td class="text-sm text-base-content/60" data-defined-by>
+                <%# A named definition: the paired program that declared it and how long it lives. %>
+                <% if agent.named_agent? %>
+                  <span class="block wrap-anywhere"><%= agent.derived_from&.display_name || t("agents.index.removed_program") %></span>
+                  <span class="whitespace-nowrap"><%= t("agents.named_agent_scopes.#{agent.named_agent_scope}") %></span>
+                <% else %>
+                  <%= t("agents.index.not_defined") %>
+                <% end %>
+              </td>
+              <td>
+                <span class="<%= badge_classes(agent.active?, tone: :success, extra: "whitespace-nowrap") %>">
+                  <%= agent.active? ? t("agents.index.active") : t("agents.index.removed") %>
+                </span>
+              </td>
+              <td>
+                <% if agent.named_agent? %>
+                  <span class="text-sm"><%= t("agent_resources.shared_title") %></span>
+                  <p class="mt-1 text-xs text-base-content/60"><%= t("agent_resources.no_own_registration") %></p>
+                <% else %>
+                  <span class="<%= badge_classes(address, tone: :info, extra: "whitespace-nowrap") %>"><%= address ? t("agents.index.registered") : t("management_console.no_executor") %></span>
+                <% end %>
+              </td>
+              <td>
+                <% if agent.named_agent? %>
+                  <% shared_address = @agent_application_addresses[agent.id] %>
+                  <p class="text-xs text-base-content/60">
+                    <%= shared_address ? t("agent_resources.shared_readiness", readiness: t("executors.credential_readiness.#{@agent_credential_readiness.fetch(shared_address.id)}")) : t("agent_resources.shared_unavailable") %>
+                  </p>
+                <% else %>
+                  <span class="<%= badge_classes(readiness == :ready, tone: :success, extra: "whitespace-nowrap") %>"><%= t("executors.credential_readiness.#{readiness}") %></span>
+                <% end %>
+              </td>
+              <td class="text-end">
+                <%= link_to t("agents.index.manage"), agent_path(agent), class: "btn btn-ghost btn-sm", aria: { label: t("agents.index.manage_member", member: (agent.display_name)) } %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </section>
+
+    <%= render "shared/pagination_footer", pagy: @agents_pagy, noun: "agents", aria_label: t("agents.index.agent_pages") %>
+  <% else %>
+    <%= render "shared/empty_state",
+      title: t(@query.present? || @status ? "agent_resources.no_matches" : "agents.index.no_agents"),
+      description: t(@query.present? || @status ? "agent_resources.no_matches_hint" : "agents.index.an_agent_program_connects_itself_start_it_on_the") %>
+  <% end %>
+</div>

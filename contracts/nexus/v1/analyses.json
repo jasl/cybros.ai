@@ -1,0 +1,666 @@
+{
+  "member_path": "/agent_api/v1/work_analysis",
+  "admin_path": "/api/v1/admin/model_usage/analysis",
+  "group_by_values": [
+    "provider_id",
+    "catalog_model_ref",
+    "workload",
+    "status"
+  ],
+  "rank_by_values": [
+    "request_count",
+    "total_tokens",
+    "cost_amount"
+  ],
+  "default_limit": 10,
+  "max_limit": 50,
+  "max_window_days": 90,
+  "valid_member_fixture": {
+    "analysis": {
+      "from": "2026-10-15T00:00:00.000000Z",
+      "to": "2026-10-16T00:00:00.000000Z",
+      "as_of": "2026-10-16T01:00:00Z",
+      "cost_unit": "USD",
+      "model_usage": {
+        "totals": {
+          "request_count": 3,
+          "input_tokens": 900,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "output_tokens": 120,
+          "reasoning_tokens": 0,
+          "total_tokens": 1020,
+          "cost_amount": "0.040500000000000001",
+          "cost_complete": false,
+          "amount_sample_count": 2
+        },
+        "status_counts": {
+          "succeeded": 2,
+          "failed": 0,
+          "discarded": 0,
+          "abandoned": 1
+        },
+        "latency": {
+          "duration_ms": {
+            "sample_count": 2,
+            "missing_count": 1,
+            "p50": 0,
+            "p95": 260
+          },
+          "time_to_first_token_ms": {
+            "sample_count": 0,
+            "missing_count": 3,
+            "p50": null,
+            "p95": null
+          }
+        },
+        "breakdown": {
+          "group_by": "provider_id",
+          "rank_by": "request_count",
+          "limit": 1,
+          "total_group_count": 2,
+          "other": {
+            "request_count": 1,
+            "input_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_creation_tokens": 0,
+            "output_tokens": 0,
+            "reasoning_tokens": 0,
+            "total_tokens": 0,
+            "cost_amount": "0.0",
+            "cost_complete": true,
+            "amount_sample_count": 1
+          },
+          "groups": [
+            {
+              "value": "dev",
+              "totals": {
+                "request_count": 2,
+                "input_tokens": 900,
+                "cache_read_tokens": 0,
+                "cache_creation_tokens": 0,
+                "output_tokens": 120,
+                "reasoning_tokens": 0,
+                "total_tokens": 1020,
+                "cost_amount": "0.040500000000000001",
+                "cost_complete": false,
+                "amount_sample_count": 1
+              }
+            }
+          ]
+        }
+      },
+      "workspace_public_id": null,
+      "agent_public_id": null,
+      "execution": {
+        "run_count": 2,
+        "retained_run_count": 2,
+        "details_pruned_run_count": 0,
+        "status_counts": {
+          "pending": 0,
+          "running": 1,
+          "paused": 0,
+          "needs_attention": 0,
+          "canceling": 0,
+          "completed": 1,
+          "canceled": 0
+        },
+        "delivered_count": 1,
+        "undelivered_count": 1,
+        "completed_count": 1,
+        "uncompleted_count": 1,
+        "latency": {
+          "delivery_ms": {
+            "sample_count": 1,
+            "missing_count": 1,
+            "p50": 42,
+            "p95": 42
+          },
+          "completion_ms": {
+            "sample_count": 1,
+            "missing_count": 1,
+            "p50": 42,
+            "p95": 42
+          }
+        },
+        "tools": {
+          "task_count": 2,
+          "status_counts": {
+            "queued": 0,
+            "needs_approval": 0,
+            "running": 0,
+            "dispatched": 0,
+            "awaiting_input": 0,
+            "completed": 1,
+            "failed": 1,
+            "canceled": 0,
+            "timed_out": 0,
+            "uncertain": 0,
+            "skipped": 0
+          },
+          "error_result_count": 1,
+          "total_group_count": 1,
+          "other_task_count": 0,
+          "latency": {
+            "sample_count": 1,
+            "missing_count": 1,
+            "p50": 42,
+            "p95": 42
+          },
+          "groups": [
+            {
+              "tool_name": "read_file",
+              "task_count": 2,
+              "status_counts": {
+                "queued": 0,
+                "needs_approval": 0,
+                "running": 0,
+                "dispatched": 0,
+                "awaiting_input": 0,
+                "completed": 1,
+                "failed": 1,
+                "canceled": 0,
+                "timed_out": 0,
+                "uncertain": 0,
+                "skipped": 0
+              },
+              "error_result_count": 1,
+              "latency": {
+                "sample_count": 1,
+                "missing_count": 1,
+                "p50": 42,
+                "p95": 42
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "valid_admin_fixture": {
+    "analysis": {
+      "from": "2026-10-15T00:00:00.000000Z",
+      "to": "2026-10-16T00:00:00.000000Z",
+      "as_of": "2026-10-16T01:00:00Z",
+      "cost_unit": "USD",
+      "model_usage": {
+        "totals": {
+          "request_count": 3,
+          "input_tokens": 900,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "output_tokens": 120,
+          "reasoning_tokens": 0,
+          "total_tokens": 1020,
+          "cost_amount": "0.040500000000000001",
+          "cost_complete": false,
+          "amount_sample_count": 2
+        },
+        "status_counts": {
+          "succeeded": 2,
+          "failed": 0,
+          "discarded": 0,
+          "abandoned": 1
+        },
+        "latency": {
+          "duration_ms": {
+            "sample_count": 2,
+            "missing_count": 1,
+            "p50": 0,
+            "p95": 260
+          },
+          "time_to_first_token_ms": {
+            "sample_count": 0,
+            "missing_count": 3,
+            "p50": null,
+            "p95": null
+          }
+        },
+        "breakdown": {
+          "group_by": "provider_id",
+          "rank_by": "request_count",
+          "limit": 1,
+          "total_group_count": 2,
+          "other": {
+            "request_count": 1,
+            "input_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_creation_tokens": 0,
+            "output_tokens": 0,
+            "reasoning_tokens": 0,
+            "total_tokens": 0,
+            "cost_amount": "0.0",
+            "cost_complete": true,
+            "amount_sample_count": 1
+          },
+          "groups": [
+            {
+              "value": "dev",
+              "totals": {
+                "request_count": 2,
+                "input_tokens": 900,
+                "cache_read_tokens": 0,
+                "cache_creation_tokens": 0,
+                "output_tokens": 120,
+                "reasoning_tokens": 0,
+                "total_tokens": 1020,
+                "cost_amount": "0.040500000000000001",
+                "cost_complete": false,
+                "amount_sample_count": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "unknown_group_fixture": {
+    "analysis": {
+      "from": "2026-10-15T00:00:00.000000Z",
+      "to": "2026-10-16T00:00:00.000000Z",
+      "as_of": "2026-10-16T01:00:00Z",
+      "cost_unit": "USD",
+      "model_usage": {
+        "totals": {
+          "request_count": 3,
+          "input_tokens": 900,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "output_tokens": 120,
+          "reasoning_tokens": 0,
+          "total_tokens": 1020,
+          "cost_amount": "0.040500000000000001",
+          "cost_complete": false,
+          "amount_sample_count": 2
+        },
+        "status_counts": {
+          "succeeded": 2,
+          "failed": 0,
+          "discarded": 0,
+          "abandoned": 1
+        },
+        "latency": {
+          "duration_ms": {
+            "sample_count": 2,
+            "missing_count": 1,
+            "p50": 0,
+            "p95": 260
+          },
+          "time_to_first_token_ms": {
+            "sample_count": 0,
+            "missing_count": 3,
+            "p50": null,
+            "p95": null
+          }
+        },
+        "breakdown": {
+          "group_by": "zz_unknown_value",
+          "rank_by": "request_count",
+          "limit": 1,
+          "total_group_count": 2,
+          "other": {
+            "request_count": 1,
+            "input_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_creation_tokens": 0,
+            "output_tokens": 0,
+            "reasoning_tokens": 0,
+            "total_tokens": 0,
+            "cost_amount": "0.0",
+            "cost_complete": true,
+            "amount_sample_count": 1
+          },
+          "groups": [
+            {
+              "value": "dev",
+              "totals": {
+                "request_count": 2,
+                "input_tokens": 900,
+                "cache_read_tokens": 0,
+                "cache_creation_tokens": 0,
+                "output_tokens": 120,
+                "reasoning_tokens": 0,
+                "total_tokens": 1020,
+                "cost_amount": "0.040500000000000001",
+                "cost_complete": false,
+                "amount_sample_count": 1
+              }
+            }
+          ]
+        }
+      },
+      "workspace_public_id": null,
+      "agent_public_id": null,
+      "execution": {
+        "run_count": 2,
+        "retained_run_count": 2,
+        "details_pruned_run_count": 0,
+        "status_counts": {
+          "pending": 0,
+          "running": 1,
+          "paused": 0,
+          "needs_attention": 0,
+          "canceling": 0,
+          "completed": 1,
+          "canceled": 0
+        },
+        "delivered_count": 1,
+        "undelivered_count": 1,
+        "completed_count": 1,
+        "uncompleted_count": 1,
+        "latency": {
+          "delivery_ms": {
+            "sample_count": 1,
+            "missing_count": 1,
+            "p50": 42,
+            "p95": 42
+          },
+          "completion_ms": {
+            "sample_count": 1,
+            "missing_count": 1,
+            "p50": 42,
+            "p95": 42
+          }
+        },
+        "tools": {
+          "task_count": 2,
+          "status_counts": {
+            "queued": 0,
+            "needs_approval": 0,
+            "running": 0,
+            "dispatched": 0,
+            "awaiting_input": 0,
+            "completed": 1,
+            "failed": 1,
+            "canceled": 0,
+            "timed_out": 0,
+            "uncertain": 0,
+            "skipped": 0
+          },
+          "error_result_count": 1,
+          "total_group_count": 1,
+          "other_task_count": 0,
+          "latency": {
+            "sample_count": 1,
+            "missing_count": 1,
+            "p50": 42,
+            "p95": 42
+          },
+          "groups": [
+            {
+              "tool_name": "read_file",
+              "task_count": 2,
+              "status_counts": {
+                "queued": 0,
+                "needs_approval": 0,
+                "running": 0,
+                "dispatched": 0,
+                "awaiting_input": 0,
+                "completed": 1,
+                "failed": 1,
+                "canceled": 0,
+                "timed_out": 0,
+                "uncertain": 0,
+                "skipped": 0
+              },
+              "error_result_count": 1,
+              "latency": {
+                "sample_count": 1,
+                "missing_count": 1,
+                "p50": 42,
+                "p95": 42
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "unknown_rank_fixture": {
+    "analysis": {
+      "from": "2026-10-15T00:00:00.000000Z",
+      "to": "2026-10-16T00:00:00.000000Z",
+      "as_of": "2026-10-16T01:00:00Z",
+      "cost_unit": "USD",
+      "model_usage": {
+        "totals": {
+          "request_count": 3,
+          "input_tokens": 900,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "output_tokens": 120,
+          "reasoning_tokens": 0,
+          "total_tokens": 1020,
+          "cost_amount": "0.040500000000000001",
+          "cost_complete": false,
+          "amount_sample_count": 2
+        },
+        "status_counts": {
+          "succeeded": 2,
+          "failed": 0,
+          "discarded": 0,
+          "abandoned": 1
+        },
+        "latency": {
+          "duration_ms": {
+            "sample_count": 2,
+            "missing_count": 1,
+            "p50": 0,
+            "p95": 260
+          },
+          "time_to_first_token_ms": {
+            "sample_count": 0,
+            "missing_count": 3,
+            "p50": null,
+            "p95": null
+          }
+        },
+        "breakdown": {
+          "group_by": "provider_id",
+          "rank_by": "zz_unknown_value",
+          "limit": 1,
+          "total_group_count": 2,
+          "other": {
+            "request_count": 1,
+            "input_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_creation_tokens": 0,
+            "output_tokens": 0,
+            "reasoning_tokens": 0,
+            "total_tokens": 0,
+            "cost_amount": "0.0",
+            "cost_complete": true,
+            "amount_sample_count": 1
+          },
+          "groups": [
+            {
+              "value": "dev",
+              "totals": {
+                "request_count": 2,
+                "input_tokens": 900,
+                "cache_read_tokens": 0,
+                "cache_creation_tokens": 0,
+                "output_tokens": 120,
+                "reasoning_tokens": 0,
+                "total_tokens": 1020,
+                "cost_amount": "0.040500000000000001",
+                "cost_complete": false,
+                "amount_sample_count": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "unknown_status_fixture": {
+    "analysis": {
+      "from": "2026-10-15T00:00:00.000000Z",
+      "to": "2026-10-16T00:00:00.000000Z",
+      "as_of": "2026-10-16T01:00:00Z",
+      "cost_unit": "USD",
+      "model_usage": {
+        "totals": {
+          "request_count": 3,
+          "input_tokens": 900,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "output_tokens": 120,
+          "reasoning_tokens": 0,
+          "total_tokens": 1020,
+          "cost_amount": "0.040500000000000001",
+          "cost_complete": false,
+          "amount_sample_count": 2
+        },
+        "status_counts": {
+          "succeeded": 2,
+          "failed": 0,
+          "discarded": 0,
+          "abandoned": 1,
+          "zz_unknown_value": 1
+        },
+        "latency": {
+          "duration_ms": {
+            "sample_count": 2,
+            "missing_count": 1,
+            "p50": 0,
+            "p95": 260
+          },
+          "time_to_first_token_ms": {
+            "sample_count": 0,
+            "missing_count": 3,
+            "p50": null,
+            "p95": null
+          }
+        },
+        "breakdown": {
+          "group_by": "provider_id",
+          "rank_by": "request_count",
+          "limit": 1,
+          "total_group_count": 2,
+          "other": {
+            "request_count": 1,
+            "input_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_creation_tokens": 0,
+            "output_tokens": 0,
+            "reasoning_tokens": 0,
+            "total_tokens": 0,
+            "cost_amount": "0.0",
+            "cost_complete": true,
+            "amount_sample_count": 1
+          },
+          "groups": [
+            {
+              "value": "dev",
+              "totals": {
+                "request_count": 2,
+                "input_tokens": 900,
+                "cache_read_tokens": 0,
+                "cache_creation_tokens": 0,
+                "output_tokens": 120,
+                "reasoning_tokens": 0,
+                "total_tokens": 1020,
+                "cost_amount": "0.040500000000000001",
+                "cost_complete": false,
+                "amount_sample_count": 1
+              }
+            }
+          ]
+        }
+      },
+      "workspace_public_id": null,
+      "agent_public_id": null,
+      "execution": {
+        "run_count": 2,
+        "retained_run_count": 2,
+        "details_pruned_run_count": 0,
+        "status_counts": {
+          "pending": 0,
+          "running": 1,
+          "paused": 0,
+          "needs_attention": 0,
+          "canceling": 0,
+          "completed": 1,
+          "canceled": 0,
+          "zz_unknown_value": 1
+        },
+        "delivered_count": 1,
+        "undelivered_count": 1,
+        "completed_count": 1,
+        "uncompleted_count": 1,
+        "latency": {
+          "delivery_ms": {
+            "sample_count": 1,
+            "missing_count": 1,
+            "p50": 42,
+            "p95": 42
+          },
+          "completion_ms": {
+            "sample_count": 1,
+            "missing_count": 1,
+            "p50": 42,
+            "p95": 42
+          }
+        },
+        "tools": {
+          "task_count": 2,
+          "status_counts": {
+            "queued": 0,
+            "needs_approval": 0,
+            "running": 0,
+            "dispatched": 0,
+            "awaiting_input": 0,
+            "completed": 1,
+            "failed": 1,
+            "canceled": 0,
+            "timed_out": 0,
+            "uncertain": 0,
+            "skipped": 0,
+            "zz_unknown_value": 1
+          },
+          "error_result_count": 1,
+          "total_group_count": 1,
+          "other_task_count": 0,
+          "latency": {
+            "sample_count": 1,
+            "missing_count": 1,
+            "p50": 42,
+            "p95": 42
+          },
+          "groups": [
+            {
+              "tool_name": "read_file",
+              "task_count": 2,
+              "status_counts": {
+                "queued": 0,
+                "needs_approval": 0,
+                "running": 0,
+                "dispatched": 0,
+                "awaiting_input": 0,
+                "completed": 1,
+                "failed": 1,
+                "canceled": 0,
+                "timed_out": 0,
+                "uncertain": 0,
+                "skipped": 0
+              },
+              "error_result_count": 1,
+              "latency": {
+                "sample_count": 1,
+                "missing_count": 1,
+                "p50": 42,
+                "p95": 42
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "unknown_value_behavior": "carry_unknown",
+  "amount_encoding": "decimal_string",
+  "percentile_method": "nearest_rank",
+  "elapsed_ms_rounding": "floor",
+  "window_fractional_digits": 6
+}

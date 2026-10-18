@@ -1,0 +1,41 @@
+<% content_for :title, t("runs_console.title", id: @run.public_id.first(8)) %>
+<%= tag.div class: "space-y-6", data: run_refresh_data(@run) do %>
+  <%= render "runs/header", run: @run, actions: @actions %>
+  <%= current_agent_configuration_link(@run.answering_user, class: "link link-hover text-sm") %>
+  <details class="rounded-box border border-base-300 p-4">
+    <summary class="cursor-pointer font-medium"><%= t("work_reading.captured_configuration") %></summary>
+    <%= render "work/captured_configuration", configuration: @run.agent_configuration, initial_model: @run.variant, actual_model: @current_model, model_selection: @run.model_selection, fallback_models: @run.fallback_models, approval_mode: @run.approval_mode, conversation_reach: @run.conversation_reach %>
+  </details>
+  <% if @run.details_pruned_at %><p class="alert"><%= t("runs_console.details_pruned") %></p><% end %>
+  <%= render "shared/facts_panel", facts: {
+    t("runs_console.identifier") => @run.public_id,
+    t("runs_console.status") => work_status_label(@run.status),
+    t("runs_console.attention") => @run.attention_reason.presence || t("runs_console.none"),
+    t("runs_console.failure") => @run.failure_reason.presence || t("runs_console.none"),
+    t("runs_console.actor") => @run.creating_user.display_name,
+    t("runs_console.created") => l(@run.created_at, format: :long),
+    t("runs_console.started") => @run.started_at ? l(@run.started_at, format: :long) : t("runs_console.not_started"),
+    t("runs_console.completed") => @run.completed_at ? l(@run.completed_at, format: :long) : t("runs_console.not_finished"),
+    t("runs_console.updated") => l(@run.updated_at, format: :long),
+  } %>
+  <% unless @run.details_pruned_at %>
+    <% if @attention_tasks.any? %>
+      <section class="space-y-3" aria-label="<%= t('work_console.attention') %>">
+        <h2 class="font-medium"><%= t("work_console.attention") %></h2>
+        <% @attention_tasks.each do |task| %>
+          <p><%= link_to "#{work_status_label(task.status)} · #{task.node_key}", run_task_path(@run, task.node_key, return_to: request.fullpath), class: "link link-hover" %></p>
+        <% end %>
+      </section>
+    <% end %>
+    <section class="space-y-3" aria-label="<%= t('runs_console.output') %>">
+      <h2 class="font-medium"><%= t("runs_console.output") %></h2>
+      <% @result_tasks.each do |task| %>
+        <article class="space-y-3 rounded-box border border-base-300 p-4">
+          <%= render "work/content", text: task.output_preview if task.output_preview.present? %>
+          <%= link_to t("management_console.execution_details"), run_task_path(@run, task.node_key, return_to: request.fullpath), class: "link link-hover text-sm" %>
+        </article>
+      <% end %>
+      <% if @result_tasks.empty? %><p class="text-sm text-base-content/60"><%= t("runs_console.no_rounds") %></p><% end %>
+    </section>
+  <% end %>
+<% end %>

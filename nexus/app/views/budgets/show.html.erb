@@ -1,0 +1,43 @@
+<%= render layout: "budgets/shell", locals: { target: @budget_target, personal: @budget_personal, back_path: @budget_back_path, title: t("budget_console.detail"), error: @error } do %>
+  <%= link_to t("budget_console.back"), budget_collection_path, class: "link link-hover text-sm", data: { turbo_frame: "_top" } %>
+  <p class="font-mono text-xs wrap-anywhere"><%= @budget.fetch(:public_id) %></p>
+  <p class="text-xs text-base-content/60"><%= t("budget_console.measured_at", time: @measured_at.utc.iso8601) %></p>
+  <%= render "budgets/window", budget: @budget %>
+  <% unless @budget_personal %><%= link_to t("budget_console.adjust"), budget_edit_path(@budget.fetch(:public_id)), class: "btn btn-sm", data: { turbo_frame: "_top" } %><% end %>
+  <section class="space-y-3" aria-labelledby="budget-entries-title">
+    <h2 id="budget-entries-title" class="font-medium"><%= t("budget_console.entries") %></h2>
+    <%= form_with url: budget_detail_path(@budget.fetch(:public_id)), method: :get, data: { turbo_frame: "_top" }, class: "flex flex-wrap items-end gap-3" do |form| %>
+      <div><%= form.label :order, t("budget_console.order"), class: "mb-1 block text-sm" %><%= form.select :order, [[t("budget_console.ascending"), "asc"], [t("budget_console.descending"), "desc"]], { selected: params[:order] || "asc" }, class: "select select-sm" %></div>
+      <div><%= form.label :limit, t("budget_console.page_size"), class: "mb-1 block text-sm" %><%= form.number_field :limit, value: params[:limit] || 25, min: 1, max: 100, class: "input input-sm w-24" %></div>
+      <%= form.submit t("budget_console.apply"), class: "btn btn-sm" %>
+    <% end %>
+    <div class="divide-y divide-base-300 rounded-box border border-base-300">
+      <% @entries.each do |entry| %>
+        <article class="min-w-0 space-y-2 p-4">
+          <h3 class="text-sm font-medium"><%= t("budget_console.entry_heading", sequence: entry.fetch(:sequence), kind: t("budget_console.kinds.#{entry.fetch(:kind)}")) %></h3>
+          <p class="font-mono text-sm wrap-anywhere"><%= entry.fetch(:amount) %> <%= entry.fetch(:cost_unit) %></p>
+          <p class="text-xs wrap-anywhere"><%= entry.fetch(:created_at).utc.iso8601 %></p>
+          <p class="font-mono text-xs wrap-anywhere"><%= entry.fetch(:public_id) %></p>
+          <% if entry[:actor_public_id] %><p class="text-xs wrap-anywhere"><%= t("budget_console.actor", public_id: entry[:actor_public_id]) %></p><% end %>
+          <% if entry[:reason].present? %><p class="whitespace-pre-wrap text-sm wrap-anywhere"><%= entry[:reason] %></p><% end %>
+        </article>
+      <% end %>
+      <% if @entries.empty? %><p class="p-4 text-sm text-base-content/60"><%= t("budget_console.no_entries") %></p><% end %>
+    </div>
+    <nav class="flex flex-wrap gap-4 text-sm" aria-label="<%= t('budget_console.entry_pages') %>">
+      <% if params[:after].present? %><%= link_to t("budget_console.first_page"), budget_detail_path(@budget.fetch(:public_id), limit: params[:limit], order: params[:order]), class: "link link-hover", data: { turbo_frame: "_top" } %><% end %>
+      <% if @page.next_after %><%= link_to t("budget_console.next_page"), budget_detail_path(@budget.fetch(:public_id), limit: params[:limit], order: params[:order], after: @page.next_after), class: "link link-hover", data: { turbo_frame: "_top" } %><% end %>
+    </nav>
+  </section>
+  <% unless @budget_personal || (@budget[:revoked_at] && !@revocation_refused) %>
+    <section class="space-y-3 border-t border-base-300 pt-4" aria-labelledby="revoke-budget-title">
+      <h2 id="revoke-budget-title" class="font-medium"><%= t("budget_console.revoke") %></h2>
+      <p class="text-sm text-base-content/70"><%= t("budget_console.revoke_help") %></p>
+      <%= form_with url: budget_revocation_path(@budget.fetch(:public_id)), scope: :revocation, data: { turbo_frame: "_top", turbo_confirm: t("budget_console.revoke_confirmation") }, class: "space-y-3" do |form| %>
+        <%= form.hidden_field :operation_key, value: @revocation_draft["operation_key"] %>
+        <div><%= form.label :reason, t("budget_console.reason"), class: "mb-1 block text-sm" %><%= form.text_area :reason, value: @revocation_draft["reason"], rows: 2, maxlength: UsageBudgets::REASON_MAX_LENGTH, class: "textarea w-full" %></div>
+        <%= form.submit t("budget_console.revoke"), class: "btn btn-error btn-soft btn-sm" %>
+      <% end %>
+    </section>
+  <% end %>
+<% end %>

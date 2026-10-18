@@ -1,0 +1,33 @@
+en:
+  conversation_management:
+    title:
+      edit: Edit title
+      explanation: Change the title used to find and recognize this Conversation.
+      label: Conversation title
+      help: Use up to 255 characters. Leave it blank to use the untitled label.
+      save: Save title
+      saved: Conversation title saved.
+      conflict: The Conversation changed since this form was opened. Your title draft is preserved. Review the current title and version before saving again.
+      current: Current saved title
+      current_version: "Current version: %{version}"
+      review_version: I have reviewed the current title and want to save my draft using this version.
+      archived: Restore this Conversation before changing its title.
+    archive:
+      title: Archive conversation
+      submit: Archive conversation
+      scope: This archives the Conversation and its Subagent conversations. Ordinary branches remain independent.
+      side_effect: Side conversations attached to this tree are permanently discarded, and their unfinished work is stopped. Restoring the Conversation will not bring them back.
+      accepted_work: Already accepted ordinary work in this Conversation and its Subagent conversations continues, including queued inputs, approval or question responses, and required result delivery. Archiving does not stop that work.
+      readable: The archived Conversation remains readable and exportable. Restore it before submitting new input or changing its title. You can still adjust its cost limit.
+      saved: Conversation archived. Already accepted ordinary work can still finish.
+    unarchive:
+      title: Restore conversation
+      submit: Restore conversation
+      scope: This restores the Conversation and its Subagent conversations so you can work with them again.
+      side_effect: Previously discarded Side conversations are not restored. Ordinary branches remain independent.
+      no_restart: Restoring does not restart completed or stopped work, restore files, or create a new reply.
+      saved: Conversation restored.
+    refusals:
+      not_found: This Conversation is no longer available.
+      subagent_follows_parent: Archive or restore the parent Conversation to change this Subagent conversation.
+      side_conversation: Side conversations cannot be archived or restored independently.

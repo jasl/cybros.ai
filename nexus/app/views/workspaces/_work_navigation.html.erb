@@ -1,0 +1,7 @@
+<nav class="flex flex-wrap gap-4 text-sm" aria-label="<%= t("work_console.work") %>">
+  <%= link_to t("work_console.conversations"), workspace_conversations_path(workspace), class: "link link-hover" %>
+  <%= link_to t("work_console.runs"), workspace_runs_path(workspace, kind: "standalone"), class: "link link-hover" %>
+  <%= link_to t("schedules_console.schedules"), workspace_schedules_path(workspace), class: "link link-hover" %>
+  <%= link_to t("work_console.attention"), attention_path(workspace_public_id: workspace.public_id), class: "link link-hover" %>
+  <%= link_to t("usage_reports.title"), usage_path(workspace_public_id: workspace.public_id), class: "link link-hover" %>
+</nav>

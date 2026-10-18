@@ -1,0 +1,41 @@
+<% content_for :title, t("oauth.authorizations.show.sign_in_to_your_application") %>
+<% turbo_page_requires_reload %>
+<div class="space-y-6">
+  <header class="space-y-2">
+    <h1 class="text-2xl font-semibold"><%= t("oauth.authorizations.show.sign_in_to_your_application") %></h1>
+    <p><%= t("oauth.authorizations.show.continue_as_html", name: tag.strong(Current.user.display_name)) %></p>
+  </header>
+  <p><%= t("oauth.authorizations.show.the_application_can_use_your_personal_brand_settings_if", brand: t("brand.name")) %></p>
+  <% if @authorization_request.connection_mode == "connect" %>
+    <p><%= t("oauth.authorizations.show.this_also_connects_the_application_to_your_agent_or") %></p>
+    <% if @authorization_request.agent_private_runner_connection? %>
+      <p><%= t("oauth.device.agent_private_runner") %></p>
+    <% end %>
+  <% else %>
+    <p><%= t("oauth.authorizations.show.your_existing_agent_and_runner_connection_will_keep_running") %></p>
+  <% end %>
+  <%= form_with url: oauth_authorize_path, data: { turbo: false }, class: "space-y-4" do %>
+    <% @authorization_request.form_attributes.each do |name, value| %>
+      <%= hidden_field_tag name, value %>
+    <% end %>
+    <%= hidden_field_tag :return_to, request.fullpath %>
+    <% if @expected_live_runner %>
+      <%= hidden_field_tag :expected_live_runner, @expected_live_runner %>
+      <% if @existing_runner %>
+        <p><%= t("oauth.device_grants.show.assignment_scope") %> <%= t("runners.assignment_scopes.#{@existing_runner.assignment_scope}") %></p>
+        <p class="text-sm text-base-content/60"><%= t("oauth.device_grants.show.reconnecting_keeps_this_registration_s_existing_scope_revoke_the", subject: machine_kind_label(@existing_runner.executor_kind)) %></p>
+      <% elsif !@authorization_request.agent_private_runner_connection? && Current.user.admin? %>
+        <label class="label gap-3">
+          <%= check_box_tag :account_wide, "1", false, class: "checkbox checkbox-sm" %>
+          <span><%= t("oauth.authorizations.show.make_this_runner_available_to_this_installation_s_agents") %></span>
+        </label>
+      <% elsif !@authorization_request.agent_private_runner_connection? %>
+        <p><%= t("oauth.device_grants.show.this_subject_will_be_private_to_the_agents_you", subject: machine_kind_label(@authorization_request.executor_kind || "runner")) %></p>
+      <% end %>
+    <% end %>
+    <div class="flex flex-wrap justify-end gap-3">
+      <button type="submit" name="decision" value="deny" class="btn btn-ghost"><%= t("oauth.authorizations.show.cancel") %></button>
+      <button type="submit" name="decision" value="allow" class="btn btn-primary"><%= t("oauth.authorizations.show.continue") %></button>
+    </div>
+  <% end %>
+</div>

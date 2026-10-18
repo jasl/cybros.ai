@@ -1,0 +1,30 @@
+en:
+  work_reading:
+    copy: Copy original
+    copy_code: Copy code
+    copied: Copied
+    original: Original text
+    unavailable: Unavailable
+    captured_configuration: Captured execution configuration
+    capture_description: These values belong to this execution. Later Agent configuration changes do not change them.
+    capture_details: Captured configuration details
+    capture_unavailable: No captured configuration is available for this execution.
+    initial_model: Initial model
+    actual_model: Actual model
+    selection: Model selection intent
+    tools: Tool definitions in the capture
+    tool_count:
+      one: "%{count} definition; see details for names, routes and imported sources"
+      other: "%{count} definitions; see details for names, routes and imported sources"
+    approval: Approval mode
+    memory: Memory restriction
+    no_extra_limit: No extra execution restriction
+    reach: Conversation reach
+    fallbacks: Ordered fallback models
+    no_fallbacks: No automatic model switch
+    effective_wait: "Effective wait: %{duration} (frozen during pause or maintenance)"
+    wait_unavailable: Waiting start is unavailable
+    failed_ago: "Failure recorded %{duration} ago"
+    failure_time_unavailable: Failure time is unavailable
+    truncated: Preview truncated; open the task for the complete text.
+    back_to_overview: Back to overview

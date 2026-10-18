@@ -1,0 +1,28 @@
+zh-CN:
+  work_reading:
+    copy: 复制原文
+    copy_code: 复制代码
+    copied: 已复制
+    original: 原始文本
+    unavailable: 不可用
+    captured_configuration: 本次执行捕获的配置
+    capture_description: 这些值属于本次执行，不会随 Agent 当前配置的修改而改变。
+    capture_details: 捕获配置详情
+    capture_unavailable: 此次执行没有可用的捕获配置。
+    initial_model: 初始模型
+    actual_model: 实际模型
+    selection: 模型选择意图
+    tools: 捕获配置中的工具定义
+    tool_count: "%{count} 个定义；名称、路由和导入来源见详情"
+    approval: 批准模式
+    memory: 记忆限制
+    no_extra_limit: 无额外执行限制
+    reach: 会话可达范围
+    fallbacks: 有序回退模型
+    no_fallbacks: 不自动切换模型
+    effective_wait: "有效等待：%{duration}（暂停或维护期间冻结）"
+    wait_unavailable: 等待起点不可用
+    failed_ago: "故障记录于 %{duration}前"
+    failure_time_unavailable: 故障时间不可用
+    truncated: 摘要已截断；打开任务查看完整文本。
+    back_to_overview: 返回概览

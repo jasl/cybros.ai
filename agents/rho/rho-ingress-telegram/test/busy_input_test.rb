@@ -1,0 +1,62 @@
+require "support/runtime"
+
+class TelegramBusyInputTest < Minitest::Test
+  include TelegramRuntimeSupport
+
+  def test_ordinary_input_queues_and_explicit_steer_submits_only_its_body
+    receive(telegram_message(1, "Do the original work"))
+    receive(telegram_message(2, "This is the next request"))
+    receive(telegram_message(3, "/steer Keep the output in Chinese"))
+
+    assert_equal %w[queue queue steer], @bridge.inputs.values.map { |input| input.fetch(:mode) }
+    assert_equal "Keep the output in Chinese", @bridge.inputs.values.last.fetch(:text)
+    assert_equal ["conversation-1"], @bridge.inputs.values.map { |input| input.fetch(:conversation_id) }.uniq
+    assert_empty @bridge.stops
+    refute @state.read.fetch("deliveries").key?("control:telegram:#{BOT}:#{CONNECTION}:42:2:reply")
+    assert_includes @state.read.fetch("deliveries").fetch("control:telegram:#{BOT}:#{CONNECTION}:42:3:reply").fetch("text"), "Running tools are not interrupted"
+  end
+
+  def test_steer_replay_keeps_the_original_model_scope_and_input_key
+    receive(telegram_message(1, "Start"))
+    @state.change { |doc| doc.fetch("routes").fetch("#{CONNECTION}:1:0")["model"] = "vendor/original" }
+    @bridge.fail_input = true
+    update = telegram_message(2, "/steer Add this constraint")
+    assert_raises(Rho::ConnectionError) { receive(update) }
+    @bridge.default_workspace = @bridge.workspace_rows.last
+    @state.change { |doc| doc.fetch("routes").fetch("#{CONNECTION}:1:0")["model"] = "vendor/new" }
+
+    @runtime = runtime
+    receive(update)
+    receive(update)
+
+    assert_equal 2, @bridge.inputs.length
+    accepted = @bridge.inputs.fetch("telegram:#{BOT}:#{CONNECTION}:42:2:input")
+    assert_equal "steer", accepted.fetch(:mode)
+    assert_equal "Add this constraint", accepted.fetch(:text)
+    assert_equal "vendor/original", accepted.fetch(:model)
+    assert_equal "workspace-home", accepted.fetch(:workspace_public_id)
+    assert_equal 3, @connection_state.read.fetch("offset")
+    assert_nil @state.read["pending_update"]
+  end
+
+  def test_empty_steer_or_steer_without_a_known_task_never_opens_or_submits
+    receive(telegram_message(1, "/steer   "))
+    receive(telegram_message(2, "/steer Change the plan", user: 2, chat: -10))
+
+    assert_empty @bridge.inputs
+    assert_empty @bridge.opened
+    assert_includes @state.read.fetch("deliveries").fetch("control:telegram:#{BOT}:#{CONNECTION}:42:1:reply").fetch("text"), "/steer"
+    assert_includes @state.read.fetch("deliveries").fetch("control:telegram:#{BOT}:#{CONNECTION}:42:2:reply").fetch("text"), "No conversation is open"
+  end
+
+  def test_media_captions_are_not_silently_submitted_as_text_only_busy_commands
+    update = telegram_message(1, "")
+    update.fetch("message").delete("text")
+    update.fetch("message").merge!("caption" => "/steer Explain this image",
+      "photo" => [{ "file_id" => "photo", "width" => 100, "height" => 100, "file_size" => 20 }])
+    receive(update)
+    assert_includes @state.read.fetch("deliveries").fetch("control:telegram:#{BOT}:#{CONNECTION}:42:1:reply").fetch("text"), "accepts text only"
+    assert_empty @bridge.inputs
+    assert_empty @bridge.opened
+  end
+end

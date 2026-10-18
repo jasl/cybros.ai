@@ -1,0 +1,6 @@
+<% content_for :title, t("budget_console.unavailable") %>
+<section class="space-y-4">
+  <h1 class="text-xl font-medium"><%= t("budget_console.unavailable") %></h1>
+  <p role="alert" class="alert alert-error alert-soft"><%= @error %></p>
+  <% if @budget_target %><%= link_to t("budget_console.back"), budget_collection_path, class: "link link-hover" %><% end %>
+</section>

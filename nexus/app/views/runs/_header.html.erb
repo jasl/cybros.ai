@@ -1,0 +1,28 @@
+<header class="space-y-3">
+  <%= render "shared/back_navigation", path: work_return_path(workspace_runs_path(run.workspace)), label: t("runs_console.back") %>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-medium tracking-tight"><%= t("runs_console.title", id: run.public_id.first(8)) %></h1>
+      <p class="mt-1 text-sm text-base-content/60"><%= work_status_label(run.status) %> · <%= run.workspace.name %></p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <% if actions.pause? %><%= button_to t("runs_console.pause"), run_pause_path(run, return_to: work_return_path(workspace_runs_path(run.workspace))), class: "btn btn-sm" %><% end %>
+      <% if actions.resume? %><%= button_to t("runs_console.resume"), run_resume_path(run, return_to: work_return_path(workspace_runs_path(run.workspace))), class: "btn btn-sm" %><% end %>
+      <% if actions.stop? %><%= button_to t("runs_console.stop"), run_stop_path(run, return_to: work_return_path(workspace_runs_path(run.workspace))), class: "btn btn-error btn-outline btn-sm", form: { data: { turbo_confirm: t("runs_console.confirm_stop") } } %><% end %>
+    </div>
+  </div>
+  <nav class="flex flex-wrap gap-4 text-sm" aria-label="<%= t("runs_console.views") %>">
+    <%= link_to t("runs_console.overview"), run_path(run, return_to: work_return_path(workspace_runs_path(run.workspace))), class: "link link-hover" %>
+    <% unless run.details_pruned_at %>
+      <%= link_to t("runs_console.transcript"), run_transcript_path(run, return_to: work_return_path(workspace_runs_path(run.workspace))), class: "link link-hover" %>
+      <%= link_to t("runs_console.graph"), run_graph_path(run, return_to: work_return_path(workspace_runs_path(run.workspace))), class: "link link-hover" %>
+      <%= link_to t("runs_console.tasks"), run_tasks_path(run, return_to: work_return_path(workspace_runs_path(run.workspace))), class: "link link-hover" %>
+      <% if run.conversation && !run.conversation.side? %>
+        <%= link_to t("run_steering.title"), run_steers_path(run, return_to: work_return_path(workspace_runs_path(run.workspace))), class: "link link-hover" %>
+      <% end %>
+    <% end %>
+    <%= link_to t("usage_reports.diagnostics"), run_export_path(run), class: "link link-hover", data: { turbo: false } %>
+    <% if run.conversation %><%= link_to t("runs_console.conversation"), conversation_path(run.conversation, return_to: request.fullpath), class: "link link-hover" %><% end %>
+  </nav>
+  <%= render "work/live_status" %>
+</header>

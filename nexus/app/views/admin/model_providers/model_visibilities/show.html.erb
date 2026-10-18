@@ -1,0 +1,7 @@
+<% content_for :title, t("admin.model_providers.model_visibilities.show.provider_models", provider: (model_provider_name(@provider.fetch(:id)))) %>
+
+<div class="space-y-8">
+  <%= render "admin/model_providers/header", provider: @provider, title: t("admin.model_providers.model_visibilities.show.model_visibility"), current: :models, description: t("admin.model_providers.model_visibilities.show.choose_which_models_are_visible_to_every_agent_in") %>
+  <p class="max-w-prose text-sm leading-relaxed text-base-content/60"><%= t("admin.model_providers.model_visibilities.show.hidden_models_cannot_be_selected_for_new_requests_existing") %></p>
+  <%= render "admin/model_providers/models", provider: @provider, models: @models, editable: true, unavailable_models: @unavailable_models %>
+</div>

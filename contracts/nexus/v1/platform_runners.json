@@ -1,0 +1,80 @@
+{
+  "valid_runners_fixture": {
+    "runners": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000021",
+        "kind": "runner",
+        "display_name": "Fixture runner",
+        "status": "active",
+        "manager_public_id": "01900000-0000-7000-8000-000000000010",
+        "assignment_scope": "agent_private",
+        "assignment_agent_public_id": "01900000-0000-7000-8000-000000000020",
+        "credential_readiness": "ready",
+        "eligible_for_current_user": false,
+        "presence": "offline",
+        "last_seen_at": "2026-10-16T00:00:00Z",
+        "connected_at": null,
+        "registered_at": "2026-10-15T00:00:00Z"
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    },
+    "measured_at": "2026-10-16T00:00:00Z"
+  },
+  "valid_runner_fixture": {
+    "runner": {
+      "public_id": "01900000-0000-7000-8000-000000000021",
+      "kind": "runner",
+      "display_name": "Fixture runner",
+      "status": "active",
+      "manager_public_id": "01900000-0000-7000-8000-000000000010",
+      "assignment_scope": "agent_private",
+      "assignment_agent_public_id": "01900000-0000-7000-8000-000000000020",
+      "credential_readiness": "ready",
+      "eligible_for_current_user": false,
+      "presence": "offline",
+      "last_seen_at": "2026-10-16T00:00:00Z",
+      "connected_at": null,
+      "registered_at": "2026-10-15T00:00:00Z",
+      "served_tools": [
+        {
+          "name": "read",
+          "effect_profile": {
+            "kind": "read_only",
+            "destructive": false,
+            "effect_scope": "closed",
+            "idempotency": "intrinsic",
+            "reconciliation": "none"
+          },
+          "description": "Read a file.",
+          "input_schema": {
+            "type": "object"
+          }
+        }
+      ],
+      "served_documents": [
+        {
+          "name": "project",
+          "description": "Project instructions."
+        }
+      ],
+      "environment": {
+        "root": "/srv/work"
+      }
+    },
+    "measured_at": "2026-10-16T00:00:00Z"
+  },
+  "filters": [
+    "kind",
+    "status"
+  ],
+  "kinds": [
+    "runner",
+    "tool_provider"
+  ],
+  "statuses": [
+    "active",
+    "revoked"
+  ]
+}

@@ -1,0 +1,21 @@
+<%# locals: (workspace:, draft:, creating:, data_writable:, entry: nil, conflict: false, error: nil) %>
+<%= link_to t("data_console.store.back"), workspace_store_entries_path(workspace), class: "link link-hover text-sm" %>
+<p class="text-sm text-base-content/70"><%= t("data_console.store.description") %></p>
+<% if conflict %><%= link_to t("data_console.read_saved"), workspace_store_entry_path(workspace, entry.public_id), class: "link link-hover text-sm", target: "_blank", rel: "noopener" %><% end %>
+<%= form_with url: creating ? workspace_store_entries_path(workspace) : workspace_store_entry_path(workspace, entry.public_id), method: creating ? :post : :patch, scope: :store_entry, class: "space-y-4" do |form| %>
+  <% if creating %>
+    <%= form.hidden_field :idempotency_key, value: draft["idempotency_key"] %>
+    <div><%= form.label :namespace, t("data_console.store.namespace"), class: "mb-1 block text-sm font-medium" %><%= form.text_field :namespace, value: draft["namespace"], readonly: !data_writable, required: true, maxlength: StoreEntry::NAMESPACE_MAX_LENGTH, class: "input w-full font-mono text-sm" %></div>
+    <div><%= form.label :key, t("data_console.store.key"), class: "mb-1 block text-sm font-medium" %><%= form.text_field :key, value: draft["key"], readonly: !data_writable, required: true, maxlength: StoreEntry::KEY_MAX_LENGTH, class: "input w-full font-mono text-sm" %></div>
+  <% else %>
+    <%= form.hidden_field :lock_version, value: draft["lock_version"] %>
+    <p class="font-mono text-sm wrap-anywhere"><%= entry.namespace %> / <%= entry.key %></p>
+  <% end %>
+  <p class="text-xs text-base-content/60"><%= t("data_console.store.identity_help") %></p>
+  <div>
+    <%= form.label :value_json, t("data_console.store.value"), class: "mb-1 block text-sm font-medium" %>
+    <%= form.text_area :value_json, value: draft["value_json"], rows: 16, readonly: !data_writable, class: "textarea w-full font-mono text-sm", aria: { describedby: "store-value-help", invalid: error.present?.to_s } %>
+    <p id="store-value-help" class="mt-1 text-xs text-base-content/60"><%= t("data_console.store.value_help") %></p>
+  </div>
+  <% if data_writable %><%= form.submit t("data_console.store.save"), class: "btn btn-primary btn-sm" %><% end %>
+<% end %>

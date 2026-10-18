@@ -1,0 +1,35 @@
+<% content_for :title, t("personas.title") %>
+
+<%= render layout: "settings/shell", locals: { current: :persona } do %>
+  <section class="space-y-4">
+    <h2 class="text-lg font-medium"><%= t("personas.title") %></h2>
+    <p class="text-sm text-base-content/70"><%= t("personas.description") %></p>
+    <% if @document %>
+      <p class="text-sm text-base-content/60"><%= t("personas.document_info", version: @document.version, bytes: @document.bytesize, time: l(@document.updated_at, format: :long)) %></p>
+    <% else %>
+      <p class="text-sm text-base-content/60"><%= t("personas.empty") %></p>
+    <% end %>
+    <% if @error %>
+      <div role="alert" class="alert alert-error alert-soft"><%= @error %></div>
+    <% end %>
+
+    <%= form_with url: settings_persona_path, method: :put, scope: :prompt_document, data: { turbo_frame: "_top" }, class: "space-y-4" do |form| %>
+      <div>
+        <%= form.label :role, t("personas.role"), class: "mb-1 block text-sm font-medium" %>
+        <%= form.select :role, PromptDocument::ROLES.map { |role| [t("personas.roles.#{role}"), role] }, { selected: @role }, class: "select select-sm w-full sm:max-w-xs" %>
+      </div>
+      <div>
+        <%= form.label :content, t("personas.content"), class: "mb-1 block text-sm font-medium" %>
+        <%= form.text_area :content, value: @content, rows: 12, class: "textarea w-full font-mono text-sm", aria: { describedby: "persona-content-help", invalid: @error.present?.to_s } %>
+        <p id="persona-content-help" class="mt-2 text-xs text-base-content/60"><%= t("personas.content_help", macros: Nexus::PromptMacros::REGISTRY.map { |name| "{{#{name}}}" }.join(", ")) %></p>
+      </div>
+      <%= form.submit t("personas.save"), class: "btn btn-primary btn-sm" %>
+    <% end %>
+
+    <% if @document %>
+      <div class="border-t border-base-300 pt-4">
+        <%= button_to t("personas.delete"), settings_persona_path, method: :delete, class: "btn btn-error btn-soft btn-sm", data: { turbo_frame: "_top", turbo_confirm: t("personas.delete_confirmation") } %>
+      </div>
+    <% end %>
+  </section>
+<% end %>

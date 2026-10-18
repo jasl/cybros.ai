@@ -1,0 +1,303 @@
+{
+  "valid_agent_fixture": {
+    "agent": {
+      "public_id": "01900000-0000-7000-8000-000000000020",
+      "handle": "fixture-agent",
+      "display_name": "Fixture agent",
+      "status": "active",
+      "agent_identifier": "fixture.agent",
+      "named_agent_scope": null,
+      "description": null,
+      "derived_from_public_id": null
+    }
+  },
+  "valid_agent_detail_fixture": {
+    "agent": {
+      "public_id": "01900000-0000-7000-8000-000000000020",
+      "handle": "fixture-agent",
+      "display_name": "Fixture agent",
+      "status": "active",
+      "agent_identifier": "fixture.agent",
+      "named_agent_scope": null,
+      "description": null,
+      "derived_from_public_id": null,
+      "application_connection": {
+        "executor_public_id": "01900000-0000-7000-8000-000000000023",
+        "owner_agent_public_id": "01900000-0000-7000-8000-000000000020",
+        "status": "active",
+        "credential_readiness": "ready",
+        "presence": "offline",
+        "last_seen_at": "2026-10-15T00:00:00Z",
+        "connected_at": "2026-10-15T00:00:00Z"
+      }
+    }
+  },
+  "valid_agent_configuration_fixture": {
+    "agent": {
+      "public_id": "01900000-0000-7000-8000-000000000020",
+      "handle": "fixture-agent",
+      "display_name": "Fixture agent",
+      "status": "active",
+      "agent_identifier": "fixture.agent",
+      "named_agent_scope": null,
+      "description": null,
+      "derived_from_public_id": null
+    },
+    "configuration": {
+      "tool_definitions": [
+        {
+          "type": "function",
+          "function": {
+            "name": "delegate_task",
+            "description": "Give one bounded job to a new agent that starts with an EMPTY\ncontext. It sees only `prompt`, not this conversation, so say which\nfiles, what question, and the shape of the answer you want back. It\ninherits your tools unless `tools` names fewer, including the ability\nto delegate again when `delegate_task` remains declared. `model`\nselects a provider/model for this task only; omission inherits your\nconfigured model. An unavailable explicit selection is refused.\n\nThe task runs in the background: this call answers at once with the\ntask's id, and its answer is delivered to you later as a `<task_result>`\nblock whose `task` attribute is that id, in a message that is not from\nthe person. A task is a step of your own work, not a conversation: it\ntakes no further messages, and a `<task_result>` that also carries a\n`conversation` attribute is from a conversation you spawned, not from a\ntask. Until the answer arrives do not poll, run the same command\nyourself, guess its answer, or edit the files it is working on. If\n`wait` is available, use it later when that result is needed before\ncontinuing. To run\nseveral jobs at once, put several `delegate_task` calls in ONE message; they run\nat the same time:\n\n    delegate_task({prompt: \"Review app/models/user.rb for N+1 queries. Answer file:line and a fix, or 'none'.\"})\n    delegate_task({prompt: \"Run the test suite. Answer the failing tests as file:line, or 'all green'.\"})\n\n`wait: true` means your next round WAITS for the task: the `<task_result>` is\nthis call's result, and several waited calls in one message answer\ntogether, in the order you asked. Use the default for a long test run or\nbuild while you do other work; use `wait: true` when you need the answer\nbefore you can continue.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\ntask's answer before becoming final, independently of immediate waiting.\n`lifetime: \"conversation\"` delivers an unwaited result in a new turn\nafter this reply, even if the task finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Dependencies and explicit stops still apply.\n`wake: \"passive\"` records a completion after the final answer as\nconversation history without starting another reply. Omit to inherit\nthe calling work's wake mode; ordinary replies default to \"auto\".\n`wait: true` and turn-lifetime joining still consume results in this\nreply. Standalone runs have no later turn and await all results.\n\nDelegate from what the person told you, in your FIRST message — do not\nlook around the project first to write a better prompt: the task has\nyour tools and looks for itself — and do your own part beside it, in\nthe same message:\n\n    \"Find every place that reads the retry limit; meanwhile, what does the README say this service does?\"\n    → one message: delegate_task({prompt: \"Find every place in this repository that reads the retry limit. Answer file:line for each, or 'none'.\"}) beside your own read of the README.\n\nUse `delegate_task` when the work needs a model and would fill your context (a\nreview, a search across the whole tree, a test run whose failures you\nwant summarised — you keep the conclusion, not the file dumps), for a\nlong command whose result you want later, or for several jobs at once\nwhose answers you will read yourself; not for a file or a few greps you\ncan do yourself, several in one message.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "prompt": {
+                  "type": "string",
+                  "description": "What to do and what to answer with. The task sees only this text, so name the files, the question, and the shape of the answer."
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Optional provider/model reference for this task at that model's reasoning default. Omit to inherit your configured model. Does not change your model or any agent profile."
+                },
+                "lifetime": {
+                  "type": "string",
+                  "enum": [
+                    "turn",
+                    "conversation"
+                  ],
+                  "description": "turn: consume the work's result before this reply becomes final. conversation: permit it to finish afterward. Omit to inherit; ordinary replies default to conversation. Independent of immediate waiting."
+                },
+                "wake": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "passive"
+                  ],
+                  "description": "auto: a later completion may start a new reply. passive: record it in conversation history without starting a reply. Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged."
+                },
+                "wait": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "true: the next round waits and the answer is this call's result. false (the default): the next round continues alongside the task. Lifetime independently controls whether final delivery waits."
+                },
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Names from your own tool list, to give the task fewer tools. Omit to give it all of yours, including delegate_task when declared."
+                }
+              },
+              "required": [
+                "prompt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "kernel_tools": [],
+      "runner_executor_public_ids": [],
+      "runner_tool_names": null,
+      "mcp_tools": [],
+      "memory_context_limit": {
+        "bindings": [
+          {
+            "name": "conversation",
+            "scope": "conversation",
+            "access": "read_write"
+          },
+          {
+            "name": "workspace",
+            "scope": "workspace",
+            "access": "read"
+          },
+          {
+            "name": "agent",
+            "scope": "agent",
+            "access": "read_write"
+          },
+          {
+            "name": "speaker",
+            "scope": "speaker",
+            "access": "read_write"
+          }
+        ]
+      },
+      "conversation_reach": "subtree",
+      "delegation_catalog": null,
+      "approval_mode": "bypass",
+      "approval_rules": [
+        {
+          "tool": "bash",
+          "path": "command",
+          "match": "*rm -rf /*",
+          "verdict": "deny",
+          "reason": "a person can run it"
+        },
+        {
+          "tool": "memory_*|ask|task",
+          "verdict": "allow"
+        }
+      ],
+      "prompt_mechanism": "default",
+      "prompt_template": null,
+      "compaction_policy": {
+        "mode": "kernel"
+      },
+      "lifecycle_hooks": null,
+      "default_model": "dev/mock-text",
+      "image_model": "dev/mock-image",
+      "fallback_models": [
+        "dev/mock-unmetered"
+      ]
+    },
+    "prompt_documents": [
+      {
+        "slot": "system_prompt",
+        "role": "system",
+        "bytesize": 30,
+        "version": 2,
+        "written_at": "2026-10-15T00:00:00Z",
+        "content": "Help {{user}} with their task."
+      }
+    ],
+    "agent_updated_at": "2026-10-15T00:00:00Z",
+    "measured_at": "2026-10-15T00:00:00Z"
+  },
+  "valid_agents_fixture": {
+    "agents": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000020",
+        "handle": "fixture-agent",
+        "display_name": "Fixture agent",
+        "status": "active",
+        "agent_identifier": "fixture.agent",
+        "named_agent_scope": null,
+        "description": null,
+        "derived_from_public_id": null
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_private_runner_fixture": {
+    "private_runner": {
+      "public_id": "01900000-0000-7000-8000-000000000021",
+      "display_name": "Fixture runner",
+      "status": "active",
+      "registration_identifier": "fixture.runner",
+      "assignment_scope": "agent_private",
+      "assignment_agent_public_id": "01900000-0000-7000-8000-000000000020"
+    }
+  },
+  "valid_private_runners_fixture": {
+    "private_runners": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000021",
+        "display_name": "Fixture runner",
+        "status": "active",
+        "registration_identifier": "fixture.runner",
+        "assignment_scope": "agent_private",
+        "assignment_agent_public_id": "01900000-0000-7000-8000-000000000020"
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_member_keys_fixture": {
+    "api_keys": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000022",
+        "name": "Fixture key",
+        "note": null,
+        "plane": "member",
+        "created_at": "2026-10-15T00:00:00Z",
+        "last_used_at": null,
+        "revoked_at": null,
+        "usable": true
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_executor_keys_fixture": {
+    "api_keys": [
+      {
+        "public_id": "01900000-0000-7000-8000-000000000022",
+        "name": "Fixture key",
+        "note": null,
+        "plane": "executor_transport",
+        "created_at": "2026-10-15T00:00:00Z",
+        "last_used_at": null,
+        "revoked_at": null,
+        "usable": true
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_member_key_grant_fixture": {
+    "api_key": {
+      "public_id": "01900000-0000-7000-8000-000000000022",
+      "name": "Fixture key",
+      "note": null,
+      "plane": "member",
+      "created_at": "2026-10-15T00:00:00Z",
+      "last_used_at": null,
+      "revoked_at": null,
+      "usable": true
+    },
+    "secret": "fixture-member-api-key"
+  },
+  "valid_executor_key_grant_fixture": {
+    "api_key": {
+      "public_id": "01900000-0000-7000-8000-000000000022",
+      "name": "Fixture key",
+      "note": null,
+      "plane": "executor_transport",
+      "created_at": "2026-10-15T00:00:00Z",
+      "last_used_at": null,
+      "revoked_at": null,
+      "usable": true
+    },
+    "secret": "fixture-executor-api-key"
+  },
+  "valid_key_revocation_fixture": {
+    "status": 204,
+    "body": null
+  },
+  "unknown_agent_status_fixture": {
+    "agent": {
+      "public_id": "01900000-0000-7000-8000-000000000020",
+      "handle": "fixture-agent",
+      "display_name": "Fixture agent",
+      "status": "zz_unknown_value",
+      "agent_identifier": "fixture.agent",
+      "named_agent_scope": null,
+      "description": null,
+      "derived_from_public_id": null
+    }
+  },
+  "unknown_key_plane_fixture": {
+    "api_key": {
+      "public_id": "01900000-0000-7000-8000-000000000022",
+      "name": "Fixture key",
+      "note": null,
+      "plane": "zz_unknown_value",
+      "created_at": "2026-10-15T00:00:00Z",
+      "last_used_at": null,
+      "revoked_at": null,
+      "usable": true
+    },
+    "secret": "fixture-unclassified-api-key"
+  },
+  "unknown_status_behavior": "carry_unknown",
+  "unknown_key_plane_behavior": "reject_response"
+}

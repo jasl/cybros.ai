@@ -1,0 +1,14 @@
+<%= form_with url: path, method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
+  <div class="min-w-48 flex-1">
+    <%= form.label :query, t("agent_resources.search"), class: "label text-xs" %>
+    <%= form.search_field :query, value: @query, maxlength: query_max_length, placeholder: t("agent_resources.search_placeholder"), class: "input input-sm w-full" %>
+  </div>
+  <div>
+    <%= form.label :status, t("agents.index.status"), class: "label text-xs" %>
+    <%= form.select :status, [[t("agent_resources.all_statuses"), ""], [t("agents.index.active"), "active"], [t("agents.index.removed"), "removed"]], { selected: @status }, class: "select select-sm" %>
+  </div>
+  <%= form.submit t("agent_resources.filter"), class: "btn btn-sm btn-ghost" %>
+  <% if @query.present? || @status %>
+    <%= link_to t("agent_resources.clear"), path, class: "btn btn-sm btn-ghost" %>
+  <% end %>
+<% end %>

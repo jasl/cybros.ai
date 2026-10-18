@@ -1,0 +1,206 @@
+{
+  "runs_path": "/agent_api/v1/runs",
+  "attention_path": "/agent_api/v1/attention",
+  "report_path": "/agent_api/v1/work_report",
+  "report_units": [
+    "hour",
+    "day"
+  ],
+  "report_max_points": 1000,
+  "attention_views": [
+    "actionable",
+    "following"
+  ],
+  "valid_runs_fixture": {
+    "runs": [
+      {
+        "public_id": "01900000-0000-7000-8000-0000000000b1",
+        "workspace_public_id": "01900000-0000-7000-8000-000000000020",
+        "status": "needs_attention",
+        "turn": {
+          "status": "running"
+        },
+        "attention": {
+          "reason": "approval_required"
+        },
+        "created_at": "2026-10-15T00:00:00Z"
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_attention_fixture": {
+    "items": [
+      {
+        "workspace_public_id": "01900000-0000-7000-8000-000000000020",
+        "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+        "conversation_public_id": null,
+        "task": {
+          "key": "r2t0",
+          "kind": "tool_task",
+          "lifetime": "conversation",
+          "wake": "auto",
+          "status": "needs_approval",
+          "on_failure": "halt",
+          "tool_name": "write_file",
+          "visibility": "visible",
+          "created_at": "2026-10-15T00:00:00Z"
+        }
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_report_fixture": {
+    "report": {
+      "from": "2026-10-15T00:00:00Z",
+      "to": "2026-10-15T01:00:00Z",
+      "unit": "hour",
+      "as_of": "2026-10-15T02:00:00Z",
+      "workspace_public_id": null,
+      "agent_public_id": null,
+      "current": {
+        "run_counts": {
+          "pending": 0,
+          "running": 1,
+          "paused": 0,
+          "needs_attention": 1,
+          "canceling": 0,
+          "completed": 0,
+          "canceled": 0
+        },
+        "attention_count": 1
+      },
+      "totals": {
+        "created_runs": 2,
+        "active_answering_agents": 1,
+        "conversation_usage": {
+          "request_count": 3,
+          "input_tokens": 900,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "output_tokens": 120,
+          "reasoning_tokens": 0,
+          "total_tokens": 1020,
+          "cost_amount": "0.040500000000000001",
+          "cost_complete": false
+        }
+      },
+      "series": [
+        {
+          "bucket_start_at": "2026-10-15T00:00:00Z",
+          "created_runs": 2,
+          "active_answering_agents": 1,
+          "conversation_usage": {
+            "request_count": 3,
+            "input_tokens": 900,
+            "cache_read_tokens": 0,
+            "cache_creation_tokens": 0,
+            "output_tokens": 120,
+            "reasoning_tokens": 0,
+            "total_tokens": 1020,
+            "cost_amount": "0.040500000000000001",
+            "cost_complete": false
+          }
+        }
+      ],
+      "previous": {
+        "from": "2026-10-14T23:00:00Z",
+        "to": "2026-10-15T00:00:00Z",
+        "totals": {
+          "created_runs": 0,
+          "active_answering_agents": 0,
+          "conversation_usage": {
+            "request_count": 0,
+            "input_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_creation_tokens": 0,
+            "output_tokens": 0,
+            "reasoning_tokens": 0,
+            "total_tokens": 0,
+            "cost_amount": "0.0",
+            "cost_complete": true
+          }
+        }
+      }
+    }
+  },
+  "unknown_unit_fixture": {
+    "report": {
+      "from": "2026-10-15T00:00:00Z",
+      "to": "2026-10-15T01:00:00Z",
+      "unit": "zz_unknown_value",
+      "as_of": "2026-10-15T02:00:00Z",
+      "workspace_public_id": null,
+      "agent_public_id": null,
+      "current": {
+        "run_counts": {
+          "pending": 0,
+          "running": 1,
+          "paused": 0,
+          "needs_attention": 1,
+          "canceling": 0,
+          "completed": 0,
+          "canceled": 0
+        },
+        "attention_count": 1
+      },
+      "totals": {
+        "created_runs": 2,
+        "active_answering_agents": 1,
+        "conversation_usage": {
+          "request_count": 3,
+          "input_tokens": 900,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "output_tokens": 120,
+          "reasoning_tokens": 0,
+          "total_tokens": 1020,
+          "cost_amount": "0.040500000000000001",
+          "cost_complete": false
+        }
+      },
+      "series": [
+        {
+          "bucket_start_at": "2026-10-15T00:00:00Z",
+          "created_runs": 2,
+          "active_answering_agents": 1,
+          "conversation_usage": {
+            "request_count": 3,
+            "input_tokens": 900,
+            "cache_read_tokens": 0,
+            "cache_creation_tokens": 0,
+            "output_tokens": 120,
+            "reasoning_tokens": 0,
+            "total_tokens": 1020,
+            "cost_amount": "0.040500000000000001",
+            "cost_complete": false
+          }
+        }
+      ],
+      "previous": {
+        "from": "2026-10-14T23:00:00Z",
+        "to": "2026-10-15T00:00:00Z",
+        "totals": {
+          "created_runs": 0,
+          "active_answering_agents": 0,
+          "conversation_usage": {
+            "request_count": 0,
+            "input_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_creation_tokens": 0,
+            "output_tokens": 0,
+            "reasoning_tokens": 0,
+            "total_tokens": 0,
+            "cost_amount": "0.0",
+            "cost_complete": true
+          }
+        }
+      }
+    }
+  },
+  "unknown_unit_behavior": "carry_unknown",
+  "amount_encoding": "decimal_string"
+}

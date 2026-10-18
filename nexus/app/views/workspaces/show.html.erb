@@ -1,0 +1,41 @@
+<% content_for :title, @workspace.name %>
+<div class="space-y-6">
+  <header class="space-y-3">
+    <%= render "shared/back_navigation", path: workspaces_path, label: t("workspaces.show.workspaces") %>
+    <div class="flex flex-wrap items-center gap-2">
+      <h1 class="text-xl font-medium wrap-anywhere"><%= @workspace.name %></h1>
+      <%= render "workspaces/state_badge", workspace: @workspace %>
+      <%= render "workspaces/agent_badge" if @workspace.agent_identifier %>
+    </div>
+    <p class="text-sm text-base-content/60"><%= t("work_console.workspace_work_description") %></p>
+  </header>
+  <%= render "workspaces/navigation", workspace: @workspace, current: :overview %>
+  <div class="grid gap-6 lg:grid-cols-2">
+    <section class="space-y-3">
+      <h2 class="text-base font-medium"><%= t("work_console.conversations") %></h2>
+      <div class="divide-y divide-base-300 rounded-box border border-base-300">
+        <% @recent_conversations.each do |conversation| %>
+          <article class="space-y-1 p-4">
+            <%= link_to conversation.title.presence || conversation.public_id, conversation_path(conversation, return_to: request.fullpath), class: "link link-hover font-medium wrap-anywhere" %>
+            <p class="text-sm text-base-content/60"><%= l(conversation.last_activity_at, format: :short) %></p>
+          </article>
+        <% end %>
+        <% if @recent_conversations.empty? %><p class="p-4 text-sm text-base-content/60"><%= t("work_console.no_conversations") %></p><% end %>
+      </div>
+      <%= link_to t("work_console.all_conversations"), workspace_conversations_path(@workspace), class: "link link-hover text-sm" %>
+    </section>
+    <section class="space-y-3">
+      <h2 class="text-base font-medium"><%= t("work_console.runs") %></h2>
+      <div class="divide-y divide-base-300 rounded-box border border-base-300">
+        <% @recent_runs.each do |run| %>
+          <article class="space-y-2 p-4">
+            <%= link_to work_run_title(run), run_path(run, return_to: request.fullpath), class: "link link-hover font-medium wrap-anywhere" %>
+            <p class="text-sm"><span class="badge badge-outline"><%= work_status_label(run.status) %></span></p>
+          </article>
+        <% end %>
+        <% if @recent_runs.empty? %><p class="p-4 text-sm text-base-content/60"><%= t("work_console.no_runs") %></p><% end %>
+      </div>
+      <%= link_to t("work_console.all_runs"), workspace_runs_path(@workspace), class: "link link-hover text-sm" %>
+    </section>
+  </div>
+</div>

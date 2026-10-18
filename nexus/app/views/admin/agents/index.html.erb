@@ -1,0 +1,43 @@
+<% content_for :title, t("admin.agents.index.agents") %>
+
+<div class="space-y-6">
+  <header class="space-y-1">
+    <h1 class="text-xl font-medium tracking-tight"><%= t("admin.agents.index.agents") %></h1>
+    <p class="text-sm text-base-content/60"><%= t("admin.agents.index.description") %></p>
+  </header>
+
+  <%= render "agents/filters", path: admin_agents_path, query_max_length: Admin::AgentsController::SEARCH_QUERY_MAX_LENGTH %>
+
+  <section class="overflow-x-auto rounded-box border border-base-300 bg-base-200">
+    <% if @agents.any? %>
+      <table class="table">
+        <thead><tr>
+          <th><%= t("admin.agents.index.agent") %></th>
+          <th><%= t("admin.agents.index.manager") %></th>
+          <th><%= t("admin.agents.index.status") %></th>
+          <th><span class="sr-only"><%= t("admin.users.index.actions") %></span></th>
+        </tr></thead>
+        <tbody>
+          <% @agents.each do |agent| %>
+            <tr data-agent-id="<%= agent.public_id %>">
+              <td class="min-w-40">
+                <%= link_to member_display_name(agent), admin_agent_path(agent), class: "font-medium link link-hover" %>
+                <span class="block text-xs text-base-content/60 wrap-anywhere">@<%= agent.handle %></span>
+              </td>
+              <td><%= link_to agent.steward.display_name, admin_user_path(agent.steward), class: "link link-hover" %></td>
+              <td><span class="<%= badge_classes(agent.active?, tone: :success, extra: "whitespace-nowrap") %>"><%= t("members.statuses.#{agent.status}") %></span></td>
+              <td><%= link_to t("admin.users.index.manage"), admin_agent_path(agent), class: "btn btn-ghost btn-sm", aria: { label: t("admin.agents.index.manage_agent", name: member_display_name(agent)) } %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="p-10 text-center">
+        <p class="text-sm text-base-content/60"><%= t(@query.present? || @status ? "agent_resources.no_matches" : "admin.agents.index.no_agents") %></p>
+        <% if @query.present? || @status %><p class="mt-1 text-sm text-base-content/60"><%= t("agent_resources.no_matches_hint") %></p><% end %>
+      </div>
+    <% end %>
+  </section>
+
+  <%= render "shared/pagination_footer", pagy: @agents_pagy, noun: "agents", aria_label: t("admin.agents.index.agents_pages") %>
+</div>

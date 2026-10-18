@@ -1,0 +1,20 @@
+<%= render layout: "workspaces/data/shell", locals: { workspace: @workspace, data_writable: @data_writable, error: @error, validation_errors: @validation_errors, title: t("data_console.title") } do %>
+  <p class="text-sm text-base-content/70"><%= t("data_console.description") %></p>
+  <%= link_to t("usage_reports.data_download"), workspace_data_export_path(@workspace), class: "btn btn-outline btn-sm", data: { turbo: false } %>
+  <div class="grid gap-4 md:grid-cols-2">
+    <% [[:memory, workspace_memory_documents_path(@workspace)], [:character, workspace_character_path(@workspace)], [:store, workspace_store_entries_path(@workspace)]].each do |kind, path| %>
+      <section class="rounded-box border border-base-300 p-4 space-y-3">
+        <h2 class="font-medium"><%= link_to t("data_console.#{kind}.title"), path, class: "link link-hover" %></h2>
+        <p class="text-sm text-base-content/70"><%= t("data_console.#{kind}.description") %></p>
+      </section>
+    <% end %>
+    <section class="rounded-box border border-base-300 p-4 space-y-3">
+      <h2 class="font-medium"><%= t("data_console.attachments.title") %></h2>
+      <p class="text-sm text-base-content/70"><%= t("data_console.attachments.description") %></p>
+      <div class="flex flex-wrap gap-3 text-sm">
+        <%= link_to t("data_console.attachments.conversations"), workspace_conversations_path(@workspace), class: "link link-hover" %>
+        <%= link_to t("data_console.attachments.runs"), workspace_runs_path(@workspace), class: "link link-hover" %>
+      </div>
+    </section>
+  </div>
+<% end %>

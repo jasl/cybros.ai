@@ -1,0 +1,66 @@
+<% content_for :title, t("admin.users.index.users") %>
+
+<div class="space-y-6">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div class="space-y-1">
+      <h1 class="text-xl font-medium tracking-tight"><%= t("admin.users.index.users") %></h1>
+      <p class="text-sm text-base-content/60"><%= t("admin.users.index.description") %></p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <%= link_to t("admin.users.index.invitations"), admin_invitations_path, class: "btn btn-ghost btn-sm" %>
+      <%= link_to t("admin.users.index.add_user"), new_admin_user_path, class: "btn btn-primary btn-sm" %>
+    </div>
+  </header>
+
+  <%= form_with url: admin_users_path, method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
+    <div class="min-w-48 flex-1">
+      <%= form.label :query, t("admin.users.index.search"), class: "label text-xs" %>
+      <%= form.search_field :query, value: @query, maxlength: Admin::UsersController::SEARCH_QUERY_MAX_LENGTH, placeholder: t("admin.users.index.search_placeholder"), class: "input input-sm w-full" %>
+    </div>
+    <div>
+      <%= form.label :status, t("admin.users.index.status"), class: "label text-xs" %>
+      <%= form.select :status, [[t("admin.users.index.all_statuses"), ""]] + User.statuses.keys.map { |status| [t("members.statuses.#{status}"), status] }, { selected: @status }, class: "select select-sm" %>
+    </div>
+    <%= form.submit t("admin.users.index.apply"), class: "btn btn-sm btn-ghost" %>
+    <% if @query.present? || @status %>
+      <%= link_to t("admin.users.index.clear"), admin_users_path, class: "btn btn-sm btn-ghost" %>
+    <% end %>
+  <% end %>
+
+  <section class="overflow-x-auto rounded-box border border-base-300 bg-base-200">
+    <% if @users.any? %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th><%= t("admin.users.index.user") %></th>
+            <th><%= t("admin.users.index.role") %></th>
+            <th><%= t("admin.users.index.status") %></th>
+            <th class="hidden lg:table-cell"><%= t("admin.users.index.joined") %></th>
+            <th><span class="sr-only"><%= t("admin.users.index.actions") %></span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @users.each do |user| %>
+            <tr data-user-id="<%= user.public_id %>">
+              <td class="min-w-44">
+                <%= link_to member_display_name(user), admin_user_path(user), class: "font-medium link link-hover" %>
+                <p class="mt-1 text-xs text-base-content/60 hyphens-none wrap-anywhere"><%= user.email %></p>
+              </td>
+              <td><span class="badge badge-ghost badge-sm whitespace-nowrap"><%= t("members.role_options.#{user.role}") %></span></td>
+              <td><span class="<%= badge_classes(user.active?, tone: :success, extra: "whitespace-nowrap") %>"><%= t("members.statuses.#{user.status}") %></span></td>
+              <td class="hidden text-base-content/60 whitespace-nowrap lg:table-cell"><%= l(user.created_at.to_date, format: :long) %></td>
+              <td><%= link_to t("admin.users.index.manage"), admin_user_path(user), class: "btn btn-ghost btn-sm", aria: { label: t("admin.users.index.manage_user", name: member_display_name(user)) } %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="p-10 text-center">
+        <p class="text-sm font-medium"><%= t("admin.users.index.no_users") %></p>
+        <p class="mt-1 text-sm text-base-content/60"><%= t("admin.users.index.no_users_hint") %></p>
+      </div>
+    <% end %>
+  </section>
+
+  <%= render "shared/pagination_footer", pagy: @users_pagy, noun: "users", aria_label: t("admin.users.index.users_pages") %>
+</div>

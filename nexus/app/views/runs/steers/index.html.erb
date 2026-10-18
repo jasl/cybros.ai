@@ -1,0 +1,22 @@
+<% content_for :title, t("run_steering.title") %>
+<%= tag.div class: "mx-auto max-w-3xl space-y-6", data: run_refresh_data(@run) do %>
+  <%= render "runs/header", run: @run, actions: @actions %>
+  <section class="space-y-4" aria-labelledby="run-corrections-heading">
+    <div class="space-y-2">
+      <h2 id="run-corrections-heading" class="text-lg font-medium"><%= t("run_steering.title") %></h2>
+      <p class="text-sm text-base-content/60"><%= t("run_steering.list_scope") %></p>
+    </div>
+    <% @inputs.each do |input| %>
+      <article class="space-y-3 rounded-box border border-base-300 bg-base-200 p-4" data-input-id="<%= input.public_id %>">
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+          <span class="badge badge-outline"><%= t("run_steering.states.waiting") %></span>
+          <span class="wrap-anywhere"><%= input.authoring_user.display_name %> · <%= t("run_steering.modes.#{input.delivery_mode}") %></span>
+        </div>
+        <p class="whitespace-pre-wrap wrap-anywhere"><%= truncate(input.text.to_s, length: 300) %></p>
+        <%= link_to t("run_steering.follow"), run_steering_observation_path(@run, input_public_id: input.public_id, return_to: work_return_path(workspace_runs_path(@run.workspace))), class: "link link-hover text-sm" %>
+      </article>
+    <% end %>
+    <% if @inputs.empty? %><%= render "shared/empty_state", title: t("run_steering.empty"), description: t("run_steering.empty_description") %><% end %>
+  </section>
+  <%= render "shared/pagination_footer", pagy: @inputs_pagy, noun: "inputs", aria_label: t("run_steering.pages") %>
+<% end %>

@@ -1,0 +1,44 @@
+<% content_for :title, @connection.name %>
+<% turbo_page_requires_reload if @connection.auth_type == "oauth" && request.get? %>
+<%= render layout: "settings/shell", locals: { current: :mcp_connections } do %>
+  <section class="space-y-5">
+    <%= link_to t("mcp_connections.back"), settings_mcp_connections_path, class: "link text-sm" %>
+    <h2 class="text-lg font-medium break-words"><%= @connection.name %></h2>
+    <p class="break-all text-sm text-base-content/70"><%= @connection.endpoint_url %></p>
+    <div class="flex flex-wrap gap-2">
+      <% if @connection.auth_type == "bearer" %>
+        <%= link_to t("mcp_connections.manage_credential"), settings_mcp_connection_credential_path(@connection), class: "btn btn-sm" %>
+      <% elsif @connection.auth_type == "oauth" %>
+        <%= button_to t("mcp_connections.authorize"), settings_mcp_connection_authorization_path(@connection), params: { command: { lock_version: @connection.lock_version } }, disabled: !@connection.enabled?, form: { data: { turbo: false } }, class: "btn btn-primary btn-sm" %>
+        <%= button_to t("mcp_connections.disconnect"), settings_mcp_connection_credential_path(@connection), method: :delete, params: { command: { lock_version: @connection.lock_version } }, class: "btn btn-error btn-outline btn-sm" %>
+      <% end %>
+      <%= button_to t("mcp_connections.refresh"), settings_mcp_connection_catalog_refresh_path(@connection), params: { command: { lock_version: @connection.lock_version } }, disabled: !@connection.enabled? || !@connection.credential_configured?, class: "btn btn-sm" %>
+    </div>
+    <% if @connection.auth_type == "oauth" %>
+      <p class="text-sm text-base-content/70"><%= t("mcp_connections.authorization_statuses.#{@connection.authorization_status}") %></p>
+      <p class="text-sm text-base-content/70"><%= t(@connection.enabled? ? "mcp_connections.oauth_hint" : "mcp_connections.oauth_disabled_hint") %></p>
+      <p class="text-sm text-base-content/70"><%= t("mcp_connections.disconnect_hint") %></p>
+    <% else %>
+      <p class="text-sm text-base-content/70"><%= t(@connection.auth_type == "none" ? "mcp_connections.no_auth_needed" : @connection.credential_configured? ? "mcp_connections.configured" : "mcp_connections.missing_credential") %></p>
+    <% end %>
+    <% unless @connection.enabled? %><p class="text-sm text-base-content/70"><%= t("mcp_connections.discovery_disabled_hint") %></p><% end %>
+    <%= form_with model: @connection, url: settings_mcp_connection_path(@connection), scope: :mcp_connection, method: :patch, class: "space-y-4" do |form| %>
+      <%= render "settings/mcp_connections/errors", connection: @connection %>
+      <%= form.hidden_field :lock_version %>
+      <div><%= form.label :name, t("mcp_connections.name"), class: "label" %><%= form.text_field :name, required: true, maxlength: McpConnection::NAME_MAX_LENGTH, class: "input w-full" %></div>
+      <div><%= form.label :account_label, t("mcp_connections.account_label"), class: "label" %><%= form.text_field :account_label, maxlength: McpConnection::ACCOUNT_LABEL_MAX_LENGTH, class: "input w-full" %></div>
+      <label class="flex items-center gap-2"><%= form.check_box :enabled, class: "checkbox checkbox-sm" %><%= t("mcp_connections.enabled") %></label>
+      <section class="space-y-3 rounded-box border border-base-300 p-4">
+        <h3 class="font-medium"><%= t("mcp_connections.tools") %></h3>
+        <p class="text-sm text-base-content/70"><%= t("mcp_connections.selection_hint") %></p>
+        <% @connection.tools_catalog.each do |tool| %>
+          <div class="flex items-start gap-3">
+            <span class="min-w-0"><span class="font-mono text-sm break-all"><%= tool.fetch("name") %></span><span class="block text-sm text-base-content/70 break-words"><%= tool.fetch("description") %></span></span>
+          </div>
+        <% end %>
+        <% if @connection.tools_catalog.empty? %><p class="text-sm"><%= t("mcp_connections.no_tools") %></p><% end %>
+      </section>
+      <%= form.submit t("mcp_connections.save"), class: "btn btn-primary" %>
+    <% end %>
+  </section>
+<% end %>

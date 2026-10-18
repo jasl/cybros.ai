@@ -1,0 +1,37 @@
+<%# locals: (upgrade:) %>
+<section aria-labelledby="upgrade-progress-heading" class="rounded-box border border-base-300 bg-base-100 p-5 sm:p-6"
+  data-deployment-target="progress" <%= "hidden" unless upgrade %>>
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h2 id="upgrade-progress-heading" class="text-lg font-semibold"><%= t("admin.deployments.progress.upgrade_progress") %></h2>
+      <p class="mt-2 text-sm" data-deployment-target="phase"><%= deployment_phase_labels.fetch(upgrade&.phase, upgrade&.phase) %></p>
+    </div>
+    <span class="badge badge-soft" data-deployment-target="status"><%= deployment_status_labels.fetch(upgrade&.status, upgrade&.status) %></span>
+  </div>
+  <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+    <div class="min-w-0">
+      <dt class="text-base-content/60"><%= t("admin.deployments.progress.target_release") %></dt>
+      <dd class="mt-1 font-mono break-all" data-deployment-target="targetRelease"><%= upgrade&.target&.release %></dd>
+    </div>
+    <div class="min-w-0">
+      <dt class="text-base-content/60"><%= t("admin.deployments.progress.last_update") %></dt>
+      <dd class="mt-1 break-words" data-deployment-target="updatedAt"><%= upgrade&.updated_at %></dd>
+    </div>
+  </dl>
+  <p class="mt-4 text-sm" role="status" aria-live="polite" data-deployment-target="connection">
+    <%= upgrade&.status == "running" ? t("admin.deployments.progress.following_progress_the_page_will_reconnect_while_services_restart") : t("admin.deployments.progress.saved_upgrade_result") %>
+  </p>
+  <p class="mt-4 text-sm text-error" role="alert" data-deployment-target="operationError" <%= "hidden" unless upgrade&.error %>><%= upgrade&.error&.message %></p>
+  <p class="mt-3 whitespace-pre-wrap text-sm" data-deployment-target="recovery" <%= "hidden" unless upgrade&.recovery.present? %>><%= upgrade&.recovery %></p>
+  <%= render "admin/deployments/database_backup", backup: upgrade&.database_backup, requested: upgrade&.backup %>
+  <div class="mt-4 flex flex-wrap gap-3">
+    <button type="button" class="btn btn-sm btn-outline" data-deployment-target="reconnect" data-action="deployment#reconnect" hidden><%= t("admin.deployments.progress.reconnect") %></button>
+    <%= link_to t("admin.deployments.progress.reload_brand", brand: t("brand.name")), admin_deployment_path, class: "btn btn-sm btn-primary",
+      data: { deployment_target: "reload", turbo: false }, hidden: upgrade&.status != "succeeded" %>
+  </div>
+  <details class="mt-5" open>
+    <summary class="cursor-pointer text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2"><%= t("admin.deployments.progress.upgrade_log") %></summary>
+    <pre class="mt-3 max-h-96 overflow-auto rounded-lg bg-base-200 p-4 font-mono text-xs whitespace-pre-wrap break-all"
+      role="log" aria-label="<%= t("admin.deployments.progress.upgrade_log") %>" data-deployment-target="log"></pre>
+  </details>
+</section>

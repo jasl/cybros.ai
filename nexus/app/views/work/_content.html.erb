@@ -1,0 +1,10 @@
+<%# locals: (text:, raw: true) %>
+<div class="min-w-0 space-y-2" data-controller="work-content" data-work-content-copy-value="<%= t('work_reading.copy_code') %>" data-work-content-copied-value="<%= t('work_reading.copied') %>">
+  <div class="prose prose-sm max-w-none min-w-0 wrap-anywhere [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_table]:[overflow-wrap:normal] [&_th]:min-w-24 [&_td]:min-w-24" data-work-content-target="body"><%= work_markdown(text) %></div>
+  <% if raw %>
+    <details class="rounded-box border border-base-300 p-3">
+      <summary class="cursor-pointer text-xs font-medium"><%= t("work_reading.original") %></summary>
+      <%= render "work/copyable_text", text: text %>
+    </details>
+  <% end %>
+</div>

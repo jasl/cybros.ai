@@ -1,0 +1,37 @@
+---
+en:
+  brand:
+    name: Nexus
+  dashboard:
+    show:
+      dashboard: Dashboard
+      configure_model_providers: Configure model providers
+      connect_an_agent: Connect an agent
+      to_do: To do
+      connect_a_model_provider: Connect a model provider
+      make_a_text_model_available_for_your_agents_this: Make a text model available for your agents. This
+        task disappears when a usable model is configured.
+      start_your_agent_program_and_enter_its_connection_code: >-
+        Start your agent program and enter its connection code. You can manage connected programs from
+        Agents.
+      model_provider_setup: Model provider setup
+      agent_connection: Agent connection
+      signed_in_as_html: Signed in as %{email}
+  layouts:
+    shared:
+      admin_nav:
+        system_upgrade: System upgrade
+      confirm_dialog:
+        cancel: Cancel
+        confirm: Confirm
+        close: close
+        dismiss: Dismiss
+  shared:
+    back_navigation:
+      back: Back
+    member_search_form:
+      search_members: Search members
+      search: Search
+      clear: Clear
+      find_an_active_member: Find an active member
+      search_by_name_or_email: Search by name or email.
