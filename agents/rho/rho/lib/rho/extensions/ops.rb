@@ -4,6 +4,7 @@ require_relative "ops/events"
 require_relative "ops/skill_routes"
 require_relative "ops/uploads"
 require_relative "ops/files"
+require_relative "ops/review"
 require_relative "ops/inference_requests"
 require_relative "ops/models"
 require_relative "ops/conversations"
@@ -47,6 +48,7 @@ module Rho
         InferenceRequests.register(api)
         Uploads.register(api)
         Files.register(api)
+        Review.register(api)
         Models.register(api)
         Conversations.register(api)
         ConversationHistory.register(api)
@@ -76,8 +78,8 @@ module Rho
       # Blocks for the answer: the row's own deadline (the step's clock,
       # else the runner's announced park) plus the sweep's minute bounds it.
       # Answers a `ToolCallResult`, or the member plane's own `Refusal`.
-      def self.call_tool(ctx, runner, tool, input, timeout_ms = nil, idempotency_key: SecureRandom.uuid)
-        ctx.member_plane do |client, workspace_public_id, about|
+      def self.call_tool(ctx, runner, tool, input, timeout_ms = nil, idempotency_key: SecureRandom.uuid, workspace_public_id: nil)
+        ctx.member_plane(workspace_public_id: workspace_public_id) do |client, workspace_public_id, about|
           context = ctx.runs_for(client, workspace_public_id).start_tool_call(
             runner_executor_public_id: runner, tool: tool, input: input, timeout_ms: timeout_ms,
             approval_rules: Rho::RunDeclaration.request_rules(guard: ctx.config.plugin_enabled?("rho.guard"), roots: Rho.protected_roots(ctx.home)),

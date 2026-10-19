@@ -532,7 +532,7 @@ module Rho
     # checkpoint inspection/restoration, and environment binding. Runner
     # skills are imported by Nexus from the selected Runner's announcement.
     def undeclared
-      [Rho::Runner::Tools::FilesBytes::NAME,
+      [Rho::Runner::Tools::FilesBytes::NAME, Rho::Runner::Tools::GitReview::NAME,
        Extensions::Processes::Tools::ProcessLog::NAME,
        Rho::Runner::Tools::Checkpoints::NAME, Rho::Runner::Tools::CheckpointRestore::NAME,
        Extensions::Environment::Tools::Bind::NAME].freeze

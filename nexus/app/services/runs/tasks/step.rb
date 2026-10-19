@@ -20,7 +20,7 @@ module Runs
         "model" => %w[prompt key model workload tools instructions detached configuration compaction
                       fan_on_failure on_failure visibility attachments lifetime wake after results
                       kernel_tools runner_executor_public_ids runner_tool_names mcp_tools model_selection fallback_models],
-        "ask" => %w[prompt options multi key timeout_ms detached lifetime wake on_failure visibility after],
+        "ask" => %w[prompt options multi fields key timeout_ms detached lifetime wake on_failure visibility after],
         "wait" => %w[task run_public_id key timeout_ms detached lifetime wake on_failure visibility after],
         "parallel" => %w[until losers key on_failure lifetime wake],
       }.freeze
@@ -67,8 +67,8 @@ module Runs
 
       # `options`/`multi` are the question's choices as data: one string
       # each, and whether several may be taken.
-      Ask = Data.define(:prompt, :options, :multi, :key, :timeout_ms, :detached, :on_failure, :visibility, :lifetime, :wake, :after) do
-        def initialize(prompt: nil, options: nil, multi: nil, key: nil, timeout_ms: nil, detached: false,
+      Ask = Data.define(:prompt, :options, :multi, :fields, :key, :timeout_ms, :detached, :on_failure, :visibility, :lifetime, :wake, :after) do
+        def initialize(prompt: nil, options: nil, multi: nil, fields: nil, key: nil, timeout_ms: nil, detached: false,
                        on_failure: nil, visibility: nil, lifetime: nil, wake: nil, after: nil) = super
 
         def verb = "ask"

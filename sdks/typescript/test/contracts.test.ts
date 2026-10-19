@@ -133,3 +133,16 @@ test('Conversation cost limit and reached state retain their typed public values
     expect(conversation.cost_limit_reached).toBe(cost_limit_reached);
   }
 });
+
+test('typed ask fields survive inbox decoding and resolutions preserve false and zero', async () => {
+  const ask = fixture('executor_inbox', 'structured_ask_fixture') as Record<string, unknown>;
+  const inbox = await new ExecutorClient(config({ tasks: [ask], pagination: { next_after: null } })).inbox.list();
+  expect(inbox.items[0]?.fields).toEqual(ask.fields);
+  let body: unknown;
+  const client = new Client({ baseURL: 'http://nexus.example', credential: 'test-only', fetch: async (_url, init) => {
+    body = JSON.parse(String(init?.body));
+    return Response.json(fixture('runs', 'valid_ask_task_detail_fixture'));
+  } });
+  await client.workspace('workspace').run('run').task('question').resolve({ answer: { enabled: false, count: 0 } });
+  expect(body).toEqual({ answer: { enabled: false, count: 0 } });
+});

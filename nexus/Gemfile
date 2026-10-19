@@ -62,7 +62,7 @@ gem "ruby-vips", "~> 2.3", require: false
 
 gem "httpx"
 # The MCP protocol client uses Nexus's bounded HTTPX transport.
-gem "mcp", "~> 1.6"
+gem "mcp"
 # MCP OAuth error handlers reference Faraday exception classes even when the
 # embedding application supplies its own HTTP transport.
 gem "faraday", ">= 2.1", require: false

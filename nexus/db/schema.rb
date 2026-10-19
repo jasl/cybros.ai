@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_17_110000) do
+ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1235,6 +1235,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_17_110000) do
     t.uuid "mcp_connection_public_id"
     t.datetime "external_started_at"
     t.string "workload", default: "text_generation", null: false
+    t.jsonb "ask_fields"
     t.index ["account_id"], name: "index_tasks_on_account_id"
     t.index ["addressed_executor_id", "id"], name: "index_tasks_on_addressed_frontier", where: "((status)::text = ANY (ARRAY['dispatched'::text, 'awaiting_input'::text, 'needs_approval'::text]))"
     t.index ["addressed_role", "id"], name: "index_tasks_on_pool_frontier", where: "((addressed_executor_id IS NULL) AND ((status)::text = 'dispatched'::text))"

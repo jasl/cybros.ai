@@ -10,6 +10,20 @@ When rho creates a file for you, it publishes the result with `file_publish`. Th
 
 Installing rho on a host does not install every document parser or project dependency. The published Docker image includes language toolchains, Chromium, document conversion tools, fonts and Python file-work libraries, described to the model by its installed `workspace-tools` skill.
 
+## Review working directory changes
+
+Open a Conversation in the WebUI and expand **Review working directory changes** below its transcript. The read runs on that Conversation's selected Runner, using its bound Git directory or that Runner's default directory. The panel shows the repository root, Runner and exact commit used for comparison.
+
+1. Select **Refresh against HEAD** to compare tracked and untracked files with the current commit. Staged and unstaged changes appear together. A repository needs an initial commit.
+2. Choose a changed file, then a removed or added line. Write a comment and choose **Add feedback to message**.
+3. Review the ordinary message draft and send it. Feedback includes the original path, side, line, code excerpt and commit. It does not change files or approve tool effects.
+
+Adding feedback rechecks the file. If it changed or the read fails, a warning appears and the comment retains its original excerpt. The working directory can change again afterward; the displayed diff is a captured comparison, not a live editor. It includes human and other task edits too, rather than claiming every change came from this Conversation.
+
+Each read lists at most 200 files with a bounded filename window; each file patch is limited to 32 KiB. Binary and oversized patches show explicit unavailable states. Non-Git directories, missing commits and unreachable Runners show errors. A bound subdirectory is resolved to its Git repository root. Historical checkpoint comparisons and worktree management are separate from this view.
+
+Unsent review comments stay in the page under their Conversation and Runner. Adding a comment copies it into that Conversation's existing message draft; neither draft survives closing the page. An uncertain send can be retried with its original key within 24 hours. After that window the page stops retrying and asks you to check history before composing a new message.
+
 ## Images
 
 Image input depends on the selected model's capabilities; keeping an attachment does not imply that a model can view its media type. To generate or edit images, set the image model under **Plugins → Images** to an available image-generation model.

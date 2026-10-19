@@ -52,6 +52,7 @@
     "prompt",
     "options",
     "multi",
+    "fields",
     "scope",
     "tool_alias",
     "effect_profile"
@@ -102,6 +103,7 @@
   "error_statuses": {
     "extension_too_long": 409,
     "frame_too_large": 422,
+    "invalid_ask_answer": 422,
     "invalid_content": 422,
     "invalid_frame": 422,
     "invalid_metadata": 422,
@@ -230,6 +232,39 @@
       "MySQL"
     ],
     "multi": false,
+    "started_at": "2026-07-30T00:00:00Z",
+    "deadline_at": "2026-07-31T00:00:00Z",
+    "timeout_ms": 86400000,
+    "claimed": false,
+    "addressed_to": {
+      "role": "agent_application",
+      "executor_public_id": "01900000-0000-7000-8000-000000000030"
+    },
+    "conversation_public_id": null,
+    "parent_public_id": null
+  },
+  "structured_ask_fixture": {
+    "kind": "ask",
+    "run_public_id": "01900000-0000-7000-8000-000000000031",
+    "workspace_public_id": "01900000-0000-7000-8000-000000000001",
+    "task_key": "r1t0-ask-2",
+    "prompt": "Configure the run",
+    "fields": [
+      {
+        "name": "enabled",
+        "label": "Enable",
+        "type": "boolean",
+        "required": true,
+        "options": null
+      },
+      {
+        "name": "count",
+        "label": "Count",
+        "type": "integer",
+        "required": true,
+        "options": null
+      }
+    ],
     "started_at": "2026-07-30T00:00:00Z",
     "deadline_at": "2026-07-31T00:00:00Z",
     "timeout_ms": 86400000,

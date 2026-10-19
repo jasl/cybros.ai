@@ -59,6 +59,18 @@ class OpsControlsTest < Minitest::Test
       request(daemon, :post, "/answer", token: bearer(daemon), body: { public_id: "al-9" }).code
   end
 
+  def test_structured_answers_keep_false_zero_and_empty_values_on_the_member_door
+    api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::HALTED_TRACE)
+    daemon = member_ready(boot, api)
+    answer = { "enabled" => false, "count" => 0, "text" => "", "choices" => [] }
+    response = request(daemon, :post, "/answer", token: bearer(daemon),
+      body: { public_id: "al-9", task_key: "ask-1", answer: answer })
+
+    assert_equal "200", response.code, response.body
+    assert_equal [{ "answer" => answer }], api.resolutions
+    assert_empty api.commits
+  end
+
   # A `--token` names a client-authored await, which is never an inbox
   # row: the same door, the token beside the answer.
   def test_a_token_rides_to_the_member_door

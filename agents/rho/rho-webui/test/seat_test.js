@@ -11,13 +11,13 @@ afterEach(() => restore());
 const approval = (fields = {}) => ({ kind: "approval", run_public_id: "run-1", task_key: "task-1", tool_name: "bash", tool_input: { command: "ls" }, ...fields });
 const question = (fields = {}) => ({ kind: "question", run_public_id: "run-1", task_key: "ask-1", prompt: "Which **branch**?", ...fields });
 
-function seat(overrides = {}) {
+function seat(overrides = {}, response = async () => true) {
   const state = observable({ id: "c-1", access: "ready", detail: { public_id: "c-1", active_turn_public_id: null }, asks: [], inputs: [],
     snapshot: null, error: "", notice: "", busy: false, draft: "", models: [], model: "", reconnecting: false, detached: false, ...overrides });
   const calls = [];
   const conversations = {
     state,
-    respond: async (...args) => { calls.push(["respond", ...args]); return true; },
+    respond: async (...args) => { calls.push(["respond", ...args]); return response(...args); },
     execute: async (...args) => { calls.push(["execute", ...args]); },
     promote: () => calls.push(["promote"]),
     refresh: () => calls.push(["refresh"]),
@@ -263,4 +263,74 @@ test("refusals and a detached view say so with Refresh; loading and reconnecting
   patch({ error: "Busy", notice: "Saved, but later requests may ask again." });
   expect(element.querySelector(".alert--error").textContent).toBe("Busy");
   expect(element.querySelector(".alert--warning").textContent).toBe("Saved, but later requests may ask again.");
+});
+
+
+test("typed questions submit values without losing false, zero, empty text or omitted fields", async () => {
+  const fields = [
+    { name: "enabled", label: "Enable", type: "boolean", required: true },
+    { name: "count", label: "Count", type: "integer", required: true },
+    { name: "text", label: "Text", type: "string", required: true },
+    { name: "choice", label: "Pick", type: "choice", required: true, options: ["", "other"] },
+    { name: "choices", label: "Picks", type: "multichoice", required: true, options: ["one", "two"] },
+    { name: "number", label: "Number", type: "number" },
+  ];
+  const ask = question({ fields });
+  const { element, calls, patch } = seat({ asks: [ask] });
+  const form = element.querySelector(".question-form");
+  form.requestSubmit(); await flush();
+  expect(calls).toEqual([]);
+  expect(form.textContent).toContain("Choose an answer");
+  const selects = form.querySelectorAll("select");
+  type(selects[0], "false"); type(selects[1], "0");
+  type(form.querySelector('input[type="text"]'), "0");
+  patch({ asks: [ask, question({ task_key: "later" })] });
+  expect(element.querySelector(".question-form")).toBe(form);
+  form.requestSubmit(); await flush();
+  expect(calls).toEqual([["respond", ask, "/answer", { answer: { enabled: false, count: 0, text: "", choice: "", choices: [] } }]]);
+});
+
+test("typed questions retain drafts across writable state changes and refuse fractional integers", async () => {
+  const ask = question({ fields: [{ name: "count", label: "Count", type: "integer", required: true }] });
+  const { element, calls, patch } = seat({ asks: [ask] });
+  type(element.querySelector(".question-form input"), "1.5");
+  element.querySelector("form").requestSubmit(); await flush();
+  expect(calls).toEqual([]);
+  expect(element.textContent).toContain("Enter a whole number");
+  patch({ detail: { public_id: "c-1", ingresses: [{ label: "Telegram" }] } });
+  expect(element.querySelector(".question-form input").disabled).toBe(true);
+  expect(element.querySelector(".question-form input").value).toBe("1.5");
+  patch({ detail: { public_id: "c-1", active_turn_public_id: null } });
+  type(element.querySelector(".question-form input"), "2");
+  element.querySelector("form").requestSubmit(); await flush();
+  expect(calls[0][3]).toEqual({ answer: { count: 2 } });
+});
+
+test("an optional answer can be explicitly empty or skipped, and field names are literal keys", async () => {
+  const ask = question({ fields: [{ name: "constructor", label: "<b>Notes</b>", type: "string" }] });
+  const { element, calls } = seat({ asks: [ask] });
+  const form = element.querySelector(".question-form");
+  expect(form.querySelector("b")).toBeNull();
+  form.querySelector('input[type="checkbox"]').click();
+  expect(form.querySelector("textarea").disabled).toBe(false);
+  form.requestSubmit(); await flush();
+  expect(calls[0][3]).toEqual({ answer: { constructor: "" } });
+});
+
+test("pending submission disables edits and duplicate sends, while a refusal preserves the draft for retry", async () => {
+  let finish;
+  const ask = question({ fields: [{ name: "choices", label: "Channels", type: "multichoice", required: true, options: ["Email", "Archive"] }] });
+  const { element, calls } = seat({ asks: [ask] }, () => new Promise((resolve) => { finish = resolve; }));
+  const form = element.querySelector(".question-form");
+  form.querySelector('input[type="checkbox"]').click();
+  form.requestSubmit(); form.requestSubmit(); await flush();
+  expect(calls).toHaveLength(1);
+  expect(calls[0][3]).toEqual({ answer: { choices: ["Email"] } });
+  expect(form.querySelector("input").disabled).toBe(true);
+  finish(false); await flush();
+  expect(form.querySelector("input").disabled).toBe(false);
+  expect(form.querySelector("input").checked).toBe(true);
+  form.requestSubmit(); await flush();
+  expect(calls).toHaveLength(2);
+  finish(true); await flush();
 });

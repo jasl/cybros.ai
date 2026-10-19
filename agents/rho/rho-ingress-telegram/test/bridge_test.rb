@@ -526,6 +526,15 @@ class TelegramBridgeTest < Minitest::Test
     assert_empty @bridge.pending("unrelated-conversation")
   end
 
+  def test_typed_questions_do_not_offer_a_plain_text_reply
+    @client.loops = [held_loop("own-loop", "conversation", "ask")]
+    @core.asks = [{ "run_public_id" => "own-loop", "workspace_public_id" => "workspace", "task_key" => "ask",
+      "kind" => "ask", "prompt" => "Choose settings", "fields" => [{ "name" => "enabled", "type" => "boolean" }] }]
+    row = @bridge.pending("conversation").first
+    assert_equal "local", row.fetch("kind")
+    assert_includes row.fetch("question"), "This question needs typed answers"
+  end
+
   def test_commands_read_fresh_attention_instead_of_reusing_the_previous_follower_pass
     @client.loops = [held_loop("own-loop", "conversation", "ask")]
     @core.asks = [{ "run_public_id" => "own-loop", "workspace_public_id" => "workspace", "task_key" => "ask",
@@ -545,7 +554,9 @@ class TelegramBridgeTest < Minitest::Test
   def test_unaddressed_model_questions_are_read_from_their_original_workspace
     @client.loops = [held_loop("group-loop", "conversation", "ask"), held_loop("child-loop", "child", "ask")]
     @client.parents = { "child" => "conversation" }
-    question = Data.define(:prompt)
+    question = Data.define(:prompt, :fields) do
+      def initialize(prompt:, fields: nil) = super
+    end
     @client.task_details = { ["group-loop", "ask"] => question.new(prompt: "Which report?"),
       ["child-loop", "ask"] => question.new(prompt: "Which section?") }
 
@@ -578,7 +589,9 @@ class TelegramBridgeTest < Minitest::Test
 
   def test_an_unaddressed_model_question_keeps_the_same_size_limit
     @client.loops = [held_loop("group-loop", "conversation", "ask")]
-    question = Data.define(:prompt)
+    question = Data.define(:prompt, :fields) do
+      def initialize(prompt:, fields: nil) = super
+    end
     @client.task_details[["group-loop", "ask"]] = question.new(prompt: "x" * (Bridge::QUESTION_LIMIT + 1))
 
     row = @bridge.pending("conversation").fetch(0)

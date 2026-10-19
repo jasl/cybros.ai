@@ -460,7 +460,7 @@ class CliTerminalTest < Minitest::Test
     assert_match(/executor:  0199-executor/, @out.string)
     # The default runner includes web reading alongside coding, processes,
     # checkpoints, environment binding and code mode.
-    assert_match(/^runner:    0199-runner serving 21 tools \((socket connected|no socket), swept \d+\)$/, @out.string)
+    assert_match(/^runner:    0199-runner serving 22 tools \((socket connected|no socket), swept \d+\)$/, @out.string)
     assert_match(/  runner_transport: live/, @out.string)
     assert_match(/^adaptations: default \(gem\)$/, @out.string,
       "the default model's adaptation row and its source, off the daemon")
@@ -546,6 +546,16 @@ class CliTerminalTest < Minitest::Test
   # one line naming the console that answers them (a product home has no
   # `answer` verb; rho-dev's watch prints its own hint); a refused read
   # prints nothing; an empty inbox says so.
+  def test_typed_question_status_explains_the_required_client
+    announce(endpoint: routed_endpoint(
+      "GET /asks" => [[200, { "asks" => [{ "kind" => "ask", "run_public_id" => "run", "task_key" => "question",
+        "prompt" => "Choose settings", "fields" => [{ "name" => "enabled", "type" => "boolean" }] }] }]]
+    ))
+    cli.report_asks
+    assert_includes @out.string, Rho::Locales::ENGLISH.fetch("structured_answer_required")
+    refute_match(/^console:/, @out.string)
+  end
+
   def test_report_status_lists_the_pending_asks_and_says_nothing_when_the_read_is_refused
     announce(endpoint: routed_endpoint(
       "GET /status" => [[200, { "state" => "active", "authority" => { "signed" => "signed_in" } }]],

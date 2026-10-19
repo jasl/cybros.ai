@@ -49,17 +49,17 @@ class ExtensionsTest < Minitest::Test
   # THE DOGFOOD RULE, and the reason the plane is trustworthy: the door a
   # third party uses is the door the built-ins use, so it cannot rot
   # untested behind a privileged path.
-  def test_the_seven_built_ins_and_the_two_undescribed_names_register_through_the_public_door
+  def test_coding_tools_and_operator_reads_register_through_the_public_door
     result = Extensions::Loader.call(builtin: [Extensions::Coding])
 
     assert_predicate result, :ok?
-    assert_equal %w[bash edit file_import file_publish files_bytes find grep ls read skill write], result.registry.names.sort
+    assert_equal %w[bash edit file_import file_publish files_bytes find git_review grep ls read skill write], result.registry.names.sort
     assert_equal ["rho.coding"], result.registry.extension_names
-    assert_equal %w[bash edit file_import file_publish files_bytes find grep ls read skill write],
+    assert_equal %w[bash edit file_import file_publish files_bytes find git_review grep ls read skill write],
       result.registry.toolset(env: env).names.sort
     # The seven describe themselves; the person's read and the kernel's
     # skill load describe themselves to nobody.
-    assert_equal %w[files_bytes], result.registry.entries.select(&:undescribed?).map(&:name).sort
+    assert_equal %w[files_bytes git_review], result.registry.entries.select(&:undescribed?).map(&:name).sort
   end
 
   def test_resource_admission_is_local_metadata_shared_by_tools_and_placements
@@ -155,7 +155,7 @@ class ExtensionsTest < Minitest::Test
     announcement = registry.announcement
 
     assert_equal JSON.generate(expected), JSON.generate(announcement)
-    assert_equal %w[bash edit file_import file_publish files_bytes find grep ls parked read skill write], announcement.map { |e| e.fetch("name") }
+    assert_equal %w[bash edit file_import file_publish files_bytes find git_review grep ls parked read skill write], announcement.map { |e| e.fetch("name") }
     assert_equal %w[effect_profile name], announcement.find { |e| e.fetch("name") == "files_bytes" }.keys.sort
     assert_equal %w[description effect_profile input_schema name timeout_ms],
       announcement.find { |e| e.fetch("name") == "parked" }.keys.sort
@@ -177,7 +177,7 @@ class ExtensionsTest < Minitest::Test
     assert_predicate result, :ok?, result.failures.inspect
     assert_equal %i[agent runner], seen.fetch(:second).keys.sort
     assert_equal result.registry.serving(:runner).announcement, seen.fetch(:second).fetch(:runner)
-    assert_equal %w[bash edit file_import file_publish files_bytes find first grep ls read skill write], seen.fetch(:second).fetch(:runner).map { |e| e.fetch("name") }
+    assert_equal %w[bash edit file_import file_publish files_bytes find first git_review grep ls read skill write], seen.fetch(:second).fetch(:runner).map { |e| e.fetch("name") }
     assert_equal [], seen.fetch(:second).fetch(:agent)
     assert_predicate seen.fetch(:second), :frozen?
     assert_equal({ runner: [], agent: [] }, Extensions::Api.new(extension_name: "rho.bare", source: "<test>").announced)
@@ -369,7 +369,7 @@ class ExtensionsTest < Minitest::Test
 
     refute_predicate result, :ok?
     assert_match(/registers "bash" on the runner address, already registered there by rho\.coding/, sole_message(result.failures))
-    assert_equal 11, result.registry.names.length, "the good extension is untouched"
+    assert_equal 12, result.registry.names.length, "the good extension is untouched"
   end
 
   # ONE FACTORY'S FAILURE IS ITS OWN. An operator with three extensions and
@@ -385,7 +385,7 @@ class ExtensionsTest < Minitest::Test
     refute_predicate result, :ok?
     assert_equal 1, result.failures.length
     assert_includes result.registry.names, "fine", "loading did not stop at the failure"
-    assert_equal 12, result.registry.names.length
+    assert_equal 13, result.registry.names.length
   end
 
   # NOTHING HALF-REGISTERED SURVIVES: the staging handle is committed only

@@ -235,7 +235,11 @@ module Runs
             step.options.nil? || (Array.try_convert(step.options)&.all?(String) && storable_json?(step.options))
           return refuse("invalid_ask_multi", "#{path}.multi") unless [nil, true, false].include?(step.multi)
 
-          node.merge!("await_timeout_ms" => timeout, "prompt" => prompt,
+          fields_refusal = ::Tasks::AskField.refusal(step.fields)
+          fields_refusal ||= :invalid_ask_fields if step.fields && (!step.options.nil? || !step.multi.nil?)
+          return refuse(fields_refusal.to_s, "#{path}.fields") if fields_refusal
+
+          node.merge!("ask_fields" => step.fields, "await_timeout_ms" => timeout, "prompt" => prompt,
             "ask_options" => step.options, "ask_multi" => step.multi)
           accumulate(step, cursor, node, mirror)
         end

@@ -61,12 +61,16 @@ module Runs
       # link at all.
       def initialize(node:, claim_token: nil, content: nil, outcome: nil,
                      timeout: false, trusted: false, is_error: false,
+                     answer: nil, answer_present: !answer.nil?,
                      title: nil, metadata: nil, structured_content: nil,
                      structured_content_present: !structured_content.nil?,
                      result_type: nil, resolved_by: nil, creator: nil, release: true,
                      retained_upload_ids: nil, execution_generation: nil, uncertain: false,
                      before_external_start: false)
         @node = node
+        @answer = answer
+        @answer_present = answer_present
+        @answer_conflict = !content.nil? || structured_content_present
         @execution_generation = execution_generation
         @uncertain = uncertain
         @before_external_start = before_external_start
@@ -164,7 +168,30 @@ module Runs
           # door's `unknown_input_upload` twin, the park standing.
           return Result.refused(@link_refusal, node) if @link_refusal && !expired
 
+          unless expired
+            answer_refusal = prepare_answer(node)
+            return Result.refused(answer_refusal, node) if answer_refusal
+          end
           settle(run, node, expired)
+        end
+
+        # The schema and the terminal transition are read under the same lock.
+        # One accepted value supplies both the model text and the structured read.
+        def prepare_answer(node)
+          fields = node.ask_fields if node.await?
+          return :invalid_ask_answer if @answer_present && (fields.nil? || @answer_conflict || @outcome == "failed")
+          return nil if fields.nil? || @outcome == "failed"
+          return :invalid_ask_answer unless @answer_present
+          refusal = ::Tasks::AskField.answer_refusal(fields, @answer)
+          return refusal if refusal
+
+          text = Nexus::CanonicalJson.encode(@answer)
+          @parsed = ResultContent.call(content: text, structured_content: @answer)
+          return :result_too_large if oversized?
+
+          nil
+        rescue Nexus::CanonicalJson::UnsupportedValue
+          :invalid_ask_answer
         end
 
         # The committer's OWN captures, `FOR KEY SHARE` under the loop lock

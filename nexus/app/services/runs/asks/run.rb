@@ -7,7 +7,7 @@ module Runs
     # in the continuation's request.
     class Run
       EMPTY_PROMPT = "prompt is empty.".freeze
-      FIELDS = %w[prompt options multi].freeze
+      FIELDS = %w[prompt options multi fields].freeze
       OPTIONS_INVALID = "options must be a list of strings.".freeze
       MULTI_INVALID = "multi must be true or false.".freeze
       # One park's ceiling: the await's effective deadline is clamped there anyway.
@@ -45,7 +45,7 @@ module Runs
         # `options` (strings) and `multi` (a boolean), refused by sentence.
         def refusal_for(input)
           stray = input.keys.find { |name| !FIELDS.include?(name) }
-          return "#{stray} is not a parameter; the fields are prompt, options and multi." if stray
+          return "#{stray} is not a parameter; the fields are prompt, options, multi and fields." if stray
           return EMPTY_PROMPT if String.try_convert(input["prompt"]).to_s.strip.empty?
           return OPTIONS_INVALID unless input["options"].nil? || Array.try_convert(input["options"])&.all?(String)
 
@@ -54,7 +54,7 @@ module Runs
 
         def append(run, input)
           step = Tasks::Step::Ask.new(key: await_key, prompt: input["prompt"], timeout_ms: TIMEOUT_MS,
-            options: input["options"], multi: input["multi"])
+            options: input["options"], multi: input["multi"], fields: input["fields"])
           # Provider calls keep their paired acknowledgement in the model fan;
           # graph-authored calls hand every consumer to the answer itself.
           result = Tasks::Append.call(Tasks::Append::Command.kernel(

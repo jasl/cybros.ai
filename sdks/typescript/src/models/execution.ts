@@ -94,6 +94,7 @@ export interface InboxTask {
   prompt: string | null;
   options: string[] | null;
   multi: boolean | null;
+  fields: JsonValue[] | null;
   tool_name: string | null;
   tool_alias: string | null;
   tool_input: JsonObject;
@@ -207,6 +208,7 @@ export interface TaskDetail {
   prompt: string | null;
   options: string[] | null;
   multi: boolean | null;
+  fields: JsonValue[] | null;
   tool_input: JsonObject | null;
   effect_profile: JsonObject | null;
   request_bytes: number | null;

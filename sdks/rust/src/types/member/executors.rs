@@ -40,6 +40,7 @@ pub struct InboxTask {
     pub prompt: Option<String>,
     pub options: Option<Vec<String>>,
     pub multi: Option<bool>,
+    pub fields: Option<Vec<JsonObject>>,
     pub tool_name: Option<String>,
     pub tool_alias: Option<String>,
     #[serde(default)]

@@ -88,7 +88,7 @@ export interface AttentionList extends ListOptions { workspace_public_id?: strin
 export interface WorkReportQuery { workspace_public_id?: string; agent_public_id?: string; from?: string; to?: string; unit?: 'hour' | 'day'; }
 export type AppendResolution = string | { task: string; content?: JsonValue; outcome?: 'completed' };
 export interface AppendTasks { steps: Step[]; resolve?: AppendResolution[]; expected_revision?: number; }
-export interface ResolveTask { resolution_token?: string; content?: JsonValue; structured_content?: JsonValue; result_type?: string; outcome?: 'completed' | 'failed'; }
+export interface ResolveTask { answer?: JsonObject; resolution_token?: string; content?: JsonValue; structured_content?: JsonValue; result_type?: string; outcome?: 'completed' | 'failed'; }
 export interface ToolCall { runner_executor_public_id: string; tool: string; input?: JsonObject; timeout_ms?: number; approval_rules?: ApprovalRule[]; }
 export interface CreateStoreEntry { namespace: string; key: string; value: JsonValue; }
 export interface MemoryVersion { expected_public_id: string | null; expected_lock_version: number | null; }
@@ -115,7 +115,7 @@ export interface ExecutorAnnouncement { tools: AnnouncedTool[]; documents?: { na
 export interface TaskProgress { run_public_id: string; task_key: string; claim_token: string; text_tail?: string; structured?: JsonValue; process_id?: never; }
 export type ProcessProgress = ({ conversation_public_id: string; run_public_id?: never } | { conversation_public_id?: never; run_public_id: string }) & { process_id: string; source: { run_public_id: string; task_key: string; claim_token: string }; lines?: string[]; exit?: number | null; task_key?: never };
 export type ProgressFrameInput = TaskProgress | ProcessProgress;
-export interface CommitTask extends Omit<ResolveTask, 'resolution_token'> { claim_token: string; is_error?: boolean; title?: string; metadata?: JsonObject; }
+export interface CommitTask extends Omit<ResolveTask, 'resolution_token' | 'answer'> { claim_token: string; is_error?: boolean; title?: string; metadata?: JsonObject; }
 export type OperationRequest = JsonObject;
 
 export interface ApprovalRule { tool: string; verdict: 'allow' | 'ask' | 'deny'; path?: string; match?: string; reason?: string; origin?: 'model' | 'author' | 'kernel'; }

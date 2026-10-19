@@ -54,6 +54,7 @@ pub struct TaskDetail {
     pub prompt: Option<String>,
     pub options: Option<Vec<String>>,
     pub multi: Option<bool>,
+    pub fields: Option<Vec<JsonObject>>,
     pub tool_input: Option<JsonObject>,
     pub request_bytes: Option<i64>,
     pub instructions: Option<String>,

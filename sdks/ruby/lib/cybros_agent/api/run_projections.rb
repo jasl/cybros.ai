@@ -42,6 +42,7 @@ module CybrosAgent
           prompt: :optional_string,
           options: :optional_string_list,
           multi: :optional_boolean,
+          fields: :optional_json_array,
           tool_name: :optional_string,
           # The model's own spelling when the profile declared an alias of
           # a kernel tool; compacted away on a plain call, and nil here.
@@ -163,6 +164,7 @@ module CybrosAgent
           prompt: :optional_string,
           options: :optional_string_list,
           multi: :optional_boolean,
+          fields: :optional_json_array,
           # WHAT A TOOL CALL WAS ASKED TO RUN. Served on this read only —
           # the trace stays a task list — and a reader with no arguments
           # cannot render a call at all.

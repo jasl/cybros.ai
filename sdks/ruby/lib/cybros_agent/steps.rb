@@ -40,8 +40,8 @@ module CybrosAgent
 
     # `options`/`multi` are the question's choices as data: one string each, and whether several may be taken;
     # absent when the asker gives none.
-    Ask = Data.define(:prompt, :options, :multi, :key, :timeout_ms, :detached, :lifetime, :wake, :on_failure, :visibility, :after) do
-      def initialize(prompt:, options: nil, multi: nil, key: nil, timeout_ms: nil, detached: false, lifetime: nil, wake: nil,
+    Ask = Data.define(:prompt, :options, :multi, :fields, :key, :timeout_ms, :detached, :lifetime, :wake, :on_failure, :visibility, :after) do
+      def initialize(prompt:, options: nil, multi: nil, fields: nil, key: nil, timeout_ms: nil, detached: false, lifetime: nil, wake: nil,
                      on_failure: nil, visibility: nil, after: nil) = super
 
       def to_h = { "ask" => Steps.wire(super) }

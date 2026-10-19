@@ -110,10 +110,13 @@ module Rho
 
         asks, approvals = rows.partition { |row| row["kind"] == ASK_KIND }
         @out.puts "asks:      #{asks.empty? ? "(none)" : "#{asks.length} pending"}"
-        asks.each { |ask| @out.puts ask_line(ask) }
+        asks.each do |ask|
+          @out.puts ask_line(ask)
+          @out.puts Rho::Locales::ENGLISH.fetch("structured_answer_required") if ask["fields"]
+        end
         @out.puts "approvals: #{approvals.empty? ? "(none)" : "#{approvals.length} pending"}"
         approvals.each { |row| @out.puts approval_line(row) }
-        @out.puts CONSOLE_HINT unless rows.empty?
+        @out.puts CONSOLE_HINT if approvals.any? || asks.any? { |ask| !ask["fields"] }
       end
 
       CONSOLE_HINT = "console:   answer and decide them on the console: `rho console`".freeze
@@ -131,7 +134,7 @@ module Rho
           seen[mark] = true
           if row["kind"] == ASK_KIND
             @out.puts ask_line(row)
-            hint = ask_hint(row)
+            hint = row["fields"] ? Rho::Locales::ENGLISH.fetch("structured_answer_required") : ask_hint(row)
             @out.puts hint if hint
           else
             @out.puts approval_line(row)

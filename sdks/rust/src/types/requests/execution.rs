@@ -61,7 +61,7 @@ pub enum TaskResolution {
         content: Field<Value>,
     },
 }
-request!(ResolveTask {} {resolution_token:SecretString,content:Value,structured_content:Value,result_type:String,outcome:Outcome});
+request!(ResolveTask {} {answer:JsonObject,resolution_token:SecretString,content:Value,structured_content:Value,result_type:String,outcome:Outcome});
 request!(DenyTask {} {reason:String});
 request!(AbandonTask {} {resolution:FailureResolution});
 request!(CreateInferenceRequest {model:ModelRequest,workload:Workload,input:Value} {configuration:JsonObject,billing_subject:String,model_selection:ModelSelection,fallback_models:Vec<String>,upload_public_ids:Vec<String>});

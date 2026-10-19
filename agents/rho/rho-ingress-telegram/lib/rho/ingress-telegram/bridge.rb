@@ -336,8 +336,9 @@ module Rho
               elsif task.await? && task.status == "awaiting_input" && task.addressed_to.nil?
                 # A model question without an agent address answers through
                 # the member door; a tokened await is dispatched, not asking.
+                question = run_context.task(task.key)
                 pending_row("run_public_id" => detail.public_id, "task_key" => task.key,
-                  "kind" => "ask", "prompt" => run_context.task(task.key).prompt,
+                  "kind" => "ask", "prompt" => question.prompt, "fields" => question.fields,
                   "workspace_public_id" => plane.workspace_public_id)
               else
                 local_attention(detail.public_id, task.key, "Use the child agent's CLI to handle this request.")
@@ -432,6 +433,10 @@ module Rho
         end
 
         def pending_row(row)
+          if row["fields"]
+            return local_attention(row.fetch("run_public_id"), row.fetch("task_key"),
+              Rho::Locales::ENGLISH.fetch("structured_answer_required"))
+          end
           question = if row.fetch("kind") == "ask"
             row.fetch("prompt").to_s
           else

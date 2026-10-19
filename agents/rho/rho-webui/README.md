@@ -382,7 +382,9 @@ tab. When Nexus's retention policy has collected an old turn's execution
 details, the page keeps its conversation text and labels the removed details.
 
 Answers support basic Markdown: headings, paragraphs, lists, quotations,
-fenced and inline code, emphasis and links. Raw HTML remains literal text.
+fenced and inline code, emphasis, links and pipe tables. Tables support column
+alignment and inline formatting; wide tables scroll horizontally, including by
+keyboard when focused. Raw HTML remains literal text.
 Files published by a completed answer or its reported subagents appear beside
 that answer with **Download**, even when the text names no file. **Preview** is
 available for Markdown (`.md`, `.markdown`) and images (`.png`, `.jpg`, `.jpeg`,

@@ -33,7 +33,7 @@ module Rho
         TOOLS = [
           Tools::Read, Tools::Write, Tools::Edit,
           Tools::Bash, Tools::Grep, Tools::Find, Tools::Ls,
-          Tools::FileImport, Tools::FilePublish, Tools::FilesBytes, Tools::Skill,
+          Tools::FileImport, Tools::FilePublish, Tools::FilesBytes, Tools::GitReview, Tools::Skill,
         ].freeze
 
         FILES_LINE = "Files for this skill are under %s; relative paths in the instructions are relative to it.".freeze

@@ -88,18 +88,18 @@ module CybrosAgent
     # may be taken; nil on an ask that gave none and on every other row.
     InboxTask = Data.define(
       :kind, :run_public_id, :workspace_public_id, :conversation_public_id, :parent_public_id, :task_key, :prompt, :options,
-      :multi, :tool_name, :tool_alias, :tool_input, :scope, :tool_call_id, :started_at, :deadline_at, :timeout_ms,
+      :multi, :fields, :tool_name, :tool_alias, :tool_input, :scope, :tool_call_id, :started_at, :deadline_at, :timeout_ms,
       :claimed, :addressed_to, :target, :effect_profile
     ) do
       # A consumer building a row itself (a runner's test double) may leave
       # out the members its row has no value for, and they read as nil, as
       # they do off the wire. Required identity and kind have no defaults:
       # the kernel writes them on every executable row.
-      def initialize(workspace_public_id:, addressed_to: nil, target: nil, prompt: nil, options: nil, multi: nil, tool_name: nil,
+      def initialize(workspace_public_id:, addressed_to: nil, target: nil, prompt: nil, options: nil, multi: nil, fields: nil, tool_name: nil,
                      tool_alias: nil, scope: nil, effect_profile: nil, conversation_public_id: nil,
                      parent_public_id: nil, **members)
         super(workspace_public_id: workspace_public_id, addressed_to: addressed_to, target: target,
-              prompt: prompt, options: options, multi: multi,
+              prompt: prompt, options: options, multi: multi, fields: fields,
               tool_name: tool_name, tool_alias: tool_alias, scope: scope, effect_profile: effect_profile,
               conversation_public_id: conversation_public_id, parent_public_id: parent_public_id, **members)
       end
@@ -287,10 +287,10 @@ module CybrosAgent
     # carries, so a reader that attached after the call settled renders what
     # a live follower rendered; nil where no output was stamped.
     TaskDetail = Data.define(
-      :task, :output, :content, :structured_content, :prompt, :options, :multi, :tool_input, :effect_profile, :request_bytes,
+      :task, :output, :content, :structured_content, :prompt, :options, :multi, :fields, :tool_input, :effect_profile, :request_bytes,
       :instructions, :tool_definitions, :title, :metadata, :wait, :output_preview, :declaring_task_key, :model_selection, :fallback_models
     ) do
-      def initialize(prompt: nil, options: nil, multi: nil, tool_input: nil, effect_profile: nil, request_bytes: nil,
+      def initialize(prompt: nil, options: nil, multi: nil, fields: nil, tool_input: nil, effect_profile: nil, request_bytes: nil,
                      instructions: nil, tool_definitions: nil, title: nil, metadata: nil, wait: nil, output_preview: nil,
                      declaring_task_key: nil, model_selection: nil, fallback_models: nil, **) = super
     end
@@ -327,15 +327,15 @@ module CybrosAgent
     # Machines claim and commit on the executor plane; people decide here,
     # whichever plane the application otherwise works on. `tasks` is the
     # task's member context, the one that answers, approves and denies.
-    Decision = Data.define(:kind, :run_public_id, :task_key, :prompt, :options, :multi, :tool_name, :tool_input, :tool_alias, :target, :effect_profile, :tasks) do
-      def initialize(prompt: nil, options: nil, multi: nil, tool_name: nil, tool_input: nil, tool_alias: nil, target: nil, effect_profile: nil, **) = super
+    Decision = Data.define(:kind, :run_public_id, :task_key, :prompt, :options, :multi, :fields, :tool_name, :tool_input, :tool_alias, :target, :effect_profile, :tasks) do
+      def initialize(prompt: nil, options: nil, multi: nil, fields: nil, tool_name: nil, tool_input: nil, tool_alias: nil, target: nil, effect_profile: nil, **) = super
 
       def ask? = kind == "ask"
       def approval? = kind == "approval"
 
       # A model's own ask was issued no token: write standing is the whole
       # authorization, so `content` (and an optional `outcome`) is the answer.
-      def answer(content:, outcome: UNSET) = tasks.resolve(content: content, outcome: outcome)
+      def answer(content: UNSET, answer: UNSET, outcome: UNSET) = tasks.resolve(content: content, answer: answer, outcome: outcome)
 
       def approve = tasks.approve
 

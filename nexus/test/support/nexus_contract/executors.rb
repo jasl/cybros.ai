@@ -113,11 +113,11 @@ module Nexus
             creating_user: contract_person
           )
           node_type = Data.define(
-            :inbox_kind, :run, :node_key, :prompt, :ask_options, :ask_multi, :tool_name, :tool_alias,
+            :inbox_kind, :run, :node_key, :prompt, :ask_options, :ask_multi, :ask_fields, :tool_name, :tool_alias,
             :tool_input, :tool_call_id, :started_at, :deadline_at, :effective_timeout_ms, :claimed_at,
             :addressed_role, :addressed_executor, :effect_profile, :target_executor_public_id, :target_executor
           ) do
-            def initialize(prompt: nil, ask_options: nil, ask_multi: nil, effect_profile: nil, tool_alias: nil, target_executor_public_id: nil, target_executor: nil,
+            def initialize(prompt: nil, ask_options: nil, ask_multi: nil, ask_fields: nil, effect_profile: nil, tool_alias: nil, target_executor_public_id: nil, target_executor: nil,
                            **members) = super
             def wall_deadline_at = deadline_at
             def await? = inbox_kind == "ask"
@@ -151,6 +151,17 @@ module Nexus
           ask = stringify_keys(Executors::Inbox.row(node_type.new(
             inbox_kind: "ask", run: run, node_key: "r1t0-ask-1", prompt: "which database?",
             ask_options: %w[Postgres MySQL], ask_multi: false,
+            tool_name: nil, tool_input: nil, tool_call_id: nil,
+            started_at: started_at, deadline_at: started_at + Tasks::AwaitTask::MAX_HOLD,
+            effective_timeout_ms: Tasks::AwaitTask::MAX_HOLD_MS, claimed_at: nil,
+            addressed_role: "agent_application", addressed_executor: executor
+          )))
+          structured_ask = stringify_keys(Executors::Inbox.row(node_type.new(
+            inbox_kind: "ask", run: run, node_key: "r1t0-ask-2", prompt: "Configure the run",
+            ask_fields: [
+              Tasks::AskField.new(name: "enabled", label: "Enable", type: "boolean", required: true),
+              Tasks::AskField.new(name: "count", label: "Count", type: "integer", required: true),
+            ],
             tool_name: nil, tool_input: nil, tool_call_id: nil,
             started_at: started_at, deadline_at: started_at + Tasks::AwaitTask::MAX_HOLD,
             effective_timeout_ms: Tasks::AwaitTask::MAX_HOLD_MS, claimed_at: nil,
@@ -212,7 +223,7 @@ module Nexus
             "addressed_roles" => Task::ADDRESSED_ROLES,
             "list_envelope" => list.keys,
             "pagination" => list.fetch("pagination").keys,
-            "row_projection" => (row.keys | ask.keys | overridden.keys | skill.keys | approval.keys),
+            "row_projection" => (row.keys | ask.keys | structured_ask.keys | overridden.keys | skill.keys | approval.keys),
             "scope_projection" => %w[workspace_public_id conversation_public_id user_public_id],
             "memory_scope_projection" => %w[bindings],
             "claim_envelope" => %w[task claim],
@@ -237,6 +248,7 @@ module Nexus
                            "deadline_at" => extended.fetch("deadline_at") },
             },
             "ask_fixture" => ask,
+            "structured_ask_fixture" => structured_ask,
             "approval_fixture" => approval,
             "overridden_fixture" => overridden,
             "skill_fixture" => skill,

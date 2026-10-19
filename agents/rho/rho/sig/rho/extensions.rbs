@@ -410,7 +410,7 @@ module Rho
       def self.register: (untyped api) -> untyped
       def self.call_tool: (
         Daemon::Context ctx, String runner, String tool, Hash[String, untyped] input, ?Integer? timeout_ms,
-        ?idempotency_key: String
+        ?idempotency_key: String, ?workspace_public_id: String?
       ) -> untyped
       def self.rewind: (
         Daemon::Context ctx, String conversation_id, String turn_ref, ?keep_checkpoints: bool, ?title: String?,

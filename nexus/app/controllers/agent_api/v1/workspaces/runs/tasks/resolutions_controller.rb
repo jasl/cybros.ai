@@ -29,8 +29,10 @@ class AgentAPI::V1::Workspaces::Runs::Tasks::ResolutionsController <
     render_settlement(
       Runs::Parks::Settle.call(
         node: node, claim_token: fields[:resolution_token],
+        answer: envelope["answer"], answer_present: envelope.key?("answer"),
         content: envelope["content"],
         structured_content: envelope["structured_content"],
+        structured_content_present: envelope.key?("structured_content"),
         result_type: fields[:result_type], outcome: outcome,
         # A `resource_link` here names the answerer's own staged upload.
         creator: acting_user,

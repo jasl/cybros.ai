@@ -59,6 +59,7 @@ module Executors
           workspace_public_id: node.run.workspace.public_id,
           task_key: node.node_key,
           prompt: (node.prompt if node.await?),
+          fields: (node.ask_fields&.map(&:as_json) if node.await?),
           options: (node.ask_options if node.await?),
           multi: (node.ask_multi if node.await?),
           tool_name: node.tool_name,

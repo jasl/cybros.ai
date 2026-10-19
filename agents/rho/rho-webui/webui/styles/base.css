@@ -102,8 +102,11 @@ dialog { color: inherit; }
 .markdown code { font: 400 12px/19px var(--font-code); background: var(--code-inline); border-radius: var(--radius-xs); padding: 1px 4px; }
 .markdown pre, .code-block { font: 400 11px/19px var(--font-code); background: var(--code-block); border-radius: var(--radius-lg); padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 420px; }
 .markdown pre code { background: none; padding: 0; font: inherit; }
-.markdown table { border-collapse: collapse; font-size: var(--content-secondary); line-height: 22px; }
-.markdown th, .markdown td { border: .5px solid var(--line-3); padding: 4px 10px; text-align: left; }
+.markdown-table { max-width: 100%; overflow-x: auto; margin: 0 0 12px; }
+.markdown-table:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.markdown table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: var(--content-secondary); line-height: 22px; }
+.markdown-table table { margin: 0; }
+.markdown th, .markdown td { max-width: 32rem; border: .5px solid var(--line-3); padding: 6px 10px; text-align: left; vertical-align: top; }
 .markdown th { font-weight: 500; }
 .markdown hr { border: 0; border-top: .5px solid var(--line-2); margin: 16px 0; }
 .markdown img { border-radius: var(--radius-md); }

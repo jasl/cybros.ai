@@ -106,7 +106,7 @@ This address's view of the work the kernel addressed to it, across every live ru
 
 A `tool_call` row carries `tool_name`, `tool_input` and `tool_call_id`.
 
-An `ask` row carries `prompt`, with `options` (one string each) and `multi` when the ask gave them, and no `tool_*` field. It is never claimed and never committed here: `claimed` stays `false` for as long as it stands, and the claim and commit doors answer `not_claimable_kind`. It parks up to 24 hours. It is listed only when the run has a declaring agent; a person's own standalone run addresses its ask to nobody.
+An `ask` row may carry `fields` for a [typed question](run-steps.md#typed-questions), answered through the member resolution door with `answer`. It otherwise carries `prompt`, with `options` (one string each) and `multi` when the ask gave them, and no `tool_*` field. It is never claimed and never committed here: `claimed` stays `false` for as long as it stands, and the claim and commit doors answer `not_claimable_kind`. It parks up to 24 hours. It is listed only when the run has a declaring agent; a person's own standalone run addresses its ask to nobody.
 
 An `approval` row is a tool call resting for an approver under a profile's `ask` or `rules` mode, listed for the addressed agent application with its `tool_name`, `tool_input` and — the one row kind that carries it — the frozen `effect_profile` the approver reads. Its `deadline_at` is 24 hours out; it is never claimed and never committed here (`409 not_claimable_kind`). Under `bypass` no row ever rests, and a human's own standalone run addresses it to nobody.
 

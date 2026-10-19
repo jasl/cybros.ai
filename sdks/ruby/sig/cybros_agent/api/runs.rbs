@@ -74,6 +74,7 @@ module CybrosAgent
     end
 
     class TaskDetail
+      attr_reader fields: Array[Hash[String, untyped]]?
       attr_reader effect_profile: Hash[String, untyped]?
       attr_reader model_selection: Hash[String, untyped]?
       attr_reader fallback_models: Array[String]?
@@ -103,12 +104,13 @@ module CybrosAgent
       attr_reader prompt: String?
       attr_reader options: Array[String]?
       attr_reader multi: bool?
+      attr_reader fields: Array[Hash[String, untyped]]?
       attr_reader tool_name: String?
       attr_reader tool_input: Hash[String, untyped]?
       attr_reader tasks: TasksContext
       def ask?: () -> bool
       def approval?: () -> bool
-      def answer: (content: untyped, ?outcome: untyped) -> Task
+      def answer: (?content: untyped, ?answer: untyped, ?outcome: untyped) -> Task
       def approve: () -> Task
       def deny: (?reason: String?) -> Task
     end
@@ -392,6 +394,7 @@ module CybrosAgent
       ) -> void
       def resolve: (
         ?resolution_token: untyped,
+        ?answer: untyped,
         ?content: untyped,
         ?structured_content: untyped,
         ?result_type: untyped,

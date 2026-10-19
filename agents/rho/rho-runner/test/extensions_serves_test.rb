@@ -84,7 +84,7 @@ class ExtensionsServesTest < Minitest::Test
     assert_equal %i[agent runner], registry.entries.map(&:serves).uniq.sort
     runner = registry.serving(:runner)
     agent = registry.serving(:agent)
-    assert_equal %w[bash edit file_import file_publish files_bytes find grep ls read skill write], runner.names.sort
+    assert_equal %w[bash edit file_import file_publish files_bytes find git_review grep ls read skill write], runner.names.sort
     assert_equal %w[application_tool], agent.names
     assert_equal registry.names.sort, (runner.names + agent.names).sort, "a partition: nothing lost, nothing twice"
     env = Rho::Runner::Environment.local(root: Dir.tmpdir)

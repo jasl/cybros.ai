@@ -46,6 +46,29 @@ const quote = (line) => /^ {0,3}>\s?(.*)$/.exec(line);
 const rule = (line) => /^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line);
 const block = (line) => fence(line) || heading(line) || item(line) || quote(line) || rule(line);
 
+function tableCells(line) {
+  const cells = [""];
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === "\\" && ["|", "\\"].includes(line[i + 1])) {
+      // Escaped pipes belong to a cell, including inside inline code.
+      cells[cells.length - 1] += line[++i] === "|" ? "|" : "\\\\";
+    } else if (char === "|") cells.push("");
+    else cells[cells.length - 1] += char;
+  }
+  if (cells.length > 1 && !cells[0].trim()) cells.shift();
+  if (cells.length > 1 && !cells.at(-1).trim()) cells.pop();
+  return cells.map((cell) => cell.trim());
+}
+
+function tableHeader(lines, index) {
+  if (!lines[index]?.includes("|") || !lines[index + 1]?.includes("|")) return null;
+  const headers = tableCells(lines[index]);
+  const separators = tableCells(lines[index + 1]);
+  if (headers.length !== separators.length || !separators.every((cell) => /^:?-+:?$/.test(cell))) return null;
+  return { headers, align: separators.map((cell) => cell.endsWith(":") ? (cell.startsWith(":") ? "center" : "right") : "left") };
+}
+
 export function markdown(value) {
   const fragment = document.createDocumentFragment();
   const lines = String(value ?? "").replace(/\r\n?/g, "\n").split("\n");
@@ -67,6 +90,33 @@ export function markdown(value) {
       const pre = element("pre");
       pre.append(element("code", code.join("\n")));
       fragment.append(pre);
+      continue;
+    }
+    const columns = tableHeader(lines, i);
+    if (columns) {
+      const table = element("table");
+      const row = (values, tag) => {
+        const tr = element("tr");
+        columns.headers.forEach((_, index) => {
+          const cell = element(tag);
+          if (tag === "th") cell.setAttribute("scope", "col");
+          cell.style.textAlign = columns.align[index];
+          cell.append(inline(values[index] ?? ""));
+          tr.append(cell);
+        });
+        return tr;
+      };
+      const head = element("thead");
+      head.append(row(columns.headers, "th"));
+      const body = element("tbody");
+      i += 2;
+      while (i < lines.length && lines[i].trim() && !block(lines[i])) body.append(row(tableCells(lines[i++]), "td"));
+      table.append(head, body);
+      const scroll = element("div");
+      scroll.className = "markdown-table";
+      scroll.setAttribute("tabindex", "0");
+      scroll.append(table);
+      fragment.append(scroll);
       continue;
     }
     const title = heading(line);
@@ -103,7 +153,7 @@ export function markdown(value) {
       continue;
     }
     const paragraph = [lines[i++]];
-    while (i < lines.length && lines[i].trim() && !block(lines[i])) paragraph.push(lines[i++]);
+    while (i < lines.length && lines[i].trim() && !block(lines[i]) && !tableHeader(lines, i)) paragraph.push(lines[i++]);
     const node = element("p");
     node.append(inline(paragraph.join("\n")));
     fragment.append(node);

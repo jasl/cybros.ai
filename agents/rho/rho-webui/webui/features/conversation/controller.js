@@ -422,6 +422,12 @@ export function createConversations({ call, follow, artifactBytes, signal, toast
     // A user-initiated open (a row, a schedule execution, a create) asks the
     // shell to show the conversation panel.
     onOpen(listener) { openers.add(listener); return () => openers.delete(listener); },
+    async readReview(fields = {}) {
+      return (await call(query("/conversations/review", { ...target(), ...fields }), { signal: view.signal })).review;
+    },
+    async reviewFeedback(comment) {
+      return (await call("/conversations/review/feedback", { method: "POST", body: { ...target(), comment }, signal: view.signal })).text;
+    },
     async rounds(runId, before = null) {
       const values = { ...target(runId), limit: ROUND_PAGE, ...(before ? { before } : {}) };
       return (await call(query("/runs/transcript", values), { signal: view.signal })).transcript;

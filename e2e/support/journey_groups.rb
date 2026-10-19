@@ -120,7 +120,7 @@ module E2E
       14 => %w[rho_telegram_participation],
       # Browser setup and installed-package workflows are independent of the conversation class.
       # Keep their browser interaction time outside the kernel conversation world's budget.
-      15 => %w[application_login api_key_connection rho_webui rho_settings rho_packages nexus_mcp offline_agent],
+      15 => %w[application_login api_key_connection rho_webui rho_structured_questions rho_settings rho_packages nexus_mcp offline_agent],
       # Application workflows own their rho homes and exercise separate extension lifecycles.
       16 => %w[rho_memory_review rho_household rho_t3],
       # Each package owns a language driver; one world proves their public

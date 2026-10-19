@@ -11,7 +11,7 @@ module AgentAPI::V1::SettlementRendering
   PAYLOAD_REFUSALS = %i[
     metadata_too_large invalid_metadata invalid_title invalid_content
     unsupported_content_kind invalid_result_type too_many_content_blocks
-    result_unstorable unknown_result_upload
+    result_unstorable unknown_result_upload invalid_ask_answer
   ].freeze
 
   private

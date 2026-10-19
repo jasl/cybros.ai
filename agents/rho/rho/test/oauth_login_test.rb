@@ -398,7 +398,11 @@ class OAuthLoginTest < Minitest::Test
     envelope = JSON.parse(response.body)
     assert_equal 429, envelope.fetch("status")
     assert_equal "7", envelope.dig("headers", "retry-after")
-    sent = @nexus.requests.last
+    # The daemon may announce its executor after the proxy request returns.
+    # Assert against this request, not the last activity on a shared transport.
+    sent_requests = @nexus.requests.select { |entry| entry.fetch(:path) == "/api/v1/admin/models?ref=provider%2Fmodel" }
+    assert_equal 1, sent_requests.length
+    sent = sent_requests.fetch(0)
     assert_equal "human-access", sent.fetch(:credential)
     assert_equal({ "if-match" => "version" }, sent.fetch(:headers))
     assert_equal 10, sent.fetch(:timeout)

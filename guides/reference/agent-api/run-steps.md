@@ -19,7 +19,7 @@ An envelope is `{steps: [...]}` and a step is an object with ONE verb key:
     { "model": { "prompt", "key"?, "model", "workload"?, "tools"?, "instructions"?, "configuration"?, "compaction"?,
                  "fan_on_failure"?, "detached"?, "lifetime"?, "wake"?, "on_failure"?, "visibility"?, "attachments"?, "after"?, "results"?,
                  "kernel_tools"?, "runner_executor_public_ids"?, "runner_tool_names"?, "mcp_tools"?, "model_selection"?, "fallback_models"? } }
-    { "ask":   { "prompt", "options"?, "multi"?, "key"?, "timeout_ms"?, "detached"?, "lifetime"?, "wake"?, "on_failure"?, "visibility"?, "after"? } }
+    { "ask":   { "prompt", "options"?, "multi"?, "fields"?, "key"?, "timeout_ms"?, "detached"?, "lifetime"?, "wake"?, "on_failure"?, "visibility"?, "after"? } }
     { "wait":  { "task", "run_public_id"?, "key"?, "timeout_ms"?, "detached"?, "lifetime"?, "wake"?, "on_failure"?, "visibility"?, "after"? } }
     { "parallel": [ step | [step, ...], ... ], "until"?: "all" | "any" | k, "losers"?: "cancel" | "run_out",
       "key"?, "on_failure"?, "lifetime"?, "wake"? }
@@ -526,3 +526,40 @@ a failed race lets run keeps the conversation it continues and reads the
 race only if it names it.
 `results` naming a member are independent: they wait for that producer's final
 result and include it even when it completes after losing the race.
+
+## Typed questions
+
+An `ask` may supply `fields` instead of the top-level `options` and `multi` hints.
+The same definition is available on the task detail and its ask inbox row. It stays
+with the existing waiting task across client disconnects.
+
+```json
+{"ask":{"key":"settings","prompt":"Choose delivery settings","fields":[
+  {"name":"enabled","label":"Enable delivery","type":"boolean","required":true},
+  {"name":"count","label":"Copies","type":"integer","required":true},
+  {"name":"format","label":"Format","type":"choice","options":["pdf","text"]}
+]}}
+```
+
+Each field has `name`, `label`, and `type`; `required` defaults to false.
+Names are unique and match `[a-zA-Z][a-zA-Z0-9_]{0,63}`. Labels are nonblank text.
+Types are `string`, `integer`, `number`, `boolean`, `choice`, and `multichoice`.
+Choice fields require `options`: 1–64 distinct strings. Other types accept no options.
+There are 1–32 fields, with a 64 KiB canonical JSON limit on the whole definition.
+Unknown field properties, mixed top-level hints and fields, malformed definitions,
+and oversized definitions produce an `invalid_ask_fields` compile error.
+
+The answer is an object keyed by field name; optional fields may be omitted.
+Required means the key must exist: empty strings and empty multiple selections
+are valid values. Null, unknown names, out-of-list choices, duplicate multiple
+selections, and type coercion are refused. `false` and `0` remain typed values;
+`"false"` and `"0"` cannot substitute for them. Integer fields require an integer
+JSON value; number fields also accept supported finite decimal values.
+There are no defaults, nested forms, arbitrary JSON Schema, conditional fields,
+secret controls, or file fields.
+
+Submit through [Resolve a task](runs.md) with `answer`. An authored model step
+consumes this answer by selecting the ask key in `results`; a model's own `ask`
+uses its existing automatic continuation. Answering collects data and does not
+approve subsequent tool calls. Clients without typed-question support must show
+that limitation and keep the question pending, rather than submit text or an empty answer.

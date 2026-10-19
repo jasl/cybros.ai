@@ -212,6 +212,32 @@ class AgentAPI::V1::RunLifecycleTest < ActionDispatch::IntegrationTest
   # WHO ANSWERED: any principal with standing answers an await; the fact is the acting user's KIND
   # and id on the settle's own narration item — the approval-origin precedent, no column, no proxy
   # machinery. A child's relay says `conversation`.
+  test "structured answers preserve write standing and the token before validating values" do
+    fields = [{ name: "enabled", label: "Enable", type: "boolean", required: true }]
+    run = created_loop([{ ask: { key: "gate", prompt: "Settings", fields: fields } }])
+    token = response.parsed_body.dig("receipt", "resolution_tokens", "gate")
+    path = "#{loops_path}/#{run.public_id}/tasks/gate"
+    post "#{loops_path}/#{run.public_id}/start", headers: auth
+    Runs::ScheduleReady.call(run_id: run.id)
+    @workspace.update!(state: "archived")
+    post "#{path}/resolution", headers: auth, as: :json, params: { resolution_token: token, answer: { enabled: false } }
+    assert_response :forbidden
+    @workspace.update!(state: "active")
+    post "#{path}/resolution", headers: auth, as: :json, params: { resolution_token: "wrong", answer: {} }
+    assert_response :conflict
+    assert_equal "stale_claim", response.parsed_body.dig("error", "code")
+    post "#{path}/resolution", headers: auth, as: :json, params: { resolution_token: token, answer: { enabled: "false" } }
+    assert_response :unprocessable_entity
+    assert_equal "invalid_ask_answer", response.parsed_body.dig("error", "code")
+    get path, headers: auth
+    assert_equal "boolean", response.parsed_body.dig("task", "fields", 0, "type")
+    assert_equal "dispatched", response.parsed_body.dig("task", "status")
+    post "#{path}/resolution", headers: auth, as: :json, params: { resolution_token: token, answer: { enabled: false } }
+    assert_response :success
+    get path, headers: auth
+    assert_equal({ "enabled" => false }, response.parsed_body.dig("task", "structured_content"))
+  end
+
   test "the resolution door records who resolved the await: the acting user's kind and id" do
     loop_id = create_await_loop!
     token = response.parsed_body.dig("receipt", "resolution_tokens", "gate")

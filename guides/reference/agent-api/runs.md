@@ -668,6 +668,9 @@ steer_target_settled}`) and stays readable here.
 GET /agent_api/v1/workspaces/{workspace_id}/runs/{run_id}/tasks/{task_key}
 ```
 
+An ask additionally exposes its captured `fields`, when present, as defined in
+[Typed questions](run-steps.md#typed-questions).
+
 The single-task read: the trace row plus the
 task's full `output` text (a completed run's answer lives on its
 deliverable task; this is the retrieval path) and its `output_preview` —
@@ -735,8 +738,27 @@ reads it; `rho request RUN KEY` (rho-dev) prints it.
 POST /agent_api/v1/workspaces/{workspace_id}/runs/{run_id}/tasks/{task_key}/resolution
 ```
 
+For an ask with [typed fields](run-steps.md#typed-questions), send `answer`:
+
+```json
+{"resolution_token":"the authored ask token","answer":{"enabled":false,"count":0,"format":"pdf"}}
+```
+
+Omit the token for a model's own ask. A successful resolution requires an answer
+matching the captured fields. `answer` cannot be combined with non-null `content`
+or a supplied `structured_content`, and cannot be used for an untyped ask.
+Invalid answers return `422 invalid_ask_answer` without completing the task.
+Nexus generates canonical JSON model text and the structured result from the same
+answer: task detail returns that text as `output` and the object as
+`structured_content`. The combined stored result uses the existing 1 MiB limit;
+the UI-only meaning of ordinary tool `structured_content` does not change.
+`outcome: failed` accepts the ordinary explanatory `content` without an answer.
+Terminal duplicates stay idle and deadline expiry still takes precedence over
+answer validation. The atomic append `resolve` entry accepts the same `answer`;
+invalid resolution rolls back the accompanying appended steps.
+
 Answer a parked `await_task`:
-`{ resolution_token?, content?, outcome?: completed|failed }`. THE
+`{ resolution_token?, content?, structured_content?, answer?, outcome?: completed|failed }`. THE
 PERSON'S DOOR: a console, or a member with write standing. The token
 is a SECOND FACTOR, not a credential of its own: the call is
 workspace-scoped and member-authenticated like every other write, and

@@ -1,3 +1,4 @@
+import { questionForm } from "./question_form.js";
 import { el, uniqueId } from "../../kernel/dom.js";
 import { t, statusText } from "../../kernel/i18n.js";
 import { markdown } from "../../kernel/markdown.js";
@@ -138,6 +139,21 @@ export function createSeat({ conversations, nexusUrl = () => null }) {
     const key = `${ask.run_public_id}:${ask.task_key}`;
     const heading = uniqueId("ask");
     const position = positionLabel("ask__count");
+    if (ask.fields) {
+      const draft = answers.get(key) || {};
+      const editor = questionForm(ask, { writable, draft,
+        save() { answers.set(key, draft); },
+        respond: async (body) => {
+          const done = await conversations.respond(ask, "/answer", body);
+          if (done) answers.delete(key);
+          return done;
+        },
+      });
+      const node = el("section", { class: "ask ask--question ask--structured", "aria-labelledby": heading },
+        el("div", { class: "ask__head" }, el("p", { id: heading, text: t("seat.needs_answer") }), position.element),
+        el("div", { class: "ask__prompt markdown" }, markdown(ask.prompt || "")), editor.element);
+      return { node, focus: editor.focus, updatePosition: position.update };
+    }
     const answer = textarea({ name: key, rows: 2, disabled: !writable, attrs: { "aria-label": t("seat.answer"), "aria-describedby": heading } });
     answer.value = answers.get(key) || "";
     answer.addEventListener("input", () => answers.set(key, answer.value));

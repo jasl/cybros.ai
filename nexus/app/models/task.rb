@@ -70,7 +70,7 @@ class Task < ApplicationRecord
     :lifecycle_event,
     :transcript_visibility,
     :request_options, :input_from_node_keys, :result_from_node_keys, :expansion_parent_id, :barrier_node_id, :tool_name,
-    :tool_input, :timeout_ms, :await_timeout_ms, :ask_options, :ask_multi, :resolution_token,
+    :tool_input, :timeout_ms, :await_timeout_ms, :ask_options, :ask_multi, :ask_fields, :resolution_token,
     :join_mode, :quorum_k, :loser_policy, :tool_definitions,
     :continuation_source, :operation_context, :tool_call_id, :tool_alias, :system_instructions, :fan_on_failure,
     :detached, :compaction, :authored_by, :lifetime, :wake

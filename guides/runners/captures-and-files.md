@@ -51,3 +51,9 @@ GET /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/attachments/{upload_
 Captures named by a result live with that result. After the account's retention window prunes a run's execution detail, invocation-owned output files are removed with it; conversation attachments stay with their inputs. See [Retention](../operate/retention-usage-budgets.md).
 
 The upload resource's field table is in [Uploads](../reference/agent-api/uploads.md); the executor upload door and result binding are in the [Executor reference](../reference/agent-api/executor.md#publish-a-capture).
+
+## Git review
+
+rho-runner also announces `git_review` as an operator capability, hidden from model tool declarations. It uses the ordinary addressed tool-task path and has a read-only effect profile. Input accepts optional `root`, `base` (a full commit hash), and `path`; omission selects the Runner's directory and HEAD. The response identifies the repository root and resolved commit, lists changed paths and statuses, and optionally includes one file's unified patch, state and content fingerprint. Untracked files are included; rename detection is disabled, so moves appear as deletion and addition.
+
+Reads have a ten-second bound. Filename output and each patch are bounded to 32 KiB, with at most 200 listed files. File states are `text`, `binary`, `too_large` and `unavailable`; truncated lists are marked. A non-Git directory or missing commit is an error. This capability does not write files, create checkpoints or restore history. See [Review working directory changes](../use/files-images-memory.md#review-working-directory-changes) for the WebUI workflow.

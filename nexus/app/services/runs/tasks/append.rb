@@ -523,7 +523,10 @@ module Runs
 
             result = Parks::Settle.call(
               node: node, claim_token: node.resolution_token,
-              content: payload["content"], outcome: "completed"
+              content: payload["content"], answer: payload["answer"],
+              answer_present: payload.key?("answer"),
+              structured_content: payload["structured_content"],
+              structured_content_present: payload.key?("structured_content"), outcome: "completed"
             )
             raise Refused, :await_not_resolvable unless result.settled?
           end

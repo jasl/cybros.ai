@@ -61,6 +61,14 @@ async function opened(options) {
 }
 
 describe("page-owned input retries", () => {
+  test("an uncertain input beyond its receipt window is not resubmitted", () => {
+    const submissions = new Submissions(() => "original");
+    const body = { public_id: "conversation-a", text: "review feedback" };
+    const first = submissions.prepare("/say", body);
+    first.createdAt = Date.now() - 24 * 60 * 60 * 1000;
+    expect(() => submissions.prepare("/say", body)).toThrow("acceptance is unknown");
+    expect(submissions.find("/say", body)).toBe(first);
+  });
   test("an accepted input whose response was lost reuses its key; another conversation's draft is untouched", async () => {
     let next = 0;
     const submissions = new Submissions(() => `key-${++next}`);

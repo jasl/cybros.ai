@@ -222,8 +222,10 @@ module Rho
               task_key = body["task_key"].to_s
               next Rho::Daemon::Refusal.malformed("task_key is required") if task_key.empty?
 
-              fields = { content: body["content"].to_s }
-              fields[:outcome] = body["outcome"] if body["outcome"].is_a?(String)
+              fields = {}
+              fields[:answer] = body["answer"] if body.key?("answer")
+              fields[:content] = body["content"].to_s if body.key?("content") || !body.key?("answer")
+              fields[:outcome] = body["outcome"] if body.key?("outcome")
               token = body["resolution_token"].to_s
               fields[:resolution_token] = token unless token.empty?
               runs.run(public_id).tasks_context(task_key).resolve(**fields)
@@ -251,7 +253,7 @@ module Rho
           def pending_row(row)
             detail =
               case row.kind
-              when "ask" then { prompt: row.prompt }
+              when "ask" then { prompt: row.prompt, fields: row.fields }.compact
               when "approval" then { tool_name: row.tool_name, tool_alias: row.tool_alias, target: row.target&.to_h,
                 tool_input: row.tool_input, effect_profile: row.effect_profile }
               else {}
@@ -507,7 +509,7 @@ module Rho
               status: detail.task.status, tool_name: detail.task.tool_name,
               tool_alias: detail.task.tool_alias, target: detail.task.target&.to_h,
               on_failure: detail.task.on_failure, failure_resolution: detail.task.failure_resolution,
-              prompt: detail.prompt, output: detail.output,
+              prompt: detail.prompt, fields: detail.fields, output: detail.output,
               # The settled call's bounded preview, what its feed item
               # carried, for a reader that attached after it settled.
               output_preview: detail.output_preview,

@@ -244,6 +244,10 @@ class ApiPublicContractPackTest < Minitest::Test
     assert_equal inbox.fetch("row_projection").sort, CybrosAgent::Api::InboxTask.members.map(&:to_s).sort,
       "the typed row carries exactly the presenter's projection"
 
+    structured = inbox.fetch("structured_ask_fixture")
+    typed = executor_client("tasks" => [structured], "pagination" => { "next_after" => nil }).inbox.list.items.fetch(0)
+    assert_equal structured.fetch("fields"), typed.fields
+
     claim_fixture = inbox.fetch("claim_fixture")
     claimed = executor_client(claim_fixture)
       .inbox_task(run_public_id: row.fetch("run_public_id"), task_key: row.fetch("task_key"))

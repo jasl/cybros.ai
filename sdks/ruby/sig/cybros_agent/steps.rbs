@@ -47,6 +47,7 @@ module CybrosAgent
     end
 
     class Ask
+      attr_reader fields: Array[Hash[String, untyped]]?
       attr_reader after: Array[String]?
       attr_reader prompt: String
       attr_reader key: String?

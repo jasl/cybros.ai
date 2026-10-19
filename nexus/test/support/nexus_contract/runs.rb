@@ -200,7 +200,7 @@ module Nexus
           :addressed_executor, :claimed_by_executor_public_id, :approval_origin, :approved_by_user,
           :approval_decided_at, :output_summary, :error_key, :error_detail, :transcript_visibility,
           :created_at, :started_at, :completed_at, :result_delivered_at, :result_title, :result_metadata,
-          :system_instructions, :tool_input, :sealed_request_bytes, :ask_options, :ask_multi, :lifetime, :wake,
+          :system_instructions, :tool_input, :sealed_request_bytes, :ask_options, :ask_multi, :ask_fields, :lifetime, :wake,
           :output_preview, :tool_definitions, :target_executor_public_id, :target_executor, :first_runner_write,
           :model_selection, :fallback_models, :effect_profile, :mcp_connection_public_id, :mcp_connection, :workload
         ) do
@@ -210,7 +210,7 @@ module Nexus
                          approved_by_user: nil, approval_decided_at: nil, output_summary: {}, error_key: nil,
                          error_detail: nil, started_at: nil, completed_at: nil, result_delivered_at: nil, result_title: nil,
                          result_metadata: nil, system_instructions: nil, tool_input: nil, sealed_request_bytes: nil,
-                         ask_options: nil, ask_multi: nil, lifetime: "conversation", wake: "auto", output_preview: nil,
+                         ask_options: nil, ask_multi: nil, ask_fields: nil, lifetime: "conversation", wake: "auto", output_preview: nil,
                          tool_definitions: nil, target_executor_public_id: nil, target_executor: nil, first_runner_write: nil,
                          model_selection: nil, fallback_models: nil, effect_profile: nil,
                          mcp_connection_public_id: nil, mcp_connection: nil, workload: "text_generation", **) = super

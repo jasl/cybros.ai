@@ -276,7 +276,7 @@ end
     log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
     # The default runner set includes coding, processes, checkpoints, the
     # environment binding, code mode and web reading.
-    assert_includes log, "event=executor.announced tools=21 address=runner"
+    assert_includes log, "event=executor.announced tools=22 address=runner"
     assert_includes log, "event=executor.announced tools=3 address=agent"
 
     agent = boot(device_flow: connection_device_flow, api_transport: NexusDoubles::FakeAgentApi.new(
@@ -334,7 +334,7 @@ end
     refute_nil api.runner_announcements.first["environment"]
     log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
     # Runner mode keeps the same default local tools, including web reading.
-    assert_includes log, "event=executor.announced tools=21 address=runner"
+    assert_includes log, "event=executor.announced tools=22 address=runner"
     assert_equal "connected", JSON.parse(request(daemon, :get, "/environment", token: token).body).dig("environment", "root").then { |root| root ? "connected" : "unset" }
     assert_includes daemon.context.environment.root, File.join("runners", "0199-runner")
   end

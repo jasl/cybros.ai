@@ -5,7 +5,9 @@
     <% if actions.retry?(task) %><%= button_to t("runs_console.retry"), run_task_retry_path(run, task.node_key, return_to: work_return_path(run_tasks_path(run))), class: "btn btn-primary btn-sm", form: { data: { turbo_confirm: t(task.status == "uncertain" ? "runs_console.confirm_uncertain_retry" : "runs_console.confirm_retry") } } %><% end %>
     <% if actions.abandon?(task) %><%= button_to t("runs_console.abandon"), run_task_abandon_path(run, task.node_key, return_to: work_return_path(run_tasks_path(run))), class: "btn btn-sm", form: { data: { turbo_confirm: t("runs_console.confirm_abandon") } } %><% end %>
   </div>
-  <% if actions.answer?(task) %>
+  <% if actions.answer?(task) && detail[:fields].present? %>
+    <p class="text-sm"><%= t("runs_console.structured_answer_required") %></p>
+  <% elsif actions.answer?(task) %>
     <%= form_with url: run_task_resolution_path(run, task.node_key, return_to: work_return_path(run_tasks_path(run))), class: "space-y-3", data: { action: "input->work-refresh#changed" } do |form| %>
       <%= form.label :answer, t("runs_console.answer"), class: "label" %>
       <% if detail[:options].present? %><p class="text-sm text-base-content/60"><%= t("runs_console.suggested_answers", options: detail.fetch(:options).join(" · ")) %></p><% end %>

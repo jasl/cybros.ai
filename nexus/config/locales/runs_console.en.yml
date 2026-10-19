@@ -37,6 +37,7 @@ en:
     actions: Available actions
     answer: Your answer
     send_answer: Send answer
+    structured_answer_required: This question needs typed answers. Open it in an agent client that supports structured questions.
     suggested_answers: "Suggested answers: %{options}"
     confirm_stop: Stop this Run and cancel its active work?
     confirm_deny: Deny this tool call?

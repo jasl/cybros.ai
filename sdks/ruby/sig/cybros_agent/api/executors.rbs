@@ -34,6 +34,7 @@ module CybrosAgent
       attr_reader prompt: String?
       attr_reader options: Array[String]?
       attr_reader multi: bool?
+      attr_reader fields: Array[Hash[String, untyped]]?
       attr_reader tool_name: String?
       attr_reader tool_alias: String?
       attr_reader tool_input: Hash[untyped, untyped]

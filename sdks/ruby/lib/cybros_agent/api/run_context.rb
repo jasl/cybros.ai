@@ -79,7 +79,7 @@ module CybrosAgent
           detail = task(row.key)
           Decision.new(
             kind: kind, run_public_id: @run_public_id, task_key: row.key,
-            prompt: detail.prompt, options: detail.options, multi: detail.multi,
+            prompt: detail.prompt, options: detail.options, multi: detail.multi, fields: detail.fields,
             tool_name: row.tool_name, tool_input: detail.tool_input, tool_alias: row.tool_alias,
             target: detail.task.target, effect_profile: detail.effect_profile, tasks: tasks_context(row.key)
           )

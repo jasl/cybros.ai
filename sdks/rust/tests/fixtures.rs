@@ -138,6 +138,7 @@ fn shared_wire_documents_decode_with_their_typed_fields() {
     );
     for key in [
         "ask_fixture",
+        "structured_ask_fixture",
         "approval_fixture",
         "skill_fixture",
         "unknown_kind_fixture",

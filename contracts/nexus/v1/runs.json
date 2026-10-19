@@ -336,6 +336,7 @@
     "graph_authoring_not_available",
     "idempotency_envelope_mismatch",
     "input_queue_full",
+    "invalid_ask_answer",
     "invalid_content",
     "invalid_metadata",
     "invalid_outcome",
@@ -392,6 +393,7 @@
     "graph_authoring_not_available": 422,
     "idempotency_envelope_mismatch": 409,
     "input_queue_full": 409,
+    "invalid_ask_answer": 422,
     "invalid_content": 422,
     "invalid_metadata": 422,
     "invalid_outcome": 422,
@@ -602,6 +604,52 @@
                     "type": "string"
                   },
                   "description": "The choices, if there are choices: one string each, in the order to show them."
+                },
+                "fields": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 32,
+                  "description": "Typed fields for one answer object. Do not combine with options or multi. The answer reaches you as JSON.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,63}$"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "string",
+                          "integer",
+                          "number",
+                          "boolean",
+                          "choice",
+                          "multichoice"
+                        ]
+                      },
+                      "required": {
+                        "type": "boolean"
+                      },
+                      "options": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "maxItems": 64
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "label",
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  }
                 }
               },
               "required": [

@@ -37,10 +37,10 @@ module CybrosAgent
       # Flat, not wrapped: the door reads the envelope straight off the
       # request parameters, so a nesting key sends the token nowhere.
       def resolve(resolution_token: UNSET, content: UNSET,
-                  structured_content: UNSET, result_type: UNSET, outcome: UNSET)
+                  structured_content: UNSET, result_type: UNSET, outcome: UNSET, answer: UNSET)
         token = UNSET.equal?(resolution_token) ? UNSET :
           required_string(resolution_token, "resolution_token")
-        body = fields(resolution_token: token, content:, structured_content:, result_type:, outcome:)
+        body = fields(resolution_token: token, content:, structured_content:, result_type:, outcome:, answer:)
 
         adjudicated(@dispatch.call("#{path}/resolution", method: :post, body: body))
       end

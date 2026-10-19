@@ -210,6 +210,41 @@ class OfflineAgentTest < Minitest::Test
     assert_includes final.text, "The shared archive"
   end
 
+  def test_structured_question_preserves_typed_answers_after_the_agent_exits
+    fields = [
+      { "name" => "enabled", "label" => "Enable", "type" => "boolean", "required" => true },
+      { "name" => "count", "label" => "Count", "type" => "integer", "required" => true },
+      { "name" => "destinations", "label" => "Destinations", "type" => "multichoice", "options" => %w[local remote] },
+    ]
+    chat = conversation
+    _receipt, materialization, run = submit(chat,
+      script(["ask", { "prompt" => "Choose the delivery settings", "fields" => fields }]),
+      declaration: declaration(kernel_tools: ["nexus.human.ask"]))
+    question = await("the typed question after the submitting process exited") do
+      run.fetch.tasks.find { |task| task.await? && task.status == "awaiting_input" }
+    end
+    reconnect = CybrosAgent::Client.new(base_url: @base_url, credential: @peer.credential)
+    recovered = reconnect.workspace(@workspace.public_id).run(run.run_public_id)
+    assert_equal fields.map { |field| field.fetch("name") }, recovered.task(question.key).fields.map { |field| field.fetch("name") }
+    human_run = @human.workspace(@workspace.public_id).run(run.run_public_id)
+    refusal = assert_raises(CybrosAgent::Api::InvalidRequest) do
+      human_run.tasks_context(question.key).resolve(answer: { "enabled" => "false", "count" => 0 })
+    end
+    assert_equal "invalid_ask_answer", refusal.code
+    assert_equal "awaiting_input", recovered.task(question.key).task.status
+    answer = { "enabled" => false, "count" => 0, "destinations" => [] }
+    human_run.tasks_context(question.key).resolve(answer: answer)
+    complete(recovered)
+    detail = recovered.task(question.key)
+    assert_equal answer, detail.structured_content
+    assert_equal answer, JSON.parse(detail.output)
+    final = completed_turn(chat, materialization.turn_public_id)
+    assert_includes final.text, '"enabled":false'
+    assert_includes final.text, '"count":0'
+    human_run.tasks_context(question.key).resolve(answer: { "ignored" => true })
+    assert_equal answer, recovered.task(question.key).structured_content
+  end
+
   def test_custom_kernel_compaction_survives_exit_and_is_used_by_the_next_round
     marker = "current-result-#{SecureRandom.hex(8)}"
     File.write(File.join(@world.project, "compact.txt"), marker)

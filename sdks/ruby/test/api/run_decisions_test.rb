@@ -52,6 +52,18 @@ class ApiRunDecisionsTest < Minitest::Test
     assert_nil approval.prompt
   end
 
+  def test_structured_decisions_keep_fields_and_send_typed_answers
+    fields = CybrosAgentTest::ContractFixtures.pack("executor_inbox.json").fetch("structured_ask_fixture").fetch("fields")
+    run = { "run" => RUN.fetch("run").merge("tasks" => [ASK]) }
+    detail = { "task" => ASK.merge("prompt" => "Settings", "fields" => fields) }
+    settled = { "task" => ASK.merge("status" => "completed") }
+    decision = context([[200, {}, run], [200, {}, detail], [200, {}, settled]]).decisions.fetch(0)
+    assert_equal fields, decision.fields
+    answer = { "enabled" => false, "count" => 0 }
+    decision.answer(answer: answer)
+    assert_equal({ "answer" => answer }, requests.last.fetch(:body))
+  end
+
   def test_mcp_approval_preserves_connection_and_callable_for_the_deciding_client
     detail = CybrosAgentTest::ContractFixtures.pack("mcp_connections.json").fetch("approval_fixture")
     row = detail.fetch("task")

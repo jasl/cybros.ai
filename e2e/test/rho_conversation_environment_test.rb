@@ -1,6 +1,35 @@
 require_relative "rho_conversation_test"
 
 class RhoConversationTest
+  def test_git_review_feedback_reaches_the_original_conversation_through_an_ordinary_input
+    connect!
+    directory = bound_directory("review")
+    assert system("git", "-C", directory, "init", "-q")
+    File.write(File.join(directory, "example.rb"), "old behavior\n")
+    assert system("git", "-C", directory, "add", ".")
+    assert system("git", "-C", directory, "-c", "user.name=Review", "-c", "user.email=review@example.test", "commit", "-qm", "baseline")
+    conversation, _turn, run = open_turn("!mock reply=ready -- Review this project", directory)
+    await_run_status(run, "completed")
+    File.write(File.join(directory, "example.rb"), "new behavior\n")
+    review = @daemon.control(:get, "/conversations/review?public_id=#{conversation}&path=example.rb", expected_status: 200).fetch("review")
+    assert_equal File.realpath(directory), review.fetch("root")
+    assert_includes review.dig("file", "patch"), "-old behavior\n+new behavior"
+    comment = review.slice("runner", "root", "base").merge(
+      "path" => "example.rb", "side" => "left", "line" => 1, "excerpt" => "old behavior",
+      "fingerprint" => review.dig("file", "fingerprint"), "text" => "Please retain the original behavior")
+    feedback = @daemon.control(:post, "/conversations/review/feedback", body: { public_id: conversation, comment: comment }, expected_status: 200).fetch("text")
+    File.write(File.join(directory, "example.rb"), "changed again\n")
+    body = { public_id: conversation, text: feedback, approval_mode: "ask", delivery_mode: "queue", idempotency_key: SecureRandom.uuid }
+    accepted = @daemon.control(:post, "/say", body: body, expected_status: 200)
+    replay = @daemon.control(:post, "/say", body: body, expected_status: 200)
+    assert_equal accepted.dig("input", "public_id"), replay.dig("input", "public_id")
+    loop_id = accepted.fetch("run").fetch("public_id")
+    await_run_status(loop_id, "completed")
+    words = sealed_words(loop_id, "r1")
+    assert_includes words, feedback
+    assert_equal "old behavior", JSON.parse(feedback.split("\n", 2).last).fetch("excerpt")
+  end
+
   # ---- THE CONVERSATION'S ENVIRONMENT — E1, the root ----
 
   # NO KERNEL FIELD: the environment is rho's OWN record in the conversation's `store_entries` —

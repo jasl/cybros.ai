@@ -126,7 +126,7 @@ class Nexus::ToolRegistryTest < ActiveSupport::TestCase
 
   test "parameter_names lists a tool's declared properties" do
     assert_equal %w[prompt model lifetime wake wait tools], Registry.entry("delegate_task").parameter_names
-    assert_equal %w[prompt options multi], Registry.entry("ask").parameter_names
+    assert_equal %w[prompt options multi fields], Registry.entry("ask").parameter_names
     assert_equal %w[prompt agent declaration label lifetime wake wait default_runner_executor_public_id model model_selection fallback_models], Registry.entry("spawn").parameter_names
     assert_equal %w[to agent message steer deliver_in deliver_at wake model], Registry.entry("send").parameter_names
     assert_equal %w[task run_public_id timeout_ms], Registry.entry("wait").parameter_names

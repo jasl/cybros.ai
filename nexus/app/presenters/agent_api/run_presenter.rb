@@ -159,6 +159,7 @@ module AgentAPI
           prompt: prompt,
           # An ask's choices as data: present only when the asker gave
           # them; the inbox row serves the same two.
+          fields: node.ask_fields&.map(&:as_json),
           options: node.ask_options,
           multi: node.ask_multi,
           # The system field a `raw` round was authored with: what the SDK

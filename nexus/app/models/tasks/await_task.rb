@@ -9,6 +9,9 @@ module Tasks
 
     include Parked
 
+    attribute :ask_fields, AskField.to_array_type
+    validates :ask_fields, store_model: true, allow_nil: true
+
     DEFAULT_TIMEOUT_MS = 1.hour.in_milliseconds
     # The park's name in the settle's error keys: `await_failed`, `await_timeout`.
     PARK_KIND = "await".freeze
