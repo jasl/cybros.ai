@@ -46,6 +46,7 @@ pub struct RunTurn {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TaskDetail {
+    pub executor_context: Option<JsonObject>,
     pub effect_profile: Option<JsonObject>,
     pub model_selection: Option<JsonObject>,
     pub fallback_models: Option<Vec<String>>,
@@ -311,4 +312,13 @@ pub struct AppendReceipt {
     pub replayed: bool,
     #[serde(flatten)]
     pub extra: JsonObject,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RunCandidate {
+    pub public_id: String,
+    pub workspace_public_id: String,
+    pub conversation_public_id: String,
+    pub turn_public_id: String,
+    pub status: String,
 }

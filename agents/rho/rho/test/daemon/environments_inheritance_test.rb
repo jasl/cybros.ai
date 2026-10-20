@@ -11,14 +11,14 @@ class DaemonEnvironmentsTest
     table.adopt_children("c-parent", ["c-child"])
 
     assert_equal value(@other, anchor: "c-child"), child_store.entry.value
-    placement = table.toolsets.for(task("c-child", parent: "c-parent"))
+    placement = table.toolsets.for(task("c-child", parent: "c-parent", binding: table.read("c-child").binding))
     assert_equal File.realpath(@other), placement.env.root, "the child row won: its next tool uses its own root"
     assert_equal "c-child", placement.binding.anchor
     assert_equal "se-child", table.memo("c-child").public_id
     assert_equal "conversation", table.memo("c-child").source
   end
 
-  def test_an_existing_child_binding_is_the_value_relayed_to_its_remote_runner
+  def test_an_existing_child_binding_is_preserved_for_future_remote_capture
     child_store = FakeStore.new([row(value(@other, anchor: "c-child"), public_id: "se-child", key: "binding/0199-h")])
     client = FakeClient.new(conversations: {
       "c-parent" => FakeConversation.new(store: FakeStore.new([row(value(@project, anchor: "c-parent"), key: "binding/0199-h")])),
@@ -30,9 +30,7 @@ class DaemonEnvironmentsTest
     table.adopt_children("c-parent", ["c-child"])
 
     assert_equal value(@other, anchor: "c-child"), child_store.entry(NAMESPACE, "binding/0199-h").value
-    assert_equal 1, client.requests.length
-    assert_equal value(@other, anchor: "c-child").merge("conversation_public_id" => "c-child"),
-      client.requests.first.fetch(:input), "call_tool preserves the child's own root and anchor"
+    assert_empty client.requests, "directory delivery belongs to accepted work"
     assert_equal binding(@other, anchor: "c-child"), table.binding_for("c-child", runner: "0199-h")
   end
 
@@ -56,7 +54,7 @@ class DaemonEnvironmentsTest
     assert_equal binding(@other, anchor: "c-child"), found.binding
     assert_equal [child_store.entry.public_id, child_store.entry.lock_version], [found.public_id, found.lock_version]
     assert_equal "conversation", found.source
-    assert_equal File.realpath(@other), table.toolsets.for(task("c-child", parent: "c-parent")).env.root
+    assert_equal File.realpath(@other), table.toolsets.for(task("c-child", parent: "c-parent", binding: table.read("c-child").binding)).env.root
   end
 
   def test_a_failed_read_of_the_existing_child_does_not_publish_a_parent_guess
@@ -72,7 +70,7 @@ class DaemonEnvironmentsTest
     remembered = table.memo("c-child")
     child_store.fail_reads(CybrosAgent::TransportError.new("offline"))
 
-    assert_raises(Rho::Error) { table.adopt_children("c-parent", ["c-child"]) }
+    assert_raises(CybrosAgent::TransportError) { table.adopt_children("c-parent", ["c-child"]) }
 
     assert_same remembered, table.memo("c-child")
     assert_empty client.requests

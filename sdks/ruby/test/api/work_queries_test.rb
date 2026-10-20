@@ -4,6 +4,18 @@ require_relative "../support/contract_clients"
 class ApiWorkQueriesTest < Minitest::Test
   include CybrosAgentTest::ContractClients
 
+  def test_candidate_windows_preserve_the_cursor_even_when_empty
+    %w[valid_run_candidates_fixture empty_run_candidates_fixture].each do |name|
+      fixture = contract("work.json").fetch(name)
+      page = work(fixture).run_candidates(agent_public_id: "agent", after: "cursor")
+
+      assert_equal fixture.fetch("runs").map { |row| row.fetch("public_id") }, page.items.map(&:public_id)
+      assert_equal fixture.dig("pagination", "next_after"), page.next_after
+      assert_equal "/agent_api/v1/run_candidates", request.fetch(:path)
+      assert_equal({ "agent_public_id" => "agent", "after" => "cursor" }, request.fetch(:params))
+    end
+  end
+
   def test_global_runs_keep_the_workspace_and_filters
     fixture = contract("work.json").fetch("valid_runs_fixture")
     page = work(fixture).runs(workspace_public_id: "workspace", from: "2026-10-14T00:00:00Z",

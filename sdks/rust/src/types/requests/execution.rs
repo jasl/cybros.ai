@@ -24,6 +24,7 @@ vocabulary!(ReasoningReplayMode {
 });
 request!(ReasoningReplay {mode:ReasoningReplayMode} {});
 request!(CreateInput {} {
+    executor_contexts:JsonObject,
     text:String,entries:Vec<Value>,kind:InputKind,role:InputRole,model:ModelRequest,
     configuration:JsonObject,agent_configuration:AgentConfigurationRequest,model_selection:ModelSelection,
     fallback_models:Vec<String>,delivery_mode:DeliveryMode,context_mode:ContextMode,history:JsonObject,
@@ -33,6 +34,7 @@ request!(CreateInput {} {
     variables:JsonObject,steps:Vec<Step>,deliver_at:String,deliver_in:String,speaker_public_id:String
 });
 request!(UpdateInput {} {
+    executor_contexts:JsonObject,
     expected_lock_version:i64,text:String,entries:Vec<Value>,model:ModelRequest,
     configuration:JsonObject,agent_configuration:AgentConfigurationRequest,model_selection:ModelSelection,
     fallback_models:Vec<String>,delivery_mode:DeliveryMode,context_mode:ContextMode,history:JsonObject,
@@ -88,8 +90,8 @@ impl Default for ScheduleRuleRequest {
         }
     }
 }
-request!(CreateSchedule {prompt:String,rule:ScheduleRuleRequest} {name:String,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,model_selection:ModelSelection,fallback_models:Vec<String>,source_run_public_id:String,source_task_key:String});
-request!(UpdateSchedule {expected_lock_version:i64} {name:String,prompt:String,rule:ScheduleRuleRequest,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,model_selection:ModelSelection,fallback_models:Vec<String>});
+request!(CreateSchedule {prompt:String,rule:ScheduleRuleRequest} {executor_contexts:JsonObject,name:String,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,model_selection:ModelSelection,fallback_models:Vec<String>,source_run_public_id:String,source_task_key:String});
+request!(UpdateSchedule {expected_lock_version:i64} {executor_contexts:JsonObject,name:String,prompt:String,rule:ScheduleRuleRequest,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,model_selection:ModelSelection,fallback_models:Vec<String>});
 request!(AnnouncedTool {name:String,effect_profile:EffectProfile} {timeout_ms:u64,description:String,input_schema:JsonObject,mcp:JsonObject});
 request!(AnnouncedDocument {name:String,description:String} {});
 request!(Announcement {tools:Vec<AnnouncedTool>} {environment:JsonObject,documents:Vec<AnnouncedDocument>});
@@ -147,3 +149,8 @@ pub struct RealtimeOffer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub previous_connection_id: Option<String>,
 }
+
+query!(RunCandidateQuery {
+    agent_public_id: String,
+    after: String
+});

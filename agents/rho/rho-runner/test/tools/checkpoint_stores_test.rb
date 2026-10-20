@@ -78,9 +78,9 @@ class CheckpointStoresTest < Minitest::Test
     zero = Rho::Runner::ToolEnv.new(root: @first.root, artifacts_dir: File.join(@tmp, "artifacts"), checkpoints: @first)
     registry = Rho::Runner::Extensions::Loader.call(builtin: [Rho::Runner::Extensions::Coding]).registry
     sets = Rho::Runner::Toolsets.new(registry: registry, zero: zero, work_dir: @tmp,
-      resolver: ->(_conversation, _parent) { Rho::Runner::Environment::Binding.new(root: @second.root, directories: [], anchor: "c-1") },
       checkpoints: ->(_root) { @second })
     task = CybrosAgent::Api::InboxTask.new(workspace_public_id: "ws-1", kind: "tool_call", run_public_id: "loop-1", conversation_public_id: "c-1",
+      executor_context: { "rho.environment" => { "root" => @second.root, "directories" => [], "anchor" => "c-1" } },
       parent_public_id: nil, task_key: "read", tool_name: "read", tool_input: {}, tool_call_id: "call-1",
       started_at: nil, deadline_at: nil, timeout_ms: nil, claimed: false,
       addressed_to: CybrosAgent::Api::AddressedTo.new(role: "runner", executor_public_id: "ex-1"), scope: nil)

@@ -43,7 +43,7 @@ module PlacementRedactionProbe
     end
   end
 
-  Task = Data.define(:conversation_public_id, :parent_public_id, :run_public_id)
+  Task = Data.define(:conversation_public_id, :parent_public_id, :run_public_id, :executor_context, :tool_name)
 
   module_function
 
@@ -75,8 +75,8 @@ module PlacementRedactionProbe
     registry = Rho::Runner::Extensions::Loader.call(builtin: [Rho::Runner::Extensions::Coding]).registry
     zero = Rho::Runner::ToolEnv.new(root: zero_root, artifacts_dir: File.join(work, "captures"))
     binding = Rho::Runner::Environment::Binding.new(root: root, directories: [extra], anchor: "parent")
-    task = Task.new(conversation_public_id: "parent", parent_public_id: nil, run_public_id: "run")
-    tools = Rho::Runner::Toolsets.new(registry: registry, zero: zero, resolver: ->(*) { binding }, work_dir: work)
+    task = Task.new(conversation_public_id: "parent", parent_public_id: nil, run_public_id: "run", tool_name: "read", executor_context: { "rho.environment" => binding.to_h })
+    tools = Rho::Runner::Toolsets.new(registry: registry, zero: zero, work_dir: work)
     held = tools.for(task)
     results << measure("cached_toolsets_one_root_one_extra", iterations: 1000) do
       value = tools.for(task)

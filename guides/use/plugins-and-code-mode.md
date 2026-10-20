@@ -91,3 +91,11 @@ observer to evaluate the stopping condition,
 resolve its continuation hold and submit another attempt when needed. Keep that
 process online. Work already accepted by Nexus can finish while it is absent,
 but the next until attempt does not start until rho resumes the continuation.
+
+Until recovery reads unfinished work and its saved policy from Nexus after rho
+restarts, even when the local follower cache is missing or the conversation is
+archived. It checks the original Run and consumes already committed check results
+without rerunning those checks. Paused work stays paused; stopped work and expired
+holds are not revived. Recovery requires rho's member connection and a still-valid
+hold deadline. It does not restore a lost Code Mode VM or replay an uncertain tool
+execution.

@@ -211,10 +211,8 @@ module RhoTest
       plane = Rho::Extensions::MemberPlane.new(client: client, workspace_public_id: "ws-1")
       Rho::Environments.new(
         home: @home, config: Rho::Config.from_hash({}), registry: registry, log: @log, clock: -> { Time.now },
-        booted_at: booted_at, default_root: default_root,
+        default_root: default_root,
         member_plane: (member_plane == :own ? ->(**) { plane } : member_plane), own_runner: ->(id) { id == own },
-        learn_runner: ->(document) { learned << document },
-        spawn: ->(&work) { inline ? work.call : (@spawned << Thread.new(&work)) }
       )
     end
 
@@ -257,10 +255,11 @@ module RhoTest
     def join_spawned = @spawned.each(&:join)
 
     # A claimed row as the runner gem's `Toolsets#for` reads it.
-    Task = Data.define(:conversation_public_id, :parent_public_id, :run_public_id)
+    Task = Data.define(:conversation_public_id, :parent_public_id, :run_public_id, :executor_context, :tool_name)
 
-    def task(conversation, parent: nil, run_public_id: "al-1")
-      Task.new(conversation_public_id: conversation, parent_public_id: parent, run_public_id: run_public_id)
+    def task(conversation, parent: nil, run_public_id: "al-1", binding: self.binding)
+      Task.new(conversation_public_id: conversation, parent_public_id: parent, run_public_id: run_public_id,
+        tool_name: "read", executor_context: binding && { "rho.environment" => binding.to_h })
     end
   end
 end

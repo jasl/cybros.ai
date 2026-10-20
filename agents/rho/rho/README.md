@@ -1730,8 +1730,8 @@ relative one anyway. `{"root": null}` clears back to the settings file.
 Refused while a tool call is running: moving the ground under one is the
 one thing an explicit switch must not do.
 
-`tools_root` is where a bare relative path lands — the one environment
-fact this daemon holds. Unset, it is a scratch directory under `RHO_HOME`,
+`tools_root` supplies the default captured for future requests. Each accepted
+request carries its concrete Executor context, including its working root. Unset, it is a scratch directory under `RHO_HOME`,
 which is right for a daemon nobody gave a project to and wrong for every
 daemon anybody did. Anything outside it is reached by absolute path; every
 tool here accepts one, because there is deliberately no path confinement —
@@ -2224,3 +2224,17 @@ scenarios and repeats the complete suite under runtime RBS checks. Run it locall
 for complete package verification; `rake rbs:conformance` runs that instrumented
 suite separately. Cross-project journeys and installation acceptance remain in
 the [E2E suite](../../../e2e/README.md).
+
+### Captured directories and Until recovery
+
+rho captures selected directories before submitting work. Runner tasks carry
+`executor_context["rho.environment"]` with `root`, `directories` and optional
+`anchor`; the Runner applies this before hooks and handlers. A missing or unusable
+captured directory fails explicitly. Changing defaults or restarting a Runner does
+not redirect accepted tasks. No environment-binding tool or replay message is needed.
+
+Until recovery scans the member API's bounded Run candidates independently of the
+follower cache. It verifies the original Run and saved policy, including an input
+accepted before rho recorded its Run identifier, then uses the ordinary Gate to
+advance. Completed checks are consumed once. Paused, stopped and expired work retain
+their existing state; lost in-memory tool runtimes are not recreated.

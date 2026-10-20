@@ -30,6 +30,8 @@ module Rho
       # and on the key — so the tree before the call is never lost.
       class CheckpointRestore
         NAME = "checkpoint_restore".freeze
+        # An explicit store is already a durable location selector.
+        ENVIRONMENT_REQUIRED = false
         DESCRIPTION = nil
         EFFECT_PROFILE = {
           "kind" => "write", "destructive" => true, "effect_scope" => "closed",
@@ -54,6 +56,9 @@ module Rho
 
         def call(args)
           @env.raise_if_cancelled!
+          if @env.checkpoint_resolver && !args.key?("store") && !ExecutionContext.current&.binding
+            return Result.error("checkpoint_store_required: supply a store or captured environment")
+          end
           store = args.key?("store") ? @env.checkpoint_stores(args.fetch("store")).first : @env.checkpoints
           return Result.error("checkpoint_store_unknown: #{args.fetch("store")}") if store.nil? && args.key?("store")
           return Result.error(DISABLED) if store.nil?

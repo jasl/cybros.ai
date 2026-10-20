@@ -1,4 +1,5 @@
 require_relative "../until"
+require_relative "../until/recovery"
 
 module Rho
   module Extensions
@@ -49,7 +50,8 @@ module Rho
         paragraph = Rho::Until.paragraph(command: policy.command, attempts: policy.attempts,
           directory: policy.directory)
         steps = Rho::Until.check_steps(1,
-          command: policy.command, directory: policy.directory, timeout_seconds: clamp(ctx))
+          command: policy.command, directory: policy.directory, timeout_seconds: clamp(ctx),
+          runner: policy.runner, executor_context: draft.body.fetch("executor_contexts").fetch(policy.runner))
         draft.with(
           lead: [draft.lead, paragraph].reject(&:empty?).join("\n\n"),
           steps: (draft.steps || []) + steps,
@@ -63,7 +65,7 @@ module Rho
       # announced.
       def self.seed(draft, compaction)
         seed = { "model" => { "model" => draft.body.fetch("model") },
-                 "compaction" => compaction }
+                 "compaction" => compaction, "executor_contexts" => draft.body.fetch("executor_contexts") }
         # The kernel refuses `tools: []` as a typo'd intent.
         seed["tools"] = draft.tools unless draft.tools.empty?
         seed
@@ -94,15 +96,14 @@ module Rho
           return Rho::Daemon::Refusal.malformed("until.attempts must be between 1 and #{Rho::Until::MAX_ATTEMPTS}")
         end
 
-        if environment
-          Rho::Until::Policy.new(command: command, attempts: attempts, runner: nil, seed: {},
-            directory: environment.working_directory || environment.root)
-        else
-          runner = ctx.runner_selection(body)
-          asserted = body["working_directory"].to_s
-          directory = asserted.empty? ? ctx.remote_runner(runner)&.environment&.dig("root") : asserted
-          Rho::Until::Policy.new(command: command, attempts: attempts, runner: runner, seed: {}, directory: directory)
-        end
+        runner = ctx.runner_selection(body)
+        context = body.fetch("executor_contexts", {})[runner]
+        root = context&.dig(Rho::Runner::Environment::CONTEXT_KEY, "root")
+        return Rho::Daemon::Refusal.malformed("until requires a concrete Runner and captured environment") unless runner && root
+
+        directory = body["working_directory"].to_s
+        directory = root if directory.empty?
+        Rho::Until::Policy.new(command: command, attempts: attempts, runner: runner, seed: {}, directory: directory)
       end
 
       # The input already accepted the check and hold before its first model
@@ -113,76 +114,22 @@ module Rho
         bound_run = note.fetch("run_public_id")
         return nil if bound_run && bound_run != run_public_id
 
-        policy = nil
-        restored = ctx.member_plane(host_public_id: run_public_id) do |client, workspace_public_id|
-          runs = ctx.runs_for(client, workspace_public_id)
-          note = bind(run_public_id, runs, client.workspace(workspace_public_id), ctx) unless bound_run
-          next false if note.nil?
+        return gate(run_public_id, Rho::Until::Policy.from_h(note), ctx) if bound_run
 
-          policy = Rho::Until::Policy.from_h(note)
-          true
+        result = ctx.member_plane(host_public_id: run_public_id) do |client, workspace_public_id|
+          workspace = client.workspace(workspace_public_id)
+          run = workspace.run(run_public_id).fetch
+          next unless run.turn&.conversation_public_id
+
+          Rho::Until::Recovery.new(owner_public_id: ctx.own_user_public_id, timeout_seconds: clamp(ctx), log: ctx.log)
+            .call(workspace: workspace, run_public_id: run_public_id, conversation_public_id: run.turn.conversation_public_id,
+              turn_public_id: run.turn.public_id, advance: false)
         end
-        return nil unless restored == true
-
-        gate(run_public_id, policy, ctx)
-      end
-
-      # Bind the first materialized run before installing its gate. A
-      # conversation outlives this goal; later turns must never inherit it.
-      def self.bind(run_public_id, runs, workspace, ctx)
-        host = ctx.host_of(run_public_id, runs)
-        return nil unless host.outlives_turn?
-
-        hosted = host.context(workspace)
-        document = Rho::HostPolicy.new(store: -> { hosted.store_entries },
-          owner_public_id: ctx.own_user_public_id, host_public_id: host.public_id)
-        snapshot = document.read
-        note = snapshot&.notes&.fetch(NAME, nil)
-        return nil if note.nil?
-
-        bound_run = note.fetch("run_public_id")
-        return bound_run == run_public_id ? note : nil if bound_run
-
-        unless first_run(hosted) == run_public_id
-          ctx.log&.warn("until.not_restored", run: run_public_id, reason: "pending_run_unproven")
-          return nil
-        end
-
-        updated = document.change(notes: snapshot.notes.merge(NAME => note.merge("run_public_id" => run_public_id)))
-        ctx.remember(host, workspace: hosted.workspace_public_id, notes: updated.notes)
-        updated.notes.fetch(NAME)
+        result if result in Rho::Until::Gate
       rescue CybrosAgent::Error, Rho::StateError => error
         ctx.log&.warn("until.bind_failed", run: run_public_id, error_class: error.class.name,
           detail: CybrosAgent::Redaction.call(error.message))
         nil
-      end
-
-      # Until is authored with a new conversation's first input. Its original
-      # materialization remains the authority if binding failed, even when a
-      # later turn or a regenerated variant is now active. Queue positions
-      # are reused, so the proof needs contiguous replay from sequence 1;
-      # a retained suffix cannot identify the conversation's first input.
-      def self.first_run(hosted)
-        after = nil
-        sequence = 0
-        turn_public_id = nil
-        loop do
-          page = hosted.events(after: after, limit: 100)
-          return nil if page.gap_after?(sequence)
-
-          page.each do |item|
-            payload = item.payload
-            if item.type == "input_materialized" && payload["queue_position"] == 0
-              turn_public_id = payload.fetch("turn_public_id")
-            elsif turn_public_id && item.type == "turn_status" && payload["turn_public_id"] == turn_public_id
-              return payload["run_public_id"]
-            end
-          end
-          return nil if page.caught_up?
-
-          after = page.next_after
-          sequence = page.last_sequence
-        end
       end
 
       def self.gate(run_public_id, policy, ctx)

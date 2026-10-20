@@ -76,6 +76,25 @@ class ConversationTimelineTest < ActiveSupport::TestCase
     assert_equal excluded.id, @parent.timeline.entries(surface: :timeline)[1].turn.id
   end
 
+  test "native summary cuts honor visibility, status and the exclusive window" do
+    build_turn(conversation: @parent, position: 0)
+    assert_nil @parent.timeline.compaction_position(surface: :assembly, kind: "compaction_summary")
+    build_turn(conversation: @parent, position: 1, kind: "compaction_summary")
+    build_turn(conversation: @parent, position: 2, kind: "compaction_summary", status: "failed")
+    build_turn(conversation: @parent, position: 3, kind: "compaction_summary", visibility: "hidden")
+    concealed = build_turn(conversation: @parent, position: 4, kind: "compaction_summary")
+    build_turn(conversation: @parent, position: 5, kind: "compaction_summary")
+    concealed.update!(deleted_at: Time.current)
+
+    assert_equal 5, @parent.timeline.compaction_position(surface: :assembly, kind: "compaction_summary")
+    assert_equal 1, @parent.timeline.compaction_position(
+      surface: :assembly, kind: "compaction_summary", before_position: 5)
+    assert_nil @parent.timeline.compaction_position(
+      surface: :assembly, kind: "compaction_summary", before_position: 1)
+    assert_equal [1, 2, 5], positions(@parent, surface: :assembly, from_position: 1, newest: true, limit: 3)
+    assert_equal [0], positions(@parent, surface: :assembly, include_summaries: false)
+  end
+
   test "an inherited row ignores the shared row's own view columns" do
     kept = build_turn(conversation: @parent, position: 0)
     build_turn(conversation: @parent, position: 1)

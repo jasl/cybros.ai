@@ -3,34 +3,12 @@ require "monitor"
 require "securerandom"
 require_relative "environments/inheritance"
 require_relative "environments/ports"
-require_relative "environments/call_tool"
 require_relative "environments/servers"
 
 module Rho
-  # Conversation roots are stored independently for each Runner under
-  # `rho.environment` / `binding/<runner UUID>`; an Agent-only scope uses
-  # `binding/agent`. Changing the default Runner never copies a root to a
-  # different machine. The daemon reads its member-plane records and sends
-  # each Runner its own binding through `environment_bind`.
-  # One daemon-owned instance coordinates its immutable memo tables and
-  # local toolset builds; callers reach it through `Context#environments`.
-  #
-  # The tables: `records` (a bounded memo of the store, `Record` or a
-  # `Miss` per run, evicted by last touch), `asserted` (what a runner
-  # ELSEWHERE was told, keyed by (conversation, runner) → digest + the
-  # runner's process life), `received` (what THIS runner slot was told by
-  # a host elsewhere), the checkpoint `stores` per real root, `leads`
-  # (the tuple the last lead named and whether its anchor had a port, so
-  # a moved record or a port that came or went re-renders once), the
-  # `ports` (`Environments::Ports`: the editor's file-system port per anchor, the runner's per-call lookup), and the `servers`
-  # (`Environments::Servers`: the editor's MCP servers per anchor, served
-  # on the agent slot).
-  # THE PLACEMENTS are the runner gem's (`Rho::Runner::Toolsets`: one
-  # `ToolEnv` + toolset per spelled root set, a miss per run, the
-  # notices): this class owns the runner slot's `Toolsets` of the moment
-  # — built on placement zero, the default root's env, and rebuilt on
-  # `rho env` — and hands the runner one forwarding handle, so the runner
-  # is never rebuilt when the default root moves.
+  # Stores authoring defaults per concrete Executor. Accepted work carries its
+  # own binding; the Runner never looks up these records while claiming tasks.
+  # This owner also shares local checkpoint stores and editor integrations.
   class Environments
     RECORDS_MAX = 256
     # How far the parent walk climbs before it calls the chain unresolved.
@@ -51,9 +29,6 @@ module Rho
       def directories = binding ? binding.directories : []
       def anchor = binding&.anchor
     end
-
-    class Unreadable < Rho::Error; end
-    private_constant :Unreadable
 
     # THE SLOT'S HANDLE: the `Toolsets` the runner gem's `TaskRun`
     # holds (`for`, `names`, `zero`) — a `Toolsets` by class, whose
@@ -81,34 +56,20 @@ module Rho
         def current = @agent ? @environments.current_agent_toolsets : @environments.current_toolsets
     end
 
-    attr_reader :booted_at
-
-    # `default_root` answers the daemon default's root (the environment
-    # store's selection); `member_plane` a `MemberPlane` or nil (a
-    # runner-mode daemon holds none); `own_runner` whether an id is this
-    # machine's own runner; `learn_runner` puts a refreshed discovery
-    # document into the daemon's cache; `spawn` runs a call_tool fiber on the
-    # reactor; `checkpoints` whether the daemon opens checkpoint stores.
-    # `registrar` is the loaded `Extensions::Registrar` for
-    # an editor's MCP servers, nil while no extension registered one;
-    # `served` the WHOLE registry the servers table judges names against
-    # (the runner's alone when not given); `servers_changed` the daemon's
-    # edge past a moved set — the agent slot re-announced.
-    def initialize(home:, config:, registry:, log:, clock:, booted_at:, default_root:, member_plane:, own_runner:,
-                   learn_runner:, spawn:, processes: nil, checkpoints: false, registrar: nil, served: nil,
+    # Member-plane authoring reads and writes conversation defaults. Both local
+    # executor slots share checkpoint stores, ports and editor registrations.
+    def initialize(home:, config:, registry:, log:, clock:, default_root:, member_plane:, own_runner:,
+                   processes: nil, checkpoints: false, registrar: nil, served: nil,
                    servers_changed: nil, own_runner_public_id: -> { nil })
       @home = home
       @config = config
       @registry = registry
       @log = log
       @clock = clock
-      @booted_at = booted_at
       @default_root = default_root
       @member_plane = member_plane
       @own_runner_public_id = own_runner_public_id
       @own_runner = own_runner
-      @learn_runner = learn_runner
-      @spawn = spawn
       @processes = processes
       @checkpoints = checkpoints
       @servers_changed = servers_changed
@@ -121,8 +82,6 @@ module Rho
       # Concurrent first use must share the same store handle and limits.
       @builds = Monitor.new
       @records = {}
-      @asserted = {}
-      @received = {}
       @stores = {}
       @flights = {}
       @noticed = {}
@@ -164,9 +123,7 @@ module Rho
       self
     end
 
-    # The `Toolsets` of the moment — built on first use over placement
-    # zero, the default root's env; a claim resolves its binding through
-    # `resolve` on the worker.
+    # Build the default discovery placement and task-context toolset cache.
     def current_toolsets
       held = @monitor.synchronize { @toolsets }
       return held if held
@@ -230,17 +187,8 @@ module Rho
       id ? found.select { |store| store.id == id } : (held + found).uniq(&:id)
     end
 
-    # THE AGENT SLOT'S TOOLSETS: the given
-    # registry's tools — the agent's own — over zero's env, resolving each
-    # claim's record on the worker as the runner slot does, for its ANCHOR:
-    # the editor's servers the anchor holds (`Servers`, the runner gem's
-    # `extras` duck) join the placement, and a call naming another
-    # anchor's server is answered as data there. A root set's env is the
-    # runner slot's same gesture, so a write-kind server tool captures
-    # under the root's store as the runner's writes do; a root absent here
-    # lands the agent's own tools on zero and still reaches its anchor's
-    # servers. No editor port: the port is the runner's read/edit/write's.
-    # Its handle survives both `rho env` and a new registry from settings.
+    # Application tools use their own claimed context and anchor for editor
+    # servers. They share checkpoint stores with the Runner's local root sets.
     def agent_toolsets(registry)
       @builds.synchronize { @agent_registry ||= registry }
       @agent_slot
@@ -255,7 +203,7 @@ module Rho
         next held if held
 
         built = Rho::Runner::Toolsets.new(
-          registry: @agent_registry, zero: zero.env, resolver: ->(conversation, parent) { resolve(conversation, parent) },
+          registry: @agent_registry, zero: zero.env,
           work_dir: @home.work_root, log: @log, checkpoints: (->(root) { store_for(root) } if @checkpoints),
           protected_roots: Rho.protected_roots(@home), extras: @servers
         )
@@ -264,26 +212,13 @@ module Rho
       end
     end
 
-    # THE RESOLVER A CLAIM RUNS ON THE WORKER: the received
-    # table — this slot's, or the PARENT's for a spawned child (the
-    # kernel's `parent_public_id` on the inbox row) — else, when this
-    # daemon has a member plane, the memo, the store or the parent walk;
-    # nil lands the claim on placement zero.
-    def resolve(conversation, parent = nil)
-      context = Rho::Runner::ExecutionContext.current
-      binding_for(conversation, run_public_id: context&.run_public_id, parent: parent,
-        workspace_public_id: context&.workspace_public_id, runner: @own_runner_public_id.call)
-    end
-
     # ---- the record ----
 
-    # THE READ EDGE: the memo's id → `fetch`; a miss → `list` → the row →
-    # `fetch`; nothing → the parent walk → a `Miss` for the run. A read
-    # that fails keeps the last memo standing (or the default), logs
-    # `environment.unreadable` once per conversation, and never refuses.
+    # Read authoring defaults freshly. An unreadable record refuses capture;
+    # a previous memo never supplies an accepted execution's directory.
     def read(conversation, plane: nil, run_public_id: nil, parent: nil, runner: @own_runner_public_id.call)
       plane ||= @member_plane.call(host_public_id: conversation)
-      return resolved_from_memo(conversation, runner:) if plane.nil?
+      raise CybrosAgent::Api::InvalidRequest.new("Environment records cannot be read without the member plane", code: "executor_environment_unavailable") if plane.nil?
 
       single_flight([conversation, runner]) do
         resolved = read_record(conversation, plane, runner:) || walk(conversation, plane, run_public_id, parent: parent, runner:)
@@ -292,31 +227,11 @@ module Rho
         remember(conversation, Miss.new(run_public_id: run_public_id), runner:)
         Resolved.default
       end
-    rescue Unreadable
-      resolved_from_memo(conversation, runner:)
     end
 
-    # THE HOST RESOLVES: what THIS slot received, else the memo (a `Miss` valid for its
-    # run), else what the slot received for the PARENT the inbox row names (a spawned child
-    # by its parent's RECEIVED binding, no call_tool in the path — in every mode that hosts a
-    # runner slot), else the store and the walk — the row's parent handed to the walk so no
-    # projection read is spent; the host's own memo of the parent is the walk's, AFTER the
-    # child's own store is read, so a child's own row is never shadowed by its parent's
-    # copy. A slot with NO member plane that was told nothing resolves nothing and says so
-    # (`unreceived`) until its binding arrives.
     def binding_for(conversation, plane: nil, run_public_id: nil, parent: nil, workspace_public_id: nil, runner: @own_runner_public_id.call)
-      received = received(conversation, runner:)
-      return received if received
-
-      memo = touch(conversation, runner:)
-      case memo
-      in Record then memo.binding
-      in Miss if memo.run_public_id == run_public_id then nil
-      else
-        plane ||= @member_plane.call(host_public_id: conversation, workspace_public_id: workspace_public_id)
-        inherited(conversation, parent, plane, runner:) ||
-          (plane.nil? ? unreceived(conversation) : read(conversation, plane: plane, run_public_id: run_public_id, parent: parent, runner:).binding)
-      end
+      plane ||= @member_plane.call(host_public_id: conversation, workspace_public_id: workspace_public_id)
+      read(conversation, plane: plane, run_public_id: run_public_id, parent: parent, runner: runner).binding
     end
 
     # THE WRITE EDGE: read, compare, write under the last-read
@@ -330,7 +245,8 @@ module Rho
       return Daemon::Refusal.member_plane_unavailable if plane.nil?
 
       binding = Rho::Runner::Environment::Binding.new(
-        root: File.expand_path(root), directories: Array(directories).map { |path| File.expand_path(path) }, anchor: conversation
+        root: runner.nil? || @own_runner.call(runner) ? File.expand_path(root) : root,
+        directories: runner.nil? || @own_runner.call(runner) ? Array(directories).map { |path| File.expand_path(path) } : directories, anchor: conversation
       )
       current = read(conversation, plane: plane, runner:)
       return current if current.source == "conversation" && current.binding == binding
@@ -361,12 +277,12 @@ module Rho
 
     # ---- validation ----
 
-    # Why a root cannot be placed on this host: under a protected root,
-    # or — when the set is this host's to serve (`local`) — not a
-    # directory; nil for one that can. A set a runner ELSEWHERE serves is
-    # that runner's path (the tools run where the runner is — the box's plain cell of 2026-09-18 opened `/app`, the container's tree, from a host that has no `/app`): the call_tool's `resolved` says
-    # whether it stands there, and this host's placement reads zero.
+    # Local roots are checked here. Remote paths must be absolute and are
+    # checked on the selected Runner before its tool executes.
     def refusal_for(path, local: true)
+      return "absolute_path_required" unless local || Pathname.new(path).absolute?
+      return nil unless local
+
       spelled = Rho.spelled(path)
       return "protected_root" if Rho.protected_roots(@home).any? { |root| Rho.under?(spelled, root) }
       return "not_a_directory" if local && !File.directory?(spelled)
@@ -378,21 +294,22 @@ module Rho
     # root a directory (on this host, when it is this host's to serve)
     # and no member of the set under a protected root.
     def validate(root, directories, local: true)
-      return Daemon::Refusal.malformed("root must be a path") unless root.is_a?(String) && !root.empty?
+      root = String.try_convert(root)
+      directories = Array.try_convert(directories)
+      return Daemon::Refusal.malformed("root must be a path") unless root && !root.empty?
       return Daemon::Refusal.malformed("directories must be a list of paths") unless
-        directories.is_a?(Array) && directories.all? { |path| path.is_a?(String) && !path.empty? }
+        directories && directories.all? { |path| String.try_convert(path) && !path.empty? }
 
       [root, *directories].each do |path|
         refusal = refusal_for(path, local: local)
         next if refusal.nil?
 
         return Daemon::Refusal.new(status: 422, code: refusal,
-          message: refusal == "protected_root" ? "#{path} is under a protected root" : "#{path} is not a directory")
+          message: { "protected_root" => "#{path} is under a protected root", "not_a_directory" => "#{path} is not a directory",
+            "absolute_path_required" => "#{path} must be an absolute path on the selected Runner" }.fetch(refusal))
       end
       nil
     end
-
-    def resolved?(binding) = [binding.root, *binding.directories].all? { |path| refusal_for(path).nil? }
 
     # ---- the file-system port ----
 
@@ -466,10 +383,8 @@ module Rho
       records.filter_map do |(conversation, runner), record|
         next unless ids.include?(conversation) && record in Record
 
-        relayed = asserted(conversation, runner)
         { conversation:, runner:, root: record.binding.root, directories: record.binding.directories,
           anchor: record.binding.anchor, source: record.source,
-          relayed: relayed && answer_of(runner, relayed).to_h,
           fs: port_description(record.binding.anchor), mcp: servers_report(record.binding.anchor) }
       end
     end
@@ -517,8 +432,6 @@ module Rho
 
       def binding_key(runner) = "#{Extensions::Environment::STORE_KEY}/#{runner || "agent"}"
 
-      def member_plane? = !@member_plane.call(require_workspace: false).nil?
-
       def door(plane, conversation)
         plane.client.workspace(plane.workspace_public_id).conversation(conversation).store_entries
       end
@@ -531,13 +444,13 @@ module Rho
       # through the listing. nil when the store holds none.
       def read_record(conversation, plane, runner:)
         memo = memo(conversation, runner:)
-        entry = fetch_entry(door(plane, conversation), memo.is_a?(Record) ? memo.public_id : nil, runner:)
+        entry = fetch_entry(door(plane, conversation), (memo in Record) ? memo.public_id : nil, runner:)
         return nil if entry.nil?
 
         binding = Rho::Runner::Environment::Binding.parse(entry.value)
         if binding.nil?
           @log&.warn("environment.malformed", conversation: conversation, entry: entry.public_id)
-          return nil
+          raise CybrosAgent::Api::InvalidRequest.new("Malformed environment record for #{conversation}", code: "executor_environment_unavailable")
         end
 
         remember(conversation, Record.new(public_id: entry.public_id, binding: binding, source: "conversation"), runner:)
@@ -548,7 +461,7 @@ module Rho
           @log&.warn("environment.unreadable", conversation: conversation, error_class: error.class.name,
             code: (error.code if error.respond_to?(:code)), error: CybrosAgent::Redaction.call(error.message))
         end
-        raise Unreadable, error.message
+        raise
       end
 
       def fetch_entry(store, public_id, runner:)
@@ -630,28 +543,6 @@ module Rho
         { "root" => binding.root, "directories" => Array(binding.directories), "anchor" => binding.anchor }
       end
 
-      # The parent's binding as this slot RECEIVED it, memoized as the
-      # child's copy; with no member plane (runner mode: no store to read,
-      # no walk) the slot's memo of the parent too, so a grandchild's
-      # chain resolves before the host's call_tool for the child lands.
-      def inherited(conversation, parent, plane, runner:)
-        return nil if parent.nil?
-
-        binding = received(parent, runner:)
-        binding ||= memo(parent, runner:).then { |memo| memo.binding if memo.is_a?(Record) } if plane.nil?
-        return nil if binding.nil?
-
-        remember(conversation, Record.new(public_id: nil, binding: binding, source: "parent"), runner:)
-        binding
-      end
-
-      def resolved_from_memo(conversation, runner:)
-        memo = memo(conversation, runner:)
-        return Resolved.default unless memo.is_a?(Record)
-
-        Resolved.new(binding: memo.binding, source: memo.source, public_id: memo.public_id, lock_version: nil, updated_at: nil)
-      end
-
       # ---- the memo ----
 
       def remember(conversation, memo, runner:)
@@ -665,15 +556,6 @@ module Rho
 
       def forget(conversation, runner:)
         @monitor.synchronize { @records = @records.except([conversation, runner]) }
-      end
-
-      # A hit moves to the newest position: eviction is by last touch.
-      def touch(conversation, runner:)
-        @monitor.synchronize do
-          memo = @records[[conversation, runner]]
-          @records = @records.except([conversation, runner]).merge([conversation, runner] => memo) if memo
-          memo
-        end
       end
 
       # Two claims of one new child cost one read: the second waits on
@@ -698,8 +580,7 @@ module Rho
       # The default root's env — the announcement's document, the queue
       # every placement shares, the process table, this root's store —
       # under the runner gem's `Toolsets`, which memoizes one env and
-      # toolset per spelled root set, a miss per run and the notices,
-      # and refuses a protected root as the door does.
+      # toolset per captured root set, and refuses a protected root.
       def build_toolsets
         root = @default_root.call
         raise Rho::Error, "the daemon has no environment root yet: connect first, or set one" if root.nil?
@@ -711,7 +592,7 @@ module Rho
           checkpoint_resolver: method(:checkpoint_stores).to_proc
         )
         Rho::Runner::Toolsets.new(
-          registry: @registry, zero: env, resolver: ->(conversation, parent) { resolve(conversation, parent) },
+          registry: @registry, zero: env,
           work_dir: @home.work_root, log: @log, checkpoints: (->(root) { store_for(root) } if @checkpoints),
           protected_roots: Rho.protected_roots(@home), ports: @ports.resolver
         )

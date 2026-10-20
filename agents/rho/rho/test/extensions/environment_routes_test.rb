@@ -56,14 +56,15 @@ class EnvironmentRoutesTest < Minitest::Test
 
     code, answer = get_environment(daemon, "c-1")
     assert_equal "200", code, answer.inspect
-    assert_equal({ "root" => daemon.context.tool_env.root, "directories" => [], "source" => "default", "resolved" => true },
-      answer.fetch("environment").slice("root", "directories", "source", "resolved"))
+    assert_equal({ "root" => daemon.context.tool_env.root, "directories" => [], "source" => "default" },
+      answer.fetch("environment").slice("root", "directories", "source"))
 
     code, answer = bind(daemon, { public_id: "c-1", root: src })
     assert_equal "200", code, answer.inspect
     environment = answer.fetch("environment")
-    assert_equal [src, [], "c-1", "conversation", 0, true], environment.values_at("root", "directories", "anchor", "source", "lock_version", "resolved")
-    assert_nil environment.fetch("relayed"), "this machine's own runner: nothing relayed"
+    assert_equal [src, [], "c-1", "conversation", 0], environment.values_at("root", "directories", "anchor", "source", "lock_version")
+    refute environment.key?("relayed")
+    refute environment.key?("resolved")
     rows = environment_entries(api, "c-1")
     assert_equal 1, rows.length
     assert_equal ["rho.environment", "binding/0199-runner", { "root" => src, "directories" => [], "anchor" => "c-1" }, 0],
@@ -144,7 +145,7 @@ class EnvironmentRoutesTest < Minitest::Test
 
     assert_equal "200", response.code, response.body
     assert_equal [{ "conversation" => "c-1", "runner" => "0199-runner", "root" => src, "directories" => [], "anchor" => "c-1",
-                    "source" => "conversation", "relayed" => nil, "fs" => nil, "mcp" => [] }], JSON.parse(response.body).fetch("environments")
+                    "source" => "conversation", "fs" => nil, "mcp" => [] }], JSON.parse(response.body).fetch("environments")
     assert_equal "401", request(daemon, :get, "/environments").code
 
     runner = boot(root: File.join(@root, "runner"), config: runner_mode, extensions: [Rho::Extensions::Environment])
@@ -159,13 +160,9 @@ class EnvironmentRoutesTest < Minitest::Test
   # then relays `environment_bind` to that runner as a request run on its
   # announced park — the conversation id on the input — and the answer
   # says what the runner knows; the same tuple bound again relays nothing.
-  def test_a_bind_on_a_remote_runner_row_relays_the_record_after_the_write
+  def test_a_bind_on_a_remote_runner_row_saves_the_record_for_future_inputs
     api = api(
-      executors: [NexusDoubles.remote_runner("0199-h", root: "/srv/elsewhere", booted_at: "2026-09-17T06:00:00Z")],
-      task_detail: { "kind" => "tool_task", "lifetime" => "conversation", "wake" => "auto", "status" => "completed", "tool_name" => "environment_bind",
-                     "output" => "bound", "result" => { "is_error" => false },
-                     "structured_content" => { "applied" => true, "resolved" => true, "booted_at" => "2026-09-17T06:00:00Z" },
-                     "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-17T00:00:00Z" }
+      executors: [NexusDoubles.remote_runner("0199-h", root: "/srv/elsewhere", booted_at: "2026-09-17T06:00:00Z")]
     )
     daemon = ready(api)
     store.remember(conversation_host("c-1"), workspace: "ws-1", model: "m/x", runner: "0199-h")
@@ -174,21 +171,12 @@ class EnvironmentRoutesTest < Minitest::Test
     code, answer = bind(daemon, { public_id: "c-1", root: src })
 
     assert_equal "200", code, answer.inspect
-    assert_equal({ "runner" => "0199-h", "state" => "confirmed", "booted_at" => "2026-09-17T06:00:00Z", "resolved" => true },
-      answer.fetch("environment").fetch("relayed"))
-    assert_equal 1, environment_entries(api, "c-1").length, "the record first"
-    assert_equal [{ "name" => "environment_bind", "key" => "call_tool",
-                    "input" => { "root" => src, "directories" => [], "anchor" => "c-1", "conversation_public_id" => "c-1" },
-                    "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-h" } }],
-      api.run_creates.map { |body| body.dig("run", "steps", 0, "tool") }
-    assert_equal "0199-h", api.run_creates.fetch(0).dig("run", "default_runner_executor_public_id")
-    rules = api.run_creates.fetch(0).dig("run", "approval_rules")
-    assert rules.all? { |rule| rule["origin"] == "author" }, "the runner's own rules judge it on the path"
-
+    assert_equal "conversation", answer.fetch("environment").fetch("source")
+    assert_equal 1, environment_entries(api, "c-1").length
+    assert_empty api.run_creates, "binding prepares future work and makes no runner call"
     code, = bind(daemon, { public_id: "c-1", root: src })
     assert_equal "200", code
-    assert_equal 1, api.run_creates.length, "the same tuple on the same boot: nothing relayed"
-    assert_match(/event=environment\.relayed .*conversation=c-1 runner=0199-h/, File.read(daemon.home.log_path, encoding: Encoding::UTF_8))
+    assert_empty api.run_creates
   end
 
   # THE DOOR'S `fs:` MEMBER: `{url,

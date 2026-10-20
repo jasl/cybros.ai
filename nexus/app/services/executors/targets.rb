@@ -9,6 +9,10 @@ module Executors
 
       route = payload.delete("tool_route")
       context = payload["operation_context"].to_h
+      if inherited && (context.key?("executor_contexts") || context.key?("executor_context"))
+        return :context_not_authorable if model_origin &&
+          (context["executor_context"] || context["executor_contexts"] != inherited["executor_contexts"])
+      end
       environment = context["environment"] || inherited&.fetch("environment", nil)
       tools = payload["tool_definitions"] || context["tools"]
       imports = payload.delete("tool_imports")
@@ -79,6 +83,15 @@ module Executors
       # schemas onto every fan member. Standalone tools own their context.
       if environment && (payload["type"] == Tasks::ModelTask.sti_name || inherited.nil?)
         payload["operation_context"] = context.merge("environment" => environment)
+      end
+      contexts = context["executor_contexts"] || inherited&.fetch("executor_contexts", nil) || run.agent_configuration&.executor_contexts
+      contexts = Nexus::ExecutorContexts.normalize(contexts) if contexts
+      if context["executor_context"] && contexts
+        target_id = payload["target_executor_public_id"] || Executor.address_for(run.execution_agent)&.public_id
+        return :executor_context_mismatch if contexts.key?(target_id) && contexts[target_id] != context["executor_context"]
+      end
+      if contexts && payload["type"] == Tasks::ModelTask.sti_name
+        payload["operation_context"] = payload.fetch("operation_context", {}).merge("executor_contexts" => contexts)
       end
       context = payload["operation_context"]
       if context && !Nexus::SizeBounds.json_within?(:snapshot_bound, context)

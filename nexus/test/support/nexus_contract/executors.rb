@@ -115,10 +115,10 @@ module Nexus
           node_type = Data.define(
             :inbox_kind, :run, :node_key, :prompt, :ask_options, :ask_multi, :ask_fields, :tool_name, :tool_alias,
             :tool_input, :tool_call_id, :started_at, :deadline_at, :effective_timeout_ms, :claimed_at,
-            :addressed_role, :addressed_executor, :effect_profile, :target_executor_public_id, :target_executor
+            :addressed_role, :addressed_executor, :effect_profile, :target_executor_public_id, :target_executor, :operation_context
           ) do
             def initialize(prompt: nil, ask_options: nil, ask_multi: nil, ask_fields: nil, effect_profile: nil, tool_alias: nil, target_executor_public_id: nil, target_executor: nil,
-                           **members) = super
+                           operation_context: { "executor_context" => { "fixture.directory" => "/srv/project" } }, **members) = super
             def wall_deadline_at = deadline_at
             def await? = inbox_kind == "ask"
             # An approval row IS a tool call resting at the stage.

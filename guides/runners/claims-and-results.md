@@ -16,7 +16,9 @@ Answers which delivery address this credential is: `public_id`, `kind` (`agent_a
 GET /agent_api/v1/executor/inbox?after={cursor}&limit={n}
 ```
 
-This address's complete, level-triggered view of the work addressed to it across every live run of its account. Each row carries its `kind` (`tool_call`, `ask`, `approval`), `run_public_id`, `workspace_public_id`, `conversation_public_id`, `task_key`, `tool_name`, `tool_input`, `tool_call_id`, `deadline_at`, `timeout_ms`, `claimed` and `addressed_to`. Drain each bounded scan to its end, then start the next from the beginning.
+This address's complete, level-triggered view of the work addressed to it across every live run of its account. Each row carries its `kind` (`tool_call`, `ask`, `approval`), `run_public_id`, `workspace_public_id`, `conversation_public_id`, `task_key`, `tool_name`, `tool_input`, `executor_context`, `tool_call_id`, `deadline_at`, `timeout_ms`, `claimed` and `addressed_to`. Drain each bounded scan to its end, then start the next from the beginning.
+
+For payload semantics and authoring, see [executor context](../reference/agent-api/executor.md#executor-context).
 
 ## Claim
 

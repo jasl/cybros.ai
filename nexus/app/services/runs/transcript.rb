@@ -61,8 +61,8 @@ module Runs
         new(run: node.run, scope: [node]).send(:call_row, node)
       end
 
-      # The variant block's rows: each loop's newest MAINLINE rounds in chain
-      # order, batched over a timeline page's loops — one windowed query,
+      # The variant block's rows: each loop's newest MAINLINE rounds in task
+      # ID order, batched over a timeline page's loops — one bounded probe per run in one query,
       # then this page's own batches over the union — so a page costs what
       # a page costs whatever the loops grew to. No fan statement and no
       # mark: `calls`, `branches` and `mainline` are absent, because every
@@ -80,18 +80,22 @@ module Runs
 
       private
 
-        # Windowed per loop in SQL, like a page's fans: the newest `limit`
-        # visible mainline rounds of every loop, read back in chain order.
+        # Bounded per loop in SQL, like a page's fans: the newest `limit`
+        # visible mainline rounds of every loop, read back in task ID order.
         def newest_rounds(run_ids, limit)
-          windowed = Task
-            .where(run_id: run_ids, type: MODEL)
-            .where("continuation_source IS DISTINCT FROM ?", BRANCH)
-            .where.not(transcript_visibility: "hidden")
-            .select("tasks.*",
-              "ROW_NUMBER() OVER (PARTITION BY run_id ORDER BY id DESC) AS position")
-          Task.find_by_sql(
-            "SELECT * FROM (#{windowed.to_sql}) ranked WHERE position <= #{limit.to_i} ORDER BY id"
-          )
+          sources = Task.sanitize_sql_array([
+            "(VALUES #{Array.new(run_ids.length, "(?::bigint)").join(", ")}) AS source(run_id)", *run_ids,
+          ])
+          Task.find_by_sql(Task.sanitize_sql_array([<<~SQL, MODEL, BRANCH]))
+            SELECT selected.* FROM #{sources}
+            CROSS JOIN LATERAL (
+              SELECT tasks.* FROM tasks
+              WHERE tasks.run_id = source.run_id AND tasks.type = ?
+                AND tasks.continuation_source IS DISTINCT FROM ?
+                AND tasks.transcript_visibility <> 'hidden'
+              ORDER BY tasks.id DESC LIMIT #{limit.to_i}
+            ) selected ORDER BY selected.id
+          SQL
         end
     end
 

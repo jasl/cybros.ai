@@ -403,7 +403,7 @@ class MaintenanceTest < Minitest::Test
     # The adopted edge's announcement, configuration and named-Agent reads
     # are not probes; neither is the Runner's executor-plane inbox sweep.
     declaration = %w[/agent_api/v1/executor/announcement /agent_api/v1/tools /agent_api/v1/profile/configuration
-                     /agent_api/v1/profile/agents /agent_api/v1/executor/inbox /agent_api/v1/executors /agent_api/v1/mcp_connections]
+                     /agent_api/v1/profile/agents /agent_api/v1/executor/inbox /agent_api/v1/executors /agent_api/v1/mcp_connections /agent_api/v1/run_candidates]
     probes = calls.count { |path| !path.start_with?("/agent_api/v1/workspaces") && !path.start_with?("/agent_api/v1/profile/store_entries") && !declaration.include?(path) }
     assert_equal 5, probes, "one probe per plane per lineage (three on the full one, two on the replacement), and nothing else"
     assert_equal 1, calls.count { |path| path == "/agent_api/v1/workspaces" },

@@ -17,15 +17,11 @@ module Runs
     # Resolve a page's current selections together, retaining nil for loops
     # without a model mainline so the page can use the variant's initial choice.
     def for_loops(loops)
-      nodes = ::Tasks::ModelTask.where(run_id: loops.map(&:id))
-        .where("continuation_source IS DISTINCT FROM ?", ::Tasks::ModelTask::BRANCH)
-        .select(:id, :type, :run_id, :node_key, :continuation_source,
-          :input_from_node_keys, :provider_id, :model_ref, :reasoning_effort, :reasoning_enabled,
-          :selected_model_invocation_id, :execution_generation)
-        .includes(:selected_model_invocation)
-        .group_by(&:run_id)
+      tails = Run.mainline_tails(loops.map(&:id))
+      ActiveRecord::Associations::Preloader.new(records: tails, associations: :selected_model_invocation).call
+      by_run = tails.index_by(&:run_id)
       loops.to_h do |run|
-        [run.id, selection_of(run.mainline_tail(nodes: nodes.fetch(run.id, []))) || run.retained_model]
+        [run.id, selection_of(by_run[run.id]) || run.retained_model]
       end
     end
 

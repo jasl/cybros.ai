@@ -202,6 +202,8 @@ module Rho
       def quiesce: (deadline: Numeric) -> void
       def maintenance_wait: (Numeric interval) -> [bool, untyped, bool]
       def maintenance_done: () -> bool
+      def begin_recovery: (untyped about) -> bool
+      def finish_recovery: (untyped about) -> nil
       def stop_maintenance: () -> void
     end
 
@@ -323,9 +325,11 @@ module Rho
       def forget: ((Host::Run | Host::Conversation) host, ?retain_snapshot: bool) -> void
       def notes: (String public_id) -> Hash[String, untyped]
       def listed_followers: () -> Array[untyped]
+      def recover_until: () -> untyped
       def restore_policy: ((Host::Run | Host::Conversation) host, untyped hosted, ?live: bool, ?document: untyped) -> HostStore::Row?
       def backing_run: (String public_id) -> String
-      def conversation_tool_names: (String public_id, untyped workspace, client: untyped, ?to: String?, ?tool_names: untyped) -> (Array[String]? | Refusal)
+      def execution_contexts: (untyped client, **untyped options) -> Hash[String, untyped]
+      def conversation_tool_names: (String public_id, untyped workspace, client: untyped, ?to: String?, ?tool_names: untyped, ?include_contexts: bool) -> (Array[String]? | Hash[Symbol, untyped] | Refusal)
       def conversation_model: (String public_id, untyped workspace) -> String?
       def current_conversation_public_id: () -> String?
       def followed: (String public_id) -> untyped
@@ -502,7 +506,8 @@ module Rho
       def executor_plane: () { (untyped) -> untyped } -> untyped
       def runs_for: (untyped client, String workspace_public_id) -> untyped
       def backing_run: (String public_id) -> String
-      def conversation_tool_names: (String public_id, untyped workspace, client: untyped, ?to: String?, ?tool_names: untyped) -> (Array[String]? | Refusal)
+      def execution_contexts: (untyped client, **untyped options) -> Hash[String, untyped]
+      def conversation_tool_names: (String public_id, untyped workspace, client: untyped, ?to: String?, ?tool_names: untyped, ?include_contexts: bool) -> (Array[String]? | Hash[Symbol, untyped] | Refusal)
       def conversation_model: (String public_id, untyped workspace) -> String?
       def conversation_modes: (untyped request, ?write: bool) -> untyped
       def current_conversation_public_id: () -> String?

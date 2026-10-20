@@ -58,12 +58,15 @@ module Input::ContextOptions
       case context_options
       when Hash
         return if context_options.empty?
+        contexts = context_options["executor_contexts"]
+        return errors.add(:executor_contexts, :invalid) if contexts && !Nexus::ExecutorContexts.valid?(contexts)
+        return if (context_options.keys - ["executor_contexts"]).empty?
         # Only the assembled reply lane compiles, so only it has an assembly
         # for this intent to bound; anywhere else it would silently do nothing.
         return errors.add(:context_options, :invalid) if
           kind != "direct_reply" || context_mode == "raw"
         return errors.add(:context_options, :invalid) if
-          (context_options.keys - %w[history reasoning_replay inline variables]).any?
+          (context_options.keys - %w[history reasoning_replay inline variables executor_contexts]).any?
 
         validate_history_intent(context_options["history"]) if context_options.key?("history")
         if context_options.key?("reasoning_replay")

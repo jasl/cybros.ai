@@ -177,6 +177,7 @@ module AgentAPI
           # tool's output; the trace omits them. Not `.presence` — an
           # argument-less call reads `{}`, as the runner's inbox row serves it.
           tool_input: (node.tool_input if node.tool_call?),
+          executor_context: (Executors::TaskOperations::Context.executor_context(node) if node.tool_call?),
           effect_profile: (node.effect_profile if node.tool_call?),
           wait: (node.observing_task? ? {
             run_public_id: node.awaited_run_public_id,

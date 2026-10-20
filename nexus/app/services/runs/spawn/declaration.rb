@@ -32,6 +32,7 @@ module Runs
         inherited = Nexus::ToolDeclarations.narrow(Executors::TaskOperations::Context.defaults(node)["tools"],
           Array(entry.inherited_tool_names))
         configuration = AgentConfiguration.new(entry.declaration.attributes.merge(
+          "executor_contexts" => Executors::TaskOperations::Context.defaults(node)["executor_contexts"],
           "default_model" => route, "delegation_catalog" => catalog,
           "tool_definitions" => Array(entry.declaration.tool_definitions) + inherited))
         new(configuration: configuration, selection: model, model_selection: intent,

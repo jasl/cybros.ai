@@ -202,7 +202,7 @@ module Nexus
           :created_at, :started_at, :completed_at, :result_delivered_at, :result_title, :result_metadata,
           :system_instructions, :tool_input, :sealed_request_bytes, :ask_options, :ask_multi, :ask_fields, :lifetime, :wake,
           :output_preview, :tool_definitions, :target_executor_public_id, :target_executor, :first_runner_write,
-          :model_selection, :fallback_models, :effect_profile, :mcp_connection_public_id, :mcp_connection, :workload
+          :model_selection, :fallback_models, :effect_profile, :mcp_connection_public_id, :mcp_connection, :workload, :operation_context
         ) do
           def initialize(sources: [], failure_resolution: nil, provider_id: nil, model_ref: nil,
                          reasoning_effort: nil, reasoning_enabled: nil, tool_name: nil, tool_alias: nil, addressed_role: nil,
@@ -213,7 +213,8 @@ module Nexus
                          ask_options: nil, ask_multi: nil, ask_fields: nil, lifetime: "conversation", wake: "auto", output_preview: nil,
                          tool_definitions: nil, target_executor_public_id: nil, target_executor: nil, first_runner_write: nil,
                          model_selection: nil, fallback_models: nil, effect_profile: nil,
-                         mcp_connection_public_id: nil, mcp_connection: nil, workload: "text_generation", **) = super
+                         mcp_connection_public_id: nil, mcp_connection: nil, workload: "text_generation",
+                         operation_context: { "executor_context" => nil }, **) = super
           def terminal? = Task::TERMINAL_STATUSES.include?(status)
           def model_task? = task_kind == "model_task"
           def effective_on_failure = Task.effective_on_failure(on_failure: on_failure, model_task: model_task?, error_key: error_key)
@@ -310,6 +311,7 @@ module Nexus
             "valid_tool_task_detail_fixture" => detail_of(CONTRACT_NODE_TYPE.new(
               id: 12, node_key: "r1t0", task_kind: "tool_task", status: "completed", on_failure: "absorb",
               tool_name: "read_file", tool_input: { "path" => "x.rb" }, transcript_visibility: "visible", output_preview: "class Foo",
+              operation_context: { "executor_context" => { "fixture.directory" => "/srv/project" } },
               result_title: "read x.rb", result_metadata: { "checkpoint" => "c1" }, **claimed, **resolved, **settled
             ), output: "class Foo", payloads: [
               text_payload("class Foo"),

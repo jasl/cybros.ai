@@ -59,6 +59,7 @@ export type ConversationFieldOptions = { location?: string; after?: never } | { 
 export interface UpdateConversation extends Version { title?: string | null; metadata?: JsonObject; cost_limit?: string | null; }
 export interface ForkConversation { turn_public_id?: string; variant_public_id?: string; title?: string | null; side?: boolean; }
 export interface InputConfiguration {
+  executor_contexts?: Record<string, JsonObject>;
   model?: ModelSelection; configuration?: JsonObject | null; agent_configuration?: JsonObject | null;
   model_selection?: ModelSelectionIntent | null; fallback_models?: string[] | null; history?: { max_entries?: number; token_budget_share?: number } | null;
   reasoning_replay?: { mode: 'none' | 'last_turn' | 'all' } | null; context_mode?: 'assembled' | 'raw'; inline?: InlineBlock[] | null;
@@ -97,7 +98,7 @@ export interface WriteMemory extends MemoryVersion { path: string; content: stri
 export interface EditMemory extends ExistingMemoryVersion { path: string; old_text: string; new_text: string; }
 export interface GrepMemory { pattern: string; path?: string; ignore_case?: boolean; limit?: number; }
 export type ScheduleRuleInput = { kind: 'once'; run_at: string } | { kind: 'interval'; every_seconds: number; starts_at: string } | { kind: 'daily'; local_time: string; time_zone: string };
-export interface CreateSchedule extends Pick<InputConfiguration, 'model' | 'configuration' | 'model_selection' | 'fallback_models' | 'tool_names' | 'approval_mode'> {
+export interface CreateSchedule extends Pick<InputConfiguration, 'executor_contexts' | 'model' | 'configuration' | 'model_selection' | 'fallback_models' | 'tool_names' | 'approval_mode'> {
   prompt: string; rule: ScheduleRuleInput; name?: string; answering_user_public_id?: string; speaker_public_id?: string;
   source_run_public_id?: string; source_task_key?: string;
 }

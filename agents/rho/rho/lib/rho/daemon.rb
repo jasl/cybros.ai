@@ -284,11 +284,10 @@ module Rho
         # agent slot announce the union again (`reannounce`).
         @environments = Environments.new(
           home: @home, config: @config, registry: @loaded.registry.serving(:runner), log: log, clock: @clock,
-          booted_at: @booted_at, default_root: -> { @context.environment.root },
+          default_root: -> { @context.environment.root },
           member_plane: ->(**options) { member_plane_handle(**options) },
           own_runner_public_id: -> { @lineage.identity&.runner_executor_public_id }, own_runner: ->(public_id) { @context.own_runner?(public_id) },
-          learn_runner: ->(document) { @host_followers&.learn_runner(document) },
-          spawn: ->(&work) { @server.spawn(&work) }, processes: @host.processes,
+          processes: @host.processes,
           checkpoints: !@host.checkpoints.nil?, registrar: @loaded.conversation_servers, served: @loaded.registry,
           servers_changed: -> { reannounce(:agent_runner) }
         )
@@ -425,7 +424,7 @@ module Rho
         return if @host_followers.nil?
 
         @host_followers.sweep_sides(@clock.call)
-        @environments.reassert_stale(@host_followers.host_bindings)
+        @host_followers.recover_until
       end
 
       # The workspace-adopted edge (full and agent mode): the mode's runs,
@@ -439,6 +438,7 @@ module Rho
           @host_followers.readopt(nil, workspace_public_id, credential_provider: about.method(:member_credential).to_proc)
         end
         @server.spawn { @host_followers.declare_configuration(credential) }
+        @host_followers.recover_until
       end
 
       # THE STORE'S MEMBER, decided at boot: nil under

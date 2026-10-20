@@ -32,7 +32,7 @@ class RunDeclarationTest < Minitest::Test
   end
 
   def test_undeclared_names_are_hidden_from_the_entries_and_announced_schema_less
-    assert_equal %w[files_bytes git_review process_log checkpoints checkpoint_restore environment_bind],
+    assert_equal %w[files_bytes git_review process_log checkpoints checkpoint_restore],
       Rho::RunDeclaration.undeclared
     names = Rho::RunDeclaration.tool_entries(own).map { |entry| name_of(entry) }
     refute_includes names, "files_bytes"
@@ -44,7 +44,7 @@ class RunDeclarationTest < Minitest::Test
     assert_includes names, "read_process", "the model's own process read stays"
 
     announced = own.to_h { |entry| [entry.fetch("name"), entry] }
-    %w[files_bytes git_review process_log checkpoints environment_bind].each do |name|
+    %w[files_bytes git_review process_log checkpoints].each do |name|
       entry = announced.fetch(name)
       assert_equal %w[name effect_profile], entry.keys, "#{name} announces its name and profile alone: #{entry.inspect}"
     end

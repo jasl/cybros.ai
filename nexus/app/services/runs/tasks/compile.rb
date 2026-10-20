@@ -220,6 +220,12 @@ module Runs
             node["tool_imports"] = defaults.delete("tool_imports") if defaults.key?("tool_imports")
             node["operation_context"] = defaults
           end
+          unless step.executor_context.nil?
+            return refuse("invalid_executor_context", "#{path}.executor_context") unless
+              Hash.try_convert(step.executor_context) && storable_json?(step.executor_context)
+
+            node["operation_context"] = node.fetch("operation_context", {}).merge("executor_context" => step.executor_context)
+          end
           accumulate(step, cursor, node, mirror)
         end
 
@@ -281,7 +287,8 @@ module Runs
 
           fields.except(*Nexus::ToolImports::FIELDS.map(&:to_s)).merge(
             "tools" => model["tool_definitions"], "environment" => environment,
-            "tool_imports" => model["tool_imports"]
+            "tool_imports" => model["tool_imports"],
+            "executor_contexts" => model.dig("operation_context", "executor_contexts")
           ).compact
         end
 
@@ -399,7 +406,12 @@ module Runs
           else return refuse("invalid_instructions", "#{path}.instructions")
           end
 
-          node["operation_context"] = { "environment" => step.environment } if step.environment
+          if step.executor_contexts
+            contexts = Hash.try_convert(step.executor_contexts)
+            return refuse("invalid_executor_contexts", "#{path}.executor_contexts") unless Nexus::ExecutorContexts.valid?(contexts) && storable_json?(contexts)
+          end
+          context = { "environment" => step.environment, "executor_contexts" => (Nexus::ExecutorContexts.normalize(contexts) if contexts) }.compact
+          node["operation_context"] = context if context.any?
           intent = ModelSelectionIntent.to_type.cast(step.model_selection)
           return refuse("invalid_model_selection", "#{path}.model_selection") if intent && !intent.valid?
           if step.fallback_models && !ModelReferencesValidator.valid_value?(step.fallback_models)

@@ -1,70 +1,10 @@
+require "pathname"
+
 module Rho
   class Runner
-    # THE PLACEMENTS: the environment is a
-    # per-conversation VALUE the runner resolves at dispatch, and this is
-    # where a claimed row is turned into the `Placement` its tools run under.
-    #
-    # THE HOST RESOLVES, THE RUNNER RECEIVES. The runner never reads the
-    # conversation's store record: `resolver` is the host's — the daemon's
-    # `Environments`, which memoizes the record, reads the store on the
-    # member plane and walks a spawned child's parents (in process); or the
-    # received table a host ELSEWHERE filled through the relayed
-    # `environment_bind` (a runner-mode daemon) — asked with the row's
-    # `conversation_public_id` and its `parent_public_id` (the kernel's own
-    # structural fact on the inbox row, so a spawned child resolves by its
-    # parent's received binding with no call_tool in the path), answering an
-    # `Environment::Binding` or nil. It runs ON THE WORKER, inside the pool
-    # block (`TaskRun#run_handler`): a member-plane GET is ~10-100 ms under
-    # the tool's clock and never the reactor's.
-    #
-    # ONE ENV AND ONE TOOLSET PER ROOT SET, never per conversation: the
-    # memo's key is the SPELLED root set (`ToolEnv.spelled` — the real path
-    # of the existing prefix, so a symlinked spelling finds its memo), built
-    # on first use under one monitor (the root's checkpoint store opens
-    # once), and two conversations on one project share one frozen
-    # `ToolEnv` object and one toolset. The tools are byte-identical across
-    # placements — the same classes over the same registry — and differ in
-    # the env alone; only the `Placement` value, which carries the
-    # conversation's own record, is minted per claim.
-    #
-    # PLACEMENT ZERO is the runner's default root (the daemon's `rho env`
-    # selection; the harness's `--world`): a standalone loop (no
-    # conversation), a binding nobody wrote (a MISS, memoized per loop id
-    # so one loop costs one read and the next loop on that conversation
-    # reads again — the top-down copy may have landed), a root absent on
-    # this host (`environment.unresolved`) or under a protected root
-    # (`environment.refused`) — each notice logged once per (conversation,
-    # root) — all land there, with no record on the context.
-    #
-    # THE PORTS RESOLVER rides beside the
-    # placements: the daemon's table of editor ports keyed by anchor, a
-    # callable the run places on every context so a tool looks its port
-    # up PER CALL through `ExecutionContext#port` — never a member of the
-    # frozen env.
-    #
-    # THE EXTRAS ride the AGENT
-    # slot's placements alone: the editor's MCP servers, curated by the
-    # host into admitted registry entries,
-    # keyed by the record's ANCHOR — which a child's copy and a side's
-    # fork copy share with their parent, so their turns find the parent's
-    # servers with no lookup of their own — and joined onto the placement's
-    # toolset over the placement's env, memoized per (env, anchor, set
-    # digest): a re-listed set is a new table, an unchanged one the held.
-    # `extras` is the host's table: `call(anchor)` answers `[entries,
-    # digest]`, `owner_of(name)` the anchor whose editor serves a name (the
-    # refusal a call from any other conversation meets), `names` every
-    # anchor's (the announced set). nil for a host with none — the runner
-    # slot, a standalone runner — and a `Fixed` placement has none.
+    # Resolve the execution's captured directory before hooks or handlers start.
+    # Placement caches share immutable environments; no conversation lookup is involved.
     class Toolsets
-      UNRESOLVED_EVENT = "environment.unresolved".freeze
-      REFUSED_EVENT = "environment.refused".freeze
-      # A Miss is per loop id; a notice per (conversation, root). Both
-      # tables are bounded, the oldest entries dropped first — a lost entry
-      # costs one read or one repeated line, never a placement. The
-      # extended tables are bounded the same way: a lost entry costs one
-      # rebuild over the held classes.
-      MISSES_MAX = 256
-      NOTICES_MAX = 1024
       EXTENDED_MAX = 256
 
       # A CONSTANT PLACEMENT (the harness executor, a standalone runner, a
@@ -105,21 +45,19 @@ module Rho
       # (rho's incubation denies), refused here as at the door. `ports` is
       # the host's editor-port lookup (`->(anchor) { FsPort | nil }`),
       # nil for a host with none.
-      def initialize(registry:, zero:, resolver:, work_dir:, log: nil, checkpoints: nil, protected_roots: [],
+      def initialize(registry:, zero:, work_dir:, log: nil, checkpoints: nil, protected_roots: [],
                      ports: nil, extras: nil)
         @registry = registry
+        @environment_independent = registry.entries.select { |entry| !Extensions::Tool.environment_required?(entry.klass) }.map(&:name).freeze
         @ports = ports
         @extras = extras
         @zero = Placement.new(env: zero, toolset: registry.toolset(env: zero), binding: nil)
-        @resolver = resolver
         @work_dir = work_dir
         @log = log
         @checkpoints = checkpoints
         @protected = protected_roots.map { |root| ToolEnv.spelled(root) }.freeze
         @monitor = Monitor.new
         @placements = { key_for(zero) => [zero, @zero.toolset] }.freeze
-        @misses = {}.freeze
-        @noticed = {}.freeze
         @extended = {}.freeze
       end
 
@@ -129,15 +67,17 @@ module Rho
       # every anchor's extras beyond them where the host holds any.
       def names = @extras ? (@registry.names | @extras.names) : @registry.names
 
-      # The row's placement, then the anchor's extras joined onto it: the
-      # anchor is the RESOLVED record's, whether or not its root placed
-      # here (a root absent on this host lands the runner's tools on zero;
-      # the editor's servers are the agent slot's and follow the anchor).
       def for(task)
-        conversation = task.conversation_public_id
-        binding = conversation && resolve(task, conversation)
-        placement = binding ? place(binding, conversation) : @zero
-        joined(placement, binding&.anchor)
+        return @zero if task.executor_context.nil? && @environment_independent.include?(task.tool_name)
+
+        value = task.executor_context&.fetch(Environment::CONTEXT_KEY, nil)
+        binding = Environment::Binding.parse(value)
+        raise ArgumentError, "missing or invalid rho.environment executor context" unless binding
+        unless [binding.root, *binding.directories].all? { |path| Pathname.new(path).absolute? }
+          raise ArgumentError, "rho.environment requires absolute directories: #{binding.root.inspect}"
+        end
+
+        joined(place(binding), binding.anchor)
       end
 
       private
@@ -198,32 +138,16 @@ module Rho
           )
         end
 
-        def resolve(task, conversation)
-          run_public_id = task.run_public_id
-          return nil if missed?(run_public_id)
-
-          binding = @resolver.call(conversation, task.parent_public_id)
-          miss!(run_public_id) if binding.nil?
-          binding
-        rescue StandardError => error
-          # A resolver that RAISED is no Miss: the next claim asks again.
-          @log&.warn(UNRESOLVED_EVENT, conversation: conversation, reason: "resolver_failed",
-            error_class: error.class.name, detail: error.message)
-          nil
-        end
-
-        def place(binding, conversation)
-          root = ToolEnv.spelled(binding.root)
-          unless File.directory?(root)
-            notice(UNRESOLVED_EVENT, conversation, binding.root, "root_missing")
-            return @zero
-          end
-          if protected?(root)
-            notice(REFUSED_EVENT, conversation, binding.root, "protected_root")
-            return @zero
+        def place(binding)
+          paths = [binding.root, *binding.directories].map { |path| ToolEnv.spelled(path) }
+          paths.each do |path|
+            unless File.directory?(path) && File.readable?(path) && File.executable?(path)
+              raise ArgumentError, "rho.environment directory unavailable: #{path.inspect}"
+            end
+            raise ArgumentError, "rho.environment protected directory: #{path.inspect}" if protected?(path)
           end
 
-          env, toolset = memo([root, *binding.directories.map { |path| ToolEnv.spelled(path) }])
+          env, toolset = memo(paths)
           Placement.new(env: env, toolset: toolset, binding: binding)
         end
 
@@ -257,26 +181,6 @@ module Rho
             processes: zero.processes, checkpoints: @checkpoints&.call(root), checkpoint_resolver: zero.checkpoint_resolver
           )
           [env, @registry.toolset(env: env)]
-        end
-
-        def missed?(run_public_id) = @monitor.synchronize { @misses.key?(run_public_id) }
-
-        def miss!(run_public_id)
-          @monitor.synchronize { @misses = bounded(@misses.merge(run_public_id => true), MISSES_MAX) }
-        end
-
-        # Once per (conversation, root): the line says which conversation
-        # landed on zero and why; the claim runs there and the result
-        # says nothing — the host's placement door carries the notice.
-        def notice(event, conversation, root, reason)
-          key = [conversation, root]
-          first = @monitor.synchronize do
-            next false if @noticed.key?(key)
-
-            @noticed = bounded(@noticed.merge(key => true), NOTICES_MAX)
-            true
-          end
-          @log&.warn(event, conversation: conversation, root: root, reason: reason) if first
         end
 
         def bounded(table, max)

@@ -368,6 +368,7 @@ module Rho
     end
 
     class Environment < ::Data
+      CONTEXT_KEY: String
       attr_reader root: String
       attr_reader directories: Array[String]
       attr_reader working_directory: String?
@@ -407,10 +408,6 @@ module Rho
     # The placements: the host resolves a row's
     # binding, the runner memoizes one env + toolset per root set.
     class Toolsets
-      UNRESOLVED_EVENT: String
-      REFUSED_EVENT: String
-      MISSES_MAX: Integer
-      NOTICES_MAX: Integer
       EXTENDED_MAX: Integer
 
       # The constant placement: the harness, a standalone runner, a test.
@@ -437,7 +434,7 @@ module Rho
       attr_reader extras: untyped
 
       def initialize: (
-        registry: Extensions::Registry, zero: ToolEnv, resolver: ^(String, String?) -> Environment::Binding?,
+        registry: Extensions::Registry, zero: ToolEnv,
         work_dir: String, ?log: untyped, ?checkpoints: (^(String) -> untyped)?, ?protected_roots: Array[String],
         ?ports: (^(String) -> untyped)?, ?extras: untyped
       ) -> void

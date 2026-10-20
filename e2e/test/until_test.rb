@@ -84,7 +84,7 @@ class UntilTest < Minitest::Test
     output, status = @daemon.cli("do", "!mock tool_call=bash tool_args=#{call} -- done",
       "--model", MODEL, "--dir", project, "--until", "sh check.sh", "--attempts", "3")
     assert_predicate status, :success?, "rho do failed:\n#{output}"
-    assert_match(/^until:\s+sh check\.sh \(3 checks, in #{Regexp.escape(project)}\)$/, output,
+    assert_match(/^until:\s+sh check\.sh \(3 checks, on runner #{@rho_runner} in #{Regexp.escape(project)}\)$/, output,
       "this machine's own runner: the directory, no runner named:\n#{output}")
     loop_id = output[/^run:\s+(\S+)/, 1]
     refute_nil loop_id, output
@@ -156,7 +156,7 @@ class UntilTest < Minitest::Test
       "the check ran at least twice, on the runner"
   end
 
-  def test_until_waits_for_rho_after_an_independent_runner_finishes_the_check
+  def test_until_recovers_an_archived_goal_without_a_follower_cache_or_a_bound_run_marker
     boot_rho
     project = File.join(@home, "offline-project").tap { |path| FileUtils.mkdir_p(path) }
     runner_home = File.join(@home, "offline-runner").tap { |path| FileUtils.mkdir_p(path) }
@@ -169,14 +169,23 @@ class UntilTest < Minitest::Test
     credentials = device.await_credentials(authorization)
     @independent = E2E::ExecutorProcess.new(base_url: @base_url, home: runner_home,
       credential: credentials.executor_access_token, world: project, environment: project).start
+    if ENV["E2E_RECOVERY_SCALE"]
+      require "support/recovery_scale"
+      report = File.join(Dir.tmpdir, "rho-recovery-scale-#{Process.pid}.json")
+      E2E::RecoveryScale.seed(handle: E2E.handle, size: Integer(ENV.fetch("E2E_RECOVERY_SCALE")),
+        workspace: @workspace_public_id, agent: @daemon.status.fetch("identity").fetch("user_public_id"), report: report)
+      puts "recovery query plans: #{report}"
+    end
+    command = 'n=$(cat .checks 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > .checks; if [ "$n" = 1 ]; then sleep 10; printf requires-another-attempt; exit 1; fi; printf passed'
     output, status = @daemon.cli("do", "!mock reply=first-attempt -- start the work", "--model", MODEL,
       "--runner", @independent.executor_public_id, "--dir", project,
-      "--until", "sleep 10; printf requires-another-attempt; exit 1", "--attempts", "3")
+      "--until", command, "--attempts", "3")
     assert_predicate status, :success?, output
     run_id = output[/^run:\s+(\S+)/, 1]
     refute_nil run_id, output
     @offline_run = @daemon.member_client.workspace(@workspace_public_id).run(run_id)
     @daemon.await("the independent Runner never claimed the check") { @independent.claimed_keys.include?("check-1") }
+    cache = @daemon.host_cache_path
     @daemon.kill!
     @daemon.await("the independent check never finished after rho exited") do
       tasks = @offline_run.fetch.tasks
@@ -195,6 +204,69 @@ class UntilTest < Minitest::Test
         "Nexus persists the check and hold; Rho owns authoring another attempt"
       sleep 1
     end
+    # Reproduce the acceptance/binding crash window using durable policy.
+    conversation = @offline_run.fetch.turn.conversation_public_id
+    chat = @daemon.member_client.workspace(@workspace_public_id).conversation(conversation)
+    summary = chat.store_entries.list.items.find { |row| row.namespace == "rho.host" && row.key == "policy" }
+    entry = chat.store_entries.fetch(summary.public_id)
+    notes = entry.value.fetch("notes")
+    value = entry.value.merge("notes" => notes.merge("rho.until" => notes.fetch("rho.until").merge("run_public_id" => nil)))
+    chat.store_entries.update(entry.public_id, value: value, lock_version: entry.lock_version)
+    chat.archive
+    FileUtils.rm_f(cache)
+    FileUtils.rm_f(File.join(@home, "tmp", "announcement.json"))
+    resumed_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    @daemon.start
+    await_workspace_state("adopted")
+    @daemon.await("durable Until recovery did not finish the archived goal", timeout: ENV["E2E_RECOVERY_SCALE"] ? 180 : 60) do
+      @offline_run.fetch.status == "completed"
+    end
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - resumed_at
+    keys = @offline_run.fetch.tasks.map(&:key)
+    assert_equal 1, keys.count("work-2"), keys.inspect
+    assert_includes keys, "summary"
+    assert_equal "2", File.read(File.join(project, ".checks")).strip, "the completed check was not replayed"
+    assert_empty @daemon.control(:get, "/followers").fetch("followers"), "recovery does not adopt a follower"
+    assert_operator elapsed, :<, Rho::Until::HOLD_TIMEOUT_MS / 1000.0
+    puts format("until recovery without cache: %.3f seconds", elapsed)
+    puts File.readlines(@daemon.rho_log_path).grep(/until.scan_completed/).last if ENV["E2E_RECOVERY_SCALE"]
+  end
+
+  def test_a_cold_runner_uses_each_accepted_directory_and_fails_if_it_disappears
+    boot_rho
+    default = File.join(@home, "default").tap { |path| FileUtils.mkdir_p(path) }
+    selected = File.join(@home, "selected").tap { |path| FileUtils.mkdir_p(path) }
+    @daemon.control(:post, "/environment", body: { root: default })
+    workspace = @daemon.member_client.workspace(@workspace_public_id)
+    steps = [CybrosAgent::Steps::Tool.new(name: "write", key: "write",
+      input: { "path" => "proof.txt", "content" => "selected" },
+      route: { "kind" => "runner", "runner_executor_public_id" => @rho_runner },
+      executor_context: { "rho.environment" => { "root" => selected, "directories" => [] } })]
+    accepted = workspace.runs.create(steps: steps, approval_mode: "bypass", idempotency_key: SecureRandom.uuid,
+      default_runner_executor_public_id: @rho_runner)
+    context = workspace.run(accepted.run.public_id)
+    @daemon.kill!
+    FileUtils.rm_f(File.join(@home, "tmp", "announcement.json"))
+    @daemon.start
+    await_workspace_state("adopted")
+    await_rho_announced
+    context.start
+    @daemon.await("the cold Runner did not complete the accepted write") { context.fetch.status == "completed" }
+    assert_equal "selected", File.read(File.join(selected, "proof.txt"))
+    refute_path_exists File.join(default, "proof.txt")
+    assert_equal selected, context.task("write").executor_context.dig("rho.environment", "root")
+
+    FileUtils.remove_entry(selected)
+    missing = workspace.runs.create(steps: steps, approval_mode: "bypass", idempotency_key: SecureRandom.uuid,
+      default_runner_executor_public_id: @rho_runner)
+    failed = workspace.run(missing.run.public_id)
+    failed.start
+    task = @daemon.await("the vanished directory did not fail its task") do
+      row = failed.task("write")
+      row if row.task.status == "failed"
+    end
+    assert_includes task.output, selected
+    refute_path_exists File.join(default, "proof.txt")
   end
 
   # THE SPLIT-APPEND CONTRACT: nothing carries across appends by position, so a summary appended on
@@ -207,13 +279,13 @@ class UntilTest < Minitest::Test
     @daemon.control(:post, "/environment", body: { root: project })
     workspace = @daemon.member_client.workspace(@workspace_public_id)
     prefix = [
-      { "tool" => { "key" => "diff", "name" => "bash", "route" => { "kind" => "runner", "runner_executor_public_id" => @rho_runner }, "input" => { "command" => "printf shared-patch-output" } } },
+      { "tool" => { "key" => "diff", "name" => "bash", "executor_context" => { "rho.environment" => { "root" => project } }, "route" => { "kind" => "runner", "runner_executor_public_id" => @rho_runner }, "input" => { "command" => "printf shared-patch-output" } } },
       { "parallel" => [
         { "model" => { "key" => "review", "model" => { "model" => MODEL }, "results" => ["diff"],
                       "prompt" => "!mock reply=review-output -- Review the patch." } },
-        { "tool" => { "key" => "check", "name" => "bash", "route" => { "kind" => "runner", "runner_executor_public_id" => @rho_runner }, "input" => { "command" => "printf check-output" } } },
+        { "tool" => { "key" => "check", "name" => "bash", "executor_context" => { "rho.environment" => { "root" => project } }, "route" => { "kind" => "runner", "runner_executor_public_id" => @rho_runner }, "input" => { "command" => "printf check-output" } } },
       ] },
-      { "tool" => { "key" => "checkpoint", "name" => "bash", "route" => { "kind" => "runner", "runner_executor_public_id" => @rho_runner }, "input" => { "command" => "printf checkpoint-output" } } },
+      { "tool" => { "key" => "checkpoint", "name" => "bash", "executor_context" => { "rho.environment" => { "root" => project } }, "route" => { "kind" => "runner", "runner_executor_public_id" => @rho_runner }, "input" => { "command" => "printf checkpoint-output" } } },
     ]
     summary = { "model" => { "key" => "summary", "model" => { "model" => MODEL },
                             "results" => %w[diff review check checkpoint],

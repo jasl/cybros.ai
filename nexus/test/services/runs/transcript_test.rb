@@ -407,6 +407,24 @@ class Runs::TranscriptTest < ActiveJob::TestCase
 
   # ── the timeline's rows ───────────────────────────────────
 
+  test "turn_rounds limits each run after excluding hidden and branch rounds" do
+    first = opened!
+    second = opened!
+    [first, second].each do |run|
+      plant!(run, (1..5).map { |n| mainline_round("r#{n}") })
+      plant!(run, [branch_round("branch", ["r5"])])
+      plant!(run, [["hidden", MODEL, { continuation_source: nil, transcript_visibility: "hidden" }]])
+    end
+
+    rows = Runs::Transcript.turn_rounds([first, second], limit: 2)
+
+    assert_equal [first.id, second.id], rows.keys
+    rows.each_value do |rounds|
+      assert_equal %w[r4 r5], rounds.map { |row| row.fetch(:task_key) }
+    end
+    assert_empty Runs::Transcript.turn_rounds([])
+  end
+
   test "turn_rounds batches each loop's newest MAINLINE rounds without their calls, in chain order, mark-less" do
     first = seed(model("ask", "prompt" => "read it"))
     start!(first)

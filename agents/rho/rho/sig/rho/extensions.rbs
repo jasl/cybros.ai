@@ -286,8 +286,6 @@ module Rho
       def self.seed: (Daemon::HostFollowers::Draft draft, Hash[String, untyped] compaction) -> Hash[String, untyped]
       def self.policy_for: (Hash[String, untyped] body, untyped environment, untyped ctx) -> untyped
       def self.follow: (String run_public_id, Hash[String, untyped] note, untyped ctx) -> untyped
-      def self.bind: (String run_public_id, untyped runs, untyped workspace, untyped ctx) -> untyped
-      def self.first_run: (untyped hosted) -> String?
       def self.gate: (String run_public_id, untyped policy, untyped ctx) -> untyped
       def self.clamp: (untyped ctx) -> Numeric
     end
@@ -306,23 +304,6 @@ module Rho
         def self.conversation: (untyped request, Daemon::Context ctx) -> untyped
         def self.bind: (untyped request, Daemon::Context ctx) -> untyped
         def self.environments: (Daemon::Context ctx) -> untyped
-      end
-
-      # The hidden runner tool a host elsewhere relays a conversation's
-      # root set through.
-      module Tools
-        class Bind
-          NAME: String
-          DESCRIPTION: nil
-          SCHEMA: Hash[String, untyped]
-          EFFECT_PROFILE: Hash[String, untyped]
-          UNAVAILABLE: String
-          def self.environments: () -> (^() -> Rho::Environments?)?
-          def self.log: () -> untyped
-          def self.bind: (environments: (^() -> Rho::Environments?)?, log: untyped) -> untyped
-          def initialize: (env: untyped) -> void
-          def call: (Hash[String, untyped] args) -> Rho::Runner::Result
-        end
       end
 
       # The door's `fs:` member: the shape validated, the port registered
@@ -410,7 +391,7 @@ module Rho
       def self.register: (untyped api) -> untyped
       def self.call_tool: (
         Daemon::Context ctx, String runner, String tool, Hash[String, untyped] input, ?Integer? timeout_ms,
-        ?idempotency_key: String, ?workspace_public_id: String?
+        ?idempotency_key: String, ?workspace_public_id: String?, ?executor_context: Hash[String, untyped]?
       ) -> untyped
       def self.rewind: (
         Daemon::Context ctx, String conversation_id, String turn_ref, ?keep_checkpoints: bool, ?title: String?,

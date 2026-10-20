@@ -121,7 +121,8 @@ module Runs
               },
               parent: parent, spawn_node: @node, spawn_label: input["label"],
               conversation_reach: [Conversations::Reach.of(@node), @declaration&.configuration&.conversation_reach].include?("subtree") ? "subtree" : "workspace",
-              **(@declaration&.defaults || {})
+              **(@declaration&.defaults || { agent_configuration: AgentConfiguration.capture(answerer || run.answering_user,
+                executor_contexts: Executors::TaskOperations::Context.defaults(@node)["executor_contexts"]) })
             ))
           end
           return result.value if result.accepted?

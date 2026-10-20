@@ -29,12 +29,12 @@ module Conversations
         :provider_id, :model_ref, :reasoning_effort, :reasoning_enabled, :request_options, :tool_names, :approval_mode,
         :instructions, :answering_user_public_id, :speaker_public_id, :attachments, :deliver_at, :steps,
         :origin, :sender_conversation_public_id, :run_public_id, :task_key, :delegation, :callback_result,
-        :agent_configuration, :model_selection, :fallback_models) do
+        :agent_configuration, :model_selection, :fallback_models, :executor_contexts) do
         def initialize(reasoning_enabled: nil, tool_names: nil, approval_mode: nil, instructions: nil, answering_user_public_id: nil,
                        attachments: nil, deliver_at: nil, steps: nil, speaker_public_id: nil, expected_steering_run_public_id: nil,
                        origin: nil, sender_conversation_public_id: nil, run_public_id: nil,
                        task_key: nil, delegation: nil, callback_result: nil,
-                       agent_configuration: nil, model_selection: nil, fallback_models: nil, **) = super
+                       agent_configuration: nil, model_selection: nil, fallback_models: nil, executor_contexts: nil, **) = super
 
         # Kernel mail: a user-role row that always QUEUES — never a steer,
         # so a running turn finishes first and an idle conversation is woken
@@ -346,9 +346,12 @@ module Conversations
         def answer_engine(addressee)
           return nil if @command.kernel? || @command.kind != "direct_reply" || !@host.hosts_turns?
           if declared_host?(addressee) && @command.agent_configuration.nil?
-            return nil if @command.provider_id.present? && @command.model_ref.present?
+            if @command.provider_id.present? && @command.model_ref.present?
+              return nil if selected_host?(addressee) ||
+                !AnswerEngine.applies?(@host, addressee: addressee, sent: @command.sent?)
+            end
 
-            return AnswerEngine.captured_selection(@host, addressee: addressee)
+            return AnswerEngine.selection(@host, addressee: addressee)
           end
           if @command.agent_configuration
             return nil if @command.provider_id.present? && @command.model_ref.present?
@@ -402,6 +405,7 @@ module Conversations
             callback_result: @command.callback_result,
             deliver_at: @command.deliver_at,
             steps: @command.steps,
+            executor_contexts: @command.executor_contexts,
           )
           return Outcome.refused(input.host_refusal) if input.host_refusal
           return Outcome.invalid(input) unless input.save
@@ -437,11 +441,13 @@ module Conversations
 
         def declared_host?(addressee) = @host.hosts_turns? && AnswerEngine.captured?(@host, addressee: addressee)
 
+        def selected_host?(addressee) = @host.hosts_turns? && AnswerEngine.captured_model?(@host, addressee: addressee)
+
         def selection_intent(engine, addressee)
           return @command.model_selection if @command.model_selection
           return @source_run.model_selection if @command.kernel? && @source_run&.model_selection
           return unless @command.kind == "direct_reply"
-          if declared_host?(addressee) && @command.agent_configuration.nil? && @command.provider_id.blank? && @command.model_ref.blank?
+          if selected_host?(addressee) && @command.agent_configuration.nil? && @command.provider_id.blank? && @command.model_ref.blank?
             return AnswerEngine.captured_intent(@host, addressee: addressee)
           end
 

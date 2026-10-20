@@ -59,6 +59,19 @@ module Rho
 
         def maintenance_done = @monitor.synchronize { @maintenance_running = false }
 
+        def begin_recovery(about)
+          @monitor.synchronize do
+            next false if @stopping || !@credentials.equal?(about) || @recovery_about.equal?(about)
+
+            @recovery_about = about
+            true
+          end
+        end
+
+        def finish_recovery(about)
+          @monitor.synchronize { @recovery_about = nil if @recovery_about.equal?(about) }
+        end
+
         def stop_maintenance
           @monitor.synchronize do
             @maintenance_stopped = true

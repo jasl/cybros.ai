@@ -57,6 +57,19 @@ class Conversations::ForkTest < ActiveSupport::TestCase
     ))
   end
 
+  test "forks and sides retain captured executor contexts" do
+    contexts = { SecureRandom.uuid_v7 => { "fixture.directory" => "/fork" } }
+    declaration = AgentConfiguration.capture(users(:agent)).tap { |config| config.executor_contexts = contexts }
+    @source = Conversation.create!(workspace: @workspace, creating_user: @user,
+      answering_user: users(:agent), agent_configuration: declaration)
+    target = build_turn(conversation: @source, position: 0)
+    build_variant(turn: target)
+    [fork!(turn: target), side_fork!].each do |result|
+      assert_predicate result, :accepted?, result.outcome.inspect
+      assert_equal contexts, result.value.agent_configuration.executor_contexts
+    end
+  end
+
   test "forks and sides start without the source conversation cost limit" do
     @account.update!(cost_unit: "USD")
     @source.reload.update!(cost_limit: "0")

@@ -50,14 +50,14 @@ module RunLaneTestHelper
 
   def post_input!(conversation, acting_user:, text:, kind: "message", delivery_mode: "queue",
                   provider_id: nil, model_ref: nil, context_mode: nil, context_options: nil,
-                  request_options: nil, tool_names: nil, answering_user_public_id: nil, steps: nil)
+                  request_options: nil, tool_names: nil, answering_user_public_id: nil, steps: nil, executor_contexts: nil)
     result = Conversations::Inputs::Create.call(Conversations::Inputs::Create::Command.new(
       host: conversation, acting_user: acting_user, kind: kind, role: "user",
       entries: text ? [{ "text" => text }] : [], visible_in_context: true, delivery_mode: delivery_mode,
       context_mode: context_mode, context_options: context_options, expected_context_revision: nil,
       expected_tail_turn_public_id: nil, provider_id: provider_id, model_ref: model_ref,
       reasoning_effort: nil, request_options: request_options, tool_names: tool_names,
-      answering_user_public_id: answering_user_public_id, steps: steps
+      answering_user_public_id: answering_user_public_id, steps: steps, executor_contexts: executor_contexts
     ))
     assert_predicate result, :accepted?
     result.value

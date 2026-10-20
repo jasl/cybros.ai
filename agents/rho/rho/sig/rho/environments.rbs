@@ -37,10 +37,7 @@ module Rho
   # table, the placements and their stores — one instance the daemon owns.
   class Environments
     RECORDS_MAX: Integer
-    RELAY_GATE_SECONDS: Integer
-    TOOL_CALL_POLL_SECONDS: Float
     WALK_DEPTH: Integer
-    TOOL_NOT_SERVED: String
     SOURCES: Array[String]
 
     class Record < ::Data
@@ -53,24 +50,6 @@ module Rho
     class Miss < ::Data
       attr_reader run_public_id: String?
       def self.new: (run_public_id: String?) -> instance
-    end
-
-    class Assertion < ::Data
-      attr_reader digest: String
-      attr_reader boot: String?
-      attr_reader state: String
-      attr_reader booted_at: String?
-      attr_reader resolved: bool?
-      def self.new: (digest: String, boot: String?, state: String, booted_at: String?, resolved: bool?) -> instance
-    end
-
-    class ToolCallResult < ::Data
-      attr_reader runner: String?
-      attr_reader state: String
-      attr_reader booted_at: String?
-      attr_reader resolved: bool?
-      def self.new: (runner: String?, state: String, booted_at: String?, resolved: bool?) -> instance
-      def to_h: () -> Hash[Symbol, untyped]
     end
 
     class Resolved < ::Data
@@ -152,11 +131,10 @@ module Rho
       def resolver: () -> ^(String?) -> Extensions::Environment::FsPort?
     end
 
-    attr_reader booted_at: String
     def initialize: (
       home: Home, config: config, registry: Rho::Runner::Extensions::Registry, log: untyped, clock: ^() -> Time,
-      booted_at: String, default_root: ^() -> String?, member_plane: ^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> Extensions::MemberPlane?,
-      own_runner: ^(String?) -> bool, learn_runner: ^(untyped) -> untyped, spawn: untyped,
+      default_root: ^() -> String?, member_plane: ^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> Extensions::MemberPlane?,
+      own_runner: ^(String?) -> bool,
       ?processes: untyped, ?checkpoints: bool, ?registrar: Extensions::Registrar?,
       ?served: Rho::Runner::Extensions::Registry?, ?servers_changed: (^() -> untyped)?, ?own_runner_public_id: ^() -> String?
     ) -> void
@@ -171,22 +149,14 @@ module Rho
     def zero_checkpoints: () -> untyped
     def checkpoint_stores: (?String? id) -> Array[Runner::Checkpoints::Store]
     def agent_toolsets: (Rho::Runner::Extensions::Registry registry) -> Slot
-    def resolve: (String conversation, ?String? parent) -> Rho::Runner::Environment::Binding?
     def read: (String conversation, ?plane: Extensions::MemberPlane?, ?run_public_id: String?, ?parent: String?, ?runner: String?) -> Resolved
     def binding_for: (String conversation, ?plane: Extensions::MemberPlane?, ?run_public_id: String?, ?parent: String?, ?workspace_public_id: String?, ?runner: String?) -> Rho::Runner::Environment::Binding?
     def bind: (String conversation, root: String, directories: Array[String], ?plane: Extensions::MemberPlane?, ?runner: String?) -> (Resolved | Daemon::Refusal)
     def clear: (String conversation, ?plane: Extensions::MemberPlane?, ?runner: String?) -> (Resolved | Daemon::Refusal)
     def remember_copy: (String conversation, untyped binding, ?runner: String?) -> untyped
     def adopt_children: (String parent, Array[String] children) -> void
-    def assert_remote: (String conversation, String? runner, untyped binding, ?plane: Extensions::MemberPlane?,
-                        ?document: untyped, ?wait: bool, ?gate: Numeric) -> ToolCallResult
-    def reassert_stale: (Array[Hash[Symbol, untyped]] rows) -> void
-    def asserted: (String conversation, String? runner) -> Assertion?
-    def receive: (String conversation, untyped binding, ?runner: String?) -> bool
-    def received: (String conversation, ?runner: String?) -> untyped
     def refusal_for: (String path, ?local: bool) -> String?
     def validate: (untyped root, untyped directories, ?local: bool) -> Daemon::Refusal?
-    def resolved?: (untyped binding) -> bool
     def register_port: (String anchor, url: String, token: String, read: bool, write: bool, client: String) -> Extensions::Environment::FsPort
     def drop_port: (String anchor, reason: String) -> bool
     def port_for: (String? anchor) -> Extensions::Environment::FsPort?

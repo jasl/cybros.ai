@@ -166,6 +166,7 @@ module Rho
                 "runner_executor_public_ids" => seed.runner_executor_public_ids, "runner_tool_names" => seed.runner_tool_names,
                 "mcp_tools" => seed.mcp_tools,
               }).tool_definitions
+              steps[0] = seed.with(executor_contexts: ctx.execution_contexts(client, tools: assembled_tools, runner: runner))
               # THE SHELL: rho's word is `bypass` by product policy and it is NAMED on every run this
               # route authors — the kernel refuses nil, nothing is silently defaulted — with the
               # daemon's ONE rule list (the guard list, this install's incubation denies, the session
@@ -499,7 +500,7 @@ module Rho
               timeout_ms.nil? || (parsed_timeout && parsed_timeout.positive? && parsed_timeout == timeout_ms)
 
             relayed = Ops.call_tool(ctx, runner, tool, input, timeout_ms,
-              idempotency_key: body["idempotency_key"] || SecureRandom.uuid)
+              idempotency_key: body["idempotency_key"] || SecureRandom.uuid, executor_context: body["executor_context"])
             return relayed if relayed in Rho::Daemon::Refusal
 
             [200, { call_tool: { public_id: relayed.public_id, task: task_row(relayed.detail) } }]
@@ -521,9 +522,7 @@ module Rho
               # capture `rho fetch` reads; the text beside it is `output`.
               content: detail.content,
               # The tool's structured answer (MCP's `structuredContent`),
-              # when the executor sent one: what `rho-dev call_tool R
-              # environment_bind` reads a runner's received binding back
-              # as (`{applied, resolved, booted_at}`).
+              # when the executor sent one.
               structured_content: detail.structured_content,
               tool_input: detail.tool_input,
               # The kernel's outcome summary (`is_error` on a tool row):

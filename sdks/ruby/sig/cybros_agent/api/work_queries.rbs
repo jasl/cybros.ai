@@ -54,7 +54,16 @@ module CybrosAgent
       attr_reader previous: WorkPrevious
     end
 
+    class RunCandidate < Data
+      attr_reader public_id: String
+      attr_reader workspace_public_id: String
+      attr_reader conversation_public_id: String
+      attr_reader turn_public_id: String
+      attr_reader status: String
+    end
+
     class WorkQueries
+      def run_candidates: (?agent_public_id: String?, ?after: String?) -> Page[RunCandidate]
       def runs: (?workspace_public_id: String?, ?after: String?, ?limit: Integer?, ?status: untyped, ?attention: String?, ?order: String?, ?from: String?, ?to: String?, ?answering_user_public_id: String?, ?agent_public_id: String?, ?executor_public_id: String?, ?kind: String?) -> Page[Run]
       def attention: (?workspace_public_id: String?, ?view: String?, ?after: String?, ?limit: Integer?, ?order: String?) -> Page[AttentionItem]
       def report: (?workspace_public_id: String?, ?agent_public_id: String?, ?from: String?, ?to: String?, ?unit: String?) -> WorkReport

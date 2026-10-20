@@ -126,6 +126,7 @@ module Runs
 
       step = Tasks::Step::Tool.new(
         name: policy.fetch("tool"), key: free_key(run, "h"), lifecycle_event: event,
+        model_defaults: Executors::TaskOperations::Context.defaults(source).slice("executor_contexts"),
         input: { "event" => event, "task_key" => source.node_key,
           "run_public_id" => run.public_id,
           "conversation_public_id" => run.conversation&.public_id,

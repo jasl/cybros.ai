@@ -9,6 +9,36 @@ fn fixture(key: &str) -> serde_json::Value {
 }
 
 #[tokio::test]
+async fn candidate_windows_preserve_the_cursor_even_when_empty() {
+    for name in [
+        "valid_run_candidates_fixture",
+        "empty_run_candidates_fixture",
+    ] {
+        let fixture = fixture(name);
+        let mut server = Server::script(vec![Reply::json(200, fixture.to_string())]).await;
+        let client = Client::new(&server.url, "member").unwrap();
+        let page = client
+            .work()
+            .run_candidates(&RunCandidateQuery {
+                agent_public_id: Some("agent".into()),
+                after: Some("cursor".into()),
+            })
+            .await
+            .unwrap()
+            .body;
+        assert_eq!(page.items.len(), fixture["runs"].as_array().unwrap().len());
+        assert_eq!(
+            page.next_after.as_deref(),
+            fixture["pagination"]["next_after"].as_str()
+        );
+        let request = server.next().await;
+        assert!(request.path.starts_with("/agent_api/v1/run_candidates?"));
+        assert!(request.path.contains("agent_public_id=agent"));
+        assert!(request.path.contains("after=cursor"));
+    }
+}
+
+#[tokio::test]
 async fn work_queries_decode_canonical_documents_and_keep_filters() {
     let runs = fixture("valid_runs_fixture");
     let attention = fixture("valid_attention_fixture");

@@ -30,7 +30,7 @@ class DaemonEnvironmentsTest < Minitest::Test
     assert_equal [binding, "conversation", "se-1", 0], [read.binding, read.source, read.public_id, read.lock_version]
     assert_equal [[:list, nil], [:fetch, "se-1"]], store.calls
     assert_equal binding, table.binding_for("c-1", plane: plane(client)), "the memo, no request"
-    assert_equal 2, store.calls.length
+    assert_equal 3, store.calls.length
 
     store.patch(value(@other))
     again = table.read("c-1", plane: plane(client))
@@ -46,24 +46,22 @@ class DaemonEnvironmentsTest < Minitest::Test
     assert_equal 2, empty.calls.length, "a verb's read is never memoized as a miss for a run"
     assert_nil table.binding_for("c-2", plane: plane(bare), run_public_id: "al-1")
     assert_nil table.binding_for("c-2", plane: plane(bare), run_public_id: "al-1")
-    assert_equal 3, empty.calls.length, "a Miss is memoized for the run"
+    assert_equal 4, empty.calls.length, "each capture reads the current record"
     assert_nil table.binding_for("c-2", plane: plane(bare), run_public_id: "al-2")
-    assert_equal 4, empty.calls.length, "a new run reads again"
+    assert_equal 5, empty.calls.length, "a new run reads again"
   end
 
   # A GET that fails keeps the last memo standing, logs once per
   # conversation, and never refuses the turn; a fetch 404 is the row gone
   # — the miss path.
-  def test_a_failing_read_keeps_the_memo_and_logs_once_and_a_404_is_the_miss_path
+  def test_a_failing_read_refuses_capture_and_a_404_is_the_miss_path
     store = FakeStore.new([row(value)])
     client = FakeClient.new(conversations: { "c-1" => FakeConversation.new(store: store) })
     table = environments(client)
     table.read("c-1", plane: plane(client))
 
     store.fail_reads(CybrosAgent::TransportError.new("down"))
-    read = table.read("c-1", plane: plane(client))
-    assert_equal binding, read.binding, "the last memo stands"
-    table.read("c-1", plane: plane(client))
+    2.times { assert_raises(CybrosAgent::TransportError) { table.read("c-1", plane: plane(client)) } }
     assert_equal 1, log_text.scan("event=environment.unreadable").length, "logged once per conversation"
 
     store.fail_reads(nil)
@@ -219,13 +217,12 @@ class DaemonEnvironmentsTest < Minitest::Test
       "key_taken on the copy: another writer won, and the walk's answer stands"
   end
 
-  # A walk that cannot see the parent falls to zero with `environment.unresolved`.
-  def test_a_walk_that_cannot_see_the_parent_falls_to_zero_and_says_so
+  # An unreadable parent refuses capture instead of selecting a default.
+  def test_a_walk_that_cannot_see_the_parent_refuses_capture
     client = FakeClient.new(conversations: { "c-2" => FakeConversation.new(store: FakeStore.new, parent: "c-hidden") })
     table = environments(client)
 
-    assert_nil table.binding_for("c-2", plane: plane(client), run_public_id: "al-1")
-    assert_match(/event=environment\.unresolved .*conversation=c-2/, log_text)
+    assert_raises(CybrosAgent::Api::NotFound) { table.binding_for("c-2", plane: plane(client), run_public_id: "al-1") }
   end
 
   # THE TOP-DOWN COPY AT THE CHILD EDGE: for every child new to the
@@ -266,285 +263,14 @@ class DaemonEnvironmentsTest < Minitest::Test
 
     table.remember_copy("c-1-side", binding)
 
-    assert_equal binding, table.binding_for("c-1-side", plane: plane(client))
-    assert_empty store.calls
+    assert_equal binding, table.memo("c-1-side").binding
+    assert_nil table.binding_for("c-1-side", plane: plane(client)), "future capture reads durable state"
+    refute_empty store.calls
   end
 
-  # ---- the runner elsewhere ----
-
-  # THE RELAY, KEYED BY THE RUNNER'S PROCESS LIFE: the first assertion
-  # refreshes discovery and relays `environment_bind` on the runner's
-  # announced park with the conversation id on the input; the fiber
-  # records `confirmed` with the runner's `booted_at`; the same tuple on
-  # the same boot relays nothing more; a new `booted_at` on the refreshed
-  # document relays once more; a reconnect with the same `booted_at`
-  # (a moved `connected_at`) relays nothing.
-  def test_assert_remote_relays_once_per_tuple_and_boot_and_again_when_the_boot_moves
-    learned = []
-    documents = { "0199-h" => discovered("0199-h", booted_at: "2026-09-17T06:00:00Z", connected_at: "2026-09-17T06:01:00Z") }
-    client = FakeClient.new(answers: [relay_answer, relay_answer(booted_at: "2026-09-17T09:00:00Z"), relay_answer],
-      executors: documents)
-    table = environments(client, inline: true, learned: learned)
-
-    relayed = table.assert_remote("c-1", "0199-h", binding, plane: plane(client))
-
-    assert_equal ["confirmed", true, "2026-09-17T07:00:00Z"], [relayed.state, relayed.resolved, relayed.booted_at]
-    assert_equal ["0199-h"], client.executors.shows, "the document is refreshed first"
-    assert_equal 1, learned.length, "and put back into the daemon's cache"
-    request = client.requests.fetch(0)
-    assert_equal value.merge("conversation_public_id" => "c-1"), request[:input]
-    assert_nil request[:timeout_ms], "the runner's announced park governs the row"
-    assert_equal "author", request[:rules].fetch(0).fetch("origin"), "the runner's own rules judge it on the path"
-
-    assert_equal "confirmed", table.assert_remote("c-1", "0199-h", binding, plane: plane(client)).state
-    assert_equal 1, client.requests.length, "the same tuple on the same boot: nothing relayed"
-
-    documents["0199-h"] = discovered("0199-h", booted_at: "2026-09-17T06:00:00Z", connected_at: "2026-09-17T06:30:00Z")
-    table.assert_remote("c-1", "0199-h", binding, plane: plane(client))
-    assert_equal 1, client.requests.length, "a reconnect with the same booted_at: nothing"
-
-    documents["0199-h"] = discovered("0199-h", booted_at: "2026-09-17T08:30:00Z")
-    relayed = table.assert_remote("c-1", "0199-h", binding, plane: plane(client))
-    assert_equal ["confirmed", "2026-09-17T09:00:00Z"], [relayed.state, relayed.booted_at]
-    assert_equal 2, client.requests.length, "a restarted runner is told again"
-    assert_equal 2, log_text.scan("event=environment.relayed").length
-
-    table.assert_remote("c-1", "0199-h", binding(directories: [@other]), plane: plane(client))
-    assert_equal 3, client.requests.length, "a moved tuple relays"
-  end
-
-  # `connected_at` is the fallback key for a runner announcing no
-  # `booted_at`; one announcing neither is asserted once per host boot.
-  def test_the_boot_key_falls_back_to_connected_at_and_a_document_with_neither_asserts_once
-    documents = { "0199-h" => discovered("0199-h", connected_at: "2026-09-17T06:00:00Z"),
-                  "0199-k" => discovered("0199-k") }
-    client = FakeClient.new(answers: [relay_answer, relay_answer, relay_answer], executors: documents)
-    table = environments(client, inline: true)
-
-    table.assert_remote("c-1", "0199-h", binding, plane: plane(client))
-    table.assert_remote("c-1", "0199-h", binding, plane: plane(client))
-    assert_equal 1, client.requests.length
-    documents["0199-h"] = discovered("0199-h", connected_at: "2026-09-17T06:30:00Z")
-    table.assert_remote("c-1", "0199-h", binding, plane: plane(client))
-    assert_equal 2, client.requests.length, "a moved connected_at re-asserts"
-
-    table.assert_remote("c-2", "0199-k", binding(anchor: "c-2"), plane: plane(client))
-    table.assert_remote("c-2", "0199-k", binding(anchor: "c-2"), plane: plane(client))
-    assert_equal 3, client.requests.length, "neither: once per host boot"
-  end
-
-  # THE GATE: the verb waits the gate and proceeds with `pending`
-  # while the fiber runs on; the fiber records `confirmed`, or CLEARS the
-  # entry on any other terminal so the next edge tries again; a runner
-  # without the tool (`tool_not_served`) is logged `environment.unrelayed`
-  # once and not relayed again on the same boot.
-  def test_the_gate_proceeds_pending_and_the_fiber_records_or_clears
-    release = Queue.new
-    answer = relay_answer
-    slow = Object.new
-    slow.define_singleton_method(:wait_for_tool_result) { |poll:, realtime: nil| release.pop; answer }
-    client = FakeClient.new(executors: { "0199-h" => discovered("0199-h", booted_at: "2026-09-17T06:00:00Z") })
-    client.workspace("ws-1").runs.define_singleton_method(:start_tool_call) { |**| slow }
-    table = environments(client)
-
-    relayed = table.assert_remote("c-1", "0199-h", binding, plane: plane(client), gate: 0.05)
-    assert_equal ["pending", nil, nil], [relayed.state, relayed.resolved, relayed.booted_at]
-    assert_equal "pending", table.assert_remote("c-1", "0199-h", binding, plane: plane(client), gate: 0.05).state,
-      "an assertion in flight is not relayed twice"
-    release << true
-    join_spawned
-    assert_equal "confirmed", table.asserted("c-1", "0199-h").state
-
-    failing = FakeClient.new(answers: [relay_answer(status: "timed_out", error_key: "tool_timeout"), relay_answer],
-      executors: { "0199-h" => discovered("0199-h", booted_at: "2026-09-17T06:00:00Z") })
-    table = environments(failing, inline: true)
-    relayed = table.assert_remote("c-1", "0199-h", binding, plane: plane(failing))
-    assert_equal "unavailable", relayed.state
-    assert_nil table.asserted("c-1", "0199-h"), "cleared: the next edge tries again"
-    assert_equal "confirmed", table.assert_remote("c-1", "0199-h", binding, plane: plane(failing)).state
-    assert_equal 2, failing.requests.length
-
-    bare = FakeClient.new(answers: [relay_answer(status: "failed", error_key: "tool_not_served")],
-      executors: { "0199-x" => discovered("0199-x", booted_at: "2026-09-17T06:00:00Z") })
-    table = environments(bare, inline: true)
-    assert_equal "unavailable", table.assert_remote("c-1", "0199-x", binding, plane: plane(bare)).state
-    assert_equal "unavailable", table.assert_remote("c-1", "0199-x", binding, plane: plane(bare)).state
-    assert_equal 1, bare.requests.length, "a runner without the tool is not asked again on the same boot"
-    assert_equal 1, log_text.scan("event=environment.unrelayed").length
-  end
-
-  def test_an_unserved_environment_tool_refused_at_acceptance_is_unavailable_until_the_runner_restarts
-    documents = { "0199-x" => discovered("0199-x", booted_at: "2026-09-17T06:00:00Z") }
-    client = FakeClient.new(executors: documents)
-    attempts = 0
-    client.workspace("ws-1").runs.define_singleton_method(:start_tool_call) do |**|
-      attempts += 1
-      raise CybrosAgent::Api::InvalidRequest.new("Refused: tool_not_served", code: "tool_not_served")
-    end
-    table = environments(client, inline: true)
-
-    2.times do
-      assert_equal "unavailable", table.assert_remote("c-1", "0199-x", binding, plane: plane(client)).state
-    end
-    assert_equal 1, attempts, "an acceptance refusal is cached for this Runner's boot"
-    assert_equal "unavailable", table.asserted("c-1", "0199-x").state
-    assert_equal 1, log_text.scan("event=environment.unrelayed").length
-    refute_includes log_text, "event=environment.relay_failed"
-
-    documents["0199-x"] = discovered("0199-x", booted_at: "2026-09-17T09:00:00Z")
-    assert_equal "unavailable", table.assert_remote("c-1", "0199-x", binding, plane: plane(client)).state
-    assert_equal 2, attempts, "a restarted Runner is asked again"
-  end
-
-  def test_other_acceptance_refusals_clear_the_environment_assertion_for_the_next_edge
-    client = FakeClient.new(executors: { "0199-x" => discovered("0199-x", booted_at: "2026-09-17T06:00:00Z") })
-    attempts = 0
-    client.workspace("ws-1").runs.define_singleton_method(:start_tool_call) do |**|
-      attempts += 1
-      raise CybrosAgent::Api::InvalidRequest.new("Refused: invalid_tool_route", code: "invalid_tool_route")
-    end
-    table = environments(client, inline: true)
-
-    2.times do
-      assert_equal "unavailable", table.assert_remote("c-1", "0199-x", binding, plane: plane(client)).state
-      assert_nil table.asserted("c-1", "0199-x")
-    end
-    assert_equal 2, attempts
-    assert_equal 2, log_text.scan("event=environment.relay_failed").length
-    refute_includes log_text, "event=environment.unrelayed"
-  end
-
-  # A runner discovery cannot show relays nothing and says so; a document
-  # handed in by the verb is not fetched again.
-  def test_assert_remote_with_a_handed_document_reads_no_discovery_and_an_unlisted_runner_is_unavailable
-    client = FakeClient.new(answers: [relay_answer])
-    table = environments(client, inline: true)
-
-    relayed = table.assert_remote("c-1", "0199-h", binding, plane: plane(client),
-      document: discovered("0199-h", booted_at: "2026-09-17T06:00:00Z"))
-    assert_equal "confirmed", relayed.state
-    assert_empty client.executors.shows
-
-    assert_equal "unavailable", table.assert_remote("c-1", "0199-gone", binding, plane: plane(client)).state
-    assert_equal 1, client.requests.length
-  end
-
-  # THE MAINTENANCE CYCLE: every followed row bound to a remote
-  # runner is re-asserted once per cycle — a restart with no prompt pending
-  # is caught within a cycle; own-runner rows and unbound rows cost nothing.
-  def test_reassert_stale_re_asserts_every_remote_bound_row_once_per_cycle
-    documents = { "0199-h" => discovered("0199-h", booted_at: "2026-09-17T06:00:00Z") }
-    client = FakeClient.new(
-      conversations: { "c-1" => FakeConversation.new(store: FakeStore.new([row(value, key: "binding/0199-h")])),
-                       "c-2" => FakeConversation.new(store: FakeStore.new) },
-      answers: [relay_answer, relay_answer], executors: documents
-    )
-    table = environments(client, inline: true)
-    rows = [
-      { host: Rho::Host::Conversation.new(public_id: "c-1"), runner: "0199-different-default" },
-      { host: Rho::Host::Conversation.new(public_id: "c-2"), runner: "0199-h" },
-      { host: Rho::Host::Conversation.new(public_id: "c-3"), runner: "0199-runner" },
-      { host: Rho::Host::Run.new(public_id: "al-1"), runner: "0199-h" },
-      { host: Rho::Host::Conversation.new(public_id: "c-4"), runner: nil },
-    ]
-
-    table.reassert_stale(rows)
-
-    assert_equal 1, client.requests.length, "the one remote-bound conversation with a record"
-    assert_equal ["0199-h"], client.executors.shows.uniq
-    table.reassert_stale(rows)
-    assert_equal 1, client.requests.length, "the same boot: nothing"
-    documents["0199-h"] = discovered("0199-h", booted_at: "2026-09-17T09:00:00Z")
-    table.reassert_stale(rows)
-    assert_equal 2, client.requests.length, "the restarted runner is told again within a cycle"
-  end
-
-  # ---- the runner slot's receiving table ----
-
-  # A binding RECEIVED from a host elsewhere wins over the store; an absent
-  # root applies with `resolved: false`; a protected root is refused.
-  def test_receive_wins_over_the_store_and_answers_resolved_by_this_host
-    store = FakeStore.new([row(value(@other))])
-    client = FakeClient.new(conversations: { "c-1" => FakeConversation.new(store: store) })
-    table = environments(client)
-
-    assert table.receive("c-1", binding), "resolved: the root is on this host"
-    assert_equal binding, table.binding_for("c-1", plane: plane(client))
-    assert_empty store.calls, "received: the store is never read"
-    placed = table.toolsets.for(task("c-1"))
-    assert_equal binding, placed.binding
-    assert_equal @project, placed.env.root
-    # A spawned child on this slot resolves by its PARENT's received
-    # binding — the inbox row's `parent_public_id` — with no call_tool in the path.
-    child = table.toolsets.for(task("c-9", parent: "c-1", run_public_id: "al-9"))
-    assert_equal binding, child.binding, "the parent's received binding, no store read"
-    assert_empty store.calls
-
-    refute table.receive("c-2", binding(File.join(@root, "absent"), anchor: "c-2")), "absent on this host: unresolved"
-    assert_equal "protected_root", table.refusal_for(Rho.root)
-    assert_equal "not_a_directory", table.refusal_for(File.join(@root, "absent"))
-    assert_nil table.refusal_for(@project)
-    assert_match(/event=environment\.received .*conversation=c-1/, log_text)
-  end
-
-  # THE WINDOW: a slot with NO member plane — a runner-mode
-  # daemon, restarted mid-conversation or claiming a child before the
-  # host's call_tool lands — was told nothing and can read nothing, so the
-  # claim lands on placement zero AND the log says so: `environment.
-  # unresolved reason=not_received`, once per conversation, however many
-  # claims fall in the window. Told afterwards, it resolves with no
-  # further line.
-  def test_a_slot_with_no_member_plane_told_nothing_lands_on_zero_and_says_so_once
-    runner = environments(FakeClient.new, member_plane: ->(**) { })
-
-    assert_nil runner.resolve("c-7"), "nothing received, nothing readable: zero"
-    assert_nil runner.resolve("c-7", "c-8"), "an unknown parent tells it nothing either"
-    placed = runner.toolsets.for(task("c-7", run_public_id: "al-7"))
-    assert_nil placed.binding
-    assert_equal @project, placed.env.root, "placement zero"
-    unresolved = log_text.each_line.grep(/event=environment\.unresolved /)
-    assert_equal 1, unresolved.length, "once per conversation, not per claim:\n#{log_text}"
-    assert_match(/conversation=c-7 .*reason=not_received/, unresolved.first)
-
-    assert runner.receive("c-7", binding)
-    assert_equal binding, runner.resolve("c-7"), "told: resolved"
-    assert_equal 1, log_text.each_line.grep(/event=environment\.unresolved /).length, "no line once told"
-  end
-
-  # A CHILD WITH NO ROW OF ITS OWN resolves through the parent the inbox
-  # row names before any projection read: the walk takes the hint.
-  def test_a_row_naming_its_parent_walks_from_it_without_a_projection_read
-    client = FakeClient.new(conversations: {
-      "c-1" => FakeConversation.new(store: FakeStore.new([row(value)])),
-      "c-2" => FakeConversation.new(store: FakeStore.new, parent: "c-1"),
-    })
-    table = environments(client)
-
-    assert_equal binding, table.resolve("c-2", "c-1")
-    assert_equal 0, client.workspace("ws-1").conversation("c-2").fetches, "the row's parent, not the projection's"
-  end
-
-  # THE HOST'S ORDER IS MEMO → STORE → WALK: a child whose OWN row exists before its first
-  # claim resolves to it, never to the parent's memo — the parent shortcut is the RECEIVED
-  # table's (a runner resolves a spawned child by its parent's received binding); the
-  # host's memo of the parent is the walk's, after the child's own store is read. On a
-  # runner-mode slot (no member plane) the parent's received binding, memoized under a
-  # child, carries a grandchild's chain before the host's call_tool for the child lands.
-  def test_a_childs_own_row_wins_over_the_parents_memo_on_a_host_and_a_runner_chains_through_its_memo
-    client = FakeClient.new(conversations: {
-      "c-1" => FakeConversation.new(store: FakeStore.new([row(value)])),
-      "c-2" => FakeConversation.new(store: FakeStore.new([row(value(@other, anchor: "c-2"), public_id: "se-2")]), parent: "c-1"),
-    })
-    table = environments(client)
-    table.read("c-1", plane: plane(client))
-
-    assert_equal binding(@other, anchor: "c-2"), table.resolve("c-2", "c-1"), "the child's own row, not the parent's memo"
-
-    runner = environments(FakeClient.new, member_plane: ->(**) { })
-    runner.receive("c-1", binding)
-    assert_equal binding, runner.resolve("c-2", "c-1"), "the parent's received binding"
-    assert_equal binding, runner.resolve("c-3", "c-2"), "the grandchild through the child's memo"
-    assert_nil runner.resolve("c-4", "c-9"), "an unknown parent: zero"
+  def test_missing_member_plane_refuses_to_capture_a_default
+    table = environments(FakeClient.new, member_plane: ->(**) { nil })
+    assert_raises(CybrosAgent::Api::InvalidRequest) { table.read("c-1") }
   end
 
   # ---- the placement ----
@@ -567,11 +293,11 @@ class DaemonEnvironmentsTest < Minitest::Test
     assert_equal @project, zero.env.root
     assert_nil zero.binding
     assert_same zero, handle.zero
-    assert_same zero, handle.for(task(nil)), "a standalone run_public_id: zero"
-    assert_same zero, handle.for(task("c-5", run_public_id: "al-5")), "no record: zero"
+    assert_raises(ArgumentError) { handle.for(task(nil, binding: nil)) }
+    assert_raises(ArgumentError) { handle.for(task("c-5", binding: nil)) }
     assert_equal registry.names.sort, handle.names.sort
 
-    placed = handle.for(task("c-1"))
+    placed = handle.for(task("c-1", binding: binding(@other)))
     assert_equal [File.realpath(@other), [], "c-1"], [placed.env.root, placed.env.directories, placed.binding.anchor],
       "the gem spells the placement's root by its real path"
     assert_equal @project, placed.env.documents_root, "the documents are the default root's"
@@ -592,12 +318,11 @@ class DaemonEnvironmentsTest < Minitest::Test
     assert_nil rebuilt.env.checkpoints, "no store opener: no store"
   end
 
-  def test_settings_replace_both_slots_without_losing_received_bindings_or_the_mutation_queue
+  def test_settings_replace_both_slots_without_changing_captured_bindings_or_the_mutation_queue
     table = environments(FakeClient.new(conversations: {}))
-    table.receive("c-1", binding(@other))
     runner = table.toolsets
     agent = table.agent_toolsets(registry)
-    before = runner.for(task("c-1"))
+    before = runner.for(task("c-1", binding: binding(@other)))
     original_agent = agent.for(task("c-1"))
     empty = Rho::Runner::Extensions::Loader.call(builtin: []).registry
 
@@ -608,7 +333,7 @@ class DaemonEnvironmentsTest < Minitest::Test
     assert_same agent, table.agent_toolsets(empty)
     assert_empty runner.names
     assert_empty agent.names
-    after = runner.for(task("c-1"))
+    after = runner.for(task("c-1", binding: binding(@other)))
     assert_equal before.binding, after.binding, "the received conversation binding survives"
     assert_equal File.realpath(@other), after.env.root
     assert_equal 7, after.env.bash_timeout_seconds
@@ -654,7 +379,7 @@ class DaemonEnvironmentsTest < Minitest::Test
 
     listing = table.listing([Rho::Host::Conversation.new(public_id: "c-1"), Rho::Host::Conversation.new(public_id: "c-2")])
 
-    assert_equal [{ conversation: "c-1", runner: nil, root: @project, directories: [], anchor: "c-1", source: "conversation", relayed: nil, fs: nil, mcp: [] }],
+    assert_equal [{ conversation: "c-1", runner: nil, root: @project, directories: [], anchor: "c-1", source: "conversation", fs: nil, mcp: [] }],
       listing
   end
 

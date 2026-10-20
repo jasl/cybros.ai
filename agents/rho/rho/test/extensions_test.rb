@@ -84,7 +84,7 @@ class RhoExtensionsTest < Minitest::Test
     assert_predicate loaded, :ok?
     # Runner tools include operator-only reads and environment binding;
     # application tools manage this installation's extensions.
-    assert_equal %w[bash checkpoint_restore checkpoints edit environment_bind file_import file_publish files_bytes find git_review grep list_extensions list_processes ls manage_extension process_log read read_process skill start_process stop_process write],
+    assert_equal %w[bash checkpoint_restore checkpoints edit file_import file_publish files_bytes find git_review grep list_extensions list_processes ls manage_extension process_log read read_process skill start_process stop_process write],
       loaded.registry.names.sort
     # Every route that is not the core's lifecycle or one of its three verbs, by its owner
     # (the standalone author and followed-set reads belong to Ops).
@@ -619,7 +619,7 @@ class ExtensionsPerModeTest < Minitest::Test
 
     runner = Rho::RunDeclaration.announcement(registry: registry.serving(:runner))
     agent = Rho::RunDeclaration.announcement(registry: registry.serving(:agent))
-    assert_equal %w[bash edit environment_bind file_import file_publish files_bytes find git_review grep list_processes ls process_log read read_process skill
+    assert_equal %w[bash edit file_import file_publish files_bytes find git_review grep list_processes ls process_log read read_process skill
                     start_process stop_process write],
       runner.map { |entry| entry.fetch("name") }
     refute(runner.any? { |entry| entry.key?("timeout_ms") })

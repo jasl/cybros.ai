@@ -19,8 +19,15 @@ class Input < ApplicationRecord
     expected_context_revision expected_tail_turn_public_id expected_steering_run_public_id
     provider_id model_ref reasoning_effort reasoning_enabled request_options expected_lock_version tool_names
     approval_mode instructions answering_user_public_id speaker_public_id deliver_at steps
-    agent_configuration model_selection fallback_models
+    agent_configuration model_selection fallback_models executor_contexts
   ].freeze
+
+  def executor_contexts = context_options["executor_contexts"] || agent_configuration&.executor_contexts
+
+  def executor_contexts=(value)
+    value = Nexus::ExecutorContexts.normalize(value) if Nexus::ExecutorContexts.valid?(value)
+    self.context_options = context_options.merge("executor_contexts" => value) unless value.nil?
+  end
 
   # The adapter's fence-shape check: a fence the caller asked for must
   # fence, so a malformed one refuses at the parameter boundary.

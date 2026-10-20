@@ -65,14 +65,7 @@ module Rho
         NAME = "rho.checkpoints".freeze
 
         TOOLS = [Tools::CheckpointRestore, Tools::Checkpoints].freeze
-        # THE RUNNER TOOL A HOST RELAYS A CONVERSATION'S BINDING WITH: rho's `Rho::Extensions::Environment::Tools::Bind`,
-        # an HONEST write-kind runner-state write, hidden by name. A string
-        # here because rho-runner cannot see rho's constant (rho depends on
-        # this gem); rho's own test pins the two spellings equal. Without
-        # it every relayed bind would snapshot the runner's default root.
-        ENVIRONMENT_BIND = "environment_bind".freeze
-        # The extension's own tools and the relayed bind: never captured.
-        EXEMPT = [*TOOLS.map { |klass| klass::NAME }, ENVIRONMENT_BIND].freeze
+        EXEMPT = TOOLS.map { |klass| klass::NAME }.freeze
         WRITE_KIND = "write".freeze
         # The path-precise tools' one argument (`write`/`edit`): resolved
         # through the env's rule (absolute and `~` untouched, a relative

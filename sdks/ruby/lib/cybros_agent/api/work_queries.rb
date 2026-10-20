@@ -1,5 +1,6 @@
 module CybrosAgent
   module Api
+    RunCandidate = Data.define(:public_id, :workspace_public_id, :conversation_public_id, :turn_public_id, :status)
     AttentionItem = Data.define(:workspace_public_id, :run_public_id, :conversation_public_id, :task)
     WorkRunCounts = Data.define(:pending, :running, :paused, :needs_attention, :canceling, :completed, :canceled)
     WorkCurrent = Data.define(:run_counts, :attention_count)
@@ -14,6 +15,7 @@ module CybrosAgent
       TOTALS = { created_runs: :integer, active_answering_agents: :integer,
         conversation_usage: [:shape, Platform::UsageCounters] }.freeze
       SHAPES = {
+        RunCandidate => RunCandidate.members.to_h { |name| [name, :string] },
         AttentionItem => { workspace_public_id: :string, run_public_id: :string,
           conversation_public_id: :nullable_string, task: [:shape, Task] },
         WorkRunCounts => WorkRunCounts.members.to_h { |name| [name, :integer] },
@@ -45,6 +47,10 @@ module CybrosAgent
         params = query(workspace_public_id:, after:, limit:, status: status && Array(status).join(","),
           attention:, order:, from:, to:, answering_user_public_id:, agent_public_id:, executor_public_id:, kind:)
         page(Run, @dispatch.call("/agent_api/v1/runs", params:), "runs")
+      end
+
+      def run_candidates(agent_public_id: nil, after: nil)
+        page(RunCandidate, @dispatch.call("/agent_api/v1/run_candidates", params: query(agent_public_id:, after:)), "runs")
       end
 
       def attention(workspace_public_id: nil, view: nil, after: nil, limit: nil, order: nil)

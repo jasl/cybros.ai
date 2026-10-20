@@ -32,7 +32,7 @@ module Conversations
     end
 
     def selection(conversation, addressee: nil)
-      return captured_selection(conversation, addressee: addressee) if captured?(conversation, addressee: addressee)
+      return captured_selection(conversation, addressee: addressee) if captured_model?(conversation, addressee: addressee)
 
       own = own_selection(addressee)
       return own if own
@@ -50,6 +50,12 @@ module Conversations
       conversation.agent_configuration && (addressee.nil? || addressee.id == conversation.answering_user_id)
     end
 
+    # Identity-based children also capture configuration for executor contexts.
+    # Only a captured selection intent replaces the ordinary addressee model ladder.
+    def captured_model?(conversation, addressee: nil)
+      captured?(conversation, addressee: addressee) && conversation.model_selection.present?
+    end
+
     # A declared child continues its own actual selection, including a recovery
     # switch, while the configuration it was born with remains unchanged.
     def captured_selection(conversation, addressee: nil)
@@ -62,6 +68,8 @@ module Conversations
     end
 
     def captured_intent(conversation, addressee: nil)
+      return unless captured_model?(conversation, addressee: addressee)
+
       variant = (last_reply(conversation, addressee) || last_reply(conversation, nil))&.active_variant
       variant&.model_selection || conversation.model_selection
     end

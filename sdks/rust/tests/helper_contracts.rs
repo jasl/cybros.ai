@@ -20,6 +20,7 @@ fn fixture(family: &str, key: &str) -> Value {
 #[test]
 fn authoring_serializes_all_model_default_fields_and_only_public_grammar() {
     let model = ModelDefaults {
+        executor_contexts: None,
         model: Some(AuthoringModel::Reference("dev/text".into())),
         workload: Some(Workload::TextGeneration),
         tools: Some(vec![]),

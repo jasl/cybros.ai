@@ -131,14 +131,14 @@ module CybrosAgent
       # capture over a slow link is the caller's to size. The answer is
       # read with `wait_for_tool_result` on the context this returns.
       def start_tool_call(runner_executor_public_id:, tool:, idempotency_key:, input: {}, timeout_ms: nil,
-                  approval_rules: UNSET)
+                  approval_rules: UNSET, executor_context: nil)
         required_string(runner_executor_public_id, "runner_executor_public_id")
         required_string(tool, "tool")
         raise ArgumentError, "input must be a Hash" unless input.is_a?(Hash)
 
         created = create(
           steps: [Steps::Tool.new(name: tool, input: input, timeout_ms: timeout_ms,
-            key: RunContext::TOOL_CALL_TASK_KEY,
+            key: RunContext::TOOL_CALL_TASK_KEY, executor_context: executor_context,
             route: { "kind" => "runner", "runner_executor_public_id" => runner_executor_public_id })],
           idempotency_key: idempotency_key, approval_mode: REQUEST_APPROVAL_MODE,
           prompt_mechanism: REQUEST_PROMPT_MECHANISM, approval_rules: approval_rules,

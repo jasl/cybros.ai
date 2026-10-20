@@ -63,8 +63,8 @@ class OpsRestoreGuardTest < Minitest::Test
     @api = RestoreApi.new(turns: [turn], fork_runner_effects: effects, conversation_runner: runner, variants: variants)
     @api.set_default_runner("c-1", runner)
     member_ready(@daemon, @api, identity: RhoTest::DaemonHarness::RUNNER_IDENTITY)
-    @daemon.context.environments.receive("c-1", Rho::Runner::Environment::Binding.new(
-      root: @current_root, directories: [], anchor: "c-1"))
+    @api.stock_store_entry("c-1", namespace: "rho.environment", key: "binding/#{runner}",
+      value: { "root" => @current_root, "directories" => [], "anchor" => "c-1" })
     @api.tool_env = Rho::Runner::ToolEnv.new(root: @current_root, artifacts_dir: File.join(@projects, "artifacts"),
       checkpoint_resolver: @daemon.context.environments.method(:checkpoint_stores).to_proc)
   end

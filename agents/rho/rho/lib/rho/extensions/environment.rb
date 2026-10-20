@@ -2,15 +2,10 @@ require "uri"
 
 module Rho
   module Extensions
-    # Where this machine's tools are pointed and what it can do — the chip a
-    # UI will render, debuggable from a terminal before that UI exists
-    # — and THE CONVERSATION'S ENVIRONMENT:
-    # rho's record
-    # in the conversation's own store, read through one door, bound
-    # through another, listed as the live table, and relayed to a runner
-    # elsewhere through the hidden runner tool this extension serves.
+    # Authoring defaults and local environment controls. Accepted work carries
+    # its own captured context through Nexus to the selected Executor.
     module Environment
-      NAME = "rho.environment".freeze
+      NAME = Rho::Runner::Environment::CONTEXT_KEY.freeze
       # THE RECORD'S TWO SPELLINGS: nothing reserves them
       # kernel-side, so rho pins them here — once — and every reader and
       # writer names the constants. The namespace IS the extension's name,
@@ -31,13 +26,6 @@ module Rho
         api.register_route("GET", "/conversations/environment") { |request, ctx| Routes.conversation(request, ctx) }
         api.register_route("POST", "/conversations/environment") { |request, ctx| Routes.bind(request, ctx) }
         api.register_route("GET", "/environments") { |_request, ctx| Routes.environments(ctx) }
-        # THE RECEIVING TOOL, on every host serving the runner
-        # address — a full-mode rho is somebody else's bound runner too;
-        # agent mode serves no runner tool and registers none.
-        if api.serves?(:runner)
-          Tools::Bind.bind(environments: api.host&.environments, log: api.host&.log)
-          api.register_tool(Tools::Bind, serves: :runner)
-        end
         api.register_command("env", usage: "env [DIR]",
           description: "Show where this machine's tools are pointed, or point them somewhere",
           options: { clear: { type: :boolean, default: false,
@@ -114,7 +102,7 @@ module Rho
 
               plane = MemberPlane.new(client: client, workspace_public_id: workspace_public_id)
               read = ctx.environments.read(public_id, plane: plane, runner: binding[:runner])
-              [200, { environment: describe(ctx, public_id, binding, read, relayed: relayed_of(ctx, public_id, binding)) }]
+              [200, { environment: describe(ctx, public_id, binding, read) }]
             end
           end
 
@@ -153,10 +141,6 @@ module Rho
               answer = write(ctx, public_id, body, plane, runner: binding[:runner], local: binding[:runner].nil? || ctx.own_runner?(binding[:runner]))
               next answer if answer in Rho::Daemon::Refusal
 
-              relayed = nil
-              if answer.binding && binding[:runner] && !ctx.own_runner?(binding[:runner])
-                relayed = ctx.environments.assert_remote(public_id, binding[:runner], answer.binding, plane: plane)
-              end
               if body.key?("fs")
                 refused = Port.register(ctx, public_id, binding, answer, fs)
                 next refused if refused
@@ -165,7 +149,7 @@ module Rho
                 refused = Servers.bind(ctx, public_id, answer, mcp)
                 next refused if refused
               end
-              [200, { environment: describe(ctx, public_id, binding, answer, relayed: relayed&.to_h) }]
+              [200, { environment: describe(ctx, public_id, binding, answer) }]
             end
           end
 
@@ -202,30 +186,13 @@ module Rho
               ctx.environments.bind(public_id, root: root, directories: directories, plane: plane, runner:)
             end
 
-            # `resolved` is this host's placement of the record: a root set
-            # every member of which can be placed here, `refused` for one
-            # under a protected root, false for one absent; the default is
-            # always placed.
-            def describe(ctx, public_id, binding, read, relayed:)
+            def describe(ctx, public_id, binding, read)
               environments = ctx.environments
-              root = read.root || ctx.environment.root
-              resolved =
-                if read.binding.nil? then true
-                elsif [read.root, *read.directories].any? { |path| environments.refusal_for(path) == "protected_root" } then "refused"
-                else environments.resolved?(read.binding)
-                end
+              root = read.root || (ctx.environment.root if binding[:runner].nil? || ctx.own_runner?(binding[:runner]))
               { root: root, directories: read.directories, anchor: read.anchor, source: read.source,
-                lock_version: read.lock_version, updated_at: read.updated_at, resolved: resolved,
-                relayed: relayed, runner: binding[:runner], conversation: public_id,
+                lock_version: read.lock_version, updated_at: read.updated_at,
+                runner: binding[:runner], conversation: public_id,
                 fs: environments.port_description(read.anchor), mcp: environments.servers_report(read.anchor) }
-            end
-
-            def relayed_of(ctx, public_id, binding)
-              runner = binding[:runner]
-              return nil if runner.nil? || ctx.own_runner?(runner)
-
-              assertion = ctx.environments.asserted(public_id, runner)
-              assertion && { runner: runner, state: assertion.state, booted_at: assertion.booted_at, resolved: assertion.resolved }
             end
         end
       end
@@ -404,5 +371,4 @@ module Rho
   end
 end
 
-require_relative "environment/bind"
 require_relative "environment/fs_port"

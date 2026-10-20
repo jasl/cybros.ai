@@ -774,6 +774,9 @@
       "tool_input": {
         "path": "x.rb"
       },
+      "executor_context": {
+        "fixture.directory": "/srv/project"
+      },
       "structured_content": {
         "lines": 1
       }

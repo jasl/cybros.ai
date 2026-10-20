@@ -25,6 +25,24 @@ class LineageTest < Minitest::Test
     )
   end
 
+  def test_recovery_is_single_flight_per_credential_and_old_completion_cannot_release_its_replacement
+    first = about
+    adopted(first)
+    assert @lineage.begin_recovery(first)
+    refute @lineage.begin_recovery(first)
+    second = about("replacement")
+    adopted(second)
+    refute @lineage.begin_recovery(first)
+    assert @lineage.begin_recovery(second)
+    @lineage.finish_recovery(first)
+    refute @lineage.begin_recovery(second)
+    @lineage.finish_recovery(second)
+    assert @lineage.begin_recovery(second)
+    @lineage.begin_stop
+    @lineage.finish_recovery(second)
+    refute @lineage.begin_recovery(second)
+  end
+
   def about(token = "member-token")
     credential = Object.new
     credential.define_singleton_method(:member_credential) { token }

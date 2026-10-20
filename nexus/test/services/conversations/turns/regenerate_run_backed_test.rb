@@ -19,7 +19,8 @@ class Conversations::Turns::RegenerateRunBackedTest < ActiveJob::TestCase
     DevModelLane.ensure_enabled!(@account)
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
     declare_tools!(@agent, approval_mode: "ask", approval_rules: RULES)
-    post_input!(@conversation, acting_user: @human, text: "the question")
+    @contexts = { Executor.address_for(@agent).public_id => { "fixture.directory" => "/accepted" } }
+    post_input!(@conversation, acting_user: @human, text: "the question", executor_contexts: @contexts)
     Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id)
   end
 
@@ -27,7 +28,7 @@ class Conversations::Turns::RegenerateRunBackedTest < ActiveJob::TestCase
   # prompt: sealed into the seed, kept on the variant, and placed after history when the request is
   # rebuilt.
   def settled_origin!(text: nil)
-    turn, run = materialize_loop_reply!(@conversation, agent: @agent, text: text)
+    turn, run = materialize_loop_reply!(@conversation, agent: @agent, text: text, executor_contexts: @contexts)
     clear_enqueued_jobs
     Runs::Transition.run(run, status: "completed", completed_at: Time.current)
     Conversations::Turns::Converge.call
@@ -66,6 +67,7 @@ class Conversations::Turns::RegenerateRunBackedTest < ActiveJob::TestCase
     sibling = result.value
     new_loop = sibling.run
     new_seed = seed_of(new_loop)
+    assert_equal @contexts, Executors::TaskOperations::Context.defaults(new_seed).fetch("executor_contexts")
     new_input = input_of(new_seed)
     assert_predicate new_input, :sealed?
     assert_equal fragments_of(origin_input), fragments_of(new_input), "the same fragments in the same order"
@@ -98,6 +100,7 @@ class Conversations::Turns::RegenerateRunBackedTest < ActiveJob::TestCase
 
     assert_predicate result, :accepted?, result.outcome.to_s
     new_loop = result.value.run
+    assert_equal @contexts, Executors::TaskOperations::Context.defaults(seed_of(new_loop)).fetch("executor_contexts")
     new_seed = seed_of(new_loop)
     new_input = input_of(new_seed)
     assert_predicate new_input, :sealed?

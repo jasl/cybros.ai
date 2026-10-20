@@ -102,9 +102,8 @@ module Rho
     # dereferences it per call.
     # `environments` is the daemon's
     # environment tables as a CALLABLE — `member_plane`'s precedent: the
-    # tables are born after the extensions register — dereferenced when
-    # the hidden `environment_bind` tool runs; nil under a loader with no
-    # daemon, which answers an error the call_tool's caller reads.
+    # tables are born after the extensions register. Authoring and editor
+    # controls use them; claimed tasks carry their own directory context.
     Host = Data.define(:home, :log, :clock, :config, :processes, :member_plane, :serving_tools, :checkpoints,
       :environments) do
       def initialize(member_plane: nil, serving_tools: true, checkpoints: nil, environments: nil, **members)

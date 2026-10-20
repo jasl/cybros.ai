@@ -26,6 +26,14 @@ module Nexus
           {
             "runs_path" => "/agent_api/v1/runs",
             "attention_path" => "/agent_api/v1/attention",
+            "run_candidates_path" => "/agent_api/v1/run_candidates",
+            "run_candidates_source_limit" => Runs::Candidates::LIMIT,
+            "valid_run_candidates_fixture" => { "runs" => [Runs::Candidates::Candidate.new(
+              public_id: run.public_id, workspace_public_id: workspace.public_id,
+              conversation_public_id: "01900000-0000-7000-8000-0000000000c1",
+              turn_public_id: "01900000-0000-7000-8000-0000000000d1", status: "running").to_h],
+              "pagination" => { "next_after" => "opaque-candidate-page" } },
+            "empty_run_candidates_fixture" => { "runs" => [], "pagination" => { "next_after" => "opaque-candidate-page" } },
             "report_path" => "/agent_api/v1/work_report",
             "report_units" => WorkReports::Report::UNITS,
             "report_max_points" => ModelUsageRollups::UsageReport::MAX_POINTS,

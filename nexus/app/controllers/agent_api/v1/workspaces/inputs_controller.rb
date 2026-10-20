@@ -32,7 +32,7 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
       :text, :visible_in_context, :context_mode, :expected_lock_version, :approval_mode, :instructions,
       :deliver_at, :deliver_in, :delivery_mode,
       { model: %i[model reasoning_effort reasoning_enabled], configuration: {},
-        agent_configuration: {}, model_selection: {}, fallback_models: [] },
+        agent_configuration: {}, model_selection: {}, fallback_models: [], executor_contexts: {} },
     ]).fetch(:input)
     provider_id, model_ref, reasoning_effort, reasoning_enabled = split_model(fields[:model])
     attachments = submitted_attachments
@@ -59,6 +59,7 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
       model_ref: model_ref,
       reasoning_effort: reasoning_effort, reasoning_enabled: reasoning_enabled,
       request_options: fields[:configuration]&.to_h,
+      executor_contexts: submitted_executor_contexts(fields),
       agent_configuration: fields[:agent_configuration]&.to_h,
       model_selection: fields[:model_selection]&.to_h,
       fallback_models: fields[:fallback_models],
@@ -149,6 +150,7 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
         model_ref: model_ref,
         reasoning_effort: reasoning_effort, reasoning_enabled: reasoning_enabled,
         request_options: envelope["configuration"],
+        executor_contexts: envelope["executor_contexts"],
         agent_configuration: envelope["agent_configuration"],
         model_selection: envelope["model_selection"],
         fallback_models: envelope["fallback_models"],
@@ -167,6 +169,14 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
       )
     end
 
+    def submitted_executor_contexts(fields)
+      return unless params.fetch(:input).key?(:executor_contexts)
+      value = fields[:executor_contexts]
+      raise APIErrors::ParameterInvalid, :executor_contexts if value.nil?
+
+      value.to_h
+    end
+
     def create_envelope
       # permit-then-fetch, not expect: an entries-only body (raw mode's
       # legitimate minimal shape) filters to an empty typed set.
@@ -175,7 +185,7 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
         :expected_context_revision, :expected_tail_turn_public_id, :approval_mode, :instructions,
         :answering_user_public_id, :deliver_at, :deliver_in,
         { model: %i[model reasoning_effort reasoning_enabled], configuration: {},
-          agent_configuration: {}, model_selection: {}, fallback_models: [] },
+          agent_configuration: {}, model_selection: {}, fallback_models: [], executor_contexts: {} },
       ]).fetch(:input)
       delivery_time = deliver_at_reading(fields)
       return {} if performed?
@@ -193,6 +203,7 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
         "expected_steering_run_public_id" => expected_steering_loop,
         "model" => fields[:model]&.to_h,
         "configuration" => fields[:configuration]&.to_h,
+        "executor_contexts" => submitted_executor_contexts(fields),
         "agent_configuration" => fields[:agent_configuration]&.to_h,
         "model_selection" => fields[:model_selection]&.to_h,
         "fallback_models" => fields[:fallback_models],

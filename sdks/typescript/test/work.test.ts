@@ -13,6 +13,19 @@ function client(body: unknown) {
   return { work: member.work, requests };
 }
 
+test('candidate windows preserve the cursor even when empty', async () => {
+  for (const name of ['valid_run_candidates_fixture', 'empty_run_candidates_fixture']) {
+    const fixture = pack[name] as { runs: { public_id: string }[]; pagination: { next_after: string } };
+    const { work, requests } = client(fixture);
+    const page = await work.runCandidates({ agent_public_id: 'agent', after: 'cursor' });
+    expect(page.items.map(row => row.public_id)).toEqual(fixture.runs.map(row => row.public_id));
+    expect(page.next_after).toBe(fixture.pagination.next_after);
+    expect(requests[0]?.pathname).toBe('/agent_api/v1/run_candidates');
+    expect(requests[0]?.searchParams.get('agent_public_id')).toBe('agent');
+    expect(requests[0]?.searchParams.get('after')).toBe('cursor');
+  }
+});
+
 test('global Runs keep the Workspace and serialize work filters', async () => {
   const fixture = pack.valid_runs_fixture as { runs: Run[] };
   const { work, requests } = client(fixture);

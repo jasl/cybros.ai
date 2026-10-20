@@ -187,7 +187,9 @@ class Schedules::DispatchTest < ActiveSupport::TestCase
     speaker = Speaker.register_ingress(user: @agent, channel_key: "chat", external_id: "scheduled-speaker",
       display_name: "Scheduled speaker")
     assert_predicate speaker, :persisted?
-    job = create_job!(creating_user: @agent, speaker_public_id: speaker.public_id,
+    contexts = { Executor.address_for(@agent).public_id => { "fixture.directory" => "/scheduled" } }
+    declaration = AgentConfiguration.capture(@agent).tap { |config| config.executor_contexts = contexts }
+    job = create_job!(creating_user: @agent, speaker_public_id: speaker.public_id, agent_configuration: declaration,
       tool_names: ["read_file"], approval_mode: "ask", configuration: { "max_output_tokens" => 64 })
 
     assert_equal :dispatched, dispatch(job, at: NOW + 60)
@@ -204,6 +206,7 @@ class Schedules::DispatchTest < ActiveSupport::TestCase
     loop = child.reload.active_turn.active_variant.run
     assert_equal "ask", loop.approval_mode
     assert_equal [READ_TOOL], loop.tasks.sole.tool_definitions
+    assert_equal contexts, Executors::TaskOperations::Context.defaults(loop.tasks.sole).fetch("executor_contexts")
     assert_equal [READ_TOOL, WRITE_TOOL], @agent.reload.tool_definitions
   end
 

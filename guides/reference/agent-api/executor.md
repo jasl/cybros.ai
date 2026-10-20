@@ -299,3 +299,13 @@ The executor plane's door into the one upload ingest shared with the member door
 | `400 Bad Request` | `parameter_missing` `parameter_invalid` | No `upload[file]` part, or one that is not a file |
 | `413 Content Too Large` | `content_too_large` | Over `upload_bound`; nothing is staged |
 | `401 Unauthorized` | `unauthorized` | A member bearer, or an unusable transport credential |
+
+## Executor context
+
+Executable tool rows returned by inbox, claim and exact task reads include
+an optional `executor_context`, an opaque JSON object. Missing or null means
+no context was captured. It is the value captured for
+that task's concrete executor, independent of `tool_input`. Implementations apply
+their own payload contract before tool handlers and hooks. The kernel preserves
+it across approval, retry and executor restart; it does not interpret paths.
+See [captured executor context](run-steps.md#captured-executor-context) for authoring.

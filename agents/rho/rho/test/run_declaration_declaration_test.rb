@@ -47,12 +47,12 @@ class RhoRunDeclarationTest < Minitest::Test
   def test_the_announcement_is_this_machines_tools_with_their_effect_profiles
     announcement = Rho::RunDeclaration.announcement(registry: registry)
 
-    assert_equal %w[bash checkpoint_restore checkpoints edit environment_bind file_import file_publish files_bytes find git_review grep list_extensions list_processes ls manage_extension process_log read read_process skill start_process stop_process write],
+    assert_equal %w[bash checkpoint_restore checkpoints edit file_import file_publish files_bytes find git_review grep list_extensions list_processes ls manage_extension process_log read read_process skill start_process stop_process write],
       announcement.map { |entry| entry.fetch("name") }, "sorted by name, and never the kernel's"
     announcement.each do |entry|
       expected_keys = %w[name effect_profile description input_schema]
       # Described to nobody: the name and the profile alone.
-      expected_keys = %w[name effect_profile] if %w[files_bytes git_review process_log checkpoints checkpoint_restore environment_bind].include?(entry.fetch("name"))
+      expected_keys = %w[name effect_profile] if %w[files_bytes git_review process_log checkpoints checkpoint_restore].include?(entry.fetch("name"))
       expected_keys += ["timeout_ms"] if %w[manage_extension checkpoint_restore].include?(entry.fetch("name"))
       assert_equal expected_keys.sort, entry.keys.sort,
         "name, profile and the declaration facts, and a timeout only where one is declared"

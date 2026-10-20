@@ -89,7 +89,7 @@ module CybrosAgent
     InboxTask = Data.define(
       :kind, :run_public_id, :workspace_public_id, :conversation_public_id, :parent_public_id, :task_key, :prompt, :options,
       :multi, :fields, :tool_name, :tool_alias, :tool_input, :scope, :tool_call_id, :started_at, :deadline_at, :timeout_ms,
-      :claimed, :addressed_to, :target, :effect_profile
+      :claimed, :addressed_to, :target, :effect_profile, :executor_context
     ) do
       # A consumer building a row itself (a runner's test double) may leave
       # out the members its row has no value for, and they read as nil, as
@@ -97,11 +97,11 @@ module CybrosAgent
       # the kernel writes them on every executable row.
       def initialize(workspace_public_id:, addressed_to: nil, target: nil, prompt: nil, options: nil, multi: nil, fields: nil, tool_name: nil,
                      tool_alias: nil, scope: nil, effect_profile: nil, conversation_public_id: nil,
-                     parent_public_id: nil, **members)
+                     parent_public_id: nil, executor_context: nil, **members)
         super(workspace_public_id: workspace_public_id, addressed_to: addressed_to, target: target,
               prompt: prompt, options: options, multi: multi, fields: fields,
               tool_name: tool_name, tool_alias: tool_alias, scope: scope, effect_profile: effect_profile,
-              conversation_public_id: conversation_public_id, parent_public_id: parent_public_id, **members)
+              conversation_public_id: conversation_public_id, parent_public_id: parent_public_id, executor_context: executor_context, **members)
       end
 
       def target_executor_public_id = target&.executor_public_id
@@ -288,11 +288,11 @@ module CybrosAgent
     # a live follower rendered; nil where no output was stamped.
     TaskDetail = Data.define(
       :task, :output, :content, :structured_content, :prompt, :options, :multi, :fields, :tool_input, :effect_profile, :request_bytes,
-      :instructions, :tool_definitions, :title, :metadata, :wait, :output_preview, :declaring_task_key, :model_selection, :fallback_models
+      :instructions, :tool_definitions, :title, :metadata, :wait, :output_preview, :declaring_task_key, :model_selection, :fallback_models, :executor_context
     ) do
       def initialize(prompt: nil, options: nil, multi: nil, fields: nil, tool_input: nil, effect_profile: nil, request_bytes: nil,
                      instructions: nil, tool_definitions: nil, title: nil, metadata: nil, wait: nil, output_preview: nil,
-                     declaring_task_key: nil, model_selection: nil, fallback_models: nil, **) = super
+                     declaring_task_key: nil, model_selection: nil, fallback_models: nil, executor_context: nil, **) = super
     end
 
     # What the manual compaction door answers: the round it repaired, and

@@ -126,6 +126,8 @@ module Rho
       # untouched. The one resolution every run-grain verb takes.
       def backing_run(public_id) = @host_followers.call.backing_run(public_id)
 
+      def execution_contexts(client, **options) = @host_followers.call.execution_contexts(client, **options)
+
       def conversation_tool_names(public_id, workspace, **options) = @host_followers.call.conversation_tool_names(public_id, workspace, **options)
 
       def conversation_modes(request, write: false) = @host_followers.call.modes(request, self, write: write)

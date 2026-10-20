@@ -119,7 +119,7 @@ class WorkspacesTest < Minitest::Test
         Rho::Runner::ExecutionContext.with(context) do
           plane = daemon.host.member_plane.call(host_public_id: child, workspace_public_id: context.workspace_public_id)
           assert_equal "ws-1", plane.workspace_public_id
-          binding = daemon.host.environments.call.resolve(child, child == "child" ? "c-1" : "child")
+          binding = daemon.host.environments.call.read(child, parent: child == "child" ? "c-1" : "child", plane: plane).binding
           assert_equal root, binding.root
           assert_equal "c-1", binding.anchor
         end

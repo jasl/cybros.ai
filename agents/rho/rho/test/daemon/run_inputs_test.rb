@@ -106,7 +106,8 @@ class DaemonHostFollowersTest < Minitest::Test
     assert_equal({ "public_id" => "cin-1", "state" => "steering", "position" => { "cursor" => nil, "sequence" => 0 } }, JSON.parse(response.body).fetch("input"))
     input = api.inputs.fetch(0).fetch("input")
     assert_equal({ "kind" => "direct_reply", "text" => "also the docs", "delivery_mode" => "steer", "speaker_public_id" => "speaker-owner",
-                   "model" => { "model" => "openrouter/x" } }, input.except("inline", "agent_configuration", "model_selection", "fallback_models"))
+                   "model" => { "model" => "openrouter/x" } }, input.except("inline", "agent_configuration", "model_selection", "fallback_models", "executor_contexts"))
+    assert_equal daemon.context.tool_env.root, input.dig("executor_contexts", "executor-1", "rho.environment", "root")
     assert_equal({ "source" => "default", "model" => "openrouter/x", "constraint" => "any", "alternatives" => [] }, input.fetch("model_selection"))
     assert_empty input.fetch("fallback_models")
     assert_includes input.dig("agent_configuration", "system_prompt", "content"), Rho::RunDeclaration::GUIDELINE
@@ -445,7 +446,8 @@ class DaemonHostFollowersTest < Minitest::Test
     input = api.inputs.fetch(0).fetch("input")
     refute input.key?("tool_names"), "no foreign runner or editor tools require narrowing"
     assert_equal({ "kind" => "direct_reply", "text" => "more", "delivery_mode" => "steer", "speaker_public_id" => "speaker-owner",
-                   "model" => { "model" => "openrouter/x" } }, input.except("inline", "agent_configuration", "model_selection", "fallback_models"))
+                   "model" => { "model" => "openrouter/x" } }, input.except("inline", "agent_configuration", "model_selection", "fallback_models", "executor_contexts"))
+    assert_equal daemon.context.tool_env.root, input.dig("executor_contexts", "executor-1", "rho.environment", "root")
     assert_equal({ "source" => "default", "model" => "openrouter/x", "constraint" => "any", "alternatives" => [] }, input.fetch("model_selection"))
     assert_empty input.fetch("fallback_models")
     assert_includes input.dig("agent_configuration", "system_prompt", "content"), Rho::RunDeclaration::GUIDELINE

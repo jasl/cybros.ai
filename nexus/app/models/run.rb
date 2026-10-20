@@ -165,6 +165,34 @@ class Run < ApplicationRecord
     in_scope.where(variant_id: nil).or(in_scope.where(variant_id: hosted))
   end
 
+  # Probe each run's chain tail without materializing its historical models.
+  # A late inserted steer can precede an older continuation, so ID alone is not the tail.
+  # The first-read index shares node_key's C collation for the keyed equality probe.
+  def self.mainline_tails(run_ids)
+    return [] if run_ids.empty?
+
+    sources = Task.sanitize_sql_array([
+      "(VALUES #{Array.new(run_ids.length, "(?::bigint)").join(", ")}) AS source(run_id)", *run_ids,
+    ])
+    Task.find_by_sql(<<~SQL)
+      SELECT tail.* FROM #{sources}
+      CROSS JOIN LATERAL (
+        SELECT tasks.* FROM tasks
+        WHERE tasks.run_id = source.run_id
+          AND tasks.type = 'Tasks::ModelTask'
+          AND tasks.continuation_source IS DISTINCT FROM 'branch'
+          AND NOT EXISTS (
+            SELECT 1 FROM tasks follower
+            WHERE follower.run_id = tasks.run_id
+              AND follower.type = 'Tasks::ModelTask'
+              AND follower.continuation_source IS DISTINCT FROM 'branch'
+              AND follower.input_from_node_keys[1] COLLATE "C" = tasks.node_key
+          )
+        ORDER BY tasks.id DESC LIMIT 1
+      ) tail
+    SQL
+  end
+
   def terminal? = TERMINAL_STATUSES.include?(status)
 
   def tombstoned? = tombstoned_at.present?
@@ -252,9 +280,7 @@ class Run < ApplicationRecord
       read_first = mainline.filter_map { |node| node.input_from_node_keys&.first }.to_set
       mainline.reject { |node| read_first.include?(node.node_key) }.max_by(&:id)
     else
-      read_first = mainline_nodes.where("cardinality(input_from_node_keys) > 0")
-        .pluck(Arel.sql("input_from_node_keys[1] AS first_read"))
-      mainline_nodes.where.not(node_key: read_first).order(id: :desc).first
+      self.class.mainline_tails([id]).first
     end
   end
 

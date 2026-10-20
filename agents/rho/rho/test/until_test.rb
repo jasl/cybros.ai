@@ -50,7 +50,9 @@ class UntilTest < Minitest::Test
   def setup
     @dir = "/srv/app"
     @seed = { "model" => { "model" => "m/x" }, "tools" => [{ "t" => 1 }], "instructions" => "be good" }
-    @policy = Rho::Until::Policy.new(command: "ruby check.rb", attempts: 3, directory: @dir, runner: nil, seed: @seed)
+    @captured = { "rho.environment" => { "root" => @dir, "directories" => [] } }
+    @seed["executor_contexts"] = { "runner-1" => @captured }
+    @policy = Rho::Until::Policy.new(command: "ruby check.rb", attempts: 3, directory: @dir, runner: "runner-1", seed: @seed)
   end
 
   def task(key, kind, status, error: nil)
@@ -176,7 +178,7 @@ class UntilTest < Minitest::Test
       "the round names the check and its verdict: nothing reaches it by position across appends"
     refute_includes work.prompt, "boom", "the model reads the check's output as the named result, never a copy"
     refute_includes work.prompt, "full output:"
-    assert_equal Rho::Until.check_steps(2, command: "ruby check.rb", directory: @dir, timeout_seconds: 5), [check, hold],
+    assert_equal Rho::Until.check_steps(2, command: "ruby check.rb", directory: @dir, timeout_seconds: 5, runner: "runner-1", executor_context: @captured), [check, hold],
       "the next check is placed after its attempt, by position, with its hold behind it"
     assert_instance_of CybrosAgent::Steps::Tool, check
     assert_equal ["bash", { "command" => "ruby check.rb", "workdir" => @dir, "timeout" => 5 }, "check-2",
@@ -262,7 +264,7 @@ class UntilTest < Minitest::Test
   # The verdict is on the row; the recording is retried, and a kernel that
   # keeps refusing gets the run back with the reason rather than a run
   # parked behind its hold for twelve hours.
-  def test_a_refused_append_is_retried_then_the_run_is_given_back_with_the_reason
+  def test_a_refused_append_keeps_the_goal_recoverable_with_the_same_key
     refusing = Class.new(FakeContext) do
       attr_reader :tries
 
@@ -280,14 +282,11 @@ class UntilTest < Minitest::Test
 
     assert_equal %w[check-1], refusing.detail_reads, "the row is read once; only the append is retried"
     assert_equal [2.0, 4.0, 6.0], naps
-    assert g.done?
-    release = refusing.appends.fetch(0)
-    assert_equal ["report"], release[:steps].map(&:key)
-    assert_includes release[:steps].first.prompt, "verdict could not be recorded"
-    assert_includes release[:steps].first.prompt, "Invalid parameter"
-    assert_equal [{ "task" => "hold-1", "content" => "check 1/3: the acceptance check's verdict could not be recorded " \
-                                                    "(InvalidRequest: Invalid parameter: x)" }], release[:resolve]
-    assert_equal Rho::Until.idempotency_key("run-1", 1, "release"), release[:idempotency_key]
+    refute g.done?
+    assert_empty refusing.appends
+    g.reconsider(refusing)
+    assert_equal 1, refusing.appends.length
+    assert_equal Rho::Until.idempotency_key("run-1", 1), refusing.appends.first[:idempotency_key]
   end
 
   # A check the RUNNER could not run — no executor announces bash, the
@@ -388,22 +387,22 @@ class UntilTest < Minitest::Test
     assert_equal "r1", Rho::Until.work_key(1)
     assert_equal "work-2", Rho::Until.work_key(2)
     wire = [
-      { "tool" => { "name" => "bash", "route" => { "kind" => "runner" },
+      { "tool" => { "name" => "bash", "route" => { "kind" => "runner", "runner_executor_public_id" => "runner-1" }, "executor_context" => @captured,
                     "input" => { "command" => "t", "workdir" => "/d", "timeout" => 5 },
                     "key" => "check-1", "timeout_ms" => Rho::Until::CHECK_PARK_MS, "on_failure" => "absorb" } },
       { "ask" => { "key" => "hold-1", "prompt" => "verdict of acceptance check 1",
                    "timeout_ms" => Rho::Until::HOLD_TIMEOUT_MS } },
     ]
-    assert_equal wire, Rho::Until.check_steps(1, command: "t", directory: "/d", timeout_seconds: 5).map(&:to_h)
-    assert_equal %w[check-4 hold-4], Rho::Until.check_steps(4, command: "t", directory: "/d", timeout_seconds: 5).map(&:key)
+    assert_equal wire, Rho::Until.check_steps(1, command: "t", directory: "/d", timeout_seconds: 5, runner: "runner-1", executor_context: @captured).map(&:to_h)
+    assert_equal %w[check-4 hold-4], Rho::Until.check_steps(4, command: "t", directory: "/d", timeout_seconds: 5, runner: "runner-1", executor_context: @captured).map(&:key)
     assert_equal 4, Rho::Until.attempt_of("hold-4")
     assert_equal 4, Rho::Until.attempt_of("check-4")
   end
 
   # No directory known (a remote runner announced no root): bash runs in
   # the runner's root, so the step names no `workdir`.
-  def test_an_unknown_directory_leaves_workdir_to_the_runner
-    check, = Rho::Until.check_steps(1, command: "t", directory: nil, timeout_seconds: 5)
+  def test_omitted_workdir_still_carries_the_captured_environment
+    check, = Rho::Until.check_steps(1, command: "t", directory: nil, timeout_seconds: 5, runner: "runner-1", executor_context: @captured)
     assert_equal({ "command" => "t", "timeout" => 5 }, check.input)
   end
 
@@ -414,18 +413,15 @@ class UntilTest < Minitest::Test
     assert_equal "al-7", g.run_public_id
     assert_equal "al-7", g.to_h.fetch("run_public_id")
     refute gate.to_h.key?("run_public_id"), "an unbound gate says nothing about one"
-    refute gate.to_h.key?("runner"), "an own-runner gate names none"
+    assert_equal "runner-1", gate.to_h.fetch("runner")
     remote = Rho::Until::Gate.new(policy: @policy.with(runner: "R1"), timeout_seconds: 5)
     assert_equal "R1", remote.to_h.fetch("runner")
   end
 
   def test_the_policy_round_trips_through_the_store_with_its_nils
-    remote = Rho::Until::Policy.new(command: "t", attempts: 2, directory: nil, runner: "R1", seed: {})
-    assert_equal remote, Rho::Until::Policy.from_h(remote.to_h)
-    assert_equal({ "command" => "t", "attempts" => 2, "directory" => nil, "runner" => "R1", "seed" => {} }, remote.to_h)
     assert_equal @policy, Rho::Until::Policy.from_h(@policy.to_h)
-    assert_equal @policy, Rho::Until::Policy.from_h(@policy.to_h.except("runner")),
-      "a row written before the runner member is read as own"
+    assert_raises(KeyError) { Rho::Until::Policy.from_h(@policy.to_h.except("runner")) }
+    assert_raises(KeyError) { Rho::Until::Policy.from_h(@policy.to_h.merge("seed" => {})) }
   end
 
   def test_the_paragraph_names_the_command_the_directory_and_the_count

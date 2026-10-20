@@ -7,7 +7,7 @@ module Executors
 
       def defaults(node)
         return Runs::Tasks::Step.model_defaults(node) if node.model_task?
-        return node.operation_context if node.operation_context
+        return node.operation_context.except("executor_context") if node.operation_context
 
         parent = node.expansion_parent
         return Runs::Tasks::Step.model_defaults(parent) if parent&.model_task?
@@ -15,6 +15,15 @@ module Executors
 
         round = Runs::KernelTool.round_of(node)
         round ? Runs::Tasks::Step.model_defaults(round) : {}
+      end
+
+      def executor_context(node)
+        return node.operation_context["executor_context"] if node.operation_context&.key?("executor_context")
+
+        values = defaults(node)
+        (values["executor_contexts"] || node.run.agent_configuration&.executor_contexts || {})[
+          node.target_executor_public_id || Executor.address_for(node.run.execution_agent)&.public_id
+        ]
       end
 
       def projection(node)

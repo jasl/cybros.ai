@@ -18,6 +18,7 @@ module Rho
       # never a model's; the schema stands for the run's validation.
       class Checkpoints
         NAME = "checkpoints".freeze
+        ENVIRONMENT_REQUIRED = false
         DESCRIPTION = nil
         EFFECT_PROFILE = Read::EFFECT_PROFILE
         SCHEMA = Ractor.make_shareable({
@@ -42,6 +43,9 @@ module Rho
           @env.raise_if_cancelled!
           keys = args.keys & %w[run_public_id checkpoint from to]
           list = keys.empty? || keys == ["run_public_id"]
+          if !list && @env.checkpoint_resolver && !args.key?("store") && !ExecutionContext.current&.binding
+            return Result.error("checkpoint_store_required: supply a store or captured environment")
+          end
           stores = if list || args.key?("store")
             @env.checkpoint_stores(args["store"])
           else

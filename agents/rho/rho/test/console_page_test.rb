@@ -110,10 +110,9 @@ class ConsolePageTest < Minitest::Test
 
   # Every verb the page offers must be a route the daemon serves; a button
   # wired to a path that 404s is a dead control that looks alive. And every
-  # one is the core's or a DEFAULT extension's: a page that leaned on an
-  # operator's extension would be dead on every other machine. Plugin UI
-  # arrives through modules the plugin itself ships, so the shell names no
-  # plugin route.
+  # one is the core's or a default built-in or gem extension's: a page that
+  # leaned on an operator's optional extension would be dead on every other
+  # machine. Optional plugin UI arrives through that plugin's own modules.
   def test_every_path_the_page_posts_to_is_a_route_this_daemon_answers
     sources = module_graph
     literal = sources.values.flat_map { |source| source.scan(/\bcall\(\s*"(\/[a-z_\/]+)[?"]/).flatten }.uniq
@@ -122,6 +121,13 @@ class ConsolePageTest < Minitest::Test
 
     owners = @daemon.routes.entries.group_by(&:path).transform_values { |routes| routes.map(&:extension).uniq }
     shipped = ["rho", *Rho::Extensions::DEFAULT_EXTENSIONS.map { |extension| extension::NAME }]
+    Rho::Extensions::Catalog.new.descriptors.each_value do |descriptor|
+      source = descriptor.source
+      next unless source["kind"] == "gem" && Rho::Extensions::DEFAULT_GEMS.include?(source["feature"])
+      next unless descriptor.default_enabled
+
+      shipped << descriptor.id
+    end
     literal.each do |path|
       assert owners.key?(path), "the page calls #{path} and no route claims it"
       owners.fetch(path).each do |owner|

@@ -210,7 +210,7 @@ class DaemonHostFollowersTest < Minitest::Test
   # RE-ADOPTION fires the follow hook per remembered row — with the run
   # the row knew — so a gate a restart forgot is rebuilt from the notes.
   def test_re_adoption_rebuilds_the_gate_from_the_notes_on_the_run_the_row_knew
-    policy = Rho::Until::Policy.new(command: "make test", attempts: 2, directory: @root, runner: nil, seed: {})
+    policy = Rho::Until::Policy.new(command: "make test", attempts: 2, directory: @root, runner: "0199-runner", seed: { "executor_contexts" => { "0199-runner" => { "rho.environment" => { "root" => @root, "directories" => [] } } } })
     variant = { "public_id" => "v-9", "source" => "run", "status" => "running",
       "run_public_id" => "al-9", "active" => true }
     turn = { "public_id" => "t-9", "position" => 0, "kind" => "direct_reply", "role" => "assistant",

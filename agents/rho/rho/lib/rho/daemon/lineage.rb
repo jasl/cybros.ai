@@ -91,6 +91,7 @@ module Rho
         @maintenance_requested = false
         @maintenance_running = false
         @maintenance_stopped = false
+        @recovery_about = nil
         @generation = 0
       end
 

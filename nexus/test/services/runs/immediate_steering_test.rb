@@ -54,6 +54,9 @@ class Runs::ImmediateSteeringTest < ActiveJob::TestCase
     assert_equal "running", node(run, "steer1").status
     assert_equal "queued", node(run, "r1").status
     assert_equal "r1", run.reload.deliverable.node_key
+    assert_equal "r1", run.mainline_tail.node_key
+    assert_equal "r1", Runs::CurrentModel.for_loops([run]).fetch(run.id).node_key,
+      "the newer inserted steer is read by the original continuation"
     assert_equal %w[steer1], node(run, "r1").input_from_node_keys
     assert_equal %w[r1t1], node(run, "r1").result_from_node_keys
     assert_not Input.exists?(id: [ordinary.value.id, immediate.value.id])

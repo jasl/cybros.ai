@@ -79,7 +79,7 @@ module Executors
           unless Nexus::ToolDeclarations.names(@tools).include?(name)
             refuse(:unknown_tool_name, "#{name.inspect} is not declared for this execution")
           end
-          refuse(:context_not_authorable, "child tools inherit the execution context") if step.model_defaults
+          refuse(:context_not_authorable, "child tools inherit the execution context") if step.model_defaults || step.executor_context
 
           resolved, input, alias_name = Nexus::ToolDeclarations.resolve_call(@tools, name, step.input)
           route = Nexus::ToolDeclarations.route_for(@tools, name)&.except("tool_name")
@@ -95,7 +95,7 @@ module Executors
             refuse(:context_not_authorable, "model work requires a declaring model or explicit standalone model_defaults")
           end
           fields = Hash.try_convert(value) || refuse(:invalid_steps, "#{path}.model must be an object")
-          if fields.keys.intersect?(Nexus::ToolImports::FIELDS.map(&:to_s))
+          if fields.key?("executor_contexts") || fields.keys.intersect?(Nexus::ToolImports::FIELDS.map(&:to_s))
             refuse(:context_not_authorable, "child model work inherits its accepted tool and Runner context")
           end
           image = fields.fetch("workload", @defaults["workload"]) == "image_generation"

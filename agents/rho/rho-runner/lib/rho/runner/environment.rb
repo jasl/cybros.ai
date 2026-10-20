@@ -51,22 +51,9 @@ module Rho
       def known? = !working_directory.nil? || !branch.nil?
     end
 
-    # THE RECORD'S VALUE: rho's `store_entries` row at the conversation scope — `namespace
-    # "rho.environment"`, `key "binding"` — carries `{"root", "directories", "anchor"}`, and
-    # the compared tuple IS the value. The runner never reads the store: the HOST resolves
-    # the record and the runner RECEIVES this value, in process through the daemon's
-    # resolver or relayed over the executor call_tool as the hidden runner tool
-    # `environment_bind`'s input. `anchor` is the conversation whose live members the
-    # binding shares — itself when bound directly, the parent on a copy (a side's fork copy,
-    # a spawned child's top-down copy).
-    #
-    # PARSED, NEVER TRUSTED: absent or malformed answers nil — a record a
-    # person edited by hand through the SDK costs that conversation its
-    # placement (zero, with the notice on the log), never the runner its
-    # claim. `to_h` answers the value as the store spells it (string keys),
-    # so a host compares and writes exactly what it read.
-    # (Reopened rather than defined in the `Data.define` block: a block is
-    # no lexical scope, and a constant assigned there lands on `Runner`.)
+    # Captured by the application at acceptance and delivered with each task.
+    # The anchor selects editor integrations; the root selects local execution.
+    Environment::CONTEXT_KEY = "rho.environment".freeze
     Environment::Binding = Data.define(:root, :directories, :anchor)
 
     class Environment::Binding # rubocop:disable Style/ClassAndModuleChildren
@@ -75,15 +62,16 @@ module Rho
       ANCHOR = "anchor".freeze
 
       def self.parse(value)
-        return nil unless value.is_a?(Hash)
+        fields = Hash.try_convert(value)
+        return nil unless fields
 
-        fields = value.transform_keys(&:to_s)
-        root = fields[ROOT]
-        directories = fields.fetch(DIRECTORIES, [])
+        fields = fields.transform_keys(&:to_s)
+        root = String.try_convert(fields[ROOT])
+        directories = Array.try_convert(fields.fetch(DIRECTORIES, []))
         anchor = fields[ANCHOR]
-        return nil unless root.is_a?(String) && !root.empty?
-        return nil unless directories.is_a?(Array) && directories.all?(String)
-        return nil unless anchor.nil? || anchor.is_a?(String)
+        return nil unless root && !root.empty? && directories
+        return nil unless directories.all? { |path| String.try_convert(path) }
+        return nil unless anchor.nil? || String.try_convert(anchor)
 
         new(root: root, directories: directories.dup.freeze, anchor: anchor)
       end

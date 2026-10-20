@@ -134,6 +134,7 @@
         "mcp_docs_search"
       ],
       "declaration": {
+        "executor_contexts": null,
         "tool_definitions": [],
         "kernel_tools": null,
         "runner_executor_public_ids": null,

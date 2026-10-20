@@ -18,6 +18,7 @@ module Schedules
       return Conversations::Outcome.refused(:calling_round_unavailable) unless round
 
       declaration = run.agent_configuration.with_tools(round.tool_definitions, approval_mode: run.approval_mode)
+      declaration.executor_contexts = Executors::TaskOperations::Context.defaults(node)["executor_contexts"]
       Conversations::Outcome.accepted({
         "answering_user" => run.answering_user,
         "agent_configuration" => declaration,
@@ -31,7 +32,7 @@ module Schedules
     end
 
     def self.resolve(conversation:, fields:, by:, job: nil, model_controls: nil)
-      attributes = fields.except("model", "model_selection", "fallback_models", "answering_user_public_id", "expected_lock_version")
+      attributes = fields.except("executor_contexts", "model", "model_selection", "fallback_models", "answering_user_public_id", "expected_lock_version")
       answerer = job&.answering_user || conversation.answering_user
       if fields.key?("answering_user_public_id")
         resolved = ::Conversations::TurnPrincipals.resolve(host: conversation, author: by,
@@ -46,6 +47,10 @@ module Schedules
         attributes["agent_configuration"] = declaration(conversation, answerer: answerer)
         selection = ::Conversations::AnswerEngine.selection(conversation, addressee: answerer)
         attributes.merge!(selection.to_h.stringify_keys) if selection
+      end
+      if fields.key?("executor_contexts")
+        captured_declaration = attributes["agent_configuration"] || job&.agent_configuration || declaration(conversation, answerer: answerer)
+        attributes["agent_configuration"] = AgentConfiguration.new(captured_declaration.attributes.merge("executor_contexts" => fields["executor_contexts"]))
       end
       if fields.key?("model")
         provider, model, effort, enabled = model_controls

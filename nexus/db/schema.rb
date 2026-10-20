@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_19_160000) do
+ActiveRecord::Schema[8.2].define(version: 2026_10_21_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -122,6 +122,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_160000) do
     t.index ["search_terms"], name: "index_content_bodies_on_search_terms", where: "((variant_id IS NOT NULL) AND (sealed_at IS NOT NULL) AND ((role)::text = ANY (ARRAY['prompt'::text, 'content'::text, 'steers'::text])))", using: :gin
     t.index ["task_id"], name: "index_content_bodies_on_task_id", where: "(task_id IS NOT NULL)"
     t.index ["task_operation_id"], name: "index_content_bodies_on_task_operation", where: "(task_operation_id IS NOT NULL)"
+    t.index ["variant_id"], name: "index_content_bodies_on_history_variants", where: "((variant_id IS NOT NULL) AND ((role)::text = ANY (ARRAY['content'::text, 'prompt'::text])))"
     t.index ["variant_id"], name: "index_content_bodies_on_variant_id", where: "(variant_id IS NOT NULL)"
   end
 
@@ -1240,6 +1241,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_160000) do
     t.string "workload", default: "text_generation", null: false
     t.jsonb "ask_fields"
     t.text "realtime_signal"
+    t.index "run_id, (input_from_node_keys[1]) COLLATE \"C\"", name: "index_tasks_on_mainline_first_read", where: "(((type)::text = 'Tasks::ModelTask'::text) AND ((continuation_source)::text IS DISTINCT FROM 'branch'::text))"
     t.index ["account_id"], name: "index_tasks_on_account_id"
     t.index ["addressed_executor_id", "id"], name: "index_tasks_on_addressed_frontier", where: "((status)::text = ANY (ARRAY['dispatched'::text, 'awaiting_input'::text, 'needs_approval'::text]))"
     t.index ["addressed_role", "id"], name: "index_tasks_on_pool_frontier", where: "((addressed_executor_id IS NULL) AND ((status)::text = 'dispatched'::text))"
@@ -1252,12 +1254,14 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_160000) do
     t.index ["id"], name: "index_tasks_on_park_frontier", where: "((await_started_at IS NOT NULL) AND ((status)::text = ANY (ARRAY['running'::text, 'dispatched'::text, 'awaiting_input'::text, 'needs_approval'::text])))"
     t.index ["id"], name: "index_tasks_result_delivery_frontier", where: "(detached AND (result_delivered_at IS NULL) AND ((status)::text = ANY (ARRAY['completed'::text, 'failed'::text, 'canceled'::text, 'timed_out'::text, 'uncertain'::text, 'skipped'::text])))"
     t.index ["resolution_token"], name: "index_tasks_on_resolution_token", unique: true, where: "(resolution_token IS NOT NULL)"
+    t.index ["run_id", "id"], name: "index_tasks_on_mainline_order", order: { id: :desc }, where: "(((type)::text = 'Tasks::ModelTask'::text) AND ((continuation_source)::text IS DISTINCT FROM 'branch'::text))"
     t.index ["run_id", "lifecycle_event"], name: "index_tasks_on_lifecycle_event", where: "(lifecycle_event IS NOT NULL)"
     t.index ["run_id", "node_key"], name: "index_tasks_on_run_id_and_node_key", unique: true
     t.index ["run_id", "status"], name: "index_tasks_on_detached_frontier", where: "detached"
     t.index ["run_id", "status"], name: "index_tasks_on_run_id_and_status"
     t.index ["run_id", "tool_call_id"], name: "index_tasks_on_tool_call_id", where: "(tool_call_id IS NOT NULL)"
     t.index ["run_id"], name: "index_tasks_on_run_id"
+    t.index ["run_id"], name: "index_tasks_on_runner_writes", where: "(first_runner_write IS NOT NULL)"
     t.index ["selected_model_invocation_id"], name: "index_tasks_on_selected_model_invocation_id"
     t.index ["target_executor_id"], name: "index_tasks_on_target_executor_id"
   end
@@ -1306,6 +1310,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_160000) do
     t.index ["answering_user_id"], name: "index_turns_on_answering_user_id"
     t.index ["control_owner_user_id"], name: "index_turns_on_control_owner_user_id"
     t.index ["conversation_id", "position"], name: "index_turns_nondefault_view", where: "(((visibility)::text <> 'visible'::text) OR (deleted_at IS NOT NULL))"
+    t.index ["conversation_id", "position"], name: "index_turns_on_completed_summaries", order: { position: :desc }, where: "(((kind)::text = 'compaction_summary'::text) AND ((status)::text = 'completed'::text))"
     t.index ["conversation_id", "position"], name: "index_turns_on_conversation_id_and_position", unique: true
     t.index ["conversation_id", "sender_run_public_id", "sender_task_key"], name: "index_turns_on_dispatch", where: "(sender_run_public_id IS NOT NULL)"
     t.index ["conversation_id"], name: "index_turns_one_active", unique: true, where: "((status)::text = ANY (ARRAY['pending'::text, 'running'::text]))"

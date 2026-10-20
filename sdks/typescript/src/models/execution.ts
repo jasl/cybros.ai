@@ -1,3 +1,4 @@
+export interface RunCandidate { public_id: string; workspace_public_id: string; conversation_public_id: string; turn_public_id: string; status: string; }
 import type { RunStatus, TaskStatus, TurnStatus } from '../models.js';
 import type { JsonObject, JsonValue } from "../json.js";
 import type { AddressedTo, Checkpoint, DefaultRunner, InputQueue, ThreadRow } from "../models.js";
@@ -85,6 +86,7 @@ export interface OperationRead {
 }
 
 export interface InboxTask {
+  executor_context?: JsonObject;
   kind: string;
   run_public_id: string;
   workspace_public_id: string;
@@ -197,6 +199,7 @@ export interface RunAttention {
 }
 
 export interface TaskDetail {
+  executor_context?: JsonObject;
   model_selection: JsonObject | null;
   fallback_models: string[] | null;
   task: Task;

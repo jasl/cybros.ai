@@ -18,10 +18,12 @@ class Runs::LifecycleHooksTest < ActiveJob::TestCase
 
   test "a natural stop asks once and continuation feedback stays on the same execution" do
     configure("stop")
-    run = start_loop
+    contexts = { address.public_id => { "fixture.directory" => "/hook" } }
+    run = start_loop(executor_contexts: contexts)
     finish_round(run, "candidate")
     hook = hook_for(run, "stop")
     assert_equal "dispatched", hook.status
+    assert_equal contexts.fetch(address.public_id), Executors::Inbox.row(hook).fetch(:executor_context)
     assert_not run.reload.delivered?
     2.times { schedule_loop!(run) }
     assert_equal 1, hooks(run, "stop").count
@@ -29,6 +31,7 @@ class Runs::LifecycleHooksTest < ActiveJob::TestCase
     settle_hook(hook, { "continue" => true, "feedback" => "Check the missing edge case." })
     continuation = run.reload.deliverable_node
     assert_predicate continuation, :model_task?
+    assert_equal contexts, Executors::TaskOperations::Context.defaults(continuation).fetch("executor_contexts")
     assert_equal "Check the missing edge case.", continuation.input_body.effective_text
     assert_equal [hook.node_key], continuation.sources.map(&:node_key)
     assert_includes continuation.input_from_node_keys, "answer"
@@ -341,8 +344,8 @@ class Runs::LifecycleHooksTest < ActiveJob::TestCase
       })
     end
 
-    def start_loop
-      run = seed(model("answer"), creating_user: @agent)
+    def start_loop(**fields)
+      run = seed(model("answer", **fields.stringify_keys), creating_user: @agent)
       result = Runs::Start.call(Runs::Start::Command.new(run: run, acting_user: @agent))
       assert_predicate result, :accepted?
       2.times { schedule_loop!(run) }

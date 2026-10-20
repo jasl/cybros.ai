@@ -127,4 +127,43 @@ class Executors::RunnerTargetsTest < ActiveJob::TestCase
     assert_predicate replay, :replayed?, replay.outcome.to_s
     assert_equal runner_a.public_id, task(replay.run, "read-a").target_executor_public_id
   end
+  test "standalone context survives target changes and projects on the executable row" do
+    context = { "rho.environment" => { "root" => "/work/b", "directories" => [] } }
+    run = seed({ "tool" => { "key" => "read-b", "name" => "read",
+      "route" => { "kind" => "runner", "runner_executor_public_id" => runner_a.public_id },
+      "executor_context" => context } })
+    selected(run, runner_b)
+    row = task(run, "read-b")
+    assert_equal context, row.operation_context.fetch("executor_context")
+    assert_equal context, Executors::Inbox.row(row).fetch(:executor_context)
+    assert_equal runner_a.public_id, row.target_executor_public_id
+  end
+
+  test "generated tools project only their concrete target context" do
+    contexts = { runner_a.public_id => { "root" => "/a" }, runner_b.public_id => { "root" => "/b" } }
+    run = seed(model("plan", "tools" => [declaration("read_a", runner_a), declaration("read_b", runner_b)],
+      "executor_contexts" => contexts))
+    source = task(run, "plan")
+    steps = Executors::TaskOperations::Lower.new(source).call([
+      { "tool" => { "name" => "read_b", "input" => {} } },
+    ])
+    result = Runs::Tasks::Append.call(Runs::Tasks::Append::Command.kernel(
+      run: run, steps: steps, tip: Runs::Tasks::Tip.seed(Runs::Tasks::Compile::BRANCH),
+      origin: "model", expansion_parent: source))
+    assert_predicate result, :applied?, result.outcome.to_s
+    child = task(run, result.receipt.fetch("accepted_task_keys").sole)
+    assert_equal({ "root" => "/b" }, Executors::Inbox.row(child).fetch(:executor_context))
+    assert_nil child.operation_context
+    assert_equal contexts, Runs::Tasks::Step.inheriting(source).executor_contexts
+    lower = Executors::TaskOperations::Lower.new(child)
+    inherited = lower.call([{ "model" => { "prompt" => "Continue" } }]).sole
+    assert_equal contexts, inherited.executor_contexts
+    [
+      { "model" => { "prompt" => "Replace", "executor_contexts" => {} } },
+      { "tool" => { "name" => "read_b", "executor_context" => { "root" => "/other" } } },
+    ].each do |step|
+      error = assert_raises(Executors::TaskOperations::Lower::Refusal) { lower.call([step]) }
+      assert_equal :context_not_authorable, error.code
+    end
+  end
 end

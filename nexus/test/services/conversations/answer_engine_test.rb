@@ -32,7 +32,7 @@ class Conversations::AnswerEngineTest < ActiveJob::TestCase
       host: @conversation, acting_user: by, kind: "direct_reply", role: "user",
       entries: [{ "text" => "go" }], visible_in_context: true, delivery_mode: "queue",
       context_mode: nil, context_options: nil, expected_context_revision: nil,
-      expected_tail_turn_public_id: nil, provider_id: "dev", model_ref: model_ref,
+      expected_tail_turn_public_id: nil, provider_id: ("dev" if model_ref), model_ref: model_ref,
       reasoning_effort: reasoning_effort, request_options: nil, model_selection: model_selection,
       answering_user_public_id: (to && "@#{to.handle}")
     ))
@@ -50,7 +50,7 @@ class Conversations::AnswerEngineTest < ActiveJob::TestCase
 
   def estimate(to: nil, model_ref: "mock-text", model_selection: nil)
     Conversations::ContextEstimate.call(Conversations::ContextEstimate::Command.new(
-      conversation: @conversation, acting_user: @human, provider_id: "dev", model_ref: model_ref,
+      conversation: @conversation, acting_user: @human, provider_id: ("dev" if model_ref), model_ref: model_ref,
       reasoning_effort: nil, request_options: nil, prompt: "go", history_max_entries: nil,
       history_token_budget_share: nil, reasoning_replay_mode: nil, inline: nil,
       answering_user_public_id: to&.public_id, model_selection: model_selection
@@ -142,6 +142,31 @@ class Conversations::AnswerEngineTest < ActiveJob::TestCase
     assert_predicate sent, :accepted?, sent.outcome.to_s
     assert_equal ["dev", "mock-text-only", nil], trio(sent.value),
       "B's send to A's own conversation: A's preset first, B's model (the initiator's) only when A has nothing"
+  end
+
+  test "a configuration capture preserves identity model defaults and executor contexts in preview and execution" do
+    declare_tools!(@agent, tools: [READ_TOOL], default_model: "dev/mock-unmetered")
+    contexts = { Executor.address_for(@agent).public_id => { "fixture.directory" => "/identity" } }
+    @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent,
+      agent_configuration: AgentConfiguration.capture(@agent, executor_contexts: contexts))
+
+    preview = estimate(model_ref: nil)
+    assert_predicate preview, :accepted?, preview.outcome.inspect
+    assert_equal "mock-unmetered", preview.value.selection.model_ref
+    first = post!(model_ref: nil)
+    assert_equal %w[dev mock-unmetered], trio(first).first(2)
+    turn = settle!
+    assert_equal contexts, turn.active_variant.run.agent_configuration.executor_contexts
+
+    @agent.update!(default_model: "dev/mock-text")
+    @conversation.reload
+    preview = estimate(model_ref: nil)
+    assert_predicate preview, :accepted?, preview.outcome.inspect
+    assert_equal "mock-text", preview.value.selection.model_ref
+    following = post!(model_ref: nil)
+    assert_equal %w[dev mock-text], trio(following).first(2)
+    assert_equal "dev/mock-text", following.model_selection.model
+    assert_equal contexts, following.agent_configuration.executor_contexts
   end
 
   test "an unavailable implicit preset uses its declared fallback in preview and execution" do

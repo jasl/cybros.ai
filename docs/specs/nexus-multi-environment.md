@@ -220,6 +220,26 @@ decides whether omission means Runner execution. This same rule applies to ordin
 step batches, replacement steps, background steps and the existing one-task
 request helper. All use one normalization/acceptance owner.
 
+## Captured execution conditions
+
+Accepted work carries opaque `executor_contexts` keyed by concrete Executor UUID.
+The application resolves values before submission; Nexus validates and preserves
+them in the existing execution configuration. This value differs from announced
+environment metadata: it is the accepted condition delivered with executable work.
+
+Model steps, input authoring and schedules accept the map. Standalone tools accept
+one `executor_context`, or a map in `model_defaults`; overlapping values must agree.
+The executable row projects only the selected target's value. Generated model and
+tool work cannot replace inherited context through tool arguments. Spawn, fork,
+compaction, regeneration, approval and retry retain the owning execution's capture.
+
+rho uses `rho.environment` for absolute working roots, auxiliary directories and
+editor anchors. Its Runner validates captured placement before hooks and handlers,
+including on cache hits; absence or an unavailable directory fails explicitly.
+Conversation Store bindings are future-authoring defaults. They are never read by
+a claimed Runner task, and there is no remote binding/reassertion tool protocol.
+Paths remain ordinary filesystem paths rather than access-control boundaries.
+
 ## Discovery, environment context and skills
 
 Existing executor discovery exposes eligible Runners with their UUID,

@@ -1,13 +1,7 @@
 require "test_helper"
 
-# THE PLACEMENTS: the environment is a per-conversation
-# VALUE the runner resolves at dispatch — the HOST resolves it (the daemon's
-# `Environments`, handed in as `resolver:`), the runner RECEIVES a `Binding`
-# and answers ONE frozen `ToolEnv` + toolset per ROOT SET, never per
-# conversation. Placement zero is the daemon's default root; a row that
-# names no conversation, a binding nobody wrote, a root absent on this host
-# or under a protected one all land there. The tools are byte-identical
-# across placements: only the env differs.
+# Claimed tasks carry immutable placement values. Environments and toolsets
+# are shared per root set; invalid placements fail before hooks or handlers.
 class ToolsetsTest < Minitest::Test
   Toolsets = Rho::Runner::Toolsets
   Placement = Rho::Runner::Placement
@@ -49,8 +43,10 @@ class ToolsetsTest < Minitest::Test
     FileUtils.rm_rf(@tmp)
   end
 
-  def row(key, run_public_id: "loop-1", conversation: "conv-1", parent: nil)
-    Task.new(workspace_public_id: "ws-1", kind: "tool_call", run_public_id: run_public_id, conversation_public_id: conversation,
+  def row(key, run_public_id: "loop-1", conversation: "conv-1", parent: nil, executor_context: :captured)
+    value = (@captured || {}).fetch(conversation) { binding(@zero_root, anchor: nil) }.to_h
+    executor_context = { "rho.environment" => value } if executor_context == :captured
+    Task.new(executor_context: executor_context, workspace_public_id: "ws-1", kind: "tool_call", run_public_id: run_public_id, conversation_public_id: conversation,
       parent_public_id: parent, task_key: key, tool_name: "read", tool_input: {}, tool_call_id: "call-#{key}",
       started_at: nil, deadline_at: nil, timeout_ms: nil, claimed: false,
       addressed_to: CybrosAgent::Api::AddressedTo.new(role: "runner", executor_public_id: "ex-1"), scope: nil)
@@ -58,54 +54,41 @@ class ToolsetsTest < Minitest::Test
 
   def binding(root, directories: [], anchor: "conv-1") = Binding.new(root: root, directories: directories, anchor: anchor)
 
-  # The host's resolver: what it was asked is recorded; the table answers.
-  def toolsets(table = {}, protected_roots: [], &resolver)
-    resolver ||= lambda do |conversation, parent|
-      @resolved << [conversation, parent]
-      table.fetch(conversation, nil)
-    end
+  def toolsets(table = {}, protected_roots: [])
+    @captured = table
     Toolsets.new(
-      registry: @registry, zero: @zero, resolver: resolver, work_dir: @work, log: @log,
+      registry: @registry, zero: @zero, work_dir: @work, log: @log,
       checkpoints: ->(root) { @opened << root; Object.new }, protected_roots: protected_roots
     )
   end
 
   # ---- zero ----
 
-  def test_a_standalone_row_names_no_conversation_and_lands_on_zero_without_asking
-    subject = toolsets({ "conv-1" => binding(@other) })
-
+  def test_a_standalone_row_uses_its_explicit_context_without_a_conversation
+    subject = toolsets
     placement = subject.for(row("t1", conversation: nil))
-
     assert_same @zero, placement.env
-    assert_nil placement.binding
+    assert_equal @zero_root, placement.binding.root
     assert_same subject.zero.toolset, placement.toolset
-    assert_empty @resolved, "a standalone loop has nothing to resolve"
-    assert_equal @registry.names.sort, subject.names.sort, "the announced set is the registry's"
+    assert_equal @registry.names.sort, subject.names.sort
   end
 
-  def test_a_binding_nobody_wrote_lands_on_zero_and_the_miss_is_memoized_per_loop
-    subject = toolsets({})
-
-    first = subject.for(row("t1", run_public_id: "loop-1"))
-    second = subject.for(row("t2", run_public_id: "loop-1"))
-    other = subject.for(row("t3", run_public_id: "loop-2"))
-
-    assert_same @zero, first.env
-    assert_same @zero, second.env
-    assert_same @zero, other.env
-    assert_equal [["conv-1", nil], ["conv-1", nil]], @resolved,
-      "one read per run_public_id: the second claim of loop-1 asked nothing, loop-2 asked again"
+  def test_a_missing_context_fails_every_claim
+    subject = toolsets
+    3.times do |index|
+      assert_raises(ArgumentError) { subject.for(row("t#{index}", executor_context: nil)) }
+    end
+    assert_empty @opened
   end
 
   # ---- the placement ----
 
-  def test_the_resolver_is_asked_with_the_rows_conversation_and_parent
+  def test_the_captured_anchor_is_used_without_a_conversation_or_parent_lookup
     subject = toolsets({ "child" => binding(@other, anchor: "parent") })
-
-    placement = subject.for(row("t1", conversation: "child", parent: "parent"))
-
-    assert_equal [["child", "parent"]], @resolved
+    task = row("t1", conversation: "child", parent: "parent")
+    @captured.clear
+    placement = subject.for(task)
+    assert_equal @other, placement.env.root
     assert_equal "parent", placement.binding.anchor
   end
 
@@ -121,7 +104,7 @@ class ToolsetsTest < Minitest::Test
     assert_equal "conv-1", one.binding.anchor
     assert_equal "conv-2", two.binding.anchor, "the placement carries the conversation's own record"
     assert_equal [@other], @opened, "the root's store opened once"
-    assert_equal 2, @resolved.length, "the host is asked per claim; the placement is what is memoized"
+    assert_equal 2, [one.binding.anchor, two.binding.anchor].uniq.length
   end
 
   def test_the_tools_are_byte_identical_across_placements_and_only_the_env_differs
@@ -175,11 +158,11 @@ class ToolsetsTest < Minitest::Test
       mutation_queue: @queue, processes: @processes
     )
     subject = Toolsets.new(
-      registry: @registry, zero: spelled_by_link, resolver: ->(*) { binding(@zero_root) }, work_dir: @work,
+      registry: @registry, zero: spelled_by_link, work_dir: @work,
       log: @log, checkpoints: ->(root) { @opened << root; Object.new }
     )
 
-    placement = subject.for(row("t1"))
+    placement = subject.for(row("t1", executor_context: { "rho.environment" => binding(@zero_root).to_h }))
 
     assert_same spelled_by_link, placement.env, "the default root at any spelling is zero's env"
     assert_same subject.zero.toolset, placement.toolset
@@ -208,48 +191,32 @@ class ToolsetsTest < Minitest::Test
 
   # ---- zero with a notice ----
 
-  def test_a_root_absent_on_this_host_lands_on_zero_and_is_logged_once_per_conversation_and_root
+  def test_a_root_absent_on_this_host_fails_without_opening_a_store
     missing = File.join(@tmp, "gone")
-    subject = toolsets({ "conv-1" => binding(missing), "conv-2" => binding(missing) })
-
-    3.times { |index| subject.for(row("t#{index}", run_public_id: "loop-#{index}", conversation: "conv-1")) }
-    subject.for(row("t9", conversation: "conv-2"))
-
-    unresolved = @log.named("environment.unresolved")
-    assert_equal 2, unresolved.length, "once per (conversation, root)"
-    assert_equal [%w[conv-1], %w[conv-2]], unresolved.map { |fields| [fields.fetch(:conversation)] }
-    assert_equal missing, unresolved.first.fetch(:root)
-    assert_same @zero, subject.for(row("t10", conversation: "conv-1")).env
+    subject = toolsets({ "conv-1" => binding(missing) })
+    3.times do |index|
+      error = assert_raises(ArgumentError) { subject.for(row("t#{index}")) }
+      assert_includes error.message, missing
+    end
     assert_empty @opened
   end
 
-  def test_a_root_under_a_protected_root_is_refused_to_zero
+  def test_a_root_under_a_protected_root_is_refused_before_opening_a_store
     subject = toolsets({ "conv-1" => binding(File.join(@other, "sub")) }, protected_roots: [@other])
     FileUtils.mkdir_p(File.join(@other, "sub"))
-
-    placement = subject.for(row("t1"))
-
-    assert_same @zero, placement.env
-    assert_nil placement.binding
-    refused = @log.named("environment.refused")
-    assert_equal 1, refused.length
-    assert_equal "conv-1", refused.first.fetch(:conversation)
+    assert_raises(ArgumentError) { subject.for(row("t1")) }
     assert_empty @opened
   end
 
-  def test_a_resolver_that_raises_costs_that_claim_zero_and_is_asked_again
-    asked = 0
-    subject = toolsets do |_conversation, _parent|
-      asked += 1
-      raise "the member plane is away"
-    end
-
-    assert_same @zero, subject.for(row("t1")).env
-    assert_same @zero, subject.for(row("t2")).env
-
-    assert_equal 2, asked, "a failure is no Miss: the next claim reads again"
-    assert_equal 2, @log.named("environment.unresolved").length
-    assert_equal "RuntimeError", @log.named("environment.unresolved").first.fetch(:error_class)
+  def test_an_explicitly_environment_independent_tool_does_not_need_a_directory
+    klass = extra_class("network")
+    klass.const_set(:ENVIRONMENT_REQUIRED, false)
+    api = Rho::Runner::Extensions::Api.new(extension_name: "test.network", source: "<test>")
+    api.register_tool(klass)
+    registry = Rho::Runner::Extensions::Registry.new.commit(api)
+    subject = Toolsets.new(registry: registry, zero: @zero, work_dir: @work)
+    placement = subject.for(row("t1", executor_context: nil).with(tool_name: "network"))
+    assert_same @zero, placement.env
   end
 
   # ---- fixed ----
@@ -292,7 +259,7 @@ class ToolsetsTest < Minitest::Test
   # every context beside the placement, and a fixed placement has none.
   def test_the_ports_resolver_is_handed_through_and_a_fixed_placement_has_none
     ports = ->(_anchor) { nil }
-    subject = Toolsets.new(registry: @registry, zero: @zero, resolver: ->(_c, _p) { nil }, work_dir: @work, ports: ports)
+    subject = Toolsets.new(registry: @registry, zero: @zero, work_dir: @work, ports: ports)
 
     assert_same ports, subject.ports
     assert_nil toolsets.ports, "absent by default"
@@ -350,8 +317,9 @@ class ToolsetsTest < Minitest::Test
   end
 
   def with_extras(table, extras, **options)
+    @captured = table
     Toolsets.new(
-      registry: @registry, zero: @zero, resolver: ->(conversation, _parent) { table.fetch(conversation, nil) },
+      registry: @registry, zero: @zero,
       work_dir: @work, log: @log, extras: extras, **options
     )
   end

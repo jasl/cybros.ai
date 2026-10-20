@@ -209,21 +209,8 @@ class CheckpointsExtensionTest < Minitest::Test
       "`src/b.rb` is INSIDE the bound root: neither mark (the targets are judged against the placement's root)"
   end
 
-  # THE RUNNER TOOL THE HOST RELAYS A BINDING WITH:
-  # `environment_bind` is rho's, an honest write-kind runner-state write,
-  # and rho-runner cannot see rho's constant — so its NAME is a string
-  # here, beside the extension's own two, or every call_tool would snapshot
-  # the runner's default root.
-  def test_the_relayed_environment_bind_is_exempt_by_name
-    assert_includes Checkpoints::EXEMPT, "environment_bind"
-    assert_equal "environment_bind", Checkpoints::ENVIRONMENT_BIND
-    assert_equal %w[checkpoint_restore checkpoints environment_bind], Checkpoints::EXEMPT.sort
-
-    bind = Rho::Runner::Toolset::Tool.new(name: "environment_bind", description: "x", parameters: { "type" => "object" },
-      handler: ->(_a, _c) { nil },
-      effect_profile: { "kind" => "write", "destructive" => false, "effect_scope" => "closed",
-                        "idempotency" => "idempotent", "reconciliation" => "none" })
-    refute Checkpoints.captures?("environment_bind", bind), "write-kind, and still never captured"
+  def test_only_checkpoint_management_tools_are_exempt_from_capture
+    assert_equal %w[checkpoint_restore checkpoints], Checkpoints::EXEMPT.sort
   end
 
   # THE MARKS: a `write` whose path lies outside the

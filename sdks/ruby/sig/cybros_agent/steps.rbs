@@ -4,6 +4,7 @@ module CybrosAgent
     VERBS: Array[String]
 
     class Tool
+      attr_reader executor_context: Hash[String, untyped]?
       attr_reader route: Hash[String, untyped]?
       attr_reader model_defaults: Hash[String, untyped]?
       attr_reader after: Array[String]?
@@ -20,6 +21,7 @@ module CybrosAgent
     end
 
     class Model
+      attr_reader executor_contexts: Hash[String, untyped]?
       attr_reader workload: String?
       attr_reader attachments: Array[String]?
       attr_reader model_selection: Hash[String, untyped]?

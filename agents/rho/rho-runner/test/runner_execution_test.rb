@@ -760,7 +760,7 @@ class RunnerLoopTest < Minitest::Test
       registry = Rho::Runner::Extensions::Loader.call(builtin: [Rho::Runner::Extensions::Coding]).registry
       binding = Rho::Runner::Environment::Binding.new(root: bound_root, directories: [], anchor: "conv-1")
       toolsets = Rho::Runner::Toolsets.new(registry: registry, zero: zero, work_dir: File.join(tmp, "work"),
-        resolver: ->(_conversation, _parent) { binding }, ports: ->(anchor) { anchor == "conv-1" ? port : nil })
+        ports: ->(anchor) { anchor == "conv-1" ? port : nil })
       guard = registration(:tool_call) do |_name, arguments, _tool|
         if arguments["path"] == "denied.txt"
           Rho::Runner::Extensions::Hooks::Veto.new(extension: "rho.guard", reason: "not here")
@@ -771,7 +771,7 @@ class RunnerLoopTest < Minitest::Test
       lane = Lane.new(rows: [
         row("t1", tool: "read", input: { "path" => "denied.txt" }, conversation: "conv-1"),
         row("t2", tool: "read", input: { "path" => "a.txt" }, conversation: "conv-1"),
-      ])
+      ].map { |task| task.with(executor_context: { "rho.environment" => binding.to_h }) })
       pool = Rho::Runner::Pool.new(worker_threads: 1)
       subject = Rho::Runner.new(executor: lane, toolsets: toolsets, log: Silent.new, pool: pool,
         sleeper: ->(_) { nil }, hooks: Rho::Runner::Extensions::Hooks::Host.new([guard]))

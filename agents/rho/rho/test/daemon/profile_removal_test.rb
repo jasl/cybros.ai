@@ -163,6 +163,7 @@ class ProfileRemovalTest < Minitest::Test
     release = File.join(@root, "release-independent-runner")
     api.stock_inbox({ "kind" => "tool_call", "run_public_id" => "other-agent-run",
       "conversation_public_id" => nil, "parent_public_id" => nil, "task_key" => "t1",
+      "executor_context" => { "rho.environment" => { "root" => daemon.context.tool_env.root, "directories" => [] } },
       "tool_name" => "bash", "tool_input" => { "command" => "while [ ! -e #{release} ]; do sleep 0.01; done; echo finished" },
       "tool_call_id" => "call-t1", "started_at" => "2026-09-07T00:00:00Z", "deadline_at" => nil, "claimed" => false,
       "addressed_to" => { "role" => "runner", "executor_public_id" => "0199-runner" } }, address: :runner)

@@ -54,7 +54,7 @@ module Rho
 
         # Human-authored schedules snapshot the same tools as a new turn.
         # A model-authored schedule already carries its calling round's freeze.
-        def conversation_tool_names(public_id, workspace, client:, to: nil, tool_names: nil)
+        def conversation_tool_names(public_id, workspace, client:, to: nil, tool_names: nil, include_contexts: false)
           names = tool_names.nil? ? nil : Array.try_convert(tool_names)
           return Refusal.malformed("tool_names must be a list") if !tool_names.nil? && names.nil?
 
@@ -66,7 +66,7 @@ module Rho
 
           answerer_id = addressee ? addressee.public_id : document.answering_user_public_id
           named_answerer = own_named_answerer(answerer_id)
-          return names if answerer_id != @context.own_user_public_id && !named_answerer
+          return (include_contexts ? { tool_names: names } : names) if answerer_id != @context.own_user_public_id && !named_answerer
 
           captured = document.agent_configuration_present && answerer_id == document.answering_user_public_id
           policy = read_policy(host, hosted)
@@ -79,7 +79,14 @@ module Rho
           selection = tool_selection(client, surface: surface, code_mode: enabled, subagent: subagent, answerer: named_answerer,
             conversation_public_id: (public_id if captured))
           allowed = names_of(selection.tools)
-          names.nil? ? allowed : names & allowed
+          selected = names.nil? ? allowed : names & allowed
+          return selected unless include_contexts
+
+          return { tool_names: selected } if captured && record&.anchor != public_id
+
+          { tool_names: selected, executor_contexts: captured_contexts(client, tools: selection.tools,
+            runner: document.default_runner&.executor_public_id, binding: record&.binding,
+            host: public_id, workspace_public_id: workspace.public_id) }
         end
 
         private

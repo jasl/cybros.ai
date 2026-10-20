@@ -74,6 +74,7 @@ module CybrosAgent
     end
 
     class TaskDetail
+      attr_reader executor_context: Hash[String, untyped]?
       attr_reader fields: Array[Hash[String, untyped]]?
       attr_reader effect_profile: Hash[String, untyped]?
       attr_reader model_selection: Hash[String, untyped]?
@@ -337,7 +338,7 @@ module CybrosAgent
       ) -> CreatedRun
       def start_tool_call: (
         runner_executor_public_id: String, tool: String, idempotency_key: String,
-        ?input: Hash[String, untyped], ?timeout_ms: Integer?, ?approval_rules: untyped
+        ?input: Hash[String, untyped], ?timeout_ms: Integer?, ?approval_rules: untyped, ?executor_context: Hash[String, untyped]?
       ) -> RunContext
       def fetch: (String public_id) -> Run
       def run: (String public_id) -> RunContext

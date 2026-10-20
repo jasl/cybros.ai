@@ -294,3 +294,5 @@ replace the scheduled answer or keep the occurrence unfinished. A steer joins
 the existing turn and its original obligation. A person's independent exchange,
 a third-party request, or a grandchild's callback stays local to the child;
 none automatically becomes another scheduled report to the main conversation.
+
+Authoring also accepts `executor_contexts`; see [captured executor context](run-steps.md#captured-executor-context) for its shape and inheritance rules.

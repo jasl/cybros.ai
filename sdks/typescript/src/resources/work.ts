@@ -3,6 +3,7 @@ import type { RequestOptions } from '../http.js';
 import type { AllRunList, AttentionList, WorkReportQuery, WorkAnalysisQuery } from '../requests.js';
 
 export class WorkQueries extends Resource {
+  runCandidates(query: { agent_public_id?: string; after?: string } = {}, options: RequestOptions = {}) { return this.paged('RunCandidate', 'runs', { ...options, query }, '/run_candidates'); }
   runs(query: AllRunList = {}, options: RequestOptions = {}) { return this.paged('Run', 'runs', { ...options, query }, '/runs'); }
   attention(query: AttentionList = {}, options: RequestOptions = {}) { return this.paged('AttentionItem', 'items', { ...options, query }, '/attention'); }
   report(query: WorkReportQuery = {}, options: RequestOptions = {}) { return this.one('WorkReport', '/work_report', 'report', { ...options, query }); }

@@ -240,6 +240,7 @@ module Conversations
           # All later work, including regeneration and kernel mail, uses this
           # execution's declaration rather than a subsequent profile edit.
           input.agent_configuration ||= AgentConfiguration.capture(input.execution_agent)
+          input.agent_configuration.executor_contexts = input.executor_contexts if input.agent_configuration && input.executor_contexts
           @tool_assembly = input.tool_assembly
           return park(input, @tool_assembly.refusal) if @tool_assembly.refused?
 

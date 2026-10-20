@@ -1,7 +1,7 @@
 require "test_helper"
 
 class EnvironmentsCheckpointsTest < Minitest::Test
-  Task = Data.define(:conversation_public_id, :parent_public_id, :run_public_id)
+  Task = Data.define(:conversation_public_id, :parent_public_id, :run_public_id, :executor_context, :tool_name)
 
   def setup
     @tmp = File.realpath(Dir.mktmpdir("rho-environments-checkpoints"))
@@ -23,12 +23,13 @@ class EnvironmentsCheckpointsTest < Minitest::Test
 
   def environments
     Rho::Environments.new(home: @home, config: Rho::Config.from_hash({}), registry: @registry,
-      log: nil, clock: -> { Time.now }, booted_at: "2026-09-18T00:00:00Z", default_root: -> { @default },
-      member_plane: ->(**) { nil }, own_runner: ->(_id) { true }, learn_runner: ->(_doc) { }, spawn: -> { }, checkpoints: true)
+      log: nil, clock: -> { Time.now }, default_root: -> { @default },
+      member_plane: ->(**) { nil }, own_runner: ->(_id) { true }, checkpoints: true)
   end
 
   def task(conversation = nil)
-    Task.new(conversation_public_id: conversation, parent_public_id: nil, run_public_id: "restore-run")
+    Task.new(conversation_public_id: conversation, parent_public_id: nil, run_public_id: "restore-run",
+      tool_name: "checkpoint_restore", executor_context: conversation && { "rho.environment" => { "root" => @other, "directories" => [], "anchor" => conversation } })
   end
 
   def test_settings_reopen_stores_with_new_limits_and_preserve_their_records
@@ -54,7 +55,6 @@ class EnvironmentsCheckpointsTest < Minitest::Test
 
   def test_a_standalone_restore_after_restart_recovers_the_original_root_from_its_store_record
     before = environments
-    before.receive("c-1", Rho::Runner::Environment::Binding.new(root: @other, directories: [], anchor: "c-1"))
     target = before.toolsets.for(task("c-1")).env.checkpoints.capture(run_public_id: "original-run")
     default = before.toolsets.zero.env.checkpoints.capture(run_public_id: "default-run")
     assert_equal default.hash, target.hash
@@ -74,7 +74,6 @@ class EnvironmentsCheckpointsTest < Minitest::Test
 
   def test_a_standalone_checkpoint_lookup_after_restart_finds_the_conversation_root
     before = environments
-    before.receive("c-1", Rho::Runner::Environment::Binding.new(root: @other, directories: [], anchor: "c-1"))
     target = before.toolsets.for(task("c-1")).env.checkpoints.capture(run_public_id: "original-run")
 
     placed = environments.toolsets.for(task)
@@ -89,7 +88,6 @@ class EnvironmentsCheckpointsTest < Minitest::Test
 
   def test_an_explicit_store_does_not_restore_a_different_root_after_its_recorded_path_becomes_a_symlink
     before = environments
-    before.receive("c-1", Rho::Runner::Environment::Binding.new(root: @other, directories: [], anchor: "c-1"))
     target = before.toolsets.for(task("c-1")).env.checkpoints.capture(run_public_id: "original-run")
     default = before.toolsets.zero.env.checkpoints.capture(run_public_id: "default-run")
     assert_equal default.hash, target.hash

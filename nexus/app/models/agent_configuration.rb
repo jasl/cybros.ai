@@ -1,6 +1,6 @@
-# Reusable execution configuration has no member identity or transport address.
-# The accepting input owns this value; materialization compiles it for that
-# input's real principal and captures the resulting execution authority.
+# The accepting input owns the execution declaration and its captured conditions.
+# Materialization compiles it for the input's real principal; executor contexts
+# select values for existing addresses without granting execution authority.
 class AgentConfiguration
   include StoreModel::Model
 
@@ -36,6 +36,14 @@ class AgentConfiguration
         end
         errors.add(:content, :unsupported_text) if content.include?("\u0000")
       end
+  end
+
+  # Execution captures only; this field is not part of User::Configurable.
+  attribute :executor_contexts
+  validate { errors.add(:executor_contexts, :invalid) if executor_contexts && !Nexus::ExecutorContexts.valid?(executor_contexts) }
+
+  def executor_contexts=(value)
+    super(Nexus::ExecutorContexts.valid?(value) ? Nexus::ExecutorContexts.normalize(value) : value)
   end
 
   attribute :tool_definitions

@@ -20,8 +20,11 @@ class DaemonExecutorPlaneTest < Minitest::Test
   RUNNER_WORKSPACE = { public_id: "0199-workspace", name: "Helper", dedicated: true }.freeze
 
   def inbox_row(key, tool: "ls", input: { "path" => "." })
+    root = File.join(@root, "claimed-project")
+    FileUtils.mkdir_p(root)
     { "kind" => "tool_call", "run_public_id" => "al-1", "conversation_public_id" => nil,
       "parent_public_id" => nil, "task_key" => key, "tool_name" => tool,
+      "executor_context" => { "rho.environment" => { "root" => root, "directories" => [] } },
       "tool_input" => input, "tool_call_id" => "call-#{key}", "started_at" => "2026-09-07T00:00:00Z",
       "deadline_at" => nil, "claimed" => false,
       "addressed_to" => { "role" => "runner", "executor_public_id" => "0199-runner" } }

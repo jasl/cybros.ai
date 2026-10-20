@@ -293,6 +293,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       resources :mcp_connections, only: [:index, :show]
       resources :conversations, only: :index
+      resources :run_candidates, only: :index
       resources :runs, only: :index
       resources :schedules, only: :index
       resource :attention, only: :show, controller: "attention"

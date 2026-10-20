@@ -171,6 +171,8 @@ module Conversations
 
         def prepare_declaration(origin)
           @agent_configuration = AgentConfiguration.to_type.cast(@command.agent_configuration) || origin.agent_configuration
+          @executor_contexts = origin.agent_configuration&.executor_contexts || @origin_seed&.operation_context&.fetch("executor_contexts", nil)
+          @agent_configuration.executor_contexts = @executor_contexts if @agent_configuration
           return :agent_configuration_invalid if @agent_configuration && !@agent_configuration.valid?
 
           @memory_context = if @command.agent_configuration
@@ -389,6 +391,7 @@ module Conversations
             model_selection: @model_selection.as_json, fallback_models: @fallback_models,
             instructions: seed&.system_instructions,
             tools: execution_tools,
+            executor_contexts: @executor_contexts,
             environment: @tool_assembly ? @tool_assembly.environment : seed&.operation_context&.fetch("environment", nil),
             compaction: @compile_declaration ? @agent_configuration.compaction_policy : seed&.compaction,
             visibility: seed&.transcript_visibility || "visible",

@@ -69,10 +69,13 @@ class AgentAPI::V1::Workspaces::Conversations::SchedulesController <
         :source_run_public_id, :source_task_key,
         :expected_lock_version, { rule: %i[kind run_at every_seconds starts_at local_time time_zone],
           model: %i[model reasoning_effort reasoning_enabled], model_selection: {}, fallback_models: [],
-          configuration: {}, tool_names: [] },
+          configuration: {}, executor_contexts: {}, tool_names: [] },
       ]).fetch(:schedule).to_h
       fields.except!("source_run_public_id", "source_task_key") unless action_name == "create"
       supplied = params.fetch(:schedule)
+      if supplied.key?(:executor_contexts) && !fields.key?("executor_contexts")
+        raise APIErrors::ParameterInvalid, :executor_contexts
+      end
       fields["fallback_models"] = nil if supplied.key?(:fallback_models) && supplied[:fallback_models].nil?
       if supplied.key?(:tool_names)
         names = supplied[:tool_names]

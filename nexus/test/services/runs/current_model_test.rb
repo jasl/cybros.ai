@@ -39,6 +39,43 @@ class Runs::CurrentModelTest < ActiveJob::TestCase
     assert_equal "mock-unmetered", Runs::CurrentModel.for_variant(@variant).model_ref
   end
 
+  test "SQL and batched selection follow first reads through hidden and late inserted rounds" do
+    now = Time.current
+    Task.insert_all!([
+      { node_key: "queued", continuation_source: nil, input_from_node_keys: ["steer"],
+        transcript_visibility: "hidden", model_ref: "mock-unmetered" },
+      { node_key: "steer", continuation_source: "round", input_from_node_keys: ["r1"],
+        transcript_visibility: "visible", model_ref: "mock-text" },
+      { node_key: "branch", continuation_source: "branch", input_from_node_keys: ["queued"],
+        transcript_visibility: "visible", model_ref: "mock-windowless" },
+    ].map do |row|
+      { account_id: @account.id, run_id: @run.id, type: Tasks::ModelTask.sti_name,
+        status: "queued", authored_by: "kernel", provider_id: "dev",
+        created_at: now, updated_at: now, **row }
+    end)
+
+    tail = @run.tasks.find_by!(node_key: "queued")
+    assert_operator tail.id, :<, @run.tasks.find_by!(node_key: "steer").id
+    assert_equal tail.id, @run.mainline_tail(nodes: @run.tasks.to_a).id
+    assert_equal tail.id, @run.mainline_tail.id
+    assert_equal tail.id, Runs::CurrentModel.for_loops([@run]).fetch(@run.id).id
+    assert_equal "mock-unmetered", Runs::CurrentModel.for(@run).model_ref
+  end
+
+  test "a page retains collected models and empty runs without borrowing another run's tail" do
+    retained = Run.create!(workspace: @workspace, creating_user: @human, approval_mode: "bypass",
+      retained_model: Run::RetainedModel.new(provider_id: "dev", model_ref: "mock-unmetered"))
+    empty = Run.create!(workspace: @workspace, creating_user: @human, approval_mode: "bypass")
+
+    selections = Runs::CurrentModel.for_loops([@run, retained, empty])
+
+    assert_equal "mock-text", selections.fetch(@run.id).model_ref
+    assert_equal "mock-unmetered", selections.fetch(retained.id).model_ref
+    assert_nil selections.fetch(empty.id)
+    assert_empty Runs::CurrentModel.for_loops([])
+    assert_empty Run.mainline_tails([])
+  end
+
   test "loop and timeline projections expose the retried main-line model" do
     retry_on_current_model
 

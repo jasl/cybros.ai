@@ -192,3 +192,13 @@ Remote agents and children using that runner receive the same document catalog
 when they declare its routed skill callable and their prompt template includes skills.
 Installing browser software does not enable browser tools; the browser
 extension remains a separate setting.
+
+### Captured working directories
+
+Dynamic toolsets read `executor_context["rho.environment"]` from the claimed task,
+before hooks, checkpoint capture and handler invocation. The payload contains an
+absolute `root`, a `directories` array and optional conversation `anchor`. Missing,
+malformed, protected or unavailable placement fails before the handler starts;
+no default-directory fallback is attempted.
+Fixed toolsets and tools that need no filesystem placement retain their existing
+behavior. The Runner needs no member credential or environment-binding replay.

@@ -80,10 +80,11 @@ module Rho
       # Blocks for the answer: the row's own deadline (the step's clock,
       # else the runner's announced park) plus the sweep's minute bounds it.
       # Answers a `ToolCallResult`, or the member plane's own `Refusal`.
-      def self.call_tool(ctx, runner, tool, input, timeout_ms = nil, idempotency_key: SecureRandom.uuid, workspace_public_id: nil)
+      def self.call_tool(ctx, runner, tool, input, timeout_ms = nil, idempotency_key: SecureRandom.uuid, workspace_public_id: nil, executor_context: nil)
         ctx.member_plane(workspace_public_id: workspace_public_id) do |client, workspace_public_id, about|
+          captured = executor_context || ctx.execution_contexts(client, tools: [], runner: runner).fetch(runner)
           context = ctx.runs_for(client, workspace_public_id).start_tool_call(
-            runner_executor_public_id: runner, tool: tool, input: input, timeout_ms: timeout_ms,
+            runner_executor_public_id: runner, tool: tool, input: input, timeout_ms: timeout_ms, executor_context: captured,
             approval_rules: Rho::RunDeclaration.request_rules(guard: ctx.config.plugin_enabled?("rho.guard"), roots: Rho.protected_roots(ctx.home)),
             idempotency_key: idempotency_key
           )

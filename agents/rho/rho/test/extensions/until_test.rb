@@ -49,7 +49,11 @@ class UntilExtensionTest < Minitest::Test
             tools: Rho::RunDeclaration.tool_entries(Rho::RunDeclaration.announcement(registry: @registry)) + [KERNEL_TOOL])
     environment = remote ? nil : Rho::Runner::Environment.local(root: @dir, working_directory: working_directory)
     lead = remote ? "" : Rho::RunDeclaration.lead(registry: @registry, environment: environment)
-    Draft.new(body: { "model" => "dev/mock-text" }.merge(body), environment: environment, notes: {},
+    runner = body.fetch("default_runner_executor_public_id", "0199-runner")
+    root = body.fetch("working_directory", remote ? "/srv/remote" : working_directory)
+    captured = { runner => { "rho.environment" => { "root" => root, "directories" => [] } } }
+    Draft.new(body: { "model" => "dev/mock-text", "default_runner_executor_public_id" => runner,
+      "executor_contexts" => captured }.merge(body), environment: environment, notes: {},
       lead: lead, tools: tools)
   end
 
@@ -100,11 +104,11 @@ class UntilExtensionTest < Minitest::Test
     gated = author.call(draft({ "until" => { "command" => "make test" } }), author_ctx)
     recorded = gated.notes.fetch("rho.until")
 
-    assert_equal ["make test", Rho::Until::DEFAULT_ATTEMPTS, @dir, nil],
+    assert_equal ["make test", Rho::Until::DEFAULT_ATTEMPTS, @dir, "0199-runner"],
       recorded.values_at("command", "attempts", "directory", "runner"),
-      "this machine's own runner: the local directory, no runner named"
+      "the captured concrete runner and directory"
     seed = recorded.fetch("seed")
-    assert_equal %w[model compaction tools], seed.keys, "a step has no kind: the verb is the key"
+    assert_equal %w[model compaction executor_contexts tools], seed.keys, "a step has no kind: the verb is the key"
     assert_equal({ "model" => "dev/mock-text" }, seed.fetch("model"))
     assert_equal({ "mode" => "kernel" }, seed.fetch("compaction"), "the settings' policy, the kernel's by default")
     assert_equal Rho::RunDeclaration.tool_entries(Rho::RunDeclaration.announcement(registry: @registry)) + [KERNEL_TOOL], seed.fetch("tools")
@@ -204,10 +208,9 @@ class UntilExtensionTest < Minitest::Test
     assert asserted.lead.end_with?(Rho::Until.paragraph(command: "make test",
       attempts: Rho::Until::DEFAULT_ATTEMPTS, directory: "/srv/remote/app"))
 
-    unknown = author.call(draft(body, remote: true), author_ctx(remote_runners: {}))
-    assert_nil unknown.notes.dig("rho.until", "directory"), "no snapshot: bash runs in the runner's root"
-    assert_equal "R1", unknown.notes.dig("rho.until", "runner")
-    assert_includes unknown.lead, "run in the runner's root"
+    unknown = author.call(draft(body.merge("executor_contexts" => {}), remote: true), author_ctx(remote_runners: {}))
+    assert_instance_of Rho::Daemon::Refusal, unknown
+    assert_match(/captured/, unknown.message)
   end
 
   # The same, through the daemon: the discovery read on a miss goes over
@@ -228,7 +231,7 @@ class UntilExtensionTest < Minitest::Test
   def test_the_follow_hook_builds_a_gate_without_an_append_request
     api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE)
     daemon = member_ready(boot(extensions: [Rho::Extensions::Until], config: agent_mode), api)
-    policy = Rho::Until::Policy.new(command: "make test", attempts: 2, directory: @dir, runner: nil, seed: {})
+    policy = Rho::Until::Policy.new(command: "make test", attempts: 2, directory: @dir, runner: "0199-runner", seed: { "executor_contexts" => { "0199-runner" => { "rho.environment" => { "root" => @dir, "directories" => [] } } } })
 
     assert_nil follow.call("al-1", {}, daemon.context)
     before = api.requests.length
@@ -246,8 +249,29 @@ class UntilExtensionTest < Minitest::Test
   # inline lead, the first input includes the check and hold, and the
   # follower installs its gate without a second task-creation request.
   def test_loaded_alone_it_authors_the_gate_over_the_wire
-    api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE)
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Until]), api)
+    check = { "key" => "check-1", "kind" => "tool_task", "status" => "pending", "tool_name" => "bash",
+      "tool_input" => { "command" => "make test", "workdir" => @dir },
+      "target" => { "executor_public_id" => "0199-runner" },
+      "executor_context" => { "rho.environment" => { "root" => @dir, "directories" => [], "anchor" => "c-1" } } }
+    hold = { "key" => "hold-1", "kind" => "await_task", "status" => "pending" }
+    trace = NexusDoubles::RUNNING_TRACE.merge("public_id" => "al-1", "tasks" => [check, hold].map { |task| task.merge("lifetime" => "conversation", "wake" => "auto") },
+      "turn" => { "public_id" => "t-1", "conversation_public_id" => "c-1", "status" => "running" })
+    turn = { "public_id" => "t-1", "position" => 0, "kind" => "direct_reply", "role" => "assistant",
+      "status" => "running", "visibility" => "visible", "inherited" => false,
+      "answering_user_public_id" => IDENTITY.user_public_id, "created_at" => "2026-09-30T00:00:00Z",
+      "input_public_id" => "cin-1" }
+    api = NexusDoubles::FakeAgentApi.new(trace: trace, task_detail: check, turns: [turn])
+    original = api.method(:call)
+    api.define_singleton_method(:call) do |path, **fields|
+      if path.end_with?("/inputs/cin-1/materialization")
+        CybrosAgent::Response.new(status: 200, headers: {}, body: { "materialization" => {
+          "input_public_id" => "cin-1", "turn_public_id" => "t-1", "variant_public_id" => "v-1", "run_public_id" => "al-1" } })
+      else
+        original.call(path, **fields)
+      end
+    end
+    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Until]), api, identity: RUNNER_IDENTITY)
+    check.fetch("executor_context").fetch("rho.environment")["root"] = daemon.context.tool_env.root
 
     response = request(daemon, :post, "/conversations", token: bearer(daemon), body: {
       prompt: "fix it", model: "dev/mock-text", working_directory: @dir,
@@ -256,9 +280,10 @@ class UntilExtensionTest < Minitest::Test
 
     assert_equal "201", response.code, response.body
     answer = JSON.parse(response.body)
-    assert_equal({ "command" => "make test", "attempts" => 2, "directory" => @dir }, answer.fetch("until"),
-      "own runner: no runner key on the answer (the daemon compacts the nil the store keeps)")
-    assert_equal "al-1", answer.dig("follower", "until", "run_public_id"), "the follower carries the gate, bound to the run"
+    assert_equal({ "command" => "make test", "attempts" => 2, "directory" => @dir, "runner" => "0199-runner" }, answer.fetch("until"),
+      "the answer names the captured concrete runner")
+    assert_equal api.inputs.fetch(0).dig("input", "steps", 0, "tool", "executor_context"), check.fetch("executor_context")
+    assert_equal "al-1", answer.dig("follower", "until", "run_public_id"), File.read(daemon.home.log_path) + api.requests.map(&:first).inspect
     lead = api.inputs.fetch(0).dig("input", "inline", 0, "text")
     assert lead.end_with?(Rho::Until.paragraph(command: "make test", attempts: 2, directory: @dir))
     steps = api.inputs.fetch(0).dig("input", "steps")
@@ -277,10 +302,10 @@ class UntilExtensionTest < Minitest::Test
     api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE)
     api.stock_principals([{ "public_id" => "peer-1", "handle" => "lark", "kind" => "agent", "display_name" => "Lark",
       "agent_identifier" => "rho.peer", "steward_public_id" => "steward-1" }])
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Until]), api)
+    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Until]), api, identity: RUNNER_IDENTITY)
 
     response = request(daemon, :post, "/conversations", token: bearer(daemon), body: {
-      prompt: "fix it", model: "dev/mock-text", agent: "@lark", until: { command: "make test" },
+      prompt: "fix it", model: "dev/mock-text", agent: "@lark", default_runner_executor_public_id: "0199-runner", until: { command: "make test" },
     })
 
     assert_equal "201", response.code, response.body
@@ -294,7 +319,7 @@ class UntilExtensionTest < Minitest::Test
     blocked = NexusDoubles::FakeAgentApi::MATERIALIZED_EVENTS.first.merge("type" => "input_blocked",
       "payload" => { "input_public_id" => "cin-1", "blocked_reason" => "runner_required" })
     api = NexusDoubles::FakeAgentApi.new(events: [blocked])
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Until]), api)
+    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Until]), api, identity: RUNNER_IDENTITY)
 
     response = request(daemon, :post, "/conversations", token: bearer(daemon), body: {
       prompt: "fix it", model: "dev/mock-text", until: { command: "make test" },
@@ -311,7 +336,7 @@ class UntilExtensionTest < Minitest::Test
   # run's own door — `GET …/tasks/check-1` — and appends the next attempt
   # with the hold resolved, over the wire.
   def test_the_gate_reads_the_settled_row_once_through_the_run_door_and_appends_the_verdict
-    settled = NexusDoubles::RUNNING_TRACE.merge("deliverable_task_key" => "hold-1", "tasks" => [
+    settled = NexusDoubles::RUNNING_TRACE.merge("public_id" => "al-1", "deliverable_task_key" => "hold-1", "tasks" => [
       { "key" => "r1", "kind" => "model_task", "lifetime" => "conversation", "wake" => "auto", "status" => "completed", "on_failure" => "halt",
         "visibility" => "visible", "created_at" => "2026-09-05T00:00:00Z" },
       { "key" => "check-1", "kind" => "tool_task", "lifetime" => "conversation", "wake" => "auto", "status" => "completed", "tool_name" => "bash",
@@ -325,7 +350,7 @@ class UntilExtensionTest < Minitest::Test
       "output" => "not yet: run 1\n\nCommand exited with code 1", "structured_content" => { "exit_status" => 1 },
     })
     daemon = member_ready(boot(extensions: [Rho::Extensions::Until], config: agent_mode), api)
-    policy = Rho::Until::Policy.new(command: "make test", attempts: 3, directory: @dir, runner: nil, seed: {})
+    policy = Rho::Until::Policy.new(command: "make test", attempts: 3, directory: @dir, runner: "0199-runner", seed: { "executor_contexts" => { "0199-runner" => { "rho.environment" => { "root" => @dir, "directories" => [] } } } })
     gate = follow.call("al-1", { "rho.until" => policy.to_h.merge("run_public_id" => "al-1") }, daemon.context)
     context = daemon.wire.client(NexusDoubles::MEMBER_TOKEN).workspace("ws-1").runs.run("al-1")
 

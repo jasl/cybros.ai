@@ -42,10 +42,9 @@ module Executors
       # snapshot the kernel keeps on a spawned child
       # (`Conversation#parent_conversation_public_id`, the weak reference
       # that survives the parent's reap) — null for a root conversation and
-      # for a standalone loop — so a runner elsewhere resolves a child's
-      # environment by its parent's received binding with no relay in the
-      # path. A structural fact the kernel already holds; no key of any
-      # argument is interpreted. `timeout_ms` is the park's budget the
+      # for a standalone loop. This is structural provenance; executable
+      # placement comes from the captured executor_context, never a parent
+      # lookup. No key of an argument is interpreted. `timeout_ms` is the park's budget the
       # deadline is cut from — authored, else announced, else the kernel's;
       # an ask's or a wait's clamped to 24 h; a held row's the 24 h hold —
       # stated so an executor names the budget it was held to without a
@@ -66,6 +65,7 @@ module Executors
           tool_alias: node.tool_alias,
           target: Runs::TaskProjection.target(node),
           tool_input: (node.tool_input if node.tool_call?),
+          executor_context: (TaskOperations::Context.executor_context(node) if node.tool_call?),
           effect_profile: (node.effect_profile if node.inbox_kind == "approval"),
           scope: (scope_of(node) if node.tool_call? && !node.mcp_call? && Nexus::ToolRegistry.kernel_name?(node.tool_name)),
           tool_call_id: node.tool_call_id,

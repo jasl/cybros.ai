@@ -62,7 +62,7 @@ class OpsExtensionTest < Minitest::Test
     assert_empty rest
     assert_equal ["model"], step.keys
     task = step.fetch("model")
-    assert_equal %w[prompt key model tools instructions kernel_tools runner_executor_public_ids mcp_tools], task.keys
+    assert_equal %w[prompt key model tools instructions kernel_tools runner_executor_public_ids mcp_tools executor_contexts], task.keys
     assert_empty task.fetch("mcp_tools")
     assert_equal ["work", "fix it", { "model" => "dev/mock-text" }],
       task.values_at("key", "prompt", "model")
@@ -114,7 +114,7 @@ class OpsExtensionTest < Minitest::Test
     assert_equal %w[steps prompt_mechanism approval_mode approval_rules default_runner_executor_public_id speaker_public_id model_selection fallback_models], authored.keys
     assert_equal "default", authored.fetch("prompt_mechanism")
     task = authored.fetch("steps").fetch(0).fetch("model")
-    assert_equal %w[prompt key model tools kernel_tools runner_executor_public_ids mcp_tools], task.keys, "no system field under an assembled word"
+    assert_equal %w[prompt key model tools kernel_tools runner_executor_public_ids mcp_tools executor_contexts], task.keys, "no system field under an assembled word"
     assert_empty task.fetch("mcp_tools")
     assert_equal "#{TOOL_LINES}\n\nConversation kind: standalone.\n\nfix it", task.fetch("prompt"),
       "the explicit default template leaves the known kind in the input lead and the guideline in the slot"

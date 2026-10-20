@@ -228,10 +228,19 @@ class Conversation < ApplicationRecord
   # and the answerer are FULL by derivation (never a row); an entry names
   # a level; else the conversation's default. `none` conceals — the read
   # funnel is the same rule spelled in SQL.
-  def access_level_for(user)
+  def access_level_for(user, access_levels: nil)
     return "full" if user.id == creating_user_id || user.id == answering_user_id
 
-    conversation_access_entries.find_by(user_id: user.id)&.level || access_default
+    level = access_levels ? access_levels[id] : conversation_access_entries.find_by(user_id: user.id)&.level
+    level || access_default
+  end
+
+  # Candidate readers have already materialized a bounded set of Conversations.
+  # Share the ordinary access derivation without issuing one entry query per row.
+  def self.readable_ids(rows, user:)
+    levels = ConversationAccessEntry.where(conversation_id: rows.map(&:id), user_id: user.id)
+      .pluck(:conversation_id, :level).to_h
+    rows.filter_map { |row| row.id if !row.tombstoned? && row.access_level_for(user, access_levels: levels) != "none" }
   end
 
   def readable_by?(user) = access_level_for(user) != "none"

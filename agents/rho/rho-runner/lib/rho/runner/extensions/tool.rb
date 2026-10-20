@@ -74,6 +74,9 @@ module Rho
           validator = compile_schema(klass, extension)
           validate_effect_profile(klass, extension)
           validate_timeout(klass, extension)
+          if klass.const_defined?(:ENVIRONMENT_REQUIRED, false) && ![true, false].include?(klass::ENVIRONMENT_REQUIRED)
+            raise RegistrationError, "#{extension}'s #{klass} ENVIRONMENT_REQUIRED must be true or false"
+          end
           validate_mcp(klass, extension)
 
           unless klass.method_defined?(:call)
@@ -82,6 +85,9 @@ module Rho
 
           validator
         end
+
+        # An explicit opt-out is for tools that do not read local directories.
+        def environment_required?(klass) = !klass.const_defined?(:ENVIRONMENT_REQUIRED, false) || klass::ENVIRONMENT_REQUIRED
 
         def validate_name(klass, extension)
           name = klass::NAME.to_s

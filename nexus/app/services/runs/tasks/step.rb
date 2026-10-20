@@ -16,10 +16,10 @@ module Runs
       # for. A fan's join word is `until`: a Ruby keyword, so it is a label,
       # a member and `self.until` here, never a bare local.
       WIRE_FIELDS = {
-        "tool" => %w[name input route key timeout_ms detached lifetime wake on_failure visibility tool_call_id after model_defaults],
+        "tool" => %w[name input route key timeout_ms detached lifetime wake on_failure visibility tool_call_id after model_defaults executor_context],
         "model" => %w[prompt key model workload tools instructions detached configuration compaction
                       fan_on_failure on_failure visibility attachments lifetime wake after results
-                      kernel_tools runner_executor_public_ids runner_tool_names mcp_tools model_selection fallback_models],
+                      kernel_tools runner_executor_public_ids runner_tool_names mcp_tools model_selection fallback_models executor_contexts],
         "ask" => %w[prompt options multi fields key timeout_ms detached lifetime wake on_failure visibility after],
         "wait" => %w[task run_public_id key timeout_ms detached lifetime wake on_failure visibility after],
         "parallel" => %w[until losers key on_failure lifetime wake],
@@ -31,10 +31,10 @@ module Runs
       # model called a kernel tool under, kept beside the kernel's wire
       # name in `name`; never a wire field.
       Tool = Data.define(:name, :input, :route, :key, :timeout_ms, :detached,
-        :on_failure, :visibility, :tool_call_id, :alias, :lifetime, :wake, :after, :lifecycle_event, :model_defaults) do
+        :on_failure, :visibility, :tool_call_id, :alias, :lifetime, :wake, :after, :lifecycle_event, :model_defaults, :executor_context) do
         def initialize(name:, input: {}, route: nil, key: nil, timeout_ms: nil, detached: false,
                        on_failure: nil, visibility: nil, tool_call_id: nil, alias: nil, lifetime: nil, wake: nil, after: nil,
-                       lifecycle_event: nil, model_defaults: nil) = super
+                       lifecycle_event: nil, model_defaults: nil, executor_context: nil) = super
 
         def verb = "tool"
         def kind = "tool_task"
@@ -48,13 +48,13 @@ module Runs
       Model = Data.define(:prompt, :key, :model, :workload, :tools, :instructions, :detached,
         :configuration, :compaction, :fan_on_failure, :on_failure, :visibility,
         :attachments, :lifetime, :wake, :after, :results, :environment,
-        :kernel_tools, :runner_executor_public_ids, :runner_tool_names, :mcp_tools, :model_selection, :fallback_models, :resolved_uploads) do
+        :kernel_tools, :runner_executor_public_ids, :runner_tool_names, :mcp_tools, :model_selection, :fallback_models, :executor_contexts, :resolved_uploads) do
         def initialize(prompt: nil, key: nil, model: nil, workload: "text_generation", tools: nil, instructions: nil,
                        detached: false, configuration: nil, compaction: nil,
                        fan_on_failure: nil, on_failure: nil, visibility: nil,
                        attachments: nil, lifetime: nil, wake: nil, after: nil, results: nil, environment: nil,
                        kernel_tools: nil, runner_executor_public_ids: nil, runner_tool_names: nil, mcp_tools: nil,
-                       model_selection: nil, fallback_models: nil, resolved_uploads: nil) = super
+                       model_selection: nil, fallback_models: nil, executor_contexts: nil, resolved_uploads: nil) = super
 
         def verb = "model"
         def kind = "model_task"
@@ -87,7 +87,7 @@ module Runs
       end
 
       MODEL_DEFAULT_FIELDS = %w[model workload configuration tools instructions compaction on_failure fan_on_failure
-                               kernel_tools runner_executor_public_ids runner_tool_names mcp_tools model_selection fallback_models].freeze
+                               kernel_tools runner_executor_public_ids runner_tool_names mcp_tools model_selection fallback_models executor_contexts].freeze
 
       # `members` holds steps and nested Arrays of steps (a sequence inside the
       # group); `until` is nil for the default `all`.
@@ -182,6 +182,7 @@ module Runs
               fallback_models: round.fallback_models,
               tools: round.tool_definitions,
               environment: round.operation_context&.fetch("environment", nil),
+              executor_contexts: round.operation_context&.fetch("executor_contexts", nil),
               instructions: round.system_instructions,
               compaction: round.compaction&.except(
                 ::Tasks::ModelTask::SUMMARY_SOURCE, ::Tasks::ModelTask::PRUNED_BEFORE

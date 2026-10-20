@@ -81,12 +81,12 @@ module CybrosAgent
       def fetch: (String public_id) -> Schedule
       def create: (prompt: String, rule: Hash[untyped, untyped], idempotency_key: String,
         ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?, ?configuration: Hash[untyped, untyped]?,
-        ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?speaker_public_id: String?,
+        ?executor_contexts: Hash[String, untyped]?, ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?speaker_public_id: String?,
         ?source_run_public_id: String?, ?source_task_key: String?,
         ?model_selection: Hash[String, untyped]?, ?fallback_models: Array[String]?) -> Created
       def update: (String public_id, expected_lock_version: Integer, ?prompt: String, ?rule: Hash[untyped, untyped],
         ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?, ?configuration: Hash[untyped, untyped]?,
-        ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?speaker_public_id: String?,
+        ?executor_contexts: Hash[String, untyped]?, ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?speaker_public_id: String?,
         ?model_selection: Hash[String, untyped]?, ?fallback_models: Array[String]?) -> Schedule
       def pause: (String public_id) -> Schedule
       def resume: (String public_id) -> Schedule

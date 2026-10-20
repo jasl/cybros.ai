@@ -76,14 +76,17 @@ module Rho
     # sentinel a `completed` row without an exit status carries.
     TIMEOUT_SENTENCE = "Command timed out".freeze
 
-    # `runner` is the bound runner's public id when the check runs
-    # elsewhere; nil for this machine's own or none. `directory` is nil
-    # when nothing knows where the tree is (bash then runs in the
-    # runner's root). Both are kept as nils so the store round-trips.
+    # Durable policies pin both the concrete executor and its accepted context.
     Policy = Data.define(:command, :attempts, :directory, :runner, :seed) do
       def self.from_h(hash)
-        new(command: hash.fetch("command"), attempts: Integer(hash.fetch("attempts")),
-            directory: hash["directory"], runner: hash["runner"], seed: hash.fetch("seed"))
+        policy = new(command: hash.fetch("command"), attempts: Integer(hash.fetch("attempts")),
+          directory: hash.fetch("directory"), runner: hash.fetch("runner"), seed: hash.fetch("seed"))
+        root = policy.seed.fetch("executor_contexts").fetch(policy.runner).fetch(Rho::Runner::Environment::CONTEXT_KEY).fetch("root")
+        unless !policy.command.strip.empty? && policy.attempts.between?(1, MAX_ATTEMPTS) &&
+            !policy.runner.to_s.empty? && !root.to_s.empty?
+          raise ArgumentError, "invalid durable Until policy"
+        end
+        policy
       end
 
       def to_h
@@ -162,10 +165,10 @@ module Rho
     # round and resolves the host's default Runner when accepted; the hold waits on the check and
     # is the deliverable that keeps the run open. `workdir` is omitted
     # when the directory is unknown (bash runs in the runner's root).
-    def check_steps(attempt, command:, directory:, timeout_seconds:)
+    def check_steps(attempt, command:, directory:, timeout_seconds:, runner:, executor_context:)
       [
         CybrosAgent::Steps::Tool.new(
-          name: "bash", key: check_key(attempt), route: { "kind" => "runner" },
+          name: "bash", key: check_key(attempt), route: { "kind" => "runner", "runner_executor_public_id" => runner }, executor_context: executor_context,
           input: { "command" => command, "workdir" => directory, "timeout" => timeout_seconds }.compact,
           timeout_ms: CHECK_PARK_MS, on_failure: "absorb"
         ),
@@ -254,6 +257,8 @@ module Rho
 
         begin
           run = context.fetch
+          return if @run_public_id && run.public_id != @run_public_id
+
           attempt = ready?(run)
           return if attempt.nil?
 
@@ -295,11 +300,8 @@ module Rho
             @sleeper.call(APPEND_BACKOFF_SECONDS * tries)
             retry
           end
-          @log&.warn("until.abandoned", command: @policy.command, error_class: error.class.name,
+          @log&.warn("until.append_deferred", command: @policy.command, error_class: error.class.name,
             detail: CybrosAgent::Redaction.call(error.message))
-          release(context, "the acceptance check's verdict could not be recorded " \
-                           "(#{error.class.name.split("::").last}: #{CybrosAgent::Redaction.call(error.message)})",
-            run: run, attempt: attempt)
         end
       end
 
@@ -308,7 +310,6 @@ module Rho
       # Best effort — if this append fails too, the hold's own timeout
       # is the last resort, and the log says so.
       def release(context, reason, run: nil, attempt: nil)
-        @mutex.synchronize { @done = true }
         run ||= context.fetch
         attempt ||= ready?(run)
         return if attempt.nil?
@@ -318,6 +319,7 @@ module Rho
           resolve: [{ "task" => Until.hold_key(attempt), "content" => "check #{attempt}/#{@policy.attempts}: #{reason}" }],
           idempotency_key: Until.idempotency_key(run.public_id, attempt, "release")
         )
+        @mutex.synchronize { @done = true }
       rescue CybrosAgent::Api::Error, CybrosAgent::TransportError => error
         @log&.warn("until.release_failed", error_class: error.class.name,
           detail: CybrosAgent::Redaction.call(error.message))
@@ -360,7 +362,7 @@ module Rho
             attempt: attempt, attempts: @policy.attempts, exit_status: verdict.exit_status,
             timed_out: verdict.timed_out, passed: verdict.passed?, at: @clock.call.iso8601
           )
-          @mutex.synchronize { @checks << check }
+          @mutex.synchronize { @checks << check unless @checks.any? { |saved| saved.attempt == attempt } }
           @log&.info("until.checked", attempt: attempt, attempts: @policy.attempts, verdict: check.verdict,
             runner: @policy.runner || "own", task: Until.check_key(attempt))
         end
@@ -384,7 +386,7 @@ module Rho
           else
             [round(Until.work_key(attempt + 1), continue_prompt(attempt, verdict), attempt),
              *Until.check_steps(attempt + 1, command: @policy.command, directory: @policy.directory,
-               timeout_seconds: @timeout_seconds)]
+               timeout_seconds: @timeout_seconds, runner: @policy.runner, executor_context: @policy.seed.fetch("executor_contexts").fetch(@policy.runner))]
           end
         end
 

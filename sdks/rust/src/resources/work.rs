@@ -9,6 +9,13 @@ impl Client {
 
 handle!(WorkQueries);
 impl WorkQueries {
+    list!(
+        run_candidates,
+        "run_candidates",
+        RunCandidateQuery,
+        RunCandidate,
+        "runs"
+    );
     query_get!(
         analysis,
         "work_analysis",

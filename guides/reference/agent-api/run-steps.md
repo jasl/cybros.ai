@@ -563,3 +563,26 @@ consumes this answer by selecting the ask key in `results`; a model's own `ask`
 uses its existing automatic continuation. Answering collects data and does not
 approve subsequent tool calls. Clients without typed-question support must show
 that limitation and keep the question pending, rather than submit text or an empty answer.
+
+## Captured executor context
+
+Member-authored Model steps accept `executor_contexts`, a JSON object keyed by
+concrete Executor UUID, with an opaque JSON object as each value. The same field
+is accepted in a standalone Tool step's `model_defaults`, in conversation input
+create/update, and in schedule create/update. It is bounded by the snapshot JSON
+limit. UUID keys are normalized to lowercase; duplicate normalized keys and
+non-object values are refused.
+
+A member-authored Tool step can also carry `executor_context` for its own
+concrete target. If both the singular value and a matching map value are supplied,
+they must agree. The captured value is delivered as `executor_context` on the
+[executable task row](executor.md). Missing context projects as absent or null. Nexus treats
+the payload as application data; it does not interpret paths or fetch application
+Store entries to fill missing values. Do not place credentials in the payload.
+
+Model-generated continuations inherit the accepted map and cannot replace it.
+Each generated tool receives only the value for its concrete target. Model tool
+arguments and provider tool schemas contain no context field. Retry, approval,
+compaction, regeneration and child execution preserve captured context through
+their existing execution configuration. A later independent input may capture a
+new map; changing current defaults does not rewrite accepted tasks.

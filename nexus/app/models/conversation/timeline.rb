@@ -67,10 +67,10 @@ class Conversation
     # canceled run) is not lost history — a reply that kept its seed is
     # context even without an answer, and counts once with both.
     def content_bearing_count(surface:, before_position: nil, from_position: nil)
-      relation = surface_scope(surface).joins(content_body_join_sql)
+      relation = surface_scope(surface).where(content_body_exists_sql)
       relation = relation.where(turns: { position: ...before_position }) if before_position
       relation = relation.where(turns: { position: from_position.. }) if from_position
-      relation.unscope(:select).unscope(:order).count("DISTINCT turns.id")
+      relation.unscope(:select).unscope(:order).count
     end
 
     # THE REACH, as one Arel predicate over `turns`: local rows,
@@ -79,13 +79,11 @@ class Conversation
     # it is the funnel's one definition of "reachable" — the timeline's own
     # reads and `Conversations::RunnerEffectsAt` read the same rows through it.
     def reach
-      inherited = @conversation.conversation_ancestries
-        .pluck(:ancestor_conversation_id, :boundary_position)
-        .map do |ancestor_id, bound|
-          Arel::Nodes::Grouping.new(
-            turns[:conversation_id].eq(ancestor_id).and(turns[:position].lteq(bound))
-          )
-        end
+      inherited = ancestry_ranges.map do |ancestor_id, bound|
+        Arel::Nodes::Grouping.new(
+          turns[:conversation_id].eq(ancestor_id).and(turns[:position].lteq(bound))
+        )
+      end
       # `Node#or` rather than the `Or` node's constructor, whose arity has
       # changed across Rails versions.
       [local_turn, *inherited].reduce(:or)
@@ -105,16 +103,30 @@ class Conversation
       def surface_scope(surface, include_hidden: false)
         visibilities = SURFACE_VISIBILITIES.fetch(surface)
         visibilities += ["hidden"] if include_hidden
-        reachable_turns
-          .where(effective_deleted_at.eq(nil))
-          .where(effective_visibility.in(visibilities))
+        if ancestry_ranges.empty?
+          Turn.where(conversation_id: @conversation.id, deleted_at: nil, visibility: visibilities)
+            .select("turns.*", "turns.visibility AS effective_visibility").order(position: :asc)
+        else
+          reachable_turns
+            .where(effective_deleted_at.eq(nil))
+            .where(effective_visibility.in(visibilities))
+        end
       end
 
-      def content_body_join_sql
+      # Ancestry is creation-frozen. Reuse its finite ranges within this read.
+      def ancestry_ranges
+        @ancestry_ranges ||= @conversation.conversation_ancestries
+          .pluck(:ancestor_conversation_id, :boundary_position)
+          .reject { |_, bound| bound.negative? }
+      end
+
+      def content_body_exists_sql
         <<~SQL
-          INNER JOIN content_bodies
-            ON content_bodies.variant_id = turns.active_variant_id
-           AND content_bodies.role IN ('content', 'prompt')
+          EXISTS (
+            SELECT 1 FROM content_bodies
+            WHERE content_bodies.variant_id = turns.active_variant_id
+              AND content_bodies.role IN ('content', 'prompt')
+          )
         SQL
       end
 

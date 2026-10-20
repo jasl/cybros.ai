@@ -620,3 +620,5 @@ was retaken refuses honestly (`slot_occupied`).
 | `409 Conflict` | `not_running` | A cancellation with nothing left to cut. |
 | `422 Unprocessable Content` | `validation_failed` | A malformed body, or a configuration the chosen model refuses. |
 | `422 Unprocessable Content` | `agent_configuration_invalid`, `model_selection_invalid`, `fallback_models_invalid` | Regeneration received an agent configuration, model intent or ordered fallback list outside its grammar. |
+
+Authoring also accepts `executor_contexts`; see [captured executor context](run-steps.md#captured-executor-context) for its shape and inheritance rules.

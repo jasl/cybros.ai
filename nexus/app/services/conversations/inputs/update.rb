@@ -24,9 +24,9 @@ module Conversations
         :expected_lock_version, :entries, :visible_in_context, :context_mode,
         :context_options, :provider_id, :model_ref, :reasoning_effort, :reasoning_enabled,
         :request_options, :tool_names, :approval_mode, :instructions, :attachments, :deliver_at, :steps, :delivery_mode,
-        :agent_configuration, :model_selection, :fallback_models) do
+        :agent_configuration, :model_selection, :fallback_models, :executor_contexts) do
         def initialize(reasoning_enabled: nil, tool_names: nil, approval_mode: nil, instructions: nil, attachments: nil, deliver_at: nil, steps: nil, delivery_mode: nil,
-                       agent_configuration: nil, model_selection: nil, fallback_models: nil, **) = super
+                       agent_configuration: nil, model_selection: nil, fallback_models: nil, executor_contexts: nil, **) = super
       end
 
       class << self
@@ -239,6 +239,7 @@ module Conversations
             changes[:reasoning_enabled] = @command.reasoning_enabled
           end
           changes[:request_options] = @command.request_options if @command.request_options
+          changes[:executor_contexts] = @command.executor_contexts unless @command.executor_contexts.nil?
           changes[:agent_configuration] = @command.agent_configuration if @command.agent_configuration
           if @command.model_selection
             changes[:model_selection] = @command.model_selection

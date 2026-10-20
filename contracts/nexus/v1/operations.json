@@ -323,6 +323,13 @@
       "sdk_supported": true
     },
     {
+      "id": "GET /agent_api/v1/run_candidates",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/run_candidates",
+      "sdk_supported": true
+    },
+    {
       "id": "GET /agent_api/v1/runs",
       "plane": "member",
       "method": "GET",

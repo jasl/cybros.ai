@@ -179,6 +179,7 @@ module Conversations
             # place that knows the list was the person's word.
             tools: @tool_assembly.definitions.presence,
             environment: @tool_assembly.environment,
+            executor_contexts: input.executor_contexts,
             compaction: configuration&.compaction_policy,
             visibility: "visible"
           )

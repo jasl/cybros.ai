@@ -87,10 +87,10 @@ module Rho
 
                 fields.merge!(execution.slice(:model, :model_selection, :fallback_models))
                 fields.delete(:model) if fields[:model].nil?
-                names = ctx.conversation_tool_names(public_id, workspace, client: client, to: fields[:to], tool_names: fields[:tool_names])
+                names = ctx.conversation_tool_names(public_id, workspace, client: client, to: fields[:to], tool_names: fields[:tool_names], include_contexts: true)
                 next names if names in Rho::Daemon::Refusal
 
-                fields[:tool_names] = names unless names.nil?
+                fields.merge!(names.compact)
                 fields.merge!(body.slice(*PROVENANCE_FIELDS).transform_keys(&:to_sym))
                 created = jobs.create(**fields, idempotency_key: body.fetch("idempotency_key"))
                 [201, { schedule: created.schedule.to_h, replayed: created.replayed? }]

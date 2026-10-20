@@ -19,7 +19,7 @@ class ContextSurfaceTest < Minitest::Test
   # the session grants the approve verb adds to it and `rho rules` lists.
   # `list_named_agents`, `declare_named_agent`, `remove_named_agent`:
   # the Bot commands and page's door over the daemon's declare edge and kernel.
-  # `agent_presets`, `execution_selection`, `conversation_execution`:
+  # `agent_presets`, `execution_contexts execution_selection`, `conversation_execution`:
   # authored configuration and the agent configurations selected from it.
   # `replace_bot_settings`: the Home workspace on the declaring profile's store.
   # `listed_followers`: the host owner's interactive listing, excluding
@@ -32,7 +32,7 @@ class ContextSurfaceTest < Minitest::Test
     current_conversation_public_id declare_named_agent declare_profile endpoint environment environments
     executor_plane
     failures follow realtime_for forget grant grants home host_binding host_bindings host_of inventory kernel_tool_configuration
-    agent_presets execution_selection conversation_execution lead_hints learn_runner list_preset_tools list_named_agents listed_followers live_process_in log
+    agent_presets execution_contexts execution_selection conversation_execution lead_hints learn_runner list_preset_tools list_named_agents listed_followers live_process_in log
     run_command runs_for member_plane notes own_runner? own_user_public_id page? registry remember
     remote_runner remove_named_agent replace_bot_settings
     repoint_tools follower runner_selection runner_snapshot followers settings_runner spawn stopping?

@@ -31,6 +31,7 @@ pub struct ClaimedBy {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InboxTask {
+    pub executor_context: Option<JsonObject>,
     pub kind: crate::types::names::InboxKind,
     pub run_public_id: String,
     pub workspace_public_id: String,

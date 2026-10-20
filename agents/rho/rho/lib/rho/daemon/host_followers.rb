@@ -1,4 +1,5 @@
 require "async/semaphore"
+require_relative "../until/scanner"
 require_relative "host_followers/bindings"
 require_relative "host_followers/policies"
 require_relative "host_followers/named_agents"
@@ -41,6 +42,7 @@ module Rho
       # lands, never a wait.
       MATERIALIZATION_WAIT = 30
       MATERIALIZATION_POLL = 1.0
+      RECOVERY_INTERVAL = 5.0
 
       # What `:turn_author` sees and answers: the request, the environment
       # the tools are bound to, the ONE inline entry the turn opens with —
@@ -88,7 +90,7 @@ module Rho
       # `on_host_ended` is told each host this daemon stops following, or whose tools left
       # this machine's runner: the daemon releases the processes that host's runs started.
       # `environments` is the daemon's environment tables: the record written at the open,
-      # read at every lead, relayed to a runner elsewhere, copied top-down at the child edge.
+      # captured before each accepted input and inherited at the child edge.
       def initialize(lineage:, home:, config:, wire:, loaded:, log:, context:, environments:,
                      clock: -> { Time.now }, sleeper: ->(seconds) { sleep(seconds) }, on_host_ended: nil)
         @lineage = lineage
@@ -119,6 +121,41 @@ module Rho
         @grants = [].freeze
         # A Semaphore lets daemon fibers wait without blocking the reactor thread; lineage_lock_test pins that behavior.
         @declaring = Async::Semaphore.new(1)
+      end
+
+      def recover_until
+        about = @lineage.credentials
+        return unless about && @lineage.current?(about)
+        return unless @lineage.begin_recovery(about)
+
+        @context.spawn do
+          begin
+            client = @wire.client(nil, credential_provider: about.method(:member_credential).to_proc)
+            owner = @context.own_user_public_id
+            while @lineage.current?(about)
+              delay = RECOVERY_INTERVAL
+              begin
+                agents = client.profile.agents.list.select { |row| row.derived_from_public_id == owner }.map(&:public_id)
+                Until::Scanner.new(client: client, owner_public_id: owner, agent_public_ids: [owner, *agents],
+                  timeout_seconds: Extensions::Until.clamp(@context), log: @log, sleeper: @sleeper,
+                  active: -> { @lineage.current?(about) }).call
+              rescue CybrosAgent::Error, Rho::StateError => error
+                delay = [delay, error.retry_after || 0].max if error in CybrosAgent::Api::RateLimited
+                @log.warn("until.scan_failed", error_class: error.class.name,
+                  detail: CybrosAgent::Redaction.call(error.message))
+              end
+              while delay.positive? && @lineage.current?(about)
+                pause = [delay, RECOVERY_INTERVAL].min
+                @sleeper.call(pause)
+                delay -= pause
+              end
+            end
+          ensure
+            @lineage.finish_recovery(about)
+          end
+        end
+      rescue ClosedQueueError
+        @lineage.finish_recovery(about)
       end
 
       # rho's policy over the SDK's model-adaptations pack, for the verbs
@@ -295,6 +332,12 @@ module Rho
             instructions: body["instructions"], binding: root_set, code_mode: code_mode, bare: foreign && !named_answerer)
           selection = tool_selection(client, surface: surface, code_mode: code_mode, subagent: body.fetch("subagent"), answerer: named_answerer,
             declaration: execution&.fetch(:agent_configuration), bare: foreign && !named_answerer)
+          contexts = if foreign && !named_answerer && !body["until"]
+            {}
+          else
+            captured_contexts(client, tools: selection.tools, runner: runner, binding: root_set, bare: foreign && !named_answerer)
+          end
+          body = body.merge("executor_contexts" => contexts, "default_runner_executor_public_id" => runner)
           # The draft carries the IDS where the verb sent paths: the reply
           # input names uploads, never files.
           draft = author_hooks(
@@ -430,6 +473,10 @@ module Rho
             attachments: staged.ids, model: model, schedule: schedule, approval_mode: body["approval_mode"], tool_names: body["tool_names"])
           next fields if fields in Refusal
 
+          if host.outlives_turn? && (!bare || named_answerer) && (!captured || record&.anchor == host.public_id)
+            fields[:executor_contexts] = captured_contexts(client, tools: selection.tools, runner: row.runner,
+              binding: record&.binding, host: host.public_id, workspace_public_id: row.workspace)
+          end
           fields.merge!(execution.except(:model)) if execution
           fields.delete(:model) if captured && body["model"].to_s.empty?
 
@@ -454,10 +501,6 @@ module Rho
           # Caller context follows the existing surface/side preface; neither
           # replaces the other. Nexus owns inline entry validation and placement.
           fields[:inline] = fields.fetch(:inline, []) + inline unless inline.empty?
-          # THE RUNNER ELSEWHERE IS TOLD after the turn's read:
-          # relayed when the tuple or the runner's boot moved, never when
-          # both match — one discovery read per turn on a remote-runner row.
-          relayed = (@environments.assert_remote(host.public_id, row.runner, record.binding, plane: plane) if surface.remote? && record&.binding)
           # Anchor before posting: the receipt follows this input, even
           # when another queued sender materializes first.
           run = @lineage.follower(host.public_id)
@@ -486,7 +529,7 @@ module Rho
           answer[:addressed_to] = { public_id: addressee.public_id, handle: addressee.handle } if addressee
           answer[:attachments] = staged.descriptors if staged.descriptors.any?
           if record&.binding
-            answer[:environment] = { root: record.root, directories: record.directories, relayed: relayed&.to_h }.compact
+            answer[:environment] = { root: record.root, directories: record.directories }.compact
           end
           next [200, answer] unless host.outlives_turn?
           if body["wait"] == false

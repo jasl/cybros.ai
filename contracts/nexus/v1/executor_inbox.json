@@ -41,6 +41,7 @@
     "tool_name",
     "target",
     "tool_input",
+    "executor_context",
     "tool_call_id",
     "started_at",
     "deadline_at",
@@ -148,6 +149,9 @@
         "tool_input": {
           "path": "README.md"
         },
+        "executor_context": {
+          "fixture.directory": "/srv/project"
+        },
         "tool_call_id": "call_1",
         "started_at": "2026-07-30T00:00:00Z",
         "deadline_at": "2026-07-30T00:10:00Z",
@@ -178,6 +182,9 @@
       },
       "tool_input": {
         "path": "README.md"
+      },
+      "executor_context": {
+        "fixture.directory": "/srv/project"
       },
       "tool_call_id": "call_1",
       "started_at": "2026-07-30T00:00:00Z",
@@ -213,6 +220,9 @@
       },
       "tool_input": {
         "path": "README.md"
+      },
+      "executor_context": {
+        "fixture.directory": "/srv/project"
       },
       "tool_call_id": "call_1",
       "started_at": "2026-07-30T00:00:00Z",
@@ -295,6 +305,9 @@
     "tool_input": {
       "command": "rm -rf build"
     },
+    "executor_context": {
+      "fixture.directory": "/srv/project"
+    },
     "effect_profile": {
       "kind": "write",
       "destructive": true,
@@ -322,6 +335,9 @@
     "tool_name": "memory_read",
     "tool_input": {
       "path": "workspace/notes.md"
+    },
+    "executor_context": {
+      "fixture.directory": "/srv/project"
     },
     "scope": {
       "bindings": [
@@ -354,6 +370,9 @@
     "tool_alias": "Skill",
     "tool_input": {
       "name": "deploy-notes"
+    },
+    "executor_context": {
+      "fixture.directory": "/srv/project"
     },
     "scope": {
       "workspace_public_id": "01900000-0000-7000-8000-000000000001",
@@ -426,6 +445,9 @@
     },
     "tool_input": {
       "path": "README.md"
+    },
+    "executor_context": {
+      "fixture.directory": "/srv/project"
     },
     "tool_call_id": "call_1",
     "started_at": "2026-07-30T00:00:00Z",

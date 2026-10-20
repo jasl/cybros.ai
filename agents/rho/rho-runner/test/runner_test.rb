@@ -671,20 +671,21 @@ class RunnerLoopTest < Minitest::Test
       hooks = Rho::Runner::Extensions::Hooks::Host.new([
         Rho::Runner::Extensions::Hooks::Registration.new(event: :tool_call, extension: "t", handler: lambda { |_name, arguments, _tool|
           context = Rho::Runner::ExecutionContext.current
+          threads[context.task_key] = Thread.current
           seen[context.task_key] = [context.tool_env&.root, context.binding&.anchor]
           arguments
         }),
       ])
       bindings = { "conv-1" => Rho::Runner::Environment::Binding.new(root: bound_root, directories: [], anchor: "conv-1"),
                    "conv-2" => Rho::Runner::Environment::Binding.new(root: File.join(tmp, "gone"), directories: [], anchor: "conv-2") }
-      toolsets = Rho::Runner::Toolsets.new(registry: registry, zero: zero, work_dir: File.join(tmp, "work"),
-        resolver: ->(conversation, _parent) { threads[conversation] = Thread.current; bindings[conversation] })
+      toolsets = Rho::Runner::Toolsets.new(registry: registry, zero: zero, work_dir: File.join(tmp, "work"))
       lane = Lane.new(rows: [
         row("t1", tool: "ls", input: {}, conversation: "conv-1"),
         row("t2", tool: "ls", input: {}, conversation: "conv-2"),
         row("t3", tool: "ls", input: {}),
         row("t4", tool: "vanished", input: {}, conversation: "conv-1"),
-      ].map { |task| task.with(run_public_id: "loop-#{task.task_key}") })
+      ].map { |task| task.with(run_public_id: "loop-#{task.task_key}",
+        executor_context: (bindings[task.conversation_public_id] && { "rho.environment" => bindings.fetch(task.conversation_public_id).to_h })) })
       pool = Rho::Runner::Pool.new(worker_threads: 2)
       subject = Rho::Runner.new(executor: lane, toolsets: toolsets, log: Silent.new, pool: pool,
         sleeper: ->(_) { nil }, hooks: hooks)
@@ -692,12 +693,12 @@ class RunnerLoopTest < Minitest::Test
       subject.stop
 
       assert_equal [bound_root, "conv-1"], seen.fetch("t1"), "the bound root's env and record on the context"
-      assert_equal [zero_root, nil], seen.fetch("t2"), "a root absent on this host: zero, no record"
-      assert_equal [zero_root, nil], seen.fetch("t3"), "a standalone row: zero"
-      refute_same Thread.current, threads.fetch("conv-1"), "the resolver ran on a worker, never the reactor"
+      refute seen.key?("t2"), "missing directory fails before hooks"
+      refute seen.key?("t3"), "missing context fails before hooks"
+      refute_same Thread.current, threads.fetch("t1"), "the resolver ran on a worker, never the reactor"
       by_key = lane.commits.to_h { |fields| [fields.fetch(:claim_token), fields] }
       assert_equal "completed", by_key.fetch("tok-t1").fetch(:outcome)
-      assert_equal "failed", by_key.fetch("tok-t4").fetch(:outcome)
+      %w[t2 t3 t4].each { |key| assert_equal "failed", by_key.fetch("tok-#{key}").fetch(:outcome) }
       assert_includes by_key.fetch("tok-t4").fetch(:content), "no longer serves \"vanished\""
       assert_equal registry.names.sort, subject.snapshot.tools.sort
     ensure

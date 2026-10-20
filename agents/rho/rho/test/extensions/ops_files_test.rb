@@ -71,7 +71,7 @@ class OpsFilesTest < Minitest::Test
                                    { "type" => "resource_link", "uri" => "nexus://uploads/up-1", "name" => "shot.png",
                                      "mimeType" => "image/png", "size" => 4 }],
                      "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-13T00:00:00Z" },
-      upload_bytes: { "up-1" => "PNG!" }
+      upload_bytes: { "up-1" => "PNG!" }, executors: [NexusDoubles.remote_runner("0199-h", root: "/there")]
     )
     daemon = member_ready(boot(config: agent_mode("tools_root" => root)), api, identity: RUNNER_IDENTITY)
     store.remember(Rho::Host::Run.new(public_id: "al-9"), workspace: "ws-1", runner: "0199-h")
@@ -86,7 +86,8 @@ class OpsFilesTest < Minitest::Test
     assert_includes response["content-security-policy"], "default-src 'none'"
     assert_equal [{ "name" => "files_bytes", "input" => { "path" => "/there/shot.png" }, "key" => "call_tool",
                     "timeout_ms" => Rho::Extensions::Ops::Files::RELAY_TIMEOUT_MS,
-                    "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-h" } }],
+                    "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-h" },
+                    "executor_context" => { "rho.environment" => { "root" => "/there", "directories" => [], "anchor" => nil } } }],
       api.run_creates.map { |body| body.dig("run", "steps", 0, "tool") }
     assert_equal "0199-h", api.run_creates.first.dig("run", "default_runner_executor_public_id")
 
@@ -115,7 +116,7 @@ class OpsFilesTest < Minitest::Test
                "claimed_by" => { "executor_public_id" => "0199-runner" },
                "created_at" => "2026-09-13T00:00:00Z" }
     api = NexusDoubles::FakeAgentApi.new(task_detail: detail)
-    daemon = member_ready(boot, api)
+    daemon = member_ready(boot, api, identity: RUNNER_IDENTITY)
 
     response = request(daemon, :post, "/runs/call_tool", token: bearer(daemon),
       body: { "runner_executor_public_id" => "0199-runner", "tool" => "capture", "input" => { "note" => "one" },
@@ -136,7 +137,8 @@ class OpsFilesTest < Minitest::Test
     authored = api.run_creates.fetch(0).fetch("run")
     assert_equal %w[steps prompt_mechanism approval_mode approval_rules default_runner_executor_public_id].sort, authored.keys.sort
     assert_equal [{ "tool" => { "name" => "capture", "input" => { "note" => "one" }, "key" => "call_tool", "timeout_ms" => 5_000,
-      "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-runner" } } }],
+      "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-runner" },
+      "executor_context" => { "rho.environment" => { "root" => daemon.context.tool_env.root, "directories" => [], "anchor" => nil } } } }],
       authored.fetch("steps"), "one tool step, the deliverable by construction"
     assert_equal "raw", authored.fetch("prompt_mechanism")
     assert_equal "bypass", authored.fetch("approval_mode")
@@ -161,7 +163,7 @@ class OpsFilesTest < Minitest::Test
                "error" => { "key" => "tool_not_served", "detail" => "nobody announces nosuch" },
                "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-13T00:00:00Z" }
     api = NexusDoubles::FakeAgentApi.new(task_detail: detail)
-    daemon = member_ready(boot, api)
+    daemon = member_ready(boot, api, identity: RUNNER_IDENTITY)
 
     response = request(daemon, :post, "/runs/call_tool", token: bearer(daemon),
       body: { "runner_executor_public_id" => "0199-runner", "tool" => "nosuch" })

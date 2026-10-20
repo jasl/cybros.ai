@@ -246,7 +246,7 @@ module Runs
         end
 
         def send_selection(addressee, agent)
-          return KernelTool.initiator_model(@node, input) unless Conversations::AnswerEngine.captured?(addressee, addressee: agent)
+          return KernelTool.initiator_model(@node, input) unless Conversations::AnswerEngine.captured_model?(addressee, addressee: agent)
           return {} if input["model"].blank?
 
           KernelTool.initiator_model(@node, input).merge(model_selection: ModelSelectionIntent.explicit(input["model"]))

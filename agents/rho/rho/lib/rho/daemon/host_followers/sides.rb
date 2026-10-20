@@ -196,10 +196,8 @@ module Rho
           # the fork point and copies the runner and billing; this row copies what rho
           # keeps beside them — the model and the runner it last
           # learned (a side never renders a lead: `say`'s side gate).
-          # THE SIDE'S ENVIRONMENT: born with the
-          # kernel's fork copy of the parent's record, so the parent's
-          # tuple is memoized under the side at once and relayed when the
-          # side's runner — the parent's — is elsewhere.
+          # The fork copies the parent's environment defaults. Each later
+          # input captures its selected Executor values before submission.
           def open_side(parent_id, parent_row, workspace, plane)
             forked = parent_row.host.context(workspace).fork(side: true, idempotency_key: SecureRandom.uuid)
             host = Rho::Host::Conversation.new(public_id: forked.conversation.public_id)
@@ -220,9 +218,6 @@ module Rho
             return if binding.nil?
 
             @environments.remember_copy(host.public_id, binding, runner: parent_row.runner)
-            return if parent_row.runner.nil? || @context.own_runner?(parent_row.runner)
-
-            @environments.assert_remote(host.public_id, parent_row.runner, binding, plane: plane, wait: false)
           rescue StandardError => error
             @log.warn("environment.side_copy_failed", side: host.public_id, parent: parent_id, error_class: error.class.name)
           end

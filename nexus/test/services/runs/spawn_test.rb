@@ -28,9 +28,9 @@ class Runs::SpawnTest < ActiveJob::TestCase
 
   def say!(text) = post_input!(@conversation, acting_user: @human, text: text)
 
-  def open_turn!(text = "go")
+  def open_turn!(text = "go", **options)
     say!(text)
-    turn, run = materialize_loop_reply!(@conversation, agent: @agent, text: nil)
+    turn, run = materialize_loop_reply!(@conversation, agent: @agent, text: nil, **options)
     schedule_loop!(run)
     [turn, run]
   end
@@ -63,8 +63,8 @@ class Runs::SpawnTest < ActiveJob::TestCase
     run.reload
   end
 
-  def spawning_loop(*calls)
-    _turn, run = open_turn!
+  def spawning_loop(*calls, **options)
+    _turn, run = open_turn!(**options)
     spawn_round!(run, *calls)
   end
 
@@ -250,8 +250,9 @@ class Runs::SpawnTest < ActiveJob::TestCase
   test "a named model rides the brief when the answerer has no preset; the answerer's own default_model beats it" do
     peer = create_agent_member(display_name: "Reviewer", agent_identifier: "reviewer-1")
     declare_tools!(peer, tools: [READ_TOOL], default_model: "dev/mock-windowless")
+    contexts = { Executor.address_for(@agent).public_id => { "fixture.directory" => "/spawn" } }
     run = spawning_loop({ prompt: PROMPT, model: "dev/mock-unmetered" },
-      { prompt: PROMPT, agent: "@#{peer.handle}", model: "dev/mock-unmetered" })
+      { prompt: PROMPT, agent: "@#{peer.handle}", model: "dev/mock-unmetered" }, executor_contexts: contexts)
 
     named = Input.where(host: child_of(run, "r2t0")).sole
     assert_equal ["dev", "mock-unmetered", nil], [named.provider_id, named.model_ref, named.reasoning_effort],
@@ -260,6 +261,13 @@ class Runs::SpawnTest < ActiveJob::TestCase
     assert_equal ["dev", "mock-windowless", nil], [preset.provider_id, preset.model_ref, preset.reasoning_effort],
       "the peer's own default_model is step 0: it beats the model the spawner named"
     refute loop_node(run, "r2t0").output_summary["is_error"]
+    [named, preset].each do |brief|
+      assert_equal contexts, brief.agent_configuration.executor_contexts
+      assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: brief.host_id)
+      variant = brief.host.turns.sole.active_variant
+      assert_equal [brief.provider_id, brief.model_ref], [variant.provider_id, variant.model_ref]
+      assert_equal contexts, variant.run.agent_configuration.executor_contexts
+    end
   end
 
   # THE NAMED DEFINITION AS ANSWERER: a row the spawner's own instance declared resolves by handle

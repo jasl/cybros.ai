@@ -46,3 +46,10 @@ These settings affect new conversations. Selecting another runner does not trans
 For a single terminal request use `--workspace`, `--runner` and `--dir` instead of changing defaults; the directory is on the selected runner.
 
 A conversation's default runner applies to future tool calls that do not name a target; already accepted calls keep their original runner. To add a machine, see [Deploy a runner](../runners/deploy.md).
+
+The directory selected when rho accepts work is retained with that work, including
+after a Runner restart. Changing a default affects future requests. If the selected
+directory disappears or cannot be used, the tool fails explicitly; it does not run
+in another directory. Remote directory selections must be absolute paths on the
+selected Runner. Directory selection sets the base for relative paths; it is not
+a filesystem sandbox.

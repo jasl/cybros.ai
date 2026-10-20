@@ -14,9 +14,9 @@ module CybrosAgent
     # this reply must consume that result before final delivery; omission
     # inherits the enclosing work's selection.
     Tool = Data.define(:name, :input, :key, :timeout_ms, :detached, :lifetime, :wake,
-      :on_failure, :visibility, :after, :model_defaults, :route) do
+      :on_failure, :visibility, :after, :model_defaults, :route, :executor_context) do
       def initialize(name:, input: {}, key: nil, timeout_ms: nil, detached: false, lifetime: nil, wake: nil,
-                     on_failure: nil, visibility: nil, after: nil, model_defaults: nil, route: nil) = super
+                     on_failure: nil, visibility: nil, after: nil, model_defaults: nil, route: nil, executor_context: nil) = super
 
       def to_h = { "tool" => Steps.wire(super) }
     end
@@ -28,12 +28,12 @@ module CybrosAgent
     # omitted sources preserve direct explicit `tools` semantics.
     Model = Data.define(:prompt, :key, :model, :workload, :tools, :instructions, :configuration, :compaction,
       :fan_on_failure, :detached, :lifetime, :wake, :on_failure, :visibility, :after, :results, :attachments,
-      :kernel_tools, :runner_executor_public_ids, :runner_tool_names, :mcp_tools, :model_selection, :fallback_models) do
+      :kernel_tools, :runner_executor_public_ids, :runner_tool_names, :mcp_tools, :model_selection, :fallback_models, :executor_contexts) do
       def initialize(prompt:, key: nil, model: nil, workload: nil, tools: nil, instructions: nil, configuration: nil,
                      compaction: nil, fan_on_failure: nil, detached: false, lifetime: nil, wake: nil,
                      on_failure: nil, visibility: nil, after: nil, results: nil, attachments: nil,
                      kernel_tools: nil, runner_executor_public_ids: nil, runner_tool_names: nil, mcp_tools: nil,
-                     model_selection: nil, fallback_models: nil) = super
+                     model_selection: nil, fallback_models: nil, executor_contexts: nil) = super
 
       def to_h = { "model" => Steps.wire(super) }
     end

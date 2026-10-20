@@ -1,5 +1,6 @@
 import type * as Models from "./models.js";
 export interface Shapes {
+  RunCandidate: Models.RunCandidate;
   AnalysisCounters: Models.AnalysisCounters;
   AnalysisLatency: Models.AnalysisLatency;
   AnalysisGroupTotals: Models.AnalysisGroupTotals;

@@ -17,7 +17,7 @@ class UntilPolicyRecoveryTest < Minitest::Test
     assert_equal "al-1", stored_policy(api).dig("notes", "rho.until", "run_public_id")
     assert_equal({ "kept" => true }, stored_policy(api).dig("notes", "other"))
     assert_equal "dev/mock-text", stored_policy(api).fetch("model")
-    assert_equal "al-1", store.find("c-1").notes.dig("rho.until", "run_public_id")
+    assert_nil store.find("c-1").notes.dig("rho.until", "run_public_id"), "the follower cache is not a recovery authority"
   end
 
   def test_restart_and_cache_loss_restore_the_gate_on_its_original_run
@@ -166,7 +166,7 @@ class UntilPolicyRecoveryTest < Minitest::Test
     end
 
     def policy
-      Rho::Until::Policy.new(command: "make test", attempts: 2, directory: @root, runner: nil, seed: {}).to_h
+      Rho::Until::Policy.new(command: "make test", attempts: 2, directory: @root, runner: "0199-runner", seed: { "executor_contexts" => { "0199-runner" => { "rho.environment" => { "root" => @root } } } }).to_h
     end
 
     def stored_policy(api)
@@ -194,12 +194,26 @@ class UntilPolicyRecoveryTest < Minitest::Test
       turn = { "public_id" => turn_public_id, "position" => 0, "kind" => "direct_reply", "role" => "assistant",
         "status" => "running", "visibility" => "visible", "inherited" => false,
         "answering_user_public_id" => IDENTITY.user_public_id, "created_at" => "2026-09-30T00:00:00Z",
-        "active_variant" => variant }
-      trace = NexusDoubles::RUNNING_TRACE.merge("public_id" => run_public_id,
+        "active_variant" => variant, "input_public_id" => "cin-1" }
+      check = { "key" => "check-1", "kind" => "tool_task", "lifetime" => "conversation", "wake" => "auto",
+        "status" => "pending", "tool_name" => "bash", "tool_input" => { "command" => "make test", "workdir" => @root },
+        "target" => { "executor_public_id" => "0199-runner" },
+        "executor_context" => policy.fetch("seed").fetch("executor_contexts").fetch("0199-runner") }
+      hold = { "key" => "hold-1", "kind" => "await_task", "lifetime" => "conversation", "wake" => "auto", "status" => "pending" }
+      trace = NexusDoubles::RUNNING_TRACE.merge("public_id" => run_public_id, "tasks" => [check, hold],
         "turn" => { "public_id" => turn_public_id, "conversation_public_id" => "c-1", "status" => "running" })
-      NexusDoubles::FakeAgentApi.new(user_public_id: IDENTITY.user_public_id, trace: trace,
-        events: NexusDoubles::FakeAgentApi::MATERIALIZED_EVENTS,
-        conversation_busy: turn_public_id, turns: [turn],
+      api = NexusDoubles::FakeAgentApi.new(user_public_id: IDENTITY.user_public_id, trace: trace, task_detail: check,
+        events: [], conversation_busy: turn_public_id, turns: [turn],
         variants: { "turn" => { "public_id" => turn_public_id, "inherited" => false }, "variants" => [variant] }, **options)
+      original = api.method(:call)
+      api.define_singleton_method(:call) do |path, **fields|
+        if path.end_with?("/inputs/cin-1/materialization")
+          CybrosAgent::Response.new(status: 200, headers: {}, body: { "materialization" => {
+            "input_public_id" => "cin-1", "turn_public_id" => "t-1", "variant_public_id" => "v-1", "run_public_id" => "al-1" } })
+        else
+          original.call(path, **fields)
+        end
+      end
+      api
     end
 end

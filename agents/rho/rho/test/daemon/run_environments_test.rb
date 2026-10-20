@@ -230,7 +230,7 @@ class DaemonHostFollowersTest < Minitest::Test
                                   "environment" => { "root" => src, "directories" => [docs] } })
 
     assert_equal "201", code, answer.inspect
-    assert_equal({ "root" => src, "directories" => [docs], "resolved" => true }, answer.fetch("environment"))
+    assert_equal({ "root" => src, "directories" => [docs], "source" => "conversation" }, answer.fetch("environment"))
     record = record_of(api, "c-1")
     refute_nil record, "the record is written after the create"
     assert_equal [{ "root" => src, "directories" => [docs], "anchor" => "c-1" }, 0], record.values_at("value", "lock_version")
@@ -257,7 +257,7 @@ class DaemonHostFollowersTest < Minitest::Test
     code, answer = open(daemon, { "environment" => { "root" => src } })
 
     assert_equal "201", code, answer.inspect
-    assert_equal({ "root" => src, "directories" => [], "resolved" => true }, answer.fetch("environment"))
+    assert_equal({ "root" => src, "directories" => [], "source" => "conversation" }, answer.fetch("environment"))
     assert_equal({ "root" => src, "directories" => [], "anchor" => "c-1" }, record_of(api, "c-1").fetch("value"))
     assert_empty api.inputs
   end
@@ -301,13 +301,9 @@ class DaemonHostFollowersTest < Minitest::Test
   # runner claims the bind row ahead of the turn's rows; the lead names
   # the bound root; Nexus adds the snapshot. The answer says what the runner
   # knows. The next `say` relays nothing on the same tuple and boot.
-  def test_do_on_a_remote_runner_relays_the_record_before_the_first_input
+  def test_do_on_a_remote_runner_captures_the_record_in_the_first_input
     api = remote_api(
-      executors: [NexusDoubles.remote_runner("0199-h", booted_at: "2026-09-17T06:00:00Z")],
-      task_detail: { "kind" => "tool_task", "lifetime" => "conversation", "wake" => "auto", "status" => "completed", "tool_name" => "environment_bind",
-                     "output" => "bound", "result" => { "is_error" => false },
-                     "structured_content" => { "applied" => true, "resolved" => true, "booted_at" => "2026-09-17T06:00:00Z" },
-                     "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-17T00:00:00Z" }
+      executors: [NexusDoubles.remote_runner("0199-h", booted_at: "2026-09-17T06:00:00Z")]
     )
     daemon = member_ready(boot(config: catalog_config), api, identity: RUNNER_IDENTITY)
     src = project("src")
@@ -316,22 +312,16 @@ class DaemonHostFollowersTest < Minitest::Test
                                   "environment" => { "root" => src } })
 
     assert_equal "201", code, answer.inspect
-    assert_equal({ "root" => src, "directories" => [], "resolved" => true,
-                   "relayed" => { "runner" => "0199-h", "state" => "confirmed", "booted_at" => "2026-09-17T06:00:00Z", "resolved" => true } },
-      answer.fetch("environment"))
-    relayed = api.run_creates.select { |body| body.dig("run", "steps", 0, "tool", "name") == "environment_bind" }
-    assert_equal 1, relayed.length
-    assert_equal({ "root" => src, "directories" => [], "anchor" => "c-1", "conversation_public_id" => "c-1" },
-      relayed.fetch(0).dig("run", "steps", 0, "tool", "input"))
-    paths = api.requests.map(&:first)
-    assert_operator paths.index { |path| path.end_with?("/runs") }, :<,
-      paths.index { |path| path.end_with?("/conversations/c-1/inputs") }, "the call_tool row before the first input"
+    assert_equal({ "root" => src, "directories" => [], "source" => "conversation" }, answer.fetch("environment"))
+    assert_empty api.run_creates
+    assert_equal({ "root" => src, "directories" => [], "anchor" => "c-1" },
+      api.inputs.fetch(0).dig("input", "executor_contexts", "0199-h", "rho.environment"))
     lead = api.inputs.fetch(0).dig("input", "inline", 0, "text")
     assert_includes lead, src, "the lead names the bound root"
     refute_includes lead, "Relative paths resolve against /srv/elsewhere.", "Nexus supplies the snapshot's fragments"
 
     request(daemon, :post, "/say", token: bearer(daemon), body: { public_id: "c-1", text: "more" })
-    assert_equal 1, api.run_creates.length, "the same tuple on the same boot: nothing relayed"
+    assert_empty api.run_creates, "subsequent inputs carry their own context"
   end
 
   # A ROOT SET THAT IS THE RUNNER'S, NOT THIS HOST'S (the box's plain cell of 2026-09-18: `rho do --dir /app --runner <container>` from a host with no `/app`): the open is judged here for protected
@@ -341,11 +331,7 @@ class DaemonHostFollowersTest < Minitest::Test
   # OWN runner stays 422 `not_a_directory` (the pin above).
   def test_do_on_a_remote_runner_accepts_a_root_this_host_does_not_have
     api = remote_api(
-      executors: [NexusDoubles.remote_runner("0199-h", root: "/app", booted_at: "2026-09-17T06:00:00Z")],
-      task_detail: { "kind" => "tool_task", "lifetime" => "conversation", "wake" => "auto", "status" => "completed", "tool_name" => "environment_bind",
-                     "output" => "bound", "result" => { "is_error" => false },
-                     "structured_content" => { "applied" => true, "resolved" => true, "booted_at" => "2026-09-17T06:00:00Z" },
-                     "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-17T00:00:00Z" }
+      executors: [NexusDoubles.remote_runner("0199-h", root: "/app", booted_at: "2026-09-17T06:00:00Z")]
     )
     daemon = member_ready(boot(config: catalog_config), api, identity: RUNNER_IDENTITY)
     absent = File.join(@root, "app")
@@ -355,16 +341,17 @@ class DaemonHostFollowersTest < Minitest::Test
                                   "environment" => { "root" => absent } })
 
     assert_equal "201", code, answer.inspect
-    assert_equal({ "root" => absent, "directories" => [], "resolved" => false,
-                   "relayed" => { "runner" => "0199-h", "state" => "confirmed", "booted_at" => "2026-09-17T06:00:00Z", "resolved" => true } },
-      answer.fetch("environment"))
-    relayed = api.run_creates.select { |body| body.dig("run", "steps", 0, "tool", "name") == "environment_bind" }
-    assert_equal absent, relayed.fetch(0).dig("run", "steps", 0, "tool", "input", "root")
+    assert_equal({ "root" => absent, "directories" => [], "source" => "conversation" }, answer.fetch("environment"))
+    assert_empty api.run_creates
+    assert_equal absent, api.inputs.fetch(0).dig("input", "executor_contexts", "0199-h", "rho.environment", "root")
     assert_includes api.inputs.fetch(0).dig("input", "inline", 0, "text"), absent, "the lead names the bound root"
 
     code, answer = open(daemon, { "prompt" => "fix it", "model" => "dev/mock-text", "default_runner_executor_public_id" => "0199-h",
                                   "environment" => { "root" => Rho.root } })
-    assert_equal ["422", "protected_root"], [code, answer.dig("error", "code")], "a protected root is this host's to refuse"
+    assert_equal "201", code, "remote paths are checked against the executing runner's protected roots"
+    code, answer = open(daemon, { "prompt" => "fix it", "model" => "dev/mock-text", "default_runner_executor_public_id" => "0199-h",
+                                  "environment" => { "root" => "relative/path" } })
+    assert_equal ["422", "absolute_path_required"], [code, answer.dig("error", "code")]
   end
 
   # THE CHILD EDGE: a spawned child new to the listing gets the

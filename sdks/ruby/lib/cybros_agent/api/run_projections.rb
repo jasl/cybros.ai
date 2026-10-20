@@ -51,6 +51,7 @@ module CybrosAgent
           # with no arguments reads as {} rather than nil, so a runner
           # never has to distinguish "no arguments" from "not told".
           tool_input: :json_object_or_empty,
+          executor_context: :optional_json_object,
           # The kernel's stamp on an overridden row, absent on every other:
           # an opaque frozen map when present, nil when not — never {}.
           scope: :optional_json_object,
@@ -153,6 +154,7 @@ module CybrosAgent
         RunProgress => RunProgress.members.to_h { |member| [member, :count] },
         RunAttention => { reason: :string, blocked_task_keys: :names, blocked_task_overflow: :raw },
         TaskDetail => {
+          executor_context: :optional_json_object,
           model_selection: :optional_json_object,
           fallback_models: :optional_string_list,
           task: ->(hash) { shape(Task, hash) },

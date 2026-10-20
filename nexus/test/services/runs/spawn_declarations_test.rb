@@ -20,7 +20,8 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
   end
 
   test "a selected declaration creates a same-principal child with owned configuration and caller model" do
-    run = spawn!({ "declaration" => "reviewer", "prompt" => "Review this change." })
+    @contexts = { Executor.address_for(@agent).public_id => { "fixture.directory" => "/accepted" } }
+    run = spawn!({ "declaration" => "reviewer", "prompt" => "Review this change." }, executor_contexts: @contexts)
     child = child_of(run)
     assert_not_nil child
     assert_equal [@agent.id, @agent.id], [child.creating_user_id, child.answering_user_id]
@@ -31,6 +32,7 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
     assert_equal ["reviewer"], child.agent_configuration.delegation_catalog.map(&:name)
     brief = child.inputs.sole
     assert_equal child.agent_configuration.as_json, brief.agent_configuration.as_json
+    assert_equal @contexts, child.agent_configuration.executor_contexts
     assert_equal %w[dev mock-text], [brief.provider_id, brief.model_ref]
     assert_equal ["conversation"], child.effective_memory_context.fetch("bindings").map { |entry| entry.fetch("scope") }
 
@@ -404,10 +406,10 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
       turn
     end
 
-    def spawn!(input, conversation: nil)
+    def spawn!(input, conversation: nil, **options)
       conversation ||= Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
       post_input!(conversation, acting_user: @human, text: "Delegate this task.")
-      _turn, run = materialize_loop_reply!(conversation, agent: @agent, text: nil)
+      _turn, run = materialize_loop_reply!(conversation, agent: @agent, text: nil, **options)
       schedule_loop!(run)
       invocation = loop_node(run, "r1").selected_model_invocation
       ModelInvocations::AdmitQueuedWork.call

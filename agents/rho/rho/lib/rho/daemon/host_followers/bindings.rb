@@ -167,6 +167,8 @@ module Rho
         # is the surface, and this is the read of what it stands for.
         def declared_models = @declared_models
 
+        def execution_contexts(client, **options) = captured_contexts(client, **options)
+
         private
 
           # Resolve the lead from the selected Runner's local environment or
@@ -213,6 +215,33 @@ module Rho
                 root: binding&.root, directories: binding ? binding.directories : [], kernel_environment: true),
               own_names: own_names
             )
+          end
+
+          def captured_contexts(client, tools:, runner:, binding: nil, host: nil, workspace_public_id: nil, bare: false)
+            plane = Extensions::MemberPlane.new(client: client, workspace_public_id: workspace_public_id) if host
+            targets = (bare ? [] : tools).filter_map { |tool| tool.dig("route", "runner_executor_public_id") }
+            targets << runner if runner
+            contexts = targets.uniq.to_h do |target|
+              selected = target == runner ? binding : nil
+              selected ||= @environments.read(host, plane: plane, runner: target).binding if host
+              default = @context.own_runner?(target) ? @context.tool_env.root : remote_runner(target, client: client)&.environment&.fetch("root", nil)
+              value = selected || Rho::Runner::Environment::Binding.new(root: default, directories: [], anchor: host)
+              unless value.root && Pathname.new(value.root).absolute?
+                raise CybrosAgent::Api::InvalidRequest.new("Runner #{target} has no concrete absolute environment root", code: "executor_environment_unavailable")
+              end
+              [target, { Rho::Runner::Environment::CONTEXT_KEY => value.to_h }]
+            end
+            address = @lineage.identity&.executor_public_id
+            if address && !bare
+              local = if runner && @context.own_runner?(runner)
+                contexts.fetch(runner).fetch(Rho::Runner::Environment::CONTEXT_KEY)
+              else
+                selected = @environments.read(host, plane: plane, runner: nil).binding if host
+                (selected || Rho::Runner::Environment::Binding.new(root: @context.tool_env.root, directories: [], anchor: binding&.anchor || host)).to_h
+              end
+              contexts[address] = { Rho::Runner::Environment::CONTEXT_KEY => local }
+            end
+            contexts
           end
 
           # Use Nexus's actual assembled names, then apply rho's conversation modes and

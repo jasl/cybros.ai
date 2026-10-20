@@ -25,6 +25,7 @@ module CybrosAgent
     end
 
     class InboxTask < Data
+      attr_reader executor_context: Hash[String, untyped]?
       attr_reader kind: String
       attr_reader run_public_id: String
       attr_reader workspace_public_id: String

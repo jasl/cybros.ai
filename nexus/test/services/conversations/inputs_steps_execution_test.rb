@@ -153,6 +153,23 @@ class Conversations::InputsStepsExecutionTest < ActiveJob::TestCase
     end
   end
 
+  test "input contexts survive queue materialization and generated application tools" do
+    address = Executor.address_for(@agent)
+    contexts = { address.public_id => { "rho.environment" => { "root" => "/captured/b" } } }
+    input = accept_steps(executor_contexts: contexts)
+    assert_equal contexts, input.reload.executor_contexts
+    applied = Conversations::Inputs::ApplyNext.call(conversation_id: @conversation.id)
+    assert_predicate applied, :accepted?, applied.outcome.to_s
+    run = applied.value.active_variant.run
+    assert_equal contexts, run.agent_configuration.executor_contexts
+    assert_equal contexts, loop_node(run, "r1").operation_context.fetch("executor_contexts")
+    assert_equal contexts.fetch(address.public_id), Executors::Inbox.row(loop_node(run, "check")).fetch(:executor_context)
+    schedule_loop!(run)
+    run_loop_round!(run, sse_success("reading", tool_calls: [{ id: "call", name: "read_file", arguments: '{"path":"relative"}' }]))
+    child = run.tasks.where(type: Tasks::ToolTask.sti_name, authored_by: "model").sole
+    assert_equal contexts.fetch(address.public_id), Executors::Inbox.row(child).fetch(:executor_context)
+  end
+
   private
 
     def accept_steps(steps: @steps, **options)

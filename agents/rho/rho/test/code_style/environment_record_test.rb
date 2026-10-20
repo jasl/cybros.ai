@@ -23,7 +23,8 @@ class EnvironmentRecordTest < Minitest::Test
     assert_equal "binding", Rho::Extensions::Environment::STORE_KEY
     assert_equal Rho::Extensions::Environment::NAME, Rho::Extensions::Environment::STORE_NAMESPACE,
       "the extension's NAME is the namespace, as HostStore notes are keyed"
-    assert_equal 1, occurrences(/"rho\.environment"/).length, occurrences(/"rho\.environment"/).inspect
+    assert_empty occurrences(/"rho\.environment"/), "the executor context key is owned by rho-runner"
+    assert_equal Rho::Runner::Environment::CONTEXT_KEY, Rho::Extensions::Environment::STORE_NAMESPACE
     assert_equal 1, occurrences(/"binding"/).length, occurrences(/"binding"/).inspect
     assert_equal 1, occurrences(/STORE_NAMESPACE\s*=/).length
     assert_equal 1, occurrences(/STORE_KEY\s*=/).length

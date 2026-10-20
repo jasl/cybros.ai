@@ -534,8 +534,7 @@ module Rho
     def undeclared
       [Rho::Runner::Tools::FilesBytes::NAME, Rho::Runner::Tools::GitReview::NAME,
        Extensions::Processes::Tools::ProcessLog::NAME,
-       Rho::Runner::Tools::Checkpoints::NAME, Rho::Runner::Tools::CheckpointRestore::NAME,
-       Extensions::Environment::Tools::Bind::NAME].freeze
+       Rho::Runner::Tools::Checkpoints::NAME, Rho::Runner::Tools::CheckpointRestore::NAME].freeze
     end
 
     # The two feeders' one shape: the announcement hash as rendered here

@@ -4,6 +4,32 @@ require_relative "../../../test_helpers/conversation_api_test_helper"
 class AgentAPI::V1::InputsTest < ActionDispatch::IntegrationTest
   include ConversationAPITestHelper
 
+  test "executor contexts are captured, editable while queued, and part of the receipt digest" do
+    conversation = create_conversation!
+    target = SecureRandom.uuid_v7
+    contexts = { target.upcase => { "fixture.directory" => "/accepted" } }
+    body = { input: { text: "work here", executor_contexts: contexts } }
+    post inputs_path(conversation), headers: auth("captured-context"), as: :json, params: body
+    assert_response :accepted
+    input = conversation.inputs.find_by!(public_id: response.parsed_body.dig("input", "public_id"))
+    assert_equal({ target => { "fixture.directory" => "/accepted" } }, input.executor_contexts)
+
+    post inputs_path(conversation), headers: auth("captured-context"), as: :json,
+      params: { input: { text: "work here", executor_contexts: { target => { "fixture.directory" => "/other" } } } }
+    assert_response :conflict
+    assert_equal "idempotency_envelope_mismatch", response.parsed_body.dig("error", "code")
+
+    patch "#{inputs_path(conversation)}/#{input.public_id}", headers: auth, as: :json,
+      params: { input: { executor_contexts: { target => { "fixture.directory" => "/updated" } } } }
+    assert_response :success
+    assert_equal({ target => { "fixture.directory" => "/updated" } }, input.reload.executor_contexts)
+    [nil, [], "invalid"].each_with_index do |value, index|
+      post inputs_path(conversation), headers: auth("invalid-context-#{index}"), as: :json,
+        params: { input: { text: "invalid", executor_contexts: value } }
+      assert_response :bad_request
+    end
+  end
+
   test "public input creation cannot inject kernel callback provenance" do
     conversation = create_conversation!
     %w[callback_result callback_sources input_public_id].each do |field|

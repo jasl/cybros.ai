@@ -61,6 +61,7 @@ module Rho
             )
             host = Rho::Host::Conversation.new(public_id: created.public_id)
             bound = created.conversation.default_runner&.executor_public_id
+            draft = anchor_draft(draft, host.public_id)
             # A foreign row's open sends no lead (`reply_fields(bare:)`); rho's
             # own turns on it (`say --to @rho`) render one each, as every
             # plain turn does.
@@ -77,6 +78,7 @@ module Rho
             # Creation and input receipts have separate kernel scopes, so the
             # caller's key safely covers both writes after a lost response.
             fields = reply_fields(host, draft, selection, bare: foreign)
+            fields[:executor_contexts] = draft.body["executor_contexts"] unless draft.body["executor_contexts"].to_h.empty?
             fields.merge!(draft.body.slice("agent_configuration", "model_selection", "fallback_models").transform_keys(&:to_sym))
             fields[:speaker_public_id] = input_speaker(client, ctx, draft.body)
             fields[:tool_names] = selection.tool_names if own_named_answerer(answerer&.public_id)
@@ -119,6 +121,25 @@ module Rho
             # the answer names only what is.
             [201, answer.merge(materialized_answer(outcome, value)).merge(
               follower: run.snapshot.to_h, until: draft.notes["rho.until"]&.except("seed")&.compact).compact.merge(default_runner: binding)]
+          end
+
+          def anchor_draft(draft, public_id)
+            contexts = draft.body.fetch("executor_contexts", {}).transform_values do |context|
+              value = context.fetch(Rho::Runner::Environment::CONTEXT_KEY)
+              context.merge(Rho::Runner::Environment::CONTEXT_KEY => value.merge("anchor" => value["anchor"] || public_id))
+            end
+            notes = draft.notes
+            if (note = notes["rho.until"])
+              notes = notes.merge("rho.until" => note.merge("seed" => note.fetch("seed").merge("executor_contexts" => contexts)))
+            end
+            steps = draft.steps&.map do |step|
+              if step in CybrosAgent::Steps::Tool
+                step.with(executor_context: contexts[step.route&.fetch("runner_executor_public_id", nil)])
+              else
+                step
+              end
+            end
+            draft.with(body: draft.body.merge("executor_contexts" => contexts), notes: notes, steps: steps)
           end
 
           # THE FIELDS ONLY A TURN CARRIES (the promptless open refuses each
@@ -196,13 +217,8 @@ module Rho
             [201, answer.merge(follower: run&.snapshot&.to_h).compact.merge(default_runner: binding)]
           end
 
-          # THE BODY'S ROOT SET: `environment: {root, directories}`
-          # — the root a directory, the directories existing, none under a
-          # protected root — as the binding the lead renders from before the
-          # create; nil with none named (nothing is bound), a
-          # Refusal for a set this host cannot place. A set for a runner
-          # ELSEWHERE is that runner's to place: judged here for protected
-          # roots alone, relayed after the create (`bind_at_birth`).
+          # Validate a named root before authoring. Remote paths are absolute;
+          # their filesystem availability is checked by the selected Runner.
           def root_set_of(body, runner)
             named = body["environment"]
             return nil if named.nil?
@@ -215,13 +231,12 @@ module Rho
             refusal = @environments.validate(root, directories, local: runner.nil? || @context.own_runner?(runner))
             return refusal if refusal
 
-            Rho::Runner::Environment::Binding.new(root: File.expand_path(root),
-              directories: directories.map { |path| File.expand_path(path) }, anchor: nil)
+            local = runner.nil? || @context.own_runner?(runner)
+            Rho::Runner::Environment::Binding.new(root: local ? File.expand_path(root) : root,
+              directories: local ? directories.map { |path| File.expand_path(path) } : directories, anchor: nil)
           end
 
-          # THE RECORD AT BIRTH: the validated set written on the
-          # new conversation's store (its own id the anchor), then relayed
-          # when the row's runner is elsewhere; the answer's `environment`.
+          # Save future authoring defaults under the new conversation anchor.
           def bind_at_birth(host, root_set, bound, client, workspace_public_id)
             return nil if root_set.nil?
 
@@ -229,12 +244,7 @@ module Rho
             written = @environments.bind(host.public_id, root: root_set.root, directories: root_set.directories, plane: plane, runner: bound)
             return written if written in Refusal
 
-            relayed = nil
-            if bound && !@context.own_runner?(bound)
-              relayed = @environments.assert_remote(host.public_id, bound, written.binding, plane: plane)
-            end
-            { root: written.root, directories: written.directories, resolved: @environments.resolved?(written.binding),
-              relayed: relayed&.to_h }.compact
+            { root: written.root, directories: written.directories, source: written.source }
           end
 
           # `@handle` or a public id over the principals listing (the address is resolved at the door; a bare handle is taken too, as the SDK's access entries take it); an empty word is malformed,

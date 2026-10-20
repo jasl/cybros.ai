@@ -509,8 +509,8 @@ class EnvironmentsServersTest < Minitest::Test
       registry = boot_table
       table = Rho::Environments.new(
         home: home, config: Rho::Config.from_hash({}), registry: registry, log: @log, clock: -> { Time.now },
-        booted_at: "2026-09-17T08:00:00Z", default_root: -> { project }, member_plane: ->(**) { nil },
-        own_runner: ->(_id) { true }, learn_runner: ->(_document) { nil }, spawn: ->(&work) { work.call },
+        default_root: -> { project }, member_plane: ->(**) { nil },
+        own_runner: ->(_id) { true },
         registrar: registrar, served: registry, servers_changed: -> { changed += 1 }
       )
       binding = Rho::Runner::Environment::Binding.new(root: project, directories: [], anchor: "c-1")

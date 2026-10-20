@@ -9,8 +9,7 @@ module Rho
     # THE TOP-DOWN COPY AT THE CHILD EDGE: for every child new to
     # the listing, the parent's tuple created on the CHILD's store —
     # anchor unchanged — `key_taken` done (the child's answerer or a
-    # person wrote first, never overwritten); a child on a runner
-    # elsewhere is relayed, not waited for.
+    # person wrote first, never overwritten). Future inputs capture this value.
     def adopt_children(parent, children)
       plane = @member_plane.call(host_public_id: parent)
       return if plane.nil?
@@ -28,42 +27,32 @@ module Rho
       # THE UPWARD WALK: the projection's parent, up the chain
       # until a record or no parent; the child's copy written with the
       # parent's anchor (`key_taken` → done); a chain that cannot be seen
-      # falls to zero with `environment.unresolved`.
+      # refuses authoring with `executor_environment_unavailable`.
       def walk(conversation, plane, run_public_id, depth = 0, parent: nil, runner:)
         parent ||= parent_of(conversation, plane)
         return nil if parent.nil?
         return unresolved(conversation, "the chain is deeper than #{WALK_DEPTH}") if depth >= WALK_DEPTH
 
-        binding =
-          begin
-            parent_binding(parent, plane, run_public_id, depth, runner:)
-          rescue Unreadable
-            unresolved(conversation, "the parent #{parent}'s record cannot be read")
-          end
+        binding = parent_binding(parent, plane, run_public_id, depth, runner:)
         return nil if binding.nil?
 
         copy_record(plane, conversation, binding, runner:)
       end
 
       def parent_binding(parent, plane, run_public_id, depth, runner:)
-        memo = memo(parent, runner:)
-        return memo.binding if memo in Record
-
         found = read_record(parent, plane, runner:) || walk(parent, plane, run_public_id, depth + 1, runner:)
         found&.binding
       end
 
       def parent_of(conversation, plane)
         projection_of(plane, conversation).parent&.public_id
-      rescue CybrosAgent::Api::Error, CybrosAgent::TransportError => error
-        unresolved(conversation, "the parent cannot be read (#{error.class.name})")
       end
 
       def unresolved(conversation, detail)
         notice_once([:unresolved, conversation]) do
           @log&.warn("environment.unresolved", conversation: conversation, detail: detail)
         end
-        nil
+        raise CybrosAgent::Api::InvalidRequest.new(detail, code: "executor_environment_unavailable")
       end
 
       # A child's own row wins over inheritance in the memo and on the
@@ -96,10 +85,7 @@ module Rho
       end
 
       def adopt_child(plane, child, binding, runner:)
-        record = copy_record(plane, child, binding, runner:)
-        return if runner.nil? || @own_runner.call(runner)
-
-        assert_remote(child, runner, record.binding, plane: plane, wait: false)
+        copy_record(plane, child, binding, runner:)
       end
   end
 end

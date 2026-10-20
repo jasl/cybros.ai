@@ -92,7 +92,7 @@ module Conversations
         AnswerEngine.applies?(@command.conversation, addressee: principals.answerer)
       if declaration && @command.provider_id.blank? && @command.model_ref.blank?
         engine = if @command.agent_configuration.nil? && captured_host
-          AnswerEngine.captured_selection(@command.conversation, addressee: principals.answerer)
+          AnswerEngine.selection(@command.conversation, addressee: principals.answerer)
         else
           AnswerEngine.own_selection(declaration)
         end

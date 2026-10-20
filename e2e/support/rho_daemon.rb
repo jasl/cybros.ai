@@ -258,8 +258,8 @@ module E2E
 
     # Bounded readiness polling over a real signal; raises on the deadline so a stuck daemon is a
     # named harness failure, not a hang.
-    def await(message)
-      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + READY_TIMEOUT
+    def await(message, timeout: READY_TIMEOUT)
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
       loop do
         result = yield
         return result if result

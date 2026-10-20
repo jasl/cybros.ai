@@ -37,6 +37,7 @@ both are its conversation's, and the run address answers 409
 ```
 GET  /agent_api/v1/tools
 GET /agent_api/v1/runs
+GET /agent_api/v1/run_candidates
 GET  /agent_api/v1/workspaces/{workspace_public_id}/runs
 POST /agent_api/v1/workspaces/{workspace_public_id}/runs
 GET  /agent_api/v1/workspaces/{workspace_public_id}/runs/{public_id}
@@ -1047,3 +1048,44 @@ See [Run feeds](run-feeds.md) for the run's durable event stream and every
 item it narrates, and for the ephemeral transcript and progress feeds on
 its own channel. A conversation-hosted run narrates onto its
 conversation's feed instead ([Conversation feeds](conversation-feeds.md)).
+
+## Discover unfinished Run candidates
+
+### Endpoint
+
+`GET /agent_api/v1/run_candidates` uses the member plane and ordinary workspace
+and conversation read permissions. Archived conversations remain discoverable.
+
+### Request
+
+`agent_public_id` selects the answering Agent and defaults to the calling member.
+`after` is the opaque cursor from the preceding response. There is no caller-selected
+page size: each request examines at most 50 source Runs before applying filters.
+
+### Response
+
+```json
+{
+  "runs": [{
+    "public_id": "…",
+    "workspace_public_id": "…",
+    "conversation_public_id": "…",
+    "turn_public_id": "…",
+    "status": "running"
+  }],
+  "pagination": { "next_after": "…" }
+}
+```
+
+Candidates are conversation-hosted Runs in `running`, `paused` or `needs_attention`.
+A page can contain no candidates and still have `next_after`; continue until it is
+null. The cursor fixes the traversal's upper boundary and binds its caller and
+Agent filter. Start without a cursor for a new traversal. Results are current
+facts, not a transaction-wide snapshot; re-read the exact Run before acting.
+Discovery neither resumes work nor establishes an application's recovery policy.
+
+### Status codes
+
+Returns `200` for a page, including an empty page. A malformed Agent UUID or an
+invalid cursor, including one reused by another caller or filter, returns `400`
+`parameter_invalid`. Standard member authentication and rate limits apply.

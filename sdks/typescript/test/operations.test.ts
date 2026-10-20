@@ -16,7 +16,7 @@ const mutation = { idempotencyKey: 'explicit-key' };
 const version = { lock_version: 0 }, expected = { expected_lock_version: null };
 const calls: (() => Promise<unknown>)[] = [];
 const add = (...operations: (() => Promise<unknown>)[]) => calls.push(...operations);
-add(() => client.work.runs(), () => client.work.attention(), () => client.work.report(), () => client.work.analysis(), () => client.schedules.list());
+add(() => client.work.runs(), () => client.work.runCandidates(), () => client.work.attention(), () => client.work.report(), () => client.work.analysis(), () => client.schedules.list());
 add(() => client.profile.fetch(), () => client.profile.declareConfiguration({ configuration: {} }), () => client.profile.registerIngressSpeaker({ channel_key: 'chat', external_id: 'speaker', display_name: 'Person' }));
 add(() => client.profile.agents.list(), () => client.profile.agents.declare('id', { scope: 'instance', description: 'Review', configuration: {} }), () => client.profile.agents.remove('id'));
 for (const memory of [client.profile.memory, client.profile.agents.memory('id'), workspace.memory, chat.memory()]) {
@@ -74,6 +74,6 @@ test('every supported operation is issued by an actual public SDK method', async
   }
   const expected = inventory.operations.filter(operation => operation.sdk_supported).map(operation => operation.method + ' ' + operation.path.replace(/\{([^}]+)\}/g, (_, name: string) => name === 'index' ? '0' : name === 'field' ? 'steers' : 'id'));
   expect([...observed].sort()).toEqual([...new Set(expected)].sort());
-  expect(observed.size).toBe(274);
+  expect(observed.size).toBe(275);
   expect(inventory.operations.filter(operation => !operation.sdk_supported).map(operation => operation.id)).toEqual(['POST /api/v1/admin/users/{user_public_id}/removal']);
 });

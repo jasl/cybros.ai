@@ -109,7 +109,7 @@ module CybrosAgent
       # UUID is the append key for recovering its receipt through the Run.
       def create(idempotency_key:, text: UNSET, entries: UNSET, kind: UNSET, role: UNSET,
                  model: UNSET, reasoning_effort: UNSET, reasoning_enabled: UNSET, configuration: UNSET,
-                 agent_configuration: UNSET, model_selection: UNSET, fallback_models: UNSET,
+                 agent_configuration: UNSET, model_selection: UNSET, fallback_models: UNSET, executor_contexts: UNSET,
                  delivery_mode: UNSET, context_mode: UNSET, history: UNSET,
                  reasoning_replay: UNSET, inline: UNSET, visible_in_context: UNSET,
                  expected_context_revision: UNSET, expected_tail_turn_public_id: UNSET, expected_steering_run_public_id: UNSET,
@@ -126,7 +126,7 @@ module CybrosAgent
         body = fields(
           text:, entries:, kind:, role:, delivery_mode:, context_mode:, visible_in_context:,
           history:, reasoning_replay:, inline:, variables:, configuration:, tool_names:, approval_mode:,
-          agent_configuration:, model_selection:, fallback_models:,
+          agent_configuration:, model_selection:, fallback_models:, executor_contexts:,
           instructions:, expected_context_revision:, expected_tail_turn_public_id:, expected_steering_run_public_id:,
           answering_user_public_id: to, speaker_public_id:,
           attachments: attachment_ids(attachments),
@@ -160,7 +160,7 @@ module CybrosAgent
       # that timing change and the optional lock fence may ride together.
       def update(public_id, expected_lock_version: UNSET, text: UNSET, entries: UNSET,
                  model: UNSET, reasoning_effort: UNSET, reasoning_enabled: UNSET, configuration: UNSET,
-                 agent_configuration: UNSET, model_selection: UNSET, fallback_models: UNSET,
+                 agent_configuration: UNSET, model_selection: UNSET, fallback_models: UNSET, executor_contexts: UNSET,
                  context_mode: UNSET, history: UNSET, reasoning_replay: UNSET,
                  inline: UNSET, visible_in_context: UNSET, tool_names: UNSET,
                  approval_mode: UNSET, instructions: UNSET, attachments: UNSET, variables: UNSET, steps: UNSET,
@@ -170,7 +170,7 @@ module CybrosAgent
         body = fields(
           text:, entries:, context_mode:, visible_in_context:, history:, reasoning_replay:, delivery_mode:,
           inline:, variables:, configuration:, tool_names:, approval_mode:, instructions:,
-          agent_configuration:, model_selection:, fallback_models:,
+          agent_configuration:, model_selection:, fallback_models:, executor_contexts:,
           attachments: attachment_ids(attachments),
           steps: field(steps) { |given| given.nil? ? nil : Steps.envelope(given) },
           expected_lock_version:, model: optional_fields(model:, reasoning_effort:, reasoning_enabled:),
