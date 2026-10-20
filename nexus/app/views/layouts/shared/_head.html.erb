@@ -3,7 +3,7 @@
   <title><%= [content_for(:title), t("brand.name")].compact.join(" · ") %></title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <%# Turbo keeps the document, so its current response policy must travel in the head too. %>
-  <meta name="referrer" content="<%= response.headers["Referrer-Policy"] || "strict-origin-when-cross-origin" %>">
+  <meta name="referrer" content="<%= response.headers.fetch("Referrer-Policy") %>">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="application-name" content="<%= t("brand.name") %>">
   <meta name="mobile-web-app-capable" content="yes">

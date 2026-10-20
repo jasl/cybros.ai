@@ -133,9 +133,11 @@ module SimpleInference
     PROMPT_FORMATS = %w[qwen3_5].freeze
     # Generic chat hosts expose different thinking switches. This is an
     # explicit wire choice, independent of instruction layout or model name.
-    REASONING_CONTROLS = %w[reasoning_effort chat_template_kwargs].freeze
+    REASONING_CONTROLS = %w[reasoning_effort chat_template_kwargs thinking].freeze
+    # Some chat hosts accept instructions only under the older system role.
+    CHAT_DEVELOPER_ROLES = %w[developer system].freeze
     WIRE_OPTION_KEYS = (PATH_WIRE_OPTION_KEYS + BOOLEAN_WIRE_OPTION_KEYS + STRING_WIRE_OPTION_KEYS +
-      %i[prompt_format reasoning_control]).freeze
+      %i[prompt_format reasoning_control thinking_keep developer_role]).freeze
 
     MAX_TOTAL_EXECUTION_DEADLINE_SECONDS = 3600
 
@@ -376,6 +378,14 @@ module SimpleInference
             raise SimpleInference::ConfigurationError,
                   "wire option prompt_format must be one of #{PROMPT_FORMATS.join(", ")} (got #{value.inspect})"
           end
+        elsif key == :developer_role
+          unless value.nil? || CHAT_DEVELOPER_ROLES.include?(value)
+            raise SimpleInference::ConfigurationError,
+                  "wire option developer_role must be one of #{CHAT_DEVELOPER_ROLES.join(", ")} (got #{value.inspect})"
+          end
+          if value && adapter_profile.to_s != "openai_compatible_chat"
+            raise SimpleInference::ConfigurationError, "wire option developer_role belongs to openai_compatible_chat"
+          end
         elsif key == :reasoning_control
           unless value.nil? || REASONING_CONTROLS.include?(value)
             raise SimpleInference::ConfigurationError,
@@ -383,6 +393,13 @@ module SimpleInference
           end
           if value && adapter_profile.to_s != "openai_compatible_chat"
             raise SimpleInference::ConfigurationError, "wire option reasoning_control belongs to openai_compatible_chat"
+          end
+        elsif key == :thinking_keep
+          unless value.nil? || value == "all"
+            raise SimpleInference::ConfigurationError, "wire option thinking_keep must be all or nil"
+          end
+          if value && (adapter_profile.to_s != "openai_compatible_chat" || options[:reasoning_control] != "thinking")
+            raise SimpleInference::ConfigurationError, "wire option thinking_keep requires generic chat's thinking control"
           end
         elsif PATH_WIRE_OPTION_KEYS.include?(key)
           unless value.is_a?(String) && value.start_with?("/")

@@ -40,12 +40,12 @@ rho's Runner reserves startup capacity before claiming a task. An extension can
 also share a local resource limit across tools:
 
 ```ruby
-api.register_tool(Click, resource: "desktop", concurrency: 1)
-api.register_tool(Observe, resource: "desktop", concurrency: 1)
+api.register_tool(DeviceWrite, resource: "shared_device", concurrency: 1)
+api.register_tool(DeviceRead, resource: "shared_device", concurrency: 1)
 ```
 
 Tools without a resource declaration use the ordinary worker pool. A full resource
-leaves the task unclaimed, so desktop operations serialize while independent file
+leaves the task unclaimed, so shared-device operations serialize while independent file
 and process tools can proceed. All tools sharing one resource must declare the
 same positive limit. This metadata stays local; it is not an executor announcement
 or a Nexus lock.

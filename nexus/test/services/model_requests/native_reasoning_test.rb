@@ -2,6 +2,7 @@ require "test_helper"
 
 class ModelRequests::NativeReasoningTest < ActiveSupport::TestCase
   Invocation = Data.define(:reasoning_enabled)
+  ChatResult = Data.define(:output_items, :assistant_message, :usage)
 
   test "normalization and storage retain each native reasoning value's origin" do
     origin = { "provider_id" => "openai_api", "model_id" => "gpt-6.1-sol", "api_format" => "openai_responses" }
@@ -91,6 +92,27 @@ class ModelRequests::NativeReasoningTest < ActiveSupport::TestCase
 
     assert_equal [item.payload], lower([item], model: "deepseek/deepseek-flash")
     assert_empty lower([item], model: "deepseek/deepseek-v4-pro")
+  end
+
+  test "generic chat reasoning survives capture, replay and request lowering" do
+    origin = { "provider_id" => "kimi_code", "model_id" => "kimi-for-coding", "api_format" => "openai_compatible_chat" }
+    result = ChatResult.new(output_items: [], usage: {},
+      assistant_message: { "reasoning_content" => "inspect the file first" })
+    envelope = ModelReasoning::TraceBuilder.call(result: result,
+      origin: { provider_id: origin.fetch("provider_id"), model_id: origin.fetch("model_id"),
+        api_format: origin.fetch("api_format"), invocation_id: "test-invocation" },
+      normalized_tool_calls: [])
+    target = ModelReasoning::ReplayLadder::Target.new(provider_id: "kimi_code", model_id: "kimi-for-coding",
+      reasoning_enabled: true, capability: Nexus::ReasoningReplayCapability.new(format: "chat_reasoning"))
+    decision = ModelReasoning::ReplayLadder.call(trace: ModelReasoning::Trace.new(envelope: envelope), target: target)
+    assert_equal :native_parts, decision.kind
+    part = Nexus::ReasoningInputPart.new(type: Nexus::InputParts::REASONING,
+      native_origin: origin, payload: decision.payloads.sole)
+    input = [Nexus::TextInputMessage.new(role: "assistant", parts: [part])]
+
+    assert_equal [{ "role" => "assistant", "reasoning_content" => "inspect the file first" }],
+      lower(input, model: "kimi_code/kimi-for-coding")
+    assert_empty lower(input, model: "kimi_code/kimi-for-coding", enabled: false)
   end
 
   test "disabling reasoning drops opaque native items and leaves no empty assistant message" do

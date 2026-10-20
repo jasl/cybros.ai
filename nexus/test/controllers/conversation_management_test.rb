@@ -16,6 +16,9 @@ class ConversationManagementTest < ActionDispatch::IntegrationTest
       answering_user_public_id: @conversation.answering_user.public_id, query: "conversation")
     get edit_conversation_title_path(@conversation), params: { return_to: return_to }
     assert_response :success
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
+    assert_includes response.headers["Cache-Control"], "no-store"
+    assert_select "meta[name='referrer'][content='same-origin']"
     assert_select "input[name='conversation[title]'][value='A conversation']"
     assert_select "input[name='conversation[lock_version]'][value=?]", @conversation.lock_version.to_s
     assert_select "input[name='return_to'][value=?]", return_to
@@ -34,6 +37,26 @@ class ConversationManagementTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_select "h1", text: "Renamed conversation"
     assert_back_link return_to
+  end
+
+  test "title writes retain origin checks with CSRF protection enabled" do
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    https!
+
+    fields = { conversation: { title: "Renamed conversation", lock_version: @conversation.lock_version } }
+    assert_no_changes -> { @conversation.reload.title } do
+      patch conversation_title_path(@conversation), params: fields,
+        headers: { "Origin" => "https://other.example.com", "Sec-Fetch-Site" => "same-site" }
+    end
+    assert_response :unprocessable_entity
+
+    patch conversation_title_path(@conversation), params: fields,
+      headers: { "Origin" => request.base_url, "Sec-Fetch-Site" => "same-origin" }
+    assert_response :see_other
+    assert_equal "Renamed conversation", @conversation.reload.title
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
   end
 
   test "titles accept the length boundary and blank titles while validation preserves the draft" do

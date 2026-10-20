@@ -7,13 +7,6 @@ module ConversationInputsJourney
   included do
     include ActiveJob::TestHelper
 
-    setup do
-      @previous_forgery_protection = ActionController::Base.allow_forgery_protection
-      ActionController::Base.allow_forgery_protection = true
-    end
-
-    teardown { ActionController::Base.allow_forgery_protection = @previous_forgery_protection }
-
     test "read an application input follow its exact result and cancel later pending input" do
       human = users(:member)
       agent = create_agent_member(steward: human, agent_identifier: "inputs.browser")
@@ -49,13 +42,13 @@ module ConversationInputsJourney
       assert_text "The application request is complete."
       pending = accept_input(conversation, human, "A request to withdraw")
       visit pending_path
-      assert_selector "meta[name=referrer][content=no-referrer]", visible: :all
+      assert_selector "meta[name=referrer][content=same-origin]", visible: :all
       click_link "Follow this input", exact: true
       assert_selector "meta[name=referrer][content=same-origin]", visible: :all
       assert_selector "meta[name=referrer]", count: 1, visible: :all
       click_button "Cancel pending input"
       assert_current_path pending_path
-      assert_selector "meta[name=referrer][content=no-referrer]", visible: :all
+      assert_selector "meta[name=referrer][content=same-origin]", visible: :all
       assert_text "Pending input canceled"
       assert_text "No pending inputs"
       assert_not Input.exists?(pending.id)

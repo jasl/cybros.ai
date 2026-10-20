@@ -1,5 +1,6 @@
 require "securerandom"
 require_relative "ops/run_routes"
+require_relative "ops/terminals"
 require_relative "ops/events"
 require_relative "ops/skill_routes"
 require_relative "ops/uploads"
@@ -43,6 +44,7 @@ module Rho
 
       def self.register(api)
         RunRoutes.register(api)
+        Terminals.register(api)
         Events.register(api)
         SkillRoutes.register(api)
         InferenceRequests.register(api)

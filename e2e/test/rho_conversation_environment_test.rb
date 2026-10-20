@@ -5,20 +5,28 @@ class RhoConversationTest
     connect!
     directory = bound_directory("review")
     assert system("git", "-C", directory, "init", "-q")
-    File.write(File.join(directory, "example.rb"), "old behavior\n")
+    File.write(File.join(directory, "example.rb"), "committed behavior\n")
     assert system("git", "-C", directory, "add", ".")
     assert system("git", "-C", directory, "-c", "user.name=Review", "-c", "user.email=review@example.test", "commit", "-qm", "baseline")
-    conversation, _turn, run = open_turn("!mock reply=ready -- Review this project", directory)
+    File.write(File.join(directory, "example.rb"), "old behavior\n")
+    conversation, turn, run = open_turn(script([note("example.rb", "new behavior")], "Updated", reply: true), directory)
     await_run_status(run, "completed")
-    File.write(File.join(directory, "example.rb"), "new behavior\n")
-    review = @daemon.control(:get, "/conversations/review?public_id=#{conversation}&path=example.rb", expected_status: 200).fetch("review")
+    assert system("git", "-C", directory, "add", ".")
+    assert system("git", "-C", directory, "-c", "user.name=Review", "-c", "user.email=review@example.test", "commit", "-qm", "finished")
+    turns = @daemon.control(:get, "/conversations/turns?public_id=#{conversation}").fetch("turns")
+    variant = turns.find { |row| row.fetch("public_id") == turn }.dig("active_variant", "public_id")
+    path = "/conversations/review?public_id=#{conversation}&turn=#{turn}&variant=#{variant}"
+    review = @daemon.control(:get, path, expected_status: 200).fetch("reviews").first
+    refute_nil review, "the completed write retained its review after Git commit"
     assert_equal File.realpath(directory), review.fetch("root")
-    assert_includes review.dig("file", "patch"), "-old behavior\n+new behavior"
+    assert_includes review.fetch("files").first.fetch("patch"), "-old behavior\n+new behavior"
+    refute_includes review.fetch("files").first.fetch("patch"), "-committed behavior"
     comment = review.slice("runner", "root", "base").merge(
       "path" => "example.rb", "side" => "left", "line" => 1, "excerpt" => "old behavior",
-      "fingerprint" => review.dig("file", "fingerprint"), "text" => "Please retain the original behavior")
+      "turn" => turn, "variant" => variant, "run" => run, "text" => "Please retain the original behavior")
     feedback = @daemon.control(:post, "/conversations/review/feedback", body: { public_id: conversation, comment: comment }, expected_status: 200).fetch("text")
     File.write(File.join(directory, "example.rb"), "changed again\n")
+    assert_equal review, @daemon.control(:get, path, expected_status: 200).fetch("reviews").first
     body = { public_id: conversation, text: feedback, approval_mode: "ask", delivery_mode: "queue", idempotency_key: SecureRandom.uuid }
     accepted = @daemon.control(:post, "/say", body: body, expected_status: 200)
     replay = @daemon.control(:post, "/say", body: body, expected_status: 200)

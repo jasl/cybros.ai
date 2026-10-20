@@ -177,7 +177,7 @@ rho consists of these independently packaged surfaces:
   the same executable, or in full mode as a second runner-kind executor beside rho's application
   address. Its credential is transport-only. The current runner reserves local worker-pool
   admission capacity before claiming a task. Extensions can declare a shared local resource
-  and concurrency limit at registration. A desktop resource admits one task at a time;
+  and concurrency limit at registration. An exclusive resource admits one task at a time;
   ordinary CLI and filesystem tools retain independent startup capacity. Resource permits
   last until the handler and result hooks exit, including after cancellation or pool replacement.
   That policy belongs to the runner, never a kernel lock (`.ai/nexus.md`, The Task Inbox).

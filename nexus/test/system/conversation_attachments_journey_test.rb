@@ -9,8 +9,6 @@ module ConversationAttachmentsJourney
     include ActiveJob::TestHelper
 
     setup do
-      @previous_forgery_protection = ActionController::Base.allow_forgery_protection
-      ActionController::Base.allow_forgery_protection = true
       @account = accounts(:cybros)
       @human = users(:member)
       @workspace = workspaces(:shared)
@@ -21,10 +19,6 @@ module ConversationAttachmentsJourney
       @conversation = Conversation.create!(workspace: @workspace, creating_user: @human,
         answering_user: @agent, title: "Work with files")
       sign_in_directly(@human)
-    end
-
-    teardown do
-      ActionController::Base.allow_forgery_protection = @previous_forgery_protection
     end
 
     test "a Task capture offers its actual file for download through the current browser session" do

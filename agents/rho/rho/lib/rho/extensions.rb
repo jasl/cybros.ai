@@ -26,7 +26,7 @@ module Rho
     end
 
     DEFAULT_EXTENSIONS = [
-      Rho::Runner::Extensions::Coding, Rho::Extensions::Guard, Rho::Runner::Extensions::Checkpoints,
+      Rho::Runner::Extensions::Coding, Rho::Runner::Extensions::Terminal, Rho::Extensions::Guard, Rho::Runner::Extensions::Checkpoints,
       Rho::Extensions::Processes, Rho::Extensions::Conventions, Rho::Extensions::Until,
       Rho::Extensions::Environment, Rho::Extensions::ConsoleLink, Rho::Extensions::Ops,
       Rho::Extensions::DefaultRunner, Rho::Extensions::Compaction,
@@ -55,7 +55,7 @@ module Rho
     # ConsoleLink, Until, Conventions, DefaultRunner, Agents, Images — an
     # agent-mode rho is exactly the daemon that names remote runners, and
     # keeps it); Guard and Environment serve both.
-    AGENT_MODE_EXCLUDES = [Rho::Runner::Extensions::Coding].freeze
+    AGENT_MODE_EXCLUDES = [Rho::Runner::Extensions::Coding, Rho::Runner::Extensions::Terminal].freeze
     RUNNER_MODE_EXCLUDES = [
       Rho::Extensions::Ops, Rho::Extensions::Compaction, Rho::Extensions::ConsoleLink,
       Rho::Extensions::Until, Rho::Extensions::Conventions, Rho::Extensions::DefaultRunner, Rho::Extensions::Agents,
@@ -520,7 +520,7 @@ module Rho
 
     # `sources` selects gem features and paths; the built-in set is rho's.
     # A test may name narrower sets to prove an extension loads alone.
-    def load(host:, extensions: DEFAULT_EXTENSIONS, gems: [], paths: [], log: nil, reuse: [], managed: [])
+    def load(host:, extensions: selected_builtins(host.config), gems: [], paths: [], log: nil, reuse: [], managed: [])
       registrar = RegistrarSlot.new
       reuse.each do |api|
         entry = api.conversation_servers

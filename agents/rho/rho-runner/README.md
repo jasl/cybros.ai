@@ -63,7 +63,7 @@ can delay other fibers on that worker, while the separate control reactor keeps
 claim renewal, cancellation and final delivery available.
 
 Extensions register local resource limits with
-`api.register_tool(Click, resource: "desktop", concurrency: 1)`. Tools sharing a
+`api.register_tool(DeviceWrite, resource: "shared_device", concurrency: 1)`. Tools sharing a
 resource share its limit; inconsistent limits reject registration. Omit `resource`
 for ordinary tools. The Runner reserves startup and resource capacity before
 claiming; a full resource leaves the row unclaimed. The claimed row remains the

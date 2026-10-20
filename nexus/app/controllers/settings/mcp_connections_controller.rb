@@ -11,8 +11,6 @@ class Settings::McpConnectionsController < Settings::McpConnections::BaseControl
 
   def show
     if @connection.auth_type == "oauth"
-      # Native authorization POSTs need an Origin after navigation from a no-referrer page.
-      response.set_header("Referrer-Policy", "same-origin")
       # Turbo first fetches this page, then reloads it as a full document.
       flash.keep if request.get? && Turbo.current_request_id.present?
     end

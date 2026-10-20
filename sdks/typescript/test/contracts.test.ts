@@ -61,6 +61,7 @@ describe('Shared Nexus response contracts through public resources', () => {
     ['executor discovery', () => new Client(config({executor: fixture('executors', 'discovery_fixture')})).executors.fetch('id')],
     ['executor self', () => new ExecutorClient(config(fixture('executors', 'valid_fixture'))).executor()],
     ['inbox', () => new ExecutorClient(config(fixture('executor_inbox', 'valid_fixture'))).inbox.list()],
+    ['realtime', () => new ExecutorClient(config(fixture('executor_inbox', 'realtime_fixture'))).inboxTask('run', 'task').realtime('claim')],
     ['claim', () => new ExecutorClient(config(fixture('executor_inbox', 'claim_fixture'))).inboxTask('run', 'task').claim()],
     ['upload', () => member('uploads', 'valid_fixture').uploads.fetch('id')],
     ['MCP member', () => member('mcp_connections', 'member_fixture').mcpConnections.fetch('id')],

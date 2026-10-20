@@ -1,5 +1,6 @@
 require_relative "run_routes/records"
 require_relative "run_routes/following"
+require_relative "run_routes/realtime"
 
 module Rho
   module Extensions
@@ -54,6 +55,9 @@ module Rho
             api.register_route("GET", "/runs/state") { |request, ctx| state(request, ctx) }
             api.register_route("GET", "/runs/transcript") { |request, ctx| transcript(request, ctx) }
             api.register_route("GET", "/runs/task") { |request, ctx| task(request, ctx) }
+            api.register_route("GET", "/runs/task/realtime") { |request, ctx| task_realtime(request, ctx) }
+            api.register_route("PUT", "/runs/task/realtime") { |request, ctx| task_realtime(request, ctx, answer: true) }
+            api.register_route("POST", "/runs/task/cancel") { |request, ctx| task_cancel(request, ctx) }
             api.register_route("POST", "/runs/call_tool") { |request, ctx| call_tool(request, ctx) }
             api.register_route("GET", "/runs/graph") { |request, ctx| graph(request, ctx) }
             api.register_route("GET", "/runs/request") { |request, ctx| request_read(request, ctx) }

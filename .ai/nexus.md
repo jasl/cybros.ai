@@ -574,7 +574,11 @@ accepts the same tool, model, ask, step and observation operations from any runt
 - Nexus relays cross-component messages over each executor's outbound connection. A capture
   uses executor upload plus a `resource_link` in the commit and the shared upload bytes read.
   A request is an ordinary one-tool standalone run, with the same claim/commit/sweep path;
-  it has no second inbox subject or transport. The executor's own in-process UI may read its
+  it has no second inbox subject or execution lifecycle. An explicitly interactive handler may attach
+  a bounded encrypted offer/answer slot to its claimed ToolTask. The member and executor reads
+  project current authority; they never grant/renew/settle work. Direct/TURN data remains outside
+  Rails/Cable, and a local permission timeout pauses data without releasing handler resources.
+  The executor's own in-process UI may read its
   local surface, as specified in `.ai/boundaries.md`, *The Human Console And The Gateway*.
 - Tool progress uses the executor progress door and host progress feed, fenced by the task's source claim. One transcript presenter serves the page, a branch's `?prefix=` expansion, settled
   round snapshots, and timeline rows. It derives rounds, calls, branches, and reading order

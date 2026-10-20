@@ -193,6 +193,7 @@ export default defineConfig({
             { text: 'Executor', link: '/reference/agent-api/executor' },
             { text: 'Executor inbox', link: '/reference/agent-api/executor-inbox' },
             { text: 'Executor operations', link: '/reference/agent-api/executor-operations' },
+            { text: 'Task realtime', link: '/reference/agent-api/task-realtime' },
             { text: 'Ingress speakers', link: '/reference/agent-api/ingress' },
           ],
         },
@@ -322,6 +323,7 @@ function overviewSidebar() {
         { text: 'Build your own agent', link: '/get-started/build-an-agent' },
         { text: 'Agent API quickstart', link: '/build/quickstart' },
         { text: 'Runner quickstart', link: '/runners/quickstart' },
+        { text: 'Nexus development on macOS', link: '/get-started/install-on-macos' },
       ],
     },
   ]

@@ -370,6 +370,8 @@ Rails.application.routes.draw do
         resource :inbox, only: :show, controller: "inbox"
         scope "inbox/:run_public_id/:task_key", as: :inbox, constraints: { task_key: /[^\/]+/ } do
           resource :claim, only: %i[show create]
+          get "realtime", to: "realtimes#show"
+          put "realtime", to: "realtimes#update"
           resource :commit, only: :create
           resources :operations, only: %i[index create]
           resource :observation, only: :create
@@ -671,6 +673,8 @@ Rails.application.routes.draw do
                   # CANCEL A BRANCH: work a model started, by the key the
                   # model saw; the mainline's verb stays `stop`.
                   resource :cancel, only: :create
+                  get "realtime", to: "realtimes#show"
+                  put "realtime", to: "realtimes#update"
                   # COMPACT NOW, task-grained: the caller names the round
                   # to repair. The kernel still picks no threshold.
                   resource :compact, only: :create

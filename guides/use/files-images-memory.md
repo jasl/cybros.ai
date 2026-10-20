@@ -12,17 +12,17 @@ Installing rho on a host does not install every document parser or project depen
 
 ## Review working directory changes
 
-Open a Conversation in the WebUI and expand **Review working directory changes** below its transcript. The read runs on that Conversation's selected Runner, using its bound Git directory or that Runner's default directory. The panel shows the repository root, Runner and exact commit used for comparison.
+Each reply with recorded file changes has an **Edited files** card beneath it. Replies without recorded changes show no card. The card belongs to that reply: committing Git, editing files later, reopening the page or changing the Conversation's Runner does not replace its recorded diff.
 
-1. Select **Refresh against HEAD** to compare tracked and untracked files with the current commit. Staged and unstaged changes appear together. A repository needs an initial commit.
+1. Expand the card to see the changed files and added/deleted line counts. **Show more files** expands a longer list.
 2. Choose a changed file, then a removed or added line. Write a comment and choose **Add feedback to message**.
-3. Review the ordinary message draft and send it. Feedback includes the original path, side, line, code excerpt and commit. It does not change files or approve tool effects.
+3. Review the ordinary message draft and send it. Feedback includes the original path, side, line, code excerpt, baseline and reply identity. It does not change files or approve tool effects.
 
-Adding feedback rechecks the file. If it changed or the read fails, a warning appears and the comment retains its original excerpt. The working directory can change again afterward; the displayed diff is a captured comparison, not a live editor. It includes human and other task edits too, rather than claiming every change came from this Conversation.
+The Runner compares its bound working root before the Run's first write with the recorded state after its returned write tools. Existing dirty files form part of that starting state; the comparison does not require a Git commit. Snapshots can include concurrent human or other process edits in the same directory, so they do not prove exclusive authorship. Background processes that continue writing after a tool returns and interrupted tools may leave changes outside the recorded snapshot.
 
-Each read lists at most 200 files with a bounded filename window; each file patch is limited to 32 KiB. Binary and oversized patches show explicit unavailable states. Non-Git directories, missing commits and unreachable Runners show errors. A bound subdirectory is resolved to its Git repository root. Historical checkpoint comparisons and worktree management are separate from this view.
+Checkpoint exclusions and capture limits apply. Each recorded review retains at most 200 files and 48 KiB of JSON, with each text patch limited to 32 KiB. Binary, oversized and omitted patches are labeled; an incomplete file list is marked. The patches remain in the execution results after local checkpoints expire and can be viewed without contacting the Runner. Pruned execution details, disabled checkpoints and older replies without recorded diffs have no historical card.
 
-Unsent review comments stay in the page under their Conversation and Runner. Adding a comment copies it into that Conversation's existing message draft; neither draft survives closing the page. An uncertain send can be retried with its original key within 24 hours. After that window the page stops retrying and asks you to check history before composing a new message.
+Adding a comment copies it into the Conversation's ordinary message draft. Review comments retain their original excerpts without rechecking today's files. Add feedback to the message before navigating away; unsent drafts do not survive closing the page. An uncertain send can be retried with its original key within 24 hours. After that window the page stops retrying and asks you to check history before composing a new message.
 
 ## Images
 

@@ -32,7 +32,7 @@ class JourneyGroupsTest < Minitest::Test
          agent_api_load_test.rb]
         .each { |file| File.write(File.join(dir, file), "") }
 
-      problems = GROUPS.violations(harness: %w[listed], groups: {}, test_dir: dir, weights: {})
+      problems = GROUPS.violations(harness: %w[listed], groups: {}, test_dir: dir, weights: {}, optional: [])
 
       # A bench harness suite runs only through HARNESS, so an unlisted one would run in no gate.
       assert_equal ["test/stray_test.rb is in no group and not a harness test",
@@ -60,6 +60,14 @@ class JourneyGroupsTest < Minitest::Test
     assert_equal GROUPS::GROUPS.values.sum([]), GROUPS.journeys
     assert_equal GROUPS.journeys.uniq, GROUPS.journeys
     assert_equal ["test/until_test.rb"], GROUPS.paths(%w[until])
+  end
+
+  def test_realtime_is_opt_in_and_still_checked_for_duplicates_and_omissions
+    assert_empty GROUPS.journeys & GROUPS::REALTIME
+    assert_includes GROUPS.violations(harness: GROUPS::HARNESS + ["realtime_signaling"]),
+      "realtime_signaling is listed 2 times"
+    assert_includes GROUPS.violations(optional: []),
+      "test/realtime_signaling_test.rb is in no group and not a harness test"
   end
 
   def test_local_mcp_selection_and_lifecycle_journeys_share_the_steward_world

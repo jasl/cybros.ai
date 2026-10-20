@@ -9,12 +9,8 @@ module ConversationCancellationJourney
     include ActiveJob::TestHelper
 
     setup do
-      @previous_forgery_protection = ActionController::Base.allow_forgery_protection
-      ActionController::Base.allow_forgery_protection = true
       @conversation.update!(title: "Review stopping this conversation's existing work — #{"long-title-" * 16}")
     end
-
-    teardown { ActionController::Base.allow_forgery_protection = @previous_forgery_protection }
 
     test "stop a direct reply without a Run and follow the ordinary queued input that survives" do
       declare_tools!(@agent, tools: [], default_model: "dev/mock-text")

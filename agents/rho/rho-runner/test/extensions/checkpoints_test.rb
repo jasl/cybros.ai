@@ -127,7 +127,7 @@ class CheckpointsExtensionTest < Minitest::Test
 
     call(registry, "al-1", "write", { "path" => "lib/a.rb", "content" => "two" })
 
-    assert_equal 1, asked, "the store of the moment is asked when the capture runs, not at registration"
+    assert_equal 2, asked, "capture and review each resolve the current store, not at registration"
     assert_equal ["al-1"], @store.records.map(&:run_public_id)
   end
 
@@ -144,13 +144,16 @@ class CheckpointsExtensionTest < Minitest::Test
     _gated, first = call(registry, "al-1", "write", { "path" => "lib/a.rb", "content" => "two" })
     record = @store.records(run_public_id: "al-1").first
     refute_nil record
-    assert_equal({ "checkpoint" => { "hash" => record.hash, "store" => @store.id } }, first.metadata)
+    assert_equal({ "hash" => record.hash, "store" => @store.id }, first.metadata.fetch("checkpoint"))
+    assert_equal record.hash, first.metadata.fetch("rho.changes").fetch("base")
+    assert_empty first.metadata.fetch("rho.changes").fetch("files")
     refute first.metadata.fetch("checkpoint").key?("runner"), "no runner in the key (K-s1)"
     assert_equal 1, @log.named("checkpoint_captured").length
 
     File.write(File.join(@root, "lib", "a.rb"), "two")
     _gated, second = call(registry, "al-1", "edit", { "path" => "lib/a.rb", "edits" => [] })
-    assert_nil second.metadata, "the second write of a loop rides nothing"
+    refute second.metadata.key?("checkpoint"), "the second write does not repeat the checkpoint key"
+    assert_includes second.metadata.fetch("rho.changes").fetch("files").first.fetch("patch"), "+two"
     assert_equal 1, @store.records.length, "one capture per loop"
     assert_equal 1, @log.named("checkpoint_captured").length
 
@@ -199,7 +202,9 @@ class CheckpointsExtensionTest < Minitest::Test
     assert_equal bound_root, record.root
     assert_empty @store.records, "the default root's store saw nothing"
     assert_equal 0, asked, "the member was never asked: the context's placement answered"
-    assert_equal({ "checkpoint" => { "hash" => record.hash, "store" => bound_store.id } }, result.metadata)
+    assert_equal({ "hash" => record.hash, "store" => bound_store.id }, result.metadata.fetch("checkpoint"))
+    assert_equal bound_root, result.metadata.fetch("rho.changes").fetch("root")
+    assert_equal record.hash, result.metadata.fetch("rho.changes").fetch("base")
     assert_equal %w[hash store], result.metadata.fetch("checkpoint").keys,
       "`src/b.rb` is INSIDE the bound root: neither mark (the targets are judged against the placement's root)"
   end
@@ -323,8 +328,24 @@ class CheckpointsExtensionTest < Minitest::Test
     restarted = load.registry
     _gated, after = call(restarted, "al-1", "write", { "path" => "lib/a.rb", "content" => "three" })
 
-    assert_equal before.metadata, after.metadata, "the record, not a new tree"
+    assert_equal before.metadata.fetch("checkpoint"), after.metadata.fetch("checkpoint"), "the record, not a new tree"
+    assert_equal before.metadata.fetch("rho.changes").fetch("base"), after.metadata.fetch("rho.changes").fetch("base")
+    assert_empty before.metadata.fetch("rho.changes").fetch("files")
+    assert_includes after.metadata.fetch("rho.changes").fetch("files").first.fetch("patch"), "+two"
     assert_equal 1, @store.records.length
+  end
+
+  def test_a_skipped_review_preserves_the_result_and_checkpoint_without_a_change_document
+    @store.define_singleton_method(:review) { |**| Skip.new(reason: "timeout") }
+    original = Result.ok("done").with(metadata: { "other" => "retained" })
+
+    _gated, result = call(load.registry, "al-1", "write", { "path" => "lib/a.rb", "content" => "two" },
+      result: original)
+
+    assert_equal original.content, result.content
+    assert_equal({ "other" => "retained",
+                  "checkpoint" => { "hash" => @store.records.first.hash, "store" => @store.id } }, result.metadata)
+    assert_empty @log.named("review_capture_failed")
   end
 
   # `:startup` prunes the store, through the member of the moment.

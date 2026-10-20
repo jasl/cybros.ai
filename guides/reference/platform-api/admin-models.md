@@ -217,6 +217,12 @@ The setting belongs to the model definition, not a per-call generation parameter
 see [prompt-format adaptation](../../operate/models-and-providers.md#prompt-format-adaptation)
 for its scope and limitations.
 
+For `openai_compatible_chat`, provider or model `wire_options` may set
+`developer_role: system` to send developer instructions as system messages in
+place. Their content and order are preserved; stored messages keep their original
+roles. Omission, `null` or `developer` preserves the developer role. Other values
+are invalid; non-null values require `openai_compatible_chat`.
+
 An optional `model_identity` string declares an exact model and version
 shared by equivalent provider routes. It must be nonempty, have no leading
 or trailing whitespace and fit within 256 bytes. Use the same value only

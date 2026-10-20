@@ -150,3 +150,17 @@ pub struct Claim {
     pub claim_token: crate::credentials::SecretString,
     pub deadline_at: Option<String>,
 }
+
+/// Live-data permission for the original task. `max_age_ms` starts when the
+/// request is sent; an unknown result never refreshes that window.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TaskRealtime {
+    pub status: String,
+    pub reason: Option<String>,
+    pub connection_id: Option<String>,
+    pub offer_sdp: Option<String>,
+    pub answer_sdp: Option<String>,
+    pub max_age_ms: u32,
+    #[serde(flatten)]
+    pub extra: JsonObject,
+}

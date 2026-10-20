@@ -24,6 +24,7 @@ import { register as registerSettings } from "./features/settings/index.js";
 import { register as registerSchedules } from "./features/schedules/index.js";
 import { register as registerBackground } from "./features/background/index.js";
 import { register as registerUsage } from "./features/usage/index.js";
+import { register as registerTerminals } from "./features/terminals/index.js";
 import { register as registerTask } from "./features/task/index.js";
 import { register as registerBots } from "./features/bots/index.js";
 import { register as registerNexus } from "./features/nexus/index.js";
@@ -33,6 +34,7 @@ import { register as registerNexus } from "./features/nexus/index.js";
 const CONTROL_VERSION = 4;
 const MODULE_BOOT_DEADLINE = 3000;
 const BUILT_INS = [
+  ["terminals", registerTerminals],
   ["conversation", registerConversation], ["plugins", registerPlugins], ["settings", registerSettings],
   ["schedules", registerSchedules], ["bots", registerBots], ["nexus", registerNexus], ["background", registerBackground], ["usage", registerUsage],
   ["task", registerTask],

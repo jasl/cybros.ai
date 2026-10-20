@@ -161,9 +161,40 @@ class TestReasoningEnabled < Minitest::Test
     refute_includes body, "chat_template_kwargs"
   end
 
+  def test_generic_chat_thinking_control_lowers_the_switch_and_effort_independently
+    [false, true].each do |stream|
+      [false, true].each do |enabled|
+        body = compile("openai_compatible_chat", stream: stream, control: "thinking",
+          reasoning_enabled: enabled, reasoning_effort: "low")
+
+        assert_equal({ "type" => enabled ? "enabled" : "disabled" }, body.fetch("thinking"))
+        if enabled
+          assert_equal "low", body.fetch("reasoning_effort")
+        else
+          refute_includes body, "reasoning_effort"
+        end
+        refute_includes body, "reasoning_enabled"
+        refute_includes body, "chat_template_kwargs"
+      end
+    end
+  end
+
+  def test_generic_chat_thinking_control_preserves_switch_only_and_omitted_switch_requests
+    [false, true].each do |enabled|
+      body = compile("openai_compatible_chat", control: "thinking", reasoning_enabled: enabled)
+
+      assert_equal({ "type" => enabled ? "enabled" : "disabled" }, body.fetch("thinking"))
+      refute_includes body, "reasoning_effort"
+    end
+
+    body = compile("openai_compatible_chat", control: "thinking", reasoning_effort: "low")
+    assert_equal "low", body.fetch("reasoning_effort")
+    refute_includes body, "thinking"
+  end
+
   def test_chat_template_control_is_closed_and_only_available_on_generic_chat
     assert_nil profile_for("openai_compatible_chat", wire_options: { reasoning_control: nil }).wire_option(:reasoning_control)
-    %w[reasoning_effort chat_template_kwargs].each do |control|
+    %w[reasoning_effort chat_template_kwargs thinking].each do |control|
       assert_equal control,
         profile_for("openai_compatible_chat", wire_options: { reasoning_control: control }).wire_option(:reasoning_control)
     end
@@ -181,6 +212,47 @@ class TestReasoningEnabled < Minitest::Test
     end
   end
 
+  def test_generic_chat_preserved_thinking_is_explicit_and_only_sent_while_enabled
+    [false, true].each do |stream|
+      body = compile("openai_compatible_chat", stream: stream, control: "thinking", thinking_keep: "all",
+        reasoning_enabled: true)
+      assert_equal({ "type" => "enabled", "keep" => "all" }, body.fetch("thinking"))
+
+      body = compile("openai_compatible_chat", stream: stream, control: "thinking", thinking_keep: "all",
+        reasoning_enabled: false, reasoning_effort: "low")
+      assert_equal({ "type" => "disabled" }, body.fetch("thinking"))
+      refute_includes body, "reasoning_effort"
+    end
+
+    body = compile("openai_compatible_chat", control: "thinking", thinking_keep: "all")
+    refute_includes body, "thinking"
+  end
+
+  def test_thinking_keep_requires_the_generic_chat_thinking_control_and_a_known_value
+    assert_nil profile_for("openai_compatible_chat", wire_options: { thinking_keep: nil }).wire_option(:thinking_keep)
+    assert_equal "all", profile_for("openai_compatible_chat",
+      wire_options: { reasoning_control: "thinking", thinking_keep: "all" }).wire_option(:thinking_keep)
+
+    ["none", false].each do |keep|
+      assert_raises(SimpleInference::ConfigurationError) do
+        profile_for("openai_compatible_chat", wire_options: { reasoning_control: "thinking", thinking_keep: keep })
+      end
+      assert_raises(SimpleInference::ConfigurationError) do
+        SimpleInference::Protocols::OpenAICompatibleResponses.new(base_url: "http://example.com",
+          reasoning_control: "thinking", thinking_keep: keep)
+      end
+    end
+    assert_raises(SimpleInference::ConfigurationError) do
+      profile_for("openai_compatible_chat", wire_options: { thinking_keep: "all" })
+    end
+    assert_raises(SimpleInference::ConfigurationError) do
+      profile_for("openrouter_chat", wire_options: { thinking_keep: "all" })
+    end
+    assert_raises(SimpleInference::ConfigurationError) do
+      SimpleInference::Protocols::OpenAICompatibleResponses.new(base_url: "http://example.com", thinking_keep: "all")
+    end
+  end
+
   def test_gemini_enabled_preserves_levels_but_the_wire_cannot_express_disabled
     body = compile("gemini_generate_content", reasoning_enabled: true, reasoning_effort: "low")
     assert_equal({ "includeThoughts" => true, "thinkingLevel" => "low" }, body.dig("generationConfig", "thinkingConfig"))
@@ -193,9 +265,10 @@ class TestReasoningEnabled < Minitest::Test
 
   private
 
-  def compile(format, stream: false, control: nil, **options)
+  def compile(format, stream: false, control: nil, thinking_keep: nil, **options)
     wire = SimpleInference::ApiFormat.defaults(format).fetch(:wire_options, {})
     wire = wire.merge(reasoning_control: control) if control
+    wire = wire.merge(thinking_keep: thinking_keep) if thinking_keep
     profile = profile_for(format, wire_options: wire)
     client = SimpleInference::Client.new(execution_profile: profile, base_url: "http://example.com", adapter: NoIO.new)
     options = { max_output_tokens: 4096 }.merge(options) if format == "anthropic_messages"

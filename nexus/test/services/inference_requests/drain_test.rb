@@ -55,7 +55,7 @@ class InferenceRequests::DrainTest < ActiveJob::TestCase
 
   # THE ATTEMPT'S FK IS `ON DELETE RESTRICT`, so the reclaimer has to delete
   # it explicitly, and for a while it did not: every route into reclamation
-  # raised `PG::RestrictViolation` the moment a tombstoned aggregate had ever
+  # raised a foreign-key violation the moment a tombstoned aggregate had ever
   # been admitted. Both gates pass a TERMINAL invocation through, and a
   # terminal invocation still owns its Attempts — so this drives real
   # admission rather than hand-building a row, because a hand-built Attempt

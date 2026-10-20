@@ -14,6 +14,7 @@ module WebuiTest
     root = nil
     api = Object.new
     api.define_singleton_method(:register_webui) { |**options| root = options.fetch(:root) }
+    api.define_singleton_method(:register_route) { |*_args, &_handler| }
     Rho::Webui.register(api)
     root
   end

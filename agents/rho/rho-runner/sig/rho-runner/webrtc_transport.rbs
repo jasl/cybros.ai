@@ -1,0 +1,25 @@
+module Rho
+  class Runner
+    class WebrtcTransport
+      class Unavailable < Error
+      end
+      MAX_BYTES: Integer
+      class Poll < Data
+        attr_reader data: Array[String]
+        attr_reader state: String
+        attr_reader pair: Array[String]?
+        attr_reader ready: bool
+        def self.new: (data: Array[String], state: String, pair: Array[String]?, ready: bool) -> instance
+      end
+      def initialize: (executable: String, ?context: ExecutionContext?) -> void
+      attr_reader pid: Integer?
+      def offer: (?servers: Array[Hash[String, untyped]], ?relay: bool) -> String
+      def answer: (sdp: String, ?servers: Array[Hash[String, untyped]], ?relay: bool) -> String
+      def remote: (sdp: String) -> nil
+      def connect: (?servers: Array[Hash[String, untyped]], ?relay: bool) -> String
+      def send_bytes: (String) -> bool
+      def poll: () -> Poll
+      def close: () -> void
+    end
+  end
+end

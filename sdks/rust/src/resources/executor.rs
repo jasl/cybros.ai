@@ -44,6 +44,42 @@ impl ExecutorTask {
             )
             .await
     }
+    pub async fn realtime(&self, claim_token: &str) -> Result<Response<TaskRealtime>> {
+        self.0
+            .call(
+                Method::GET,
+                "realtime",
+                None::<&()>,
+                None::<&()>,
+                None,
+                Headers {
+                    claim_token: Some(claim_token),
+                    ..Default::default()
+                },
+                Some("realtime"),
+            )
+            .await
+    }
+    pub async fn offer_realtime(
+        &self,
+        claim_token: &str,
+        signal: &RealtimeOffer,
+    ) -> Result<Response<TaskRealtime>> {
+        self.0
+            .call(
+                Method::PUT,
+                "realtime",
+                None::<&()>,
+                Some(signal),
+                None,
+                Headers {
+                    claim_token: Some(claim_token),
+                    ..Default::default()
+                },
+                Some("realtime"),
+            )
+            .await
+    }
     write!(extend, POST, "extend", ExtendClaim, None, ClaimedTask, None);
     write!(commit, POST, "commit", CommitTask, None, Task, Some("task"));
     write!(

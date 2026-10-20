@@ -34,14 +34,23 @@ module SimpleInference
         ].freeze
       end
 
-      def initialize(stream_include_usage: nil, reasoning_control: nil, **connection)
+      def initialize(stream_include_usage: nil, reasoning_control: nil, thinking_keep: nil, developer_role: nil, **connection)
         super(**connection)
         @stream_include_usage = validated_stream_include_usage(stream_include_usage)
+        @developer_role = developer_role.nil? ? "developer" : developer_role
+        unless ExecutionProfile::CHAT_DEVELOPER_ROLES.include?(@developer_role)
+          raise SimpleInference::ConfigurationError,
+                "developer_role must be one of #{ExecutionProfile::CHAT_DEVELOPER_ROLES.join(", ")}"
+        end
         @reasoning_control = reasoning_control.nil? ? "reasoning_effort" : reasoning_control
         unless ExecutionProfile::REASONING_CONTROLS.include?(@reasoning_control)
           raise SimpleInference::ConfigurationError,
                 "reasoning_control must be one of #{ExecutionProfile::REASONING_CONTROLS.join(", ")}"
         end
+        unless thinking_keep.nil? || (thinking_keep == "all" && @reasoning_control == "thinking")
+          raise SimpleInference::ConfigurationError, "thinking_keep must be all with the thinking control, or nil"
+        end
+        @thinking_keep = thinking_keep
       end
 
       def create(model:, input:, **options)
@@ -242,7 +251,11 @@ module SimpleInference
       end
 
       def coerce_messages(input, options)
-        responses_messages_for(input, options)
+        # Relabel instructions at their original position. Hoisting a later
+        # environment message into the prefix would rewrite earlier context.
+        responses_messages_for(input, options).map do |message|
+          message["role"] == "developer" ? message.merge("role" => @developer_role) : message
+        end
       end
 
       def chat_options(options)
@@ -271,9 +284,15 @@ module SimpleInference
         rest = options.except(:reasoning_enabled)
         return rest if enabled.nil?
 
-        if @reasoning_control == "chat_template_kwargs"
+        case @reasoning_control
+        when "chat_template_kwargs"
           rest = rest.except(:reasoning_effort) if enabled == false
           rest.merge(chat_template_kwargs: { enable_thinking: enabled })
+        when "thinking"
+          rest = rest.except(:reasoning_effort) if enabled == false
+          thinking = { type: enabled ? "enabled" : "disabled" }
+          thinking[:keep] = @thinking_keep if enabled && @thinking_keep
+          rest.merge(thinking: thinking)
         else
           enabled ? rest : rest.merge(reasoning_effort: "none")
         end

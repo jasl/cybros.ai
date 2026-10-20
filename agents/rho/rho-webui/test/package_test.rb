@@ -17,6 +17,7 @@ class PackageTest < Minitest::Test
         require "rho/webui"
         api = Object.new
         api.define_singleton_method(:register_webui) { |root:| print root }
+        api.define_singleton_method(:register_route) { |*_args, &_handler| }
         Rho::Webui.register(api)
       RUBY
       output, error, status = Open3.capture3(

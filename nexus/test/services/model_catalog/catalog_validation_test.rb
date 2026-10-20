@@ -608,13 +608,15 @@ class ModelCatalog::CatalogValidationTest < ActiveSupport::TestCase
   end
 
   # The two field-shaped formats are each one wire family's: the chat
-  # assistant message's reasoning field on the broker's chat wire, the
+  # assistant message's reasoning field on chat wires, the
   # plain-text reasoning item on DeepSeek's Responses route.
   test "the chat and plain-text reasoning formats are speakable on their own wires only" do
     broker = { "openrouter" => { "base_url" => "https://openrouter.ai/api/v1", "api_format" => "openrouter_chat", "concurrency_limit" => 8 } }
     deepseek = { "deepseek" => { "base_url" => "https://api.deepseek.com", "api_format" => "deepseek_responses", "concurrency_limit" => 8 } }
+    chat = { "custom" => { "base_url" => "https://example.test", "api_format" => "openai_compatible_chat" } }
     [
       [broker, "openrouter/x/m", "chat_reasoning"],
+      [chat, "custom/m", "chat_reasoning"],
       [deepseek, "deepseek/m", "responses_reasoning_text"],
     ].each do |providers, ref, format|
       Dir.mktmpdir do |root|

@@ -46,6 +46,9 @@ task spans categories, read every applicable module and the nearest nested
 
 ## Non-Negotiables
 
+- Validate the actual change scope: focused behavior/contract checks and relevant integration
+  journeys, not full E2E after every small slice. Record unrelated failures without expanding
+  the repair scope. Full-suite triggers and verification reporting live in `.ai/ci.md`.
 - Ruby here is duck-typed and fail-fast: normalize once at the boundary
   (`to_s`/`to_h`/`fetch`), then one loud guard, and trust internal types.
   Type probes are banned in every spelling — `.is_a?` and its

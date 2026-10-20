@@ -1,5 +1,12 @@
 {
     {
+        let server = Server::script(vec![Reply::json(200, fixture("executor_inbox", "realtime_fixture").to_string())]).await;
+        let executor = ExecutorClient::new(&server.url, "executor").unwrap();
+        if let Err(error) = executor.inbox_task("run", "task").unwrap().realtime("claim").await {
+            errors.push(format!("executor_inbox.realtime_fixture: {error}"));
+        }
+    }
+    {
         let server = Server::script(vec![Reply::json(
             200,
             fixture("executor_inbox", "valid_fixture").to_string(),

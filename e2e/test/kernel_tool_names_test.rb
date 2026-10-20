@@ -140,11 +140,11 @@ class KernelToolNamesTest < Minitest::Test
     assert_equal true, agent.dig("function", "parameters", "properties", "run_in_background", "default"), "the inverted default"
     # THE ASK ALIAS STAYS THE KERNEL'S FLAT SHAPE (audit refs-parity-6): the
     # alias mechanism maps flat keys only, so `AskUserQuestion` is spelled
-    # over `prompt`/`options`/`multi` — never Claude Code's nested
+    # over `prompt`/`options`/`multi`/`fields` — never Claude Code's nested
     # `questions[0].{question,options,multiSelect}` (recorded at
     # presets.yml; the paid window benches the cell as-is).
     ask = Nexus::ToolDeclarations.render(claude).find { |entry| entry.dig("function", "name") == "AskUserQuestion" }
-    assert_equal %w[prompt options multi], ask.dig("function", "parameters", "properties").keys
+    assert_equal %w[prompt options multi fields], ask.dig("function", "parameters", "properties").keys
     assert_equal "array", ask.dig("function", "parameters", "properties", "options", "type")
     assert_equal ["prompt"], ask.dig("function", "parameters", "required")
   end
@@ -188,7 +188,7 @@ class KernelToolNamesTest < Minitest::Test
 
     refute_empty runner
     undescribed = registry.serving(:runner).entries.select(&:undescribed?).map(&:name).sort
-    assert_equal %w[checkpoint_restore checkpoints files_bytes process_log], undescribed
+    assert_equal %w[checkpoint_restore checkpoints files_bytes git_review process_log], undescribed
     assert_equal (undescribed + ["skill"]).sort, (runner.map { |entry| entry.fetch("name") } - declared).sort,
       "every name the runner address announces is one the model may call, except the person's reads, " \
       "the skill load and the store's two"

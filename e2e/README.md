@@ -1,7 +1,7 @@
 # E2E diagnostics
 
-Run the deterministic harness and product journeys with `bundle exec rake` from
-this directory. Real model calls are separate, explicit development diagnostics.
+Run the ordinary deterministic gate with `bundle exec rake` from this directory.
+WebRTC (`rake realtime`) and real model calls are explicit opt-ins.
 The journey manifest groups suites into isolated worlds, with two or three running at once
 according to PostgreSQL's connection ceiling. Splitting suites adds worlds without
 increasing concurrent worlds or the default 1,080-second journey deadline.
@@ -651,3 +651,76 @@ failing a parallel-placement assertion. Report these dimensions separately;
 retain the original strict verdict rather than changing captured failures into
 passes. Model tool exposure is the Agent application's policy; rho loads its
 agent-side code extension by default.
+
+### Runner WebRTC PTY check
+
+`bundle exec rake realtime` explicitly runs signaling and PTY journeys;
+they are excluded from default E2E. The WebRTC case builds the optional Runner helper and an
+ephemeral loopback TURN fixture using Go (version in the helper's `go.mod`). It exercises
+real DataChannel bytes through the existing handler and isolated Nexus. It first selects
+host candidates, then reconnects the same PTY with a relay-only answerer while the Runner
+remains in auto mode. It also checks control outage, permission recovery and original Stop.
+The automatic recovery cases additionally require Docker. They build a small Alpine
+fixture and run runner/member/TURN in separate container network namespaces with
+container-local iptables. The UDP case (`-n /test_network_loss/`) drops peer-to-peer UDP,
+verifies automatic relay selection under the same PTY and claim, then drops TURN traffic
+and checks original Stop while a fresh offer waits for an answer.
+The TCP and TLS cases (`-n /test_udp_block_automatically/`) each configure only their
+selected TURN URL and block all outbound UDP on both peers after initial direct
+communication. They verify UDP DROP and TURN-destination TCP traffic counters,
+automatic relay recovery, unchanged claim/PTY, fresh input without replay, and Stop
+during candidate gathering after a second outage blocks TURN TCP. All cases verify
+helper and PTY cleanup.
+
+The TLS fixture exposes only a TLS listener with a temporary certificate. The native
+peers trust its public certificate through their container-local `SSL_CERT_FILE`;
+the host trust store is unchanged. `-n /test_turn_tls_requires/` proves that the same
+TLS endpoint yields no relay candidate without that trust root and does yield one
+with it. The peers use the shipped native transport in Linux containers; this does
+not qualify browser TURN/TCP/TLS, public Internet NAT, public CA deployment, HTTP
+proxies or long-running transport. No host firewall is changed.
+
+The browser TCP case (`-n /test_browser_turn_tcp/` in `realtime_signaling_test.rb`)
+loads ICE configuration through the shipped WebUI plugin route. Its browser fixture
+sets relay-only ICE policy against a TCP-only local TURN listener; selected-candidate
+statistics must report a local relay and `relayProtocol: tcp`. The production terminal
+must exchange bytes and input receipts, reopen the original PID/claim, and stop its
+owned jobs under output load. This is browser-to-TURN TCP evidence, not a firewall
+outage or public-network qualification. The ordinary
+production-terminal case is the direct-connection control with empty browser ICE
+configuration. Failed journeys capture connection events and receipts before Task
+cleanup; captures contain no input/output text in the peer event list.
+
+The browser TLS refusal/recovery case (`-n /test_browser_untrusted_turn_tls/`)
+starts on TCP, changes the browser ICE list through the plugin CLI to a TLS-only
+listener with an ephemeral untrusted certificate, and reopens the same terminal.
+It requires a server-side TLS certificate-rejection alert and no browser relay
+candidate. Restoring the TCP list must recover the original shell/claim and retain
+Stop cleanup. The host trust store and browser certificate verification are
+unchanged. This covers refusal and configuration repair, not a successful browser
+TLS session or a public certificate chain.
+
+The successful browser TLS case (`-n /test_browser_turn_tls_reopens/`) uses a
+disposable Chromium profile that trusts only the fixture certificate in addition
+to the browser's normal roots. The host trust store and certificate verification
+remain unchanged. Selected-candidate statistics must report `relayProtocol: tls`
+and a `turns:` URL before the same real terminal, reopen and output-load Stop
+checks. The browser closes before the profile is deleted. This qualifies the
+browser-to-TURN TLS segment; the Runner uses a local host candidate. It does not
+qualify an all-UDP-blocked topology, a public certificate chain or public NAT.
+
+The concurrent-work case (`-n /test_browser_terminal_flood_keeps/`) uses a
+two-worker pool on one Runner and a browser TCP relay. While `yes` continuously
+fills the terminal, an ordinary `read` task on that same executor must complete
+through claim/commit and return the file's exact text over the member HTTP API
+within a five-second local diagnostic budget. Browser bytes must advance across
+the operation. The case repeats this check after viewer reattachment, retains the
+terminal's original PID/claim, and stops the terminal and its owned jobs. This
+covers spare-capacity Runner work and HTTP control under PTY load; it does not
+qualify continuous screen media, saturated worker pools or a production latency SLA.
+
+The output-window case (`-n /test_output_window/`) uses the same isolated network fixture.
+It schedules real PTY output before dropping direct UDP, recovers it through automatic TURN
+reconnection, then drops TURN UDP during a burst larger than the capture window. It checks
+the explicit gap message, duplicate suppression, unchanged claim/PTY and Stop with output
+still awaiting consumption. Window age and permission omissions use focused Runner tests.

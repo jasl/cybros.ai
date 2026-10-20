@@ -21,20 +21,20 @@ class ExtensionTest < Minitest::Test
   end
 
   # Beside the coding built-ins, no name collides and the surface stays
-  # small: six tools that together cost less than the eleven they join
-  # (including `file_import` and `file_publish`; the person's `files_bytes`
-  # and the kernel's `skill` are both described to nobody).
+  # small: six tools that together cost less than the twelve they join
+  # (including `file_import` and `file_publish`; `files_bytes`, `git_review`
+  # and the kernel's `skill` are described to nobody).
   def test_it_coexists_with_the_coding_built_ins_and_stays_small
     result = Rho::Runner::Extensions::Loader.call(
       builtin: [Rho::Runner::Extensions::Coding, Rho::Browser]
     )
     assert_predicate result, :ok?
-    assert_equal 17, result.registry.names.size
+    assert_equal 18, result.registry.names.size
 
     bytes = result.registry.declarations.group_by { |d| d["name"].start_with?("browser_") }
       .transform_values { |ds| ds.sum { |d| JSON.generate(d).bytesize } }
     assert_operator bytes.fetch(true), :<, bytes.fetch(false),
-      "browser declarations (#{bytes[true]}) outweigh the coding eleven (#{bytes[false]})"
+      "browser declarations (#{bytes[true]}) outweigh the coding twelve (#{bytes[false]})"
   end
 
   def test_the_shutdown_hook_closes_the_session_and_it_is_lazy_until_then

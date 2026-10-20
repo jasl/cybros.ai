@@ -60,3 +60,7 @@ The rolling release will be followed by a stable channel with incremental databa
 - **A hosted sandbox.** Execution stays on infrastructure you control.
 - **Webhooks from Nexus to your application.** Components connect outbound to Nexus; durable replay plus cable subscriptions cover application integration without an inbound dial.
 - **A tenant isolation layer.** One installation is one Account of trusted members. A hosted multi-account service would be a separate product on the same kernel.
+
+Windows Runner and computer use, including screen sharing and desktop input, are
+separate experimental work. Their full design and implementation are planned
+independently of the supported PTY and generic realtime signaling/relay surface.

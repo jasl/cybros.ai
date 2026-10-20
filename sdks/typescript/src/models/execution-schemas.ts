@@ -29,6 +29,7 @@ export const executionSchemas: Record<string, Record<string, Reader>> = {
   RunPhase: {"label": ["string"], "keys": ["string_list"], "done": ["count"], "total": ["count"], "status": ["string"]},
   BackgroundTask: {"key": ["string"], "status": ["string"], "result_delivered_at": ["optional_string"]},
   ClaimedTask: {"task": ["shape", "InboxTask"], "claim_token": ["string", "claim", "claim_token"], "deadline_at": ["optional_string", "claim", "deadline_at"]},
+  TaskRealtime: {status: ["string"], reason: ["optional_string"], connection_id: ["optional_string"], offer_sdp: ["optional_string"], answer_sdp: ["optional_string"], max_age_ms: ["integer"]},
   ClaimStatus: {"active": ["boolean", "claim", "active"]},
   RunnerEffects: {"status": ["string"], "reason": ["optional_string"], "runners": ["shapes", "RunnerEffect"]},
   RunnerEffect: {"runner_executor_public_id": ["string"], "run_public_id": ["string"], "task_key": ["string"], "checkpoint": ["optional_shape", "Checkpoint"], "checkpoint_present": ["present", "checkpoint"]},

@@ -8,6 +8,9 @@ module Tasks
     # Either holder parks identically: `dispatched` for a runner through the
     # inbox, `running` for a kernel tool in one of our own jobs.
     include Parked
+    attribute :realtime_signal, RealtimeSignal.to_type
+    encrypts :realtime_signal
+    validates :realtime_signal, store_model: true, allow_nil: true
 
     DEFAULT_TIMEOUT_MS = 10.minutes.in_milliseconds
     # The park's name in the settle's error keys: `tool_failed`, `tool_timeout`.

@@ -20,7 +20,7 @@ The agent application's control plane. In the Docker stack, run it as `./cybros 
 | `rho memory-review CONVERSATION status\|enable\|disable\|resume` | Optional [background memory review](../use/files-images-memory.md#background-memory-review) |
 | `rho jobs CONVERSATION create\|list\|history\|pause\|resume\|cancel` | Schedules |
 | `rho extensions list\|enable\|disable\|configure` | Plugins and their settings |
-| `rho settings [JSON]` | Core settings |
+| `rho settings [JSON]` | Read or update core settings |
 | `rho mcp …`, `rho mcp probe`, `rho mcp login\|logout` | MCP servers |
 | `rho web fetch URL` | What the `web_fetch` tool would read |
 | `rho telegram status` | Shared Telegram Connections, status and update offsets |
@@ -29,6 +29,21 @@ The agent application's control plane. In the Docker stack, run it as `./cybros 
 | `rho agents`, `rho env`, `rho runner`, `rho processes` | Management verbs of the shipped gems |
 | `rho version`, `rho doctor [--strict]`, `rho update [--dry-run\|--rollback]`, `rho uninstall` | The installation |
 | `rho-acp [--mode] [--model] [--runner]`, `rho-acp connect` | The ACP server for editors |
+
+`rho settings` prints the current core settings. Pass a quoted JSON object to
+update only the named fields. For example, list the available models, save the
+conversation and title model choices, then read them back:
+
+```sh
+rho models
+rho settings '{"default_model":"kimi_code/kimi-for-coding","conversation_title_model":"deepseek/deepseek-flash"}'
+rho settings
+```
+
+Use model references from your own `rho models` output. This example sets Kimi
+as the default conversation model and DeepSeek Flash for generated titles.
+Other settings are preserved. The choices are saved in `<RHO_HOME>/settings.json`
+and apply immediately when rho is running.
 
 Conversational verbs beyond `run` (`do`, `say`, `watch`, `approve`, …) belong to `rho-dev`, a development gem the distribution does not carry.
 

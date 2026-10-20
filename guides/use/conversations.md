@@ -95,3 +95,42 @@ After pairing, **Settings › General › Opening this page** decides what a bro
 | Unlock password | Asks for rho's own password, stored as a salted digest |
 
 A page admitted by the gate holds no Nexus account; Settings names how it got in and offers **Sign in with Nexus** for actions that need one. Changing or removing the password ends every other unlocked browser.
+
+## Open a terminal
+
+Choose **Terminals** in the conversation header, select a Runner, then choose
+**New terminal**. The Runner must have the [Terminal plugin configured](../runners/deploy.md#interactive-terminals).
+The shell opens in that Runner's default work directory, independently of the
+conversation's environment. Each terminal has its own Run; no model call is needed.
+
+The panel shows pending approval, startup failures and ended tasks. Closing it leaves
+its terminal running. Reopen **Terminals** and select the recorded terminal to attach
+again; **Older terminals** reads earlier records from Nexus. **Stop terminal** ends
+that terminal's Run, shell and ordinary shell jobs. Conversation Stop does not stop
+these independent terminals. Deliberately disowned jobs or programs that create a
+new session are outside the shell's job ownership.
+
+## Attach to an interactive terminal
+
+When an installed Runner tool owns a live PTY and publishes the
+[terminal stream protocol](../reference/agent-api/task-realtime.md#output-recovery),
+open its tool call in the conversation activity, then choose **Open terminal**.
+This attaches to that existing task; it does not launch a shell or turn an ordinary
+`bash` call into an interactive terminal. The terminal uses an 80-column screen;
+on a narrow display, scroll inside the screen horizontally.
+
+The connection label shows connection, automatic reconnection and permission pauses.
+Typing is disabled while interaction is unavailable. Reconnection keeps the original
+PTY and task; input is never replayed. Retained output resumes from the last received
+byte. **Output gap** reports bytes that are no longer available.
+
+The input status distinguishes Runner receipt from bytes written to the terminal.
+A successful write does not confirm command completion. If the connection or
+permission is lost before confirmation, delivery is unknown: input may already
+have taken effect and will not be resent. Unsent keyboard batches are discarded.
+
+Closing the side panel detaches the viewer. **Stop terminal** cancels the original
+branch task. A mainline task requires Conversation Stop; the panel reports that
+restriction instead of canceling other work. Conversation Stop retains its ordinary
+ownership of the execution. If Stop cannot be confirmed, the panel says so and lets
+you try again.

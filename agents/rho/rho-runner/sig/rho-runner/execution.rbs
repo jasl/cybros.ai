@@ -66,6 +66,7 @@ module Rho
       attr_reader progress: Progress?
       attr_reader attachments: ClaimAttachments?
       attr_reader orchestration: ClaimOrchestration?
+      attr_reader realtime: ClaimRealtime?
       # The placement: the row's env and the
       # conversation's record, set once by the run; nil outside one.
       attr_reader tool_env: ToolEnv?
@@ -76,7 +77,7 @@ module Rho
         ?clock: ^() -> Numeric, ?extension: DeadlineExtension?, ?scope: Hash[String, untyped]?,
         ?claim_token: String?, ?progress: Progress?, ?tool_env: ToolEnv?, ?binding: Environment::Binding?,
         ?ports: (^(String) -> untyped)?, ?claim_poller: ClaimStatusPoller?, ?on_cancel: (^(Symbol) -> void)?,
-        ?workspace_public_id: String?, ?attachments: ClaimAttachments?, ?orchestration: ClaimOrchestration?
+        ?workspace_public_id: String?, ?attachments: ClaimAttachments?, ?orchestration: ClaimOrchestration?, ?realtime: ClaimRealtime?
       ) -> void
       def place: (tool_env: ToolEnv?, binding: Environment::Binding?, ?ports: (^(String) -> untyped)?) -> nil
       # The editor's port for this row: the resolver

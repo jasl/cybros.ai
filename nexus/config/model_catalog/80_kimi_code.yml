@@ -1,0 +1,36 @@
+schema_version: cybros.model_catalog.v1
+providers:
+  kimi_code:
+    display_name: Kimi For Coding (kimi.com)
+    api_format: openai_compatible_chat
+    # The protocol appends /v1/chat/completions to this China endpoint.
+    base_url: https://api.kimi.com/coding
+    wire_options:
+      reasoning_control: thinking
+      # The coding chat endpoint rejects developer-role instructions.
+      developer_role: system
+models:
+  # models.dev/providers/kimi-code-plan-cn/ and
+  # www.kimi.com/help/kimi-code/models, read 2026-10-19: this alias serves
+  # K2.8 Preview, with a 1M context, 32K output, images and three efforts.
+  # Video is outside the kernel's input modalities. Select low by default,
+  # consistently with the catalog's other open-model reasoning routes.
+  kimi_code/kimi-for-coding:
+    # Subscription usage has no per-token price schedule here. Record
+    # quantities without treating the membership itself as free.
+    pricing:
+    capabilities:
+      input_modalities: [image]
+      limits:
+        combined_input_output_tokens: 1048576
+        output_tokens: 32768
+      reasoning:
+        disable_supported: true
+        efforts: [low, high, max]
+        default_effort: low
+        default_enabled: true
+      reasoning_replay:
+        format: chat_reasoning
+      generation_parameters:
+        max_output_tokens:
+          maximum: 32768

@@ -21,6 +21,8 @@ class ModelCatalog::ProviderEndpointTest < ActiveSupport::TestCase
     "openrouter" => "https://openrouter.ai/api",
     "deepseek" => "https://api.deepseek.com",
     "xai" => "https://api.x.ai",
+    "kimi_code" => "https://api.kimi.com/coding",
+    "moonshot" => "https://api.moonshot.cn",
   }.freeze
 
   test "every shipped provider declares its endpoint" do

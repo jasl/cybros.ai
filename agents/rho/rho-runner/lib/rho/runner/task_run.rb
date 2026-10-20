@@ -191,6 +191,10 @@ module Rho
             scope: claimed.task.scope, claim_token: claimed.claim_token, progress: progress_for(claimed),
             claim_poller: claim_poller_for(claimed), on_cancel: @on_cancel,
             orchestration: orchestration_for(claimed),
+            realtime: ClaimRealtime.new(
+              task: door(claimed.task.run_public_id, claimed.task.task_key), claim_token: claimed.claim_token,
+              clock: @clock, log: @log
+            ),
             attachments: ClaimAttachments.new(
               task: door(claimed.task.run_public_id, claimed.task.task_key), claim_token: claimed.claim_token
             )
@@ -203,6 +207,7 @@ module Rho
               fatal = error if FATAL.any? { |kind| error in ^kind }
               failure(claimed, "The tool could not run: #{error.class}: #{error.message}")
             end
+          context.realtime&.close
           claimed = claimed.with(deadline_at: extension.deadline_at) if extension
           submit(claimed, result)
           # ANSWERED FIRST, THEN RE-RAISED. A shutdown or an exhausted
@@ -210,6 +215,8 @@ module Rho
           # failure would be a lie about why the work stopped — but it
           # ends with the claim released rather than held.
           raise fatal if fatal
+        ensure
+          context&.realtime&.close
         end
 
         # THE TWO AXES, decided in exactly one place.
@@ -258,8 +265,8 @@ module Rho
           hooks = nil
           owners = []
           # The pool may time out while a non-cooperative worker continues.
-          # Keep the one set of leases until BOTH the actual handler and this
-          # caller's result hooks finish; either side may be the last to leave.
+          # Keep the one set of leases until BOTH the worker (including its
+          # result hooks) and this caller finish; either may leave last.
           finishes = 2
           resource_lock = Mutex.new
           finish_resources = lambda do
@@ -293,27 +300,21 @@ module Rho
             in Result
               refused = gated
             else
-              tool.handler.call(gated, context)
+              result = tool.handler.call(gated, context)
+              case result
+              in Failed then result
+              in Result then hooks.after_result(name, result, tool)
+              else hooks.after_result(name, Result.ok(result.to_s), tool)
+              end
             end
           ensure
             finish_resources.call
           end
           return refused if refused
 
-          result = case value
-          in Failed then return value
-          in Result then value
-          else Result.ok(value.to_s)
-          end
-          # FAIL-OPEN: the tool already ran, and losing a real answer
-          # because a formatter raised would turn an observer into a
-          # destroyer. THE CONTEXT IS BOUND HERE TOO: this chain runs on
-          # the reactor (the pool binds the context on its worker alone),
-          # and a `tool_result` hook reads the loop off `ExecutionContext.
-          # current` exactly as the `tool_call` chain does — the checkpoint
-          # key rides the first write-kind result BY that loop id, so an
-          # unbound context here would leave every key on the floor.
-          ExecutionContext.with(context) { hooks.after_result(name, result, tool) }
+          # Result observers may scan files too. Both hook chains finish on
+          # the worker with the same placement, deadline and resource leases.
+          value
         rescue ExecutionContext::Cancelled => error
           if error.reason == :deadline
             return timed_out(claimed, started_at)

@@ -1,4 +1,5 @@
 require "minitest/autorun"
+require "bundler"
 require "json"
 require "open3"
 require "rbconfig"
@@ -45,7 +46,14 @@ class PumaTest < Minitest::Test
   private
 
     def configuration(environment, variables = {}, cpus: "8")
-      variables = { "RAILS_ENV" => environment, "BUNDLE_GEMFILE" => File.expand_path("../../Gemfile", __dir__) }.merge(variables)
+      # Bundler needs the local toolchain and settings; only Puma's inputs are isolated.
+      variables = Bundler.unbundled_env.except(*%w[
+        APP_ENV RACK_ENV WEB_CONCURRENCY RAILS_MAX_THREADS
+        PUMA_MIN_THREADS MIN_THREADS PUMA_MAX_THREADS MAX_THREADS PUMA_PERSISTENT_TIMEOUT
+        PUMA_FIBER_PER_REQUEST PUMA_BUNDLER_PRUNED PORT SOLID_QUEUE_IN_PUMA PIDFILE
+      ]).merge(
+        "RAILS_ENV" => environment, "BUNDLE_GEMFILE" => File.expand_path("../../Gemfile", __dir__)
+      ).merge(variables)
       stdout, stderr, status = Open3.capture3(
         variables, RbConfig.ruby, "-e", LOAD,
         File.expand_path("../../config/puma.rb", __dir__), cpus,

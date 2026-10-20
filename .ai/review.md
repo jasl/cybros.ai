@@ -10,6 +10,10 @@
   answer merge-readiness with a direct yes/no backed by fresh capture.
 - Prefer the smallest correct change; flag scope creep; split unrelated work; preserve unrelated
   dirty changes.
+- Judge verification against the actual change impact and `.ai/ci.md`'s scope rules. Missing full
+  suite/E2E runs are not by themselves blockers for a small slice with adequate targeted evidence.
+  Name a concrete uncovered regression path before requesting broader tests. Record unrelated
+  failures separately; do not turn review into an unrequested repair or full-regression campaign.
 - When the owner asks whether an uncommitted worktree is ready to commit, assemble the review
   candidate from every in-scope staged, unstaged, and untracked file; a requested merge-base diff
   is comparison capture, not a staged-only boundary. Git index membership, or an intended file's

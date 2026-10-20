@@ -60,6 +60,8 @@ export class RunScope extends Resource {
   }
 }
 export class TaskScope extends Resource {
+  realtime(options: RequestOptions = {}) { return this.one('TaskRealtime', '/realtime', 'realtime', options); }
+  answerRealtime(input: { connection_id: string; sdp: string }, options: RequestOptions = {}) { return this.one('TaskRealtime', '/realtime', 'realtime', { ...options, method: 'PUT', body: input }); }
   fetch(options: RequestOptions = {}) { return this.one('TaskDetail', '', 'task', options); }
   resolve(input: ResolveTask, options: RequestOptions = {}) { return this.one('Task', '/resolution', 'task', { ...options, method: 'POST', body: input }); }
   retry(model?: ModelSelection, options: RequestOptions = {}) { return this.one('Task', '/retry', 'task', { ...options, method: 'POST', ...(model === undefined ? {} : { body: { model } }) }); }

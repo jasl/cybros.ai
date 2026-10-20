@@ -51,6 +51,7 @@ export function createConversations({ call, follow, artifactBytes, signal, toast
   let started = false;
   let published = new Map();
   let artifactRead = null;
+  let reviewRead = Promise.resolve();
 
   const state = observable({ ...shown(null, null), draft: "", focus: 0,
     models: null, runners: null, choicesError: null, defaultModel: "", approval: "ask", delivery: "steer",
@@ -101,6 +102,7 @@ export function createConversations({ call, follow, artifactBytes, signal, toast
     const v = new AbortController();
     view = v; refreshing = false; settled = null;
     published = new Map();
+    reviewRead = Promise.resolve();
     const next = shown(id, workspace, agent);
     patch({ ...next, draft: drafts.get(draftScope(next)) || "",
       modes: id ? null : setup.state.get().status?.defaults?.conversation_modes ?? null,
@@ -422,8 +424,17 @@ export function createConversations({ call, follow, artifactBytes, signal, toast
     // A user-initiated open (a row, a schedule execution, a create) asks the
     // shell to show the conversation panel.
     onOpen(listener) { openers.add(listener); return () => openers.delete(listener); },
-    async readReview(fields = {}) {
-      return (await call(query("/conversations/review", { ...target(), ...fields }), { signal: view.signal })).review;
+    readReview(fields) {
+      const v = view;
+      const values = { ...target(), ...fields };
+      // History can mount many replies at once. Serialize their recorded
+      // result reads, and never let queued work follow a new selection.
+      const read = reviewRead.catch(() => {}).then(async () => {
+        if (!current(v)) throw new DOMException("Conversation changed", "AbortError");
+        return (await call(query("/conversations/review", values), { signal: v.signal })).reviews;
+      });
+      reviewRead = read;
+      return read;
     },
     async reviewFeedback(comment) {
       return (await call("/conversations/review/feedback", { method: "POST", body: { ...target(), comment }, signal: view.signal })).text;

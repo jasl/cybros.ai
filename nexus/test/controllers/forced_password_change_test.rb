@@ -51,17 +51,17 @@ class ForcedPasswordChangeTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "a device ceremony return target keeps the password gate private" do
+  test "a device ceremony return target keeps the password gate uncached and same-origin" do
     return_to = oauth_device_path(user_code: "ABCD-EFGH")
 
     get settings_password_path(return_to: return_to)
 
     assert_response :success
     assert_equal "no-store", response.headers["Cache-Control"]
-    assert_equal "no-referrer", response.headers["Referrer-Policy"]
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
   end
 
-  test "a device ceremony stays private when the password gate session expires" do
+  test "a device ceremony return target stays uncached and same-origin across reauthentication" do
     device_return_to = oauth_device_path(user_code: "ABCD-EFGH")
     password_gate = settings_password_path(return_to: device_return_to)
     @identity.user.increment!(:authority_generation)
@@ -69,12 +69,12 @@ class ForcedPasswordChangeTest < ActionDispatch::IntegrationTest
     get password_gate
     assert_redirected_to new_session_path(return_to: password_gate)
     assert_equal "no-store", response.headers["Cache-Control"]
-    assert_equal "no-referrer", response.headers["Referrer-Policy"]
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
 
     follow_redirect!
     assert_response :success
     assert_equal "no-store", response.headers["Cache-Control"]
-    assert_equal "no-referrer", response.headers["Referrer-Policy"]
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
 
     post session_path, params: {
       email: @identity.email,
@@ -83,12 +83,12 @@ class ForcedPasswordChangeTest < ActionDispatch::IntegrationTest
     }
     assert_redirected_to password_gate
     assert_equal "no-store", response.headers["Cache-Control"]
-    assert_equal "no-referrer", response.headers["Referrer-Policy"]
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
 
     follow_redirect!
     assert_response :success
     assert_equal "no-store", response.headers["Cache-Control"]
-    assert_equal "no-referrer", response.headers["Referrer-Policy"]
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
 
     patch settings_password_path, params: {
       return_to: device_return_to,

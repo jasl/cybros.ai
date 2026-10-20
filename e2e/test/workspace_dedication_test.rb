@@ -343,10 +343,10 @@ class WorkspaceDedicationTest < Minitest::Test
     addresses = @daemon.control(:get, "/runner")
     runner = addresses.fetch("runner")
     # The Runner serves environment tools, its skill loader and code; code is
-    # also served on the Agent address. Operator-only file, process, checkpoint
+    # also served on the Agent address. Operator-only file, Git review, process, checkpoint
     # and environment commands are announced without model declarations. The
     # Agent serves application capabilities; compaction and schedules live in Nexus.
-    assert_equal %w[bash checkpoints code edit environment_bind file_import file_publish files_bytes find grep list_processes ls process_log read
+    assert_equal %w[bash checkpoints code edit environment_bind file_import file_publish files_bytes find git_review grep list_processes ls process_log read
                     read_process skill start_process stop_process checkpoint_restore web_fetch write].sort,
       runner.fetch("tools").sort
     assert_equal %w[list_extensions manage_extension code], addresses.fetch("agent").fetch("tools"),

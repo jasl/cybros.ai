@@ -1,6 +1,5 @@
 class Conversations::CancellationsController < Conversations::BaseController
   before_action :require_writable_conversation
-  before_action :set_form_referrer_policy
 
   def new
   end
@@ -21,12 +20,4 @@ class Conversations::CancellationsController < Conversations::BaseController
         status: AgentAPI::V1::BaseController::REFUSAL_STATUSES.fetch(result.outcome, :unprocessable_entity))
     end
   end
-
-  private
-
-    def set_form_referrer_policy
-      # Native form posts need their Origin after a no-referrer return page.
-      # Cross-origin navigation still receives no Referer.
-      response.headers["Referrer-Policy"] = "same-origin"
-    end
 end

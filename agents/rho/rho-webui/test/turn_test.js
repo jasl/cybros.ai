@@ -311,3 +311,33 @@ test("a repaint while an artifact is loading keeps that read's figure; another v
   expect(transcript.element.querySelector(".artifact__result").textContent).toBe("");
   transcript.dispose();
 });
+
+test("recorded change cards follow their reply, survive repaint, and never fill a new conversation", async () => {
+  const reply = (id) => ({ public_id: id, kind: "direct_reply", role: "assistant", status: "completed",
+    active_variant: { public_id: `v-${id}`, run_public_id: `run-${id}`, content: `Answer ${id}`,
+      prompt_text: `Question ${id}`, runner_effects: { status: "touched" } } });
+  const state = observable({ id: "c-1", access: "ready", detail: {}, turns: [reply("one"), reply("empty"), reply("late")],
+    older: false, snapshot: null, live: "", reasoning: "" });
+  const reads = []; let finish;
+  const recorded = [{ runner: "original", root: "/project", base: "before", run: "run-one",
+    files: [{ path: "one.txt", status: "A", state: "text", patch: "@@ -0,0 +1 @@\n+one\n", additions: 1, deletions: 0 }] }];
+  const conversations = { state, rounds: async () => ({ rounds: [] }), openTask: () => {}, loadOlder: async () => {},
+    artifactOpener: () => opener(), readReview: async ({ turn }) => {
+      reads.push(turn);
+      return turn === "one" ? recorded : turn === "late" ? new Promise((resolve) => { finish = resolve; }) : [];
+    } };
+  const scroller = el("div");
+  const transcript = createTranscript({ conversations, scroller });
+  scroller.append(transcript.element); document.body.append(scroller);
+  await flush();
+  const first = transcript.element.querySelector('[data-turn-id="one"] .git-review');
+  expect(first.hidden).toBe(false);
+  expect(transcript.element.querySelector('[data-turn-id="empty"] .git-review').hidden).toBe(true);
+  state.update((value) => ({ ...value, turns: value.turns.map((turn) => ({ ...turn, published_artifacts: [] })) }));
+  expect(transcript.element.querySelector('[data-turn-id="one"] .git-review')).toBe(first);
+  expect(reads).toEqual(["one", "empty", "late"]);
+  state.update((value) => ({ ...value, id: "c-2", turns: [] }));
+  finish(recorded); await flush();
+  expect(transcript.element.querySelector(".git-review")).toBeNull();
+  transcript.dispose();
+});

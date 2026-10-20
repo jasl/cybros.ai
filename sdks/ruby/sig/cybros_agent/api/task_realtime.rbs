@@ -1,0 +1,31 @@
+module CybrosAgent
+  module Api
+    class TaskRealtime < Data
+      attr_reader status: String
+      attr_reader reason: String?
+      attr_reader connection_id: String?
+      attr_reader offer_sdp: String?
+      attr_reader answer_sdp: String?
+      attr_reader max_age_ms: Integer
+      def initialize: (status: String, reason: String?, connection_id: String?, offer_sdp: String?, answer_sdp: String?, max_age_ms: Integer) -> void
+      def active?: () -> bool
+      def closed?: () -> bool
+    end
+
+    module TaskRealtimeProjections
+      include Parsing
+    end
+
+    class ExecutorTaskContext
+      include TaskRealtimeProjections
+      def realtime: (claim_token: String) -> TaskRealtime
+      def offer_realtime: (claim_token: String, connection_id: String, sdp: String, ?previous_connection_id: String?) -> TaskRealtime
+    end
+
+    class TasksContext
+      include TaskRealtimeProjections
+      def realtime: () -> TaskRealtime
+      def answer_realtime: (connection_id: String, sdp: String) -> TaskRealtime
+    end
+  end
+end

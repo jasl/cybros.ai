@@ -12,6 +12,8 @@ module ModelProviders
       "deepseek" => "DEEPSEEK_API_KEY",
       "xai" => "XAI_API_KEY",
       "openrouter" => "OPENROUTER_API_KEY",
+      "kimi_code" => "KIMI_API_KEY",
+      "moonshot" => "MOONSHOT_API_KEY",
     }.freeze
 
     Result = Data.define(:outcomes)

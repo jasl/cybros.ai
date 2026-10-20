@@ -71,6 +71,83 @@ Scope and the bound Agent are fixed when the Runner registration is created. Rec
 
 The home is private. Working files are separate from runner state; back up both according to their own plans. Nexus owns durable conversations, uploads, memory and schedules, so a runner home alone is not a backup of that data.
 
+## Interactive terminals
+
+The optional **Terminal** plugin (`rho.terminal`) serves an operator-only interactive
+Bash tool in full and runner modes. It is disabled by default and is not advertised
+to models. It uses the existing task claim, deadline renewal and Stop lifecycle.
+
+1. Build the transport helper from the rho-runner package's `transport/` directory,
+   using the Go version declared in its `go.mod`:
+
+   ```sh
+   go build -o /absolute/path/rho-webrtc .
+   ```
+
+2. On the Runner, configure the installed executable and enable the plugin:
+
+   ```sh
+   rho extensions configure rho.terminal '[{"op":"set","path":["executable"],"value":"/absolute/path/rho-webrtc"}]'
+   rho extensions enable rho.terminal
+   ```
+
+   The browser's **Plugins → Terminal** settings edit the same configuration on a
+   full-mode installation. A missing executable reports repair guidance and leaves
+   other capabilities available. Go is needed to build the helper, not to run it;
+   ordinary rho startup has no Go requirement.
+
+3. If direct connectivity is unavailable, configure `rho.terminal` → `ice_servers`
+   on the Runner with your TURN service. Each entry has `urls` (an array), optional `username` and write-only
+   `credential`. Signaling uses Nexus; terminal bytes use the direct or TURN channel.
+
+   Use `turn:relay.example.com:3478?transport=tcp` for TCP access to a TURN
+   service with a TCP listener, or `?transport=udp` for UDP access. TCP here is
+   the client-to-TURN connection; the relay allocation still uses UDP.
+
+   For TLS over TCP, use `turns:relay.example.com:5349?transport=tcp` and a TURN
+   TLS listener. Its certificate must match the URL host and be trusted by each
+   peer. The native helper uses ordinary platform certificate verification.
+   These URLs do not configure an HTTP proxy. Check connectivity from your
+   deployed peers; local relay checks do not establish public NAT or proxy
+   compatibility.
+
+4. Configure the browser endpoint separately on the rho instance serving the WebUI.
+   Its **Web interface** plugin (`rho.webui`) owns browser `ice_servers`. For example,
+   replace the placeholders and submit the complete list through the existing CLI:
+
+   ```sh
+   rho extensions configure rho.webui '[{"op":"set","path":["ice_servers"],"value":[{"urls":["turn:relay.example.com:3478?transport=tcp"],"username":"BROWSER_USERNAME","credential":"BROWSER_TURN_PASSWORD"}]}]'
+   ```
+
+   The empty default uses no browser ICE servers. The secret-bearing list is edited
+   through the CLI; ordinary settings views redact its credentials. Use credentials
+   intended for admitted browsers, independently of the Runner's configuration.
+   rho delivers this list through authenticated `GET /realtime/ice_servers` with
+   `Cache-Control: no-store`; it is never embedded in static HTML or browser storage.
+   Each new peer reads the current list, so configuration changes apply on reconnect.
+   Failure to read it reports a connection error rather than silently using no servers.
+
+   Browser TURN/TCP and TURN/TLS are covered by real terminal journeys with relay-only
+   browser candidates and local TURN listeners. The TLS test uses a disposable
+   browser profile that trusts its fixture certificate; certificate verification
+   stays enabled. These tests verify the browser-to-TURN segment, not an all-UDP
+   firewall outage, public certificate deployment, public NAT traversal or HTTP-proxy
+   compatibility. The production browser leaves ordinary ICE path selection enabled;
+   the relay-only policy belongs to those tests.
+
+   An untrusted TURN TLS certificate prevents that relay connection. Correct the
+   certificate chain or browser ICE configuration, then close and reopen the
+   terminal panel. The terminal keeps its existing task and shell while the viewer
+   is disconnected; Stop remains the command that ends it. The tested repair path
+   changes an untrusted TLS endpoint to a working TCP endpoint and preserves the
+   original shell.
+
+Users can then [open a terminal](../use/conversations.md#open-a-terminal) from rho's
+browser page. The shell has an 80×24 PTY and starts without the user's profile or
+bashrc. Its startup file cleans ordinary shell jobs when the shell exits. Resizing
+and Windows PTYs are not supported. Reconnection replaces the transport, retaining
+the shell and original claim; it never replays input.
+
 ## Several runners
 
 One run can use several runners. Each tool declaration carries a concrete runner UUID and the served tool name separately from the callable name the model sees, so two runners can both serve `read` under different callable names. A conversation's default runner applies to future calls that omit a target; accepted tasks keep their original target across waits, approval, retry and claim generations. Changing the default never copies files or synchronizes a project.

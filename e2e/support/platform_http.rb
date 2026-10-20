@@ -2,6 +2,7 @@ require "json"
 require "net/http"
 require "uri"
 require_relative "secret_hygiene"
+require_relative "rate_limited"
 
 module E2E
   # Raw Platform requests for permission tests and the removal command that
@@ -20,8 +21,9 @@ module E2E
     # One JSON request, returning the status and parsed body without judging
     # them — the lane owns every assertion, including the negative ones.
     # Diagnostics never carry the Authorization value.
-    def post(path, body: nil, bearer: nil)
-      send_json(Net::HTTP::Post, path, body: body, bearer: bearer)
+    # Fixture preparation may opt into waiting out explicit 429 refusals.
+    def post(path, body: nil, bearer: nil, retry_rate_limit: false)
+      send_json(Net::HTTP::Post, path, body: body, bearer: bearer, retry_rate_limit:)
     end
 
     # Read-only reports that the thin operator SDK does not wrap.
@@ -36,7 +38,7 @@ module E2E
 
     private
 
-    def send_json(verb, path, body:, bearer:)
+    def send_json(verb, path, body:, bearer:, retry_rate_limit: false)
       uri = URI.join(@base_url, path)
       request = verb.new(uri)
       request["Accept"] = "application/json"
@@ -46,9 +48,16 @@ module E2E
         request.body = JSON.generate(body)
       end
 
-      response = Net::HTTP.start(
-        uri.host, uri.port, open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT
-      ) { |http| http.request(request) }
+      send_request = lambda do
+        Net::HTTP.start(
+          uri.host, uri.port, open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT
+        ) { |http| http.request(request) }
+      end
+      response = if retry_rate_limit
+        RateLimited.request(path, &send_request)
+      else
+        send_request.call
+      end
       status = Integer(response.code, 10)
       Response.new(status:, body: parse(response, status:))
     rescue SystemCallError, Net::OpenTimeout, Net::ReadTimeout, EOFError, IOError => error

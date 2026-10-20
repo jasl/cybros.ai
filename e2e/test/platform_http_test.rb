@@ -3,7 +3,9 @@ require "minitest/mock"
 require "support/platform_http"
 
 class PlatformHttpTest < Minitest::Test
-  Response = Data.define(:code, :body)
+  Response = Data.define(:code, :body) do
+    def [](_header) = "0"
+  end
   Connection = Data.define(:response) do
     def request(_request)
       response
@@ -47,14 +49,49 @@ class PlatformHttpTest < Minitest::Test
     assert_match(/Platform response was not JSON \(status 422\)/, error.message)
   end
 
+  def test_rate_limit_is_returned_without_retry_by_default
+    result = post_with(Response.new(code: "429", body: '{"error":{"code":"rate_limited"}}'))
+
+    assert_equal 429, result.status
+    assert_equal "rate_limited", result.body.fetch("error").fetch("code")
+  end
+
+  def test_opted_in_preparation_retries_rate_limit_and_preserves_created_status
+    responses = [
+      Response.new(code: "429", body: '{"error":{"code":"rate_limited"}}'),
+      Response.new(code: "201", body: '{"secret":"synthetic-key"}'),
+    ]
+    capture_io do
+      result = post_responses(responses, retry_rate_limit: true)
+
+      assert_equal 201, result.status
+      assert_equal "synthetic-key", result.body.fetch("secret")
+    end
+    assert_empty responses
+  end
+
+  def test_opted_in_preparation_does_not_retry_server_errors
+    result = post_responses([Response.new(code: "502", body: "Bad Gateway")], retry_rate_limit: true)
+
+    assert_equal 502, result.status
+    assert_equal "Bad Gateway", result.body
+  end
+
   private
 
     def post_with(response)
+      responses = [response]
+      result = post_responses(responses)
+      assert_empty responses
+      result
+    end
+
+    def post_responses(responses, **options)
       starter = lambda do |*_arguments, **_options, &block|
-        block.call(Connection.new(response))
+        block.call(Connection.new(responses.shift || raise("Unexpected retry")))
       end
       Net::HTTP.stub(:start, starter) do
-        E2E::PlatformHttp.new("http://example.test").post("/api/v1/example")
+        E2E::PlatformHttp.new("http://example.test").post("/api/v1/example", **options)
       end
     end
 end

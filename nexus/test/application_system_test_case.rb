@@ -6,6 +6,15 @@ Capybara.default_max_wait_time = 10
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   parallelize(workers: 1)
 
+  # Browser journeys exercise production CSRF checks without changing the
+  # default for request tests that may share this process.
+  setup do
+    @previous_forgery_protection = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+  end
+
+  teardown { ActionController::Base.allow_forgery_protection = @previous_forgery_protection }
+
   DESKTOP_SIZE = [1400, 1400].freeze
   MOBILE_SIZE = [500, 844].freeze
 

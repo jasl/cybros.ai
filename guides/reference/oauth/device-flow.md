@@ -500,7 +500,7 @@ available on a connected, unconsumed Request — no target authority exists yet 
 Browser cancellation and the first-party machine cancellation command share that transition.
 Cancellation and invalidation both project the RFC `access_denied` result to the polling client.
 
-Every browser response in the ceremony sets `Cache-Control: no-store` and a no-referrer policy.
+Device ceremony pages set `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 Successful verification establishes a browser-held context for that authorization. Refresh and
 back do not recharge its exposure budget. Session expiry, reauthentication, or a deliberate switch
 of the signed-in human preserves that context but resolves the mapping again for the current
@@ -508,6 +508,10 @@ human, who must be active when connecting or canceling. An authentication or for
 password-change gate carries that page's safe same-origin GET target independently from other
 tabs or windows. An interrupted POST is never replayed; after the gate, the browser returns to
 the owning connection GET for an explicit retry.
+
+Sign-in and password-change pages carrying a return target also use `Cache-Control: no-store`.
+They retain the site's `Referrer-Policy: same-origin` default so native forms preserve their
+Origin for CSRF verification while cross-origin navigation sends no Referer.
 
 A code's exposure budget is five distinct successful browser-held verification contexts; past the
 budget the code no longer verifies. Wrong guesses are rate-limited and never reveal whether a

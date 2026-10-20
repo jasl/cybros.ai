@@ -320,3 +320,13 @@ export interface RunnerEffect {
   checkpoint: Checkpoint | null;
   checkpoint_present: boolean;
 }
+
+/** Permission for this task's live data, bounded from the HTTP request start. */
+export interface TaskRealtime {
+  status: string;
+  reason: string | null;
+  connection_id: string | null;
+  offer_sdp: string | null;
+  answer_sdp: string | null;
+  max_age_ms: number;
+}

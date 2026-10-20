@@ -532,6 +532,9 @@ module Rho
         def self.state: (untyped request, Daemon::Context ctx) -> untyped
         def self.transcript: (untyped request, Daemon::Context ctx) -> untyped
         def self.task: (untyped request, Daemon::Context ctx) -> untyped
+        def self.task_realtime: (untyped request, Daemon::Context ctx, ?answer: bool) -> untyped
+        def self.task_cancel: (untyped request, Daemon::Context ctx) -> untyped
+        def self.task_command: (untyped request, Daemon::Context ctx, body: bool) { (CybrosAgent::Api::TasksContext, Hash[String, untyped]) -> untyped } -> untyped
         def self.graph: (untyped request, Daemon::Context ctx) -> untyped
         def self.request_read: (untyped request, Daemon::Context ctx) -> untyped
         def self.inputs: (untyped request, Daemon::Context ctx) -> untyped

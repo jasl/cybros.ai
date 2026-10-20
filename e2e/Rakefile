@@ -78,7 +78,7 @@ Minitest::TestTask.create(:journey_test) do |t|
 end
 
 # Reuse whole product suites so smoke coverage follows their behavior changes.
-# CI runs these in one world; the default local gate still runs every journey.
+# CI runs these in one world; the default local gate runs the ordinary journey groups.
 Minitest::TestTask.create(:smoke_journey_test) do |t|
   t.test_globs = E2E::JourneyGroups.paths(%w[device_connection rho_run rho_core_only])
   t.verbose = true
@@ -92,6 +92,13 @@ E2E::JourneyGroups::GROUPS.each do |k, files|
     t.extra_args << "-v"
   end
 end
+
+Minitest::TestTask.create(:realtime_test) do |t|
+  t.test_globs = E2E::JourneyGroups.paths(E2E::JourneyGroups::REALTIME)
+  t.verbose = true
+  t.extra_args << "-v"
+end
+
 
 RuboCop::RakeTask.new
 
@@ -170,7 +177,7 @@ private :run_e2e_tests
 # dump-on-failure path are identical per world. `e2e_serial` is the one-world
 # run as it was; `N=` filters there and inside a group, never here (every
 # world but one would boot an empty Nexus).
-desc "The full product journeys, #{E2E::JourneyGroups::GROUPS.size} groups in E2E_WORLDS worlds at a time"
+desc "The ordinary product journeys, #{E2E::JourneyGroups::GROUPS.size} groups in E2E_WORLDS worlds at a time"
 task :e2e do
   abort "N= filters one test: use `rake e2e_serial` or `rake \"e2e_group[k]\"`" if ENV["N"]
   open_files = Process.getrlimit(:NOFILE).first
@@ -212,6 +219,12 @@ task :e2e_group, [:k] do |_t, args|
   run_e2e_tests("journey_group_#{group}", mcp_fixture: E2E::JourneyGroups::GROUPS.fetch(group).include?("nexus_mcp"))
 end
 
+desc "Optional WebRTC signaling and PTY journeys (Go; some cases use Docker; N= filters)"
+task :realtime do
+  run_e2e_tests("realtime_test")
+end
+
+
 desc "Product smoke: device credentials, rho CLI conversations and a runner tool in one world"
 task :smoke do
   run_e2e_tests("smoke_journey_test")
@@ -230,6 +243,6 @@ end
 
 load File.expand_path("tasks/diagnostics.rake", __dir__)
 
-# Full local acceptance: the harness, every product journey and RuboCop.
-# Paid diagnostics run only by name and require E2E_LIVE=1.
+# Full local acceptance: the harness, ordinary product journeys and RuboCop.
+# Realtime journeys run only by name; paid diagnostics also require E2E_LIVE=1.
 task default: %i[harness_test e2e rubocop]

@@ -1,0 +1,6 @@
+module Rho
+  class RunChanges
+    def initialize: (untyped workspace) -> void
+    def collect: (CybrosAgent::Api::Variant variant) -> Array[Hash[String, untyped]]
+  end
+end

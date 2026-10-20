@@ -7,8 +7,6 @@ class Conversations::InputsController < Conversations::BaseController
   end
 
   def show
-    # Native cancellation posts need an Origin even when this page has a return target.
-    response.headers["Referrer-Policy"] = "same-origin"
     @input = @conversation.inputs.includes(:content_bodies, :answering_user).find_by(public_id: params.fetch(:id))
     if @input
       ContentBody.preload_for_render(@input.content_bodies)

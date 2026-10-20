@@ -39,6 +39,24 @@ class ContentReapersTest < ActiveSupport::TestCase
     assert_not ContentFragment.exists?(id: stale.id)
   end
 
+  test "an unexpected referencing foreign key still raises" do
+    stale = fragment(created_at: 2.days.ago)
+    connection = ApplicationRecord.lease_connection
+    # The test transaction rolls this table back; PostgreSQL does not allow
+    # a temporary table to reference a permanent one.
+    connection.execute(<<~SQL)
+      CREATE TABLE retained_fragments (
+        content_fragment_id bigint REFERENCES content_fragments(id) ON DELETE RESTRICT
+      )
+    SQL
+    connection.execute("INSERT INTO retained_fragments VALUES (#{stale.id})")
+
+    assert_raises(ActiveRecord::StatementInvalid) { ContentFragment.reap }
+
+    assert ContentFragment.exists?(stale.id)
+    assert_equal stale.id, connection.select_value("SELECT content_fragment_id FROM retained_fragments")
+  end
+
   # The grace is what makes adopt-vs-reap safe: a fragment the writer just
   # created, and has not yet referenced, must survive long enough to be
   # adopted by the body being built.

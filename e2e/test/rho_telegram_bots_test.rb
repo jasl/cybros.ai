@@ -393,7 +393,7 @@ class RhoTelegramBotsTest < Minitest::Test
     def open_bot(page, bot)
       page.click_link "Bots", exact: true
       page.within(%(article[data-bot="#{bot.fetch("name")}"])) { page.click_button "Settings", exact: true }
-      assert page.has_field?("Name", with: bot.fetch("name"), wait: E2E::RhoDaemon::WATCH_TIMEOUT)
+      assert page.has_field?("Bot name", with: bot.fetch("name"), wait: E2E::RhoDaemon::WATCH_TIMEOUT)
     end
 
     def save_home(page, name)

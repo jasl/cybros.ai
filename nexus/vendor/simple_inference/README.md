@@ -126,6 +126,13 @@ profile construction. No provider name, model name or endpoint selects a
 format implicitly, and independently constructed protocol objects have no
 model profile to apply.
 
+OpenAI-compatible chat profiles can declare `wire_options: { developer_role:
+"system" }` for hosts that reject `developer`. Both streaming and unary requests
+then send those messages as `system` at their original positions, preserving
+their content and leaving the caller's input unchanged. Omission, `nil` or
+`"developer"` preserves the original role. This option does not merge or hoist
+messages and is independent of `prompt_format`.
+
 ## Independent reasoning controls
 
 Text requests accept `reasoning_enabled: true | false | nil` independently
@@ -150,7 +157,12 @@ The wire spelling follows the protocol:
   accepts a template switch declares
   `wire_options: { reasoning_control: "chat_template_kwargs" }`; the boolean
   then becomes `chat_template_kwargs.enable_thinking`. An effort may still
-  be sent independently while enabled. The other allowed value is
+  be sent independently while enabled. A host using a `thinking.type`
+  switch declares `reasoning_control: "thinking"`, which sends `enabled`
+  or `disabled` and omits effort while disabled. With this control,
+  `thinking_keep: "all"` also sends `thinking.keep: "all"` while enabled,
+  for hosts that require an explicit switch to retain earlier reasoning.
+  The default control is
   `"reasoning_effort"`. This option belongs only to `openai_compatible_chat`
   and is never inferred from the provider, model, or `prompt_format`.
 - Gemini 3.x retains its existing thinking levels when enabled. Its wire

@@ -36,6 +36,17 @@ class ModelProviders::ImportEnvironmentCredentialsTest < ActiveSupport::TestCase
     assert_nil @account.reload.cost_unit
   end
 
+  test "Kimi keys enable their own coding lane independently of Anthropic" do
+    result = import("KIMI_API_KEY" => "kimi-test-material")
+
+    assert_equal :applied, result.outcomes.fetch("kimi_code")
+    assert_equal :absent, result.outcomes.fetch("anthropic")
+    credential = ModelProviderCredential.find_by!(account: @account, provider_id: "kimi_code")
+    assert_equal "kimi-test-material", credential.secret
+    assert_predicate ModelProviderConfig.find_by!(account: @account, provider_id: "kimi_code"), :enabled
+    assert_not ModelProviderCredential.exists?(account: @account, provider_id: "anthropic")
+  end
+
   test "production seeds preserve an operator's cost unit" do
     Accounts::ConfigureCostUnit.call(account: @account, cost_unit: "EUR")
 
@@ -45,6 +56,24 @@ class ModelProviders::ImportEnvironmentCredentialsTest < ActiveSupport::TestCase
     credential = ModelProviderCredential.find_by(account_id: @account.id, provider_id: "xai")
     assert_not_nil credential
     assert_equal "xai-production-test-material", credential.secret
+  end
+
+  test "Moonshot and Kimi Code import separate credentials and preserve independent lane policies" do
+    import("KIMI_API_KEY" => "coding-plan-test-key")
+    assert_not ModelProviderCredential.exists?(account: @account, provider_id: "moonshot")
+    coding_lane = ModelProviderConfig.find_by!(account: @account, provider_id: "kimi_code")
+    ModelProviders::DisableLane.call(
+      account: @account, provider_id: "kimi_code", expected_lock_version: coding_lane.lock_version
+    )
+
+    result = import("MOONSHOT_API_KEY" => "platform-test-key")
+
+    assert_equal :applied, result.outcomes.fetch("moonshot")
+    assert_equal :absent, result.outcomes.fetch("kimi_code")
+    assert_equal "platform-test-key", ModelProviderCredential.find_by!(account: @account, provider_id: "moonshot").secret
+    assert_equal "coding-plan-test-key", ModelProviderCredential.find_by!(account: @account, provider_id: "kimi_code").secret
+    assert_predicate ModelProviderConfig.find_by!(account: @account, provider_id: "moonshot"), :enabled
+    assert_not_predicate coding_lane.reload, :enabled
   end
 
   test "seeds in every environment leave a fresh installation uninitialized" do

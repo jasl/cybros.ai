@@ -60,13 +60,18 @@ class RunnerLoopTest < Minitest::Test
 
   def test_a_result_hook_rewrites_the_answer_on_its_way_to_the_kernel
     lane = Lane.new(rows: [row("t1")])
+    caller = Thread.current
+    observed = nil
     shout = registration(:tool_result) do |_name, result|
+      observed = [Thread.current, Rho::Runner::ExecutionContext.current&.run_public_id]
       Rho::Runner::Result.ok(result.content.upcase)
     end
 
     hooked(lane, shout).nudged(run_public_id: "loop-1", task_key: "t1")
 
     assert_equal "ECHO: HI", only(lane.commits)[:content]
+    refute_equal caller, observed.first, "filesystem result observers must not block the caller"
+    assert_equal "loop-1", observed.last
   end
 
   # THE GATE RUNS ON THE WORKER: the `tool_call` chain

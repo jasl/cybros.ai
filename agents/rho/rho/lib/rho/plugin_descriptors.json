@@ -1,5 +1,55 @@
 [
   {
+    "id": "rho.terminal",
+    "display_name": "Terminal",
+    "category": "tools",
+    "description": "Open an interactive terminal on this Runner. Requires the compiled WebRTC transport helper.",
+    "configuration_version": 1,
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "executable": {
+          "type": "string",
+          "default": ""
+        },
+        "ice_servers": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "properties": {
+              "urls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "username": {
+                "type": "string"
+              },
+              "credential": {
+                "type": "string",
+                "writeOnly": true
+              }
+            },
+            "required": [
+              "urls"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_enabled": false,
+    "modes": [
+      "full",
+      "runner"
+    ],
+    "requires": [],
+    "restart_only": false
+  },
+  {
     "id": "rho.agents",
     "display_name": "Agents",
     "category": "agents",

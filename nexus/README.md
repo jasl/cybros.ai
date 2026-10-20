@@ -10,9 +10,24 @@ product policy lives in agent applications built on its APIs. The
 ## Requirements
 
 - Ruby (see `.ruby-version`)
-- PostgreSQL 18+ (UUIDv7 defaults)
+- PostgreSQL 17 with [pg_uuidv7](https://github.com/fboulnois/pg_uuidv7), or PostgreSQL 18+
+  with its native UUIDv7 generator
 - Bun (CSS/JS builds)
 - libvips (image variants; see [File previews](#file-previews) for PDF/video dependencies)
+
+On macOS with Homebrew PostgreSQL 17, install the extension for that server:
+
+```bash
+pgxnclient install --pg_config "$(brew --prefix postgresql@17)/bin/pg_config" pg_uuidv7
+```
+
+Installing the package makes it available to PostgreSQL; it does not enable it
+in individual databases. Nexus migrations and schema loading enable `pg_uuidv7`
+in the primary database on PostgreSQL 17 and use `uuid_generate_v7()` for UUID
+defaults. The database role running setup must be allowed to create the extension,
+or an administrator must first run `CREATE EXTENSION pg_uuidv7;` in each primary
+database, including test databases. PostgreSQL 18+ uses native `uuidv7()` and
+does not require the extension. Schema dumps remain loadable on either version.
 
 ## Development
 
@@ -92,7 +107,12 @@ RAILS_ENV=production bin/rails db:seed
 ```
 
 The supported variables are `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
-`GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, and `OPENROUTER_API_KEY`.
+`GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, `OPENROUTER_API_KEY`,
+`KIMI_API_KEY` (the `kimi_code` provider's `kimi_code/kimi-for-coding` model),
+and `MOONSHOT_API_KEY` (the `moonshot` provider at `api.moonshot.cn`).
+Moonshot offers `moonshot/kimi-k3`, `moonshot/kimi-k2.6`,
+`moonshot/kimi-k2.7-code`, and `moonshot/kimi-k2.7-code-highspeed`, with
+their own token prices and credentials, separate from the Kimi Code subscription.
 The import stores credentials through the ordinary encrypted credential writer
 and enables a provider lane only when its policy row is missing. Existing
 disabled lanes stay disabled. Running it again replaces changed keys; absent

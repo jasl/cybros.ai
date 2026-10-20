@@ -1,7 +1,7 @@
 module Conversations
   # Reaps the whole aggregate via `destroy` (the cascade guards live in
   # callbacks); a pinned ancestor is a level-triggered skip; the fork-vs-reap
-  # interlock is the row lock, with the RESTRICT rescue (23001) as defense in depth.
+  # interlock is the row lock, with the ancestry FK rescue as defense in depth.
   class Reap
     def self.call(...) = new(...).call
 
@@ -90,15 +90,11 @@ module Conversations
           self.class.destroy_aggregate(locked)
         end
       rescue ActiveRecord::StatementInvalid => error
-        case error.cause
-        when PG::RestrictViolation
-          # A concurrent fork won the pin between our re-check and the final
-          # DELETE. Level-triggered: the row is rediscovered when the
-          # descendant dies.
-          false
-        else
-          raise
-        end
+        raise unless Nexus::ForeignKeyViolation.matches?(error, constraint: "fk_rails_fba0031b24")
+
+        # A concurrent fork won the ancestry pin. Rediscover the row when
+        # the descendant dies; unrelated teardown failures still propagate.
+        false
       end
 
       def nonterminal_work_for(id)

@@ -67,3 +67,18 @@ class MobileInvitationAcceptanceTest < MobileSystemTestCase
     assert_operator document_width, :<=, viewport_width
   end
 end
+
+class InvitationAcceptanceTest < ApplicationSystemTestCase
+  test "invitation submits and restores the application document policy" do
+    invitation = accounts(:cybros).invitations.create!(inviter: users(:owner), email: "invited@example.test")
+    visit join_url(token: invitation.acceptance_token)
+    assert_selector "meta[name=referrer][content=no-referrer]", visible: :all
+    fill_in "Your name", with: "Invited Member"
+    fill_in "Password", with: "InvitationPassword123!", exact: true
+    fill_in "Repeat password", with: "InvitationPassword123!"
+    click_button "Accept invitation"
+    assert_selector "main h1", text: "Overview"
+    assert_selector "meta[name=referrer][content=same-origin]", visible: :all
+    assert_selector "meta[name=referrer]", count: 1, visible: :all
+  end
+end

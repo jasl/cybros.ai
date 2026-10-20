@@ -101,6 +101,7 @@ class RhoExtensionsTest < Minitest::Test
                     "POST /runs/approve", "POST /runs/deny", "GET /rules",
                     "POST /runs/delete", "POST /runs/pause", "POST /runs/resume", "POST /followers/subscribe",
                     "POST /followers/unsubscribe", "GET /runs/result", "GET /runs/state", "GET /runs/transcript", "GET /runs/task",
+                    "GET /runs/task/realtime", "PUT /runs/task/realtime", "POST /runs/task/cancel",
                     "POST /runs/call_tool", "GET /runs/graph", "GET /runs/request",
                     "POST /runs/append", "GET /runs/phases", "GET /inputs", "POST /inputs/delete", "POST /inputs/update",
                     "PUT /conversations/access", "POST /conversations/prompt_preview", "GET /prompt/documents",
@@ -108,7 +109,8 @@ class RhoExtensionsTest < Minitest::Test
                     "GET /conversations/variants", "POST /conversations/activate", "POST /conversations/variant",
                     # The replay's mainline: the turns
                     # listing behind `Core#turns` and `rho turns`.
-                    "GET /conversations/turns", "GET /runs/events", "GET /conversations/input_materialization",
+                    "GET /conversations/turns", "POST /terminals", "GET /terminals",
+                    "GET /runs/events", "GET /conversations/input_materialization",
                     "GET /skills", "POST /skills/push", "GET /skills/show", "POST /skills/rm",
                     "POST /inference_requests", "GET /inference_requests", "POST /inference_requests/subscribe", "POST /inference_requests/unsubscribe", "GET /uploads/bytes",
                     "GET /files/bytes", "GET /conversations/review", "POST /conversations/review/feedback", "GET /models", "GET /conversations", "GET /conversations/detail", "GET /conversations/artifacts", "GET /conversations/modes", "PATCH /conversations/modes",
@@ -564,7 +566,7 @@ class ExtensionsPerModeTest < Minitest::Test
     assert_equal full, Rho::Extensions.defaults_for(:full)
 
     agent = Rho::Extensions.defaults_for("agent")
-    assert_equal full - [Rho::Runner::Extensions::Coding], agent
+    assert_equal full - [Rho::Runner::Extensions::Coding, Rho::Runner::Extensions::Terminal], agent
     refute_includes agent, Rho::Runner::Extensions::Coding
     # Processes loads in agent mode for its VERBS (`rho ps` reads a bound runner's table through the call_tool); its tools go to no address there.
     assert_includes agent, Rho::Extensions::Processes
@@ -574,7 +576,7 @@ class ExtensionsPerModeTest < Minitest::Test
                          Rho::Extensions::ConsoleLink, Rho::Extensions::Until, Rho::Extensions::Conventions,
                          Rho::Extensions::DefaultRunner, Rho::Extensions::Agents, Rho::Extensions::Images,
                          Rho::Extensions::MemoryReview], runner
-    assert_equal [Rho::Runner::Extensions::Coding, Rho::Extensions::Guard, Rho::Runner::Extensions::Checkpoints,
+    assert_equal [Rho::Runner::Extensions::Coding, Rho::Runner::Extensions::Terminal, Rho::Extensions::Guard, Rho::Runner::Extensions::Checkpoints,
                   Rho::Extensions::Processes, Rho::Extensions::Environment, Rho::Extensions::Setup, Rho::Extensions::Packages, Rho::Extensions::LifecycleHooks], runner
     assert_includes agent, Rho::Extensions::Environment, "Guard and Environment serve both"
     assert_includes runner, Rho::Extensions::Guard

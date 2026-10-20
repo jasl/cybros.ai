@@ -26,7 +26,8 @@ class OAuth::DeviceCeremonyTest < ActionDispatch::IntegrationTest
     assert_equal "no-referrer", response.headers["Referrer-Policy"]
     follow_redirect!
     assert_equal "no-store", response.headers["Cache-Control"]
-    assert_equal "no-referrer", response.headers["Referrer-Policy"]
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
+    assert_select "meta[name='referrer'][content='same-origin']", count: 1
 
     # A signed-in ordinary member reaches the ceremony (any active human member may connect).
     sign_in_as users(:member)

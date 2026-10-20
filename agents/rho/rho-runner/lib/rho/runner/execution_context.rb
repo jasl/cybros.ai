@@ -101,7 +101,7 @@ module Rho
       def initialize(deadline: nil, run_public_id: nil, conversation_public_id: nil, task_key: nil,
                      clock: -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }, extension: nil, scope: nil,
                      claim_token: nil, progress: nil, tool_env: nil, binding: nil, ports: nil,
-                     claim_poller: nil, on_cancel: nil, workspace_public_id: nil, attachments: nil, orchestration: nil)
+                     claim_poller: nil, on_cancel: nil, workspace_public_id: nil, attachments: nil, orchestration: nil, realtime: nil)
         @deadline = deadline
         @run_public_id = run_public_id
         @conversation_public_id = conversation_public_id
@@ -115,6 +115,7 @@ module Rho
         @claim_poller = claim_poller
         @attachments = attachments
         @orchestration = orchestration
+        @realtime = realtime
         @on_cancel = on_cancel
         @tool_env = tool_env
         @binding = binding
@@ -127,7 +128,7 @@ module Rho
       end
 
       attr_reader :deadline, :run_public_id, :conversation_public_id, :task_key, :extension, :scope,
-        :claim_token, :progress, :tool_env, :binding, :workspace_public_id, :attachments, :orchestration
+        :claim_token, :progress, :tool_env, :binding, :workspace_public_id, :attachments, :orchestration, :realtime
 
       # THE ONE PLACEMENT, once: the run resolves the row's placement on the
       # worker and sets it here before any hook runs; a second placement is
@@ -184,7 +185,7 @@ module Rho
 
         now = @clock.call
         renewal = @extension&.wait(now) if extend
-        waits = [remaining, renewal, @progress&.wait(now), @claim_poller&.wait(now), @attachments&.wait, @orchestration&.wait].compact
+        waits = [remaining, renewal, @progress&.wait(now), @claim_poller&.wait(now), @attachments&.wait, @orchestration&.wait, @realtime&.wait(now)].compact
         waits.empty? ? nil : waits.min
       end
 
@@ -202,6 +203,7 @@ module Rho
         @progress&.flush(now)
         @attachments&.flush
         @orchestration&.flush
+        @realtime&.flush
         return if cancelled?
         return unless extend && @extension&.due?(@clock.call)
 
@@ -283,6 +285,7 @@ module Rho
         def invoke_cancel_callbacks(callbacks)
           return if callbacks.nil?
 
+          @realtime&.close
           callbacks.each { |_token, callback| invoke_callback(callback) }
           @on_cancel&.call(@reason)
           nil

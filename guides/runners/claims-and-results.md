@@ -91,3 +91,12 @@ The executor inbox channel on `/agent_api/v1/cable` delivers `work_available` (a
 Every claimed tool may use the task operation protocol to accept child work — a question to a person, a hosted language runtime, further tool calls — under its existing claim, observe their results and publish its own final result. The handler stays alive while waiting and renews the ordinary deadline. This is how rho's `code` tool and `ask` from inside a tool work.
 
 Field tables for every verb, the extend and progress doors, lifecycle hook tasks and delegated compaction are in the [Executor inbox reference](../reference/agent-api/executor-inbox.md); the child operation protocol is in [Executor operations](../reference/agent-api/executor-operations.md).
+
+
+## Attach an interactive transport
+
+An explicitly interactive handler can exchange bounded WebRTC descriptions and check current
+interaction permission under its original claim. See [Task realtime](../reference/agent-api/task-realtime.md)
+for both credential planes, the one-second authorization window and rho-runner's `context.realtime`.
+The handler retains the same resource and execution ownership through Pause and temporary network
+loss. Existing Stop and native cleanup still decide when that resource can be released.

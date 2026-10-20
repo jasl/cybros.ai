@@ -13,6 +13,7 @@ module CybrosAgent
     class TasksContext
       include RunProjections
       include Fields
+      include TaskRealtimeProjections
 
       attr_reader :workspace_public_id, :run_public_id, :task_key
 
@@ -111,6 +112,15 @@ module CybrosAgent
       # A task with none (a tool row, a round never scheduled) is the
       # kernel's 404 `request_not_sealed`. Browse standing suffices.
       def request = shape(SealedRequest, @dispatch.call("#{path}/request"), "request")
+
+      def realtime
+        shape(TaskRealtime, @dispatch.call("#{path}/realtime"), "realtime")
+      end
+
+      def answer_realtime(connection_id:, sdp:)
+        body = { "connection_id" => required_string(connection_id, "connection_id"), "sdp" => required_string(sdp, "sdp") }
+        shape(TaskRealtime, @dispatch.call("#{path}/realtime", method: :put, body: body), "realtime")
+      end
 
       private
 

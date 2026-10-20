@@ -226,6 +226,7 @@ module Nexus
             "row_projection" => (row.keys | ask.keys | structured_ask.keys | overridden.keys | skill.keys | approval.keys),
             "scope_projection" => %w[workspace_public_id conversation_public_id user_public_id],
             "memory_scope_projection" => %w[bindings],
+            "realtime_fixture" => realtime_fixture,
             "claim_envelope" => %w[task claim],
             "claim_projection" => %w[claim_token deadline_at],
             "extend_envelope" => extend_request.keys,
@@ -259,6 +260,15 @@ module Nexus
             "unknown_value_behavior" => "carry_unknown",
             "unknown_field_behavior" => "ignore",
           }.merge(progress)
+        end
+
+        def realtime_fixture
+          node = Tasks::ToolTask.new(realtime_signal: {
+            connection_id: "01900000-0000-7000-8000-000000000099",
+            offer_sdp: "v=0\r\na=fingerprint:sha-256 #{(["AA"] * 32).join(":")}\r\n",
+            answer_sdp: "v=0\r\na=fingerprint:sha-256 #{(["BB"] * 32).join(":")}\r\n",
+          })
+          { "realtime" => Executors::Realtime.new(node, credential: AccessToken.new).send(:view, "active", nil, descriptions: true, max_age_ms: 1000) }
         end
 
         # THE PROGRESS DOOR: what an executor POSTS — the raw `{frame}` of each key kind — and what

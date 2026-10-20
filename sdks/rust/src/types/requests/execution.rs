@@ -130,3 +130,20 @@ query!(TranscriptQuery {
 request!(VariantViewState {concealed:bool} {});
 request!(RunControl {force:bool} {});
 request!(RetryTask {} {model:ModelRequest});
+
+/// A complete gathered SDP for the current UUIDv7 connection.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RealtimeSignal {
+    pub connection_id: String,
+    pub sdp: String,
+}
+
+/// Replace only the peer named by `previous_connection_id`; an old retry
+/// cannot overwrite a newer handshake. Omit it for the first offer.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RealtimeOffer {
+    pub connection_id: String,
+    pub sdp: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previous_connection_id: Option<String>,
+}

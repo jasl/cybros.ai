@@ -6,6 +6,7 @@ import { preserveArtifacts } from "../../kernel/artifacts.js";
 import { button, disclosure, spinner } from "../../primitives/index.js";
 import { turnRow } from "./turn.js";
 import { activityDisclosure } from "./activity.js";
+import { createGitReview } from "./git-review.js";
 
 const BOTTOM_TOLERANCE = 2;
 const PREVIEW = 160;
@@ -96,7 +97,7 @@ export function createTranscript({ conversations, scroller }) {
   function reset(id) {
     artifacts?.dispose();
     artifacts = conversations.artifactOpener();
-    for (const entry of nodes.values()) entry.node.remove();
+    for (const entry of nodes.values()) { entry.review?.dispose(); entry.node.remove(); }
     nodes.clear();
     shownId = id; shownTurns = null; shownActive = null;
     following = true;
@@ -113,19 +114,27 @@ export function createTranscript({ conversations, scroller }) {
       let entry = nodes.get(turn.public_id);
       if (!entry || entry.signature !== signature) {
         const node = turnRow(turn, { active: turn.public_id === active, artifacts, activity });
+        const variant = turn.active_variant;
+        const reviewKey = !turn.reference && turn.kind !== "compaction_summary" && turn.role === "assistant" &&
+          isTerminal(turn.status) && variant?.run_public_id && !variant.details_pruned_at &&
+          variant.runner_effects?.status === "touched" ? variant.public_id : null;
+        let review = entry?.review;
+        if (entry?.reviewKey !== reviewKey) { review?.dispose(); review = null; }
+        if (reviewKey && !review) review = createGitReview({ conversations, turn });
         if (entry) {
           const open = new Set([...entry.node.querySelectorAll("details[open]")].map((details) => details.dataset.disclosure));
           preserveArtifacts(entry.node, node);
           for (const details of node.querySelectorAll("details")) if (open.has(details.dataset.disclosure)) details.open = true;
           entry.node.replaceWith(node);
         }
-        entry = { node, signature };
+        if (review) (node.querySelector(".turn--assistant") || node).append(review.element);
+        entry = { node, signature, review, reviewKey };
         nodes.set(turn.public_id, entry);
       }
       alive.add(turn.public_id);
       order.push(entry.node);
     }
-    for (const [id, entry] of nodes) if (!alive.has(id)) { entry.node.remove(); nodes.delete(id); }
+    for (const [id, entry] of nodes) if (!alive.has(id)) { entry.review?.dispose(); entry.node.remove(); nodes.delete(id); }
     placeChildren(turns, order);
     if (following) toEnd();
   }
@@ -177,6 +186,7 @@ export function createTranscript({ conversations, scroller }) {
       scroller.removeEventListener("touchmove", onTouchMove);
       scroller.removeEventListener("keydown", onKey);
       artifacts?.dispose();
+      for (const entry of nodes.values()) entry.review?.dispose();
     },
   };
 }

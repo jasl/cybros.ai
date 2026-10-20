@@ -2,6 +2,10 @@
 
 **Applies to:** every project. Minitest specifics apply to the Ruby projects; a non-Ruby subproject keeps the durability and naming principles and brings its own runner.
 
+- Select validation by actual change impact under `.ai/ci.md`, Selecting Verification Scope.
+  Cover changed behavior and its affected callers; a small slice does not require full E2E.
+  Record unrelated failures without expanding the repair scope. The coverage rules below apply
+  to the behavior being changed, not every existing feature in a touched project.
 - Fixtures-first behavior testing (Nexus recipes in `.ai/patterns.md`): a small canonical fixture
   world, integration tests that drive real flows (sign in through the real flow, not session
   stubbing), and behavior

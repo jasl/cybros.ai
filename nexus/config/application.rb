@@ -24,6 +24,11 @@ module Nexus
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.2
 
+    # Native same-origin forms retain Origin for CSRF verification, while
+    # cross-origin navigation sends no Referer. Capability pages override this
+    # default when their URLs must not propagate even within this origin.
+    config.action_dispatch.default_headers["Referrer-Policy"] = "same-origin"
+
     # Fiber-scoped execution state: Solid Queue's fiber workers require it,
     # and under a threaded server every thread runs on its own root fiber, so
     # per-fiber isolation is strictly finer than per-thread and behaves

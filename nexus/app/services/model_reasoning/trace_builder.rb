@@ -28,7 +28,7 @@ module ModelReasoning
       "xai_responses" => "responses_reasoning",
       "gemini_generate_content" => "gemini_thought",
       "deepseek_responses" => "responses_reasoning_text",
-      "openai_compatible" => "chatcompletions_reasoning_content",
+      "openai_compatible_chat" => "chat_reasoning",
       "openrouter_chat" => "chat_reasoning",
     }.freeze
 

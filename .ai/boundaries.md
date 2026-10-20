@@ -231,7 +231,14 @@ framework mechanism is insufficient, and a test that fails without the added des
   uses `ContentUpload#readable_by?`: creator access or access through a readable referring row.
   An addressed operator call is a one-task standalone Run seeded with an explicitly routed
   tool step and uses ordinary claim,
-  extension, commit and recovery. There is no second relay protocol or inbound dial from Nexus.
+  extension, commit and recovery. Task-attached realtime signaling may exchange bounded WebRTC
+  descriptions and project current interaction permission for that exact claim; it grants no work.
+  A handler owns its direct/TURN data transport under the original Task, deadline and Stop path.
+  Authorization-window expiry pauses input/media without canceling, extending or releasing execution.
+  A connected viewer may observe the Runner's remaining window over that same bound peer;
+  it anchors expiry before its probe, so relaying cannot extend authority. The Runner still
+  checks both original credentials and the existing execution owners through Nexus.
+  Nexus never dials into the Runner or carries continuous input/media through Rails/Cable.
   Runner capabilities such as `files_bytes`/`process_log` are announced as tools without model
   descriptions/schemas and hidden by name from model declarations. File bytes are always a
   capture, with HTTP Range for partial reads. Human process-log reads and model owner-gated
@@ -781,8 +788,10 @@ longer than the accepted-order cut requires, or a convergence job growing an unb
   still use `public_id`.
 - Do not add `public_id` to every model by default — only where the model crosses one of those
   boundaries.
-- All `public_id` columns use PostgreSQL `uuid` with sortable UUIDv7 values: PostgreSQL 18
-  `uuidv7()` defaults or Ruby `SecureRandom.uuid_v7`.
+- All `public_id` columns use PostgreSQL `uuid` with sortable UUIDv7 values: PostgreSQL 18+
+  `uuidv7()` defaults, PostgreSQL 17 `pg_uuidv7` extension `uuid_generate_v7()` defaults,
+  or Ruby `SecureRandom.uuid_v7`. Migrations and schema loads enable the extension only on
+  PostgreSQL 17; primary schema dumps remain loadable on either server version.
 - Use `attr_readonly` for persisted identity fields that are mutable during creation but immutable
   afterward: owner FKs, stable external keys, STI scope keys, `public_id`, short technical tags.
 

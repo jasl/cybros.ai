@@ -1,0 +1,12 @@
+module Rho
+  class Runner
+    class WebrtcConnection
+      def initialize: (executable: String, context: ExecutionContext, ?servers: Array[Hash[String, untyped]], ?clock: ^() -> Numeric) -> void
+      attr_reader connection_id: String?
+      def pid: () -> Integer?
+      def poll: () -> WebrtcTransport::Poll
+      def send_bytes: (String) -> bool
+      def close: () -> nil
+    end
+  end
+end

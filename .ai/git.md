@@ -13,5 +13,6 @@
 - Dirty worktrees: inspect staged, unstaged, and untracked changes before committing; preserve
   unrelated work via path-limited staging or `git commit --only`; never revert changes you did not
   make unless explicitly asked.
-- Integration: prefer rebase over merge commits for parallel work; run the relevant full validation
-  suite from `.ai/ci.md` after rebasing before declaring integration complete.
+- Integration: prefer rebase over merge commits for parallel work. After rebasing, reassess the
+  affected paths and interactions and rerun checks whose evidence the rebase invalidated, using
+  `.ai/ci.md`'s scope rules. A rebase or commit does not automatically require full suites or E2E.

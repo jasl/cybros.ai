@@ -148,6 +148,14 @@ module Rho
         def call: (*untyped, deadline: Numeric, ?stdin: String?) -> Outcome
       end
 
+      class Review
+        MAX_BYTES: Integer
+        MAX_PATCH_BYTES: Integer
+        MAX_FILES: Integer
+        def initialize: (root: String, base: String, rows: Array[Hash[String, String]], deadline: Numeric, git: String, clock: ^() -> Numeric) -> void
+        def document: () { (String) -> [String?, String?, String?, String?] } -> Hash[String, untyped]
+      end
+
       class Store
         class TimedOut < Error
         end
@@ -193,6 +201,7 @@ module Rho
         def records: (?run_public_id: untyped) -> Array[Record]
         def changed: (from: untyped, to: untyped) -> Array[Hash[String, String]]
         def changed_since: (untyped hash) -> (Array[Hash[String, String]] | Skip)
+        def review: (run_public_id: untyped) -> (Hash[String, untyped] | Skip)?
         def tree?: (untyped hash) -> bool
         def prune: (?retention_days: Integer, ?now: Time) -> Integer
         def size_bytes: () -> Integer
@@ -744,6 +753,7 @@ module Rho
         def self.placed_store: (untyped) -> untyped
         def self.capture: (untyped, Flags, String, untyped, untyped, untyped) -> nil
         def self.correlate: (Flags, String, untyped, untyped) -> Result?
+        def self.review: (untyped, String, Result, untyped, untyped) -> Result
         def self.captures?: (untyped, untyped) -> bool
         def self.targets: (untyped, String) -> [Array[String], Array[String]]
       end

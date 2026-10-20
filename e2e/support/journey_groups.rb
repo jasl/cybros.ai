@@ -1,6 +1,6 @@
 module E2E
   # Each group gets its own Nexus world; `e2e_serial` runs their flat union in one world.
-  # Every journey belongs to a group, and the manifest checks omissions and duplicates.
+  # Every default journey belongs to a group, and the manifest checks omissions and duplicates.
   #
   # Keep the per-test ceremony suites in ONE_PER_GROUP apart: device grants and steward
   # sign-ins share per-IP budgets inside a world. A shared_human writer also needs a world
@@ -136,6 +136,8 @@ module E2E
                 8 => 800, 9 => 700, 10 => 760, 11 => 650, 12 => 880, 13 => 700, 14 => 700,
                 15 => 500, 16 => 450, 17 => 450 }.freeze
 
+    REALTIME = %w[realtime_signaling].freeze
+
     ONE_PER_GROUP = %w[rho_conversation workspace_dedication executor_plane rho_daemon].freeze
     SHARED_HUMAN_WRITERS = %w[compiled_bytes memory_scopes].freeze
     # Test files that are neither harness tests nor mock journeys: the paid
@@ -161,8 +163,8 @@ module E2E
       GROUPS.keys.sort_by { |key| [-weights.fetch(key), key] }
     end
 
-    def validate!(harness: HARNESS, groups: GROUPS, test_dir: TEST_DIR, weights: WEIGHTS)
-      problems = violations(harness: harness, groups: groups, test_dir: test_dir, weights: weights)
+    def validate!(harness: HARNESS, groups: GROUPS, test_dir: TEST_DIR, weights: WEIGHTS, optional: REALTIME)
+      problems = violations(harness: harness, groups: groups, test_dir: test_dir, weights: weights, optional: optional)
       return if problems.empty?
 
       raise ArgumentError, "journey manifest: #{problems.join("; ")}"
@@ -170,8 +172,8 @@ module E2E
 
     # Every rule, as a sentence naming the file, so a refusal says what to
     # move rather than that something is wrong.
-    def violations(harness: HARNESS, groups: GROUPS, test_dir: TEST_DIR, weights: WEIGHTS)
-      listed = harness + groups.values.flatten
+    def violations(harness: HARNESS, groups: GROUPS, test_dir: TEST_DIR, weights: WEIGHTS, optional: REALTIME)
+      listed = harness + groups.values.flatten + optional
       [
         *missing_files(listed, test_dir),
         *duplicates(listed),

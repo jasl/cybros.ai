@@ -1,0 +1,12 @@
+module Rho
+  module Extensions
+    module Ops
+      module Terminals
+        TASK_KEY: String
+        def self.register: (Api api) -> untyped
+        def self.create: (untyped request, Daemon::Context ctx) -> untyped
+        def self.list: (untyped request, Daemon::Context ctx) -> untyped
+      end
+    end
+  end
+end

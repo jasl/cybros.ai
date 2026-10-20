@@ -197,6 +197,13 @@
       "sdk_supported": true
     },
     {
+      "id": "GET /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/realtime",
+      "plane": "executor",
+      "method": "GET",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/realtime",
+      "sdk_supported": true
+    },
+    {
       "id": "GET /agent_api/v1/executors",
       "plane": "member",
       "method": "GET",
@@ -670,6 +677,13 @@
       "plane": "member",
       "method": "GET",
       "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{key}",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/realtime",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/realtime",
       "sdk_supported": true
     },
     {
@@ -1766,6 +1780,13 @@
       "sdk_supported": true
     },
     {
+      "id": "PUT /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/realtime",
+      "plane": "executor",
+      "method": "PUT",
+      "path": "/agent_api/v1/executor/inbox/{run_public_id}/{task_key}/realtime",
+      "sdk_supported": true
+    },
+    {
       "id": "PUT /agent_api/v1/profile/agents/{name}",
       "plane": "member",
       "method": "PUT",
@@ -1826,6 +1847,13 @@
       "plane": "member",
       "method": "PUT",
       "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/default_runner",
+      "sdk_supported": true
+    },
+    {
+      "id": "PUT /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/realtime",
+      "plane": "member",
+      "method": "PUT",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/realtime",
       "sdk_supported": true
     },
     {

@@ -332,5 +332,7 @@ anything.
   compaction.
 - [Executor operations](agent-api/executor-operations.md) — executor transport
   plane: child work accepted and observed under an existing claim.
+- [Task realtime](agent-api/task-realtime.md) — task-attached signaling and interaction permission
+  for an existing Runner claim, using the member and executor planes.
 - [Ingress speakers](agent-api/ingress.md) — member plane: Agent-controlled external
   voices posted through the conversation input door.

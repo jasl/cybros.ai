@@ -84,14 +84,21 @@ class ModelInvocationAttemptTest < ActiveSupport::TestCase
   end
 
   test "the parent cannot be deleted out from under its attempts" do
-    build_attempt.save!
+    attempt = build_attempt.tap(&:save!)
+    foreign_key = ModelInvocationAttempt.lease_connection.foreign_keys(:model_invocation_attempts)
+      .find { |key| key.column == "model_invocation_id" }
+    assert_equal :restrict, foreign_key.on_delete
 
     error = assert_raises(ActiveRecord::StatementInvalid) do
-      ModelInvocation.lease_connection.execute(
-        "DELETE FROM model_invocations WHERE id = #{@invocation.id}"
-      )
+      ModelInvocation.transaction(requires_new: true) do
+        ModelInvocation.lease_connection.execute(
+          "DELETE FROM model_invocations WHERE id = #{@invocation.id}"
+        )
+      end
     end
-    assert_includes error.message, "RESTRICT"
+    assert Nexus::ForeignKeyViolation.matches?(error, constraint: foreign_key.name)
+    assert ModelInvocation.exists?(@invocation.id)
+    assert ModelInvocationAttempt.exists?(attempt.id)
   end
 
   private

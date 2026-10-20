@@ -65,6 +65,16 @@
   "memory_scope_projection": [
     "bindings"
   ],
+  "realtime_fixture": {
+    "realtime": {
+      "status": "active",
+      "reason": null,
+      "connection_id": "01900000-0000-7000-8000-000000000099",
+      "offer_sdp": "v=0\r\na=fingerprint:sha-256 AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA\r\n",
+      "answer_sdp": "v=0\r\na=fingerprint:sha-256 BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB\r\n",
+      "max_age_ms": 1000
+    }
+  },
   "claim_envelope": [
     "task",
     "claim"

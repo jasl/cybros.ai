@@ -78,7 +78,10 @@ class ModelProviderOAuthTaskTest < ActiveSupport::TestCase
   end
 
   test "a parent cannot be deleted out from under its tasks" do
-    build_task.save!
+    task = build_task.tap(&:save!)
+    foreign_key = TASK.lease_connection.foreign_keys(:model_provider_oauth_tasks)
+      .find { |key| key.column == "model_provider_oauth_session_id" }
+    assert_equal :restrict, foreign_key.on_delete
 
     # RESTRICT, not cascade: retention deletes the bounded children first, and
     # a cascade would let a parent delete destroy the only durable record that
@@ -89,11 +92,15 @@ class ModelProviderOAuthTaskTest < ActiveSupport::TestCase
     assert_includes @session.errors.full_messages.join, "oauth tasks"
 
     error = assert_raises(ActiveRecord::StatementInvalid) do
-      ModelProviderOAuthSession.lease_connection.execute(
-        "DELETE FROM model_provider_oauth_sessions WHERE id = #{@session.id}"
-      )
+      ModelProviderOAuthSession.transaction(requires_new: true) do
+        ModelProviderOAuthSession.lease_connection.execute(
+          "DELETE FROM model_provider_oauth_sessions WHERE id = #{@session.id}"
+        )
+      end
     end
-    assert_includes error.message, "RESTRICT"
+    assert Nexus::ForeignKeyViolation.matches?(error, constraint: foreign_key.name)
+    assert ModelProviderOAuthSession.exists?(@session.id)
+    assert TASK.exists?(task.id)
   end
 
   private

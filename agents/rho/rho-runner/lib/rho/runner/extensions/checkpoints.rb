@@ -125,7 +125,10 @@ module Rho
           log = api.log
           TOOLS.each { |klass| api.register_tool(klass) }
           api.on(:tool_call) { |name, arguments, tool| capture(member, flags, name, arguments, tool, log) }
-          api.on(:tool_result) { |name, result, tool| correlate(flags, name, result, tool) }
+          api.on(:tool_result) do |name, result, tool|
+            correlated = correlate(flags, name, result, tool) || result
+            review(member, name, correlated, tool, log)
+          end
           # The prune: the store's retention, on the host's own
           # startup, under the store's lock and clock; a host whose store
           # opens later (a fresh pairing) prunes at its next boot.
@@ -186,6 +189,29 @@ module Rho
           return nil if key.nil?
 
           result.with(metadata: (result.metadata || {}).merge(RESERVED_KEY => key))
+        end
+
+        # Every returned write freezes its cumulative diff. The kernel's normal
+        # task result retains these bytes even after local checkpoints expire.
+        def self.review(member, name, result, tool, log)
+          return result unless captures?(name, tool)
+
+          run = ExecutionContext.current&.run_public_id
+          store = placed_store(member)
+          return result if run.nil? || store.nil?
+
+          document = store.review(run_public_id: run)
+          return result if document.nil? || (document in Runner::Checkpoints::Skip)
+
+          metadata = (result.metadata || {}).merge("rho.changes" => document)
+          return result if JSON.generate(metadata).bytesize > 65_536
+
+          result.with(metadata: metadata)
+        rescue ExecutionContext::Cancelled
+          raise
+        rescue StandardError => error
+          log&.warn("review_capture_failed", run_public_id: run, error_class: error.class.name)
+          result
         end
 
         # A write-kind call by the ANNOUNCED profile, not one of ours.

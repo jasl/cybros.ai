@@ -796,3 +796,5 @@ module Rho
     end
   end
 end
+
+require_relative "store/review"

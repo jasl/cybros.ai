@@ -80,3 +80,17 @@ test("a task that cannot be read says so instead of an empty tab", async () => {
   await flush();
   expect(t.panel.element.querySelector(".alert--error").textContent).toBe("No such task");
 });
+
+test("only a live tool task offers the terminal entry", async () => {
+  for (const task of [
+    { kind: "tool_task", status: "dispatched", expected: true },
+    { kind: "tool_task", status: "completed", expected: false },
+    { kind: "model_task", status: "running", expected: false },
+  ]) {
+    const view = tab(() => ({ task }));
+    await flush();
+    expect(view.panel.element.querySelectorAll("button").some((button) => button.textContent === "Open terminal")).toBe(task.expected);
+    view.panel.dispose();
+    view.panel.element.remove();
+  }
+});

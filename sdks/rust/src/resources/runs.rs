@@ -48,6 +48,16 @@ impl RunContext {
 }
 handle!(TaskContext);
 impl TaskContext {
+    get!(realtime, "realtime", TaskRealtime, Some("realtime"));
+    write!(
+        answer_realtime,
+        PUT,
+        "realtime",
+        RealtimeSignal,
+        None,
+        TaskRealtime,
+        Some("realtime")
+    );
     get!(fetch, "", TaskDetail, Some("task"));
     get!(request, "request", SealedRequest, Some("request"));
     write!(

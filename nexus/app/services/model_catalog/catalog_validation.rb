@@ -330,7 +330,7 @@ module ModelCatalog
         "anthropic_thinking" => %w[anthropic_messages],
         "responses_reasoning" => %w[openai_responses codex_responses xai_responses],
         "gemini_thought" => %w[gemini_generate_content],
-        "chat_reasoning" => %w[openrouter_chat],
+        "chat_reasoning" => %w[openrouter_chat openai_compatible_chat],
         "responses_reasoning_text" => %w[deepseek_responses],
       }.freeze
       # The format is the row's replay shape (how much is replayed is the

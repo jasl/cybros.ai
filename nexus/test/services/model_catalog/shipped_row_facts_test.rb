@@ -267,7 +267,9 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
       Nexus::ReasoningReplayCapability.from_h(entry.dig("capabilities", "reasoning_replay")).required_for_tool_rounds
     end
     assert_equal %w[
-      deepseek/deepseek-flash deepseek/deepseek-v4-pro openrouter/deepseek/deepseek-v4-pro-0813
+      deepseek/deepseek-flash deepseek/deepseek-v4-pro
+      moonshot/kimi-k2.7-code moonshot/kimi-k2.7-code-highspeed moonshot/kimi-k3
+      openrouter/deepseek/deepseek-v4-pro-0813
       openrouter/deepseek/deepseek-v4.1-flash openrouter/moonshotai/kimi-k3
     ], required.keys.sort
   end

@@ -8,10 +8,13 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     # These are extensions that must be enabled in order to support this database
     enable_extension "plpgsql"
 
+    # PostgreSQL 17 needs pg_uuidv7; PostgreSQL 18+ has a native generator.
+    enable_extension "pg_uuidv7" if connection.database_version < 180_000
+
     create_table "access_tokens" do |t|
       t.bigint "account_id", null: false
       t.bigint "user_id"
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "name", limit: 160, null: false
       t.string "note", limit: 2000
       t.string "source", limit: 20, default: "personal", null: false
@@ -39,7 +42,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     end
 
     create_table "accounts" do |t|
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "name", limit: 100, null: false
       t.string "cost_unit", limit: 64
       t.datetime "created_at", null: false
@@ -250,7 +253,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "account_id", null: false
       t.bigint "workspace_id", null: false
       t.bigint "creating_user_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "status", default: "pending", null: false
       t.string "failure_reason", limit: 64
       t.bigint "revision", default: 0, null: false
@@ -301,7 +304,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     create_table "billing_subjects" do |t|
       t.bigint "account_id", null: false
       t.bigint "owning_user_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "key", limit: 128, null: false
       t.datetime "created_at", null: false
       t.datetime "updated_at", null: false
@@ -368,7 +371,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     create_table "content_uploads" do |t|
       t.bigint "account_id", null: false
       t.bigint "creating_user_id"
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.datetime "created_at", null: false
       t.datetime "updated_at", null: false
       t.bigint "creating_executor_id"
@@ -442,7 +445,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "event_id", null: false
       t.string "host_type", null: false
       t.bigint "host_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.bigint "sequence", null: false
       t.string "item_type", limit: 40, null: false
       t.jsonb "payload", default: {}, null: false
@@ -469,7 +472,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "account_id", null: false
       t.string "host_type", null: false
       t.bigint "host_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.integer "queue_position", null: false
       t.string "kind", limit: 20, null: false
       t.string "role", limit: 10, default: "user", null: false
@@ -535,7 +538,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     create_table "variants" do |t|
       t.bigint "account_id", null: false
       t.bigint "turn_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.integer "position", null: false
       t.string "status", limit: 16, null: false
       t.string "source", limit: 16, null: false
@@ -570,7 +573,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     create_table "turns" do |t|
       t.bigint "account_id", null: false
       t.bigint "conversation_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.integer "position", null: false
       t.string "kind", limit: 20, null: false
       t.string "role", limit: 10, null: false
@@ -611,7 +614,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "account_id", null: false
       t.bigint "workspace_id", null: false
       t.bigint "creating_user_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "title", limit: 255
       t.jsonb "metadata", default: {}, null: false
       t.string "billing_subject_key", limit: 128
@@ -669,7 +672,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
 
     create_table "device_authorizations" do |t|
       t.bigint "account_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "client_id", limit: 100, null: false
       t.string "agent_identifier", limit: 128
       t.string "agent_display_name", limit: 100
@@ -775,7 +778,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "account_id", null: false
       t.bigint "inference_request_event_id", null: false
       t.bigint "inference_request_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.bigint "sequence", null: false
       t.string "item_type", limit: 40, null: false
       t.jsonb "payload", default: {}, null: false
@@ -798,7 +801,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "account_id", null: false
       t.bigint "workspace_id", null: false
       t.bigint "creating_user_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "workload", limit: 32, null: false
       t.datetime "tombstoned_at"
       t.datetime "created_at", null: false
@@ -818,7 +821,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     create_table "invitations" do |t|
       t.bigint "account_id", null: false
       t.bigint "inviter_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "email", limit: 255, null: false
       t.string "role", limit: 20, default: "member", null: false
       t.datetime "expires_at", null: false
@@ -834,7 +837,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     create_table "mcp_connections" do |t|
       t.bigint "account_id", null: false
       t.bigint "owner_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "name", limit: 100, null: false
       t.string "account_label", limit: 256
       t.text "endpoint_url", null: false
@@ -892,7 +895,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.datetime "created_at", null: false
       t.datetime "updated_at", null: false
       t.string "description"
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.bigint "speaker_id"
       t.index ["account_id"], name: "index_memory_documents_on_account_id"
       t.index ["conversation_id", "name"], name: "index_memory_documents_conversation_identity", unique: true, where: "(conversation_id IS NOT NULL)"
@@ -907,7 +910,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     create_table "model_invocation_attempts" do |t|
       t.bigint "account_id", null: false
       t.bigint "model_invocation_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.integer "ordinal", null: false
       t.string "admission_shape", limit: 16, null: false
       t.string "status", limit: 16, default: "prepared", null: false
@@ -932,7 +935,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "creating_user_id", null: false
       t.bigint "workspace_id"
       t.bigint "inference_request_id"
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "workload", limit: 32, null: false
       t.string "purpose", limit: 32, null: false
       t.string "provider_id", limit: 64, null: false
@@ -992,7 +995,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     create_table "model_provider_credentials" do |t|
       t.bigint "account_id", null: false
       t.string "provider_id", limit: 64, null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "material_kind", limit: 16, null: false
       t.text "secret", null: false
       t.text "refresh_secret"
@@ -1015,7 +1018,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "account_id", null: false
       t.string "provider_id", limit: 64, null: false
       t.bigint "issuing_user_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "kind", limit: 16, null: false
       t.string "state", limit: 16, default: "pending", null: false
       t.string "progress", limit: 24, null: false
@@ -1153,7 +1156,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     create_table "refresh_token_families" do |t|
       t.bigint "account_id", null: false
       t.bigint "user_id"
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "access_token_name", limit: 160, null: false
       t.string "device_ip", limit: 64
       t.string "device_user_agent", limit: 255
@@ -1249,7 +1252,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "account_id", null: false
       t.bigint "identity_id", null: false
       t.bigint "user_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "kind", limit: 20, default: "browser", null: false
       t.string "lookup_id", limit: 24
       t.string "secret_digest"
@@ -1270,7 +1273,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
 
     create_table "speakers" do |t|
       t.bigint "account_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "kind", limit: 16, null: false
       t.bigint "user_id"
       t.string "channel_key", limit: 64, null: false
@@ -1289,7 +1292,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "workspace_id"
       t.bigint "conversation_id"
       t.bigint "user_id"
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "namespace", limit: 80, null: false
       t.string "key", limit: 160, null: false
       t.jsonb "value"
@@ -1307,7 +1310,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "account_id", null: false
       t.bigint "agent_id"
       t.bigint "manager_id"
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "executor_kind", limit: 20, null: false
       t.string "display_name", limit: 100, null: false
       t.string "registration_identifier", limit: 128
@@ -1338,7 +1341,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
 
     create_table "usage_budget_entries" do |t|
       t.bigint "usage_budget_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.uuid "account_public_id", null: false
       t.uuid "user_public_id", null: false
       t.bigint "entry_sequence", null: false
@@ -1360,7 +1363,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
     create_table "usage_budgets" do |t|
       t.bigint "account_id", null: false
       t.bigint "user_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.uuid "user_public_id", null: false
       t.string "user_kind", limit: 16, null: false
       t.datetime "starts_at", null: false
@@ -1382,7 +1385,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
 
     create_table "usage_records" do |t|
       t.bigint "account_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "idempotency_key", limit: 96, null: false
       t.uuid "model_invocation_public_id", null: false
       t.integer "attempt_ordinal", null: false
@@ -1431,7 +1434,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
 
     create_table "users" do |t|
       t.bigint "account_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.bigint "identity_id"
       t.string "display_name", limit: 100, null: false
       t.string "kind", limit: 20, null: false
@@ -1500,7 +1503,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.bigint "account_id", null: false
       t.bigint "creator_id", null: false
       t.bigint "owner_id", null: false
-      t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+      t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
       t.string "name", limit: 100, null: false
       t.string "agent_identifier", limit: 128
       t.string "access_mode", limit: 20, default: "private", null: false

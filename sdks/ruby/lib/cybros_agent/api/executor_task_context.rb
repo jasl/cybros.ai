@@ -21,6 +21,7 @@ module CybrosAgent
       include Fields
       include UploadProjections
       include ExecutorTaskOperations
+      include TaskRealtimeProjections
 
       attr_reader :run_public_id, :task_key
 
@@ -43,6 +44,18 @@ module CybrosAgent
       def claim_status(claim_token:)
         headers = { "Claim-Token" => required_string(claim_token, "claim_token") }
         shape(ClaimStatus, @dispatch.call("#{path}/claim", headers: headers))
+      end
+
+      def realtime(claim_token:)
+        headers = { "Claim-Token" => required_string(claim_token, "claim_token") }
+        shape(TaskRealtime, @dispatch.call("#{path}/realtime", headers: headers), "realtime")
+      end
+
+      def offer_realtime(claim_token:, connection_id:, sdp:, previous_connection_id: nil)
+        headers = { "Claim-Token" => required_string(claim_token, "claim_token") }
+        body = { "connection_id" => required_string(connection_id, "connection_id"), "sdp" => required_string(sdp, "sdp") }
+        body["previous_connection_id"] = required_string(previous_connection_id, "previous_connection_id") if previous_connection_id
+        shape(TaskRealtime, @dispatch.call("#{path}/realtime", method: :put, headers: headers, body: body), "realtime")
       end
 
       # Input bytes are available only while this exact claim is active.

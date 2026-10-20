@@ -60,10 +60,9 @@ class ContentFragmentReapRaceTest < ActiveSupport::TestCase
     )
   end
 
-  # PostgreSQL reports an ON DELETE RESTRICT refusal as SQLSTATE 23001, which
-  # Rails does not map onto ActiveRecord::InvalidForeignKey. Rescuing the AR
-  # class let one lost race abort every remaining candidate and fail the
-  # scheduled command outright.
+  # A lost RESTRICT race must be handled on both PostgreSQL 17 (23503,
+  # InvalidForeignKey) and PostgreSQL 18 (23001, StatementInvalid), leaving
+  # the rest of the batch and an enclosing transaction usable.
   def test_an_adoption_between_the_scan_and_the_delete_loses_only_its_own_row
     contested = stale_orphan
     later = stale_orphan

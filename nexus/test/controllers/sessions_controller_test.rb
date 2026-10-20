@@ -6,6 +6,21 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
   test "new" do
     get new_session_path
     assert_response :success
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
+    assert_select "meta[name='referrer'][content='same-origin']", count: 1
+  end
+
+  test "return navigation keeps the default referrer policy and prevents caching before authentication" do
+    get settings_profile_path, params: { return_to: settings_path }
+    assert_response :redirect
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
+    assert_includes response.headers["Cache-Control"], "no-store"
+
+    follow_redirect!
+    assert_response :success
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
+    assert_includes response.headers["Cache-Control"], "no-store"
+    assert_select "meta[name='referrer'][content='same-origin']", count: 1
   end
 
   test "new redirects to the dashboard when already signed in" do

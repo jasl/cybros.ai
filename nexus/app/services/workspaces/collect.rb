@@ -142,14 +142,11 @@ module Workspaces
           Conversations::Reap.destroy_aggregate(locked)
         end
       rescue ActiveRecord::StatementInvalid => error
-        case error.cause
-        when PG::RestrictViolation
-          # A descendant pinned this row between the pluck and the lock;
-          # level-triggered — rediscovered when the pin dies.
-          false
-        else
-          raise
-        end
+        raise unless Nexus::ForeignKeyViolation.matches?(error, constraint: "fk_rails_fba0031b24")
+
+        # A descendant pinned this row between the pluck and the lock;
+        # level-triggered — rediscovered when the pin dies.
+        false
       end
 
       def descendant_conversation_pins
@@ -194,14 +191,11 @@ module Workspaces
           Runs::Reap.destroy_aggregate(locked)
         end
       rescue ActiveRecord::StatementInvalid => error
-        case error.cause
-        when PG::RestrictViolation
-          # Level-triggered skip, the conversation stage's rule: a row that
-          # grew a fence between the pluck and the lock is rediscovered.
-          false
-        else
-          raise
-        end
+        raise unless Nexus::ForeignKeyViolation.matches?(error, constraint: "fk_rails_a98139c361")
+
+        # A new attempt retained its invocation during teardown. Rediscover
+        # this run on a later pass without hiding other FK failures.
+        false
       end
 
       def stop_run(id)

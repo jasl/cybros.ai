@@ -190,12 +190,8 @@ class ConversationSubstrateTest < ActiveSupport::TestCase
     assert_not past_boundary.valid?, "position 5 was never part of a prefix cut at 3"
   end
 
-  # THE LIVENESS PIN: the database itself enforces leaves-first reap. The
-  # refusal is SQLSTATE 23001 — explicit RESTRICT, not NO ACTION's 23503 —
-  # so the future root reaper's per-row rescue matches PG::RestrictViolation
-  # BY CAUSE, exactly as ContentFragment.reap documents for the identical FK
-  # shape. Rails maps only 23503 onto InvalidForeignKey; asserting the cause
-  # here is what keeps the wrong rescue from ever being copied.
+  # The ancestry RESTRICT FK enforces leaves-first reap on every supported
+  # PostgreSQL version, regardless of the server's SQLSTATE and wording.
   test "a pinned ancestor cannot be destroyed while a descendant lives" do
     child = Conversation.create!(workspace: @workspace, creating_user: @user)
     ConversationAncestry.create!(
@@ -203,9 +199,15 @@ class ConversationSubstrateTest < ActiveSupport::TestCase
       ancestor_conversation: @conversation, depth: 1, boundary_position: 0
     )
 
-    error = assert_raises(ActiveRecord::StatementInvalid) { @conversation.destroy }
-    assert_kind_of PG::RestrictViolation, error.cause,
-      "the pin speaks 23001, the SQLSTATE the house per-row rescue matches"
+    foreign_key = ConversationAncestry.lease_connection.foreign_keys(:conversation_ancestries)
+      .find { |key| key.column == "ancestor_conversation_id" }
+    assert_equal :restrict, foreign_key.on_delete
+    error = assert_raises(ActiveRecord::StatementInvalid) do
+      Conversation.transaction(requires_new: true) { @conversation.destroy }
+    end
+    assert Nexus::ForeignKeyViolation.matches?(error, constraint: foreign_key.name)
+    assert Conversation.exists?(@conversation.id)
+    assert Conversation.exists?(child.id)
 
     child.destroy!
     assert @conversation.reload.destroy, "the leaf's death releases the pin"

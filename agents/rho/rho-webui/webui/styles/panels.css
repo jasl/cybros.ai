@@ -256,3 +256,11 @@
 .ordered-models__name { display: block; font: 400 13px/20px var(--font-ui); overflow-wrap: anywhere; margin-bottom: 6px; }
 .ordered-models__add { display: flex; flex-wrap: wrap; gap: 8px; }
 .ordered-models__add .control { flex: 1 1 220px; min-width: 0; }
+
+/* The PTY protocol currently keeps an 80-column screen. Only the screen
+   scrolls on narrow displays; connection and Stop stay visible. */
+.terminal { min-width: 0; margin-block: 1rem; }
+.terminal__head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.terminal__status, .terminal__notice { overflow-wrap: anywhere; }
+.terminal__screen { overflow: auto; padding: .5rem; background: #000; }
+.terminal__screen .xterm { min-width: 640px; }

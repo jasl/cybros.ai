@@ -284,8 +284,10 @@ class RunnerLoopTest < Minitest::Test
       by_key = lane.commits.to_h { |fields| [fields.fetch(:claim_token), fields] }
       refute by_key.fetch("tok-t1").key?(:metadata), "a read rides nothing"
       assert_equal({ "checkpoint" => { "hash" => record.hash, "store" => store.id } },
-        by_key.fetch("tok-t2").fetch(:metadata), "the first write-kind result carries the key")
-      refute by_key.fetch("tok-t3").key?(:metadata), "the second write rides nothing"
+        by_key.fetch("tok-t2").fetch(:metadata).slice("checkpoint"), "the first write-kind result carries the key")
+      refute by_key.fetch("tok-t3").fetch(:metadata).key?("checkpoint"), "the baseline key rides once"
+      assert_includes by_key.fetch("tok-t2").dig(:metadata, "rho.changes", "files").first.fetch("patch"), "+two"
+      assert by_key.fetch("tok-t3").fetch(:metadata).key?("rho.changes"), "each returned write freezes a review"
       assert_equal 1, store.records.length, "one capture per loop"
     ensure
       pool&.stop

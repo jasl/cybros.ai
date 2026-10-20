@@ -123,6 +123,7 @@ export interface Shapes {
   RunPhase: Models.RunPhase;
   BackgroundTask: Models.BackgroundTask;
   ClaimedTask: Models.ClaimedTask;
+  TaskRealtime: Models.TaskRealtime;
   ClaimStatus: Models.ClaimStatus;
   InputMaterialization: Models.InputMaterialization;
   ConversationReasoning: Models.ConversationReasoning;

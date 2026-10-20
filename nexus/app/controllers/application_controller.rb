@@ -2,7 +2,7 @@ class ApplicationController < ActionController::Base
   helper_method :sidebar_nav_partial
 
   include Authentication
-  prepend_before_action :set_return_target_privacy_headers
+  prepend_before_action :prevent_return_target_caching
   # A direct-created member signs in with a conveyed temporary password;
   # until it is changed only the password page and logout are reachable.
   # Controllers on that allowlist skip this action.
@@ -14,14 +14,11 @@ class ApplicationController < ActionController::Base
 
   private
 
-    # A response carrying a resumable return target must not be cached or leak
-    # it through the referrer; broader than the device ceremony because the
-    # headers cost nothing and reconstructing the navigation chain did.
-    def set_return_target_privacy_headers
-      return unless return_to_url
-
-      no_store
-      response.headers["Referrer-Policy"] = "no-referrer"
+    # Return targets can carry authorization context through sign-in and the
+    # password gate. Keep them out of caches; the configured referrer policy
+    # prevents cross-origin disclosure without breaking native form posts.
+    def prevent_return_target_caching
+      no_store if return_to_url
     end
 
     def require_completed_password_change

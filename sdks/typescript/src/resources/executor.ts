@@ -8,6 +8,8 @@ export class ExecutorInbox extends Resource {
 export class ExecutorTask extends Resource {
   claim(options: RequestOptions = {}) { return this.one('ClaimedTask', '/claim', undefined, { ...options, method: 'POST' }); }
   claimStatus(claimToken: string, options: RequestOptions = {}) { return this.one('ClaimStatus', '/claim', undefined, { ...options, headers: { 'Claim-Token': claimToken } }); }
+  realtime(claimToken: string, options: RequestOptions = {}) { return this.one('TaskRealtime', '/realtime', 'realtime', { ...options, headers: { 'Claim-Token': claimToken } }); }
+  offerRealtime(claimToken: string, input: { connection_id: string; sdp: string; previous_connection_id?: string }, options: RequestOptions = {}) { return this.one('TaskRealtime', '/realtime', 'realtime', { ...options, method: 'PUT', headers: { 'Claim-Token': claimToken }, body: input }); }
   attachment(id: string, claimToken: string, options: RequestOptions = {}) { return this.one('Upload', `/attachments/${segment(id)}`, 'upload', { ...options, headers: { 'Claim-Token': claimToken } }); }
   attachmentBytes(id: string, claimToken: string, options: DownloadOptions = {}) { return this.transport.download(`${this.path}/attachments/${segment(id)}/bytes`, { ...options, headers: { 'Claim-Token': claimToken } }); }
   extend(input: { claim_token: string; timeout_ms: number }, options: RequestOptions = {}) { return this.one('ClaimedTask', '/extend', undefined, { ...options, method: 'POST', body: input }); }

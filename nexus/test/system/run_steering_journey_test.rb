@@ -7,13 +7,6 @@ module RunSteeringJourney
 
   included do
     include ActiveJob::TestHelper
-
-    setup do
-      @previous_forgery_protection = ActionController::Base.allow_forgery_protection
-      ActionController::Base.allow_forgery_protection = true
-    end
-
-    teardown { ActionController::Base.allow_forgery_protection = @previous_forgery_protection }
   end
 
   private

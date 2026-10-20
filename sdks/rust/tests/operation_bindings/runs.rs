@@ -1,4 +1,8 @@
 {
+    operation!("GET /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/realtime", "GET",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture/realtime", member.workspace("fixture").unwrap().runs().run("fixture").unwrap().task("fixture").unwrap().realtime());
+    operation!("PUT /agent_api/v1/workspaces/{workspace_public_id}/runs/{run_public_id}/tasks/{task_key}/realtime", "PUT",
+        "/agent_api/v1/workspaces/fixture/runs/fixture/tasks/fixture/realtime", member.workspace("fixture").unwrap().runs().run("fixture").unwrap().task("fixture").unwrap().answer_realtime(&cybros_agent::types::requests::RealtimeSignal { connection_id: "connection".into(), sdp: "answer".into() }));
     operation!(
         "DELETE /agent_api/v1/workspaces/{workspace_public_id}/runs/{public_id}",
         "DELETE",

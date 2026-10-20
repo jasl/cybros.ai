@@ -277,6 +277,36 @@ class PluginInventoryTest < Minitest::Test
     assert_equal "404", get(daemon, entry).code
   end
 
+  def test_terminal_is_optional_and_missing_helper_reports_actionable_guidance
+    daemon = boot
+    row = plugin_row(daemon, "rho.terminal")
+    refute row.fetch("enabled")
+    refute row.fetch("active")
+    response = request(daemon, :post, "/extensions/rho.terminal/enable", token: bearer(daemon), body: {})
+    assert_equal "503", response.code, response.body
+    assert_includes JSON.parse(response.body).dig("error", "message"), "transport helper"
+    refute plugin_row(daemon, "rho.terminal").fetch("active")
+  end
+
+  def test_configured_terminal_registers_an_operator_tool_and_redacts_turn_credentials
+    daemon = boot
+    core = Rho::Core.new(home: daemon.home)
+    core.configure_extension("rho.terminal", operations: [
+      { "op" => "set", "path" => ["executable"], "value" => Rho::Runner::OwnedProcess.group_identity_guard },
+      { "op" => "set", "path" => ["ice_servers"], "value" => [
+        { "urls" => ["turn:relay.example:3478"], "username" => "test", "credential" => "synthetic-turn-secret" },
+      ] },
+    ])
+    core.enable_extension("rho.terminal")
+    row = plugin_row(daemon, "rho.terminal")
+    assert row.fetch("active")
+    assert_includes row.dig("capabilities", "tools"), "terminal"
+    refute_includes JSON.generate(core.extensions), "synthetic-turn-secret"
+    tool = daemon.instance_variable_get(:@loaded).registry.announcement.find { |entry| entry.fetch("name") == "terminal" }
+    refute tool.key?("description")
+    assert_equal "write", tool.dig("effect_profile", "kind")
+  end
+
   private
 
     def plugin_row(daemon, id = ID)

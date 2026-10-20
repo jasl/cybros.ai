@@ -79,8 +79,8 @@ The documentation site's source is under [`guides/`](guides/index.md).
 | [`docs/`](docs/README.md) | The internal development manual | |
 
 Prerequisites for working on the Ruby projects: Ruby 4.0 (see `.ruby-version`),
-PostgreSQL 18 and libvips for Nexus, and Bun for its JavaScript and for the
-documentation site. `nexus/bin/setup` installs dependencies and prepares the
+PostgreSQL 17 with pg_uuidv7 (or PostgreSQL 18+) and libvips for Nexus, plus Bun
+for Nexus assets and the documentation site. `nexus/bin/setup` installs dependencies and prepares the
 databases; `nexus/bin/dev` runs the web server, the job workers and the asset
 watchers. Agent instructions for this repository are in [`AGENTS.md`](AGENTS.md).
 

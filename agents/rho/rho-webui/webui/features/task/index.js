@@ -3,8 +3,9 @@ import { t, statusText } from "../../kernel/i18n.js";
 import { markdown } from "../../kernel/markdown.js";
 import { isUnresolvedFailure } from "../../kernel/format.js";
 import { artifactsIn, createArtifactOpener } from "../../kernel/artifacts.js";
-import { alert, iconButton, spinner } from "../../primitives/index.js";
+import { alert, button, iconButton, spinner } from "../../primitives/index.js";
 import { mcpTarget } from "../../primitives/mcp_target.js";
+import { terminalPanel } from "../../primitives/terminal.js";
 
 const UPLOADS = "nexus://uploads/";
 const query = (path, values) => `${path}?${new URLSearchParams(values)}`;
@@ -41,6 +42,9 @@ function taskPanel(shell, initialProps) {
   const element = el("section", { class: "task", "aria-label": t("common.task") },
     el("header", { class: "task__head" }, refresh), body);
   let reading = 0;
+  let terminal;
+  const terminalHost = el("div");
+  element.append(terminalHost);
 
   async function load() {
     const version = ++reading;
@@ -49,7 +53,16 @@ function taskPanel(shell, initialProps) {
     try {
       const values = { public_id: params.runId, ...(conversation.workspace ? { workspace_public_id: conversation.workspace } : {}), task_key: params.taskKey };
       const { task } = await shell.call(query("/runs/task", values), { signal: reads.signal });
-      if (version === reading && !reads.signal.aborted) body.replaceChildren(taskDetail(task, artifacts));
+      if (version === reading && !reads.signal.aborted) {
+        body.replaceChildren(taskDetail(task, artifacts));
+        if (task.kind === "tool_task" && ["running", "dispatched"].includes(task.status) && !terminal) {
+          body.prepend(button({ label: t("terminal.open"), size: "sm", onClick(event) {
+            event.currentTarget.disabled = true;
+            terminal = terminalPanel({ call: shell.call, target: values });
+            terminalHost.replaceChildren(terminal.element);
+          } }));
+        }
+      }
     } catch (error) {
       if (version !== reading || reads.signal.aborted || error.name === "AbortError" || error.status === 401) return;
       body.replaceChildren(alert({ tone: "error", text: error.message || t("task.load_failed") }).element);
@@ -60,7 +73,7 @@ function taskPanel(shell, initialProps) {
   return {
     element,
     update(next) { props = next; },
-    dispose() { reads.abort(); artifacts.dispose(); },
+    dispose() { reads.abort(); terminal?.dispose(); artifacts.dispose(); },
   };
 }
 

@@ -28,7 +28,9 @@ class CheckpointHooksIntegrationTest < Minitest::Test
     key = first.metadata.fetch("checkpoint")
     assert_equal @store.id, key.fetch("store")
     second = call("one", "write", "path" => "file.txt", "content" => "later")
-    assert_nil second.metadata
+    refute second.metadata.key?("checkpoint")
+    assert_includes first.metadata.fetch("rho.changes").fetch("files").first.fetch("patch"), "+after"
+    assert_includes second.metadata.fetch("rho.changes").fetch("files").first.fetch("patch"), "+later"
     assert_equal 1, @store.records.length
     restored = call("restore", "checkpoint_restore", "checkpoint" => key.fetch("hash"))
     refute restored.is_error

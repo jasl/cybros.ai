@@ -51,6 +51,13 @@ wire_options:
 
 Nexus then combines separate instructions with the leading run of system and developer messages into one system message and turns later system or developer messages into user messages at their positions. This is an explicit, per-model adaptation applied during request compilation; it infers nothing from endpoint behavior and adds no retry or fallback policy.
 
+For an OpenAI-compatible chat endpoint that accepts system messages throughout
+the conversation but rejects developer messages, set `wire_options:
+{developer_role: system}` on the provider or model definition instead. This keeps
+each instruction's position and content. The shipped Kimi Code provider uses
+this mapping. See the [wire-option reference](../reference/platform-api/admin-models.md)
+for accepted values.
+
 ## Codex subscription authorization
 
 Open **OpenAI Codex** and choose **Connect**. The authorization code and progress appear in the same card; **Open authorization page** continues in your browser. Nexus's background workers complete the exchange, store the credentials and enable the provider — no CLI refresh token is imported. **Disconnect** removes the stored OAuth credentials and leaves enablement unchanged. Only the issuing human sees the verification link and code while an authorization is pending.

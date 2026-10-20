@@ -29,18 +29,11 @@ class ContentFragment < ApplicationRecord
         where(id: id).delete_all.positive?
       end
     rescue ActiveRecord::StatementInvalid => error
-      # PostgreSQL reports an ON DELETE RESTRICT refusal as SQLSTATE 23001,
-      # which Rails does not map onto InvalidForeignKey (that is 23503).
-      case error.cause
-      when PG::RestrictViolation
-        # A concurrent adoption won. Level-triggered: if that body is replaced
-        # again the fragment is rediscovered on a later pass.
-        false
-      else
-        # Anything else — including a future NO ACTION referencing FK's 23503
-        # — stays loud and demands review rather than being swallowed here.
-        raise
-      end
+      raise unless Nexus::ForeignKeyViolation.matches?(error, constraint: "fk_rails_0bdf3bbbda")
+
+      # A concurrent entry adoption won. The savepoint has rolled back, so
+      # later candidates and the caller's transaction can still proceed.
+      false
     end
 
     Sweeps::Pass.new(

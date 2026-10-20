@@ -6,13 +6,6 @@ class RunBranchRecoveryJourneyTest < ApplicationSystemTestCase
   include ActiveJob::TestHelper
   include RunsResultDeliveryTestHelper
 
-  setup do
-    @previous_forgery_protection = ActionController::Base.allow_forgery_protection
-    ActionController::Base.allow_forgery_protection = true
-  end
-
-  teardown { ActionController::Base.allow_forgery_protection = @previous_forgery_protection }
-
   test "a human cancels work owned by a completed launcher and keeps the other work" do
     _turn, run = open_turn!("Review two parts of the report")
     call_round!(run, "r1", "delegate_task", { prompt: "Review the first part" }, { prompt: "Review the second part" })
@@ -47,13 +40,6 @@ end
 class RunCompactionRecoveryJourneyTest < MobileSystemTestCase
   include ActiveJob::TestHelper
   include CompactionTestHelper
-
-  setup do
-    @previous_forgery_protection = ActionController::Base.allow_forgery_protection
-    ActionController::Base.allow_forgery_protection = true
-  end
-
-  teardown { ActionController::Base.allow_forgery_protection = @previous_forgery_protection }
 
   test "a paused model task follows its summary and resumes on a narrow screen" do
     run = create_loop!(model("round1", "prompt" => "Read the report"),

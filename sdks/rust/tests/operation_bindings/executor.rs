@@ -1,4 +1,8 @@
 {
+    operation!("GET /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/realtime", "GET",
+        "/agent_api/v1/executor/inbox/fixture/fixture/realtime", executor.inbox_task("fixture", "fixture").unwrap().realtime("claim"));
+    operation!("PUT /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/realtime", "PUT",
+        "/agent_api/v1/executor/inbox/fixture/fixture/realtime", executor.inbox_task("fixture", "fixture").unwrap().offer_realtime("claim", &cybros_agent::types::requests::RealtimeOffer { connection_id: "connection".into(), sdp: "offer".into(), previous_connection_id: None }));
     operation!(
         "GET /agent_api/v1/executor",
         "GET",

@@ -10,14 +10,17 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
+ActiveRecord::Schema[8.2].define(version: 2026_10_19_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  # PostgreSQL 17 needs pg_uuidv7; PostgreSQL 18+ has a native generator.
+  enable_extension "pg_uuidv7" if connection.database_version < 180_000
 
   create_table "access_tokens", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "user_id"
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "name", limit: 160, null: false
     t.string "note", limit: 2000
     t.string "source", limit: 20, default: "personal", null: false
@@ -45,7 +48,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   end
 
   create_table "accounts", force: :cascade do |t|
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "name", limit: 100, null: false
     t.string "cost_unit", limit: 64
     t.datetime "created_at", null: false
@@ -87,7 +90,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   create_table "billing_subjects", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "owning_user_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "key", limit: 128, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -154,7 +157,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   create_table "content_uploads", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "creating_user_id"
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "creating_executor_id"
@@ -217,7 +220,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "account_id", null: false
     t.bigint "workspace_id", null: false
     t.bigint "creating_user_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "title", limit: 255
     t.jsonb "metadata", default: {}, null: false
     t.string "billing_subject_key", limit: 128
@@ -276,7 +279,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
 
   create_table "device_authorizations", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "client_id", limit: 100, null: false
     t.string "agent_identifier", limit: 128
     t.string "agent_display_name", limit: 100
@@ -353,7 +356,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "event_id", null: false
     t.string "host_type", null: false
     t.bigint "host_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.bigint "sequence", null: false
     t.string "item_type", limit: 40, null: false
     t.jsonb "payload", default: {}, null: false
@@ -381,7 +384,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "account_id", null: false
     t.bigint "agent_id"
     t.bigint "manager_id"
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "executor_kind", limit: 20, null: false
     t.string "display_name", limit: 100, null: false
     t.string "registration_identifier", limit: 128
@@ -454,7 +457,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "account_id", null: false
     t.bigint "inference_request_event_id", null: false
     t.bigint "inference_request_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.bigint "sequence", null: false
     t.string "item_type", limit: 40, null: false
     t.jsonb "payload", default: {}, null: false
@@ -477,7 +480,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "account_id", null: false
     t.bigint "workspace_id", null: false
     t.bigint "creating_user_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "workload", limit: 32, null: false
     t.datetime "tombstoned_at"
     t.datetime "created_at", null: false
@@ -498,7 +501,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "account_id", null: false
     t.string "host_type", null: false
     t.bigint "host_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.integer "queue_position", null: false
     t.string "kind", limit: 20, null: false
     t.string "role", limit: 10, default: "user", null: false
@@ -551,7 +554,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   create_table "invitations", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "inviter_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "email", limit: 255, null: false
     t.string "role", limit: 20, default: "member", null: false
     t.datetime "expires_at", null: false
@@ -567,7 +570,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   create_table "mcp_connections", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "owner_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "name", limit: 100, null: false
     t.string "account_label", limit: 256
     t.text "endpoint_url", null: false
@@ -626,7 +629,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "description"
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.bigint "speaker_id"
     t.index ["account_id"], name: "index_memory_documents_on_account_id"
     t.index ["conversation_id", "name"], name: "index_memory_documents_conversation_identity", unique: true, where: "(conversation_id IS NOT NULL)"
@@ -641,7 +644,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   create_table "model_invocation_attempts", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "model_invocation_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.integer "ordinal", null: false
     t.string "admission_shape", limit: 16, null: false
     t.string "status", limit: 16, default: "prepared", null: false
@@ -666,7 +669,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "creating_user_id", null: false
     t.bigint "workspace_id"
     t.bigint "inference_request_id"
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "workload", limit: 32, null: false
     t.string "purpose", limit: 32, null: false
     t.string "provider_id", limit: 64, null: false
@@ -726,7 +729,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   create_table "model_provider_credentials", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "provider_id", limit: 64, null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "material_kind", limit: 16, null: false
     t.text "secret", null: false
     t.text "refresh_secret"
@@ -749,7 +752,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "account_id", null: false
     t.string "provider_id", limit: 64, null: false
     t.bigint "issuing_user_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "kind", limit: 16, null: false
     t.string "state", limit: 16, default: "pending", null: false
     t.string "progress", limit: 24, null: false
@@ -887,7 +890,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   create_table "refresh_token_families", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "user_id"
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "access_token_name", limit: 160, null: false
     t.string "device_ip", limit: 64
     t.string "device_user_agent", limit: 255
@@ -990,7 +993,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "account_id", null: false
     t.bigint "workspace_id", null: false
     t.bigint "creating_user_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "status", default: "pending", null: false
     t.string "failure_reason", limit: 64
     t.bigint "revision", default: 0, null: false
@@ -1083,7 +1086,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "account_id", null: false
     t.bigint "identity_id", null: false
     t.bigint "user_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "kind", limit: 20, default: "browser", null: false
     t.string "lookup_id", limit: 24
     t.string "secret_digest"
@@ -1104,7 +1107,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
 
   create_table "speakers", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "kind", limit: 16, null: false
     t.bigint "user_id"
     t.string "channel_key", limit: 64, null: false
@@ -1123,7 +1126,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "workspace_id"
     t.bigint "conversation_id"
     t.bigint "user_id"
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "namespace", limit: 80, null: false
     t.string "key", limit: 160, null: false
     t.jsonb "value"
@@ -1236,6 +1239,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.datetime "external_started_at"
     t.string "workload", default: "text_generation", null: false
     t.jsonb "ask_fields"
+    t.text "realtime_signal"
     t.index ["account_id"], name: "index_tasks_on_account_id"
     t.index ["addressed_executor_id", "id"], name: "index_tasks_on_addressed_frontier", where: "((status)::text = ANY (ARRAY['dispatched'::text, 'awaiting_input'::text, 'needs_approval'::text]))"
     t.index ["addressed_role", "id"], name: "index_tasks_on_pool_frontier", where: "((addressed_executor_id IS NULL) AND ((status)::text = 'dispatched'::text))"
@@ -1274,7 +1278,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   create_table "turns", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "conversation_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.integer "position", null: false
     t.string "kind", limit: 20, null: false
     t.string "role", limit: 10, null: false
@@ -1313,7 +1317,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
 
   create_table "usage_budget_entries", force: :cascade do |t|
     t.bigint "usage_budget_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.uuid "account_public_id", null: false
     t.uuid "user_public_id", null: false
     t.bigint "entry_sequence", null: false
@@ -1335,7 +1339,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   create_table "usage_budgets", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "user_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.uuid "user_public_id", null: false
     t.string "user_kind", limit: 16, null: false
     t.datetime "starts_at", null: false
@@ -1357,7 +1361,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
 
   create_table "usage_records", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "idempotency_key", limit: 96, null: false
     t.uuid "model_invocation_public_id", null: false
     t.integer "attempt_ordinal", null: false
@@ -1407,7 +1411,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
 
   create_table "users", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.bigint "identity_id"
     t.string "display_name", limit: 100, null: false
     t.string "kind", limit: 20, null: false
@@ -1456,7 +1460,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
   create_table "variants", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "turn_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.integer "position", null: false
     t.string "status", limit: 16, null: false
     t.string "source", limit: 16, null: false
@@ -1511,7 +1515,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_19_010000) do
     t.bigint "account_id", null: false
     t.bigint "creator_id", null: false
     t.bigint "owner_id", null: false
-    t.uuid "public_id", default: -> { "uuidv7()" }, null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
     t.string "name", limit: 100, null: false
     t.string "agent_identifier", limit: 128
     t.string "access_mode", limit: 20, default: "private", null: false

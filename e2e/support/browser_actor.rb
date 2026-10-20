@@ -18,25 +18,7 @@ require "uri"
 
 module E2E
   Capybara.register_driver :e2e_headless_chrome do |app|
-    options = Selenium::WebDriver::Chrome::Options.new
-    options.binary = ENV["E2E_CHROME_BINARY"] if ENV["E2E_CHROME_BINARY"]
-    options.logging_prefs = { browser: "ALL" }
-    [
-      "--headless=new",
-      "--window-size=1400,1400",
-      "--allow-pre-commit-input",
-      "--disable-features=PaintHolding",
-      "--disable-renderer-backgrounding",
-      "--disable-backgrounding-occluded-windows",
-      "--disable-background-timer-throttling",
-      "--disable-ipc-flooding-protection",
-    ].each { |argument| options.add_argument(argument) }
-
-    driver_options = { browser: :chrome, options: options }
-    path = BrowserActor.chromedriver_path
-    driver_options[:service] = Selenium::WebDriver::Service.chrome(path: path) if path
-
-    Capybara::Selenium::Driver.new(app, **driver_options)
+    BrowserActor.driver(app)
   end
 
   # CAPYBARA'S DEFAULT WAIT IS TWO SECONDS, which is the right number for an
@@ -59,6 +41,29 @@ module E2E
   # The real-browser actor for the device-flow human leg. Chrome owns cookies, redirects, CSRF form
   # state, and browser fetch headers.
   class BrowserActor
+    def self.driver(app, profile: nil)
+      options = Selenium::WebDriver::Chrome::Options.new
+      options.binary = ENV["E2E_CHROME_BINARY"] if ENV["E2E_CHROME_BINARY"]
+      options.add_argument("--user-data-dir=#{profile}") if profile
+      options.logging_prefs = { browser: "ALL" }
+      [
+        "--headless=new",
+        "--window-size=1400,1400",
+        "--allow-pre-commit-input",
+        "--disable-features=PaintHolding",
+        "--disable-renderer-backgrounding",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-background-timer-throttling",
+        "--disable-ipc-flooding-protection",
+      ].each { |argument| options.add_argument(argument) }
+
+      driver_options = { browser: :chrome, options: options }
+      path = BrowserActor.chromedriver_path
+      driver_options[:service] = Selenium::WebDriver::Service.chrome(path: path) if path
+
+      Capybara::Selenium::Driver.new(app, **driver_options)
+    end
+
     # THE DRIVER, RESOLVED OFFLINE FIRST, once per process: Selenium Manager re-resolves chromedriver
     # over the network each time its one-hour metadata has expired, and a world boot waited minutes
     # on that lookup before the steward's first page. nil names no service, which leaves the
@@ -96,9 +101,9 @@ module E2E
 
     attr_reader :page
 
-    def initialize(base_url)
+    def initialize(base_url, driver: :e2e_headless_chrome)
       @base_url = base_url
-      @page = Capybara::Session.new(:e2e_headless_chrome)
+      @page = Capybara::Session.new(driver)
     end
 
     def visit(location)

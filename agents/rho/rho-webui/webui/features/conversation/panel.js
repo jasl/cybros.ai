@@ -4,7 +4,6 @@ import { createHeader } from "./header.js";
 import { createTranscript } from "./transcript.js";
 import { createSeat } from "./seat.js";
 import { createComposer } from "./composer.js";
-import { createGitReview } from "./git-review.js";
 import { createHero } from "./hero.js";
 
 // The `main` conversation panel. One composer instance serves both layouts:
@@ -18,9 +17,8 @@ export function conversationPanel({ conversations, shell }) {
   const seat = createSeat({ conversations, nexusUrl: () => shell.setup.state.get().document?.nexus?.public_url });
   const hero = createHero({ conversations, shell });
   const composer = createComposer({ conversations });
-  const gitReview = createGitReview({ conversations });
   seat.element.prepend(transcript.jump);
-  const thread = el("div", { class: "conversation__thread" }, transcript.element, gitReview.element, seat.element);
+  const thread = el("div", { class: "conversation__thread" }, transcript.element, seat.element);
   const element = el("section", { class: "conversation", "aria-label": t("conversation.label") }, header.element, scroller);
   let layout = null;
 
@@ -39,7 +37,7 @@ export function conversationPanel({ conversations, shell }) {
     update() {},
     dispose() {
       stop();
-      for (const part of [composer, gitReview, hero, seat, transcript, header]) part.dispose();
+      for (const part of [composer, hero, seat, transcript, header]) part.dispose();
     },
   };
 }
