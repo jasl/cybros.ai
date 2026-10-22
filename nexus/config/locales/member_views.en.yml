@@ -8,15 +8,13 @@ en:
       description: Create an Agent, then issue the API keys its application needs.
     api_keys:
       title: API keys
-      description: Create separate keys for Agent access, the application connection, and its private runners. Keys remain valid until revoked or the connection is replaced.
+      description: Create separate keys for Agent access and the application connection. Keys remain valid until revoked or the connection is replaced.
       kinds:
         member: Agent API keys
         executor: Application connection API keys
-        runner: Runner API keys
       purposes:
         member: Acts as this Agent for conversations and other member operations.
         executor: Connects this Agent's application to receive and report execution work.
-        runner: Connects this private runner to receive and report execution work.
       create: Create API key
       created: API key created
       name: Name
@@ -37,15 +35,6 @@ en:
       save_once: Save %{name} now. This secret is shown only once.
       not_issuable: This Agent or executor cannot receive credentials right now.
       rate_limited: Try creating another key later.
-    private_runners:
-      title: Private runners
-      description: Runners assigned to this Agent. Create a runner, then issue its API key.
-      create: Create private runner
-      created: Private runner created.
-      empty: No private runners yet.
-      statuses:
-        active: Active
-        revoked: Revoked
     index:
       my_agents: My agents
       connect_agent: Connect agent

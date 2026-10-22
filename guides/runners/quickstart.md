@@ -30,7 +30,7 @@ docker exec rho-runner rho connect     # container
 rho connect                            # host
 ```
 
-`connect` prints a device code and a verification link. Open the link as the Human who will manage the Runner, check the code and approve. This independent Runner uses `user_private`, so all Agents you steward may use it; an owner or administrator can opt a fresh registration into `account_wide` on the approval page. The Runner receives only a transport credential. rho's bundled Runner uses the narrower `agent_private` scope; see [Identity and scope](deploy.md#identity-and-scope).
+`connect` prints a device code and a verification link. Open the link as the Human who will manage the Runner, check the code and approve. This independent Runner uses `user_private`, so all Agents you steward may use it; an owner or administrator can opt a fresh registration into `account_wide` on the approval page. The Runner receives only a transport credential. rho's Local environment is a Runner service on its application address, available only to that application family; see [Identity and scope](deploy.md#identity-and-scope).
 
 ```sh
 docker exec rho-runner rho status

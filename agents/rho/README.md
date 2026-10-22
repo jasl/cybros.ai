@@ -1,8 +1,8 @@
 # rho
 
-rho is the reference agent application for Cybros/Nexus: a Cowork agent that pairs an
-Agent identity (and an optional private Runner) to a Nexus server over OAuth device
-flow, then works through Nexus's conversation, task inbox and tool-call protocols.
+rho is the reference agent for Cybros/Nexus: a Cowork agent that pairs an
+Agent identity and application Executor to a Nexus server over OAuth device
+flow, optionally announces Local runner capability on that address, then works through Nexus's conversation, task inbox and tool-call protocols.
 Nexus owns the mechanisms (prompt assembly, execution, memory, approvals,
 persistence); rho owns the product policy (prompts, model selection, tool
 declarations, channels, UI).
@@ -18,7 +18,7 @@ packaged gem; the container itself has no build of its own.
   (`rho server`), the credential vault, the Nexus connection, the local control
   API, the extension manager, the shared application core (`Rho::Core`) that every
   surface consumes, and the single `exe/rho` CLI entry point. Runs in three modes:
-  `full` (agent + private runner), `agent` (conversations only), and `runner`
+  `full` (application + Local runner service), `agent` (conversations only), and `runner`
   (tools only, headless).
 
 - **rho-runner/** — the passive tool executor. Executes filesystem/process tools,

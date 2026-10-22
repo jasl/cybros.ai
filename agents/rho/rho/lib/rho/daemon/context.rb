@@ -106,7 +106,7 @@ module Rho
         Refusal.new(status: 422, code: "settings_unreadable", message: error.message)
       end
 
-      # THE AGENT APPLICATION'S OWN PLANE: the executor
+      # THE AGENT'S OWN PLANE: the executor
       # client on the lineage's transport credential — the inbox this
       # address is listed on, read for its asks and committed on without a
       # token. The same snapshot rule as the member plane; a lineage with
@@ -422,7 +422,8 @@ module Rho
       # the honest answer.
       def runner_snapshot
         announced = @announcements.call
-        { runner: slot_snapshot(:runner, announced["runner"]), agent: slot_snapshot(:agent_runner, announced["agent"]) }
+        { runner: (config.mode == "agent" ? nil : role_snapshot(:runner, announced["runner"])),
+          agent: (config.mode == "runner" ? nil : role_snapshot(:agent, announced["agent"])) }
       end
 
       def inventory = @loaded.inventory
@@ -448,9 +449,10 @@ module Rho
             message: "the kernel refused the declaration (#{outcome.code}); the daemon's log has the detail")
         end
 
-        def slot_snapshot(slot, announced)
-          @lineage.runner(slot)&.snapshot&.to_h&.merge(
-            announced: announced, socket: @lineage.executor_realtime(slot)&.connected? || false
+        def role_snapshot(role, announced)
+          @lineage.runner&.snapshot&.to_h&.merge(
+            tools: @loaded.registry.serving(role).names,
+            announced: announced, socket: @lineage.executor_realtime&.connected? || false
           )
         end
     end

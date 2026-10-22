@@ -68,16 +68,10 @@ not block the connection.
 `response_type=code`, `redirect_uri`, `state`, `code_challenge`,
 `code_challenge_method=S256`, optional `scope=application`, and
 `connection_mode=connect|login` (default `connect`). Registration fields use the
-same Agent, combined Agent/Runner, or machine-only shapes as the connector's
-[device start](device-flow.md#branch-a-b-combined-connection).
-
-A combined Agent/Runner connection creates an application-private Runner bound to its
-paired Agent. To add a Runner after pairing in Agent-only mode, a runner-only connection
-can send `assignment_agent_public_id` for that existing Agent. Nexus validates the same
-Human steward at approval and exchange, creates only the Runner credential lineage, and
-leaves the Agent connection unchanged. Both forms fix `agent_private` and offer no
-account-wide choice. A standalone machine request without that field retains the browser's
-Human-private or account-wide scope choice.
+same disjoint Agent or machine shapes as the connector's [device start](device-flow.md#post-oauthdevice_authorization).
+An application may announce Runner capability on its existing address after connecting.
+Mixed Agent/machine claims and the retired `assignment_agent_public_id` selector are refused.
+Independent machine requests retain the browser's Human-private or account-wide scope choice.
 
 Nexus validates the callback before using it. Approval requires a Nexus Human
 browser session. A bearer token cannot substitute for that browser authorization.
@@ -153,7 +147,7 @@ accepts.
 The default callback policy trusts the deployment's local network: HTTP and HTTPS
 `/auth/callback` URLs on loopback addresses, `localhost`, private IPv4 addresses
 (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) and IPv6 unique-local addresses
-(`fc00::/7`), on any valid port. These defaults permit Nexus and an agent application
+(`fc00::/7`), on any valid port. These defaults permit Nexus and an agent
 to run on different LAN machines. They accept no userinfo, query or fragment.
 DNS names other than `localhost` are not resolved or admitted automatically.
 

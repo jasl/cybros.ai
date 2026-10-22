@@ -53,7 +53,7 @@ module NexusDoubles
         if document && Array(configuration["runner_executor_public_ids"]).include?(runner)
           reserved = (tools.map { |entry| entry.dig("function", "name") } + Array(@tools).map { |entry| entry.fetch("name") } + ["skill"]).uniq
           selected = configuration["runner_tool_names"]
-          offered = document.fetch("served_tools").select do |entry|
+          offered = document.fetch("services").fetch("runner").fetch("tools").select do |entry|
             !entry["mcp"] && entry["description"] && entry["input_schema"] && (selected.nil? || selected.include?(entry.fetch("name")))
           end
           tools += CybrosAgent::Api::ToolLowering.function_entries(offered).map do |entry|

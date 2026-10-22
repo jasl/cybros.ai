@@ -31,12 +31,12 @@ class ExecutorProcessTest < Minitest::Test
   end
 
   def test_an_application_executor_uses_the_same_transport_with_its_paired_kind
-    options = E2E::ExecutorMain.parse(%w[--nexus-url http://nexus.test --kind agent_application --tools compact_history])
-    assert_equal "agent_application", options.fetch(:kind)
+    options = E2E::ExecutorMain.parse(%w[--nexus-url http://nexus.test --kind agent --tools compact_history])
+    assert_equal "agent", options.fetch(:kind)
     assert_equal ["compact_history"], options.fetch(:tools)
     process = E2E::ExecutorProcess.new(base_url: "http://nexus.test", home: "/tmp/application",
-      credential: "transport", kind: :agent_application, tools: options.fetch(:tools))
-    assert_equal :agent_application, process.kind
+      credential: "transport", kind: :agent, tools: options.fetch(:tools))
+    assert_equal :agent, process.kind
   end
 
   # THE WORLD FLAGS: a world serves the coding set whole (no `--tools`), a store needs a world, and

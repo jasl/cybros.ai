@@ -5,7 +5,7 @@ class OpsTerminalsTest < Minitest::Test
   include RhoTest::OpsHarness
 
   def test_creation_starts_one_fixed_terminal_with_original_rules_without_waiting_for_completion
-    api = NexusDoubles::FakeAgentApi.new
+    api = NexusDoubles::FakeAgentApi.new(executors: [NexusDoubles.remote_runner("runner-1")])
     daemon = member_ready(boot, api)
     response = request(daemon, :post, "/terminals", token: bearer(daemon),
       body: { runner_executor_public_id: "runner-1", idempotency_key: "retry-one", workspace_public_id: "ws-1" })
@@ -15,7 +15,8 @@ class OpsTerminalsTest < Minitest::Test
       JSON.parse(response.body).fetch("terminal"))
     run = api.run_creates.fetch(0).fetch("run")
     assert_equal [{ "tool" => { "name" => "terminal", "input" => {}, "key" => "call_tool",
-      "route" => { "kind" => "runner", "runner_executor_public_id" => "runner-1" } } }], run.fetch("steps")
+      "route" => { "kind" => "runner", "runner_executor_public_id" => "runner-1" },
+      "executor_context" => { "rho.environment" => { "root" => "/srv/elsewhere", "directories" => [], "anchor" => nil } } } }], run.fetch("steps")
     assert_equal Rho::RunDeclaration.request_rules(roots: Rho.protected_roots(daemon.home)), run.fetch("approval_rules")
     paths = api.requests.map(&:first)
     assert paths.any? { |path| path.end_with?("/runs/al-1/start") }

@@ -33,25 +33,11 @@ module AgentMembershipTestHelper
     DeviceAuthorizations::Consume.call(authorization: grant.reload)
   end
 
-  # The combined shape A+B (r-modes M2): one ceremony that pairs the agent's
-  # address AND a runner under the connecting human, private when newly registered.
-  def connect_combined_session(steward:, agent_identifier:, registration_identifier: "rho",
-                               device_name: "Desktop", display_name: "Shared program")
-    grant = DeviceAuthorizations::Issue.call(
-      account: steward.account, agent_identifier: agent_identifier,
-      agent_display_name: display_name,
-      requested_executor_display_name: device_name,
-      registration_identifier: registration_identifier, runner_display_name: device_name
-    ).authorization
-    DeviceAuthorizations::Connect.call(authorization: grant, connector: steward)
-    DeviceAuthorizations::Consume.call(authorization: grant.reload)
-  end
-
   # Branch B for either machine kind: a runner by default, a tools provider
   # when `executor_kind:` says so — the same ceremony, the requested kind.
   def connect_runner(manager:, registration_identifier: "workshop-install",
                      display_name: "Workshop laptop", assignment_scope: :user_private,
-                     executor_kind: :runner, assignment_agent: nil)
+                     executor_kind: :runner)
     existing = Executor.runner_for(
       account_id: manager.account_id,
       manager_id: manager.id,
@@ -59,8 +45,7 @@ module AgentMembershipTestHelper
     )
     grant = DeviceAuthorizations::Issue.call(
       account: manager.account, registration_identifier: registration_identifier,
-      runner_display_name: display_name, requested_executor_kind: executor_kind.to_s,
-      assignment_agent_public_id: assignment_agent&.public_id
+      runner_display_name: display_name, requested_executor_kind: executor_kind.to_s
     ).authorization
     DeviceAuthorizations::Connect.call(
       authorization: grant,

@@ -61,12 +61,6 @@ module E2E
         [detail.output, *Array(detail.content).map { |block| block["text"] }].compact.join
       end
 
-      # The structured-log lines of one event naming a conversation or a
-      # runner among their fields — the event's own field names stay rho's.
-      def environment_lines(daemon, event, naming:)
-        daemon.log_lines.select { |line| line["event"] == event && line.values.include?(naming) }
-      end
-
       # THE RUNNER-MODE RHO, BOOTED AGAIN on the same home: the credentials
       # stand and the runner row is the same; a stale announcement would
       # answer the readiness wait for a daemon that is gone, so it is

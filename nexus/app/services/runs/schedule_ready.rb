@@ -20,7 +20,7 @@ module Runs
     # otherwise DENIED as data — a typo never grants; an `author` or
     # `kernel` row is pre-approved by its origin unless a rule naming that
     # origin asks. A parked row rests at `needs_approval`, addressed to the
-    # host's agent application with the decision's effect profile and the
+    # host's agent with the decision's effect profile and the
     # park clock, listed on that inbox as kind `approval`, ended by the
     # member verbs (`Tasks::Approve.release`, the ONE grant site this stage
     # calls too) or the clock. Under `bypass` the crossing and the dispatch
@@ -139,7 +139,7 @@ module Runs
         end
 
         # The park: ONE write puts the row at the stage addressed to the
-        # host's agent application — the Human's member door alone on a
+        # host's agent — the Human's member door alone on a
         # standalone loop without one — with the effect profile the
         # approver reads and the park clock; then the addressee is nudged
         # (`work_available`, kind `approval`). The decision's executor is
@@ -148,7 +148,7 @@ module Runs
           address = Executors::Address.agent_address(run)
           Transition.node(node,
             status: "needs_approval", await_started_at: Time.current,
-            addressed_executor_id: address&.id, addressed_role: ("agent_application" if address),
+            addressed_executor_id: address&.id, addressed_role: ("agent" if address),
             effect_profile: decision.effect_profile)
           Executors::Nudge.work_available(node)
         end

@@ -50,25 +50,6 @@ class OAuth::TokensControllerTest < ActionDispatch::IntegrationTest
   # A connected combined (A+B) grant ready to consume, requested over the
   # wire in the shape rho in full mode sends: the agent triple and the
   # runner pair on one request.
-  def connected_combined_pair
-    member = @account.users.create!(kind: :agent, role: :member, steward: @owner, display_name: "rho", agent_identifier: "rho")
-    post oauth_device_authorization_path, params: {
-      client_id: OAuth::DEVICE_CLIENT_ID,
-      agent_identifier: "rho",
-      agent_display_name: "rho",
-      executor_display_name: "rho on laptop",
-      registration_identifier: "rho",
-      runner_display_name: "rho on laptop",
-    }
-    assert_response :success
-
-    device_code = response.parsed_body.fetch("device_code")
-    authorization = DeviceAuthorization.find_by_device_code(device_code)
-    result = DeviceAuthorizations::Connect.call(authorization: authorization, connector: @owner)
-    assert_equal :connected, result.outcome
-    assert_equal member, authorization.reload.user
-    [authorization, device_code]
-  end
 
   def post_token(params = {}, headers: {}, **fields)
     post oauth_token_path,
@@ -127,39 +108,21 @@ class OAuth::TokensControllerTest < ActionDispatch::IntegrationTest
   # The combined grant's body (r-modes M2): the member-led agent bundle as
   # branch A returns it, plus a nested `runner` object carrying the second
   # lineage — its own transport credential and its own refresh token.
-  test "a combined consume returns the agent bundle with a nested runner lineage" do
-    _grant, device_code = connected_combined_pair
-
-    post_token(grant_type: OAuth::DEVICE_GRANT_TYPE, device_code: device_code)
-
+  test "application runner capability uses the original credential pair" do
+    _grant, device_code = connected_pair
+    assert_difference -> { Executor.count }, 1 do
+      post_token(grant_type: OAuth::DEVICE_GRANT_TYPE, device_code: device_code)
+    end
     assert_response :success
-    assert_equal "no-store", response.headers["Cache-Control"]
     body = response.parsed_body
-    assert_equal "member", body["plane"]
-    assert_predicate AccessToken.authenticate_token(body["access_token"]), :member_plane?
-    agent_transport = AccessToken.authenticate_executor_token(body["executor_access_token"])
-    assert_predicate agent_transport.executor, :agent_application?
-
-    runner = body.fetch("runner")
-    assert_equal %w[access_token refresh_token], runner.keys.sort
-    assert runner["access_token"].start_with?("sk-cybros-api-v1-")
-    assert runner["refresh_token"].start_with?("rt-cybros-api-v1-")
-    assert_nil AccessToken.authenticate_token(runner["access_token"]),
-      "the runner half is rejected on the member plane"
-    runner_transport = AccessToken.authenticate_executor_token(runner["access_token"])
-    assert_equal @owner.managed_executors.sole, runner_transport.executor
-    assert_predicate runner_transport.executor, :runner?
-    assert_equal "rho", runner_transport.executor.registration_identifier
-
-    # Its refresh token rotates its OWN family, into the transport-led shape.
-    post_token(grant_type: OAuth::REFRESH_GRANT_TYPE, refresh_token: runner["refresh_token"])
-    assert_response :success
-    rotated = response.parsed_body
-    assert_equal "executor_transport", rotated["plane"]
-    assert_not rotated.key?("executor_access_token")
-    assert_not rotated.key?("runner")
-    assert_equal runner_transport.executor,
-      AccessToken.authenticate_executor_token(rotated["access_token"]).executor
+    assert_not body.key?("runner")
+    credential = AccessToken.authenticate_executor_token(body.fetch("executor_access_token"))
+    address = credential.executor
+    epoch = address.credential_epoch
+    assert_predicate address.announce(services: { "agent" => { "tools" => [] }, "runner" => { "tools" => [] } }), :accepted?
+    assert_equal credential, AccessToken.authenticate_executor_token(body.fetch("executor_access_token"))
+    assert_equal epoch, address.reload.credential_epoch
+    assert_equal %w[agent runner], address.service_roles
   end
 
   test "polling a pending grant returns authorization_pending" do

@@ -285,9 +285,9 @@ GEM
       rubyzip (>= 1.2.2, < 4.0)
       websocket (~> 1.0)
     simpleidn (0.3.0)
-    sqlite3 (2.10.0-aarch64-linux-gnu)
-    sqlite3 (2.10.0-arm64-darwin)
-    sqlite3 (2.10.0-x86_64-linux-gnu)
+    sqlite3 (2.10.1-aarch64-linux-gnu)
+    sqlite3 (2.10.1-arm64-darwin)
+    sqlite3 (2.10.1-x86_64-linux-gnu)
     telegram-bot-ruby (2.8.1)
       dry-struct (~> 1.6)
       faraday (~> 2.0)
@@ -348,6 +348,7 @@ CHECKSUMS
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   bigdecimal (4.1.3) sha256=61ebe1e5e559bdc3cc6f2c0ee7f427321fc838f59611c294356eb04d6e21cf66
   bootsnap (1.26.0) sha256=ca96237015e6cd74a02963d5821cf00ac5ea134653b323e8cd6d702a7718bf1b
+  bundler (4.0.22) sha256=d8d5ec84c8555e0af71db63ed7aee4d1a8fb839ec46d84212d61979242a5d75a
   capybara (3.40.0) sha256=42dba720578ea1ca65fd7a41d163dd368502c191804558f6e0f71b391054aeef
   cmctl (0.1.0)
   concurrent-ruby (1.3.8) sha256=b2f1be836e968ccc78ccfce277ea79c72a88633f22306782c16ff23fb415d1e1
@@ -435,9 +436,9 @@ CHECKSUMS
   selenium-webdriver (4.51.0) sha256=09edf1b7fc360e0570bac609676f804ed527fe0b2f285e03233561e29b0ec105
   simple_inference (0.2.0)
   simpleidn (0.3.0) sha256=12ca730bed2f3db04d11e9bfd1bca3e11fb37f55b21eb2e9793fb5814bf54d03
-  sqlite3 (2.10.0-aarch64-linux-gnu) sha256=dafeea94182af2eb53a10797be359fa6ec4270532bd45255d1c2beb69f2eb743
-  sqlite3 (2.10.0-arm64-darwin) sha256=f619f33adfd01a1827e8764a3da92b289c1a99d93707d021a242dccba6909c4e
-  sqlite3 (2.10.0-x86_64-linux-gnu) sha256=295f48b240ba663efa2e3b6f38cbc0f19f5c8a2823a71fda3bf15531be5dd0e8
+  sqlite3 (2.10.1-aarch64-linux-gnu) sha256=48390cc2b809acd1280f5c9daaf3c2013833adb8a5ece9b0634f708651080ccd
+  sqlite3 (2.10.1-arm64-darwin) sha256=45f74dad0a8ee57ae5fadfac39bf160d1f09fb0484a442223310d869cd957d92
+  sqlite3 (2.10.1-x86_64-linux-gnu) sha256=661ecede31e23a412059cd8c684ed84e332f64f167e4a90902cf99e8ea2c8718
   telegram-bot-ruby (2.8.1) sha256=7a7b0988c03988770657c52c3f55be4fe67926e7c72ebfa5d47ff621426a42a8
   thor (1.5.0) sha256=e3a9e55fe857e44859ce104a84675ab6e8cd59c650a49106a05f55f136425e73
   timeout (0.6.1) sha256=78f57368a7e7bbadec56971f78a3f5ecbcfb59b7fcbb0a3ed6ddc08a5094accb

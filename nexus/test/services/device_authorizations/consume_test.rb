@@ -49,7 +49,7 @@ class DeviceAuthorizations::ConsumeTest < ActiveSupport::TestCase
     grant.reload
     assert grant.consumed?
     executor = member.executors.sole
-    assert_equal "agent_application", executor.executor_kind
+    assert_equal "agent", executor.executor_kind
     assert_equal "Consumer app", executor.display_name
     # One connection, one bundle: a member credential for the member/data plane and this executor's
     # transport credential.
@@ -251,7 +251,7 @@ class DeviceAuthorizations::ConsumeTest < ActiveSupport::TestCase
     )
     executor = member.executors.create!(
       account: @account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Original"
     )
     grant = connected_grant(
@@ -364,7 +364,7 @@ class DeviceAuthorizations::ConsumeTest < ActiveSupport::TestCase
   test "consume crossing its deadline while waiting for the agent address preserves the pairing" do
     member = new_agent(identifier: "install-address-deadline")
     executor = member.executors.create!(
-      account: @account, executor_kind: :agent_application, display_name: "Original app"
+      account: @account, executor_kind: :agent, display_name: "Original app"
     )
     epoch = executor.credential_epoch
     grant = connected_grant(member: member, agent_identifier: member.agent_identifier)

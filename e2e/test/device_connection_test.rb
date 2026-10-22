@@ -197,8 +197,8 @@ class DeviceConnectionTest < Minitest::Test
     end
   end
 
-  def test_combined_connection_refuses_to_repurpose_an_existing_account_wide_runner
-    registration_identifier = "#{REGISTRATION_IDENTIFIER}-combined"
+  def test_mixed_registration_is_refused_without_repurposing_an_independent_runner
+    registration_identifier = "#{REGISTRATION_IDENTIFIER}-independent"
     E2E::DeviceAuthorizationBudget.consume
     authorization = @client.request_runner_authorization(
       registration_identifier: registration_identifier, runner_display_name: "E2E shared workshop"
@@ -208,43 +208,21 @@ class DeviceConnectionTest < Minitest::Test
     original_client = CybrosAgent.planes_for(credentials, base_url: @base_url).executor_client
     original = original_client.executor.executor
 
-    # A combined grant requires an application-private Runner. It cannot
-    # repurpose a shared registration or fence its independently issued credentials.
     E2E::DeviceAuthorizationBudget.consume
-    combined = @client.request_authorization(
-      agent_identifier: "#{AGENT_IDENTIFIER}-combined",
-      agent_display_name: "E2E combined helper", executor_display_name: "E2E combined app",
-      runner: { identifier: registration_identifier, display_name: "E2E shared workshop" }
-    )
-    assert_equal :combined, combined.branch
-    @page.current_window.resize_to(1400, 1000)
-    E2E::RunnerGrant.visit_connection(actor: @actor, authorization: combined)
-    assert @page.has_text?(/Also runs as a runner.*private to this application and its named Agents/)
-    assert @page.has_no_text?(/available account-wide/)
-    E2E::SecretHygiene.save_screenshot(
-      @actor, File.expand_path("../artifacts/screenshots/device_connection-combined-desktop.png", __dir__)
-    )
-
-    @page.current_window.resize_to(390, 844)
-    assert @page.has_text?(/Also runs as a runner.*private to this application and its named Agents/)
-    assert @page.has_no_text?(/available account-wide/)
-    E2E::RunnerGrant.connect_in_browser(actor: @actor, authorization: combined)
-    assert @page.has_text?(/Also runs as a runner.*private to this application and its named Agents/)
-    assert @page.has_no_text?(/available account-wide/)
-    E2E::SecretHygiene.save_screenshot(
-      @actor, File.expand_path("../artifacts/screenshots/device_connection-combined-narrow.png", __dir__)
-    )
-
-    refused = assert_raises(CybrosAgent::DeviceFlow::AuthorizationLostError) do
-      @client.await_credentials(combined)
-    end
-    assert_equal "access_denied", refused.oauth_error
+    response = Net::HTTP.post_form(URI.join(@base_url, "/oauth/device_authorization"), {
+      "client_id" => CybrosAgent::DeviceFlow::Client::CLIENT_ID,
+      "agent_identifier" => "#{AGENT_IDENTIFIER}-mixed",
+      "agent_display_name" => "E2E helper", "executor_display_name" => "E2E app",
+      "registration_identifier" => registration_identifier, "executor_kind" => "runner",
+    })
+    assert_equal "400", response.code
+    assert_equal "invalid_request", JSON.parse(response.body).fetch("error")
     preserved = original_client.executor.executor
     assert_equal original.public_id, preserved.public_id
     assert_equal original.credential_epoch, preserved.credential_epoch
     successor = @client.rotate(refresh_token: credentials.refresh_token)
     planes = CybrosAgent.planes_for(successor, base_url: @base_url)
-    assert_nil planes.client, "the original registration remains transport-only"
+    assert_nil planes.client
     assert_equal original.public_id, planes.executor_client.executor.executor.public_id
     assert_equal original.credential_epoch, planes.executor_client.executor.executor.credential_epoch
     @actor.visit("/runners")
@@ -264,7 +242,7 @@ class DeviceConnectionTest < Minitest::Test
     assert_equal "member", profile.credential.plane
 
     description = planes.executor_client.executor
-    assert_equal "agent_application", description.executor.kind
+    assert_equal "agent", description.executor.kind
     assert_equal 1, description.executor.credential_epoch,
       "a first connection pairs the address at epoch one"
 

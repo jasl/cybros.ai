@@ -25,7 +25,7 @@ class Executors::ToolImportsTest < ActiveJob::TestCase
     assert_empty Nexus::ToolImports::FIELDS.map(&:to_s) & context.keys
 
     frozen = row.tool_definitions.deep_dup
-    @runner_b.announce(tools: [announced("read", "changed")], environment: { "fragments" => [{ "text" => "Later" }] })
+    @runner_b.announce(services: { @runner_b.executor_kind => { "tools" => [announced("read", "changed")], "environment" => { "fragments" => [{ "text" => "Later" }] } } })
     assert_equal frozen, row.reload.tool_definitions
     assert_equal "Build", row.operation_context.dig("environment", "executors", 0, "environment", "fragments", 0, "text")
   end
@@ -132,8 +132,8 @@ class Executors::ToolImportsTest < ActiveJob::TestCase
     run = seed(model("plan", **imports), default_runner_executor_public_id: @runner_b.public_id)
     source = task(run, "plan")
     assert_equal [], source.operation_context.dig("environment", "skills")
-    @runner_b.announce(tools: [announced("read", "document"), announced("skill", "name")],
-      documents: [{ "name" => "new-skill", "description" => "Published after acceptance" }])
+    @runner_b.announce(services: { @runner_b.executor_kind => { "tools" => [announced("read", "document"), announced("skill", "name")],
+      "documents" => [{ "name" => "new-skill", "description" => "Published after acceptance" }] } })
     payload = {
       "type" => Tasks::ModelTask.sti_name, "tool_definitions" => source.tool_definitions,
       "operation_context" => source.operation_context.deep_dup,
@@ -145,7 +145,7 @@ class Executors::ToolImportsTest < ActiveJob::TestCase
   test "candidate environment facts obey the accepted context bound in aggregate" do
     candidates = 18.times.map do |index|
       row = runner("large-candidate-#{index}", "Build #{index}", "path")
-      assert_predicate row.announce(tools: [], environment: { "text" => "x" * 60_000 }), :accepted?
+      assert_predicate row.announce(services: { row.executor_kind => { "tools" => [], "environment" => { "text" => "x" * 60_000 } } }), :accepted?
       row.public_id
     end
     assert_no_difference -> { Run.count } do
@@ -173,8 +173,8 @@ class Executors::ToolImportsTest < ActiveJob::TestCase
     def runner(identifier, display_name, parameter)
       connect_runner(manager: users(:owner), registration_identifier: identifier,
         display_name: display_name, assignment_scope: :account_wide).executor_access_token.executor.tap do |row|
-        outcome = row.announce(tools: [announced("read", parameter), announced("code", "code")],
-          environment: { "fragments" => [{ "text" => display_name }] })
+        outcome = row.announce(services: { row.executor_kind => { "tools" => [announced("read", parameter), announced("code", "code")],
+          "environment" => { "fragments" => [{ "text" => display_name }] } } })
         assert_predicate outcome, :accepted?
       end
     end

@@ -93,8 +93,8 @@ class Runs::AddressingTest < ActiveJob::TestCase
 
   test "an accepted Runner target dispatches its served name with the announcement frozen" do
     runner = suite_runner
-    runner.announce(tools: [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
-                              "timeout_ms" => 45_000 }])
+    runner.announce(services: { runner.executor_kind => { "tools" => [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
+                              "timeout_ms" => 45_000 }] } })
     run = seed(tool("t"))
     assert_equal runner.id, run.default_runner_executor_id, "the runner the seed named is the initial default"
     start!(run)
@@ -103,12 +103,12 @@ class Runs::AddressingTest < ActiveJob::TestCase
     assert_equal "dispatched", call.status
     assert_equal runner.id, call.addressed_executor_id
     assert_equal "runner", call.addressed_role
-    assert_equal runner.effect_profile_for("read_file"), call.effect_profile
+    assert_equal runner.effect_profile_for("read_file", role: runner.executor_kind), call.effect_profile
     assert_equal 45_000, call.effect_profile.fetch("timeout_ms"), "the announced timeout rides the frozen profile"
     assert_equal 45_000, call.effective_timeout_ms, "and is the deadline's second source"
   end
 
-  test "a name only the agent address announces is dispatched to the agent application" do
+  test "a name only the agent address announces is dispatched to the agent" do
     run = seed(tool("t", AGENT_ONLY), creating_user: @agent)
     assert_equal suite_runner.id, run.default_runner_executor_id, "the seed named the default Runner separately from the Agent address"
     announce_on_address!(AGENT_ONLY)
@@ -117,8 +117,8 @@ class Runs::AddressingTest < ActiveJob::TestCase
     call = node(run, "t")
     assert_equal "dispatched", call.status
     assert_equal agent_address.id, call.addressed_executor_id
-    assert_equal "agent_application", call.addressed_role
-    assert_equal agent_address.effect_profile_for(AGENT_ONLY), call.effect_profile
+    assert_equal "agent", call.addressed_role
+    assert_equal agent_address.effect_profile_for(AGENT_ONLY, role: agent_address.executor_kind), call.effect_profile
   end
 
   # An Agent announcement provides its own names; it does not select the
@@ -133,7 +133,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
     call = node(run, "t")
     assert_equal "dispatched", call.status
     assert_equal agent_address.id, call.addressed_executor_id
-    assert_equal "agent_application", call.addressed_role
+    assert_equal "agent", call.addressed_role
   end
 
   # The accepted Runner route owns the call even when an Agent serves the same name.
@@ -216,7 +216,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
     announce_on_address!(AGENT_ONLY)
     start!(on_agent, acting_user: @agent)
     assert_equal agent_address.id, node(on_agent, "t").addressed_executor_id
-    assert_equal "agent_application", node(on_agent, "t").addressed_role
+    assert_equal "agent", node(on_agent, "t").addressed_role
   end
 
   test "a name nobody announces fails at start with tool_not_served, and the model reads it" do
@@ -256,7 +256,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
       registration_identifier: "bare", manager: users(:owner), assignment_scope: :account_wide)
     foreign = connect_runner(manager: users(:owner), registration_identifier: "owner-private",
       assignment_scope: :user_private).executor_access_token.executor
-    [bare, foreign].each { |runner| assert_predicate runner.announce(tools: TEST_SERVED_TOOLS), :accepted? }
+    [bare, foreign].each { |runner| assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted? }
     revoked = suite_runner
     revoked.revoke
     [bare, foreign, revoked].each do |runner|
@@ -282,7 +282,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
     call = node(run, "t")
     frozen = call.effect_profile
 
-    assert_predicate suite_runner.announce(tools: []), :accepted?
+    assert_predicate suite_runner.announce(services: { suite_runner.executor_kind => { "tools" => [] } }), :accepted?
     schedule!(run)
     call.reload
     assert_equal suite_runner.id, call.addressed_executor_id
@@ -299,7 +299,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
 
     second = connect_runner(manager: users(:owner), registration_identifier: "test-runner-2",
       assignment_scope: :account_wide).executor_access_token.executor
-    assert_predicate second.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate second.announce(services: { second.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     # Change only the host default to prove retry retains the task's accepted target.
     run.update!(default_runner_executor: second)
 
@@ -338,7 +338,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
     assert_equal "awaiting_input", asked.status
     assert_nil asked.resolution_token
     assert_equal agent_address.id, asked.addressed_executor_id
-    assert_equal "agent_application", asked.addressed_role
+    assert_equal "agent", asked.addressed_role
 
     on_human = seed(model("round1", "prompt" => "go"))
     start!(on_human)
@@ -398,7 +398,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
     assert_equal "dispatched", call.status
     assert_equal provider.id, call.addressed_executor_id
     assert_equal "tool_provider", call.addressed_role
-    assert_equal provider.effect_profile_for("memory_read"), call.effect_profile
+    assert_equal provider.effect_profile_for("memory_read", role: provider.executor_kind), call.effect_profile
     assert_equal 20_000, call.effect_profile.fetch("timeout_ms"), "the ANNOUNCED profile, not the registry's"
     assert_equal 20_000, call.effective_timeout_ms
   end
@@ -423,7 +423,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
   # provider, and a runner is never one.
   test "a runner announcing memory_read is never addressed for it" do
     runner = suite_runner
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS + memory_entries(["memory_read"])), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + memory_entries(["memory_read"]) } }), :accepted?
 
     plain = seed(memory_model("round1"))
     start!(plain)
@@ -461,7 +461,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
   test "a provider that dropped a verb fails that verb only" do
     provider = memory_provider
     override!(provider)
-    assert_predicate provider.announce(tools: memory_entries(MEMORY_NAMES - ["memory_ls"])), :accepted?
+    assert_predicate provider.announce(services: { provider.executor_kind => { "tools" => memory_entries(MEMORY_NAMES - ["memory_ls"]) } }), :accepted?
 
     dropped = seed(memory_model("round1"))
     start!(dropped)
@@ -521,7 +521,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
 
     second = connect_runner(manager: users(:owner), registration_identifier: "test-runner-2",
       assignment_scope: :account_wide).executor_access_token.executor
-    assert_predicate second.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate second.announce(services: { second.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     result = Executors::DefaultRunner.call(Executors::DefaultRunner::Command.new(
       host: run, executor_public_id: second.public_id, acting_user: @human
     ))
@@ -539,7 +539,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
   test "a loop-backed loop is addressed for its conversation's ANSWERER, never its speaker" do
     owners_private = connect_runner(manager: users(:owner), registration_identifier: "owner-private",
       assignment_scope: :user_private).executor_access_token.executor
-    assert_predicate owners_private.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate owners_private.announce(services: { owners_private.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     answered = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent,
       default_runner_executor: owners_private)
 
@@ -555,7 +555,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
   test "a loop-backed loop is addressed for its TURN's answerer; the conversation's default never enters" do
     owners_private = connect_runner(manager: users(:owner), registration_identifier: "owner-private",
       assignment_scope: :user_private).executor_access_token.executor
-    assert_predicate owners_private.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate owners_private.announce(services: { owners_private.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     plain = Conversation.create!(workspace: @workspace, creating_user: @human, default_runner_executor: owners_private)
 
     run = create_answered_loop(tool("t"), conversation: plain, acting_user: @human, answering_user: @agent)
@@ -605,7 +605,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
 
   test "a Runner skill callable keeps the source target and appears in the inbox" do
     runner = suite_runner
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS + [SKILL_ENTRY], documents: [DOCUMENT]), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [SKILL_ENTRY], "documents" => [DOCUMENT] } }), :accepted?
     run = seed(skill_model("round1", entry: routed_skill(runner)))
     start!(run)
     call = skill_call!(run, { name: "deploy-notes" }, called: "runner_skill")
@@ -613,7 +613,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
     assert_equal runner.id, call.addressed_executor_id
     assert_equal runner.public_id, call.target_executor_public_id
     assert_equal "runner", call.addressed_role
-    assert_equal runner.effect_profile_for("skill"), call.effect_profile
+    assert_equal runner.effect_profile_for("skill", role: runner.executor_kind), call.effect_profile
     row = Executors::Inbox.row(call)
     assert_equal "skill", row.fetch(:tool_name)
     assert_equal "runner_skill", row.fetch(:tool_alias)
@@ -623,7 +623,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
 
   test "a kernel skill alias still maps inputs on the frozen Agent source" do
     announce_on_address!(AGENT_ONLY)
-    assert_predicate agent_address.announce(tools: [SKILL_ENTRY], documents: [DOCUMENT]), :accepted?
+    assert_predicate agent_address.announce(services: { agent_address.executor_kind => { "tools" => [SKILL_ENTRY], "documents" => [DOCUMENT] } }), :accepted?
     run = seed(skill_model("round1", entry: SKILL_ALIAS), creating_user: @agent)
     start!(run, acting_user: @agent)
     call = skill_call!(run, { skill: "deploy-notes" }, called: "Skill")
@@ -636,11 +636,11 @@ class Runs::AddressingTest < ActiveJob::TestCase
 
   test "a Runner skill reads only the originating frozen document catalog" do
     runner = suite_runner
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS + [SKILL_ENTRY], documents: [DOCUMENT]), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [SKILL_ENTRY], "documents" => [DOCUMENT] } }), :accepted?
     run = seed(skill_model("round1", entry: routed_skill(runner)))
     start!(run)
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS + [SKILL_ENTRY],
-      documents: [DOCUMENT, { "name" => "later-notes", "description" => "Published later." }]), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [SKILL_ENTRY],
+      "documents" => [DOCUMENT, { "name" => "later-notes", "description" => "Published later." }] } }), :accepted?
 
     call = skill_call!(run, { name: "later-notes" }, called: "runner_skill")
 
@@ -652,9 +652,9 @@ class Runs::AddressingTest < ActiveJob::TestCase
 
   test "a Runner withdrawing its skill capability fails without selecting another source" do
     runner = suite_runner
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS + [SKILL_ENTRY], documents: [DOCUMENT]), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [SKILL_ENTRY], "documents" => [DOCUMENT] } }), :accepted?
     run = seed(skill_model("round1", entry: routed_skill(runner)))
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS, documents: [DOCUMENT]), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS, "documents" => [DOCUMENT] } }), :accepted?
     start!(run)
     call = skill_call!(run, { name: "deploy-notes" }, called: "runner_skill")
     assert_equal "failed", call.status
@@ -666,7 +666,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
 
   test "a name nobody announced runs in-process with the registry's profile, whatever the runner serves" do
     runner = suite_runner
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS + [SKILL_ENTRY], documents: [DOCUMENT]), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [SKILL_ENTRY], "documents" => [DOCUMENT] } }), :accepted?
     run = seed(skill_model("round1"))
     start!(run)
 
@@ -688,25 +688,25 @@ class Runs::AddressingTest < ActiveJob::TestCase
 
   test "a plain skill keeps the Agent source even when a Runner later announces the same name" do
     announce_on_address!(AGENT_ONLY)
-    assert_predicate agent_address.announce(tools: [
+    assert_predicate agent_address.announce(services: { agent_address.executor_kind => { "tools" => [
       { "name" => AGENT_ONLY, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }, SKILL_ENTRY,
-    ], documents: [{ "name" => "echo-notes", "description" => "The address's own." }, DOCUMENT]), :accepted?
+    ], "documents" => [{ "name" => "echo-notes", "description" => "The address's own." }, DOCUMENT] } }), :accepted?
     run = seed(skill_model("round1"), creating_user: @agent)
     start!(run, acting_user: @agent)
 
     call = skill_call!(run, { name: "echo-notes" })
     assert_equal "dispatched", call.status
     assert_equal agent_address.id, call.addressed_executor_id
-    assert_equal "agent_application", call.addressed_role
-    assert_equal agent_address.effect_profile_for("skill"), call.effect_profile
+    assert_equal "agent", call.addressed_role
+    assert_equal agent_address.effect_profile_for("skill", role: agent_address.executor_kind), call.effect_profile
 
     runner = suite_runner
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS + [SKILL_ENTRY], documents: [DOCUMENT]), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [SKILL_ENTRY], "documents" => [DOCUMENT] } }), :accepted?
     both = seed(skill_model("round1"), creating_user: @agent)
     start!(both, acting_user: @agent)
     call = skill_call!(both, { name: "deploy-notes" })
     assert_equal agent_address.id, call.addressed_executor_id
-    assert_equal "agent_application", call.addressed_role
+    assert_equal "agent", call.addressed_role
   end
 
   # The route reads the ANNOUNCEMENTS and never the workspace map: a

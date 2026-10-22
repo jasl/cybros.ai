@@ -12,7 +12,6 @@ query!(RunnerListQuery {
     order: Order
 });
 request!(IssueApiKey {name:String} {note:String});
-request!(CreatePrivateRunner {display_name:String} {});
 request!(ProviderVersion {expected_lock_version:Option<i64>} {});
 request!(ProviderDefinition {definition:JsonObject,expected_lock_version:Option<i64>} {});
 request!(ModelDefinitionRequest {model:String,definition:JsonObject,expected_lock_version:Option<i64>} {});

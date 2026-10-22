@@ -49,7 +49,7 @@ Trust-domain and credential authority remain owned by `.ai/boundaries.md`.
 - API families follow responsibility: `/agent_api/v1` serves
   Agent work; `/api/v1` serves Human personal settings and system settings. System settings
   under `/api/v1/admin` are visible and usable only by a live Human owner/admin; personal
-  settings do not acquire that role requirement. Agent application WebUIs use their own control
+  settings do not acquire that role requirement. Agent WebUIs use their own control
   surface and Agent API client. Nexus's Human work console uses Rails Session/CSRF endpoints
   over the same content queries and domain commands as the member API, without borrowing an
   Agent bearer. Browser use of the Platform API belongs only to settings pages; `cmctl` is a
@@ -88,11 +88,11 @@ to applications and SDKs; Session upload bytes/preview reads remain authorized r
 
 - Human personal settings create independent Agent identities and issue, list and revoke their
   long-lived API keys. Steward-scoped finders exclude named Agents; administrator status
-  grants no access to another Human's keys. Member, application executor and private Runner keys
-  have separate nested resources. Issuance returns the secret once in a `no-store` response;
+  grants no access to another Human's keys. Member and application executor keys
+  have separate nested resources; Local runner capability shares the application transport. Issuance returns the secret once in a `no-store` response;
   later reads return metadata only. Ordinary key issuance neither advances an epoch nor revokes
   existing keys. Whole-connection revocation and OAuth re-pair retain their broader fences.
-- API-created Agents and private Runners receive server-generated opaque registration identifiers.
+- API-created Agents receive server-generated opaque registration identifiers.
   Their existing self-description resources expose those non-secret identifiers and the public
   UUID bindings an importing client must validate. Address ownership and Runner assignment are
   registration facts, never the execution principal of a future task.
@@ -122,12 +122,12 @@ to applications and SDKs; Session upload bytes/preview reads remain authorized r
   identifiers returned by its profile/executor for later Human login; neither is typed, imported, or exported
   by a person. Nexus treats the complete identifier as an opaque bounded string.
   `.ai/boundaries.md` owns logical identity, pairing, assignment ACL, and management authority.
-  Agent and machine claims are distinct branches; a combined grant creates a Runner with
-  `agent_private` scope bound to its paired Agent. A runner-only request can name the public UUID
-  of an existing paired Agent in `assignment_agent_public_id`, fixing the same scope without
-  rotating that Agent's lineage. Both paths require the same scope and binding on re-pair;
-  a mismatch refuses the grant. `executor_kind`
-  is machine-only and closed to `runner | tool_provider`.
+  Agent and machine claims are disjoint branches. An application connection issues one member/
+  transport bundle for its single address; its optional Runner service is announced later on
+  that address. Combined claim sets and retired assignment selectors are rejected.
+  `executor_kind` is machine-only and closed to `runner | tool_provider`.
+  Executor announcements replace the entire `services` map. Discovery can filter registration
+  `kind` and service `role` independently, and includes eligible application addresses.
 - Browser Connect freezes the permitted consequence, selected fresh-registration scope, and the
   actor's authority generation. Consume rechecks them under the owning locks. The runner-only form's
   observed registration public id or `absent` is reject-only: a mismatch is
@@ -135,9 +135,6 @@ to applications and SDKs; Session upload bytes/preview reads remain authorized r
   authority, names another key, or changes scope. Connect's separate pairing marker fences changes
   after POST. A live registration re-pairs without changing its scope; a later fresh registration
   after terminal revocation may choose again. Keep these two stale-state guards distinct.
-  A combined grant freezes only the Agent's pairing marker; its Runner is resolved at Consume,
-  with no Runner browser precondition or scope selector. Its page describes the fixed
-  application-private scope. Runner-only supplements have that same fixed scope and no sharing selector.
 - Browser Connect never lets a person select an existing Agent/executor and renders neither the
   registration identifier nor the program-provided display name. It presents the generic replacement
   consequence: a winning Consume
@@ -273,7 +270,7 @@ to applications and SDKs; Session upload bytes/preview reads remain authorized r
   may read bounded Nexus-only status, receipt and log windows through the configured private Unix socket.
   These reads never contact a registry or run Docker. Explicit check and upgrade POSTs delegate
   Nexus's own upgrade to the installation owner; they cannot select or operate an agent
-  application or a combined release. Nexus never holds the Docker socket or runs an upgrade job.
+  or a combined release. Nexus never holds the Docker socket or runs an upgrade job.
   Browser writes use the existing cookie/CSRF plane; Platform writes retain bearer-only rules.
   An unavailable owner reports unavailable, and an unset socket reports unsupported.
 

@@ -740,7 +740,7 @@ class RunnerLoopTest < Minitest::Test
       pool: Rho::Runner::Pool.new(worker_threads: 1), sleeper: ->(_) { nil })
       .nudged(run_public_id: "loop-1", task_key: "t1")
 
-    assert_includes log.told, ["runner_task_claimed", { task: "t1", tool: "echo", deadline_at: at }]
+    assert_includes log.told, ["runner_task_claimed", { task: "t1", tool: "echo", role: "runner", deadline_at: at }]
   end
 
   # THE PORT SITS BEHIND RHO'S RULES: the

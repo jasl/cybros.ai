@@ -50,6 +50,26 @@ class DaemonForeignAnswererTest < Minitest::Test
     end
   end
 
+  def test_an_explicit_foreign_runner_environment_is_captured_without_discovering_its_private_address
+    api = foreign_api
+    daemon = member_ready(boot(config: catalog_config, realtime_factory: ->(*) { nil }), api, identity: RUNNER_IDENTITY)
+    runner = "0199-peer-private"
+    code, answer = open(daemon, { "agent" => "@lark", "prompt" => "first words", "model" => "dev/mock-text",
+      "default_runner_executor_public_id" => runner, "environment" => { "root" => "/peer/work" } })
+    assert_equal "201", code, answer.inspect
+    id = answer.dig("conversation", "public_id")
+    assert_equal({ runner => { "rho.environment" => { "root" => "/peer/work", "directories" => [], "anchor" => id } } },
+      api.inputs.last.fetch("input").fetch("executor_contexts"))
+
+    response = request(daemon, :post, "/say", token: bearer(daemon),
+      body: { public_id: id, text: "next words", model: "dev/mock-text", wait: false })
+    assert_equal "200", response.code, response.body
+    assert_equal({ runner => { "rho.environment" => { "root" => "/peer/work", "directories" => [], "anchor" => id } } },
+      api.inputs.last.fetch("input").fetch("executor_contexts"))
+    assert_empty api.tool_assemblies
+    refute_includes api.requests.map(&:first), "/agent_api/v1/executors/#{runner}"
+  end
+
   def test_promptless_own_and_registered_answerers_keep_local_runner_defaults
     definition = Rho::Agents::Definition.new(name: "author", description: "Authors work", tools: ["read"],
       model: nil, body: "Complete the task.", path: "<extension>", ignored_keys: [])

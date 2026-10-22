@@ -5,7 +5,7 @@ class RefreshTokenFamilyTest < ActiveSupport::TestCase
     @member = create_agent_member(display_name: "Family owner", agent_identifier: "install-family-owner")
     @executor = @member.executors.create!(
       account: @member.account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Family executor"
     )
   end

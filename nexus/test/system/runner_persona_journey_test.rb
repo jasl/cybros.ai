@@ -8,10 +8,10 @@ module RunnerPersonaJourney
       human = users(:member)
       runner = connect_runner(manager: human, display_name: "Runner#{"x" * 94}").executor_access_token.executor
       assert_predicate runner.announce(
-        tools: [{ "name" => "read", "description" => "Read project files",
+        services: { runner.executor_kind => { "tools" => [{ "name" => "read", "description" => "Read project files",
           "input_schema" => { "type" => "object" }, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }],
-        documents: [{ "name" => "project", "description" => "Project instructions" }],
-        environment: { "root" => "/srv/#{"workspace" * 30}" }
+        "documents" => [{ "name" => "project", "description" => "Project instructions" }],
+        "environment" => { "root" => "/srv/#{"workspace" * 30}" } } }
       ), :accepted?
       sign_in_directly(human)
       visit settings_mcp_connections_url

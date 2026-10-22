@@ -11,9 +11,5 @@
       <button type="button" class="btn btn-primary btn-sm shrink-0" data-clipboard-target="button" data-action="clipboard#copy"><%= t("settings.tokens.reveal.copy") %></button>
     </div>
   </div>
-  <% if @private_runner %>
-    <p class="text-sm text-base-content/60"><%= t("runner_connection.key_created") %></p>
-    <%= link_to t("resource_management.view_runner"), runner_path(@private_runner), class: "btn btn-outline btn-sm" %>
-  <% end %>
   <div class="flex justify-end"><%= link_to t("settings.tokens.reveal.done"), keys_path, class: "btn btn-ghost btn-sm" %></div>
 </div>

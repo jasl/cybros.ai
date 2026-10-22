@@ -243,7 +243,7 @@ module E2E
         # THE AGENT ADDRESS is ready once THIS boot's `executor.announced …
         # address=agent` line is in the log (the log is appended across the
         # restarts, so the count before the boot is the mark).
-        AGENT_ANNOUNCED = /event=executor\.announced tools=\d+ address=agent\b/
+        AGENT_ANNOUNCED = /event=executor\.announced tools=\d+ role=agent\b/
 
         def agent_announcement_count = @daemon.log_text.scan(AGENT_ANNOUNCED).length
 

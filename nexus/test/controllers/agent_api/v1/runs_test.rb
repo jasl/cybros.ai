@@ -72,7 +72,7 @@ class AgentAPI::V1::RunsTest < ActionDispatch::IntegrationTest
     )
     @token = BoundCredential.new(token: connection.access_token, secret: connection.access_secret)
     address = Executor.address_for(users(:agent))
-    address.announce(tools: [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }])
+    address.announce(services: { address.executor_kind => { "tools" => [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } })
     assert_nil created_loop(steps).default_runner_executor_id,
       "an announced agent address is never a binding, and nothing is inferred"
 

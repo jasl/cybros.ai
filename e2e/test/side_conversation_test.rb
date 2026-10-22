@@ -139,7 +139,8 @@ class SideConversationTest < Minitest::Test
     running_text = "running-parent-turn-only"
     completed_arguments = CGI.escape(JSON.generate({ "command" => "echo inherited-tool-result" }))
     calls = "bash:#{completed_arguments},bash:#{sleep_arguments}"
-    post(chat, "!mock reply=working tool_call=#{calls} -- #{running_text}")
+    post(chat, "!mock reply=working tool_call=#{calls} -- #{running_text}",
+      executor_contexts: { rho_identity.last => { "rho.environment" => { "root" => project, "directories" => [] } } })
     running = await_running_turn(chat, after: second.position)
     running_loop = running.active_variant.run_public_id
     await_tool_running(running_loop, completed: 1)
@@ -409,9 +410,10 @@ class SideConversationTest < Minitest::Test
     end
 
     # nil sends no `tool_names` (the whole declaration); `[]` sends no tools.
-    def post(chat, text, tool_names: nil)
+    def post(chat, text, tool_names: nil, executor_contexts: nil)
       fields = { kind: "direct_reply", model: MODEL, text: text, idempotency_key: SecureRandom.uuid }
       fields[:tool_names] = tool_names unless tool_names.nil?
+      fields[:executor_contexts] = executor_contexts unless executor_contexts.nil?
       chat.inputs.create(**fields)
     end
 

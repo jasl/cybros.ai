@@ -12,27 +12,27 @@ class ExecutorTest < ActiveSupport::TestCase
     assert_equal @executor, Executor.address_for(@agent)
   end
 
-  test "an agent_application's profile must be a non-system agent member" do
+  test "an agent's profile must be a non-system agent member" do
     %i[member system].each do |target|
       executor = Executor.new(
         account: @agent.account, agent: users(target),
-        executor_kind: :agent_application, display_name: "Bad actor"
+        executor_kind: :agent, display_name: "Bad actor"
       )
       assert_not executor.valid?
       assert executor.errors.of_kind?(:agent, :not_agent_member)
     end
   end
 
-  test "creating an agent_application requires an active agent with an active steward" do
+  test "creating an agent requires an active agent with an active steward" do
     @agent.remove
     executor = @agent.reload.executors.new(
-      account: @agent.account, executor_kind: :agent_application, display_name: "R"
+      account: @agent.account, executor_kind: :agent, display_name: "R"
     )
     assert_not executor.valid?
     assert executor.errors.of_kind?(:agent, :not_eligible)
   end
 
-  test "creating an agent_application rejects a restored Profile with unapplied steward shutdown" do
+  test "creating an agent rejects a restored Profile with unapplied steward shutdown" do
     steward = users(:member)
     profile = create_agent_member(
       steward: steward,
@@ -43,7 +43,7 @@ class ExecutorTest < ActiveSupport::TestCase
 
     executor = profile.executors.new(
       account: profile.account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Must wait"
     )
 
@@ -55,7 +55,7 @@ class ExecutorTest < ActiveSupport::TestCase
   # live address for one profile has to be impossible even when two ceremonies race.
   test "D24 admits exactly one live address per agent member" do
     second = @agent.executors.new(
-      account: @agent.account, executor_kind: :agent_application, display_name: "Second"
+      account: @agent.account, executor_kind: :agent, display_name: "Second"
     )
     assert_not second.valid?
     assert second.errors.of_kind?(:agent_id, :taken)
@@ -70,7 +70,7 @@ class ExecutorTest < ActiveSupport::TestCase
   test "a revoked address does not block the profile's next one" do
     assert_equal :revoked, @executor.revoke
     second = @agent.executors.create!(
-      account: @agent.account, executor_kind: :agent_application, display_name: "Second"
+      account: @agent.account, executor_kind: :agent, display_name: "Second"
     )
 
     assert_equal second, Executor.address_for(@agent)
@@ -156,7 +156,7 @@ class ExecutorTest < ActiveSupport::TestCase
   test "machine? names the two kinds a Human manages" do
     assert_predicate Executor.new(executor_kind: :runner), :machine?
     assert_predicate Executor.new(executor_kind: :tool_provider), :machine?
-    assert_not_predicate Executor.new(executor_kind: :agent_application), :machine?
+    assert_not_predicate Executor.new(executor_kind: :agent), :machine?
     assert_equal %w[runner tool_provider], Executor::MACHINE_KINDS
   end
 
@@ -474,32 +474,32 @@ class ExecutorTest < ActiveSupport::TestCase
 
   test "an announcement is stored canonical and read back by name" do
     mcp = { "server_key" => "files", "tool_name" => "read_file" }
-    outcome = @executor.announce(tools: [
+    outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [
       { "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
         "description" => "Read a file", "input_schema" => READ_SCHEMA, "mcp" => mcp, "colour" => "red" },
       { "name" => "bash", "effect_profile" => BASH_WRITE, "timeout_ms" => 30_000 },
-    ])
+    ] } })
 
     assert_equal :accepted, outcome.outcome
     @executor.reload
-    assert_equal %w[bash read_file], @executor.served_tools.map { |entry| entry["name"] },
+    assert_equal %w[bash read_file], @executor.tools_for(@executor.executor_kind).map { |entry| entry["name"] },
       "ordered by name"
-    assert @executor.served?("bash")
-    assert_not @executor.served?("grep")
-    assert_equal 30_000, @executor.serving("bash").fetch("timeout_ms")
+    assert @executor.served?("bash", role: @executor.executor_kind)
+    assert_not @executor.served?("grep", role: @executor.executor_kind)
+    assert_equal 30_000, @executor.serving("bash", role: @executor.executor_kind).fetch("timeout_ms")
     assert_equal({ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
                    "description" => "Read a file", "input_schema" => READ_SCHEMA, "mcp" => mcp },
-      @executor.serving("read_file"), "the declaration keys are kept; unknown keys are dropped; an absent timeout is absent")
+      @executor.serving("read_file", role: @executor.executor_kind), "the declaration keys are kept; unknown keys are dropped; an absent timeout is absent")
     assert_equal({ "name" => "bash", "effect_profile" => BASH_WRITE, "timeout_ms" => 30_000 },
-      @executor.serving("bash"), "absent declaration keys are absent")
-    assert_equal BASH_WRITE.merge("timeout_ms" => 30_000), @executor.effect_profile_for("bash")
-    assert_equal Nexus::ToolRegistry::READ_ONLY_CLOSED, @executor.effect_profile_for("read_file"),
+      @executor.serving("bash", role: @executor.executor_kind), "absent declaration keys are absent")
+    assert_equal BASH_WRITE.merge("timeout_ms" => 30_000), @executor.effect_profile_for("bash", role: @executor.executor_kind)
+    assert_equal Nexus::ToolRegistry::READ_ONLY_CLOSED, @executor.effect_profile_for("read_file", role: @executor.executor_kind),
       "the frozen profile document never carries the declaration keys"
-    assert_nil @executor.serving("grep")
+    assert_nil @executor.serving("grep", role: @executor.executor_kind)
 
-    assert_equal :accepted, @executor.announce(tools: []).outcome
-    assert_equal [], @executor.reload.served_tools, "a second announcement replaces the first whole"
-    assert_not @executor.served?("bash")
+    assert_equal :accepted, @executor.announce(services: { @executor.executor_kind => { "tools" => [] } }).outcome
+    assert_equal [], @executor.reload.tools_for(@executor.reload.executor_kind), "a second announcement replaces the first whole"
+    assert_not @executor.served?("bash", role: @executor.executor_kind)
   end
 
   # The split over every kernel name in every spelling: a reserved namespace, an overridable
@@ -514,34 +514,34 @@ class ExecutorTest < ActiveSupport::TestCase
     assert_includes names, "wait"
     assert_includes names, "spawn"
     names.each do |name|
-      outcome = @executor.announce(tools: [
+      outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [
         { "name" => name, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED },
-      ])
+      ] } })
       assert_equal :reserved_namespace, outcome.outcome, name
       assert_includes outcome.detail, "reserved kernel namespace", name
     end
-    assert_equal [], @executor.reload.served_tools, "a refused announcement writes nothing"
+    assert_equal [], @executor.reload.tools_for(@executor.reload.executor_kind), "a refused announcement writes nothing"
   end
 
   test "an overridable kernel wire name is announced and stored as announced; its dotted spelling is not" do
     wire = kernel_names_where { |canonical| Nexus::ToolRegistry.overridable?(canonical) }
     wire, dotted = wire.partition { |name| name.match?(Nexus::ToolAnnouncements::NAME_FORMAT) }
     assert_equal %w[memory_delete memory_edit memory_grep memory_ls memory_read memory_write], wire.sort
-    outcome = @executor.announce(tools: wire.map { |name|
+    outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => wire.map { |name|
       { "name" => name, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }
-    })
+    } } })
     assert_equal :accepted, outcome.outcome, outcome.detail.to_s
-    assert_equal wire.sort, @executor.reload.served_tools.map { |entry| entry["name"] }
-    assert @executor.served?("memory_read")
+    assert_equal wire.sort, @executor.reload.tools_for(@executor.reload.executor_kind).map { |entry| entry["name"] }
+    assert @executor.served?("memory_read", role: @executor.executor_kind)
 
     dotted.each do |name|
-      outcome = @executor.announce(tools: [
+      outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [
         { "name" => name, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED },
-      ])
+      ] } })
       assert_equal :invalid_announcement, outcome.outcome, name
       assert_includes outcome.detail, "tools[0].name must match", name
     end
-    assert_equal wire.sort, @executor.reload.served_tools.map { |entry| entry["name"] },
+    assert_equal wire.sort, @executor.reload.tools_for(@executor.reload.executor_kind).map { |entry| entry["name"] },
       "a refused announcement writes nothing"
   end
 
@@ -562,12 +562,12 @@ class ExecutorTest < ActiveSupport::TestCase
       [{ "effect_profile" => profile }, "name"],
       ["read_file", "tools[0]"],
     ].each do |entry, field|
-      outcome = @executor.announce(tools: [entry])
+      outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [entry] } })
       assert_equal :invalid_announcement, outcome.outcome, entry.inspect
       assert_includes outcome.detail, field, entry.inspect
       assert_includes outcome.detail, "0", "the refusal names the entry index"
     end
-    assert_equal :invalid_announcement, @executor.announce(tools: { "name" => "x" }).outcome,
+    assert_equal :invalid_announcement, @executor.announce(services: { @executor.executor_kind => { "tools" => { "name" => "x" } } }).outcome,
       "an announcement is a list"
   end
 
@@ -575,36 +575,36 @@ class ExecutorTest < ActiveSupport::TestCase
   # description}` and nothing more, absent = `[]`, refused with the list (a refusal writes nothing),
   # bounded by the envelope bound.
   test "the announced documents are stored canonical and replaced whole with the list" do
-    outcome = @executor.announce(tools: [], documents: [
+    outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [], "documents" => [
       { "name" => "deploy-notes", "description" => "How this project is deployed.", "kind" => "skill" },
       { "name" => "commit-style", "description" => "How commits are written." },
-    ])
+    ] } })
 
     assert_equal :accepted, outcome.outcome, outcome.detail.to_s
     assert_equal [{ "name" => "commit-style", "description" => "How commits are written." },
                   { "name" => "deploy-notes", "description" => "How this project is deployed." }],
-      @executor.reload.served_documents, "ordered by name, the two keys, no kind"
+      @executor.reload.documents_for(@executor.reload.executor_kind), "ordered by name, the two keys, no kind"
 
-    outcome = @executor.announce(tools: [], documents: [{ "name" => "PDF", "description" => "x" }])
+    outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [], "documents" => [{ "name" => "PDF", "description" => "x" }] } })
     assert_equal :invalid_announcement, outcome.outcome
     assert_includes outcome.detail, "documents[0].name must match"
-    assert_equal 2, @executor.reload.served_documents.length, "a refused announcement writes nothing"
+    assert_equal 2, @executor.reload.documents_for(@executor.reload.executor_kind).length, "a refused announcement writes nothing"
 
-    outcome = @executor.announce(tools: [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }],
-      documents: [{ "name" => "deploy-notes" }])
+    outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }],
+      "documents" => [{ "name" => "deploy-notes" }] } })
     assert_equal :invalid_announcement, outcome.outcome
     assert_equal "documents[0].description must be a non-empty string", outcome.detail
-    assert_equal [], @executor.reload.served_tools, "the list is refused with the documents: one write shape"
+    assert_equal [], @executor.reload.tools_for(@executor.reload.executor_kind), "the list is refused with the documents: one write shape"
 
-    assert_equal :accepted, @executor.announce(tools: []).outcome
-    assert_equal [], @executor.reload.served_documents, "absent clears: whole replacement"
+    assert_equal :accepted, @executor.announce(services: { @executor.executor_kind => { "tools" => [] } }).outcome
+    assert_equal [], @executor.reload.documents_for(@executor.reload.executor_kind), "absent clears: whole replacement"
 
     entry = { "name" => "a", "description" => "d" * Nexus::Skills::DESCRIPTION_MAX_LENGTH }
     many = (1..70).map { |i| entry.merge("name" => "skill-#{i}") }
-    outcome = @executor.announce(tools: [], documents: many)
+    outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [], "documents" => many } })
     assert_equal :invalid, outcome.outcome, "seventy 1024-byte descriptions cross the envelope bound"
-    assert_includes @executor.errors.full_messages.to_sentence, "Served documents"
-    assert_equal [], @executor.reload.served_documents
+    assert_includes @executor.errors.full_messages.to_sentence, "Services"
+    assert_equal [], @executor.reload.documents_for(@executor.reload.executor_kind)
   end
 
   # The environment document: opaque, whole-replaced with the list, absent = `{}`, bounded by its
@@ -612,33 +612,33 @@ class ExecutorTest < ActiveSupport::TestCase
   test "an environment document is stored opaque and replaced whole with the list" do
     document = { "root" => "/w", "branch" => "main", "platform" => "darwin",
                  "fragments" => [{ "extension" => "rho.coding", "text" => "Relative paths resolve against /w." }] }
-    outcome = @executor.announce(tools: [], environment: document)
+    outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [], "environment" => document } })
 
     assert_equal :accepted, outcome.outcome
-    assert_equal document, @executor.reload.environment
+    assert_equal document, @executor.reload.environment_for(:agent)
 
-    assert_equal :accepted, @executor.announce(tools: []).outcome
-    assert_equal({}, @executor.reload.environment, "an absent environment clears it: one whole-replacement verb")
+    assert_equal :accepted, @executor.announce(services: { @executor.executor_kind => { "tools" => [] } }).outcome
+    assert_equal({}, @executor.reload.environment_for(:agent), "an absent environment clears it: one whole-replacement verb")
   end
 
   test "a non-object environment is invalid_announcement and an oversized one is invalid" do
-    outcome = @executor.announce(tools: [], environment: [])
+    outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [], "environment" => [] } })
     assert_equal :invalid_announcement, outcome.outcome
     assert_equal "environment must be an object", outcome.detail
-    assert_equal({}, @executor.reload.environment, "a refusal writes nothing")
+    assert_equal({}, @executor.reload.environment_for(:agent), "a refusal writes nothing")
 
     oversized = { "text" => "a" * Nexus::SizeBounds.fetch(:executor_environment_bound) }
-    outcome = @executor.announce(tools: [], environment: oversized)
+    outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [], "environment" => oversized } })
     assert_equal :invalid, outcome.outcome
-    assert outcome.value.errors.of_kind?(:environment, :content_too_large)
-    assert_equal({}, @executor.reload.environment)
+    assert outcome.value.errors.of_kind?(:services, :content_too_large)
+    assert_equal({}, @executor.reload.environment_for(:agent))
   end
 
   test "a duplicate name is refused" do
-    outcome = @executor.announce(tools: [
+    outcome = @executor.announce(services: { @executor.executor_kind => { "tools" => [
       { "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED },
       { "name" => "read_file", "effect_profile" => BASH_WRITE },
-    ])
+    ] } })
 
     assert_equal :invalid_announcement, outcome.outcome
     assert_includes outcome.detail, "read_file"
@@ -755,7 +755,7 @@ class ExecutorTest < ActiveSupport::TestCase
       )
       executor = member.executors.create!(
         account: member.account,
-        executor_kind: :agent_application,
+        executor_kind: :agent,
         display_name: "Readiness App"
       )
 

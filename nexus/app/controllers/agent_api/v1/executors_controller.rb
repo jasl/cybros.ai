@@ -34,17 +34,26 @@ class AgentAPI::V1::ExecutorsController < AgentAPI::V1::BaseController
     # machine rows are loaded and filtered in Ruby, readiness projected once.
     def addressable
       rows = Executor.live.where(account_id: acting_user.account_id, executor_kind: kinds).order(:id)
-        .preload(:manager, :assignment_agent).to_a
+        .preload(:manager, agent: :steward)
+      rows = rows.providing(role) if role
+      rows = rows.to_a
       readiness = Executor.credential_readiness_for(rows)
       rows.select { |executor| executor.eligible_for?(acting_user, readiness:) }
     end
 
-    # Absent = both machine kinds; anything else — an agent address binds
-    # nothing and is nobody's to address — is the caller's 400.
+    def role
+      value = params[:role]
+      return nil if value.nil?
+      raise APIErrors::ParameterInvalid, :role unless Executor::Services::ROLES.include?(value)
+
+      value
+    end
+
+    # Omission lists every registration kind; unknown kind names are refused.
     def kinds
       kind = params[:kind]
-      return Executor::MACHINE_KINDS if kind.nil?
-      raise APIErrors::ParameterInvalid, :kind unless Executor::MACHINE_KINDS.include?(kind)
+      return Executor.executor_kinds.keys if kind.nil?
+      raise APIErrors::ParameterInvalid, :kind unless Executor.executor_kinds.key?(kind)
 
       [kind]
     end

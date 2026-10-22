@@ -13,8 +13,15 @@ module CodemodeAuthor
     api.register_route("POST", "/e2e/standalone-code") do |request, ctx|
       ctx.member_plane(request, body: true) do |client, workspace, _about, body|
         runs = client.workspace(workspace).runs
-        created = runs.create(steps: body.fetch("steps"), idempotency_key: body.fetch("idempotency_key"), approval_mode: "bypass",
-          default_runner_executor_public_id: ctx.runner_selection(body))
+        runner = ctx.runner_selection(body)
+        steps = body.fetch("steps").map do |step|
+          tool = step.fetch("tool")
+          defaults = tool.fetch("model_defaults")
+          contexts = ctx.execution_contexts(client, tools: defaults.fetch("tools"), runner: runner)
+          { "tool" => tool.merge("model_defaults" => defaults.merge("executor_contexts" => contexts)) }
+        end
+        created = runs.create(steps: steps, idempotency_key: body.fetch("idempotency_key"), approval_mode: "bypass",
+          default_runner_executor_public_id: runner)
         runs.run(created.run.public_id).start
         [201, { "public_id" => created.run.public_id }]
       end

@@ -331,45 +331,6 @@ class CeremonyCancelTest < Minitest::Test
     assert_equal "already_connected", JSON.parse(refused.body).dig("error", "code")
   end
 
-  # A cancel in `pending_runner` leaves the daemon active with no runner:
-  # the agent connection stands, nothing was paired.
-  def test_cancel_in_pending_runner_leaves_the_daemon_active_with_no_runner
-    daemon = boot(device_flow: connection_device_flow, api_transport: NexusDoubles::FakeAgentApi.new,
-      extensions: [Rho::Extensions::Ops], config: agent_mode)
-    token = bearer(daemon)
-    request(daemon, :post, "/device/start", token: token)
-    await_state(daemon, "active", token: token)
-    @daemons.pop.stop
-
-    oauth = NexusDoubles::FakeOAuth.new
-    gate = Queue.new
-    oauth.define_singleton_method(:post) do |path, params, timeout:|
-      # The fake wins every poll at once; hold the runner grant's poll so the
-      # cancel lands in `pending_runner`.
-      if path == "/oauth/token" && params[:grant_type] == CybrosAgent::DeviceFlow::Client::DEVICE_GRANT
-        gate.pop
-      end
-      super(path, params, timeout: timeout)
-    end
-    full = boot(device_flow: connection_device_flow(oauth), api_transport: NexusDoubles::FakeAgentApi.new)
-    token = bearer(full)
-    started = JSON.parse(request(full, :post, "/device/start", token: token).body)
-    assert_equal "pending_runner", started["phase"]
-
-    canceled = request(full, :post, "/device/cancel", token: token)
-    assert_equal 200, canceled.code.to_i, canceled.body
-    assert_equal({ "canceled" => true }, JSON.parse(canceled.body))
-    body = JSON.parse(request(full, :get, "/status", token: token).body)
-    assert_equal "active", body["state"]
-    assert_nil body.dig("identity", "runner_executor_public_id")
-    refute body.key?("connection")
-    assert_nil JSON.parse(request(full, :get, "/runner", token: token).body).fetch("runner")
-  ensure
-    gate&.push(true)
-  end
-
-  # A ceremony that already failed is a corpse, and forgetting it is what
-  # cancel is for: the error clears with it rather than haunting `status`.
   def test_cancel_forgets_a_failed_ceremony_and_its_error
     oauth = NexusDoubles::FakeOAuth.new
     oauth.define_singleton_method(:post) do |path, params, timeout:|

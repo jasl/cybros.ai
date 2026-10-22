@@ -228,8 +228,8 @@ export interface PlatformRunner {
   display_name: string;
   status: string;
   manager_public_id: string;
-  assignment_scope: string;
-  assignment_agent_public_id: string | null;
+  assignment_scope: string | null;
+  service_roles: string[];
   credential_readiness: string;
   eligible_for_current_user: boolean;
   presence: string;
@@ -239,9 +239,7 @@ export interface PlatformRunner {
 }
 
 export interface PlatformRunnerDetail extends PlatformRunner {
-  served_tools: import('./execution.js').ServedTool[];
-  served_documents: import('./execution.js').ServedDocument[];
-  environment: JsonObject;
+  services: import('./execution.js').ExecutorServices;
 }
 
 export interface PlatformRunnerPage {
@@ -253,15 +251,6 @@ export interface PlatformRunnerPage {
 export interface PlatformRunnerSnapshot {
   runner: PlatformRunnerDetail;
   measured_at: string;
-}
-
-export interface PlatformPrivateRunner {
-  public_id: string;
-  display_name: string;
-  status: string;
-  registration_identifier: string;
-  assignment_scope: string;
-  assignment_agent_public_id: string;
 }
 
 export interface PlatformAPIKey {

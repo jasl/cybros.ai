@@ -85,9 +85,9 @@ async fn runner_management_preserves_filters_pagination_and_observation_time() {
     );
     assert_eq!(
         page.items[0].assignment_scope,
-        names::AssignmentScope::AgentPrivate
+        Some(names::AssignmentScope::UserPrivate)
     );
-    assert!(!page.items[0].eligible_for_current_user);
+    assert!(page.items[0].eligible_for_current_user);
     let request = server.next().await;
     let url = url::Url::parse(&format!("{}{}", server.url, request.path)).unwrap();
     assert_eq!(url.path(), "/api/v1/runners");
@@ -111,9 +111,24 @@ async fn runner_management_preserves_filters_pagination_and_observation_time() {
         snapshot.runner.runner.public_id,
         detail["runner"]["public_id"]
     );
-    assert_eq!(snapshot.runner.served_tools[0].name, "read");
-    assert_eq!(snapshot.runner.served_documents[0].name, "project");
-    assert_eq!(snapshot.runner.environment["root"], "/srv/work");
+    assert_eq!(
+        snapshot.runner.services.runner.as_ref().unwrap().tools[0].name,
+        "read"
+    );
+    assert_eq!(
+        snapshot.runner.services.runner.as_ref().unwrap().documents[0].name,
+        "project"
+    );
+    assert_eq!(
+        snapshot
+            .runner
+            .services
+            .runner
+            .as_ref()
+            .unwrap()
+            .environment["root"],
+        "/srv/work"
+    );
     assert_eq!(server.next().await.path, "/api/v1/runners/runner-id");
 }
 
@@ -157,7 +172,7 @@ async fn runner_responses_require_observation_facts_and_keep_unknown_vocabularie
     );
     assert_eq!(
         snapshot.runner.runner.assignment_scope,
-        names::AssignmentScope::Unknown("new_scope".into())
+        Some(names::AssignmentScope::Unknown("new_scope".into()))
     );
     assert!(serde_json::from_value::<RunnerListQuery>(json!({"status":"new_status"})).is_err());
 }

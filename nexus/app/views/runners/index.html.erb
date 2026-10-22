@@ -52,9 +52,6 @@
                 <span class="<%= badge_classes(runner.account_wide?, tone: :info, extra: "whitespace-nowrap") %>">
                   <%= t("runners.assignment_scopes.#{runner.assignment_scope}") %>
                 </span>
-                <% if runner.agent_private? %>
-                  <span class="mt-1 block text-xs text-base-content/60 wrap-anywhere"><%= t("runners.index.assigned_application", name: runner.assignment_agent.display_name) %></span>
-                <% end %>
               </td>
               <td>
                 <span class="<%= badge_classes(readiness == :ready, tone: :success, extra: "whitespace-nowrap") %>">

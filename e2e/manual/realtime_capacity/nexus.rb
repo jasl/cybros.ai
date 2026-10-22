@@ -65,9 +65,9 @@ class RealtimeNexusCapacity < Minitest::Test
       while runs.length < count
         if runs.length % 20 == 0
           base, _path, _http, _session, member_key, member, _transport, executor, key, workspace = prepare_realtime(start: false)
-          executor.announce(tools: [{ "name" => "realtime_probe", "timeout_ms" => 3_600_000,
+          executor.announce(services: { "agent" => { "tools" => [] }, "runner" => { "tools" => [{ "name" => "realtime_probe", "timeout_ms" => 3_600_000,
             "effect_profile" => { "kind" => "read_only", "destructive" => false, "effect_scope" => "closed",
-              "idempotency" => "intrinsic", "reconciliation" => "none" } }])
+              "idempotency" => "intrinsic", "reconciliation" => "none" } }] } })
           executor_key = @runner_key
           group = [base, member_key, member, executor_key, executor, key, workspace]
         end
@@ -138,7 +138,7 @@ class RealtimeNexusCapacity < Minitest::Test
 
     def issue_realtime_key(http, session, key_path)
       value = super
-      @runner_key = value if key_path.include?("/private_runners/")
+      @runner_key = value if key_path.end_with?("/executor/api_keys")
       value
     end
 end

@@ -18,11 +18,11 @@ In the Nexus browser, **Runners** lists each runner you manage with its presence
 | --- | --- |
 | Is the runner selected? | The conversation's runner, or `rho runners use`. A call with no target fails `runner_target_required`; a call addressed to an ineligible runner fails explicitly rather than moving to another runner. |
 | Is the call parked for approval? | The conversation shows it; a runner only sees granted calls. |
-| Does the runner announce the tool? | `GET /agent_api/v1/executors/{id}` shows `served_tools`. A name nobody serves fails `tool_not_served`. |
+| Does the runner announce the tool? | `GET /agent_api/v1/executors/{id}` shows `services.runner.tools`. A name nobody serves fails `tool_not_served`. |
 | Is the credential live? | `rho status`; reconnect with `rho connect` after revocation, expiry or a replaced pairing. A `401` is never explained. |
-| Is the runner eligible for the agent? | Check its [assignment scope](deploy.md#identity-and-scope) and, for `agent_private`, its bound application. |
+| Is the runner eligible for the agent? | Check its [assignment scope](deploy.md#identity-and-scope) or application ownership for a Local environment. |
 
-Another rho instance's bundled Runner is absent from `rho runners`, even when the same Human manages both instances. This is the `agent_private` scope working as intended. Connect an independent Runner when those instances should share an execution environment. The Nexus **Runners** page lists the Human's managed registrations; that management list is broader than one Agent's eligible Runner list.
+Another rho instance's bundled Runner is absent from `rho runners`, even when the same Human manages both instances. Local capability follows application ownership. Connect an independent Runner when those instances should share an execution environment. The Nexus **Runners** page lists the Human's managed registrations; that management list is broader than one Agent's eligible Runner list.
 
 ## A task expired
 
@@ -49,10 +49,10 @@ collected execution details and unclaimed provider pool work supply no associati
 The counts describe Run states, not the machine's current load.
 
 **Revoke credentials** ends authentication for all existing credentials but retains
-the address. Re-pair the program, or issue a new key for an eligible private Runner.
+the address. Re-pair the program, or issue a new application executor key.
 **Revoke runner** permanently ends that address; a later connection creates a new one.
 Both actions return to the original details so you can inspect its resulting state.
-Private Runner key pages also link back here; revoking one key leaves other keys alone.
+Revoking one static application key leaves other keys alone.
 Only the current Human manager can manage the Runner, including account-wide Runners.
 
 Revocation does not prove that remote processes stopped or files were rolled back.

@@ -49,7 +49,7 @@ class AgentAPI::V1::FirstResourcesTest < ActionDispatch::IntegrationTest
     assert_response :success
     body = response.parsed_body
     assert_equal @executor.public_id, body.dig("executor", "public_id")
-    assert_equal "agent_application", body.dig("executor", "kind")
+    assert_equal "agent", body.dig("executor", "kind")
     assert_equal "active", body.dig("executor", "status")
     assert_equal @executor.credential_epoch, body.dig("executor", "credential_epoch")
     # The transport plane describes an address, never a member.

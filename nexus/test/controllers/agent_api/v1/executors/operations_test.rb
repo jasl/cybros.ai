@@ -6,9 +6,9 @@ class AgentAPI::V1::Executors::TaskOperationsTest < ActionDispatch::IntegrationT
     @workspace = workspaces(:shared)
     DevModelLane.ensure_enabled!
     @runner = suite_runner
-    @runner.announce(tools: RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
+    @runner.announce(services: { @runner.executor_kind => { "tools" => RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
       "name" => "program", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
-    }])
+    }] } })
     @loop = seed(declared_tool("program", "program", "route" => { "kind" => "runner" }, "model_defaults" => {
       "tools" => fixture_runner_declarations([RunLaneTestHelper::READ_TOOL]),
       "model" => { "model" => "dev/mock-text" },

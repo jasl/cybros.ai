@@ -5,7 +5,7 @@ class OAuth::TokenRefreshAndRevokeTest < ActionDispatch::IntegrationTest
   setup do
     @owner = users(:owner)
     member = accounts(:cybros).users.create!(kind: :agent, role: :member, steward: @owner, display_name: "Wire agent", agent_identifier: "install-wire")
-    executor = member.executors.create!(account: member.account, executor_kind: :agent_application, display_name: "Wire app")
+    executor = member.executors.create!(account: member.account, executor_kind: :agent, display_name: "Wire app")
     family = RefreshTokenFamily.create!(
       account: member.account,
       user: member,
@@ -57,29 +57,6 @@ class OAuth::TokenRefreshAndRevokeTest < ActionDispatch::IntegrationTest
   # The combined shape A+B driven over the wire the way rho in full mode
   # drives it: one request, both claim sets, browser connect, poll — the body
   # carries the agent bundle and the nested runner lineage.
-  def consume_combined_bundle(identifier: "rho")
-    member = accounts(:cybros).users.create!(
-      kind: :agent, role: :member, steward: @owner, display_name: "rho", agent_identifier: identifier
-    )
-    post oauth_device_authorization_path, params: {
-      client_id: OAuth::DEVICE_CLIENT_ID,
-      agent_identifier: identifier,
-      agent_display_name: "rho",
-      executor_display_name: "rho on laptop",
-      registration_identifier: identifier,
-      runner_display_name: "rho on laptop",
-    }
-    assert_response :success
-
-    device_code = response.parsed_body.fetch("device_code")
-    authorization = DeviceAuthorization.find_by_device_code(device_code)
-    assert_equal :connected,
-      DeviceAuthorizations::Connect.call(authorization: authorization, connector: @owner).outcome
-    assert_equal member, authorization.reload.user
-    post_token(grant_type: OAuth::DEVICE_GRANT_TYPE, device_code: device_code)
-    assert_response :success
-    response.parsed_body
-  end
 
   test "the refresh_token grant rotates and returns the whole bundle" do
     post_token(grant_type: OAuth::REFRESH_GRANT_TYPE, refresh_token: @family.secret)
@@ -137,45 +114,7 @@ class OAuth::TokenRefreshAndRevokeTest < ActionDispatch::IntegrationTest
   # Each lineage of a combined grant rotates and dies on its own refresh
   # token: the agent's rotation never re-carries the runner half, and
   # revoking one half leaves the other live.
-  test "a combined grant's agent lineage rotates without the runner half" do
-    consumed = consume_combined_bundle
 
-    post_token(grant_type: OAuth::REFRESH_GRANT_TYPE, refresh_token: consumed["refresh_token"])
-
-    assert_response :success
-    body = response.parsed_body
-    assert_equal "member", body["plane"]
-    assert body["executor_access_token"].start_with?("sk-cybros-api-v1-")
-    assert_not body.key?("runner")
-    # The runner credential the consume handed out is untouched by that rotation.
-    assert AccessToken.authenticate_executor_token(consumed.dig("runner", "access_token"))
-  end
-
-  test "revoking the runner half's refresh token leaves the agent lineage live, and the reverse" do
-    consumed = consume_combined_bundle
-
-    post oauth_revoke_path,
-      params: { client_id: OAuth::DEVICE_CLIENT_ID, token: consumed.dig("runner", "refresh_token") }
-    assert_response :ok
-    assert_nil AccessToken.authenticate_executor_token(consumed.dig("runner", "access_token")),
-      "the runner family died with its refresh token"
-    assert AccessToken.authenticate_token(consumed["access_token"]), "the agent lineage is live"
-    post_token(grant_type: OAuth::REFRESH_GRANT_TYPE, refresh_token: consumed["refresh_token"])
-    assert_response :success, "the agent lineage still rotates"
-    rotated = response.parsed_body
-
-    assert_equal "member", rotated["plane"]
-
-    second = consume_combined_bundle(identifier: "rho-two")
-    post oauth_revoke_path, params: { client_id: OAuth::DEVICE_CLIENT_ID, token: second["refresh_token"] }
-    assert_response :ok
-    assert_nil AccessToken.authenticate_token(second["access_token"]), "the agent family died"
-    assert AccessToken.authenticate_executor_token(second.dig("runner", "access_token")),
-      "the runner lineage is live"
-    post_token(grant_type: OAuth::REFRESH_GRANT_TYPE, refresh_token: second.dig("runner", "refresh_token"))
-    assert_response :success, "the runner lineage still rotates"
-    assert_equal "executor_transport", response.parsed_body["plane"]
-  end
 
   test "revoking a runner's access token severs its lineage but keeps the machine" do
     consumed = consume_runner_bundle

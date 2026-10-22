@@ -189,7 +189,7 @@ class LocalMcpSelectionTest < Minitest::Test
       served = "mcp__#{server}__echo"
       row = task_for(materialization, served)
       assert_equal "completed", row.fetch("status"), row.inspect
-      assert_equal server == SERVER ? "runner" : "agent_application", row.dig("addressed_to", "role")
+      assert_equal server == SERVER ? "runner" : "agent", row.dig("addressed_to", "role")
       assert_equal mcp_ref(server).fetch("executor_public_id"), row.dig("addressed_to", "executor_public_id")
       detail = task_detail(materialization.run_public_id, row.fetch("key"))
       assert_equal({ "text" => text }, detail.fetch("tool_input"))

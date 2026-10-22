@@ -76,8 +76,8 @@ module Rho
       @monitor = Monitor.new
       # THE BUILDS' OWN LOCK, re-entrant and never taken under `@monitor`:
       # placement zero and a root's checkpoint store are built ONCE under
-      # concurrent first touch (two slots mounted on two threads — the
-      # maintenance cycle's adoption beside a verb's — reach zero together;
+      # concurrent first touch (runtime adoption beside a control verb can
+      # reach zero together;
       # two claims on two root sets sharing a root open its store together).
       # Concurrent first use must share the same store handle and limits.
       @builds = Monitor.new
@@ -240,7 +240,8 @@ module Rho
     # path; one retry on `stale_object`; a second is 409
     # `environment_contended`; never a force. The root set is the
     # caller's validated one; the anchor is the conversation itself.
-    def bind(conversation, root:, directories:, plane: nil, runner: @own_runner_public_id.call)
+    # Creation only fills a missing own binding, including on a raced write.
+    def bind(conversation, root:, directories:, plane: nil, runner: @own_runner_public_id.call, initialize_only: false)
       plane ||= @member_plane.call(host_public_id: conversation)
       return Daemon::Refusal.member_plane_unavailable if plane.nil?
 
@@ -249,9 +250,9 @@ module Rho
         directories: runner.nil? || @own_runner.call(runner) ? Array(directories).map { |path| File.expand_path(path) } : directories, anchor: conversation
       )
       current = read(conversation, plane: plane, runner:)
-      return current if current.source == "conversation" && current.binding == binding
+      return current if keep_binding?(current, binding, initialize_only:)
 
-      written = current.public_id.nil? ? create(conversation, plane, binding, runner:) : update(conversation, plane, binding, current, runner:)
+      written = current.public_id.nil? ? create(conversation, plane, binding, runner:, initialize_only:) : update(conversation, plane, binding, current, runner:, initialize_only:)
       written
     rescue CybrosAgent::Api::Error => error
       Daemon::Refusal.from_api_error(error)
@@ -459,7 +460,7 @@ module Rho
       rescue CybrosAgent::Api::Error, CybrosAgent::TransportError => error
         notice_once([:unreadable, conversation]) do
           @log&.warn("environment.unreadable", conversation: conversation, error_class: error.class.name,
-            code: (error.code if error.respond_to?(:code)), error: CybrosAgent::Redaction.call(error.message))
+            code: error.code, error: CybrosAgent::Redaction.call(error.message))
         end
         raise
       end
@@ -488,7 +489,11 @@ module Rho
         end
       end
 
-      def create(conversation, plane, binding, runner:)
+      def keep_binding?(current, binding, initialize_only:)
+        current.source == "conversation" && (current.binding == binding || (initialize_only && current.anchor == binding.anchor))
+      end
+
+      def create(conversation, plane, binding, runner:, initialize_only: false)
         entry = door(plane, conversation).create(namespace: Extensions::Environment::STORE_NAMESPACE,
           key: binding_key(runner), value: value_of(binding), idempotency_key: SecureRandom.uuid).store_entry
         written(conversation, entry, binding, runner:)
@@ -496,24 +501,24 @@ module Rho
         raise unless error.code == "key_taken"
 
         current = read(conversation, plane: plane, runner:)
-        return current if current.source == "conversation" && current.binding == binding
+        return current if keep_binding?(current, binding, initialize_only:)
 
-        update(conversation, plane, binding, current, runner:)
+        update(conversation, plane, binding, current, runner:, initialize_only:)
       end
 
       # The update under the read's version; a stale version re-reads —
       # equal now is done, else one retry; a second stale is contended.
-      def update(conversation, plane, binding, current, runner:, retried: false)
+      def update(conversation, plane, binding, current, runner:, retried: false, initialize_only: false)
         entry = door(plane, conversation).update(current.public_id, value: value_of(binding), lock_version: current.lock_version)
         written(conversation, entry, binding, runner:)
       rescue CybrosAgent::Api::Conflict => error
         raise unless error.code == "stale_object"
 
         again = read(conversation, plane: plane, runner:)
-        return again if again.source == "conversation" && again.binding == binding
+        return again if keep_binding?(again, binding, initialize_only:)
         return contended(conversation) if retried || again.public_id.nil?
 
-        update(conversation, plane, binding, again, runner:, retried: true)
+        update(conversation, plane, binding, again, runner:, retried: true, initialize_only:)
       end
 
       def contended(conversation)

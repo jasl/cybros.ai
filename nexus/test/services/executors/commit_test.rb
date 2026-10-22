@@ -54,11 +54,11 @@ class Executors::CommitTest < ActiveJob::TestCase
     assert_predicate conversation.reload, :archived?
   end
 
-  test "a private Runner reconciles its accepted claim after the Agent changes steward" do
+  test "a Human-private Runner reconciles its accepted claim after the Agent changes steward" do
     agent = users(:agent)
-    runner = connect_runner(manager: users(:owner), assignment_agent: agent).executor_access_token.executor
-    assert_predicate runner.announce(tools: [{ "name" => "read_file",
-      "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }]), :accepted?
+    runner = connect_runner(manager: users(:owner)).executor_access_token.executor
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => [{ "name" => "read_file",
+      "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } }), :accepted?
     run = seed(tool("private-read"), creating_user: agent, default_runner_executor_public_id: runner.public_id)
     start!(run, acting_user: agent)
     token = claim!(run, "private-read", executor: runner)
@@ -267,7 +267,7 @@ class Executors::CommitTest < ActiveJob::TestCase
   test "the commit judges the executor for the loop's answerer, and the standing of its speaker" do
     owners_private = connect_runner(manager: users(:owner), registration_identifier: "owner-private")
       .executor_access_token.executor
-    assert_predicate owners_private.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate owners_private.announce(services: { owners_private.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     answered = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: users(:agent),
       default_runner_executor: owners_private)
     run = create_answered_loop(tool("alpha"), conversation: answered, acting_user: @human)
@@ -286,7 +286,7 @@ class Executors::CommitTest < ActiveJob::TestCase
   test "the commit judges the executor for the TURN's answerer" do
     owners_private = connect_runner(manager: users(:owner), registration_identifier: "owner-private")
       .executor_access_token.executor
-    assert_predicate owners_private.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate owners_private.announce(services: { owners_private.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     plain = Conversation.create!(workspace: @workspace, creating_user: @human, default_runner_executor: owners_private)
     run = create_answered_loop(tool("alpha"), conversation: plain, acting_user: @human, answering_user: users(:agent))
     token = claim!(run, "alpha", executor: owners_private)

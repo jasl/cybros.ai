@@ -171,6 +171,10 @@ module Rho
                   runner: document.default_runner&.executor_public_id,
                   answerer: (document.answering_user_public_id unless document.answering_user_public_id == @context.own_user_public_id),
                   model: policy.model, notes: policy.notes, code_mode: policy.code_mode, subagent: policy.subagent)
+              rescue CybrosAgent::Api::NotFound
+                # Background review sides are deleted after completion. A
+                # listed side can disappear before its policy or document read.
+                next
               end
               after = page.next_after
               break if after.nil?
@@ -244,6 +248,10 @@ module Rho
               conversation_public_id: (host.public_id if captured))
             fields = side_turn_fields(host, text, mode: "queue", model: row.model, selection: selection, tools: tools,
               foreign: row.foreign? && !named_answerer, approval_mode: approval_mode)
+            if (!row.foreign? || named_answerer) && (!captured || record.anchor == host.public_id)
+              fields[:executor_contexts] = captured_contexts(client, tools: selection.tools, runner: row.runner,
+                binding: record.binding, host: host.public_id, workspace_public_id: row.workspace)
+            end
             fields.delete(:model) if captured
             run = @lineage.follower(host.public_id)
             position = run&.event_position || CybrosAgent::KernelFeed::Position.start

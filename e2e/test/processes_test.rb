@@ -152,7 +152,10 @@ class ProcessesTest < Minitest::Test
     refute_nil chat.unarchive, "unarchive answers the row"
     # Turn 3's history carries four answers (turn 1's one, turn 2's three).
     chat.inputs.create(kind: "direct_reply", text: script(["read_process", { "id" => new_id }], answered: 4),
-      model: MODEL, idempotency_key: SecureRandom.uuid)
+      model: MODEL, idempotency_key: SecureRandom.uuid,
+      executor_contexts: { chat.fetch.default_runner.executor_public_id => {
+        "rho.environment" => { "root" => project, "directories" => [], "anchor" => conversation },
+      } })
     loop_three = await_next_loop(conversation, after: [loop_one, loop_two])
     third = await_run_status(loop_three, "completed")
     read = task_output(loop_three, tool_task(third, "read_process").key)

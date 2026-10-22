@@ -63,28 +63,6 @@
     {
         let server = Server::script(vec![Reply::json(
             200,
-            fixture("platform_agents", "valid_private_runner_fixture").to_string(),
-        )])
-        .await;
-        let p = PlatformClient::new(&server.url, "platform").unwrap();
-        if let Err(error) = p
-            .agents()
-            .agent("id")
-            .unwrap()
-            .private_runners()
-            .runner("id")
-            .unwrap()
-            .fetch()
-            .await
-        {
-            errors.push(format!(
-                "platform_agents.valid_private_runner_fixture: {error}"
-            ));
-        }
-    }
-    {
-        let server = Server::script(vec![Reply::json(
-            200,
             fixture("platform_agents", "valid_member_keys_fixture").to_string(),
         )])
         .await;

@@ -110,7 +110,7 @@ class Executors::ClaimTest < ActiveJob::TestCase
     assert_equal "timed_out", node(run, "alpha").status, "read_file is replayable: a plain timeout"
   end
 
-  # An ask is an inbox row addressed to the agent application and is never claimed: one answerer by
+  # An ask is an inbox row addressed to the agent and is never claimed: one answerer by
   # construction, on a person's clock.
   test "an ask row is not_claimable_kind" do
     agent = users(:agent)
@@ -240,7 +240,7 @@ class Executors::ClaimTest < ActiveJob::TestCase
   test "the claim judges the executor for the loop's answerer, and the standing of its speaker" do
     owners_private = connect_runner(manager: users(:owner), registration_identifier: "owner-private")
       .executor_access_token.executor
-    assert_predicate owners_private.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate owners_private.announce(services: { owners_private.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     answered = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: users(:agent),
       default_runner_executor: owners_private)
     run = create_answered_loop(tool("alpha"), conversation: answered, acting_user: @human)
@@ -259,7 +259,7 @@ class Executors::ClaimTest < ActiveJob::TestCase
   test "the claim judges the executor for the TURN's answerer" do
     owners_private = connect_runner(manager: users(:owner), registration_identifier: "owner-private")
       .executor_access_token.executor
-    assert_predicate owners_private.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate owners_private.announce(services: { owners_private.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     plain = Conversation.create!(workspace: @workspace, creating_user: @human, default_runner_executor: owners_private)
     run = create_answered_loop(tool("alpha"), conversation: plain, acting_user: @human, answering_user: users(:agent))
 

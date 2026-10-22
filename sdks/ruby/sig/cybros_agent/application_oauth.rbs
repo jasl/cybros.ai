@@ -40,9 +40,9 @@ module CybrosAgent
       def authorization_url: (redirect_uri: String, state: String, code_challenge: String,
         claims: Hash[Symbol, String], ?connection_mode: String) -> String
       def request_authorization: (agent_identifier: String, agent_display_name: String,
-        executor_display_name: String, ?runner: DeviceFlow::runner_claims?, ?connection_mode: String) -> DeviceFlow::Authorization
+        executor_display_name: String, ?connection_mode: String) -> DeviceFlow::Authorization
       def request_runner_authorization: (registration_identifier: String, runner_display_name: String,
-        ?executor_kind: String, ?assignment_agent_public_id: String?, ?connection_mode: String) -> DeviceFlow::Authorization
+        ?executor_kind: String, ?connection_mode: String) -> DeviceFlow::Authorization
       def request_device_authorization: (claims: Hash[Symbol, String], ?connection_mode: String) -> DeviceFlow::Authorization
       def exchange_code: (code: String, redirect_uri: String, code_verifier: String) -> Credentials
       def poll: (DeviceFlow::Authorization) -> (DeviceFlow::Pending | DeviceFlow::SlowDown | DeviceFlow::Throttled | Credentials)

@@ -84,6 +84,6 @@ export function compileContracts(client: Client, executor: ExecutorClient, platf
   // @ts-expect-error A process frame addresses exactly one host.
   void executor.reportProgress({ conversation_public_id: 'conversation', run_public_id: 'run', process_id: 'process', source: { run_public_id: 'source', task_key: 'task', claim_token: 'claim' } });
   // @ts-expect-error Every served tool declares its complete effect profile.
-  void executor.announce({ tools: [{ name: 'read' }] });
+  void executor.announce({ services: { runner: { tools: [{ name: 'read' }] } } });
   return { wrongIntent, wrongInline, wrongRole, operation, alias };
 }

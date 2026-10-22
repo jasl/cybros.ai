@@ -74,7 +74,6 @@ describe('Shared Nexus response contracts through public resources', () => {
     ['Managed runners', () => platform('platform_runners', 'valid_runners_fixture').runners.list()],
     ['Managed runner', () => platform('platform_runners', 'valid_runner_fixture').runners.fetch('id')],
     ['Agents', () => platform('platform_agents', 'valid_agents_fixture').agents.list()],
-    ['Runner', () => platform('platform_agents', 'valid_private_runner_fixture').agents.agent('id').privateRunners.runner('runner').fetch()],
     ['keys', () => platform('platform_agents', 'valid_member_keys_fixture').agents.agent('id').apiKeys.list()],
     ['key grant', () => platform('platform_agents', 'valid_executor_key_grant_fixture', 201).agents.agent('id').executorApiKeys.create({ name: 'key' })],
     ['budget', () => platform('platform_budgets', 'valid_open_fixture', 201).budgets('user').open({ amount: '1.000000000000000001', starts_at: '2026-10-15T00:00:00Z' }, { idempotencyKey: 'key' })],
@@ -89,14 +88,11 @@ describe('Shared Nexus response contracts through public resources', () => {
     const oauth = new DeviceFlow({ baseURL: 'http://nexus.example', fetch: transport(fixture('oauth', key)) });
     await expect(oauth.rotate('refresh')).rejects.toBeInstanceOf(AuthorizationLost);
   });
-  for (const branch of ['agent', 'runner', 'combined'] as const) test(`OAuth accepts the canonical ${branch} grant`, async () => {
+  for (const branch of ['agent', 'runner'] as const) test(`OAuth accepts the canonical ${branch} grant`, async () => {
     const oauth = new DeviceFlow({ baseURL: 'http://nexus.example', fetch: transport(fixture('oauth', `valid_${branch}_token_fixture`)) });
     const result = await oauth.poll({ device_code: 'device', user_code: 'CODE', verification_uri: 'http://nexus.example', verification_uri_complete: 'http://nexus.example', expires_in: 900, interval: 5, deadline: performance.now() + 900000, branch });
     expect(result.state).toBe('authorized');
-    if (result.state === 'authorized' && branch === 'combined') {
-      expect(result.credentials.runner?.expires_in).toBe(result.credentials.expires_in);
-      expect(result.credentials.runner?.executor_access_token).toBe('fixture-runner-token');
-    }
+
   });
   for (const key of ['unknown_plane_fixture', 'unknown_scope_fixture', 'unknown_token_type_fixture', 'unknown_child_plane_fixture']) test(`reject Application OAuth ${key}`, async () => {
     const oauth = new ApplicationOAuth({ baseURL: 'http://nexus.example', fetch: transport(fixture('application_oauth', key)) });

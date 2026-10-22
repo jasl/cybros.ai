@@ -10,7 +10,7 @@ A runner therefore protects against the consequences of untrusted content — a 
 
 ## Who holds what
 
-| | Runner | Nexus | Agent application |
+| | Runner | Nexus | Agent |
 | --- | --- | --- | --- |
 | Credential | A transport credential proving one delivery address at one epoch; nothing else | Provider credentials (write-only), member and executor credential digests, OAuth lineages | A member credential and its own transport credential |
 | Sees | Tool inputs for calls addressed to it, bound attachments it fetches, the conversation and run identifiers on each row | Everything it stores | The conversation, turns, results, approvals and questions |
@@ -27,7 +27,7 @@ A runner is a machine, not a principal: each task freezes the agent whose author
 
 ## Execution boundary
 
-- Nexus checks the Runner's [assignment scope](deploy.md#identity-and-scope) for Agent discovery, tool assembly and execution. A bundled `agent_private` Runner belongs to one application: another rho instance cannot use it merely because both instances have the same Human steward. The application's own execution policies still determine which of its Main, Bot and Subagent executions may use Runner tools.
+- Nexus checks the Runner's [assignment scope](deploy.md#identity-and-scope) for Agent discovery, tool assembly and execution. A Local Runner service belongs to its application address: another rho instance cannot use it merely because both instances have the same Human steward. The application's own execution policies still determine which of its Main, Bot and Subagent executions may use Runner tools.
 - A working directory is a starting location, not a sandbox. Shell commands are limited by the operating-system user, container and mounts the operator gave the runner. Choose the host permissions and mounts appropriate for the work.
 - Approval rules evaluate in Nexus before a call is addressed; a runner only sees granted calls. Destructive patterns — force pushes, writes to `.env`, protected installation roots — are refused as data the model reads.
 - rho's runner additionally applies its own guard on nine protected command shapes and installation roots, and scrubs secrets from the child environment and from results.

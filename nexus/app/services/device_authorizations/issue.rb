@@ -23,14 +23,12 @@ module DeviceAuthorizations
     end
 
     # Branch B's kind defaults to the runner's; an Agent request carries none.
-    # An application-bound Runner fixes its private assignment at issuance;
-    # Connect cannot widen it and Consume must match an existing binding.
     def initialize(account:, client_id: OAuth::DEVICE_CLIENT_ID,
                    grant_type: "device_code", connection_mode: "connect",
                    redirect_uri: nil, code_challenge: nil, agent_identifier: nil, agent_display_name: nil,
                    requested_executor_display_name: nil,
                    registration_identifier: nil, runner_display_name: nil,
-                   requested_executor_kind: nil, assignment_agent_public_id: nil,
+                   requested_executor_kind: nil,
                    request_ip: nil, request_user_agent: nil)
       @account = account
       @client_id = client_id
@@ -45,8 +43,6 @@ module DeviceAuthorizations
       @runner_display_name = runner_display_name
       @requested_executor_kind = requested_executor_kind ||
         (Executor::MACHINE_KINDS.first if registration_identifier)
-      @assignment_agent_public_id = assignment_agent_public_id
-      @selected_assignment_scope = ("agent_private" if registration_identifier && (agent_identifier || assignment_agent_public_id))
       @request_ip = request_ip
       @request_user_agent = request_user_agent
     end
@@ -68,8 +64,6 @@ module DeviceAuthorizations
           registration_identifier: @registration_identifier,
           runner_display_name: @runner_display_name,
           requested_executor_kind: @requested_executor_kind,
-          assignment_agent_public_id: @assignment_agent_public_id,
-          selected_assignment_scope: @selected_assignment_scope,
           device_code_lookup_id: parts.lookup_id,
           device_code_digest: parts.digest,
           user_code: self.class.send(:generate_user_code),

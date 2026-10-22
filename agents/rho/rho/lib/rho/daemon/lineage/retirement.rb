@@ -5,12 +5,8 @@ module Rho
       # the "retire" family: reserve or mint
       # inside the monitor, build outside it, install with a CAS on `about`.
       #
-      # TWO RUNNER SLOTS: `:runner` is the run on the
-      # in-process runner's own address and credential, `:agent_runner` the
-      # run on the agent-application address (the agent's own tools). Each
-      # slot has its own executor socket on its own credential; a holder
-      # replacement retires them together, and each lineage's loss retires
-      # only its own slot.
+      # The single runner slot and executor socket serve every announced role.
+      # Replacing or losing the connection owner retires them together.
       module Retirement
         # Minted through the factory, so construction stays pure; the credential
         # lambda re-checks currency outside the monitor at handshake time.
@@ -116,96 +112,12 @@ module Rho
           end
         end
 
-        # THE RUNNER HALF, ATTACHED: the runner-only ceremony
-        # on a live agent lineage hands its OAuth here; the slot writer is
-        # pure, the identity moves with it, and the lineage's about is the
-        # same object it was.
-        def adopt_runner(about, identity:, runner:, authority_report: nil)
-          # Read outside the monitor: the section holds the slot writers only.
-          runner_plane = authority_report&.dig(:planes, :runner_transport)
-          @monitor.synchronize do
-            next false if @stopping || !@credentials.equal?(about)
-
-            @credentials.attach_runner(runner)
-            @identity = identity
-            @observation = observation_with_runner_plane(about, runner_plane)
-            @generation += 1
-            true
-          end
-        end
-
-        # The independent runner remains usable when the Agent's refresh
-        # lineage is fenced. Its OAuth object still owns the loss; this edge
-        # retires only the Agent's followers and handler.
-        def lose_agent(about, unless_stopping: false, report: nil)
-          @monitor.synchronize do
-            next nil if unless_stopping && @stopping
-            next nil if about.nil? || !@credentials.equal?(about)
-
-            @observation = observation_after_agent_loss(about, report)
-            @workspace = Workspace.pending
-            @connection = nil if @connection&.phase == :active && @connection.oauth.equal?(about)
-            @generation += 1
-            retire_agent_locked
-          end
-        end
-
-        # The runner half dropped — its lineage answered terminally, or
-        # `rho disconnect --runner` — with the `:runner` slot and its socket
-        # handed back to be stopped outside the monitor; the agent's own
-        # run and the lineage stand. `identity:` replaces the identity when
-        # the pointer was rewritten with it.
-        def lose_runner(about, identity: nil)
-          @monitor.synchronize do
-            next nil if about.nil? || !@credentials.equal?(about)
-            next nil if @credentials.drop_runner.nil?
-
-            @identity = identity unless identity.nil?
-            @observation = observation_with_runner_plane(about, :absent)
-            @generation += 1
-            retire_slot_locked(:runner)
-          end
-        end
-
         private
 
           def retire_for_adoption_locked(credentials)
             return Retired.none if @credentials.nil? || @credentials.equal?(credentials)
-            return retire_locked if credentials.runner.nil? || !@credentials.runner.equal?(credentials.runner)
 
-            retired = retire_agent_locked
-            @runner_abouts[:runner] = credentials if @runner_abouts[:runner]
-            @executor_realtime_abouts[:runner] = credentials if @executor_realtime_abouts[:runner]
-            retired
-          end
-
-          def observation_after_agent_loss(about, report)
-            previous = @observation&.report || { planes: {} }
-            report ||= previous.merge(lost: true,
-              planes: previous.fetch(:planes).merge(member: :unauthorized, executor_transport: :unauthorized))
-            Observation.new(about: about, report: report, measured_at: @clock.call)
-          end
-
-          def retire_agent_locked
-            retired = retire_slot_locked(:agent_runner).with(followers: @followers.values, realtime: @realtime)
-            @followers = {}
-            @realtime = nil
-            @realtime_about = nil
-            retired
-          end
-
-          # The last observation with the runner plane rewritten: a slot
-          # attached or dropped is a fact status must show before the next
-          # probe, and a stale observation about this about is the one
-          # rewritten (none: none).
-          def observation_with_runner_plane(about, state)
-            return @observation if state.nil? || @observation.nil? || !@observation.about.equal?(about)
-
-            report = @observation.report
-            Observation.new(
-              about: about, measured_at: @clock.call,
-              report: report.merge(planes: report.fetch(:planes).merge(runner_transport: state))
-            )
+            retire_locked
           end
 
           def retire_locked
@@ -249,13 +161,11 @@ module Rho
             end
             raise CybrosAgent::Error, "the executor realtime credential lineage was retired" unless current
 
-            slot == :runner ? about.runner_credential : about.executor_credential
+            (about.agent || about.runner).executor_credential
           end
 
-          def executor_lineage_current?(about, slot)
-            return @credentials.equal?(about) unless slot == :runner
-
-            @credentials && @credentials.runner && @credentials.runner.equal?(about.runner)
+          def executor_lineage_current?(about, _slot)
+            @credentials.equal?(about)
           end
       end
     end

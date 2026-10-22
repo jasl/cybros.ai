@@ -327,8 +327,8 @@ class CoreTest < Minitest::Test
     cli.connect
 
     document = core.disconnect
-    assert_equal %w[runner agent], document["revoked"]
-    assert_equal [NexusDoubles::RUNNER_REFRESH_TOKEN, "rt-cybros-api-v1-a.b"], oauth.revocations
+    assert_equal %w[agent], document["revoked"]
+    assert_equal ["rt-cybros-api-v1-a.b"], oauth.revocations
     assert_nil core.stored_connection, "the pointer is gone"
     assert_equal :disconnected, daemon.phase
 

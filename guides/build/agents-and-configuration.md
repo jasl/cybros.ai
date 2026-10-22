@@ -1,6 +1,6 @@
 # Agents and configuration
 
-An agent is a member of the account. Its application declares, in one atomic write, the standing configuration: tools, approval policy, prompt mechanism, compaction policy, models, lifecycle hooks and the agent's own prompt documents. Nexus validates these values and captures them for execution. The Human console [inspects the declaration](../operate/configure-an-agent.md); configuration editors and Presets belong to the agent application. An input may supply a complete inline declaration.
+An agent is a member of the account. Its application declares, in one atomic write, the standing configuration: tools, approval policy, prompt mechanism, compaction policy, models, lifecycle hooks and the agent's own prompt documents. Nexus validates these values and captures them for execution. The Human console [inspects the declaration](../operate/configure-an-agent.md); configuration editors and Presets belong to the agent. An input may supply a complete inline declaration.
 
 ```http
 PUT /agent_api/v1/profile/configuration

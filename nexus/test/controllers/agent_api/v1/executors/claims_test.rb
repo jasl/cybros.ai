@@ -67,7 +67,7 @@ class AgentAPI::V1::Executors::ClaimsTest < ActionDispatch::IntegrationTest
     run = start!(seed(tool("alpha")))
     second = connect_runner(manager: users(:owner), registration_identifier: "test-runner-2",
       display_name: "Second runner", assignment_scope: :account_wide)
-    second.executor_access_token.executor.announce(tools: TEST_SERVED_TOOLS)
+    second.executor_access_token.executor.announce(services: { second.executor_access_token.executor.executor_kind => { "tools" => TEST_SERVED_TOOLS } })
 
     claim(run, "alpha", headers: bearer(second.executor_access_secret))
     assert_refused("not_addressed_here")
@@ -98,7 +98,7 @@ class AgentAPI::V1::Executors::ClaimsTest < ActionDispatch::IntegrationTest
     address = executors(:address)
     Task.where(id: run.tasks.sole.id).update_all(
       resolution_token: nil, status: "awaiting_input",
-      addressed_executor_id: address.id, addressed_role: "agent_application"
+      addressed_executor_id: address.id, addressed_role: "agent"
     )
     assert_equal "ask", run.tasks.sole.reload.inbox_kind
     transport = create_bound_credential(executor: address, name: "Transport")

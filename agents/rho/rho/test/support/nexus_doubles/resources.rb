@@ -330,6 +330,8 @@ module NexusDoubles
         @announcements << body
         return @announcement unless @announcement == :accept
 
+        reannounce_executor(executor.fetch("executor").merge("services" => body.fetch("services"),
+          "service_roles" => body.fetch("services").keys))
         respond(200, executor)
       end
 
@@ -337,16 +339,16 @@ module NexusDoubles
         @runner_announcements << body
         return @announcement unless @announcement == :accept
 
-        reannounce_executor(NexusDoubles.remote_runner(@runner_executor_public_id, tools: body.fetch("tools", []))
-          .merge("environment" => body.fetch("environment", {})))
+        reannounce_executor(runner_executor.fetch("executor").merge("services" => body.fetch("services"),
+          "service_roles" => body.fetch("services").keys))
         respond(200, runner_executor)
       end
 
       def executor
         {
           "executor" => {
-            "public_id" => @executor_public_id, "kind" => "agent_application", "status" => "active",
-            "agent_public_id" => @user_public_id,
+            "public_id" => @executor_public_id, "kind" => "agent", "status" => "active",
+            "agent_public_id" => @user_public_id, "service_roles" => ["agent"],
             "display_name" => "Helper", "presence" => "offline", "credential_epoch" => 1,
           },
           "measured_at" => "2026-07-26T00:00:00Z",
@@ -357,8 +359,8 @@ module NexusDoubles
         {
           "executor" => {
             "public_id" => @runner_executor_public_id, "kind" => "runner", "status" => "active",
-            "registration_identifier" => "rho.imported-runner", "assignment_scope" => "agent_private",
-            "assignment_agent_public_id" => @user_public_id,
+            "registration_identifier" => "rho.imported-runner", "assignment_scope" => "user_private",
+            "service_roles" => ["runner"],
             "display_name" => "Helper", "presence" => "offline", "credential_epoch" => 1,
           },
           "measured_at" => "2026-07-26T00:00:00Z",

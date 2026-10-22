@@ -1,46 +1,11 @@
 require "support/daemon_run_helpers"
+require "support/receipt_api"
 
 class DaemonInputIdempotencyTest < Minitest::Test
   include RhoTest::DaemonRunHelpers
 
-  # The kernel owns receipts, scoped to the acting credential and door. This
-  # transport double can lose a response AFTER accepting the input, so a retry
-  # through Core, the daemon and the real SDK must carry the same key and body.
-  class ReceiptApi < NexusDoubles::FakeAgentApi
-    attr_reader :writes
-
-    def initialize(lose_input_response: false)
-      super(trace: NexusDoubles::RUNNING_TRACE)
-      @receipts = {}
-      @writes = []
-      @lose_input_response = lose_input_response
-    end
-
-    def call(path, method: :get, credential: nil, body: nil, headers: {}, **options)
-      return super unless method == :post && path.match?(%r{/(conversations|inputs)\z})
-
-      key = headers.fetch("Idempotency-Key")
-      @writes << [path, key]
-      scope = [credential, path, key]
-      if (receipt = @receipts[scope])
-        previous, response = receipt
-        raise CybrosAgent::Api::Conflict.new("The request changed", code: "idempotency_envelope_mismatch") if previous != body
-
-        return response
-      end
-
-      response = super
-      @receipts[scope] = [JSON.parse(JSON.generate(body)), response]
-      if path.end_with?("/inputs") && @lose_input_response
-        @lose_input_response = false
-        raise CybrosAgent::TransportError, "The accepted input response was lost"
-      end
-      response
-    end
-  end
-
   def test_retrying_an_open_after_the_first_input_response_is_lost_reuses_both_receipts
-    api = ReceiptApi.new(lose_input_response: true)
+    api = RhoTest::ReceiptApi.new(lose_input_response: true)
     core = connected_core(api)
 
     error = assert_raises(Rho::Core::Refused) do
@@ -63,11 +28,11 @@ class DaemonInputIdempotencyTest < Minitest::Test
     end
     assert_equal [409, "idempotency_envelope_mismatch"], [error.status, error.code]
     assert_equal 1, api.inputs.length
-    assert_equal ["telegram-event-1"] * 6, api.writes.map(&:last), "a conflict never mints a replacement key"
+    assert_equal ["telegram-event-1"] * 5, api.writes.map(&:last), "a conflict never mints a replacement key"
   end
 
   def test_promptless_open_reuses_the_create_key_and_never_posts_an_input
-    api = ReceiptApi.new
+    api = RhoTest::ReceiptApi.new
     core = connected_core(api)
 
     first = core.open_conversation(title: "Telegram", idempotency_key: "chat-1")
@@ -80,7 +45,7 @@ class DaemonInputIdempotencyTest < Minitest::Test
   end
 
   def test_prepared_images_replay_the_accepted_input_after_a_lost_response_without_new_uploads
-    api = ReceiptApi.new(lose_input_response: true)
+    api = RhoTest::ReceiptApi.new(lose_input_response: true)
     core = connected_core(api)
     fields = { model: "dev/mock-text", upload_public_ids: ["up-prepared"], idempotency_key: "image-update" }
     error = assert_raises(Rho::Core::Refused) { core.open_conversation(**fields) }
@@ -100,7 +65,7 @@ class DaemonInputIdempotencyTest < Minitest::Test
   end
 
   def test_say_reuses_the_input_key_and_preserves_a_conflict
-    api = ReceiptApi.new
+    api = RhoTest::ReceiptApi.new
     core = connected_core(api)
     conversation = core.open_conversation(model: "dev/mock-text").dig("conversation", "public_id")
 
@@ -120,7 +85,7 @@ class DaemonInputIdempotencyTest < Minitest::Test
   end
 
   def test_omitting_the_key_keeps_independent_random_keys_for_each_write
-    api = ReceiptApi.new
+    api = RhoTest::ReceiptApi.new
     core = connected_core(api)
 
     2.times { core.open_conversation(prompt: "hello", model: "dev/mock-text") }

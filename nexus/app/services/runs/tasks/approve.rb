@@ -1,6 +1,6 @@
 module Runs
   module Tasks
-    # THE APPROVER'S GRANT: a person — or the agent application acting for
+    # THE APPROVER'S GRANT: a person — or the agent acting for
     # one — releases a row resting at `needs_approval`. Retry's shape: the
     # workspace gate, the seam's veto, the loop lock, the adjudicable
     # statuses (a `needs_attention` loop approves without releasing its
@@ -33,7 +33,7 @@ module Runs
         # row resting held whose fresh decision carries a DIFFERENT effect
         # profile is not released: it rests again with the new profile and
         # its clock re-armed at the loop's virtual clock (the virtual-clock rule)
-        # — the address stays the agent application — narrated once, and
+        # — the address stays the agent — narrated once, and
         # `:reparked` is the answer. A row RESTING held carries the profile
         # its approver read; the stage's own crossing carries none yet, so
         # under a grant at the stage the comparison is vacuous. No worklist:

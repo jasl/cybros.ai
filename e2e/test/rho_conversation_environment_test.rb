@@ -471,7 +471,7 @@ class RhoConversationTest
   # credential-shaped header — to conversation A, and the server runs on the AGENT slot of this
   # daemon: the verb prints the row connected, the agent slot announces the fixture's seven names on
   # top of its own (the daemon's `executor.announced` line — the member plane cannot show an agent
-  # address, `agent_announcements`), and A's scripted call is addressed to the agent application and
+  # address, `agent_announcements`), and A's scripted call is addressed to the agent and
   # answered with the fixture's own text. THE SCOPE (part 7 "Scope", decision 19): every anchor's
   # `mcp__` extras are subtracted from a turn's names but the turn's own anchor's, so B's round is
   # never offered the name and B's call is the kernel's `unknown_tool` at birth — the sealed request
@@ -515,7 +515,7 @@ class RhoConversationTest
     loop_a2 = rho_say_loop(conversation_a, script([echo("hello from A")] * 2, "echoed a", reply: true))
     echoed = mcp_call(await_run_status(loop_a2, "completed"), "mcp__fx__echo")
     assert_equal "completed", echoed.fetch("status"), echoed.inspect
-    assert_equal ["agent_application", rho_agent_id], echoed.fetch("addressed_to").values_at("role", "executor_public_id"),
+    assert_equal ["agent", rho_agent_id], echoed.fetch("addressed_to").values_at("role", "executor_public_id"),
       "the editor's server runs on this daemon's agent slot: #{echoed.inspect}"
     assert_equal "#{E2E::McpFixture::ECHO_TEXT_PREFIX}hello from A", mcp_output(loop_a2, echoed.fetch("key")).strip,
       "the fixture's own answer"

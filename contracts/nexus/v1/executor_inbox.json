@@ -22,7 +22,7 @@
     "name"
   ],
   "addressed_roles": [
-    "agent_application",
+    "agent",
     "runner",
     "tool_provider"
   ],
@@ -257,7 +257,7 @@
     "timeout_ms": 86400000,
     "claimed": false,
     "addressed_to": {
-      "role": "agent_application",
+      "role": "agent",
       "executor_public_id": "01900000-0000-7000-8000-000000000030"
     },
     "conversation_public_id": null,
@@ -290,7 +290,7 @@
     "timeout_ms": 86400000,
     "claimed": false,
     "addressed_to": {
-      "role": "agent_application",
+      "role": "agent",
       "executor_public_id": "01900000-0000-7000-8000-000000000030"
     },
     "conversation_public_id": null,
@@ -321,7 +321,7 @@
     "timeout_ms": 86400000,
     "claimed": false,
     "addressed_to": {
-      "role": "agent_application",
+      "role": "agent",
       "executor_public_id": "01900000-0000-7000-8000-000000000030"
     },
     "conversation_public_id": null,

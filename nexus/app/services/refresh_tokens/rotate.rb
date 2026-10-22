@@ -26,10 +26,6 @@ module RefreshTokens
         private :new
       end
 
-      # A rotation is per family and never mints a second lineage: the
-      # combined consume's nested runner Bundle has no rotation counterpart
-      # (`Consume::Result#runner`), so the token body's reader asks, and a
-      # rotation answers none — a predicate, never a nil-carrying member.
       def runner = nil
       def agent = nil
       def agent_public_id = nil

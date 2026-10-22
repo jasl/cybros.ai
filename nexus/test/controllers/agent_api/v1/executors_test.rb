@@ -30,13 +30,13 @@ class AgentAPI::V1::ExecutorsTest < ActionDispatch::IntegrationTest
              documents: [DOCUMENT])
     executor = connect_runner(manager: manager, registration_identifier: identifier, display_name: identifier,
       assignment_scope: scope, executor_kind: kind).executor_access_token.executor
-    outcome = executor.announce(tools: tools, environment: environment, documents: documents)
+    outcome = executor.announce(services: { executor.executor_kind => { "tools" => tools, "environment" => environment, "documents" => documents } })
     raise outcome.outcome.to_s unless outcome.accepted?
 
     executor
   end
 
-  def listed_ids(token, query = {})
+  def listed_ids(token, query = { role: "runner" })
     get "/agent_api/v1/executors", params: query, headers: auth(token)
     assert_response :success
     response.parsed_body.fetch("executors").map { |row| row.fetch("public_id") }
@@ -58,41 +58,43 @@ class AgentAPI::V1::ExecutorsTest < ActionDispatch::IntegrationTest
     a_runner = runner("r")
     provider = runner("p", kind: :tool_provider)
 
-    assert_equal [a_runner.public_id, provider.public_id], listed_ids(@owner_token)
+    assert_equal [a_runner.public_id, provider.public_id], listed_ids(@owner_token, {})
     assert_equal [a_runner.public_id], listed_ids(@owner_token, kind: "runner")
     assert_equal [provider.public_id], listed_ids(@owner_token, kind: "tool_provider")
 
-    get "/agent_api/v1/executors", params: { kind: "agent_application" }, headers: auth(@owner_token)
+    assert_empty listed_ids(@owner_token, kind: "agent")
+    get "/agent_api/v1/executors", params: { kind: "unknown" }, headers: auth(@owner_token)
     assert_response :bad_request
     assert_equal "parameter_invalid", response.parsed_body.dig("error", "code")
-    assert_not_includes listed_ids(@agent_token), Executor.where(executor_kind: :agent_application).pick(:public_id),
-      "an agent address binds nothing and is nobody's to address"
   end
 
-  test "same-Human applications discover only their own private Runner and shared machines" do
-    first = connect_combined_session(steward: @owner, agent_identifier: "first-app", registration_identifier: "first-runner")
-    second = connect_combined_session(steward: @owner, agent_identifier: "second-app", registration_identifier: "second-runner")
-    first_runner = first.runner.executor_access_token.executor
-    second_runner = second.runner.executor_access_token.executor
+  test "same-Human applications discover only their own Local and shared machines" do
+    first = connect_agent_session(steward: @owner, agent_identifier: "first-app")
+    second = connect_agent_session(steward: @owner, agent_identifier: "second-app")
+    first_runner = first.executor_access_token.executor
+    second_runner = second.executor_access_token.executor
+    [first_runner, second_runner].each do |executor|
+      assert_predicate executor.announce(services: { "agent" => { "tools" => [] },
+        "runner" => { "tools" => [] } }), :accepted?
+    end
     shared = runner("shared-machine")
-
     assert_equal [first_runner.public_id, shared.public_id], listed_ids(first.access_secret)
     assert_equal [second_runner.public_id, shared.public_id], listed_ids(second.access_secret)
-    assert_equal [shared.public_id], listed_ids(@owner_token), "management does not add private Runner execution authority"
+    assert_equal [shared.public_id], listed_ids(@owner_token)
     get "/agent_api/v1/executors/#{second_runner.public_id}", headers: auth(first.access_secret)
     assert_response :not_found
     get "/agent_api/v1/executors/#{first_runner.public_id}", headers: auth(first.access_secret)
     assert_response :success
-    assert_equal "agent_private", response.parsed_body.dig("executor", "assignment_scope")
-    assert_equal first.access_token.user.public_id, response.parsed_body.dig("executor", "assignment_agent_public_id")
+    assert_nil response.parsed_body.dig("executor", "assignment_scope")
+    assert_equal first.access_token.user.public_id, response.parsed_body.dig("executor", "agent_public_id")
   end
 
-  test "private Runner discovery preloads all assignment Agents for the collection" do
-    first = connect_combined_session(steward: @owner, agent_identifier: "query-app-one", registration_identifier: "query-one")
-    connect_combined_session(steward: @owner, agent_identifier: "query-app-two", registration_identifier: "query-two")
+  test "application discovery batches ownership reads for the collection" do
+    first = connect_agent_session(steward: @owner, agent_identifier: "query-app-one")
+    connect_agent_session(steward: @owner, agent_identifier: "query-app-two")
     ApplicationRecord.uncached do
       assert_queries_match(/SELECT "users"\.\* FROM "users" WHERE "users"\."id" IN/, count: 1) do
-        get "/agent_api/v1/executors", headers: auth(first.access_secret)
+        get "/agent_api/v1/executors", params: { kind: "agent" }, headers: auth(first.access_secret)
         assert_response :success
       end
     end
@@ -112,16 +114,16 @@ class AgentAPI::V1::ExecutorsTest < ActionDispatch::IntegrationTest
     assert_equal "described", document.fetch("display_name")
     assert_equal "active", document.fetch("status")
     assert_equal "user_private", document.fetch("assignment_scope")
-    assert_equal [ENTRY], document.fetch("served_tools")
-    assert_equal ENVIRONMENT, document.fetch("environment")
-    assert_equal [DOCUMENT], document.fetch("served_documents"), "the documents it can load, beside the tools"
+    assert_equal [ENTRY], document.dig("services", "runner", "tools")
+    assert_equal ENVIRONMENT, document.dig("services", "runner", "environment")
+    assert_equal [DOCUMENT], document.dig("services", "runner", "documents"), "the documents it can load, beside the tools"
     assert_equal "online", document.fetch("presence")
     assert_equal executor.reload.last_seen_at.iso8601, document.fetch("last_seen_at")
     assert_equal executor.connected_at.iso8601, document.fetch("connected_at")
     assert_not document.key?("credential_epoch"), "the transport fact stays on the self-read"
 
     executor.clear_connected("socket-1")
-    get "/agent_api/v1/executors", headers: auth(@owner_token)
+    get "/agent_api/v1/executors", params: { role: "runner" }, headers: auth(@owner_token)
     assert_equal "offline", response.parsed_body.fetch("executors").sole.fetch("presence")
   end
 
@@ -138,7 +140,7 @@ class AgentAPI::V1::ExecutorsTest < ActionDispatch::IntegrationTest
     offline = runner("offline")
     offline.update!(last_seen_at: 1.hour.ago)
 
-    get "/agent_api/v1/executors", headers: auth(@owner_token)
+    get "/agent_api/v1/executors", params: { role: "runner" }, headers: auth(@owner_token)
     row = response.parsed_body.fetch("executors").sole
     assert_equal offline.public_id, row.fetch("public_id")
     assert_equal "offline", row.fetch("presence")
@@ -151,7 +153,7 @@ class AgentAPI::V1::ExecutorsTest < ActionDispatch::IntegrationTest
     runner("two", scope: :account_wide)
 
     assert_queries_match(/access_tokens\.credential_epoch/, count: 1) do
-      get "/agent_api/v1/executors", headers: auth(@owner_token)
+      get "/agent_api/v1/executors", params: { role: "runner" }, headers: auth(@owner_token)
     end
     assert_equal 2, response.parsed_body.fetch("executors").length
   end
@@ -168,11 +170,11 @@ class AgentAPI::V1::ExecutorsTest < ActionDispatch::IntegrationTest
     runner("no-credential").revoke_credentials
     runner("revoked").revoke
 
-    # Authentication reads its User once; all managers share one further
-    # read, including managers whose private machines the caller cannot use.
+    # Authentication, managers, application owners and their stewards each use one
+    # bounded read, including rows this principal cannot address.
     ApplicationRecord.uncached do
-      assert_queries_match(/FROM "users"/, count: 2) do
-        assert_equal [own.public_id, shared.public_id, pending.public_id], listed_ids(@owner_token)
+      assert_queries_match(/FROM "users"/, count: 4) do
+        assert_equal [own.public_id, shared.public_id, pending.public_id], listed_ids(@owner_token, {})
       end
     end
 
@@ -180,8 +182,8 @@ class AgentAPI::V1::ExecutorsTest < ActionDispatch::IntegrationTest
     assert_equal :restored, @member.restore
 
     ApplicationRecord.uncached do
-      assert_queries_match(/FROM "users"/, count: 2) do
-        assert_equal [own.public_id, shared.public_id], listed_ids(@owner_token),
+      assert_queries_match(/FROM "users"/, count: 3) do
+        assert_equal [own.public_id, shared.public_id], listed_ids(@owner_token, {}),
           "restoring a manager does not acknowledge the executor's pending shutdown"
       end
     end

@@ -18,11 +18,11 @@ class AgentsController < Agents::BaseController
       [row.id, owner&.active? ? owner : nil]
     end
     addresses = Executor.live.where(
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       agent_id: (@agents.map(&:id) + application_owners.values.compact.map(&:id)).uniq
     ).to_a
     @agent_addresses = addresses.index_by(&:agent_id)
-    @agent_application_addresses = application_owners.transform_values { |owner| @agent_addresses[owner&.id] }
+    @serving_agent_addresses = application_owners.transform_values { |owner| @agent_addresses[owner&.id] }
     @agent_credential_readiness = Executor.credential_readiness_for(addresses)
   end
 

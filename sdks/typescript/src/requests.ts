@@ -112,7 +112,7 @@ export interface CreateInferenceRequest {
 export type EstimateInferenceRequest = Omit<CreateInferenceRequest, 'billing_subject'>;
 export interface EffectProfile { kind: 'pure' | 'read_only' | 'write'; destructive: boolean; effect_scope: 'closed' | 'open'; idempotency: 'intrinsic' | 'keyed' | 'none'; reconciliation: 'none' | 'lookup'; }
 export interface AnnouncedTool { name: string; effect_profile: EffectProfile; timeout_ms?: number; description?: string; input_schema?: JsonObject & { type: 'object' }; mcp?: { server_key: string; tool_name: string }; }
-export interface ExecutorAnnouncement { tools: AnnouncedTool[]; documents?: { name: string; description: string }[] | null; environment?: JsonObject | null; }
+export interface ExecutorServiceAnnouncement { tools: AnnouncedTool[]; documents?: { name: string; description: string }[] | null; environment?: JsonObject | null; }
 export interface TaskProgress { run_public_id: string; task_key: string; claim_token: string; text_tail?: string; structured?: JsonValue; process_id?: never; }
 export type ProcessProgress = ({ conversation_public_id: string; run_public_id?: never } | { conversation_public_id?: never; run_public_id: string }) & { process_id: string; source: { run_public_id: string; task_key: string; claim_token: string }; lines?: string[]; exit?: number | null; task_key?: never };
 export type ProgressFrameInput = TaskProgress | ProcessProgress;
@@ -125,3 +125,5 @@ export interface PlatformRunnerList extends ListOptions {
   kind?: 'runner' | 'tool_provider';
   status?: 'active' | 'revoked';
 }
+
+export interface ExecutorAnnouncement { services: Partial<Record<'agent' | 'runner' | 'tool_provider', ExecutorServiceAnnouncement>>; }

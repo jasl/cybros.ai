@@ -137,13 +137,11 @@ class RhoCoreOnlyTest < Minitest::Test
     refute_nil declaration, "the boot declaration never reached the kernel:\n#{dispatched.join("\n")}"
     assert_empty dispatched.grep(%r{\A(?:PUT|DELETE) /agent_api/v1/profile/prompt_documents/}),
       "the Profile's configuration and prompts must be written in one declaration"
-    # EACH ADDRESS announced what it serves BEFORE the profile was declared: a core-only rho is FULL
-    # mode — Coding is a runner tool — so one page paired both addresses and both announced (the
-    # runner's Coding set, the agent's nothing); the kernel addresses the `write` above by the
-    # announcement, and a runner that declared first could meet `tool_not_served`.
+    # Full mode announces both services on the application address before
+    # declaring the profile, so its first Coding call is already served.
     announcements = dispatched.each_index.select { |i| dispatched[i].start_with?("PUT /agent_api/v1/executor/announcement") }
-    assert_equal 2, announcements.length,
-      "one announcement per address, two addresses:\n#{dispatched.join("\n")}"
+    assert_equal 1, announcements.length,
+      "one application address announces both services:\n#{dispatched.join("\n")}"
     announcements.each do |index|
       assert_operator index, :<, dispatched.index(declaration),
         "every announcement must precede the declaration:\n#{dispatched.join("\n")}"

@@ -36,7 +36,7 @@ class DelegateCompactionTest < Minitest::Test
     @coding = runner("coding", world: @project, environment: @project)
     delegate_home = File.join(@home, "delegate").tap { |path| FileUtils.mkdir_p(path) }
     @delegate = E2E::ExecutorProcess.new(base_url: @base_url, home: delegate_home,
-      credential: @peer.executor_credential, kind: :agent_application, tools: E2E::CompactionTools.names).start
+      credential: @peer.executor_credential, kind: :agent, tools: E2E::CompactionTools.names).start
     @runners << @delegate
     E2E.enable_dev_lane!
     E2E.hosts.start
@@ -75,7 +75,7 @@ class DelegateCompactionTest < Minitest::Test
       assert_equal ["tool_task", tool, fallback ? "timed_out" : "completed", "collapsed"],
         delegate.values_at("kind", "tool_name", "status", "visibility")
       assert_equal @delegate.executor_public_id, delegate.dig("claimed_by", "executor_public_id")
-      assert_equal "agent_application", delegate.dig("addressed_to", "role")
+      assert_equal "agent", delegate.dig("addressed_to", "role")
       events = feed(conversation).select { |item| item["type"] == "context_compacted" }.map { |item| item.fetch("payload") }
       expected = { "mode" => "delegate", "trigger" => "usage", "task_key" => "r2", "summary_task_key" => "k1",
         "variant_public_id" => variant_id, "run_public_id" => loop, "turn_public_id" => turn }

@@ -51,6 +51,10 @@ class OAuth::AuthorizationsController < OAuth::BrowserController
     end
 
     def validate_authorization_request
+      if params.key?(:assignment_agent_public_id)
+        return render plain: t("oauth.authorization_invalid"), status: :bad_request
+      end
+
       attributes = OAuth::ConnectionRequest::FIELDS.to_h { |field| [field, scalar_field(field)] }.compact
       @authorization_request = OAuth::ConnectionRequest.new(attributes.merge(flow: :authorization_code))
       unless @authorization_request.valid?

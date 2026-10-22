@@ -1331,7 +1331,7 @@ class CreateNexusSchema < ActiveRecord::Migration[8.2]
       t.index ["account_id", "manager_id", "registration_identifier", "created_at", "id"], name: "index_executors_on_runner_identity", order: { created_at: :desc, id: :desc }
       t.index ["account_id", "manager_id", "registration_identifier"], name: "index_executors_on_live_runner_identity", unique: true, where: "(((executor_kind)::text = ANY (ARRAY['runner'::text, 'tool_provider'::text])) AND ((status)::text <> 'revoked'::text))"
       t.index ["agent_id", "created_at", "id"], name: "index_executors_on_agent_and_recency", order: { created_at: :desc, id: :desc }
-      t.index ["agent_id"], name: "index_executors_on_live_agent_application", unique: true, where: "(((executor_kind)::text = 'agent_application'::text) AND ((status)::text <> 'revoked'::text))"
+      t.index ["agent_id"], name: "index_executors_on_live_agent", unique: true, where: "(((executor_kind)::text = 'agent'::text) AND ((status)::text <> 'revoked'::text))"
       t.index ["assignment_agent_id"], name: "index_executors_on_assignment_agent_id"
       t.index ["id"], name: "index_executors_on_active_id", where: "((status)::text = 'active'::text)"
       t.index ["id"], name: "index_executors_on_revoked_id", where: "((status)::text = 'revoked'::text)"

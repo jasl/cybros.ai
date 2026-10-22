@@ -1,6 +1,8 @@
 require "support/actor_provisioning"
 require "support/platform_http"
 require "support/secret_hygiene"
+require "support/runner_grant"
+require "support/steward_session"
 
 module E2E
   module RealtimeFixture
@@ -30,7 +32,7 @@ module E2E
 
     private
 
-      def prepare_realtime(detached: false, start: true, additional_tools: [])
+      def prepare_realtime(detached: false, start: true, additional_tools: [], application_runner: true)
         base_url = E2E.base_url
         human = E2E::ActorProvisioning.world(base_url).rho_steward
         E2E::SessionSignInBudget.consume
@@ -41,17 +43,22 @@ module E2E
         assert_equal 201, agent.status
         @agent_id = agent.body.fetch("agent").fetch("public_id")
         path = "/api/v1/agents/#{@agent_id}"
-        runner = http.post("#{path}/private_runners", body: { private_runner: { display_name: "Realtime handler" } }, bearer: session.token)
-        assert_equal 201, runner.status
-        runner_path = "#{path}/private_runners/#{runner.body.fetch("private_runner").fetch("public_id")}/api_keys"
         member_key = issue_realtime_key(http, session, "#{path}/api_keys")
         member = CybrosAgent::Client.new(base_url: base_url, credential: member_key)
         transport = FaultTransport.new(base_url: base_url)
-        executor = CybrosAgent::ExecutorClient.new(base_url: base_url, credential: issue_realtime_key(http, session, runner_path), transport: transport)
+        credential = if application_runner
+          issue_realtime_key(http, session, "#{path}/executor/api_keys")
+        else
+          independent_terminal_credential(base_url, human)
+        end
+        executor = CybrosAgent::ExecutorClient.new(base_url: base_url, credential: credential, transport: transport)
         executor_id = executor.executor.executor.public_id
-        executor.announce(tools: [{ "name" => "realtime_probe", "timeout_ms" => 120_000,
+        services = { "runner" => { "tools" => [{ "name" => "realtime_probe", "timeout_ms" => 120_000,
           "effect_profile" => { "kind" => "read_only", "destructive" => false, "effect_scope" => "closed",
-            "idempotency" => "intrinsic", "reconciliation" => "none" } }] + additional_tools)
+            "idempotency" => "intrinsic", "reconciliation" => "none" } }] + additional_tools } }
+        services["agent"] = { "tools" => [] } if application_runner
+        executor.announce(services: services)
+        @independent_runner_credential = credential unless application_runner
         workspace = member.workspaces.create(name: "Realtime handler", idempotency_key: SecureRandom.uuid).workspace
         # Extra credentials may wait out issuance limits before any Task starts.
         yield http, session, path if block_given?
@@ -73,6 +80,19 @@ module E2E
         end
         await { @run.task(key).task.status == "dispatched" }
         [base_url, path, http, session, member_key, member, transport, executor, key, workspace]
+      end
+
+      # The browser viewer is its own application announcement writer. Its
+      # externally driven terminal worker uses an independent machine address.
+      def independent_terminal_credential(base_url, human)
+        device = CybrosAgent::DeviceFlow::Client.new(base_url: base_url)
+        E2E::DeviceAuthorizationBudget.consume
+        authorization = device.request_runner_authorization(
+          registration_identifier: "e2e-terminal-#{SecureRandom.uuid}", runner_display_name: "Terminal fixture")
+        actor = E2E::StewardSession.actor(base_url: base_url, human: human)
+        E2E::RunnerGrant.visit_connection(actor: actor, authorization: authorization)
+        E2E::RunnerGrant.connect_in_browser(actor: actor, authorization: authorization)
+        device.await_credentials(authorization).executor_access_token
       end
 
       def issue_realtime_key(http, session, key_path)

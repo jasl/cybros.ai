@@ -17,7 +17,7 @@ class Executors::RunnerTargetsTest < ActiveJob::TestCase
   def runner_b
     @runner_b ||= connect_runner(manager: @owner, registration_identifier: "targets-b",
       display_name: "Build", assignment_scope: :account_wide).executor_access_token.executor.tap do |runner|
-      runner.announce(tools: [{ "name" => "read", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }])
+      runner.announce(services: { runner.executor_kind => { "tools" => [{ "name" => "read", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } })
     end
   end
 
@@ -109,7 +109,7 @@ class Executors::RunnerTargetsTest < ActiveJob::TestCase
   test "withdrawal cannot fall through to a same named tool on the changed default" do
     run = seed({ "tool" => { "key" => "read-a", "name" => "read", "route" => { "kind" => "runner" } } })
     selected(run, runner_b)
-    runner_a.announce(tools: [])
+    runner_a.announce(services: { runner_a.executor_kind => { "tools" => [] } })
     start(run)
     row = task(run, "read-a")
     assert_equal runner_a.public_id, row.target_executor_public_id

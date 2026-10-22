@@ -35,7 +35,7 @@ class OAuth::DeviceConnectionsController < OAuth::BrowserController
     when :shutdown_pending
       redirect_to oauth_device_grant_path(grant),
         alert: t("oauth.device.shutdown_pending", subject: subject)
-    when :agent_already_bound, :not_connected, :assignment_agent_not_eligible, :runner_assignment_mismatch
+    when :agent_already_bound, :not_connected
       redirect_to oauth_device_grant_path(grant), alert: t("oauth.device.#{result.outcome}")
     when :registration_changed
       redirect_to oauth_device_grant_path(grant),
@@ -65,7 +65,7 @@ class OAuth::DeviceConnectionsController < OAuth::BrowserController
 
     def idempotent_connection?(grant, account_wide:)
       expected_scope =
-        if grant.agent_private_runner_connection? || grant.reconnecting_live_runner?
+        if grant.reconnecting_live_runner?
           grant.selected_assignment_scope
         else
           account_wide ? "account_wide" : "user_private"

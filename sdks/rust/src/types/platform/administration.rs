@@ -13,17 +13,6 @@ pub struct Agent {
     #[serde(flatten)]
     pub extra: JsonObject,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct PrivateRunner {
-    pub public_id: String,
-    pub display_name: Option<String>,
-    pub status: crate::types::names::ExecutorStatus,
-    pub registration_identifier: String,
-    pub assignment_scope: crate::types::names::AssignmentScope,
-    pub assignment_agent_public_id: String,
-    #[serde(flatten)]
-    pub extra: JsonObject,
-}
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ApiKeyPlane {

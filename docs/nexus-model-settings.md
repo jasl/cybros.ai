@@ -29,7 +29,7 @@ its own application. rho's terminal alternative is [rho setup](getting-started.m
 From the Dashboard, choose **Configure model providers**, then a provider. These
 are the same administration pages available through Settings at any time; there
 is no separate setup guide. When model access is ready, its Dashboard card
-disappears. Start the connection from your Agent application, then use the
+disappears. Start the connection from your Agent, then use the
 remaining **Connect an agent** card to enter its code.
 
 The provider overview brings credentials, availability and models together:
@@ -111,7 +111,7 @@ Saved definitions persist in Nexus and apply to later reads and requests
 without a restart. Deployment files remain the base. Resetting a file-backed
 definition restores that base; removing a custom definition removes its
 configuration. Disabling a provider instead preserves its definitions and keys.
-Changing Nexus configuration does not change an Agent application's default
+Changing Nexus configuration does not change an Agent's default
 model; select the new model there and send an ordinary request to verify it.
 
 ## Thinking and effort
@@ -338,5 +338,5 @@ documented bearer credentials; browser cookie authentication there is read-only.
 The fixed administrative connection test is also available through
 `cmctl model test REF`; `model invalidate REF` and `model restore REF` manage
 the same invalid mark. Arbitrary conversation execution remains on the member plane.
-Telegram setup and the default model remain the Agent application's settings;
+Telegram setup and the default model remain the Agent's settings;
 see [Getting started](getting-started.md) for the terminal flow.

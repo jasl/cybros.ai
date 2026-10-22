@@ -101,6 +101,7 @@ class Session
       model_selection: round.model_selection, fallback_models: round.fallback_models,
       approval_mode: source.approval_mode, to: source.turn.answering_user_public_id,
       tool_names: round.tool_definitions.map { |entry| entry.dig("function", "name") || entry.fetch("name") },
+      executor_contexts: { call.task.addressed_to.executor_public_id => call.executor_context },
       source_run_public_id: @context.run_public_id, source_task_key: @context.task_key }
   end
 end

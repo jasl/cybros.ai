@@ -17,7 +17,7 @@ module Executors
     def members(tool_name, principal)
       providers = Executor
         .where(executor_kind: ROLE, status: :active)
-        .where("served_tools @> ?", [{ name: tool_name.to_s }].to_json)
+        .where("services->'tool_provider'->'tools' @> ?", [{ name: tool_name.to_s }].to_json)
         .order(:id)
         .preload(:manager)
         .to_a
@@ -33,7 +33,7 @@ module Executors
     # park is the SHORTEST announced timeout. Members announcing one entry
     # collapse to it. Members are id-ordered, so the pick is deterministic.
     def effect_profile(members, tool_name)
-      entries = members.map { |provider| provider.serving(tool_name) }
+      entries = members.map { |provider| provider.serving(tool_name, role: ROLE) }
       strictest = entries.find { |entry| !Nexus::ToolRegistry.replayable?(entry["effect_profile"]) } ||
         entries.first
       profile = strictest.fetch("effect_profile")
@@ -49,7 +49,7 @@ module Executors
     # Membership of THIS executor for THIS row, the claim's read: the kind,
     # the announcement; eligibility is the claim's own next fence.
     def member?(node, executor)
-      row?(node) && executor.tool_provider? && executor.served?(node.tool_name)
+      row?(node) && executor.tool_provider? && executor.served?(node.tool_name, role: ROLE)
     end
   end
 end

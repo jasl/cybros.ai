@@ -43,6 +43,6 @@ class API::V1::RunnersController < API::V1::BaseController
   private
 
     def managed_runners
-      Current.user.managed_executors.preload(:manager, :assignment_agent)
+      Current.user.managed_executors.preload(:manager)
     end
 end

@@ -334,9 +334,9 @@ class SkillsTest < Minitest::Test
       assert_includes echo, DEPLOY_BODY_LINE
 
       runner = @daemon.member_client.executors.show(@world.rho_runner)
-      assert_includes runner.tool_names, "skill"
+      assert_includes runner.tool_names(role: :runner), "skill"
       [[@world.rho_runner, @rho_skill], [@harness.executor_public_id, @harness_skill]].each do |executor_id, callable|
-        served = @daemon.member_client.executors.show(executor_id).served_tools.find { |tool| tool.name == "skill" }
+        served = @daemon.member_client.executors.show(executor_id).tools_for(:runner).find { |tool| tool.name == "skill" }
         discovered = catalog.find { |entry| entry.fetch("name") == callable }
         refute_nil discovered, "the Runner's skill callable is discoverable"
         offered = discovered.fetch("definition")
@@ -346,8 +346,8 @@ class SkillsTest < Minitest::Test
           discovered.fetch("route"))
         refute offered.key?("route"), "routing metadata is separate from the provider-shaped definition"
       end
-      assert_equal ["deploy-notes"], runner.document_names
-      assert_equal DEPLOY_DESCRIPTION, runner.served_documents.fetch(0).description
+      assert_equal ["deploy-notes"], runner.document_names(role: :runner)
+      assert_equal DEPLOY_DESCRIPTION, runner.documents_for(:runner).fetch(0).description
 
       { catalog: catalog, tools: tools }
     end
@@ -509,7 +509,7 @@ class SkillsTest < Minitest::Test
     def await_announced_documents(executor_public_id, names)
       await("#{executor_public_id} never announced documents #{names.inspect}") do
         listed = @daemon.member_client.executors.show(executor_public_id)
-        listed if listed.document_names == names
+        listed if listed.document_names(role: :runner) == names
       end
     end
 

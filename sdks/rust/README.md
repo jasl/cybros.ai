@@ -25,7 +25,7 @@ async fn profile(base_url: &str, member_token: &str) -> Result<String> {
 ```
 
 The clients expose the supported Member, Executor and Human Platform operations,
-including Agents and their API keys, private Runners, budgets, usage and bounded
+including Agents and their API keys, managed machines, budgets, usage and bounded
 Deployment log streams. User removal through the administrative User surface is
 intentionally excluded. Protocol field names stay in `snake_case`; UUIDs,
 timestamps and decimal money amounts stay strings. Named request documents live

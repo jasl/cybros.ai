@@ -114,24 +114,21 @@ module CybrosAgent
   class Planes < Data
     attr_reader client: Client?
     attr_reader executor_client: ExecutorClient?
-    attr_reader runner_client: ExecutorClient?
 
-    def self.new: (Client? client, ExecutorClient? executor_client, ExecutorClient? runner_client) -> instance
-                | (client: Client?, executor_client: ExecutorClient?, runner_client: ExecutorClient?) -> instance
-    def self.[]: (Client? client, ExecutorClient? executor_client, ExecutorClient? runner_client) -> instance
-               | (client: Client?, executor_client: ExecutorClient?, runner_client: ExecutorClient?) -> instance
-    def self.members: () -> [:client, :executor_client, :runner_client]
+    def self.new: (Client? client, ExecutorClient? executor_client) -> instance
+                | (client: Client?, executor_client: ExecutorClient?) -> instance
+    def self.[]: (Client? client, ExecutorClient? executor_client) -> instance
+               | (client: Client?, executor_client: ExecutorClient?) -> instance
+    def self.members: () -> [:client, :executor_client]
 
-    def members: () -> [:client, :executor_client, :runner_client]
+    def members: () -> [:client, :executor_client]
   end
 
   interface _PlaneCredentials
     def access_token: () -> String?
     def executor_access_token: () -> String?
-    def runner_access_token: () -> String?
     def member_plane?: () -> bool
     def executor_plane?: () -> bool
-    def runner_plane?: () -> bool
   end
 
   def self.planes_for: (

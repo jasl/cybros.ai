@@ -35,22 +35,6 @@ module CybrosAgent
       def restore: () -> Agent
       def api_keys: () -> APIKeys
       def executor_api_keys: () -> APIKeys
-      def private_runners: () -> PrivateRunners
-    end
-
-    class PrivateRunners
-      include AgentProjections
-      def initialize: (dispatch: Api::_Dispatch, path: String) -> void
-      def list: (?after: String?, ?limit: Integer?) -> Api::Page[PrivateRunner]
-      def create: (display_name: String) -> PrivateRunner
-      def runner: (String public_id) -> PrivateRunnerContext
-    end
-
-    class PrivateRunnerContext
-      include AgentProjections
-      def initialize: (dispatch: Api::_Dispatch, path: String) -> void
-      def fetch: () -> PrivateRunner
-      def api_keys: () -> APIKeys
     end
 
     class APIKeys

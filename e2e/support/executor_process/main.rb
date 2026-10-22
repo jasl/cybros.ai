@@ -38,7 +38,7 @@ module E2E
     end
 
     # Every executor kind uses the same inbox transport and claim lifecycle.
-    KINDS = %w[agent_application runner tool_provider].freeze
+    KINDS = %w[agent runner tool_provider].freeze
 
     # THE CAPTURE DOOR: the SDK's executor client with ONE difference — a commit on a `capture` row
     # stages the red-square PNG on the executor plane (`uploads.create_io`) and names it with a
@@ -103,7 +103,7 @@ module E2E
         claimed = @executor.claim_for(@key)
         return __getobj__.commit(**fields) unless capture_commit?(claimed, fields)
 
-        input = claimed.task.tool_input.is_a?(Hash) ? claimed.task.tool_input : {}
+        input = Hash.try_convert(claimed.task.tool_input) || {}
         filename = input["filename"].to_s.empty? ? FILENAME : input["filename"].to_s
         bytes = filename == FILENAME ? E2E::RedSquarePng.bytes : TEXT_BYTES
         upload = @executor.uploads.create_io(StringIO.new(bytes), filename: filename)
@@ -281,7 +281,8 @@ module E2E
       toolset = assembly.toolset
       environment = assembly.environment
       documents = assembly.documents
-      executor.announce(tools: assembly.announcement, environment: environment, documents: documents)
+      executor.announce(services: { address.kind => { "tools" => assembly.announcement,
+        "environment" => environment, "documents" => documents } })
       log.info("announced", tools: toolset.names.sort, executor_public_id: address.public_id,
         kind: address.kind, credential_epoch: address.credential_epoch, environment_root: environment&.fetch("root"),
         documents: Array(documents).map { |document| document.fetch("name") },

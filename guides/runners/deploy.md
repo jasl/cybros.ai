@@ -38,11 +38,9 @@ link or enter its code. Browser approval is followed by the program collecting i
 credentials. Use **Refresh connection status**, then **View Runner** to inspect that
 exact address. This does not prove that the program is online or a tool has executed.
 
-For API-key setup, the same page lets you choose an active independent Agent you steward,
-create its private Runner and issue a transport key. Save the key from its one-time
-reveal and import it using the [API-key setup guide](../build/credentials-and-planes.md#api-keys).
-Named Agents share their application's assignment and have no independent creation entry.
-If the application already connected a bundled Runner, use its existing details instead.
+For full-mode rho API-key setup, issue the application's member and executor keys and import
+both using the [API-key setup guide](../build/credentials-and-planes.md#api-keys).
+Its Runner service uses that same application address and transport key.
 
 ## Identity and scope
 
@@ -50,15 +48,16 @@ A Runner's logical registration is its Account, Human manager and registration i
 
 | Scope | Eligible Agents |
 | --- | --- |
-| `agent_private` | The bound Agent and Agents owned by its application |
 | `user_private` | Agents stewarded by the Runner's Human manager |
 | `account_wide` | Eligible Agents across the Account |
 
-Full-mode rho pairs its bundled Runner with `agent_private`. That Runner is available to the same rho instance's Main Agent, Bots and Subagent executions when their execution policy permits Runner tools. Another rho instance cannot discover or use it, even when the same Human manages both. The binding is recorded at pairing; names do not establish application ownership.
-
-The first combined Agent and Runner connection creates this binding automatically. When full-mode rho already has an Agent connection and adds its Runner, it binds the new Runner to that existing Agent. An independent runner-only installation uses `user_private` by default; an owner or administrator may choose `account_wide` when approving a fresh registration. Deploy an independent Runner when several rho instances need the same execution environment.
-
-Scope and the bound Agent are fixed when the Runner registration is created. Reconnecting re-pairs the same address and advances its credential epoch while preserving both. Scope is access control, not part of the logical identity, and does not retarget existing tasks. The [device-flow reference](../reference/oauth/device-flow.md) describes the pairing contract.
+Full-mode rho announces a Runner service on its application Executor. Local targets resolve to
+that application's UUID. Its Main Agent, Bots and Subagents may use it when their execution
+policy permits Runner tools. Another rho instance cannot discover or use it, even under the
+same Human. Switching between agent and full mode removes or adds this service without another
+connection, address or credential family. Independent Runner mode uses `user_private` by default;
+an owner or administrator may choose `account_wide` when approving a fresh registration.
+Deploy an independent Runner when several applications need one execution environment.
 
 ## State
 

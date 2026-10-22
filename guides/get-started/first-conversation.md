@@ -140,7 +140,6 @@ state:     signed in
 runner:    01a15402-bea1-7ff5-9bad-08c233df9bae serving 22 tools (socket connected, swept 7)
   member: live
   executor_transport: live
-  runner_transport: live
 workspace: dedicated rho on s-MBP-M4-Pro.local (01a15405-04ed-7c0e-aa4d-4d453e082dd6)
 model:     kimi_code/kimi-for-coding
 ```

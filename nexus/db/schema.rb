@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_21_100000) do
+ActiveRecord::Schema[8.2].define(version: 2026_10_21_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -316,7 +316,6 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_21_100000) do
     t.string "redirect_uri", limit: 2048
     t.string "code_challenge", limit: 43
     t.integer "connected_by_identity_recovery_generation"
-    t.uuid "assignment_agent_public_id"
     t.index ["access_token_id"], name: "index_device_authorizations_on_access_token_id"
     t.index ["account_id"], name: "index_device_authorizations_on_account_id"
     t.index ["connected_by_id"], name: "index_device_authorizations_on_connected_by_id"
@@ -396,18 +395,14 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_21_100000) do
     t.datetime "last_seen_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.jsonb "served_tools", default: [], null: false
-    t.jsonb "environment", default: {}, null: false
     t.string "presence_connection_id", limit: 36
     t.string "presence_server_id", limit: 36
     t.datetime "connected_at"
-    t.jsonb "served_documents", default: [], null: false
-    t.bigint "assignment_agent_id"
+    t.jsonb "services", null: false
     t.index ["account_id", "manager_id", "registration_identifier", "created_at", "id"], name: "index_executors_on_runner_identity", order: { created_at: :desc, id: :desc }
     t.index ["account_id", "manager_id", "registration_identifier"], name: "index_executors_on_live_runner_identity", unique: true, where: "(((executor_kind)::text = ANY (ARRAY['runner'::text, 'tool_provider'::text])) AND ((status)::text <> 'revoked'::text))"
     t.index ["agent_id", "created_at", "id"], name: "index_executors_on_agent_and_recency", order: { created_at: :desc, id: :desc }
-    t.index ["agent_id"], name: "index_executors_on_live_agent_application", unique: true, where: "(((executor_kind)::text = 'agent_application'::text) AND ((status)::text <> 'revoked'::text))"
-    t.index ["assignment_agent_id"], name: "index_executors_on_assignment_agent_id"
+    t.index ["agent_id"], name: "index_executors_on_live_agent", unique: true, where: "(((executor_kind)::text = 'agent'::text) AND ((status)::text <> 'revoked'::text))"
     t.index ["id"], name: "index_executors_on_active_id", where: "((status)::text = 'active'::text)"
     t.index ["id"], name: "index_executors_on_revoked_id", where: "((status)::text = 'revoked'::text)"
     t.index ["manager_id"], name: "index_executors_on_manager_id"
@@ -1598,7 +1593,6 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_21_100000) do
   add_foreign_key "events", "accounts"
   add_foreign_key "executors", "accounts"
   add_foreign_key "executors", "users", column: "agent_id"
-  add_foreign_key "executors", "users", column: "assignment_agent_id", on_delete: :restrict
   add_foreign_key "executors", "users", column: "manager_id"
   add_foreign_key "identities", "accounts"
   add_foreign_key "inference_request_create_receipts", "accounts"

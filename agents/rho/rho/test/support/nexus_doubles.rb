@@ -110,8 +110,8 @@ module NexusDoubles
     environment = { "root" => root, "branch" => branch, "worktree" => worktree, "booted_at" => booted_at }.compact
     environment["fragments"] = [{ "extension" => "e2e.echo", "text" => "Relative paths resolve against #{root}." }] if root
     { "public_id" => public_id, "kind" => kind, "display_name" => display_name, "status" => "active",
-      "assignment_scope" => "user_private", "served_tools" => tools, "environment" => environment,
-      "served_documents" => documents,
+      "assignment_scope" => "user_private", "service_roles" => [kind],
+      "services" => { kind => { "tools" => tools, "environment" => environment, "documents" => documents } },
       "presence" => presence, "last_seen_at" => last_seen_at, "connected_at" => nil }.compact
   end
 

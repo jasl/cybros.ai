@@ -59,8 +59,10 @@ module Rho
             # rather than a nil a caller would read as "no rows".
             def call_tool(ctx, runner, tool, input)
               answer = ctx.member_plane do |client, workspace_public_id, about|
+                captured = ctx.execution_contexts(client, tools: [], runner: runner).fetch(runner)
                 context = ctx.runs_for(client, workspace_public_id).start_tool_call(
                   runner_executor_public_id: runner, tool: tool, input: input, timeout_ms: TIMEOUT_MS,
+                  executor_context: captured,
                   approval_rules: Rho::RunDeclaration.request_rules(guard: ctx.config.plugin_enabled?("rho.guard"), roots: Rho.protected_roots(ctx.home)),
                   idempotency_key: SecureRandom.uuid
                 )

@@ -7,77 +7,18 @@ require "pp"
 class DeviceFlowClientTest < Minitest::Test
   include CybrosAgentTest::DeviceFlowClientSupport
 
-  def combined_authorization(client)
-    client.request_authorization(
-      agent_identifier: "rho", agent_display_name: "rho", executor_display_name: "rho on laptop",
-      runner: { identifier: "rho", display_name: "rho on laptop" }
-    )
-  end
-
-  # The combined shape A+B: one request carrying the agent
-  # triple and the runner pair, typed :combined. The kind is the AGENT
-  # address's — the runner's is implied and fixed `runner` by the door, so
-  # the request never spells one.
-  def test_a_combined_authorization_sends_both_identifier_sets_on_one_request
-    client = build_client([[200, {}, AUTH_BODY]])
-
-    authorization = combined_authorization(client)
-
-    assert_equal :combined, authorization.branch
-    assert_equal "agent_application", authorization.executor_kind
-    assert_equal 1, @transport.requests.size
-    _path, params, _timeout = @transport.requests.first
-    assert_equal(
-      {
-        client_id: "cybros-first-party-connector",
-        agent_identifier: "rho",
-        agent_display_name: "rho",
-        executor_display_name: "rho on laptop",
-        registration_identifier: "rho",
-        runner_display_name: "rho on laptop",
-      },
-      params
-    )
-  end
-
-  def test_a_supplementary_runner_request_selects_an_existing_application_agent
-    client = build_client([[200, {}, AUTH_BODY]])
-    authorization = client.request_runner_authorization(registration_identifier: "workshop-runner",
-      runner_display_name: "Workshop laptop", assignment_agent_public_id: "019b1000-0000-7000-8000-000000000001")
-    assert_equal :runner, authorization.branch
-    assert_equal "019b1000-0000-7000-8000-000000000001", @transport.requests.first[1].fetch(:assignment_agent_public_id)
-    refute @transport.requests.first[1].key?(:agent_identifier)
-  end
-
-  def test_a_combined_bundle_names_three_planes_and_its_runner_half_is_transport_led
-    client = build_client([[200, {}, AUTH_BODY], [200, {}, COMBINED_TOKEN_BODY]])
-    authorization = combined_authorization(client)
-
-    credentials = client.poll(authorization)
-
-    assert_predicate credentials, :member_plane?
-    assert_predicate credentials, :executor_plane?
-    assert_predicate credentials, :runner_plane?
-    assert_equal "sk-cybros-api-v1-runner.z", credentials.runner_access_token
-    assert_equal "rt-cybros-api-v1-r.s", credentials.runner_refresh_token
-
-    half = credentials.runner_half
-    assert_instance_of CybrosAgent::DeviceFlow::Credentials, half
-    assert_nil half.access_token, "the runner half leads with transport, like branch B"
-    assert_equal "sk-cybros-api-v1-runner.z", half.executor_access_token
-    assert_equal "rt-cybros-api-v1-r.s", half.refresh_token
-    assert_equal "Bearer", half.token_type
-    assert_equal 1_209_600, half.expires_in
-    refute_predicate half, :member_plane?
-    assert_predicate half, :executor_plane?
-    refute_predicate half, :runner_plane?
-  end
-
-  def test_a_combined_initial_poll_refuses_a_two_plane_bundle
-    client = build_client([[200, {}, AUTH_BODY], [200, {}, TOKEN_BODY]])
-    authorization = combined_authorization(client)
-
-    assert_raises(CybrosAgent::DeviceFlow::AuthorizationLostError) { client.poll(authorization) }
+  def test_removed_combined_and_assignment_keywords_are_rejected_before_transport
+    skip("the RBS hook rejects unknown keywords first") if ENV["RBS_TEST_TARGET"]
+    client = build_client([])
+    assert_raises(ArgumentError) do
+      client.request_authorization(agent_identifier: "rho", agent_display_name: "rho",
+        executor_display_name: "rho", runner: { identifier: "rho", display_name: "rho" })
+    end
+    assert_raises(ArgumentError) do
+      client.request_runner_authorization(registration_identifier: "runner", runner_display_name: "Runner",
+        assignment_agent_public_id: "old-agent")
+    end
+    assert_empty @transport.requests
   end
 
   def test_an_agent_initial_poll_refuses_a_bundle_carrying_a_runner_half
@@ -108,7 +49,7 @@ class DeviceFlowClientTest < Minitest::Test
       RUNNER_HALF.to_a,
     ].each do |runner|
       client = build_client([[200, {}, AUTH_BODY], [200, {}, TOKEN_BODY.merge("runner" => runner)]])
-      authorization = combined_authorization(client)
+      authorization = client.request_authorization(agent_identifier: "rho", agent_display_name: "rho", executor_display_name: "rho")
 
       assert_raises(CybrosAgent::DeviceFlow::AuthorizationLostError, runner.inspect) do
         client.poll(authorization)
@@ -121,9 +62,8 @@ class DeviceFlowClientTest < Minitest::Test
 
     credentials = client.rotate(refresh_token: "rt-cybros-api-v1-a.b")
 
-    refute_predicate credentials, :runner_plane?
-    assert_nil credentials.runner_access_token
-    assert_nil credentials.runner_refresh_token
+    assert_predicate credentials, :member_plane?
+    assert_predicate credentials, :executor_plane?
   end
 
   def test_request_authorization_returns_typed_facts_and_a_monotonic_deadline
@@ -165,7 +105,7 @@ class DeviceFlowClientTest < Minitest::Test
       client.request_authorization(
         agent_identifier: "install-1",
         agent_display_name: "Helper",
-        executor_kind: "agent_application",
+        executor_kind: "agent",
         executor_display_name: "App"
       )
     end
@@ -229,7 +169,7 @@ class DeviceFlowClientTest < Minitest::Test
 
   # Branch A fixes the kind: the Authorization says so, and the request
   # carries no selector (a kind on branch A is `invalid_request` at the door).
-  def test_an_agent_authorization_fixes_the_agent_application_kind
+  def test_an_agent_authorization_fixes_the_agent_kind
     client = build_client([[200, {}, AUTH_BODY]])
 
     authorization = client.request_authorization(
@@ -237,7 +177,7 @@ class DeviceFlowClientTest < Minitest::Test
     )
 
     assert_equal :agent, authorization.branch
-    assert_equal "agent_application", authorization.executor_kind
+    assert_equal "agent", authorization.executor_kind
     _path, params, _timeout = @transport.requests.first
     refute params.key?(:executor_kind)
   end
@@ -615,7 +555,7 @@ class DeviceFlowClientTest < Minitest::Test
     auth = CybrosAgent::DeviceFlow::Authorization.new(
       device_code: "dc-secret", user_code: "ABCD-EFGH", verification_uri: "u",
       verification_uri_complete: "u", interval: 5, expires_in: 900, deadline_monotonic: 900,
-      branch: :agent, executor_kind: "agent_application"
+      branch: :agent, executor_kind: "agent"
     )
     refute auth.inspect.include?("dc-secret")
     assert_includes auth.inspect, "[REDACTED]"
@@ -659,7 +599,7 @@ class DeviceFlowClientTest < Minitest::Test
       interval: 5,
       expires_in: 900,
       deadline_monotonic: 900,
-      branch: :agent, executor_kind: "agent_application"
+      branch: :agent, executor_kind: "agent"
     )
     credentials = CybrosAgent::DeviceFlow::Credentials.new(
       access_token: secrets.fetch(0),

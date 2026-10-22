@@ -113,7 +113,7 @@ class Runs::FirstRunnerWriteTest < ActiveJob::TestCase
 
   test "a withdrawn capability refuses the claim before any first write is captured" do
     run = start_write
-    assert_predicate suite_runner.announce(tools: []), :accepted?
+    assert_predicate suite_runner.announce(services: { suite_runner.executor_kind => { "tools" => [] } }), :accepted?
     result = Executors::Claim.call(Executors::Claim::Command.new(
       run: run, task_key: "write", executor: suite_runner
     ))

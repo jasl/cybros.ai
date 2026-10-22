@@ -25,8 +25,8 @@ class Runs::ResultDeliveryEnvironmentsTest < ActiveJob::TestCase
     original_environment = original_seed.operation_context.fetch("environment")
     select_runner(@runner_b)
     @agent.update!(runner_executor_public_ids: [@runner_b.public_id])
-    announced = @runner_a.announce(tools: @runner_a.served_tools,
-      environment: { "fragments" => [{ "text" => "Changed Alpha workspace" }] })
+    announced = @runner_a.announce(services: { @runner_a.executor_kind => { "tools" => @runner_a.tools_for(:runner),
+      "environment" => { "fragments" => [{ "text" => "Changed Alpha workspace" }] } } })
     assert_predicate announced, :accepted?
     run_round!(source, "r2t0-model-1", "Alpha checks passed")
 
@@ -121,10 +121,10 @@ class Runs::ResultDeliveryEnvironmentsTest < ActiveJob::TestCase
     def runner(name, text)
       executor = connect_runner(manager: users(:owner), registration_identifier: "callback-env-#{name}")
         .executor_access_token.executor
-      announced = executor.announce(tools: [{ "name" => "bash", "description" => "Run a command in #{name}",
+      announced = executor.announce(services: { executor.executor_kind => { "tools" => [{ "name" => "bash", "description" => "Run a command in #{name}",
         "input_schema" => { "type" => "object", "properties" => { "command" => { "type" => "string" } },
           "required" => ["command"] }, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }],
-        environment: { "fragments" => [{ "text" => text }] })
+        "environment" => { "fragments" => [{ "text" => text }] } } })
       assert_predicate announced, :accepted?
       executor
     end

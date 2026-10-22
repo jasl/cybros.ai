@@ -357,7 +357,7 @@ module E2E
       # daemon's, and read as `evidence` while the container stands (the
       # lane's dump of a red run, before the home goes).
       class Daemon < E2E::RhoDaemon
-        ANNOUNCED = /event=executor\.announced tools=\d+ address=runner\b/
+        ANNOUNCED = /event=executor\.announced tools=\d+ role=runner\b/
 
         attr_reader :name, :port, :tag, :task_dir, :logs_dir, :user, :network, :uid, :gid
 

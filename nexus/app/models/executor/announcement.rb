@@ -1,57 +1,77 @@
-# What this executor serves: the announcement, stored canonical and replaced
-# whole by one verb, read by addressing, discovery and acceptance-time tool
-# assembly. A selected Runner contributes only announced model schemas permitted
-# by the Agent's declaration; accepted work retains those exact schemas and
-# targets after later announcements. The environment document rides the same
-# verb: opaque, whole-replaced and frozen beside the accepted tool surface.
-# The DOCUMENTS ride it too: what this
-# executor can LOAD for a model — a project's skills; an MCP server's
-# prompts and resources curated into the same shape — as `{name,
-# description}` entries, kept as the announcement and never as rows, read by
-# the turn's skills catalog and by the `skill` load's addressing.
+# One whole-address writer and role-qualified readers. Withdrawing a role
+# changes new admission, never the authority of an already accepted claim.
 module Executor::Announcement
   extend ActiveSupport::Concern
 
   included do
-    validates :served_tools, bounded_json: { bound: :envelope_bound, shape: Array }
-    validates :served_documents, bounded_json: { bound: :envelope_bound, shape: Array }
-    validates :environment, bounded_json: { bound: :executor_environment_bound, shape: Hash }
+    attribute :services, Executor::Services.to_type
+    before_validation :initialize_services, on: :create
+    validate :services_must_be_bounded
+    scope :providing, ->(role) { where("jsonb_typeof(services -> :role) = 'object'", role: role.to_s) }
   end
 
-  # Whole replacement, the `declare_configuration` shape: a plain save with
-  # no explicit lock — a single-row overwrite with no invariant across rows,
-  # last writer wins. An absent environment is `{}` and an absent documents
-  # list is `[]` — one write shape on one verb, never a partial update.
-  def announce(tools:, environment: nil, documents: nil)
-    refusal = Nexus::ToolAnnouncements.refusal(tools) ||
-      Nexus::ToolAnnouncements.environment_refusal(environment) ||
-      Nexus::ToolAnnouncements.document_refusal(documents)
+  def announce(services:)
+    refusal = services_refusal(services)
     if refusal
       Executors::Outcome.refused(refusal.code.to_sym, self, detail: refusal.detail)
     else
-      self.served_tools = Nexus::ToolAnnouncements.canonical(tools)
-      self.environment = environment || {}
-      self.served_documents = Nexus::ToolAnnouncements.canonical_documents(documents)
+      self.services = services.to_h do |role, service|
+        [role, {
+          "tools" => Nexus::ToolAnnouncements.canonical(service.fetch("tools")),
+          "documents" => Nexus::ToolAnnouncements.canonical_documents(service["documents"]),
+          "environment" => service["environment"] || {},
+        }]
+      end
       save ? Executors::Outcome.accepted(self) : Executors::Outcome.refused(:invalid, self)
     end
   end
 
-  def served?(name) = serving(name).present?
+  def service_roles = services.roles
+  def provides?(role) = service_roles.include?(role.to_s)
+  def tools_for(role) = services.for(role)&.tools || []
+  def documents_for(role) = services.for(role)&.documents || []
+  def environment_for(role) = services.for(role)&.environment || {}
+  def served?(name, role:) = serving(name, role: role).present?
 
-  # The announcement ENTRY for a name — `{name, effect_profile, timeout_ms?,
-  # description?, input_schema?, mcp?}`; nil when unserved.
-  def serving(name)
-    served_tools.find { |entry| entry["name"] == name.to_s }
+  def serving(name, role:)
+    tools_for(role).find { |entry| entry.fetch("name") == name.to_s }
   end
 
-  # The effect-profile document addressing freezes onto the row at dispatch:
-  # the five keys plus the announced `timeout_ms`, the one shape a kernel
-  # row's registry profile also takes, so the sweep's SQL twin reads
-  # `effect_profile->>'timeout_ms'` on every row alike.
-  def effect_profile_for(name)
-    entry = serving(name)
-    return if entry.nil?
-
-    entry.fetch("effect_profile").merge(entry.slice("timeout_ms"))
+  def effect_profile_for(name, role:)
+    entry = serving(name, role: role)
+    entry&.fetch("effect_profile")&.merge(entry.slice("timeout_ms"))
   end
+
+  private
+
+    def initialize_services
+      self.services ||= { executor_kind => {} }
+    end
+
+    def services_refusal(document)
+      document = Hash.try_convert(document)
+      allowed = agent? ? %w[agent runner] : [executor_kind]
+      unless document && document.key?(executor_kind) && (document.keys - allowed).empty?
+        return Nexus::ToolAnnouncements::Refusal.new(code: "invalid_announcement", detail: "services must include the registration role and only its permitted roles")
+      end
+
+      document.each_value do |service|
+        service = Hash.try_convert(service)
+        unless service
+          return Nexus::ToolAnnouncements::Refusal.new(code: "invalid_announcement", detail: "service must be an object")
+        end
+        refusal = Nexus::ToolAnnouncements.refusal(service["tools"]) ||
+          Nexus::ToolAnnouncements.document_refusal(service["documents"]) ||
+          Nexus::ToolAnnouncements.environment_refusal(service["environment"])
+        return refusal if refusal
+      end
+      nil
+    end
+
+    def services_must_be_bounded
+      if services && (!Nexus::SizeBounds.json_within?(:envelope_bound, services.document) ||
+          services.roles.any? { |role| !Nexus::SizeBounds.json_within?(:executor_environment_bound, services.for(role).environment) })
+        errors.add(:services, Nexus::SizeBounds::REJECTION)
+      end
+    end
 end

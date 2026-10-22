@@ -45,7 +45,7 @@ module Tasks
 
     def park_kind = PARK_KIND
 
-    # A tokenless ask is the agent application's inbox row; a tokened
+    # A tokenless ask is the agent's inbox row; a tokened
     # `dispatched` await has a holder and is never listed on that inbox.
     def inbox_kind = ("ask" if status == "awaiting_input")
 

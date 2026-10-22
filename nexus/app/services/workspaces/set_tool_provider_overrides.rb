@@ -73,7 +73,7 @@ module Workspaces
       # The completeness rule, names only (never the profile): every live
       # wire name of the namespace, or two memories under one family.
       def serves_namespace_whole?(provider, namespace)
-        Nexus::ToolRegistry.wire_names_in(namespace).all? { |name| provider.served?(name) }
+        Nexus::ToolRegistry.wire_names_in(namespace).all? { |name| provider.served?(name, role: :tool_provider) }
       end
   end
 end

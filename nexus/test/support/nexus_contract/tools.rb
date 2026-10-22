@@ -83,9 +83,9 @@ module Nexus
         # an exact callable schema and target-qualified environment to assembly.
         def tool_assembly
           executor = executors.fetch("discovery_fixture")
-          offered = executor.fetch("served_tools").find { |entry| entry.fetch("name") == "read" }
+          offered = executor.fetch("services").fetch("runner").fetch("tools").find { |entry| entry.fetch("name") == "read" }
           runner = { "runner_executor_public_id" => executor.fetch("public_id"),
-            "display_name" => executor.fetch("display_name"), "environment" => executor.fetch("environment") }
+            "display_name" => executor.fetch("display_name"), "environment" => executor.fetch("services").fetch("runner").fetch("environment") }
           {
             "tool_definitions" => [{
               "type" => "function",

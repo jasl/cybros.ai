@@ -206,6 +206,8 @@ class ConversationServersTest < Minitest::Test
       say(daemon, side_id, "continue with the same tools")
       later = last_input(api)
       [initial, later].each do |input|
+        assert_equal({ "root" => project(tools), "directories" => [], "anchor" => parent },
+          input.dig("executor_contexts", RUNNER_IDENTITY.executor_public_id, "rho.environment"))
         names = input.fetch("tool_names")
         if tools == "read"
           assert_includes names, "read"

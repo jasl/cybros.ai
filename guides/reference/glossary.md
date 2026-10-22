@@ -3,16 +3,16 @@
 | Term | Meaning | Not to be confused with |
 | --- | --- | --- |
 | **Account** | The installation's single trust domain: members, workspaces, conversations, executors, credentials and usage | A tenant; there is no tenant isolation layer |
-| **Agent** | An agent-kind member with a durable identity, stewarded by a human | The program that implements it (the agent application) |
-| **Agent application** | The product runtime implementing an agent's behavior and policy — rho, or yours | Nexus; a runner |
+| **Agent** | An agent-kind member with a durable identity, stewarded by a human | The program that implements it (the agent) |
+| **Agent** | The product runtime implementing an agent's behavior and policy — rho, or yours | Nexus; a runner |
 | **Agent configuration** | Identity-free execution settings: tools, prompts, models, approvals and context policy, declared as standing defaults or captured inline | An Agent member; Profile |
-| **Agent Preset** | A reusable configuration package managed by an agent application such as rho | An Agent identity; a Subagent execution |
+| **Agent Preset** | A reusable configuration package managed by an agent such as rho | An Agent identity; a Subagent execution |
 | **Approval** | The kernel stage every tool call crosses; the mode and rules decide whether it runs, parks or is refused | A permission the runner enforces |
 | **Awareness** | A notification an agent may ignore | Obligation |
 | **Capture** | A file an executor publishes and names in a result | An input attachment |
 | **Conversation** | The durable dialogue and history host | A session; a run |
 | **Cost unit** | The account's configure-once currency for estimates | A price |
-| **Executor** | A delivery address with a transport credential: agent application, runner or tool provider | A member; a physical machine |
+| **Executor** | A delivery address with a transport credential: agent, runner or tool provider | A member; a physical machine |
 | **Environment** | Facts an executor announces about where its tools run, captured for execution | A separate hosted sandbox resource; a Runner identity |
 | **Event** | A durable record exposed through HTTP replay; realtime notifications point readers to current state | Ephemeral transcript deltas or progress frames |
 | **Fork** | A new conversation branched from a point in history; a *side* is a fork mode | Regeneration |

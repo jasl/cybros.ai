@@ -17,9 +17,7 @@ class RealtimeNexusProbe < Minitest::Test
     assert_equal 201, agent.status
     @agent_id = agent.body.fetch("agent").fetch("public_id")
     path = "/api/v1/agents/#{@agent_id}"
-    runner = http.post("#{path}/private_runners", body: { private_runner: { display_name: "Transport probe runner" } }, bearer: session.token)
-    assert_equal 201, runner.status
-    runner_path = "#{path}/private_runners/#{runner.body.fetch("private_runner").fetch("public_id")}/api_keys"
+    runner_path = "#{path}/executor/api_keys"
     issue = ->(key_path) do
       response = http.post(key_path, body: { api_key: { name: "Probe" } }, bearer: session.token)
       assert_equal 201, response.status
@@ -29,9 +27,9 @@ class RealtimeNexusProbe < Minitest::Test
     member = CybrosAgent::Client.new(base_url: base_url, credential: member_key)
     executor = CybrosAgent::ExecutorClient.new(base_url: base_url, credential: issue.call(runner_path))
     executor_id = executor.executor.executor.public_id
-    executor.announce(tools: [{ "name" => "terminal_probe", "effect_profile" =>
+    executor.announce(services: { "agent" => { "tools" => [] }, "runner" => { "tools" => [{ "name" => "terminal_probe", "effect_profile" =>
       { "kind" => "read_only", "destructive" => false, "effect_scope" => "closed",
-        "idempotency" => "intrinsic", "reconciliation" => "none" }, "timeout_ms" => 120_000 }])
+        "idempotency" => "intrinsic", "reconciliation" => "none" }, "timeout_ms" => 120_000 }] } })
     workspace = member.workspaces.create(name: "Transport probe", idempotency_key: SecureRandom.uuid).workspace
     E2E.hosts.start
     @run = member.workspace(workspace.public_id).runs.start_tool_call(

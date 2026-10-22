@@ -69,8 +69,6 @@
               <%= t("oauth.device_grants.show.reconnecting_keeps_this_registration_s_existing_scope_revoke_the", subject: (machine)) %>
             </p>
           </div>
-        <% elsif @grant.agent_private_runner_connection? %>
-          <p class="max-w-sm text-sm text-base-content/60"><%= t("oauth.device.agent_private_runner") %></p>
         <% elsif Current.user.admin? %>
           <fieldset class="fieldset max-w-md rounded-box border border-base-300 px-4 py-3 text-start">
             <legend class="fieldset-legend"><%= t("oauth.device_grants.show.assignment_scope_legend") %></legend>

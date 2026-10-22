@@ -2,8 +2,11 @@
 
 **Applies to:** every project, and the root workflow that gates them.
 
-The canonical CI entry point is `.github/workflows/ci.yml`. Each active project stays
-independently verifiable, with local toolchain files and explicit root CI jobs.
+CI entry points are `.github/workflows/ci.yml` on GitHub and `.gitlab-ci.yml` on the
+GitLab deploy remote. Keep their bounded checks aligned. GitLab uses Linux Docker
+runners accepting untagged jobs; default-branch pushes, merge requests and manual
+pipelines run verification. Each active project stays independently verifiable,
+with local toolchain files and explicit root CI jobs.
 
 GitHub Actions runs bounded smoke tests and key quality checks. Full Nexus tests, rho's full
 behavior and runtime-RBS suites, every product E2E journey, image builds and heavy measurements

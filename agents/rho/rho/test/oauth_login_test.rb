@@ -142,7 +142,7 @@ class OAuthLoginTest < Minitest::Test
     assert_equal false, JSON.parse(public_status.body).fetch("paired")
   end
 
-  def test_supplementary_runner_login_selects_the_existing_agent_in_both_browser_flows
+  def test_full_mode_login_uses_application_registration_in_both_browser_flows
     daemon = login_daemon
     sign_in(daemon)
     daemon.stop
@@ -152,16 +152,16 @@ class OAuthLoginTest < Minitest::Test
 
     started = begin_login(full)
     query = URI.decode_www_form(URI(started.fetch("authorization_url")).query).to_h
-    assert_equal "0199-user", query.fetch("assignment_agent_public_id")
-    assert_equal "runner", query.fetch("executor_kind")
-    refute query.key?("agent_identifier")
+    refute query.key?("assignment_agent_public_id")
+    refute query.key?("executor_kind")
+    assert query.key?("agent_identifier")
 
     response = request(full, :post, "/auth/device/start", body: {})
     assert_equal "200", response.code, response.body
     form = @nexus.requests.reverse.find { |row| row.fetch(:path) == "/oauth/device_authorization" }.fetch(:form)
-    assert_equal "0199-user", form.fetch(:assignment_agent_public_id)
-    assert_equal "runner", form.fetch(:executor_kind)
-    refute form.key?(:agent_identifier)
+    refute form.key?(:assignment_agent_public_id)
+    refute form.key?(:executor_kind)
+    assert form.key?(:agent_identifier)
   end
 
   # Asset: the paired rho's service. On loopback the gate is open by default —

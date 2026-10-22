@@ -13,7 +13,7 @@ configured by `NEXUS_DEPLOYMENT_SOCKET`. It has no Docker socket, registry
 credentials, deployment database table, or background upgrade job. The separate
 installation owner retains accepted work while Nexus is stopped or restarted.
 Every command and read is fixed to Nexus. This surface neither manages agent
-application releases nor exposes combined-installation receipts or logs. Joint
+releases nor exposes combined-installation receipts or logs. Joint
 upgrades belong to the installation CLI; the browser has no scope selector.
 The [upgrade guide](../../operate/status-logs-upgrades.md)
 describes installation, image repositories, backups and CLI recovery.
@@ -80,7 +80,7 @@ nullable `source_url`. Its image references are immutable native-platform
 manifest digests, such as `registry.example/nexus@sha256:...`. These images
 serve Nexus and its workers only. In the Docker stack this is one `nexus` image;
 its `org.opencontainers.image.version` identifies the selected release.
-Agent applications may run a different release and never enter this selection.
+Agents may run a different release and never enter this selection.
 
 A preflight contains required `checked_at`, `ready`, `backup`, and `checks` fields.
 The boolean `backup` records the choice used by that check.
@@ -120,7 +120,7 @@ To start, send a fresh UUIDv7 `Idempotency-Key` header and the selected candidat
 Copy the complete `release` and `images` returned by the check; the example
 illustrates the Docker adapter's Nexus selection. The optional top-level
 `backup` boolean defaults to `true` and must match the checked preflight. The browser cannot supply scope,
-agent application selectors, shell commands,
+agent selectors, shell commands,
 paths, repository overrides, environment values or Compose arguments. Nexus
 sets the initiating Human public ID from its authenticated principal.
 
@@ -219,7 +219,7 @@ Activation retains the maintenance gate until the installation owner explicitly
 resumes waiting work. Interrupted upgrades retain it for recovery. Success requires
 Nexus's expected image identity, HTTP health and required worker processes after
 that resume. The updater never resets a database or performs automatic rollback.
-Agent application containers and images remain unchanged; their Nexus connection
+Agent containers and images remain unchanged; their Nexus connection
 is unavailable during the restart. Failed or uncertain migration keeps Nexus and
 its workers stopped and requires explicit
 operator recovery. An older image cannot reverse a database migration.

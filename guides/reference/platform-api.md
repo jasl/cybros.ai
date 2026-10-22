@@ -105,7 +105,7 @@ do not contact a registry, run Docker, or advance an upgrade.
 - [Persona](platform-api/persona.md): the authenticated Human's durable prompt document.
 - [Balances and allowances](platform-api/budgets.md): own Human balance reads and current-steward Agent allowance management.
 - [Agent settings](platform-api/agents.md), [Agent API keys](platform-api/agent-api-keys.md)
-  and [private Runners](platform-api/private-runners.md): steward-owned connection management.
+  provide steward-owned connection management.
 - [Managed Runners](platform-api/runners.md): machine declarations, management scope
   and execution eligibility for Runners and Tool providers.
 - [Admin Users](platform-api/admin-users.md) — Human-authorized member removal.

@@ -16,9 +16,9 @@ class OperationFinalizationGrowthBenchmark < ActionDispatch::IntegrationTest
     @human = users(:member)
     @workspace = workspaces(:shared)
     @runner = suite_runner
-    @runner.announce(tools: RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
+    @runner.announce(services: { @runner.executor_kind => { "tools" => RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
       "name" => "program", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
-    }])
+    }] } })
     @loop = seed(tool("program", "program", "route" => { "kind" => "runner" }, "timeout_ms" => 3_600_000,
       "model_defaults" => { "tools" => fixture_runner_declarations([RunLaneTestHelper::READ_TOOL]), "model" => { "model" => "dev/mock-text" } }))
     assert_predicate Runs::Start.call(Runs::Start::Command.new(

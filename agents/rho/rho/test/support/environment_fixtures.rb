@@ -248,8 +248,8 @@ module RhoTest
       environment = { "root" => root }
       environment["booted_at"] = booted_at if booted_at
       CybrosAgent::Api::DiscoveredExecutor.new(public_id: public_id, kind: "runner", display_name: "Elsewhere",
-        status: "active", assignment_scope: "user_private", served_tools: [], environment: environment,
-        served_documents: [], presence: "online", last_seen_at: nil, connected_at: connected_at)
+        status: "active", assignment_scope: "user_private", agent_public_id: nil,
+        service_roles: ["runner"], services: { "runner" => { "tools" => [], "environment" => environment, "documents" => [] } }, presence: "online", last_seen_at: nil, connected_at: connected_at)
     end
 
     def join_spawned = @spawned.each(&:join)

@@ -103,7 +103,7 @@ class AgentAPI::V1::Executors::ShutdownCommitsTest < ActionDispatch::Integration
       connection = connect_runner(manager: @manager, registration_identifier: "shutdown-#{kind}",
         assignment_scope: :account_wide, executor_kind: kind)
       executor = connection.executor_access_token.executor
-      assert_predicate executor.announce(tools: [{ "name" => "write", "effect_profile" => WRITE_PROFILE }]), :accepted?
+      assert_predicate executor.announce(services: { executor.executor_kind => { "tools" => [{ "name" => "write", "effect_profile" => WRITE_PROFILE }] } }), :accepted?
       route = { "kind" => "runner" } if kind == :runner
       steps = %w[held loose after].map do |key|
         { "tool" => { "key" => key, "name" => "write", "route" => route,

@@ -9,7 +9,7 @@ module Executor::Addressing
     # lookup. Every writer of an agent address holds the Profile's row lock
     # first — that lock is what lets Consume read an address unlocked.
     scope :addressing, ->(agent) {
-      where(agent: agent, executor_kind: :agent_application)
+      where(agent: agent, executor_kind: :agent)
     }
     # One live address per manager/program key; a terminal row is an
     # absence-generation marker for a fresh registration. No ACL scope, and
@@ -37,37 +37,23 @@ module Executor::Addressing
     def latest_address_for(agent) = addressing(agent).newest_first.first
 
     def runner_for(**key) = live.registered_as(**key).take
-
-    # A private Runner belongs to a paired application, never a named
-    # definition. Its Human continues to own management and credentials.
-    def assignment_agent_eligible?(agent, manager:)
-      agent&.agent_member? && !agent.named_agent? &&
-        agent.execution_principal_eligible? &&
-        agent.account_id == manager.account_id && agent.steward_id == manager.id
-    end
   end
 
-  # Whether this executor may be addressed with, and claim, work carried
-  # under `principal` — side-effect-free, over current rows, the first
-  # reader of `assignment_scope`: an `agent_private` Runner serves its paired
-  # application's family, a `user_private` machine the Human who manages it
-  # and that Human's Agents, and an `account_wide` machine the Account.
-  # An agent application's address serves its own and its named definitions'
-  # loops whoever authored them; the machine branch is one rule for both machine kinds — a tools
-  # provider's pool membership reads exactly this. A page of rows passes
-  # the batch projection as `readiness` so the readiness query runs once
-  # per page, never once per row.
   def eligible_for?(principal, readiness: nil)
     readiness ||= self.class.credential_readiness_for([self])
     active? &&
       readiness.fetch(id) == :ready &&
       !shutdown_pending? &&
-      (agent_application? ? application_serves?(principal) : machine_serves?(principal))
+      (agent? ? application_serves?(principal) : machine_serves?(principal))
+  end
+
+  def eligible_for_role?(role, principal, readiness: nil)
+    provides?(role) && eligible_for?(principal, readiness: readiness)
   end
 
   # The one ownership predicate every machine site reads: a runner and a
   # tools provider answer to their manager Human; only an agent
-  # application answers to a Profile's steward.
+  # answers to a Profile's steward.
   def machine? = Executor::MACHINE_KINDS.include?(executor_kind)
 
   def controlling_human
@@ -116,13 +102,7 @@ module Executor::Addressing
     end
 
     def machine_serves?(principal)
-      if agent_private?
-        assignment_agent.active? && assignment_agent.steward_id == manager_id &&
-          principal.execution_principal_eligible? &&
-          principal.application_owner&.id == assignment_agent_id
-      else
-        account_wide? || manager_id == controlling_human_id_of(principal)
-      end
+      account_wide? || manager_id == controlling_human_id_of(principal)
     end
 
     def controlling_human_id

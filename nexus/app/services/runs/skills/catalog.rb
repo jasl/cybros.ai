@@ -9,7 +9,7 @@ module Runs
       module_function
 
       # Source precedence for a non-Runner callable, first name wins: the
-      # Agent application's announced documents, the answering agent's own
+      # Agent's announced documents, the answering agent's own
       # `agent/skills/` rows, the room's `workspace/skills/`, the selected
       # `speaker/skills/`, then an explicit Human `user/skills/` binding.
       def for(tools:, address:, context:)
@@ -18,12 +18,12 @@ module Runs
           callable = Nexus::ToolDeclarations.name_of(declaration)
           route = declaration["route"]
           if route
-            executor = Executor.where(executor_kind: :runner)
+            executor = Executor.providing(:runner)
               .find_by(public_id: route.fetch("runner_executor_public_id"))
             announced(executor, callable: callable, source: "runner")
           else
             merged = {}
-            announced(address, callable: callable, source: "agent_application").each { |entry| merged[entry.name] ||= entry }
+            announced(address, callable: callable, source: "agent").each { |entry| merged[entry.name] ||= entry }
             context.bindings.sort_by { |binding| %i[agent workspace speaker user conversation].index(binding.scope) }.each do |binding|
               next if binding.scope == :conversation
 
@@ -57,27 +57,27 @@ module Runs
         kept.length == entries.length ? entries : kept
       end
 
-      def announced(executor, callable: nil, source: nil)
+      def announced(executor, callable: nil, source:)
         return [] unless executor&.active?
 
-        Array(executor.served_documents).map do |document|
+        executor.documents_for(source).map do |document|
           Entry.new(name: document.fetch("name"), description: document.fetch("description"),
             callable: callable, source: source, executor_public_id: executor.public_id)
         end
       end
 
       def loadable?(node, executor)
-        return announces?(executor, node.tool_input["name"]) if node.authored_by == "author"
+        return announces?(executor, node.tool_input["name"], role: :runner) if node.authored_by == "author"
 
         documents = Executors::TaskOperations::Context.defaults(node).dig("environment", "skills")
         Array(documents).any? do |entry|
           entry["callable"] == (node.tool_alias || node.tool_name) && entry["name"] == node.tool_input["name"] &&
             entry["executor_public_id"] == executor.public_id
-        end && announces?(executor, node.tool_input["name"])
+        end && announces?(executor, node.tool_input["name"], role: :runner)
       end
 
-      def announces?(executor, name)
-        announced(executor).any? { |entry| entry.name == name }
+      def announces?(executor, name, role:)
+        announced(executor, source: role).any? { |entry| entry.name == name }
       end
 
       def rows(scope, callable:, source:)

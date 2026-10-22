@@ -40,8 +40,6 @@ class User < ApplicationRecord
     dependent: :destroy
   has_many :managed_executors, class_name: "Executor", foreign_key: :manager_id,
     inverse_of: :manager, dependent: :destroy
-  has_many :private_runners, -> { where(executor_kind: :runner, assignment_scope: :agent_private) },
-    class_name: "Executor", foreign_key: :assignment_agent_id, inverse_of: :assignment_agent
   has_many :mcp_connections, foreign_key: :owner_id, inverse_of: :owner, dependent: :destroy
   # The Agents this Human is responsible for: their management surface, and
   # the scope every steward command resolves within.

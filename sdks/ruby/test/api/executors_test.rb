@@ -21,9 +21,12 @@ class ApiExecutorsTest < Minitest::Test
     "display_name" => "lab-mac",
     "status" => "active",
     "assignment_scope" => "user_private",
-    "served_tools" => [READ],
+    "service_roles" => ["runner"],
+    "services" => { "runner" => {
+    "tools" => [READ],
     "environment" => { "root" => "/srv/lab", "fragments" => [{ "extension" => "rho.coding", "text" => "Paths resolve against /srv/lab." }] },
-    "served_documents" => [{ "name" => "deploy-notes", "description" => "How this project is deployed." }],
+    "documents" => [{ "name" => "deploy-notes", "description" => "How this project is deployed." }],
+    } },
     "presence" => "online",
     "last_seen_at" => "2026-09-08T10:00:00Z",
     "connected_at" => "2026-09-08T09:00:00Z",
@@ -42,39 +45,47 @@ class ApiExecutorsTest < Minitest::Test
 
     assert_equal :get, request.fetch(:method)
     assert_equal "/agent_api/v1/executors", request.fetch(:path)
-    assert_nil request.fetch(:params), "absent kind asks for both machine kinds"
+    assert_equal({}, request.fetch(:params), "absent filters ask for all eligible addresses")
     assert_instance_of CybrosAgent::Api::DiscoveredExecutor, executor
     assert_equal [RUNNER_ID, "runner", "lab-mac", "active", "user_private"],
       [executor.public_id, executor.kind, executor.display_name, executor.status, executor.assignment_scope]
-    assert_nil executor.assignment_agent_public_id
-    assert_predicate executor, :runner?
+    assert_nil executor.agent_public_id
+    assert executor.provides?(:runner)
 
-    served = executor.served_tools.fetch(0)
+    served = executor.tools_for(:runner).fetch(0)
     assert_instance_of CybrosAgent::Api::ServedTool, served
     assert_equal "read", served.name
     assert_equal "read", served.effect_profile.fetch("kind")
     assert_equal 90_000, served.timeout_ms
     assert_equal "Read a file under the root.", served.description
     assert_equal "object", served.input_schema.fetch("type")
-    assert_equal %w[read], executor.tool_names
+    assert_equal %w[read], executor.tool_names(role: :runner)
 
-    assert_equal "/srv/lab", executor.environment.fetch("root")
-    assert_predicate executor.environment, :frozen?, "the snapshot is opaque and frozen"
-    document = executor.served_documents.fetch(0)
+    assert_equal "/srv/lab", executor.environment_for(:runner).fetch("root")
+    assert_predicate executor.environment_for(:runner), :frozen?, "the snapshot is opaque and frozen"
+    document = executor.documents_for(:runner).fetch(0)
     assert_instance_of CybrosAgent::Api::ServedDocument, document
     assert_equal ["deploy-notes", "How this project is deployed."], [document.name, document.description]
-    assert_equal %w[deploy-notes], executor.document_names
+    assert_equal %w[deploy-notes], executor.document_names(role: :runner)
     assert_equal %w[online 2026-09-08T10:00:00Z 2026-09-08T09:00:00Z],
       [executor.presence, executor.last_seen_at, executor.connected_at]
   end
 
-  def test_an_application_private_runner_exposes_its_assignment_agent_uuid
-    agent_public_id = "019b1000-0000-7000-8000-000000000001"
-    row = ROW.merge("assignment_scope" => "agent_private", "assignment_agent_public_id" => agent_public_id)
-    executor = executors([[200, {}, { "executors" => [row] }]]).list.fetch(0)
+  def test_an_application_address_keeps_identity_separate_from_its_runner_role
+    row = ROW.merge("kind" => "agent", "assignment_scope" => nil, "agent_public_id" => "agent-id",
+      "service_roles" => %w[agent runner],
+      "services" => ROW.fetch("services").merge("agent" => { "tools" => [], "documents" => [], "environment" => {} }))
+    executor = executors([[200, {}, { "executors" => [row] }]]).list(role: "runner").first
+    assert_equal "agent", executor.kind
+    assert_equal "agent-id", executor.agent_public_id
+    assert executor.provides?(:runner)
+    assert_empty executor.tools_for(:agent)
+    assert_equal ["read"], executor.tool_names(role: :runner)
+    assert_equal({ "role" => "runner" }, request.fetch(:params))
+  end
 
-    assert_equal "agent_private", executor.assignment_scope
-    assert_equal agent_public_id, executor.assignment_agent_public_id
+  def row_with_service(fields)
+    ROW.merge("services" => { "runner" => ROW.fetch("services").fetch("runner").merge(fields) })
   end
 
   def test_narrowing_by_kind_is_asked_of_the_server_rather_than_done_here
@@ -87,9 +98,9 @@ class ApiExecutorsTest < Minitest::Test
   # verbatim when announced; a row that announced neither still lists.
   def test_a_served_tool_without_the_declaration_keys_reads_as_none
     bare = READ.slice("name", "effect_profile")
-    executor = executors([[200, {}, { "executors" => [ROW.merge("served_tools" => [bare])] }]]).list.fetch(0)
+    executor = executors([[200, {}, { "executors" => [row_with_service("tools" => [bare])] }]]).list.fetch(0)
 
-    served = executor.served_tools.fetch(0)
+    served = executor.tools_for(:runner).fetch(0)
     assert_nil served.timeout_ms
     assert_nil served.description
     assert_nil served.input_schema
@@ -99,9 +110,9 @@ class ApiExecutorsTest < Minitest::Test
   def test_a_served_tools_mcp_source_metadata_is_preserved_and_frozen
     metadata = { "server_key" => "Company docs", "tool_name" => "documents.search" }
     offered = READ.merge("name" => "mcp_docs_search", "mcp" => metadata)
-    executor = executors([[200, {}, { "executors" => [ROW.merge("served_tools" => [offered])] }]]).list.fetch(0)
+    executor = executors([[200, {}, { "executors" => [row_with_service("tools" => [offered])] }]]).list.fetch(0)
 
-    served = executor.served_tools.fetch(0)
+    served = executor.tools_for(:runner).fetch(0)
     assert_equal metadata, served.mcp
     assert_predicate served.mcp, :frozen?
     assert_equal metadata, served.to_h.fetch(:mcp)
@@ -114,19 +125,19 @@ class ApiExecutorsTest < Minitest::Test
     nameless = READ.except("name")
 
     assert_raises(CybrosAgent::Api::MalformedResponse) do
-      executors([[200, {}, { "executors" => [ROW.merge("served_tools" => [nameless])] }]]).list
+      executors([[200, {}, { "executors" => [row_with_service("tools" => [nameless])] }]]).list
     end
   end
 
   def test_an_executor_announcing_nothing_serves_nothing
-    row = ROW.merge("served_tools" => [], "environment" => {}, "served_documents" => [])
+    row = row_with_service("tools" => [], "environment" => {}, "documents" => [])
     executor = executors([[200, {}, { "executors" => [row] }]]).list.fetch(0)
 
-    assert_empty executor.served_tools
-    assert_empty executor.tool_names
-    assert_equal({}, executor.environment)
-    assert_empty executor.served_documents
-    assert_empty executor.document_names
+    assert_empty executor.tools_for(:runner)
+    assert_empty executor.tool_names(role: :runner)
+    assert_equal({}, executor.environment_for(:runner))
+    assert_empty executor.documents_for(:runner)
+    assert_empty executor.document_names(role: :runner)
   end
 
   # Both document keys are the kernel's guarantee — it refused the
@@ -134,10 +145,10 @@ class ApiExecutorsTest < Minitest::Test
   # as is a row without the list.
   def test_a_served_document_without_its_description_and_a_row_without_the_list_are_malformed
     assert_raises(CybrosAgent::Api::MalformedResponse) do
-      executors([[200, {}, { "executors" => [ROW.merge("served_documents" => [{ "name" => "deploy-notes" }])] }]]).list
+      executors([[200, {}, { "executors" => [row_with_service("documents" => [{ "name" => "deploy-notes" }])] }]]).list
     end
     assert_raises(CybrosAgent::Api::MalformedResponse) do
-      executors([[200, {}, { "executors" => [ROW.except("served_documents")] }]]).list
+      executors([[200, {}, { "executors" => [ROW.merge("services" => { "runner" => ROW.fetch("services").fetch("runner").except("documents") })] }]]).list
     end
   end
 

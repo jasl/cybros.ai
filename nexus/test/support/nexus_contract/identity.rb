@@ -37,7 +37,7 @@ module Nexus
           # The combined grant's body (r-modes M2): the member-led agent
           # bundle plus the nested runner lineage — present only on a
           # combined consume, never on rotation.
-          valid_combined_token = valid_agent_token.merge(
+          retired_combined_token = valid_agent_token.merge(
             "runner" => {
               "access_token" => "fixture-runner-token",
               "refresh_token" => "fixture-runner-refresh-token",
@@ -93,7 +93,7 @@ module Nexus
             },
             "valid_agent_token_fixture" => valid_agent_token,
             "valid_runner_token_fixture" => valid_runner_token,
-            "valid_combined_token_fixture" => valid_combined_token,
+            "retired_combined_token_fixture" => retired_combined_token,
             "valid_cancellation_fixture" => { "status" => 200, "body" => nil },
             "consumed_cancellation_fixture" => oauth_error_fixture("too_late"),
             "valid_revocation_fixture" => { "status" => 200, "body" => nil },

@@ -203,12 +203,46 @@ class AgentAPI::V1::Executors::RealtimeTest < ActionDispatch::IntegrationTest
     assert_equal "executor_credential_revoked", response.parsed_body.dig("realtime", "reason")
   end
 
+  test "an application runner claim keeps realtime after role withdrawal and retains its original credential" do
+    application = Executor.address_for(@human)
+    @application_transport = create_bound_credential(executor: application, name: "Application realtime")
+    assert_predicate application.announce(services: {
+      "agent" => { "tools" => [] },
+      "runner" => { "tools" => [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] },
+    }), :accepted?
+    @run = seed(tool("held", "read_file", "timeout_ms" => 60_000),
+      default_runner_executor_public_id: application.public_id)
+    assert_predicate Runs::Start.call(Runs::Start::Command.new(run: @run, acting_user: @human)), :accepted?
+    Runs::ScheduleReady.call(run_id: @run.id)
+    @claim = nil
+    post executor_path.sub(/realtime\z/, "claim"), headers: executor_headers
+    assert_response :success
+    @claim = response.parsed_body.dig("claim", "claim_token")
+    assert_equal "runner", node.addressed_role
+    assert_equal application.id, node.claimed_by_executor_id
+    offer
+    answer
+    assert_status "active"
+
+    assert_predicate application.announce(services: { "agent" => { "tools" => [] } }), :accepted?
+    get executor_path, headers: executor_headers
+    assert_status "active"
+    assert_claim_active
+
+    replacement = AccessTokens::IssueAPIKey.call(user: @human, executor: application, name: "Replacement")
+    assert_equal :issued, replacement.outcome
+    @application_transport.token.revoke
+    get executor_path, headers: { "Authorization" => "Bearer #{replacement.secret}", "Claim-Token" => @claim }
+    assert_status "closed"
+    assert_equal "executor_credential_revoked", response.parsed_body.dig("realtime", "reason")
+  end
+
   private
 
     def node = @run.tasks.find_by!(node_key: "held")
     def executor_path = "/agent_api/v1/executor/inbox/#{@run.public_id}/held/realtime"
     def member_path = "/agent_api/v1/workspaces/#{@workspace.public_id}/runs/#{@run.public_id}/tasks/held/realtime"
-    def executor_headers = { "Authorization" => "Bearer #{suite_runner_connection.executor_access_secret}", "Claim-Token" => @claim }.compact
+    def executor_headers = { "Authorization" => "Bearer #{@application_transport&.secret || suite_runner_connection.executor_access_secret}", "Claim-Token" => @claim }.compact
     def member_headers = { "Authorization" => "Bearer #{@member.secret}" }
     def sdp(byte = "AA") = "v=0\r\na=fingerprint:sha-256 #{([byte] * 32).join(":")}\r\n"
 

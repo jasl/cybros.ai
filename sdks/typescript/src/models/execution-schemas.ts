@@ -1,9 +1,11 @@
 import type { Reader } from "../schemas.js";
 export const executionSchemas: Record<string, Record<string, Reader>> = {
   RunCandidate: {"public_id": ["string"], "workspace_public_id": ["string"], "conversation_public_id": ["string"], "turn_public_id": ["string"], "status": ["string"]},
+  ExecutorService: { tools: ["shapes", "ServedTool"], documents: ["shapes", "ServedDocument"], environment: ["json_object"] },
+  ExecutorServices: { agent: ["optional_shape", "ExecutorService"], runner: ["optional_shape", "ExecutorService"], tool_provider: ["optional_shape", "ExecutorService"] },
   ExecutorDescription: {"executor": ["shape", "ExecutorAddress"], "measured_at": ["string"]},
-  ExecutorAddress: {"public_id": ["string"], "kind": ["string"], "status": ["string"], "display_name": ["optional_string"], "credential_epoch": ["integer"], "presence": ["string"], "last_seen_at": ["optional_string"], "connected_at": ["optional_string"], "agent_public_id": ["optional_string"], "registration_identifier": ["optional_string"], "assignment_scope": ["optional_string"], "assignment_agent_public_id": ["optional_string"]},
-  DiscoveredExecutor: {"public_id": ["string"], "kind": ["string"], "display_name": ["optional_string"], "status": ["string"], "assignment_scope": ["string"], "assignment_agent_public_id": ["optional_string"], "served_tools": ["shapes", "ServedTool"], "environment": ["json_object_or_empty"], "served_documents": ["shapes", "ServedDocument"], "presence": ["string"], "last_seen_at": ["optional_string"], "connected_at": ["optional_string"]},
+  ExecutorAddress: {"public_id": ["string"], "kind": ["string"], "status": ["string"], "display_name": ["optional_string"], "credential_epoch": ["integer"], "presence": ["string"], "last_seen_at": ["optional_string"], "connected_at": ["optional_string"], "agent_public_id": ["optional_string"], "registration_identifier": ["optional_string"], "assignment_scope": ["optional_string"], "service_roles": ["string_list"]},
+  DiscoveredExecutor: {"public_id": ["string"], "kind": ["string"], "display_name": ["optional_string"], "status": ["string"], "assignment_scope": ["optional_string"], "agent_public_id": ["optional_string"], "service_roles": ["string_list"], "services": ["shape", "ExecutorServices"], "presence": ["string"], "last_seen_at": ["optional_string"], "connected_at": ["optional_string"]},
   ServedTool: {"name": ["string"], "effect_profile": ["json_object"], "timeout_ms": ["optional_integer"], "description": ["optional_string"], "input_schema": ["optional_json_object"], "mcp": ["optional_json_object"]},
   ServedDocument: {"name": ["string"], "description": ["string"]},
   OperationContext: {"tools": ["json_array"], "model_defaults": ["json_object"], "environment": ["optional_json_object"]},

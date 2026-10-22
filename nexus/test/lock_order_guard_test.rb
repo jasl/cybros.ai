@@ -72,7 +72,7 @@ class LockOrderGuardTest < ActiveSupport::TestCase
   test "the guard detects an acquisition against the ladder" do
     member = create_agent_member(steward: users(:owner), agent_identifier: "install-guard-detect")
     executor = member.executors.create!(
-      account: member.account, executor_kind: :agent_application, display_name: "Guard app"
+      account: member.account, executor_kind: :agent, display_name: "Guard app"
     )
 
     sequences = capture_lock_sequences do

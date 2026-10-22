@@ -27,14 +27,14 @@ class SDKLanguagesTest < Minitest::Test
       credential: E2E::SecretHygiene.register(grant.token))
     @agent = @platform.agents.create(display_name: "Cross-language SDK #{SecureRandom.hex(4)}")
     @agent_context = @platform.agents.agent(@agent.public_id)
-    @runner = @agent_context.private_runners.create(display_name: "Cross-language Runner")
     @revocations = []
     @member_key = issue_key(@agent_context.api_keys, "Member")
     @application_key = issue_key(@agent_context.executor_api_keys, "Application")
-    @runner_key = issue_key(@agent_context.private_runners.runner(@runner.public_id).api_keys, "Runner")
+    @runner_key = @application_key
     @member = CybrosAgent::Client.new(base_url: @base_url, credential: @member_key)
     @application = CybrosAgent::ExecutorClient.new(base_url: @base_url, credential: @application_key)
     @application_address = @application.executor.executor
+    @runner = @application_address
     @executor = CybrosAgent::ExecutorClient.new(base_url: @base_url, credential: @runner_key)
     @workspaces = []
   end

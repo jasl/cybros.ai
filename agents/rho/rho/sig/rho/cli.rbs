@@ -60,7 +60,7 @@ module Rho
 
     def start_ceremony: (Hash[String, untyped] daemon) -> untyped
     def status_document: (Hash[String, untyped] daemon) -> untyped
-    def disconnect: (?runner: bool) -> untyped
+    def disconnect: () -> untyped
     def import_api_keys: (Hash[String, untyped] document) -> Hash[String, untyped]
     def connect_in_process: () ?{ (Hash[String, untyped]) -> void } -> Identity
 
@@ -227,7 +227,7 @@ module Rho
       BOOTSTRAP_WAIT: Integer
 
       def connect: (?public_url: String?, ?api_key: bool, ?api_key_stdin: bool, ?input: untyped) -> untyped
-      def disconnect: (?runner: bool) -> untyped
+      def disconnect: () -> untyped
     end
 
     # The settle machine over `Core#follower_events`: the frames to a callback,

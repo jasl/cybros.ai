@@ -50,6 +50,8 @@ module ToolCatalogAuthor
           working_directory: body["working_directory"])
         accepted = hosted.inputs.create(kind: "direct_reply", text: body.fetch("text"), delivery_mode: "queue",
           **execution.merge(agent_configuration: declaration), tool_names: names, speaker_public_id: speaker.public_id,
+          executor_contexts: ctx.execution_contexts(client, tools: tools, runner: runner,
+            host: public_id, workspace_public_id: workspace_id),
           inline: [{ "role" => "developer", "position" => "lead", "text" => lead }],
           idempotency_key: SecureRandom.uuid)
         [201, { "pending" => true, "conversation" => { "public_id" => public_id },
@@ -66,7 +68,7 @@ module ToolCatalogAuthor
       working_directory: working_directory)
     ctx.environments.describing_lead(binding&.anchor) do
       Rho::RunDeclaration.lead(registry: ctx.registry, environment: environment, hints: ctx.lead_hints(model),
-        code_mode: code_mode, kernel_environment: true, environment_snapshot: ctx.remote_runner(runner)&.environment,
+        code_mode: code_mode, kernel_environment: true, environment_snapshot: ctx.remote_runner(runner)&.environment_for(:runner),
         root: binding&.root, directories: binding ? binding.directories : [])
     end
   end

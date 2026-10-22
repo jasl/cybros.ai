@@ -8,8 +8,7 @@ class API::V1::RunnersTest < ActionDispatch::IntegrationTest
   end
 
   test "management reads private credential-less and revoked machines independently of eligibility" do
-    connection = connect_combined_session(steward: @human, agent_identifier: "managed-app", registration_identifier: "private")
-    private_runner = connection.runner.executor_access_token.executor
+    private_runner = machine("private")
     no_credential = machine("without-credential")
     no_credential.revoke_credentials
     revoked = machine("revoked")
@@ -22,9 +21,9 @@ class API::V1::RunnersTest < ActionDispatch::IntegrationTest
     rows = response.parsed_body.fetch("runners").index_by { |row| row.fetch("public_id") }
     assert_equal [private_runner, no_credential, revoked, provider].map(&:public_id).sort, rows.keys.sort
     assert_not_includes rows, outsider.public_id
-    assert_equal "agent_private", rows.fetch(private_runner.public_id).fetch("assignment_scope")
+    assert_equal "user_private", rows.fetch(private_runner.public_id).fetch("assignment_scope")
     assert_equal "ready", rows.fetch(private_runner.public_id).fetch("credential_readiness")
-    assert_equal false, rows.fetch(private_runner.public_id).fetch("eligible_for_current_user")
+    assert_equal true, rows.fetch(private_runner.public_id).fetch("eligible_for_current_user")
     assert_equal "no_credential", rows.fetch(no_credential.public_id).fetch("credential_readiness")
     assert_equal false, rows.fetch(no_credential.public_id).fetch("eligible_for_current_user")
     assert_equal "revoked", rows.fetch(revoked.public_id).fetch("status")
@@ -45,7 +44,7 @@ class API::V1::RunnersTest < ActionDispatch::IntegrationTest
       "description" => "Read a file", "input_schema" => { "type" => "object" } }]
     documents = [{ "name" => "project", "description" => "Project instructions" }]
     environment = { "root" => "/srv/project" }
-    assert_predicate runner.announce(tools: tools, documents: documents, environment: environment), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => tools, "documents" => documents, "environment" => environment } }), :accepted?
     runner.update!(last_seen_at: 2.minutes.ago)
     snapshot = runner.attributes
     assert_no_enqueued_jobs do
@@ -55,9 +54,9 @@ class API::V1::RunnersTest < ActionDispatch::IntegrationTest
     end
     assert_response :success
     row = response.parsed_body.fetch("runner")
-    assert_equal tools, row.fetch("served_tools")
-    assert_equal documents, row.fetch("served_documents")
-    assert_equal environment, row.fetch("environment")
+    assert_equal tools, row.fetch("services").fetch("runner").fetch("tools")
+    assert_equal documents, row.fetch("services").fetch("runner").fetch("documents")
+    assert_equal environment, row.fetch("services").fetch("runner").fetch("environment")
     assert_equal @human.public_id, row.fetch("manager_public_id")
     assert_equal "offline", row.fetch("presence")
     assert_equal true, row.fetch("eligible_for_current_user")
@@ -85,7 +84,7 @@ class API::V1::RunnersTest < ActionDispatch::IntegrationTest
     assert_equal [second.public_id], response.parsed_body.fetch("runners").pluck("public_id")
     get api_v1_runners_path, headers: @headers, params: { kind: "tool_provider", status: "revoked" }
     assert_empty response.parsed_body.fetch("runners")
-    [{ limit: 101 }, { after: "invalid" }, { kind: "agent_application" }, { status: "unknown" }].each do |params|
+    [{ limit: 101 }, { after: "invalid" }, { kind: "agent" }, { status: "unknown" }].each do |params|
       get api_v1_runners_path, headers: @headers, params: params
       assert_response :bad_request
       assert_equal "parameter_invalid", response.parsed_body.dig("error", "code")
@@ -94,11 +93,11 @@ class API::V1::RunnersTest < ActionDispatch::IntegrationTest
 
   test "collection batches assignment manager and credential reads" do
     3.times do |index|
-      connect_combined_session(steward: @human, agent_identifier: "app-#{index}", registration_identifier: "runner-#{index}")
+      connect_runner(manager: @human, registration_identifier: "runner-#{index}")
     end
     ApplicationRecord.uncached do
       assert_queries_match(/access_tokens\.credential_epoch/, count: 1) do
-        assert_queries_match(/SELECT "users"\.\* FROM "users" WHERE "users"\."id" IN/, count: 1) do
+        assert_queries_match(/SELECT "users"\.\* FROM "users"/, count: 1) do
           get api_v1_runners_path, headers: @headers
         end
       end

@@ -26,7 +26,7 @@ class DeviceAuthorization < ApplicationRecord
 
   attr_readonly :account_id, :public_id, :client_id, :agent_identifier, :agent_display_name,
     :requested_executor_display_name,
-    :registration_identifier, :runner_display_name, :requested_executor_kind, :assignment_agent_public_id,
+    :registration_identifier, :runner_display_name, :requested_executor_kind,
     :device_code_lookup_id, :device_code_digest, :user_code, :expires_at,
     :grant_type, :connection_mode, :redirect_uri, :code_challenge
 
@@ -43,9 +43,7 @@ class DeviceAuthorization < ApplicationRecord
   enum :status, %w[pending connected canceled expired consumed invalidated].index_by(&:itself),
     default: :pending, validate: true, scopes: false
 
-  # An application-bound Runner's scope is fixed at issuance. A standalone
-  # machine freezes its scope at Connect. Agent-only grants carry nil.
-  enum :selected_assignment_scope, %w[agent_private user_private account_wide].index_by(&:itself),
+  enum :selected_assignment_scope, %w[user_private account_wide].index_by(&:itself),
     validate: { allow_nil: true }, scopes: false, prefix: :selects
 
   enum :grant_type, %w[device_code authorization_code].index_by(&:itself),
@@ -83,38 +81,18 @@ class DeviceAuthorization < ApplicationRecord
     validates :agent_identifier, :agent_display_name, :requested_executor_display_name, absence: true
   end
   with_options if: :agent_connection? do
-    validates :runner_display_name, :selected_assignment_scope, :requested_executor_kind, absence: true
-  end
-  # The combined shape: both claim sets complete, the kind fixed `runner` (a
-  # tools provider under an agent's grant is meaningless) and the scope fixed
-  # `agent_private` at Issue in every status. Re-pair requires the same binding.
-  with_options if: :combined_connection? do
-    validates :runner_display_name, presence: true
-    validates :requested_executor_kind, inclusion: { in: %w[runner] }
-  end
-  validates :assignment_agent_public_id, absence: true, unless: :runner_only_connection?
-  with_options if: :agent_private_runner_connection? do
-    validates :requested_executor_kind, inclusion: { in: %w[runner] }
-    validates :selected_assignment_scope, inclusion: { in: %w[agent_private] }
+    validates :registration_identifier, :runner_display_name, :selected_assignment_scope, :requested_executor_kind, absence: true
   end
   # A runner's placement is frozen by Connect and kept through consumption;
   # before that, and after a cancel, there is none to hold.
   validates :selected_assignment_scope, presence: true,
     if: [:runner_only_connection?, -> { connected? || consumed? || invalidated? }]
   validates :selected_assignment_scope, absence: true,
-    if: [-> { runner_only_connection? && !agent_private_runner_connection? }, -> { pending? || canceled? }]
+    if: [:runner_only_connection?, -> { pending? || canceled? }]
   validate :pairing_precondition_is_complete
   validate :connector_precondition_is_complete
   validate :selected_assignment_scope_changes_only_with_connection
 
-  # A request declares one of three shapes: A (agent), B (machine), A+B
-  # (the combined grant of an agent that also serves as a runner on its
-  # own machine — rho in full mode). Combined = both claim sets complete;
-  # anything between is invalid_request on the wire. Branch B is a MACHINE
-  # connection — a runner or a tools provider, by
-  # `requested_executor_kind` — with the runner's ceremony either way; the
-  # combined shape takes the AGENT's ceremony, its runner half riding the
-  # agent triple's fence (the recorded asymmetry).
   def application_connection?
     client_id == OAuth::APPLICATION_CLIENT_ID
   end
@@ -124,25 +102,13 @@ class DeviceAuthorization < ApplicationRecord
   end
 
   def agent_connection?
-    agent_identifier.present? && registration_identifier.blank?
-  end
-
-  def combined_connection?
-    agent_identifier.present? && registration_identifier.present?
-  end
-
-  def agent_private_runner_connection?
-    combined_connection? || assignment_agent_public_id.present?
+    agent_identifier.present?
   end
 
   def tool_provider_connection?
     runner_only_connection? && requested_executor_kind == "tool_provider"
   end
 
-  # A live Runner marker means Connect is re-pairing an existing
-  # registration. Its immutable ACL is therefore already decided; an absence
-  # or terminal marker is a genuinely new registration. The combined grant's
-  # runner half re-pairs by Consume's own finder, never by the row's marker.
   def reconnecting_live_runner?
     runner_only_connection? &&
       expected_executor_public_id.present? &&
@@ -169,10 +135,6 @@ class DeviceAuthorization < ApplicationRecord
     )
   end
 
-  # Browser cancellation owns no durable membership or credential consequence.
-  # Clear the frozen CAS tuple together with the terminal transition so a
-  # canceled row cannot retain a false address dependency. A combined row's
-  # scope was fixed at Issue and is never cleared.
   def record_cancellation
     unless pending? || connected?
       raise ArgumentError, "only a live device authorization can be canceled"
@@ -184,7 +146,7 @@ class DeviceAuthorization < ApplicationRecord
       connected_by_authority_generation: nil,
       connected_by_identity_recovery_generation: nil,
       user: nil,
-      selected_assignment_scope: (selected_assignment_scope if agent_private_runner_connection?),
+      selected_assignment_scope: nil,
       user_authority_generation: nil,
       expected_executor_public_id: nil,
       expected_credential_epoch: nil,

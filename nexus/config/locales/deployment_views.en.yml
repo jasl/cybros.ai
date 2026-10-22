@@ -66,8 +66,8 @@ en:
         system_upgrade: System upgrade
         view_source: View source
         try_again: Try again
-        inspect_a_release_and_upgrade_brand_agent_applications_are: Inspect a release and upgrade %{brand}.
-          Agent applications are managed separately.
+        inspect_a_release_and_upgrade_brand_agents_are: Inspect a release and upgrade %{brand}.
+          Agents are managed separately.
         online_upgrade_is_not_configured: Online upgrade is not configured
         use_this_installation_s_documented_command_line_upgrade_method: >-
           Use this installation's documented command-line upgrade method. Online upgrades require an installation
@@ -87,7 +87,7 @@ en:
         install_this_release: Install this release
         brand_and_its_background_workers_will_stop_during_the: >-
           %{brand} and its background workers will stop during the upgrade. The installation saves a database-only
-          backup first when selected. Connected agent applications will temporarily lose access to %{brand}.
+          backup first when selected. Connected agents will temporarily lose access to %{brand}.
           Keep a full installation backup for uploaded files, application files, configuration and encryption
           keys. There is no automatic rollback.
         start_upgrade: Start upgrade

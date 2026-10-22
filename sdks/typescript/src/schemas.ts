@@ -50,7 +50,6 @@ export interface Shapes {
   PlatformRunnerDetail: Models.PlatformRunnerDetail;
   PlatformRunnerPage: Models.PlatformRunnerPage;
   PlatformRunnerSnapshot: Models.PlatformRunnerSnapshot;
-  PlatformPrivateRunner: Models.PlatformPrivateRunner;
   PlatformAPIKey: Models.PlatformAPIKey;
   PlatformAPIKeyGrant: Models.PlatformAPIKeyGrant;
   PlatformAuthorizationSession: Models.PlatformAuthorizationSession;
@@ -67,6 +66,8 @@ export interface Shapes {
   PlatformCostUnit: Models.PlatformCostUnit;
   PlatformRetention: Models.PlatformRetention;
   ExecutorDescription: Models.ExecutorDescription;
+  ExecutorService: Models.ExecutorService;
+  ExecutorServices: Models.ExecutorServices;
   ExecutorAddress: Models.ExecutorAddress;
   DiscoveredExecutor: Models.DiscoveredExecutor;
   ServedTool: Models.ServedTool;

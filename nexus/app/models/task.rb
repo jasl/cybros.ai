@@ -60,7 +60,7 @@ class Task < ApplicationRecord
   TRANSCRIPT_VISIBILITIES = %w[visible collapsed hidden].freeze
   # WHO a parked row is for: an executor, or — for a tools provider only
   # — a pool named by role alone.
-  ADDRESSED_ROLES = %w[agent_application runner tool_provider].freeze
+  ADDRESSED_ROLES = %w[agent runner tool_provider].freeze
   NODE_KEY_FORMAT = Nexus::StepBounds::NODE_KEY_FORMAT
 
   include RunnerWrite

@@ -62,7 +62,7 @@ class LiveProcessesTest < Minitest::Test
     claims = @daemon.claims
     refute_empty claims, "the daemon's runner logged no claim"
     assert_includes claims.map { |claim| claim["tool"] }, "start_process", claims.inspect
-    assert_equal %w[runner], claims.map { |claim| claim["address"] }.uniq,
+    assert_equal %w[runner], claims.map { |claim| claim["role"] }.uniq,
       "the environment tools ran on the runner address alone: #{claims.inspect}"
 
     # THE MODEL'S HALF: it read the file through the server it started.

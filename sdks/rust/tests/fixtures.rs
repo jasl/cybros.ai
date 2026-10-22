@@ -192,12 +192,6 @@ fn shared_wire_documents_decode_with_their_typed_fields() {
         &mut e,
     );
     decode::<p::RunnerSnapshot>("platform_runners", "valid_runner_fixture", "", &mut e);
-    decode::<p::PrivateRunner>(
-        "platform_agents",
-        "valid_private_runner_fixture",
-        "/private_runner",
-        &mut e,
-    );
     decode::<p::ApiKeyGrant>(
         "platform_agents",
         "valid_member_key_grant_fixture",

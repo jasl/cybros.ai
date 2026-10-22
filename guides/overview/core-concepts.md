@@ -22,9 +22,9 @@ Where a hosted platform has one *session* object, Cybros has a Conversation (the
 
 ## Execution
 
-- **Executor** — a delivery address with its own transport credential. Three kinds: *agent application* (the program that implements an agent), *runner* and *tool provider*. The executor is where work is delivered; the agent whose authority the work uses is frozen on each task separately.
+- **Executor** — a delivery address with its own transport credential. Three kinds: *agent* (the program that implements an agent), *runner* and *tool provider*. The executor is where work is delivered; the agent whose authority the work uses is frozen on each task separately.
 - **Task** — one durable unit of work in a Run. Nexus executes kernel work; externally executed tasks are addressed to an executor, claimed exclusively, extended if needed, and committed once. An authored Step describes work that becomes Tasks.
-- **Tool** — a callable declared on the agent's configuration. Five sources share one provenance model: kernel tools (`delegate_task`, `ask`, `memory_*`, …), runner tools, tool-provider tools, the agent application's own tools and Nexus-managed MCP tools.
+- **Tool** — a callable declared on the agent's configuration. Five sources share one provenance model: kernel tools (`delegate_task`, `ask`, `memory_*`, …), runner tools, tool-provider tools, the agent's own tools and Nexus-managed MCP tools.
 - **Approval** — a kernel stage every tool call crosses. The agent's mode (`bypass`, `ask`, `rules`) and its rule list decide whether a call runs, parks for a person, or is refused.
 
 ## Conversation structure

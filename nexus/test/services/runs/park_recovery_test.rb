@@ -164,7 +164,7 @@ class Runs::ParkRecoveryTest < ActiveJob::TestCase
     def runner_for(manager)
       runner = connect_runner(manager: manager, registration_identifier: "removal-runner",
         assignment_scope: :account_wide).executor_access_token.executor
-      assert_predicate runner.announce(tools: TEST_SERVED_TOOLS), :accepted?
+      assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
       runner
     end
 

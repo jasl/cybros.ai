@@ -376,7 +376,7 @@ and confirm its upgrade. **Back up the database before upgrading** starts checke
 changing this choice requires another preflight check. This replaces Nexus and its jobs/model-runner workers
 only. It does not inspect candidate rho releases, pull rho images or restart rho.
 rho's connection to Nexus is unavailable during the restart; its process and
-image remain unchanged. Agent application management belongs to its application
+image remain unchanged. Agent management belongs to its application
 or installation tools, not Nexus administration.
 
 The rho page sends Nexus requests through the existing Human administrator API.

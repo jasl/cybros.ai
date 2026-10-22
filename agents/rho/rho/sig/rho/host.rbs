@@ -91,6 +91,7 @@ module Rho
       def outlives_turn?: () -> bool
       def conversation_public_id: () -> String?
       def input_fields: (String text, mode: String, ?model: String?, ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?attachments: Array[String]?, ?deliver_at: String?, ?deliver_in: String?) -> Hash[Symbol, untyped]
+      def self.input_fields: (String text, mode: String, ?model: String?, ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?attachments: Array[String]?, ?deliver_at: String?, ?deliver_in: String?) -> Hash[Symbol, untyped]
       def stop: (untyped context, force: bool) -> String
       def settled?: (untyped context) -> bool
       def compact_refusal: (String task_key) -> String?

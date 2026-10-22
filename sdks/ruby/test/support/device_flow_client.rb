@@ -69,7 +69,7 @@ module CybrosAgentTest
           interval: 5,
           expires_in: 900,
           deadline_monotonic: deadline_monotonic,
-          branch: :agent, executor_kind: "agent_application"
+          branch: :agent, executor_kind: "agent"
         )
       end
   end

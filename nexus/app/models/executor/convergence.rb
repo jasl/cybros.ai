@@ -87,7 +87,7 @@ module Executor::Convergence
     )
       OR
     (
-      executors.executor_kind = 'agent_application'
+      executors.executor_kind = 'agent'
         AND EXISTS (
           SELECT 1
           FROM users AS agents

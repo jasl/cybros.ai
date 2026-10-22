@@ -211,10 +211,10 @@ module E2E
     # READINESS BY ANNOUNCEMENT (r-modes M1; X4′): an address is ready to
     # be addressed once its `executor.announced` line is in the log — a
     # runner-mode rho adopts no workspace, so nothing else says so.
-    ANNOUNCED_RUNNER = /event=executor\.announced tools=\d+ address=runner\b/
+    ANNOUNCED_RUNNER = /event=executor\.announced tools=\d+ role=runner\b/
 
     def await_announced(address:)
-      pattern = /event=executor\.announced tools=\d+ address=#{Regexp.escape(address)}\b/
+      pattern = /event=executor\.announced tools=\d+ role=#{Regexp.escape(address)}\b/
       await("the #{address} address never announced its tools") { log_text.match?(pattern) ? true : nil }
     end
 

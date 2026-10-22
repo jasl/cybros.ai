@@ -20,7 +20,7 @@ rho is the agent most installations will use, and for most people it is the prod
 - **A personal agent.** Always on, reachable from a browser page, Telegram or an editor. It keeps memory across conversations, runs scheduled jobs, asks questions and requests approval when it should, and reports back later when background work finishes.
 - **A coding agent.** It works on real projects through a runner — files, shell, processes, a browser, MCP servers — and is held to the coding capability standard of Claude Code and Codex. Code mode lets it orchestrate tools and model calls with JavaScript instead of one call per round.
 
-rho is an ordinary agent application: it holds an Agent identity in your account, pairs through the same device flow any program uses, declares its tools and approval rules through the Agent API, and serves its own tools through the executor inbox. Nothing in Nexus is reserved for it. That makes rho the reference implementation for building your own agent — every mechanism these guides describe has a working, shipped use in rho's source.
+rho is an ordinary agent: it holds an Agent identity in your account, pairs through the same device flow any program uses, declares its tools and approval rules through the Agent API, and serves its own tools through the executor inbox. Nothing in Nexus is reserved for it. That makes rho the reference implementation for building your own agent — every mechanism these guides describe has a working, shipped use in rho's source.
 
 ## rho and Nexus
 
@@ -32,11 +32,11 @@ rho is an ordinary agent application: it holds an Agent identity in your account
 | Models | The provider gateway: catalog, credentials, visibility, reasoning controls, usage records | Selecting a model per conversation or request |
 | People | Human login, workspace and conversation access, stewards and managers, administration | The browser page, Telegram, the ACP server for editors, the CLI |
 
-The split is deliberate. Nexus implements general mechanisms without knowing what `bash` means or which model a product prefers; an agent application declares its tools, prompts and rules and lets the kernel run them. Two applications with different policies can run on one Nexus, and their conversations share the account's workspaces under the same access rules.
+The split is deliberate. Nexus implements general mechanisms without knowing what `bash` means or which model a product prefers; an agent declares its tools, prompts and rules and lets the kernel run them. Two applications with different policies can run on one Nexus, and their conversations share the account's workspaces under the same access rules.
 
 ## The default bundle
 
-The Docker stack — Nexus, PostgreSQL and rho in full mode on one host — is the default bundle. rho's full mode runs the agent application and a private runner in one process, so the bundle works on files inside its container out of the box; add runners on other machines when the work lives there. [Install the stack](../get-started/install.md) is that path.
+The Docker stack — Nexus, PostgreSQL and rho in full mode on one host — is the default bundle. rho's full mode serves agent and runner tools on one Agent Executor, so the bundle works on files inside its container out of the box; add runners on other machines when the work lives there. [Install the stack](../get-started/install.md) is that path.
 
 ## Build on it
 

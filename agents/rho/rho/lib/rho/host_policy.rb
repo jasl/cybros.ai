@@ -42,15 +42,15 @@ module Rho
       inherited(Snapshot.from_h(value)) unless value.nil?
     end
 
-    # A newly opened host explicitly replaces the policy a fork copied.
-    def replace(model: nil, notes: {}, code_mode: true, subagent: true, model_selection: nil, title_pending: false)
+    # Initialize once. A creation replay preserves the entire committed value;
+    # only a fork's copied parent policy is replaced with the child's own policy.
+    def establish(model: nil, notes: {}, code_mode: true, subagent: true, model_selection: nil, title_pending: false)
       value = @document.change do |document|
-        # Replaying a create must not restore an already consumed title attempt.
         current = Snapshot.from_h(document) unless document.empty?
-        same_host = current && current.host_public_id == @host_public_id
+        next if current && current.host_public_id == @host_public_id
+
         document.replace(owned(model: model, notes: notes, code_mode: code_mode, subagent: subagent, model_selection: model_selection,
-          title_pending: same_host ? current.title_pending : title_pending,
-          title_input_public_id: (current.title_input_public_id if same_host)).to_h)
+          title_pending: title_pending).to_h)
       end
       Snapshot.from_h(value)
     end

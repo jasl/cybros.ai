@@ -121,7 +121,9 @@ class RealtimeSignalingTest < Minitest::Test
 
   def test_webrtc_direct_and_turn_reconnect_keep_the_existing_pty_and_stop_owner
     _base_url, _path, _http, _session, _member_key, _member, transport, executor, key = prepare_realtime
-    E2E::WebrtcFixture.open do |fixture|
+    # Separate interfaces make host/host an actual network topology, rather
+    # than a race among the developer machine's IPv6 and VPN candidates.
+    E2E::WebrtcNetworkFixture.open do |fixture|
       observations = Thread::Queue.new
       tool = Rho::Runner::Toolset::Tool.new(name: "realtime_probe", description: "Probe", parameters: { "type" => "object" },
         handler: lambda { |_input, context|
@@ -130,7 +132,7 @@ class RealtimeSignalingTest < Minitest::Test
             observations << [context, pid]
             begin
               loop do
-                peer = fixture.peer(context: context)
+                peer = fixture.peer(role: "runner", context: context)
                 peer.connect(servers: fixture.servers)
                 observations << peer.pid
                 reconnect = false
@@ -204,6 +206,8 @@ class RealtimeSignalingTest < Minitest::Test
           replacement&.close
         end
       end.wait
+      await { fixture.helpers_reaped? }
+      assert fixture.helpers_reaped?, "both containers must reap their transport helpers"
     end
   ensure
     @pool&.stop
@@ -371,13 +375,16 @@ class RealtimeSignalingTest < Minitest::Test
 
   def test_browser_terminal_entry_reconnects_reports_gap_detaches_and_stops_original_pty
     application_key = nil
-    base_url, _path, _http, _session, member_key, _member, _transport, executor, key, workspace = prepare_realtime(detached: true) do |http, session, path|
+    base_url, _path, _http, _session, member_key, _member, _transport, executor, key, workspace = prepare_realtime(detached: true, application_runner: false) do |http, session, path|
       application_key = issue_realtime_key(http, session, "#{path}/executor/api_keys")
     end
     viewer = E2E::TerminalViewer.new(base_url: base_url, member_key: member_key, application_key: application_key,
       target: { public_id: @run.run_public_id, task_key: key, workspace_public_id: workspace.public_id })
     address = Socket.ip_address_list.find { |candidate| candidate.ipv4? && !candidate.ipv4_loopback? }.ip_address
     E2E::WebrtcFixture.open(address: address) do |fixture|
+      # Both peers need TURN candidates when an obscured browser host address
+      # cannot be reached from the Runner's relay allocation.
+      viewer.configure_ice(fixture.servers)
       observations = Thread::Queue.new
       source = <<~RUBY
         require "io/console"
@@ -508,7 +515,7 @@ class RealtimeSignalingTest < Minitest::Test
 
     def exercise_production_terminal(transport: "udp", rejected_tls: nil, concurrent_files: false)
       viewer = nil
-      base_url, path, http, session, member_key, member, _transport, executor, key, workspace = prepare_realtime(start: false)
+      base_url, path, http, session, member_key, member, _transport, executor, key, workspace = prepare_realtime(start: false, application_runner: false)
       application_key = issue_realtime_key(http, session, "#{path}/executor/api_keys")
       address = Socket.ip_address_list.find { |candidate| candidate.ipv4? && !candidate.ipv4_loopback? }.ip_address
       E2E::WebrtcFixture.open(address: address, transport: transport) do |fixture|
@@ -518,8 +525,9 @@ class RealtimeSignalingTest < Minitest::Test
           loaded = Rho::Runner::Extensions::Loader.call(builtin: extensions,
             api_options: { configuration: { "executable" => fixture.binary, "ice_servers" => transport == "tls" ? [] : fixture.servers } })
           assert_predicate loaded, :ok?
-          executor.announce(tools: loaded.registry.announcement)
           Dir.mktmpdir("terminal-work") do |root|
+            executor.announce(services: { "runner" => { "tools" => loaded.registry.announcement,
+              "environment" => { "root" => root } } })
             env = Rho::Runner::ToolEnv.new(root: root, artifacts_dir: File.join(root, "artifacts"))
             toolset = loaded.registry.toolset(env: env)
             original = toolset.fetch("terminal")
@@ -535,13 +543,14 @@ class RealtimeSignalingTest < Minitest::Test
             task_run = Rho::Runner::TaskRun.new(executor: executor, pool: @pool, toolsets: tools, log: Log.new)
             viewer = E2E::TerminalViewer.new(base_url: base_url, member_key: member_key, application_key: application_key,
               target: { workspace_public_id: workspace.public_id }, create: true,
-              ice_servers: transport == "udp" ? [] : fixture.servers, relay_only: transport != "udp", browser_driver: browser_driver)
+              ice_servers: fixture.servers, relay_only: transport != "udp", browser_driver: browser_driver)
             page = viewer.page
             assert page.has_button?("New terminal", disabled: false)
             page.click_button "New terminal"
             await { page.evaluate_script("window.terminalTarget || null") }
             target = page.evaluate_script("window.terminalTarget")
             @run = member.workspace(workspace.public_id).runs.run(target.fetch("public_id"))
+            assert_equal root, @run.task(key).executor_context.dig("rho.environment", "root")
             replay = page.evaluate_async_script("const done=arguments[0]; window.terminalCall('/terminals',{method:'POST',body:window.terminalRequest}).then(done);")
             assert_equal target, replay.fetch("terminal")
             Async do |reactor|
@@ -634,6 +643,7 @@ class RealtimeSignalingTest < Minitest::Test
     ensure
       @pool&.stop
       @run.stop(force: true) if @run && !@run.fetch.terminal?
+      CybrosAgent::DeviceFlow::Client.new(base_url: base_url).revoke(token: @independent_runner_credential) if @independent_runner_credential
       @platform&.agents&.agent(@agent_id)&.remove if @agent_id
       @platform&.session&.revoke
     end

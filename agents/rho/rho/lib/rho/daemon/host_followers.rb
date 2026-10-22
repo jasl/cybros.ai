@@ -332,7 +332,7 @@ module Rho
             instructions: body["instructions"], binding: root_set, code_mode: code_mode, bare: foreign && !named_answerer)
           selection = tool_selection(client, surface: surface, code_mode: code_mode, subagent: body.fetch("subagent"), answerer: named_answerer,
             declaration: execution&.fetch(:agent_configuration), bare: foreign && !named_answerer)
-          contexts = if foreign && !named_answerer && !body["until"]
+          contexts = if foreign && !named_answerer && !root_set && !body["until"]
             {}
           else
             captured_contexts(client, tools: selection.tools, runner: runner, binding: root_set, bare: foreign && !named_answerer)
@@ -473,9 +473,9 @@ module Rho
             attachments: staged.ids, model: model, schedule: schedule, approval_mode: body["approval_mode"], tool_names: body["tool_names"])
           next fields if fields in Refusal
 
-          if host.outlives_turn? && (!bare || named_answerer) && (!captured || record&.anchor == host.public_id)
+          if host.outlives_turn? && (!bare || named_answerer || record&.binding) && (!captured || record&.anchor == host.public_id)
             fields[:executor_contexts] = captured_contexts(client, tools: selection.tools, runner: row.runner,
-              binding: record&.binding, host: host.public_id, workspace_public_id: row.workspace)
+              binding: record&.binding, host: host.public_id, workspace_public_id: row.workspace, bare: bare && !named_answerer)
           end
           fields.merge!(execution.except(:model)) if execution
           fields.delete(:model) if captured && body["model"].to_s.empty?
@@ -778,38 +778,6 @@ module Rho
             row = hydrate_policy(row, host.context(workspace)) if host.outlives_turn?
             yield(host, host.context(workspace), row, body, workspace, client)
           end
-        end
-
-        # `:turn_author`, in registration order, fail-CLOSED: the open is
-        # refused rather than authored without what an extension meant to
-        # add. A hook answers the Draft the next one sees, or a Refusal.
-        def author_hooks(draft, ctx)
-          @loaded.daemon_hooks.select { |hook| hook.event == :turn_author }.reduce(draft) do |current, hook|
-            answer = hook.call(current, ctx)
-            case answer
-            in Refusal then return answer
-            in Draft then answer
-            end
-          rescue StandardError => error
-            @log.warn("turn_author_hook_failed", extension: hook.extension,
-              error_class: error.class.name, error: CybrosAgent::Redaction.call(error.message))
-            return Refusal.extension_failed(hook.extension, error)
-          end
-        end
-
-        # `:turn_follow`, fired with the RUN backing the turn, fail-OPEN: a
-        # hook that raises costs that gate, never the follower. One gate per
-        # run; the first answered stands.
-        def follow_gate(run_public_id, notes, ctx)
-          gates = @loaded.daemon_hooks.select { |hook| hook.event == :turn_follow }.filter_map do |hook|
-            hook.call(run_public_id, notes, ctx)
-          rescue StandardError => error
-            @log.warn("turn_follow_hook_failed", extension: hook.extension, run: run_public_id,
-              error_class: error.class.name)
-            nil
-          end
-          @log.warn("run_gate_ambiguous", run: run_public_id, gates: gates.length) if gates.length > 1
-          gates.first
         end
 
         def store

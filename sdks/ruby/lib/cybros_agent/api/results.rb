@@ -61,13 +61,13 @@ module CybrosAgent
     ExecutorAddress = Data.define(
       :public_id, :kind, :status, :display_name, :credential_epoch,
       :presence, :last_seen_at, :connected_at, :agent_public_id, :registration_identifier,
-      :assignment_scope, :assignment_agent_public_id
+      :assignment_scope, :service_roles
     ) do
       def initialize(last_seen_at: nil, connected_at: nil, agent_public_id: nil, registration_identifier: nil,
-                     assignment_scope: nil, assignment_agent_public_id: nil, **members)
+                     assignment_scope: nil, service_roles: [], **members)
         super(last_seen_at: last_seen_at, connected_at: connected_at, agent_public_id: agent_public_id,
           registration_identifier: registration_identifier, assignment_scope: assignment_scope,
-          assignment_agent_public_id: assignment_agent_public_id, **members)
+          service_roles: service_roles, **members)
       end
     end
 

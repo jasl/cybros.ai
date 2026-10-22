@@ -1,9 +1,28 @@
+require "digest"
+
 module Rho
   class Daemon
     class HostFollowers
       # Conversation creation and turn input construction share the host's policy.
       module Authoring
         private
+
+          # `:turn_author`, in registration order, fail-CLOSED: the open is
+          # refused rather than authored without what an extension meant to
+          # add. A hook answers the Draft the next one sees, or a Refusal.
+          def author_hooks(draft, ctx)
+            @loaded.daemon_hooks.select { |hook| hook.event == :turn_author }.reduce(draft) do |current, hook|
+              answer = hook.call(current, ctx)
+              case answer
+              in Refusal then return answer
+              in Draft then answer
+              end
+            rescue StandardError => error
+              @log.warn("turn_author_hook_failed", extension: hook.extension,
+                error_class: error.class.name, error: CybrosAgent::Redaction.call(error.message))
+              return Refusal.extension_failed(hook.extension, error)
+            end
+          end
 
           # Observed conversation text is a plain user message. It enters the
           # same durable queue without rendering a reply or selecting a model.
@@ -51,8 +70,13 @@ module Rho
             # A named answerer other than rho is FOREIGN: the create names it,
             # the row remembers it, and the first turn carries the bare words.
             foreign = answerer && answerer.public_id != ctx.own_user_public_id
+            policy = initial_policy(model: model, notes: draft.notes,
+              **draft.body.slice("code_mode", "subagent").transform_keys(&:to_sym),
+              model_selection: draft.body["model_selection"], title_pending: !foreign && draft.body["title"].to_s.empty?)
+            fields = opening_input(client, ctx, draft, selection, answerer, bare: foreign)
             created = workspace.conversations.create(
               idempotency_key: draft.body["idempotency_key"] || SecureRandom.uuid,
+              metadata: creation_metadata(policy, fields, root_set),
               **({ title: draft.body["title"] } if draft.body.key?("title")),
               memory_context: input_memory_context(client, ctx, draft.body),
               default_runner_executor_public_id: runner,
@@ -65,10 +89,9 @@ module Rho
             # A foreign row's open sends no lead (`reply_fields(bare:)`); rho's
             # own turns on it (`say --to @rho`) render one each, as every
             # plain turn does.
-            remember(host, workspace: workspace_public_id, model: model, notes: draft.notes,
+            remember(host, workspace: workspace_public_id,
               runner: bound, answerer: (answerer.public_id if foreign))
-            create_policy(host, host.context(workspace), model: model, notes: draft.notes, **draft.body.slice("code_mode", "subagent").transform_keys(&:to_sym),
-              model_selection: draft.body["model_selection"], title_pending: !foreign && created.conversation.title.to_s.empty?)
+            row = create_policy(host, host.context(workspace), **policy.merge(notes: draft.notes))
             environment = bind_at_birth(host, root_set, bound, client, workspace_public_id)
             return environment if environment in Refusal
 
@@ -77,12 +100,9 @@ module Rho
             position = run&.event_position || CybrosAgent::KernelFeed::Position.start
             # Creation and input receipts have separate kernel scopes, so the
             # caller's key safely covers both writes after a lost response.
-            fields = reply_fields(host, draft, selection, bare: foreign)
-            fields[:executor_contexts] = draft.body["executor_contexts"] unless draft.body["executor_contexts"].to_h.empty?
-            fields.merge!(draft.body.slice("agent_configuration", "model_selection", "fallback_models").transform_keys(&:to_sym))
-            fields[:speaker_public_id] = input_speaker(client, ctx, draft.body)
-            fields[:tool_names] = selection.tool_names if own_named_answerer(answerer&.public_id)
-            fields[:steps] = draft.steps unless draft.steps.nil?
+            # The prepared input changes only by filling the new anchor.
+            fields[:executor_contexts] = draft.body["executor_contexts"] if fields.key?(:executor_contexts)
+            fields[:steps] = draft.steps if fields.key?(:steps)
             accepted = hosted.inputs.create(**fields,
               idempotency_key: draft.body["idempotency_key"] || SecureRandom.uuid)
             title_after_input(host, hosted, accepted, workspace, text: draft.body.fetch("prompt"), model: model)
@@ -112,7 +132,7 @@ module Rho
 
             if run_public_id
               remember(host, workspace: workspace_public_id, turn: value.turn, run_public_id: run_public_id)
-              install_gate(run, follow_gate(run_public_id, draft.notes, ctx)) if run && run.gate.nil?
+              install_gate(run, follow_gate(run_public_id, row.notes, ctx)) if run && run.gate.nil?
             end
             # `until:` is the one named leak an extension puts on the `do`
             # verb's answer: its notes read
@@ -120,7 +140,26 @@ module Rho
             # keeps the policy's nils (an own runner, an unknown directory);
             # the answer names only what is.
             [201, answer.merge(materialized_answer(outcome, value)).merge(
-              follower: run.snapshot.to_h, until: draft.notes["rho.until"]&.except("seed")&.compact).compact.merge(default_runner: binding)]
+              follower: run.snapshot.to_h, until: row.notes["rho.until"]&.except("seed")&.compact).compact.merge(default_runner: binding)]
+          end
+
+          def opening_input(client, ctx, draft, selection, answerer, bare:)
+            fields = reply_fields(Rho::Host::Conversation, draft, selection, bare: bare)
+            fields[:executor_contexts] = draft.body["executor_contexts"] unless draft.body["executor_contexts"].to_h.empty?
+            fields.merge!(draft.body.slice("agent_configuration", "model_selection", "fallback_models").transform_keys(&:to_sym))
+            fields[:speaker_public_id] = input_speaker(client, ctx, draft.body)
+            fields[:tool_names] = selection.tool_names if own_named_answerer(answerer&.public_id)
+            fields[:steps] = draft.steps unless draft.steps.nil?
+            fields
+          end
+
+          # Nexus's create receipt binds all later writes to this intent, even
+          # when creation stops before the first input reaches its own receipt.
+          # Steps use their wire values; only the generated anchor is absent.
+          def creation_metadata(policy, input, root_set)
+            input = input.merge(steps: input.fetch(:steps).map(&:to_h)) if input&.key?(:steps)
+            intent = { policy: policy, input: input, environment: root_set&.to_h }
+            { "rho.creation_digest" => Digest::SHA256.hexdigest(JSON.generate(CybrosAgent::SizeBounds.canonical(intent))) }
           end
 
           def anchor_draft(draft, public_id)
@@ -187,9 +226,13 @@ module Rho
             intent = if !effective_model.empty? && (!foreign || named_answerer)
               { "source" => "explicit", "model" => effective_model, "constraint" => "route", "alternatives" => [] }
             end
+            policy = initial_policy(model: (effective_model unless effective_model.empty?), notes: {},
+              **body.slice("code_mode", "subagent").transform_keys(&:to_sym), model_selection: intent,
+              title_pending: !foreign && body["title"].to_s.empty?)
 
             created = workspace.conversations.create(
               idempotency_key: body["idempotency_key"] || SecureRandom.uuid,
+              metadata: creation_metadata(policy, nil, root_set),
               **({ title: body["title"] } if body.key?("title")),
               memory_context: input_memory_context(client, ctx, body),
               default_runner_executor_public_id: runner,
@@ -198,11 +241,9 @@ module Rho
             )
             host = Rho::Host::Conversation.new(public_id: created.public_id)
             bound = created.conversation.default_runner&.executor_public_id
-            model = effective_model
-            remember(host, workspace: workspace_public_id, model: (model unless model.empty?),
+            remember(host, workspace: workspace_public_id,
               runner: bound, answerer: (answerer.public_id if foreign))
-            create_policy(host, host.context(workspace), model: (model unless model.empty?), **body.slice("code_mode", "subagent").transform_keys(&:to_sym), model_selection: intent,
-              title_pending: !foreign && created.conversation.title.to_s.empty?)
+            create_policy(host, host.context(workspace), **policy)
             environment = bind_at_birth(host, root_set, bound, client, workspace_public_id)
             return environment if environment in Refusal
 
@@ -241,7 +282,8 @@ module Rho
             return nil if root_set.nil?
 
             plane = Extensions::MemberPlane.new(client: client, workspace_public_id: workspace_public_id)
-            written = @environments.bind(host.public_id, root: root_set.root, directories: root_set.directories, plane: plane, runner: bound)
+            written = @environments.bind(host.public_id, root: root_set.root, directories: root_set.directories,
+              plane: plane, runner: bound, initialize_only: true)
             return written if written in Refusal
 
             { root: written.root, directories: written.directories, source: written.source }

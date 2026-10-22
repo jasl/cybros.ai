@@ -150,6 +150,7 @@ module Rho
 
     class TaskRun
       attr_writer hooks: Extensions::Hooks::Host
+      attr_writer roles: execution_roles?
       class Failed < ::Data
         attr_reader message: String
       end
@@ -164,10 +165,10 @@ module Rho
       def initialize: (
         executor: untyped, pool: Pool, toolsets: (Toolsets | Toolsets::Fixed), log: untyped,
         ?clock: ^() -> Numeric, ?hooks: Extensions::Hooks::Host?, ?sleeper: (^(Numeric) -> void)?,
-        ?on_cancel: (^(Symbol) -> void)?
+        ?on_cancel: (^(Symbol) -> void)?, ?roles: execution_roles?
       ) -> void
       def call: (
-        run_public_id: String, task_key: String, ?tool_name: String?
+        run_public_id: String, task_key: String, ?tool_name: String?, ?role: String?
       ) -> Symbol
     end
   end

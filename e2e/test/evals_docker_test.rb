@@ -346,9 +346,9 @@ class EvalsDockerTest < Minitest::Test
         when "run"
           boots += 1
           container_announcement = JSON.generate({ "endpoint" => "http://0.0.0.0:47005", "bearer" => "b#{boots}" })
-          container_log << "event=executor.announced tools=9 address=runner boot=#{boots}\n"
+          container_log << "event=executor.announced tools=9 role=runner boot=#{boots}\n"
           FileUtils.mkdir_p(File.dirname(daemon_rho_log = File.join(home, "log", "rho.log")))
-          File.write(daemon_rho_log, "event=executor.announced tools=9 address=runner decoy=host\n" * 3)
+          File.write(daemon_rho_log, "event=executor.announced tools=9 role=runner decoy=host\n" * 3)
           ["", Status.new(ok: true)]
         when "exec"
           case argv.last
@@ -394,7 +394,7 @@ class EvalsDockerTest < Minitest::Test
         case argv[1]
         when "run"
           if argv.include?("--entrypoint")
-            [argv.include?("cat") ? "event=executor.announced tools=9 address=runner boot=old\n" : "", Status.new(ok: true)]
+            [argv.include?("cat") ? "event=executor.announced tools=9 role=runner boot=old\n" : "", Status.new(ok: true)]
           else
             alive = true
             container_announcement = JSON.generate({ "endpoint" => "http://0.0.0.0:47011", "bearer" => "fresh" })
@@ -405,7 +405,7 @@ class EvalsDockerTest < Minitest::Test
 
           case argv.last
           when K::ANNOUNCEMENT then [container_announcement, Status.new(ok: true)]
-          when K::RHO_LOG then ["event=executor.announced tools=9 address=runner boot=old\nevent=executor.announced tools=9 address=runner boot=new\n", Status.new(ok: true)]
+          when K::RHO_LOG then ["event=executor.announced tools=9 role=runner boot=old\nevent=executor.announced tools=9 role=runner boot=new\n", Status.new(ok: true)]
           else ["", Status.new(ok: true)]
           end
         else ["", Status.new(ok: true)]
@@ -456,9 +456,9 @@ class EvalsDockerTest < Minitest::Test
         when "exec"
           next ["Error response from daemon: container c is not running\n", Status.new(ok: false)] unless alive
 
-          [argv.last == K::RHO_LOG ? "event=executor.announced tools=9 address=runner boot=1\n" : "", Status.new(ok: true)]
+          [argv.last == K::RHO_LOG ? "event=executor.announced tools=9 role=runner boot=1\n" : "", Status.new(ok: true)]
         when "run"
-          [argv.include?("cat") ? "event=executor.announced tools=9 address=runner boot=exited\n" : "", Status.new(ok: true)]
+          [argv.include?("cat") ? "event=executor.announced tools=9 role=runner boot=exited\n" : "", Status.new(ok: true)]
         else ["", Status.new(ok: true)]
         end
       end
@@ -468,14 +468,14 @@ class EvalsDockerTest < Minitest::Test
       files = K.save_evidence(daemon, into: into, stem: "t.chess.glm.nexus.1")
       assert_equal [File.join(into, "t.chess.glm.nexus.1.container.log"), File.join(into, "t.chess.glm.nexus.1.rho.log")], files
       assert_equal "rho server: booted, bearer [REDACTED]\n", File.read(files[0], encoding: Encoding::UTF_8), "the stdout, redacted"
-      assert_equal "event=executor.announced tools=9 address=runner boot=1\n", File.read(files[1], encoding: Encoding::UTF_8)
+      assert_equal "event=executor.announced tools=9 role=runner boot=1\n", File.read(files[1], encoding: Encoding::UTF_8)
       assert_equal [%w[docker logs c], K.cat_argv("c", K::RHO_LOG)], calls, "the stdout and the exec cat; no one-shot while the container answers"
       refute_path_exists File.join(home, "daemon.log"), "the evidence never writes into the home"
 
       calls.clear
       alive = false
       files = K.save_evidence(daemon, into: into, stem: "t.chess.glm.nexus.2")
-      assert_equal "event=executor.announced tools=9 address=runner boot=exited\n", File.read(files[1], encoding: Encoding::UTF_8),
+      assert_equal "event=executor.announced tools=9 role=runner boot=exited\n", File.read(files[1], encoding: Encoding::UTF_8),
         "an exited container's log through a one-shot cat"
       assert_equal [%w[docker logs c], K.cat_argv("c", K::RHO_LOG), K.cat_run_once_argv(tag: "t", home: home, path: K::RHO_LOG)], calls
       assert_equal %w[t.chess.glm.nexus.1.container.log t.chess.glm.nexus.1.rho.log t.chess.glm.nexus.2.container.log t.chess.glm.nexus.2.rho.log],
@@ -494,7 +494,7 @@ class EvalsDockerTest < Minitest::Test
   def test_the_structured_log_is_read_through_the_container
     Dir.mktmpdir("evals-docker") do |home|
       calls = []
-      container_log = "event=executor.announced tools=9 address=runner boot=1\nevent=runner_task_claimed task=tk-1 tool=shell deadline_at=t\n"
+      container_log = "event=executor.announced tools=9 role=runner boot=1\nevent=runner_task_claimed task=tk-1 tool=shell deadline_at=t\n"
       docker = lambda do |argv|
         calls << argv
         next ["", Status.new(ok: true)] unless argv[1] == "exec" && argv.last == K::RHO_LOG
@@ -502,7 +502,7 @@ class EvalsDockerTest < Minitest::Test
         container_log ? [container_log, Status.new(ok: true)] : ["cat: no such file\n", Status.new(ok: false)]
       end
       FileUtils.mkdir_p(File.join(home, "log"))
-      File.write(File.join(home, "log", "rho.log"), "event=executor.announced tools=1 address=runner decoy=host\nevent=runner_task_claimed task=decoy\n")
+      File.write(File.join(home, "log", "rho.log"), "event=executor.announced tools=1 role=runner decoy=host\nevent=runner_task_claimed task=decoy\n")
       daemon = K::Daemon.new(base_url: "http://127.0.0.1:3999", home: home, name: "c", port: 47013, tag: "t", user: "0", docker: docker)
 
       assert_equal container_log, daemon.log_text, "the log is the container's, never the host path's"

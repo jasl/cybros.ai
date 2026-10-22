@@ -10,7 +10,7 @@ macro_rules! open_enum {
   impl<'de> Deserialize<'de> for $name {fn deserialize<D:serde::Deserializer<'de>>(d:D)->Result<Self,D::Error>{String::deserialize(d).map(Self::from)}}
  };
 }
-open_enum!(AssignmentScope {AgentPrivate => "agent_private", UserPrivate => "user_private", AccountWide => "account_wide"});
+open_enum!(AssignmentScope {UserPrivate => "user_private", AccountWide => "account_wide"});
 open_enum!(BudgetEntryKind {
     InitialGrant => "initial_grant", CreditAdjustment => "credit_adjustment",
     DebitAdjustment => "debit_adjustment", Charge => "charge",
@@ -22,7 +22,7 @@ open_enum!(DeploymentPhase {Accepted => "accepted", Preparing => "preparing", Dr
 open_enum!(DeploymentStatus {Running => "running", Succeeded => "succeeded", Failed => "failed", Interrupted => "interrupted"});
 open_enum!(AgentStatus {Active => "active", Removed => "removed", Suspended => "suspended"});
 open_enum!(ExecutorStatus {Active => "active", Revoked => "revoked"});
-open_enum!(ExecutorKind {AgentApplication => "agent_application", Runner => "runner", ToolProvider => "tool_provider"});
+open_enum!(ExecutorKind {Agent => "agent", Runner => "runner", ToolProvider => "tool_provider"});
 open_enum!(RunStatus {Pending => "pending", Running => "running", Paused => "paused", NeedsAttention => "needs_attention", Canceling => "canceling", Completed => "completed", Canceled => "canceled"});
 open_enum!(TaskStatus {AwaitingInput => "awaiting_input", Canceled => "canceled", Completed => "completed", Dispatched => "dispatched", Failed => "failed", NeedsApproval => "needs_approval", Running => "running", Skipped => "skipped", TimedOut => "timed_out", Uncertain => "uncertain", Waiting => "waiting"});
 open_enum!(TaskKind {AwaitTask => "await_task", ModelTask => "model_task", ToolTask => "tool_task", JoinTask => "join_task", DelegationTask => "delegation_task"});

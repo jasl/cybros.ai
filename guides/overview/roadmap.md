@@ -35,7 +35,7 @@ The sidebar separates WebUI Conversations from Bots.
 The Nexus browser console supports reading Conversations and Runs,
 [exporting retained evidence and Workspace data](../operate/export-data.md),
 resolving attention and viewing fixed seven-day usage summaries. Humans
-[connect an Agent application](../operate/connect-agent.md) and inspect its
+[connect an Agent](../operate/connect-agent.md) and inspect its
 published configuration. Applications own prompts, conversation input and
 schedule authoring through the Agent API. The console supports explicit
 [cost-limit recovery](../operate/recover-conversation-cost.md),

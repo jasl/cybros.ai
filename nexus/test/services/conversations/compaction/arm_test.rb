@@ -42,7 +42,7 @@ class Conversations::Compaction::ArmTest < ActiveJob::TestCase
     unless Executor.credential_readiness_for([address]).fetch(address.id) == :ready
       create_bound_credential(executor: address, name: "Lane transport")
     end
-    announced = address.announce(tools: [{ "name" => TOOL, "effect_profile" => profile }])
+    announced = address.announce(services: { address.executor_kind => { "tools" => [{ "name" => TOOL, "effect_profile" => profile }] } })
     assert_predicate announced, :accepted?, announced.detail.to_s
   end
 
@@ -153,10 +153,10 @@ class Conversations::Compaction::ArmTest < ActiveJob::TestCase
     assert_equal "dispatched", k1.status
     assert_equal address.id, k1.addressed_executor_id, "the declaring profile's own address"
     # The binding is the runner-kind ROW the seed named — an announced agent address is never a
-    # binding — so the one addressing site reaches the delegate as the agent application's own tool.
+    # binding — so the one addressing site reaches the delegate as the agent's own tool.
     assert_equal suite_runner.id, run.default_runner_executor_id,
       "the named runner-kind row — an announced agent address is never a binding"
-    assert_equal "agent_application", k1.addressed_role
+    assert_equal "agent", k1.addressed_role
     assert_equal Nexus::ToolRegistry::READ_ONLY_CLOSED, k1.effect_profile, "the announced profile, frozen"
     assert_equal "k1", node(run, "round2").compaction["summary_source"]
     assert_equal({ "run_public_id" => run.public_id, "task" => "round2" },
@@ -195,7 +195,7 @@ class Conversations::Compaction::ArmTest < ActiveJob::TestCase
     assert_equal TOOL, k1.tool_name
     assert_equal "dispatched", k1.status
     assert_equal address.id, k1.addressed_executor_id
-    assert_equal "agent_application", k1.addressed_role, "nothing bound: the agent application's own tool"
+    assert_equal "agent", k1.addressed_role, "nothing bound: the agent's own tool"
     assert_equal({ "conversation" => conversation.public_id, "turn" => turn.public_id, "task" => "r2" },
       k1.tool_input.slice("conversation", "turn", "task", "run_public_id"))
 

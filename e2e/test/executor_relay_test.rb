@@ -370,7 +370,7 @@ class ExecutorRelayTest < Minitest::Test
         "person-facing helpers are absent from the full callable authority under every alias"
     end
 
-    served = @steward_client.executors.show(@runner_id).served_tools.to_h { |tool| [tool.name, tool] }
+    served = @steward_client.executors.show(@runner_id).tools_for(:runner).to_h { |tool| [tool.name, tool] }
     %w[files_bytes process_log].each do |name|
       tool = served.fetch(name) { flunk "#{name} is not announced by the runner-mode rho: #{served.keys.inspect}" }
       assert_nil tool.description, "#{name} describes itself to nobody"
@@ -507,87 +507,50 @@ class ExecutorRelayTest < Minitest::Test
 
   # ---- THE CONVERSATION'S ENVIRONMENT ON A RUNNER ELSEWHERE ----
 
-  # E1 (a): `rho-dev do --dir <the runner-mode rho's root>/sub --runner R`. The HOST resolves and
-  # the runner is TOLD over the executor relay as the hidden runner tool `environment_bind`: the
-  # runner-mode rho's log carries the claim and `environment.received`, the host's carries
-  # `environment.relayed`, `do`'s answer says `relayed: confirmed`, and the turn's relative `write`
-  # lands under the bound root THERE — no `environment.unresolved` on the runner's log for this
-  # conversation.
-  def test_a_conversation_bound_under_the_runner_mode_rhos_root_is_relayed_and_its_write_lands_there
+  # The accepted tool task carries the complete environment to a separate Runner.
+  def test_a_conversation_bound_under_the_runner_mode_rhos_root_captures_its_write_directory
     sub = bound_subdirectory
-    marker = "relayed #{SecureRandom.hex(4)}"
-    conversation, loop_id, output = open_bound(script(note("note.txt", marker)), dir: sub, runner: @runner_id)
-    assert_match(/^relayed:\s+#{Regexp.escape(@runner_id)} confirmed\b/, output,
-      "the verb says what the runner knows:\n#{output}")
-    await_run_status(loop_id, "completed")
-
-    assert_equal "#{marker}\n", File.read(File.join(sub, "note.txt"), encoding: Encoding::UTF_8),
-      "the relative write landed under the bound root on the runner-mode rho"
-    assert(@runner_rho.claims.any? { |claim| claim["tool"] == "environment_bind" },
-      "the runner-mode rho's own log took the bind row: #{@runner_rho.claims.inspect}")
-    refute_empty environment_lines(@runner_rho, "environment.received", naming: conversation),
-      "the runner logged what it was told: #{@runner_rho.log_text}"
-    refute_empty environment_lines(@daemon, "environment.relayed", naming: conversation),
-      "the host logged the relay: #{@daemon.log_text}"
-    assert_empty environment_lines(@runner_rho, "environment.unresolved", naming: conversation),
-      "a root the runner has resolves: no window"
+    marker = "captured #{SecureRandom.hex(4)}"
+    conversation, loop_id, = open_bound(script(note("note.txt", marker)), dir: sub, runner: @runner_id)
+    row = await_run_status(loop_id, "completed")
+    write = row.tasks.find { |task| task.tool_name == "write" }
+    refute_nil write
+    assert_equal({ "root" => sub, "directories" => [], "anchor" => conversation },
+      loops.run(loop_id).task(write.key).executor_context.fetch("rho.environment"))
+    assert_equal @runner_id, write.claimed_by.executor_public_id
+    assert_equal "#{marker}\n", File.read(File.join(sub, "note.txt"), encoding: Encoding::UTF_8)
+    refute @runner_rho.claims.any? { |claim| claim["tool"] == "environment_bind" }
   end
 
-  # E1 (b): A ROOT THE RUNNER DOES NOT HAVE (a root absent on the runner's host). One machine, so
-  # the door's own validation cannot stage it: the DEBUGGING spelling of what the door does,
-  # `rho-dev call_tool R environment_bind '{…}'`, binds a directory that exists nowhere — the tool
-  # applies it and answers `resolved: false` (a refusal would be data; an unserved name, a failed
-  # request); the next turn's relative `write` lands on PLACEMENT ZERO, the runner's default root,
-  # with `environment.unresolved` on its log, and nothing under the absent root.
-  def test_a_binding_whose_root_is_absent_on_the_runner_is_applied_unresolved_and_places_at_zero
-    conversation, loop_id, = open_bound("!mock -- hello", dir: nil, runner: @runner_id)
+  def test_a_binding_whose_root_disappears_on_the_runner_fails_without_default_directory_fallback
+    sub = bound_subdirectory
+    conversation, loop_id, = open_bound("!mock -- hello", dir: sub, runner: @runner_id)
     await_run_status(loop_id, "completed")
-    absent = File.join(runner_root, "gone-#{SecureRandom.hex(4)}")
-
-    output, status = relay(@runner_id, "environment_bind", JSON.generate(
-      "conversation_public_id" => conversation, "root" => absent, "directories" => [], "anchor" => conversation
-    ))
-    assert_predicate status, :success?, "the bind tool ran and answered:\n#{output}"
-    assert_match(/^task:\s+call_tool \(tool_task\) completed$/, output)
-    assert_match(/^tool:\s+environment_bind$/, output)
-    assert_match(/"applied":\s*true/, output, "applied, and honest about the root:\n#{output}")
-    assert_match(/"resolved":\s*false/, output, output)
-    refute_empty environment_lines(@runner_rho, "environment.received", naming: conversation)
-
-    marker = "zero #{SecureRandom.hex(4)}"
-    loop2 = say_loop(conversation, script(note("zero.txt", marker)))
-    await_run_status(loop2, "completed")
-    assert_equal "#{marker}\n", File.read(File.join(runner_root, "zero.txt"), encoding: Encoding::UTF_8),
-      "placement zero: the runner's default root"
-    refute File.exist?(absent), "nothing was created under the absent root"
-    refute_empty environment_lines(@runner_rho, "environment.unresolved", naming: conversation),
-      "the runner said so: #{@runner_rho.log_text}"
+    FileUtils.remove_entry(sub)
+    filename = "missing-root-#{SecureRandom.hex(4)}.txt"
+    next_loop = say_loop(conversation, script(note(filename, "must not fall back")))
+    task = await("the absent directory did not fail its write") do
+      row = loops.fetch(next_loop).tasks.find { |candidate| candidate.tool_name == "write" }
+      loops.run(next_loop).task(row.key) if row&.status == "failed"
+    end
+    assert_includes task.output, sub
+    assert_equal sub, task.executor_context.dig("rho.environment", "root")
+    refute_path_exists sub
+    refute_path_exists File.join(runner_root, filename)
   end
 
-  # E1 (c): THE RUNNER'S PROCESS LIFE IS THE KEY. The runner-mode rho RESTARTED mid-conversation
-  # forgets its received table — no runner-side cache, by design. A scripted `read` with a relative
-  # path BEFORE the host's next edge — the person's own input through the SDK, which the daemon does
-  # not author — lands under the runner's default root with `environment.unresolved` on its log: the
-  # stated window, bounded by a turn or a cycle. Then `rho say` refreshes discovery, reads the new
-  # `booted_at`, logs `environment.relayed` again with it, and the turn's relative `write` lands
-  # under the bound root.
-  def test_a_runner_mode_rho_restarted_mid_conversation_is_re_relayed_at_the_next_say_and_the_window_between_is_placement_zero
+  def test_a_runner_mode_rho_restart_uses_the_next_tasks_captured_directory_immediately
     sub = bound_subdirectory
     File.write(File.join(runner_root, "probe.txt"), "default root\n")
     File.write(File.join(sub, "probe.txt"), "bound root\n")
     conversation, loop_id, = open_bound(script([runner_tool("read"), { "path" => "probe.txt" }]), dir: sub, runner: @runner_id)
-    row = await_run_status(loop_id, "completed")
-    assert_includes tool_answer(row, "read"), "bound root", "before the restart: the bound root"
-    before = environment_lines(@daemon, "environment.relayed", naming: conversation)
-    refute_empty before, @daemon.log_text
-    booted_before = before.last["booted_at"]
-    refute_nil booted_before, "the relay is keyed by the runner's boot: #{before.last.inspect}"
-
+    assert_includes tool_answer(await_run_status(loop_id, "completed"), "read"), "bound root"
     restart_runner_rho!
 
     chat = @steward_client.workspace(@workspace_public_id).conversation(conversation)
     after = chat.turns.list.items.map(&:position).max || -1
     chat.inputs.create(kind: "direct_reply", model: MODEL, text: script(*([[runner_tool("read"), { "path" => "probe.txt" }]] * 2)),
+      executor_contexts: { @runner_id => { "rho.environment" => { "root" => sub, "directories" => [], "anchor" => conversation } } },
       idempotency_key: SecureRandom.uuid)
     reply = await("no reply settled to the person's own read on #{conversation}") do
       newer = chat.turns.list.items.select { |turn| turn.position > after && turn.role == "assistant" }
@@ -595,24 +558,18 @@ class ExecutorRelayTest < Minitest::Test
       flunk "the reply failed: #{failed.to_h.inspect}" if failed
       newer.find { |turn| turn.status == "completed" }
     end
-    window = loops.fetch(reply.active_variant.run_public_id)
-    assert_includes tool_answer(window, "read"), "default root", "THE WINDOW: placement zero until the host's next edge"
-    refute_empty environment_lines(@runner_rho, "environment.unresolved", naming: conversation),
-      "the runner said so: #{@runner_rho.log_text}"
+    row = loops.fetch(reply.active_variant.run_public_id)
+    assert_includes tool_answer(row, "read"), "bound root", "a fresh Runner needs no environment relay"
+    read = row.tasks.find { |task| task.tool_name == "read" }
+    assert_equal sub, loops.run(row.public_id).task(read.key).executor_context.dig("rho.environment", "root")
 
     marker = "after the restart #{SecureRandom.hex(4)}"
-    loop3 = say_loop(conversation, script(*([note("after.txt", marker)] * 3)))
-    await_run_status(loop3, "completed")
-    assert_equal "#{marker}\n", File.read(File.join(sub, "after.txt"), encoding: Encoding::UTF_8),
-      "re-relayed: the write lands under the bound root again"
-    relayed = environment_lines(@daemon, "environment.relayed", naming: conversation)
-    assert_operator relayed.length, :>, before.length, "the say relayed once more: #{relayed.inspect}"
-    refute_equal booted_before, relayed.last["booted_at"], "keyed by the runner's NEW process life"
+    await_run_status(say_loop(conversation, script(*([note("after.txt", marker)] * 3))), "completed")
+    assert_equal "#{marker}\n", File.read(File.join(sub, "after.txt"), encoding: Encoding::UTF_8)
+    refute_path_exists File.join(runner_root, "after.txt")
   end
 
-  # The harness runner deliberately lacks `environment_bind`. Choosing a new
-  # default retains its source-scoped record and accepted tool schemas, while
-  # later turns import the newly selected Runner's exact tools.
+  # Choosing a new default retains each Runner's stored environment and accepted schemas.
   def test_selecting_a_default_runner_preserves_each_runners_environment_and_tool_declaration
     sub = bound_subdirectory
     conversation, loop_id, = open_bound("!mock -- hello there", dir: sub, runner: @runner.executor_public_id)
@@ -620,12 +577,8 @@ class ExecutorRelayTest < Minitest::Test
     round = row.tasks.find { |task| task.kind == "model_task" }
     refute_nil round, row.tasks.map(&:kind).inspect
     assert_includes loops.run(loop_id).task(round.key).output.to_s,
-      "Relative paths resolve against #{@world.harness_root}.", "the lead names the runner's announced root"
-    assert_equal 1, environment_lines(@daemon, "environment.unrelayed", naming: conversation).length,
-      "unrelayed, once: #{@daemon.log_text}"
+      "This conversation's root is #{sub}; relative paths resolve against it there.", "the lead names the captured directory"
     await_run_status(say_loop(conversation, "!mock -- once more"), "completed")
-    assert_equal 1, environment_lines(@daemon, "environment.unrelayed", naming: conversation).length,
-      "once per (conversation, runner), not per turn"
     entry = binding_summary(conversation, runner: @runner.executor_public_id)
     refute_nil entry, "the open wrote the record"
     original = store(conversation).fetch(entry.public_id)
@@ -639,11 +592,6 @@ class ExecutorRelayTest < Minitest::Test
       "changing the default never rewrites another Runner's environment"
     assert_equal original.value, store(conversation).fetch(entry.public_id).value
     assert_nil binding_summary(conversation), "a default selection does not copy an environment onto another Runner"
-    assert_empty environment_lines(@daemon, "environment.relayed", naming: conversation)
-      .select { |line| line.values.include?(@runner_id) }, "no environment was authored for the newly selected Runner"
-    assert_empty environment_lines(@runner_rho, "environment.received", naming: conversation),
-      "the runner-mode rho was told nothing: #{@runner_rho.log_text}"
-
     note = File.join(sub, "selected.txt")
     File.write(note, "the newly selected Runner\n")
     prompt = script([runner_tool("read"), { "path" => note }])
@@ -664,23 +612,17 @@ class ExecutorRelayTest < Minitest::Test
         "each accepted surface contains only its selected Runner"
       declaration = definitions.find { |tool| tool.dig("route", "tool_name") == "bash" }
       refute_nil declaration, "the selected Runner retains its bash declaration"
-      served = @steward_client.executors.show(runner).served_tools.find { |tool| tool.name == "bash" }
+      served = @steward_client.executors.show(runner).tools_for(:runner).find { |tool| tool.name == "bash" }
       assert_equal served.input_schema, declaration.dig("function", "parameters")
       assert_equal runner_tool("bash", runner: runner), declaration.dig("function", "name")
       declaration
     end
     assert_equal 2, bash.map { |tool| tool.dig("function", "parameters") }.uniq.length,
       "the two served schemas remain distinct"
-    assert_equal 1, environment_lines(@daemon, "environment.unrelayed", naming: conversation).length,
-      "the original environment still logs its unsupported relay only once"
   end
 
-  # E1 (e), REMOTE CHILD EXECUTION: a spawned child on the REMOTE runner. The kernel's inbox row
-  # carries `parent_public_id` — the child's parent, the snapshot the kernel keeps — so the runner
-  # resolves the child's environment by its PARENT's received binding with no relay in the path: the
-  # child's relative `write` lands under the parent's root with no `environment.unresolved` for the
-  # child, and the host's top-down copy appears in the child's own store with the parent's anchor.
-  def test_a_spawned_child_on_the_remote_runner_resolves_its_environment_by_its_parents_binding
+  # A child gets its own captured tuple and retains the parent's checkpoint anchor.
+  def test_a_spawned_child_on_the_remote_runner_captures_its_inherited_environment
     sub = bound_subdirectory
     marker = "from the child #{SecureRandom.hex(4)}"
     brief = script(note("child.txt", marker))
@@ -707,8 +649,8 @@ class ExecutorRelayTest < Minitest::Test
 
     assert_equal "#{marker}\n", File.read(File.join(sub, "child.txt"), encoding: Encoding::UTF_8),
       "the child's relative write landed under the PARENT's root on the runner-mode rho"
-    assert_empty environment_lines(@runner_rho, "environment.unresolved", naming: child.public_id),
-      "resolved by the parent's binding through the row's parent_public_id: no window"
+    assert_equal({ "root" => sub, "directories" => [], "anchor" => conversation },
+      loops.run(child_loop.public_id).task(write.key).executor_context.fetch("rho.environment"))
     copy = await("the host never copied the record to the child's store") { binding_summary(child.public_id) }
     value = store(child.public_id).fetch(copy.public_id).value
     assert_equal({ "root" => sub, "directories" => [], "anchor" => conversation }, value,
@@ -718,7 +660,7 @@ class ExecutorRelayTest < Minitest::Test
 
   # A child may already have its own binding when a restarted host discovers
   # the children again. The inherited copy loses to that row; the runner must
-  # receive the winning child's tuple too, before a member posts its next turn.
+  # use the winning child's tuple when the host authors its next turn.
   def test_a_restarted_host_preserves_a_spawned_childs_own_environment_on_the_remote_runner
     parent_root = bound_subdirectory
     child_root = bound_subdirectory
@@ -741,19 +683,17 @@ class ExecutorRelayTest < Minitest::Test
     copy = await("the host never copied the parent's binding") { binding_summary(child.public_id) }
     own_binding = { "root" => child_root, "directories" => [], "anchor" => child.public_id }
     store(child.public_id).update(copy.public_id, value: own_binding, lock_version: copy.lock_version)
-    relayed_before = environment_lines(@daemon, "environment.relayed", naming: child.public_id).length
 
     @daemon.stop
     FileUtils.rm_f(File.join(@world.home, "tmp", "announcement.json"))
     @daemon.start
-    await("the restarted parent follower never relayed its rediscovered child") do
-      environment_lines(@daemon, "environment.relayed", naming: child.public_id).length > relayed_before
-    end
+    self.class.await_workspace_adopted(@daemon)
+    attached, status = @daemon.cli("attach", child.public_id, "--conversation")
+    assert_predicate status, :success?, attached
 
     marker = "child keeps its root #{SecureRandom.hex(4)}"
     filename = "own-root-#{SecureRandom.hex(4)}.txt"
-    child_chat.inputs.create(kind: "direct_reply", model: MODEL, text: script(note(filename, marker)),
-      idempotency_key: SecureRandom.uuid)
+    say_loop(child.public_id, script(note(filename, marker)))
     reply = await("the child's next turn never completed") do
       newer = child_chat.turns.list.items.select { |turn| turn.position > first.position && turn.role == "assistant" }
       failed = newer.find { |turn| turn.status == "failed" }

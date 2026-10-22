@@ -56,7 +56,7 @@ class Executors::NudgeTest < ActiveJob::TestCase
     streams = broadcasts.map(&:first).sort
     assert_equal members.map { |m| AgentAPI::V1::ExecutorInboxChannel.stream_name(m.public_id) }.sort, streams
     broadcasts.each do |_stream, payload|
-      assert_equal({ type: Executors::Nudge::WORK_AVAILABLE, kind: "tool_call",
+      assert_equal({ type: Executors::Nudge::WORK_AVAILABLE, kind: "tool_call", role: "tool_provider",
                      run_public_id: run.public_id, task_key: "fetch",
                      tool_name: "net_fetch" }, payload.fetch(:event))
     end

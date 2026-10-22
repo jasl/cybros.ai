@@ -618,7 +618,7 @@ A side is never forked again, plain or side (`422 side_of_side`). A side
 cannot spawn a child, and `send`, `status` and `cancel` refuse a side
 addressee with `side_conversation`. Its lifecycle is above: no archive,
 DELETE reaps at once, the parent's cascade. One open side per parent and
-an idle TTL are an agent application's bookkeeping (rho's), not kernel
+an idle TTL are an agent's bookkeeping (rho's), not kernel
 rules.
 
 ## Cumulative usage
@@ -750,7 +750,7 @@ without starting a run or model call.
 ## Agent removal
 
 Removing an Agent synchronously revokes its member access and its
-Agent-application credentials, then asynchronously force-stops related
+Agent credentials, then asynchronously force-stops related
 work. This is a consequence of the existing remove operation, not a new
 conversation endpoint or an Agent suspension API. The independent Runner
 registration is unchanged, and its work in a stopped run receives the
@@ -775,7 +775,7 @@ not stop new work admitted after restore. Restore does not wait for
 cleanup or revive old credentials or stopped work. There is no durable
 removal episode or promise to withdraw every old delivery across an
 intervening restore. A fresh DeviceFlow connection reuses the retained
-Agent-application address with new credentials.
+Agent address with new credentials.
 
 ## Status codes
 

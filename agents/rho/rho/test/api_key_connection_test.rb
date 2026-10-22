@@ -7,8 +7,7 @@ class APIKeyConnectionTest < Minitest::Test
 
   def keys
     { "access_token" => NexusDoubles::MEMBER_TOKEN,
-      "executor_access_token" => NexusDoubles::TRANSPORT_TOKEN,
-      "runner_access_token" => NexusDoubles::RUNNER_TOKEN }
+      "executor_access_token" => NexusDoubles::TRANSPORT_TOKEN }
   end
 
   def import(daemon, document = keys)
@@ -23,9 +22,9 @@ class APIKeyConnectionTest < Minitest::Test
     assert_equal :active, daemon.phase
     identity = daemon.identity
     assert_equal "api_key", identity.vault.read.fetch("authentication_kind")
-    assert_equal "api_key", identity.runner_vault.read.fetch("authentication_kind")
+    assert_nil identity.runner_vault.read
     assert_equal "rho.imported-agent", identity.agent_identifier
-    assert_equal "rho.imported-runner", identity.runner_registration_identifier
+    assert_nil identity.runner_registration_identifier
     assert_equal [], daemon.maintenance.run_once(daemon.lineage.credentials, verify: true)
     assert_empty oauth.requests
     daemon.stop
@@ -33,7 +32,7 @@ class APIKeyConnectionTest < Minitest::Test
     restarted = connected_boot(device_flow: connection_device_flow(oauth))
     assert_equal :active, restarted.phase
     assert_equal keys.values, [restarted.lineage.credentials.member_credential,
-      restarted.lineage.credentials.executor_credential, restarted.lineage.credentials.runner_credential]
+      restarted.lineage.credentials.executor_credential]
     assert_empty oauth.requests
   end
 
@@ -46,7 +45,7 @@ class APIKeyConnectionTest < Minitest::Test
 
     report = Rho::Authority.new(oauth: daemon.lineage.credentials, base_url: daemon.home.base_url,
       transport: api, expected_identity: daemon.identity, mode: "full").check
-    assert_equal({ member: :unauthorized, executor_transport: :live, runner_transport: :live }, report.fetch(:planes))
+    assert_equal({ member: :unauthorized, executor_transport: :live }, report.fetch(:planes))
     refute report[:lost]
     refute report[:runner_lost]
     assert_empty oauth.requests
@@ -67,15 +66,11 @@ class APIKeyConnectionTest < Minitest::Test
     assert_equal 200, import(daemon).code.to_i
   end
 
-  def test_full_mode_refuses_a_runner_from_another_agent
-    api = NexusDoubles::FakeAgentApi.new
-    api.define_singleton_method(:runner_executor) do
-      super().tap { |document| document.fetch("executor")["assignment_agent_public_id"] = "other-agent" }
-    end
-    daemon = boot(device_flow: connection_device_flow, api_transport: api)
-    response = import(daemon)
+  def test_full_mode_refuses_a_retired_third_key
+    daemon = connected_boot
+    response = import(daemon, keys.merge("runner_access_token" => NexusDoubles::RUNNER_TOKEN))
     assert_equal 422, response.code.to_i
-    assert_match(/private Runner/, response.body)
+    assert_match(/Unknown API key fields/, response.body)
     assert_nil Rho::StateFile.new(daemon.home.connection_pointer_path).read
   end
 
@@ -106,15 +101,14 @@ class APIKeyConnectionTest < Minitest::Test
     assert_nil Rho::StateFile.new(home.connection_pointer_path).read
   end
 
-  def test_runner_disconnect_preserves_its_opaque_registration_for_reconnect
+  def test_runner_only_disconnect_is_rejected_without_losing_the_application
     daemon = connected_boot
     assert_equal 200, import(daemon).code.to_i
+    before = Rho::StateFile.new(home.connection_pointer_path).read
     response = request(daemon, :post, "/disconnect", token: bearer(daemon), body: { runner: true })
-    assert_equal 200, response.code.to_i, response.body
-    pointer = Rho::StateFile.new(home.connection_pointer_path).read
-    assert_equal "agent", pointer.fetch("mode")
-    assert_equal "rho.imported-runner", pointer.fetch("runner_registration_identifier")
-    assert_equal "rho.imported-agent", pointer.fetch("agent_identifier")
+    assert_equal 422, response.code.to_i, response.body
+    assert_equal before, Rho::StateFile.new(home.connection_pointer_path).read
+    assert_equal :active, daemon.phase
   end
 
   def test_partial_revoke_keeps_the_agent_vault_and_pointer_for_retry

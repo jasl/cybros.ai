@@ -6,7 +6,7 @@ An owner or administrator cannot manage another Human's Agents through these
 routes. Read routes include paired and named Agents. Named Agents use their
 declarer's application address when the shared serving relationship remains
 valid; their saved configuration and prompt documents remain their own. Creation,
-credentials, private Runners and lifecycle commands apply only to independent Agents.
+credentials and lifecycle commands apply only to independent Agents.
 
 ## Routes
 

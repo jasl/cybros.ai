@@ -1,7 +1,7 @@
 require "test_helper"
 
 # THE APPROVER'S GRANT: a row resting at `needs_approval` is released past the stage by any
-# principal with write standing — the agent application acting for its person included — through THE
+# principal with write standing — the agent acting for its person included — through THE
 # ONE grant site the bypass path also takes. Release revalidates the accepted target, independently
 # of the host's current default. A changed effect profile rests again for another approval.
 class Runs::Tasks::ApproveTest < ActiveJob::TestCase
@@ -76,7 +76,7 @@ class Runs::Tasks::ApproveTest < ActiveJob::TestCase
     assert_equal "dispatched", call.status
     assert_equal suite_runner.id, call.addressed_executor_id, "re-addressed by the one site: the runner, not the approver"
     assert_equal "runner", call.addressed_role
-    assert_equal suite_runner.effect_profile_for("read_file"), call.effect_profile
+    assert_equal suite_runner.effect_profile_for("read_file", role: suite_runner.executor_kind), call.effect_profile
     assert_not_nil call.started_at
     assert_equal ["human", @human.id], approval_of(call).first(2)
     assert_not_nil call.approval_decided_at
@@ -99,7 +99,7 @@ class Runs::Tasks::ApproveTest < ActiveJob::TestCase
       items.last.fetch("approval"), "the fact rides the crossing on the stream")
   end
 
-  test "the agent application's own bearer approves as origin agent" do
+  test "the agent's own bearer approves as origin agent" do
     run, call = park!
     assert_predicate approve(run, call.node_key, acting_user: @agent), :accepted?
     assert_equal ["agent", @agent.id], approval_of(call).first(2)
@@ -206,15 +206,15 @@ class Runs::Tasks::ApproveTest < ActiveJob::TestCase
     changed = RunAuthoringTestHelper::TEST_SERVED_TOOLS.map do |entry|
       entry["name"] == "read_file" ? entry.merge("timeout_ms" => 12_345) : entry
     end
-    assert_predicate suite_runner.announce(tools: changed), :accepted?
-    assert_not_equal read_before, suite_runner.effect_profile_for("read_file")
+    assert_predicate suite_runner.announce(services: { suite_runner.executor_kind => { "tools" => changed } }), :accepted?
+    assert_not_equal read_before, suite_runner.effect_profile_for("read_file", role: suite_runner.executor_kind)
 
     travel 1.minute do
       assert_predicate approve(run, call.node_key), :accepted?
       call.reload
       assert_equal "needs_approval", call.status, "not released: the person reads the new profile first"
-      assert_equal suite_runner.effect_profile_for("read_file"), call.effect_profile
-      assert_equal "agent_application", call.addressed_role, "the address stays the agent application"
+      assert_equal suite_runner.effect_profile_for("read_file", role: suite_runner.executor_kind), call.effect_profile
+      assert_equal "agent", call.addressed_role, "the address stays the agent"
       assert_operator call.await_started_at, :>, armed, "the clock is re-armed"
       assert_equal [nil, nil, nil], approval_of(call), "nobody decided the call the approver has not read"
       assert_nil call.started_at
@@ -235,13 +235,13 @@ class Runs::Tasks::ApproveTest < ActiveJob::TestCase
     armed = call.await_started_at
     runner_b = connect_runner(manager: users(:owner), registration_identifier: "runner-b", display_name: "B",
       assignment_scope: :account_wide).executor_access_token.executor
-    assert_predicate runner_b.announce(tools: RunAuthoringTestHelper::TEST_SERVED_TOOLS), :accepted?
+    assert_predicate runner_b.announce(services: { runner_b.executor_kind => { "tools" => RunAuthoringTestHelper::TEST_SERVED_TOOLS } }), :accepted?
     selected = Executors::DefaultRunner.call(Executors::DefaultRunner::Command.new(
       host: run, executor_public_id: runner_b.public_id, acting_user: @agent
     ))
     assert_predicate selected, :accepted?, selected.outcome.to_s
     assert_equal "needs_approval", call.reload.status
-    assert_equal "agent_application", call.addressed_role
+    assert_equal "agent", call.addressed_role
     assert_equal target, call.target_executor_public_id
     assert_equal armed, call.await_started_at
 
@@ -256,7 +256,7 @@ class Runs::Tasks::ApproveTest < ActiveJob::TestCase
   test "a re-run the addressing site refuses fails the row tool_not_served from the stage, on_failure honoured" do
     run, call = park!
     without_read = RunAuthoringTestHelper::TEST_SERVED_TOOLS.reject { |entry| entry["name"] == "read_file" }
-    assert_predicate suite_runner.announce(tools: without_read), :accepted?
+    assert_predicate suite_runner.announce(services: { suite_runner.executor_kind => { "tools" => without_read } }), :accepted?
 
     assert_predicate approve(run, call.node_key), :accepted?
     call.reload

@@ -1,35 +1,27 @@
 module Rho
   class Daemon
-    # Runtime placement and clients for the daemon's two executor slots.
+    # One inbox and transport owner; role-specific toolsets share admission capacity.
 
     private
 
-      # Built outside the lock between a reservation and an install, so two
-      # edges cannot race two runners onto one slot. EACH SLOT IS BUILT FROM ITS OWN CREDENTIAL: the `:runner` slot from the runner lineage's
-      # transport credential with the environment tools and the root's
-      # environment document, the `:agent_runner` slot from the agent's
-      # transport credential with the agent's own tools, one worker, no
-      # environment. A slot whose credential is unavailable places no
-      # runner — a dark one would only log sweep failures — and gives its
-      # reservation back. Answers the runner it installed and started, or nil.
       def mount_runner(about, slot)
         return unless @lineage.reserve_runner(about, slot: slot)
 
-        # A disconnect may clear the holder's slot while construction yields.
-        # The captured owner builds the client; install rejects a retired reservation.
-        owner = slot == :runner ? about.runner : about.agent
+        owner = about.agent || about.runner
         credential = owner && executor_credential_for(owner)
         if credential.nil?
           @lineage.release_runner(about, slot: slot)
-          log.warn("runner.not_placed", slot: slot, reason: "#{ExecutorPlane::ADDRESSES.fetch(slot)} plane unavailable")
+          log.warn("runner.not_placed", reason: "executor plane unavailable")
           return
         end
 
-        # PLACEMENT ZERO's env is the slot's announced one:
-        # a claim resolves its own placement on the worker.
-        env = @environments.zero.env
-        runner = build_runner(owner, registry_for(slot), slot)
-        unless @lineage.install_runner(about, runner, env, slot: slot)
+        roles = execution_roles
+        runner = Rho::Runner.new(
+          executor: @wire.executor_client(credential_provider: owner.method(:executor_credential).to_proc),
+          toolsets: roles.values.first.toolsets, roles: roles,
+          admission: (@runner_admission ||= Rho::Runner::Admission.new), log: log.tagged(address: "executor")
+        )
+        unless @lineage.install_runner(about, runner, @environments.zero.env, slot: slot)
           stop_runner(runner)
           return
         end
@@ -40,47 +32,35 @@ module Rho
         runner
       end
 
-      # SYNCHRONOUS at placement, before the runner follows: one
-      # bounded PUT under the SDK's request timeout, so the address has
-      # announced its tools before any turn's call can be addressed to it;
-      # again on `reannounce` after a moved default root, and for the
-      # AGENT slot after a moved server set. The environment document is
-      # the runner address's (the DEFAULT root's, with this daemon's
-      # boot); the documents are EACH address's own projection: the runner's the default root's skills beside its
-      # stdio servers' prompts, the agent's whatever its extensions
-      # announce. THE AGENT SLOT'S LIST is
-      # the registry's entries ∪ every anchor's editor servers, a name
-      # once — the runner slot's is the registry's alone.
-      def announce_slot(credential, slot)
-        registry = registry_for(slot)
-        @executor_plane.announce_tools(credential, registry: registry,
-          environment: (@executor_plane.environment_document(registry) if slot == :runner),
-          documents: @executor_plane.documents(registry), slot: slot,
-          extras: (slot == :agent_runner ? @environments.servers.announcement : []))
+      # Every update publishes the complete map from the current registries.
+      def announce_slot(credential, _slot)
+        services = service_registries.to_h do |role, registry|
+          [role, {
+            "tools" => RunDeclaration.announcement(registry: registry,
+              extras: (role == "agent" ? @environments.servers.announcement : [])),
+            "documents" => @executor_plane.documents(registry),
+            "environment" => (role == "runner" ? @executor_plane.environment_document(registry) : {}),
+          }]
+        end
+        @executor_plane.announce_services(credential, services: services)
       end
 
-      def registry_for(slot) = @loaded.registry.serving(slot == :runner ? :runner : :agent)
-
-      def slot_credential_for(about, slot)
-        slot == :runner ? runner_credential_for(about) : executor_credential_for(about)
+      def service_registries
+        roles = {}
+        roles["agent"] = @loaded.registry.serving(:agent) unless @config.mode == "runner"
+        roles["runner"] = @loaded.registry.serving(:runner) unless @config.mode == "agent"
+        roles
       end
 
-      # The inbox is per executor; each address uses the shared worker default.
-      # Toolsets resolve per claim: the runner slot's by the row's conversation through the
-      # daemon's tables — the received binding, the record, the walk, else
-      # zero; the agent slot's over zero's env with its own tools, resolving
-      # the record for its ANCHOR's editor servers.
-      def build_runner(owner, registry, slot)
-        Rho::Runner.new(
-          executor: @wire.executor_client(credential_provider: owner.method(:executor_credential).to_proc),
-          toolsets: toolsets_for(registry, slot),
-          admission: (@runner_admission ||= Rho::Runner::Admission.new),
-          hooks: registry.hooks, log: log.tagged(address: ExecutorPlane::ADDRESSES.fetch(slot))
-        )
+      def execution_roles
+        service_registries.to_h do |role, registry|
+          toolsets = role == "runner" ? @environments.toolsets : @environments.agent_toolsets(registry)
+          [role, Rho::Runner::Service.new(toolsets: toolsets, hooks: registry.hooks)]
+        end
       end
 
-      def toolsets_for(registry, slot)
-        slot == :runner ? @environments.toolsets : @environments.agent_toolsets(registry)
+      def slot_credential_for(about, _slot)
+        executor_credential_for(about.agent || about.runner)
       end
   end
 end

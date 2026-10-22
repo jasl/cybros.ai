@@ -24,7 +24,7 @@ module Rho
         end
         connections.concat(executor_connections(agent_public_id, agent_tools, runner: false))
         candidates.each do |executor|
-          connections.concat(executor_connections(executor.public_id, RunDeclaration.served_entries(executor.served_tools),
+          connections.concat(executor_connections(executor.public_id, RunDeclaration.served_entries(executor.tools_for(:runner)),
             runner: true, label: executor.display_name))
         end
         connections

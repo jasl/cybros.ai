@@ -18,7 +18,7 @@ that the site links to.
 ## Readers And Sections
 
 - Four readers, four sections: `use/` for a person using rho, `operate/` for the person running
-  the installation, `build/` for a developer building an agent application, `runners/` for a
+  the installation, `build/` for a developer building an agent, `runners/` for a
   developer running executors. `overview/` and `get-started/` route readers to those sections;
   `reference/` is lookup.
 - Two getting-started paths stay distinct: the default bundle (Nexus and rho) and building your

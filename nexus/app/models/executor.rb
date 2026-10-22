@@ -1,4 +1,4 @@
-# The durable delivery address: an agent_application address is bound to its
+# The durable delivery address: an agent address is bound to its
 # Agent; a MACHINE — a runner, or a tool provider — is managed by
 # one human under a logical registration key. All are single-instance,
 # outlive any credential lineage, and are fenced by the monotone epoch.
@@ -27,27 +27,24 @@ class Executor < ApplicationRecord
   include Presence
 
   attr_readonly :account_id, :agent_id, :public_id, :executor_kind,
-    :registration_identifier, :manager_id, :assignment_scope, :assignment_agent_id
+    :registration_identifier, :manager_id, :assignment_scope
 
   attribute :public_id, default: -> { SecureRandom.uuid_v7 }
 
   belongs_to :account
-  # An agent_application belongs to its Agent. Every runner has one
+  # An Agent executor belongs to its Agent User. Every runner has one
   # human manager regardless of whether its assignment ACL is private or
   # account-wide.
   belongs_to :agent, class_name: "User", optional: true
   belongs_to :manager, class_name: "User", optional: true
-  # Assignment narrows execution access; it does not make the Runner an
-  # application address or attach its transport credential to a User.
-  belongs_to :assignment_agent, class_name: "User", optional: true
   has_many :access_tokens
   has_many :api_keys, -> { where(source: :api_key) }, class_name: "AccessToken"
   has_many :refresh_token_families
 
-  enum :executor_kind, %w[agent_application runner tool_provider].index_by(&:itself),
+  enum :executor_kind, %w[agent runner tool_provider].index_by(&:itself),
     validate: true, scopes: false
   enum :status, %w[active revoked].index_by(&:itself), default: :active, validate: true, scopes: false
-  enum :assignment_scope, %w[agent_private user_private account_wide].index_by(&:itself),
+  enum :assignment_scope, %w[user_private account_wide].index_by(&:itself),
     validate: { allow_nil: true }, scopes: false
 
   before_validation :freeze_initial_human_shutdown_generation, on: :create
@@ -57,10 +54,10 @@ class Executor < ApplicationRecord
   validates :agent_id,
     uniqueness: {
       conditions: -> {
-        where(executor_kind: :agent_application).where.not(status: :revoked)
+        where(executor_kind: :agent).where.not(status: :revoked)
       },
     },
-    if: -> { agent_application? && !revoked? && agent_id.present? },
+    if: -> { agent? && !revoked? && agent_id.present? },
     on: :create
   # The live-identity index's own predicate: one live address per
   # (account, manager, identifier) key across BOTH machine kinds.
@@ -76,23 +73,18 @@ class Executor < ApplicationRecord
         runner_identity_key_changed?
     }
   # Each kind has exactly one shape of ownership.
-  with_options if: :agent_application? do
+  with_options if: :agent? do
     validates :agent, presence: true
     validates :manager, :assignment_scope, :registration_identifier, absence: true
   end
-  with_options unless: :agent_application? do
+  with_options unless: :agent? do
     validates :agent, absence: true
-    validates :registration_identifier, :assignment_scope, :manager, presence: true
+    validates :registration_identifier, :manager, presence: true
   end
-  with_options if: :agent_private? do
-    validates :assignment_agent, presence: true
-    validates :executor_kind, inclusion: { in: %w[runner] }
-  end
-  validates :assignment_agent, absence: true, unless: :agent_private?
+  validates :assignment_scope, presence: true, if: -> { machine? && !revoked? }
   validate :agent_must_be_agent_member
   validate :agent_must_be_eligible, on: :create
   validate :runner_manager_must_be_eligible
-  validate :assignment_agent_must_be_eligible, on: :create
 
   scope :live, -> { where.not(status: :revoked) }
   scope :order_by_recency, -> { order(created_at: :desc, id: :desc) }
@@ -161,7 +153,7 @@ class Executor < ApplicationRecord
     expected_applied_generation:
   )
     self.class.transaction do
-      locked_profile = User.lock.find_by(id: agent_id) if agent_application?
+      locked_profile = User.lock.find_by(id: agent_id) if agent?
       human_id = machine? ? manager_id : locked_profile&.steward_id
       return :control_changed unless human_id == expected_human_id
 
@@ -203,13 +195,6 @@ class Executor < ApplicationRecord
   end
 
   private
-
-    def assignment_agent_must_be_eligible
-      if assignment_agent && (!manager ||
-          !self.class.assignment_agent_eligible?(assignment_agent, manager: manager))
-        errors.add(:assignment_agent, :not_eligible)
-      end
-    end
 
     def runner_identity_key_changed?
       new_record? || will_save_change_to_manager_id?

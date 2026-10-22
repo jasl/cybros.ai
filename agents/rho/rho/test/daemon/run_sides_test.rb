@@ -450,6 +450,36 @@ class DaemonHostFollowersTest < Minitest::Test
     assert_empty daemon.host_followers.sweep_sides(now), "nothing left to sweep"
   end
 
+  def test_opening_a_side_ignores_a_listed_side_deleted_before_its_policy_or_document_read
+    api = kernel_api(user_public_id: IDENTITY.user_public_id, events: [])
+    daemon = member_ready(boot(config: catalog_config, realtime_factory: ->(*) { nil }), api)
+    store.remember(conversation_host("old"), workspace: "ws-1", model: "openrouter/x")
+    assert_equal "201", side(daemon, { "parent_public_id" => "old" }).first
+    store.remember(conversation_host("current"), workspace: "ws-1", model: "openrouter/x")
+    original = api.method(:call)
+    vanished_reads = []
+
+    %w[/conversations/old-side/store_entries /conversations/old-side].each_with_index do |missing, index|
+      api.define_singleton_method(:call) do |path, **options|
+        if path.end_with?(missing) && options.fetch(:method, :get) == :get
+          vanished_reads << missing
+          CybrosAgent::Response.new(status: 404, headers: {}, body: { "error" => { "code" => "not_found", "message" => "Not found" } })
+        else
+          original.call(path, **options)
+        end
+      end
+
+      code, answer = side(daemon, { "parent_public_id" => "current" })
+
+      assert_equal index.zero? ? "201" : "200", code, answer.inspect
+      assert_equal "current-side", answer.dig("side", "public_id")
+      assert_equal "current", answer.dig("parent", "public_id")
+      assert_equal index.positive?, answer.fetch("reused")
+    end
+    assert_equal %w[/conversations/old-side/store_entries /conversations/old-side], vanished_reads
+    assert_equal %w[old current], api.forks.map(&:first)
+  end
+
   # The listing hides side hosts by default and shows them alone under
   # `?side=1`, each with its parent — `rho runs --side`.
   def test_the_followed_listing_hides_sides_by_default_and_lists_them_on_request

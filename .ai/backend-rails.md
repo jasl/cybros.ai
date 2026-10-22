@@ -60,7 +60,7 @@ HTTP/controller rules belong to `.ai/api.md`; persistence, locking, and transact
   Deployment administration follows `.ai/api.md`'s bounded local-IPC exception: a configured
   Unix-socket client reads the separate installation owner's Nexus-only state without Rails persistence.
   Registry checks are explicit commands; application lifecycle work never runs in a Rails job.
-  Agent application and combined-installation upgrades stay outside Nexus administration.
+  Agent upgrades stay outside Nexus administration.
 
 ## Closed Internal Shapes
 

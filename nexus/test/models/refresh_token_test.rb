@@ -7,7 +7,7 @@ class RefreshTokenTest < ActiveSupport::TestCase
 
   def mint
     executor = @member.executors.first || @member.executors.create!(
-      account: @member.account, executor_kind: :agent_application, display_name: "Family app"
+      account: @member.account, executor_kind: :agent, display_name: "Family app"
     )
     family = RefreshTokenFamily.create!(
       account: @member.account,

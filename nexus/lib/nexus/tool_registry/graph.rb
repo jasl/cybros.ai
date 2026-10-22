@@ -38,7 +38,7 @@ module Nexus
         # The task declaration distinguishes a bounded branch from a
         # persistent child conversation and illustrates delegation in the
         # first message. Runner tool names and project-specific commands
-        # belong to the agent application's guidance. The claude preset
+        # belong to the agent's guidance. The claude preset
         # adapts this template by replacing the wait paragraph.
         Tool.new(
           canonical: "nexus.graph.delegate_task",

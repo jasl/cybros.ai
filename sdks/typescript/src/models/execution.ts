@@ -20,7 +20,7 @@ export interface ExecutorAddress {
   agent_public_id: string | null;
   registration_identifier: string | null;
   assignment_scope: string | null;
-  assignment_agent_public_id: string | null;
+  service_roles: string[];
 }
 
 export interface DiscoveredExecutor {
@@ -28,11 +28,10 @@ export interface DiscoveredExecutor {
   kind: string;
   display_name: string | null;
   status: string;
-  assignment_scope: string;
-  assignment_agent_public_id: string | null;
-  served_tools: ServedTool[];
-  environment: JsonObject;
-  served_documents: ServedDocument[];
+  assignment_scope: string | null;
+  agent_public_id: string | null;
+  service_roles: string[];
+  services: ExecutorServices;
   presence: string;
   last_seen_at: string | null;
   connected_at: string | null;
@@ -332,4 +331,15 @@ export interface TaskRealtime {
   offer_sdp: string | null;
   answer_sdp: string | null;
   max_age_ms: number;
+}
+
+export interface ExecutorService {
+  tools: ServedTool[];
+  documents: ServedDocument[];
+  environment: JsonObject;
+}
+export interface ExecutorServices {
+  agent: ExecutorService | null;
+  runner: ExecutorService | null;
+  tool_provider: ExecutorService | null;
 }

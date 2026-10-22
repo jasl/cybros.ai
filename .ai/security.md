@@ -149,13 +149,13 @@ What that carve-out does **not** cover, and what stays in scope for review:
   session coordinator without a separately approved threat model and product protocol. Presence
   proves only that at least one current-epoch subscription exists, not physical single-instance
   execution. Logical-key, epoch and first-party local-lock requirements remain enforceable.
-- Runner assignment ACL never expands management authority. `agent_private` is application
-  assignment within the Account: only its paired Agent and eligible named Agents receive
-  new work; it is neither a tenant boundary nor a transport credential bound to a User.
-  Regardless of `agent_private | user_private | account_wide`, only the Runner's current Human
-  manager may use v1's `/runners` lifecycle and credential commands. Account administrator status supplies no takeover or emergency bypass when
-  that manager is removed; the accepted Human-shutdown generation protocol remains authoritative.
-  A future manager transfer requires a separate explicit authorization and route contract.
+- Runner eligibility never expands management authority. An application's Runner service admits
+  its own application family through `application_owner`; the transport still belongs to the
+  application address, and execution retains its captured principal. Independent machines use
+  `user_private | account_wide`; only their current Human manager controls lifecycle and credentials.
+  Administrator status supplies no takeover or emergency bypass when that manager is removed;
+  the Human-shutdown generation protocol remains authoritative. A future manager transfer
+  requires a separate authorization and route contract.
 - The primitive that generates and reveals a raw bearer secret is a PORO, not an Active Record
   model factory. Ordinary independent issuance uses optimistic preconditions plus database
   constraints and owns no row lock. When issuance is one step inside an already-chartered

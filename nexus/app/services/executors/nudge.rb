@@ -18,7 +18,7 @@ module Executors
     # member's own stream, the members read by the one reader addressing
     # used — after commit, outside the loop lock.
     def work_available(node)
-      event = { type: WORK_AVAILABLE, kind: node.inbox_kind,
+      event = { type: WORK_AVAILABLE, kind: node.inbox_kind, role: node.addressed_role,
                 run_public_id: node.run.public_id,
                 task_key: node.node_key, tool_name: node.tool_name }.compact
       if Pool.row?(node)

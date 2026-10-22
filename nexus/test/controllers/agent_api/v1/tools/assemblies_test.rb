@@ -39,7 +39,7 @@ class AgentAPI::V1::Tools::AssembliesTest < ActionDispatch::IntegrationTest
     assert_equal [@runner_a.public_id], environment.fetch("executors").map { |row| row.fetch("runner_executor_public_id") }
     assert_equal [@runner_b.public_id, @runner_a.public_id], environment.fetch("runner_candidates")
       .map { |row| row.fetch("runner_executor_public_id") }
-    assert_equal @runner_a.environment, environment.fetch("executors").sole.fetch("environment")
+    assert_equal @runner_a.environment_for(:runner), environment.fetch("executors").sole.fetch("environment")
     assert_nil @runner_a.presence_connection_id, "socket presence does not gate assembly"
   end
 
@@ -48,10 +48,10 @@ class AgentAPI::V1::Tools::AssembliesTest < ActionDispatch::IntegrationTest
     executor = fixture.fetch("environment").fetch("executors").sole
     definition = fixture.fetch("tool_definitions").sole.fetch("function")
     @runner_a.update!(display_name: executor.fetch("display_name"))
-    announced = @runner_a.announce(tools: [{
+    announced = @runner_a.announce(services: { @runner_a.executor_kind => { "tools" => [{
       "name" => definition.fetch("name"), "description" => definition.fetch("description"),
       "input_schema" => definition.fetch("parameters"), "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
-    }], environment: executor.fetch("environment"))
+    }], "environment" => executor.fetch("environment") } })
     assert_predicate announced, :accepted?
 
     assemble(default_runner_executor_public_id: @runner_a.public_id, configuration: {
@@ -225,11 +225,10 @@ class AgentAPI::V1::Tools::AssembliesTest < ActionDispatch::IntegrationTest
     assert_equal "runner_not_eligible", response.parsed_body.dig("error", "code")
   end
 
-  test "another application's private Runner cannot enter the declaration through imports or an explicit route" do
-    other = connect_combined_session(steward: users(:owner), agent_identifier: "foreign-assembly",
-      registration_identifier: "foreign-assembly-runner")
-    runner = other.runner.executor_access_token.executor
-    assert_predicate runner.announce(tools: [READ]), :accepted?
+  test "another application's runner capability cannot enter the declaration through imports or an explicit route" do
+    other = connect_agent_session(steward: users(:owner), agent_identifier: "foreign-assembly")
+    runner = other.executor_access_token.executor
+    assert_predicate runner.announce(services: { "agent" => { "tools" => [] }, "runner" => { "tools" => [READ] } }), :accepted?
     @agent.update!(runner_executor_public_ids: [runner.public_id, @runner_a.public_id])
 
     assemble(default_runner_executor_public_id: runner.public_id)
@@ -294,7 +293,7 @@ class AgentAPI::V1::Tools::AssembliesTest < ActionDispatch::IntegrationTest
     def runner(identifier, manager: users(:owner), tools:)
       connect_runner(manager: manager, registration_identifier: identifier, display_name: identifier)
         .executor_access_token.executor.tap do |executor|
-          outcome = executor.announce(tools: tools, environment: { "root" => "/srv/#{identifier}" })
+          outcome = executor.announce(services: { executor.executor_kind => { "tools" => tools, "environment" => { "root" => "/srv/#{identifier}" } } })
           assert_predicate outcome, :accepted?
         end
     end

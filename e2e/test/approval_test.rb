@@ -93,12 +93,12 @@ class ApprovalTest < Minitest::Test
     held = await_park(loop)
     key = held.fetch("key")
 
-    # THE PARK: a real rest state of the tool row, addressed to rho's agent
-    # application, announced on the loop while the turn stays `running`.
+    # THE PARK: a real rest state of the tool row, addressed to rho's Agent,
+    # announced on the loop while the turn stays `running`.
     row = loop_row(loop)
     assert_equal "running", row.fetch("status"), summarize(row)
     assert_equal({ "reason" => "approval_required", "blocked_task_keys" => [key] }, row.fetch("attention"))
-    assert_equal "agent_application", held.dig("addressed_to", "role"), held.inspect
+    assert_equal "agent", held.dig("addressed_to", "role"), held.inspect
     followed = await_followed_attention(loop)
     assert_equal({ "reason" => "approval_required", "blocked_task_keys" => [key] }, followed.fetch("attention"),
       "the daemon's row names the held key")
@@ -106,7 +106,7 @@ class ApprovalTest < Minitest::Test
     assert_equal COMMAND, detail.dig("tool_input", "command"), detail.inspect
     refute detail.key?("approval"), "a held row carries no fact yet: #{detail.inspect}"
 
-    # THE NOTICE: the park nudged rho's agent application, which noted it
+    # THE NOTICE: the park nudged rho's agent, which noted it
     # and dispatched nothing — the row is listed, never claimed.
     await_rho_log(/event=executor\.approval_available run_public_id=#{Regexp.escape(loop)} task=#{Regexp.escape(key)}\b/,
       "rho never noted the held call on its inbox")

@@ -141,13 +141,6 @@ Rails.application.routes.draw do
           end
         end
       end
-      resources :private_runners, only: [:index, :new, :create], param: :public_id do
-        scope module: :private_runners do
-          resources :api_keys, only: [:index, :new, :create] do
-            resource :revocation, only: :create, controller: "api_keys/revocations"
-          end
-        end
-      end
       resource :credentials, only: :destroy
       resource :removal, only: :create
       resource :restoration, only: :create
@@ -195,13 +188,6 @@ Rails.application.routes.draw do
           end
           resource :executor, only: [] do
             scope module: :executors do
-              resources :api_keys, only: [:index, :create] do
-                resource :revocation, only: :create, controller: "api_keys/revocations"
-              end
-            end
-          end
-          resources :private_runners, only: [:index, :show, :create] do
-            scope module: :private_runners do
               resources :api_keys, only: [:index, :create] do
                 resource :revocation, only: :create, controller: "api_keys/revocations"
               end

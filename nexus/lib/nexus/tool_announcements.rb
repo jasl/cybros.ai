@@ -30,7 +30,7 @@ module Nexus
 
     class << self
       # The first refusal, or nil. `[]` is "serves nothing" and is accepted —
-      # an agent application that announces nothing sees no row. A kernel name
+      # an agent that announces nothing sees no row. A kernel name
       # is classified in either spelling: under a reserved namespace it is
       # `reserved_namespace`, and in the TWO ADMITTED CLASSES it is admitted in
       # its wire spelling — OVERRIDABLE (nexus.memory.* today: the door rules

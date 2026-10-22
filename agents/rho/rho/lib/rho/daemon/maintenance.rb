@@ -2,15 +2,6 @@ require_relative "../workspaces"
 
 module Rho
   class Daemon
-    # The one worker thread: renewal on its
-    # own clock, the authority probe and Ensure-Workspace, each cycle about
-    # the credential captured at its top. `/status` never reaches here.
-    #
-    # ONE RENEWAL PER LINEAGE: the `about` holds up to two SDK
-    # lineages, each rotating on its own refresh token. A terminal answer
-    # drops that lineage's runtime resources. In full mode the other lineage
-    # remains usable; in a single-role mode the one lineage's loss ends the
-    # daemon's connection.
     class Maintenance
       # Join, then kill: the gem holds rotate-then-persist interrupt-atomic,
       # so a kill can only ever land on a wait, never on the commit.
@@ -21,7 +12,7 @@ module Rho
 
       def initialize(lineage:, home:, wire:, clock:, interval:, log:, announce:, lose:,
         member_credential:, on_workspace_adopted:, spawn:, mode: "full", workspace: nil, workspace_selection: nil,
-        lose_runner: ->(**) { nil }, sweep: -> { nil })
+        sweep: -> { nil })
         @lineage = lineage
         @home = home
         @wire = wire
@@ -30,7 +21,6 @@ module Rho
         @log = log
         @announce = announce
         @lose = lose
-        @lose_runner = lose_runner
         @member_credential = member_credential
         @on_workspace_adopted = on_workspace_adopted
         @spawn = spawn
@@ -63,9 +53,6 @@ module Rho
 
       def running? = @lineage.maintenance_running?
 
-      # The rotation a connect click pays for, on every lineage: a terminal
-      # answer ends the connection (or drops the runner half) exactly as a
-      # scheduled one would.
       def run_once(about, verify:)
         renewals_for(about, unless_stopping: false).map { |renewal| renewal.run_once(verify: verify) }
       end
@@ -78,13 +65,7 @@ module Rho
         end
       end
 
-      # `about` is the lineage the answer concerns: a reconnect can move the
-      # daemon's lineage while a rotation is still reporting, and the report
-      # is true of the old lineage only. `lineage:` names which half of it
-      # answered — `:agent` (the daemon's own) or `:runner` beside it.
-      def renewal_event(event, about, unless_stopping: false, lineage: :agent)
-        return runner_renewal_event(event, about, unless_stopping: unless_stopping) if lineage == :runner
-
+      def renewal_event(event, about, unless_stopping: false)
         case event
         when :lost
           # Terminal by contract (AuthorizationLostError): retire this
@@ -127,26 +108,6 @@ module Rho
 
       private
 
-        # The runner lineage beside an agent's: its loss drops the runner
-        # half; a rotation rebinds nothing (the runner run reads the
-        # credential of the moment); a write it could not persist is the
-        # same warning as the agent's.
-        def runner_renewal_event(event, about, unless_stopping:)
-          case event
-          when :lost
-            return @announce.call unless @lose_runner.call(about: about, unless_stopping: unless_stopping)
-
-            @log.error("renewal.lost", lineage: "runner")
-          when :not_durable
-            return @announce.call unless @lineage.record_not_durable(about, unless_stopping: unless_stopping)
-
-            @log.error("renewal.not_durable", lineage: "runner")
-          else
-            @log.info("renewal.outcome", result: event, lineage: "runner")
-          end
-          @announce.call
-        end
-
         # The exit latch is `stop`'s alone; `stopping` only skips the work.
         def work
           loop do
@@ -185,19 +146,12 @@ module Rho
           @log.warn("authority.maintenance_failed", error: error)
         end
 
-        # One Renewal per lineage the about holds, each reporting through
-        # `renewal_event` tagged with its half; every outcome but `:not_due`
-        # reports. In runner mode the one lineage's events are the daemon's.
         def renewals_for(about, unless_stopping:)
           agent_owned = about.agent? ? about.agent : about.runner
           renewals = []
           if agent_owned&.refreshable?
             renewals << Renewal.new(oauth: agent_owned, clock: @clock,
               on_event: ->(event) { renewal_event(event, about, unless_stopping: unless_stopping) })
-          end
-          if about.agent? && about.runner&.refreshable?
-            renewals << Renewal.new(oauth: about.runner, clock: @clock,
-              on_event: ->(event) { renewal_event(event, about, unless_stopping: unless_stopping, lineage: :runner) })
           end
           renewals
         end
@@ -214,7 +168,6 @@ module Rho
             @lose.call(about: snapshot.about, unless_stopping: true, report: snapshot.report)
           else
             @lineage.observe(snapshot.about, snapshot.report)
-            @lose_runner.call(about: snapshot.about, unless_stopping: true) if snapshot.report[:runner_lost]
           end
         end
 

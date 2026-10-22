@@ -101,7 +101,7 @@ sources, under the tool's "Skills available now." header.
 
 Each Runner callable contributes its named Runner's documents without
 merging same-named documents from other Runners. A non-Runner callable
-resolves its Agent application's documents, then the answering agent's
+resolves its Agent's documents, then the answering agent's
 own `agent/skills/` rows, then `workspace/skills/`, the selected
 Agent-and-Speaker pair's `speaker/skills/`, and an explicitly selected
 Human's `user/skills/`. Database sources are limited to the execution's

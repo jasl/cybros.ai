@@ -208,7 +208,7 @@ class McpOauthTest < Minitest::Test
     def the_bearer_on_the_wire_and_nowhere_else(project)
       row, output = echo!(project, "over oauth")
       assert_equal "completed", row.fetch("status"), row.inspect
-      assert_equal "agent_application", row.dig("addressed_to", "role"), "addressed to the agent: #{row.inspect}"
+      assert_equal "agent", row.dig("addressed_to", "role"), "addressed to the agent: #{row.inspect}"
       assert_equal "#{E2E::McpFixture::ECHO_TEXT_PREFIX}over oauth", output.strip
       remember_secrets!
       assert_equal "Bearer #{store.dig("tokens", "access_token")}", issued.fetch("authorization_headers").last,
@@ -698,7 +698,7 @@ class McpOauthTest < Minitest::Test
       end
     end
 
-    AGENT_ANNOUNCED = /event=executor\.announced tools=\d+ address=agent\b/
+    AGENT_ANNOUNCED = /event=executor\.announced tools=\d+ role=agent\b/
 
     def agent_announcement_count = @daemon.log_text.scan(AGENT_ANNOUNCED).length
 

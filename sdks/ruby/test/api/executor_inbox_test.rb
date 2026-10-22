@@ -98,7 +98,7 @@ class ApiExecutorInboxTest < Minitest::Test
     refute_predicate task, :claimed?
   end
 
-  # An ask row: the agent application's own question to answer,
+  # An ask row: the agent's own question to answer,
   # with its prompt and no tool name — listed beside tool rows, never
   # claimed, and never a reason the page fails to parse.
   def test_an_ask_row_parses_with_its_prompt_and_no_tool_name_and_is_never_claimed
@@ -109,7 +109,7 @@ class ApiExecutorInboxTest < Minitest::Test
         "parent_public_id" => nil, "task_key" => "r1t0-ask-1",
         "prompt" => "which database?", "started_at" => "2026-08-31T00:00:00Z",
         "deadline_at" => "2026-09-01T00:00:00Z", "claimed" => false,
-        "addressed_to" => { "role" => "agent_application", "executor_public_id" => EXECUTOR_ID },
+        "addressed_to" => { "role" => "agent", "executor_public_id" => EXECUTOR_ID },
       }],
       "pagination" => { "next_after" => nil },
     }]]).inbox.list
@@ -120,7 +120,7 @@ class ApiExecutorInboxTest < Minitest::Test
     assert_nil ask.tool_name
     assert_equal({}, ask.tool_input)
     refute_predicate ask, :claimed?
-    assert_equal "agent_application", ask.addressed_to.role
+    assert_equal "agent", ask.addressed_to.role
     assert_nil page.items.fetch(0).prompt, "a tool row carries no question"
   end
 

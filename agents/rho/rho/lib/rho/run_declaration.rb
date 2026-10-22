@@ -123,7 +123,7 @@ module Rho
     # THE PREFIX IS THE PROVENANCE RULE: an
     # announced entry named `mcp__<server>__<tool>` is a third party's
     # tool, whose text arguments rho can read off the SCHEMA it announced
-    # — the local registry's entries and a remote runner's `served_tools`
+    # — the local registry's entries and a remote runner's `services.runner.tools`
     # both carry `input_schema` — and cannot name in the abstract.
     MCP_PREFIX = "mcp__".freeze
 
@@ -163,7 +163,8 @@ module Rho
     end
 
     def self.deny_properties(entry)
-      hash = entry.respond_to?(:to_h) ? entry.to_h.transform_keys(&:to_s) : {}
+      entry = entry.to_h if entry in CybrosAgent::Api::ServedTool
+      hash = (Hash.try_convert(entry) || {}).transform_keys(&:to_s)
       return DenyProperties.new(derivable: [], skipped: []) unless hash["name"].to_s.start_with?(MCP_PREFIX)
 
       properties = Hash.try_convert(Hash.try_convert(hash["input_schema"])&.fetch("properties", nil)) || {}
@@ -484,7 +485,7 @@ module Rho
         extra_names.include?(entry.dig("function", "name")) ? entry.merge("defer_loading" => true) : entry
       end
       entries = unique_entries([agent_entries, Array(kernel_aliases)])
-      announced = [agent, own, *remote.map(&:served_tools)].flat_map { |served| served_entries(served) }
+      announced = [agent, own, *remote.map { |executor| executor.tools_for(:runner) }].flat_map { |served| served_entries(served) }
       rules = approval_rules(roots: roots, entries: announced, grants: grants, guard: guard)
       {
         tool_definitions: entries,
@@ -542,7 +543,8 @@ module Rho
     # Data whose `to_h` answers symbol keys).
     def served_entries(served)
       Array(served).map do |entry|
-        hash = entry.respond_to?(:to_h) ? entry.to_h : Hash.try_convert(entry)
+        entry = entry.to_h if entry in CybrosAgent::Api::ServedTool
+        hash = Hash.try_convert(entry)
         raise ArgumentError, "a served entry must be a Hash or a ServedTool, got #{entry.class}" if hash.nil?
 
         hash.transform_keys(&:to_s)
@@ -571,7 +573,7 @@ module Rho
     end
 
     # WHAT THIS MACHINE SERVES, for
-    # `executor.announce(tools:)`: this machine's tools alone — the kernel's
+    # the role's `tools` announcement: this machine's tools alone — the kernel's
     # own names are never rho's to announce — each with its DESCRIPTION,
     # SCHEMA and EFFECT_PROFILE constants, sorted by name. The declaration
     # facts ride in the kernel's spelling (`input_schema` beside

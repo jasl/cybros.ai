@@ -8,7 +8,7 @@ class CredentialConvergenceTest < ActiveSupport::TestCase
     )
     @executor = @member.executors.create!(
       account: @member.account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Convergence app"
     )
   end
@@ -450,7 +450,7 @@ class CredentialConvergenceTest < ActiveSupport::TestCase
     )
     blocked = retained_agent.executors.create!(
       account: retained_agent.account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Retained app"
     )
     retained_family = build_family(
@@ -548,7 +548,7 @@ class CredentialConvergenceTest < ActiveSupport::TestCase
     )
     executor = member.executors.create!(
       account: member.account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Re-established app"
     )
     member.remove
@@ -631,7 +631,7 @@ class CredentialConvergenceTest < ActiveSupport::TestCase
     # the bundle's member credential — that token stays unbound even though its lineage never is.
     def address_for(member)
       member.executors.create!(
-        account: member.account, executor_kind: :agent_application, display_name: "Address"
+        account: member.account, executor_kind: :agent, display_name: "Address"
       )
     end
 

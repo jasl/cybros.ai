@@ -44,7 +44,7 @@ class BoundedSweepJobsTest < ActiveJob::TestCase
       steward: users(:member), agent_identifier: "sweep-job-probe"
     )
     executor = member.executors.create!(
-      account: member.account, executor_kind: :agent_application,
+      account: member.account, executor_kind: :agent,
       display_name: "Sweep probe"
     )
     family = RefreshTokenFamily.create!(
@@ -142,7 +142,7 @@ class BoundedSweepJobsTest < ActiveJob::TestCase
       steward: users(:member), agent_identifier: "rt-sweep-probe"
     )
     executor = member.executors.create!(
-      account: member.account, executor_kind: :agent_application,
+      account: member.account, executor_kind: :agent,
       display_name: "RT probe"
     )
     lapsed_at = (RefreshTokenFamily::INACTIVITY_WINDOW +

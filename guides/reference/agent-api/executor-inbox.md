@@ -67,7 +67,7 @@ This address's view of the work the kernel addressed to it, across every live ru
       "deadline_at": "2026-09-08T10:00:04Z",
       "timeout_ms": 86400000,
       "claimed": false,
-      "addressed_to": { "role": "agent_application", "executor_public_id": "01900000-0000-7000-8000-000000000003" }
+      "addressed_to": { "role": "agent", "executor_public_id": "01900000-0000-7000-8000-000000000003" }
     },
     {
       "kind": "tool_call",
@@ -108,7 +108,7 @@ A `tool_call` row carries `tool_name`, `tool_input` and `tool_call_id`.
 
 An `ask` row may carry `fields` for a [typed question](run-steps.md#typed-questions), answered through the member resolution door with `answer`. It otherwise carries `prompt`, with `options` (one string each) and `multi` when the ask gave them, and no `tool_*` field. It is never claimed and never committed here: `claimed` stays `false` for as long as it stands, and the claim and commit doors answer `not_claimable_kind`. It parks up to 24 hours. It is listed only when the run has a declaring agent; a person's own standalone run addresses its ask to nobody.
 
-An `approval` row is a tool call resting for an approver under a profile's `ask` or `rules` mode, listed for the addressed agent application with its `tool_name`, `tool_input` and — the one row kind that carries it — the frozen `effect_profile` the approver reads. Its `deadline_at` is 24 hours out; it is never claimed and never committed here (`409 not_claimable_kind`). Under `bypass` no row ever rests, and a human's own standalone run addresses it to nobody.
+An `approval` row is a tool call resting for an approver under a profile's `ask` or `rules` mode, listed for the addressed agent with its `tool_name`, `tool_input` and — the one row kind that carries it — the frozen `effect_profile` the approver reads. Its `deadline_at` is 24 hours out; it is never claimed and never committed here (`409 not_claimable_kind`). Under `bypass` no row ever rests, and a human's own standalone run addresses it to nobody.
 
 An `ask` and an `approval` row are notices: machines claim and commit tool calls on this plane, and people decide questions and approvals on the member plane ([Runs](runs.md)), where the deciding principal is recorded. Carry a kind you do not know.
 
@@ -331,7 +331,7 @@ The kernel may settle an unanswered claim before a live runner completes this pa
 
 | Frame | Payload | Meaning |
 | --- | --- | --- |
-| `work_available` | `{ type, kind, run_public_id, task_key, tool_name? }` | A row is addressed to this executor: which and where, never what. A runner claims that row directly instead of paging; a wide fan publishes one frame per member; a pool row's frame reaches every member's stream and the first claim takes it. An ask's frame is `{ type: "work_available", kind: "ask", run_public_id, task_key }` — the agent application's notice that a model is waiting on a person; nothing claims it. |
+| `work_available` | `{ type, kind, role, run_public_id, task_key, tool_name? }` | A row is addressed to this executor: which and where, never what. The role selects the service on the address; a runner claims that row directly instead of paging; a wide fan publishes one frame per member; a pool row's frame reaches every member's stream and the first claim takes it. An ask's frame is `{ type: "work_available", kind: "ask", role: "agent", run_public_id, task_key }` — the agent's notice that a model is waiting on a person; nothing claims it. |
 | `work_canceled` | `{ type, run_public_id, task_key }` | To the claimant when the kernel cancels a row it holds (a stop, a branch cancel): the runner stops the handler, and its commit afterwards is `idle`. |
 
 The socket closes when the credential stops being usable — a re-pair, a revoke, a lineage loss — within the connection's authority check interval; the stream name carries no epoch. HTTP remains authoritative: the inbox recovers work discovery and the claim read recovers cancellation for work already executing. A missed frame is detected by the relevant read, never inferred from inbox absence.

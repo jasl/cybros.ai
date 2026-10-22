@@ -343,12 +343,10 @@ module Rho
       end
     end
 
-    desc "disconnect", "Revoke this machine's credentials on Nexus and forget them (--runner: the runner half alone)"
-    option :runner, type: :boolean, default: false,
-      desc: "Revoke the runner credential alone and keep the agent connected (a full home becomes an agent one)"
+    desc "disconnect", "Revoke this machine's credentials on Nexus and forget them"
     def disconnect
       running("disconnect") do
-        terminal.disconnect(runner: options[:runner])
+        terminal.disconnect
       end
     end
 
@@ -374,7 +372,7 @@ module Rho
     option :dir, type: :string,
       desc: "Describe a directory other than the shell's to the model (it constrains nothing)"
     option :runner, type: :string,
-      desc: "Which runner-kind executor runs this conversation's tools, by public id; " \
+      desc: "Which runner-capable executor runs this conversation's tools, by public id; " \
             "default: the `runner` setting, else this machine's own runner"
     option :workspace, type: :string, desc: "Workspace for this new conversation; otherwise the saved default"
     option :agent, type: :string,

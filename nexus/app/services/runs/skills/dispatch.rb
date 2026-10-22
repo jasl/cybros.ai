@@ -16,12 +16,12 @@ module Runs
         return kernel if document.nil?
         if document["executor_public_id"]
           executor = Executor.find_by(account_id: node.account_id, public_id: document["executor_public_id"])
-          unless Catalog.announces?(executor, document["name"]) &&
-              Executors::Address.serves?(executor, WIRE_NAME, node.run.answering_user)
+          unless Catalog.announces?(executor, document["name"], role: document.fetch("source")) &&
+              Executors::Address.serves?(executor, WIRE_NAME, node.run.answering_user, role: document.fetch("source"))
             return refused("the skill's source no longer serves this document")
           end
           return Executors::Address::Decision.new(executor: executor, role: document.fetch("source"),
-            status: "dispatched", effect_profile: executor.effect_profile_for(WIRE_NAME))
+            status: "dispatched", effect_profile: executor.effect_profile_for(WIRE_NAME, role: document.fetch("source")))
         end
         kernel
       end

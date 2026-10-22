@@ -1,6 +1,6 @@
 # Quickstart
 
-This guide takes a new agent application from a connected agent to a completed conversation reply. You need a running Nexus whose administrator has configured at least one usable text model.
+This guide takes a new agent from a connected agent to a completed conversation reply. You need a running Nexus whose administrator has configured at least one usable text model.
 
 ## 1. Connect
 

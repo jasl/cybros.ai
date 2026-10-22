@@ -87,7 +87,7 @@ class Executor::RemovalPassesTest < ActiveJob::TestCase
     executor = connection.executor_access_token.executor
     @delivery_runner = executor if kind == :runner
     (@secrets ||= {})[executor.id] = connection.executor_access_secret
-    assert_predicate executor.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate executor.announce(services: { executor.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     executor
   end
 

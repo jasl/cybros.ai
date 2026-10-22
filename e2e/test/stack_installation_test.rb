@@ -314,7 +314,7 @@ class StackInstallationTest < Minitest::Test
     def assert_two_executors
       @executors = executor_snapshot
       assert_equal 2, @executors.length, "full rho pairs one Agent executor and one private Runner"
-      assert_equal %w[agent_application runner], @executors.map { |row| row.fetch("executor_kind") }.sort
+      assert_equal %w[agent runner], @executors.map { |row| row.fetch("executor_kind") }.sort
       assert_equal [@identity.fetch("executor"), @identity.fetch("runner")].sort,
         @executors.map { |row| row.fetch("public_id") }.sort
       assert @executors.all? { |row| row.fetch("status") == "active" }

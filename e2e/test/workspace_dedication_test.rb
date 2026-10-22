@@ -185,13 +185,13 @@ class WorkspaceDedicationTest < Minitest::Test
     # the fact it asserts.
     @daemon.await_announced(address: "runner")
 
-    # The paired Agent discovers its application-private Runner. Presence
+    # The paired Agent discovers its application Executor through the runner role. Presence
     # rides the document and is never the reason to choose it.
     credential = @daemon.member_token
-    named = @daemon.member_client.executors.list(kind: "runner").find { |executor| executor.public_id == rho_runner }
+    named = @daemon.member_client.executors.list(role: "runner").find { |executor| executor.public_id == rho_runner }
     refute_nil named, "discovery never listed rho's runner for its paired Agent"
-    assert_includes named.tool_names, "bash", "the runner announced its environment tools: #{named.tool_names.inspect}"
-    assert_equal @daemon.control(:get, "/environment").dig("environment", "root"), named.environment["root"],
+    assert_includes named.tool_names(role: :runner), "bash", "the runner announced its environment tools: #{named.tool_names(role: :runner).inspect}"
+    assert_equal @daemon.control(:get, "/environment").dig("environment", "root"), named.environment_for(:runner)["root"],
       "the announced root is where this machine's tools are pointed"
     rho_runner = named.public_id
 
@@ -217,7 +217,9 @@ class WorkspaceDedicationTest < Minitest::Test
     # and the answer is this machine's shell.
     marker = "served-by-rhos-runner-#{SecureRandom.hex(4)}"
     served_public_id = author_and_start(workspace_public_id, rho_runner,
-      { tool: { key: "t1", name: "bash", route: { kind: "runner" }, input: { command: "echo #{marker}" } } }, credential: credential)
+      { tool: { key: "t1", name: "bash", route: { kind: "runner" }, input: { command: "echo #{marker}" },
+                executor_context: { "rho.environment" => { "root" => named.environment_for(:runner).fetch("root"), "directories" => [] } } } },
+      credential: credential)
     served = await_loop_completion do
       agent_api(:get,
         "/agent_api/v1/workspaces/#{workspace_public_id}/runs/#{served_public_id}")["run"]
@@ -297,11 +299,11 @@ class WorkspaceDedicationTest < Minitest::Test
     assert started.key?("tools"), "rho refused the standalone loop: #{started.inspect}"
 
     # Kernel declarations come from the published catalog. Runner skill and code
-    # have qualified callables beside the kernel skill and Agent application's code.
+    # have qualified callables beside the kernel skill and Agent's code.
     runner_skills, ordinary_tools = started.fetch("tools").partition { |name| name.start_with?("skill__") }
     assert_equal 1, runner_skills.length, "the Runner skill loader has its own callable beside the kernel skill"
     runner_codes, ordinary_tools = ordinary_tools.partition { |name| name.start_with?("code__") }
-    assert_equal 1, runner_codes.length, "the Runner code tool has its own callable beside the Agent application's code"
+    assert_equal 1, runner_codes.length, "the Runner code tool has its own callable beside the Agent's code"
     assert_equal %w[ask bash cancel code edit file_import file_publish find grep list_extensions list_processes ls manage_extension manage_schedule
                     memory_delete memory_edit memory_grep memory_ls memory_read memory_write models_list read read_process read_schedules runners_list
                     send session_read session_search skill spawn tool_call tool_search
@@ -319,8 +321,8 @@ class WorkspaceDedicationTest < Minitest::Test
     assert_equal({ "kind" => "runner", "runner_executor_public_id" => adopted.dig("identity", "runner_executor_public_id"),
                    "tool_name" => "code" }, runner_code.fetch("route"))
     agent_code = declarations.find { |entry| entry.dig("function", "name") == "code" }
-    refute_nil agent_code, "the Run also freezes the Agent application's code callable"
-    refute agent_code.key?("route"), "the Agent application's code keeps its declaring authority"
+    refute_nil agent_code, "the Run also freezes the Agent's code callable"
+    refute agent_code.key?("route"), "the Agent's code keeps its declaring authority"
 
     completed = await_loop_completion do
       agent_api(:get,
@@ -344,9 +346,9 @@ class WorkspaceDedicationTest < Minitest::Test
     runner = addresses.fetch("runner")
     # The Runner serves environment tools, its skill loader and code; code is
     # also served on the Agent address. Operator-only file, Git review, process, checkpoint
-    # and environment commands are announced without model declarations. The
+    # commands are announced without model declarations. The
     # Agent serves application capabilities; compaction and schedules live in Nexus.
-    assert_equal %w[bash checkpoints code edit environment_bind file_import file_publish files_bytes find git_review grep list_processes ls process_log read
+    assert_equal %w[bash checkpoints code edit file_import file_publish files_bytes find git_review grep list_processes ls process_log read
                     read_process skill start_process stop_process checkpoint_restore web_fetch write].sort,
       runner.fetch("tools").sort
     assert_equal %w[list_extensions manage_extension code], addresses.fetch("agent").fetch("tools"),

@@ -48,7 +48,7 @@ module CybrosAgent
     PROGRESS_PATH: String
 
     def executor: () -> Api::ExecutorDescription
-    def announce: (tools: Array[Hash[String, untyped]], ?environment: Hash[String, untyped]?, ?documents: Array[Hash[String, untyped]]?) -> Api::ExecutorDescription
+    def announce: (services: Hash[String, Hash[String, untyped]]) -> Api::ExecutorDescription
     def inbox: () -> Api::ExecutorInboxContext
     def uploads: () -> Api::ExecutorUploadsContext
     def inbox_task: (run_public_id: String, task_key: String) -> Api::ExecutorTaskContext

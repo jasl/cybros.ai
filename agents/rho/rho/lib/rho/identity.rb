@@ -2,50 +2,24 @@ require "cybros_agent"
 require "time"
 
 module Rho
-  # Where one connection's credentials belong, and the durable facts recorded
-  # beside them.
-  #
-  # The destination is never named by the token response — it carries no
-  # identity at all — so it comes from a bootstrap read against the credentials
-  # themselves:
-  #
-  # `/profile` supplies the Agent user's public id, while `/executor` supplies
-  # this Agent application's delivery address. `/profile` names no address at
-  # all: a profile has at most one, and the sibling transport credential names
-  # the current one.
-  #
-  # THE PAIRED MODE RIDES THE POINTER: `full` and `agent`
-  # identities are the Profile's, keyed by its user; a `runner` identity has
-  # no user and lives under a runner root keyed by the address it registered.
-  # The runner lineage always lives in `runner_credentials.json` — beside
-  # `credentials.json` in full mode, alone under the runner root in runner
-  # mode. Format 4 names the mode; an older pointer is refused, never read
-  # with a fallback (no compat before release).
   class Identity
-    SESSION_VERSION = 4
+    SESSION_VERSION = 5
     MODES = Config::MODES
 
-    attr_reader :root, :user_public_id, :executor_public_id, :mode, :runner_executor_public_id,
+    attr_reader :root, :user_public_id, :executor_public_id, :mode,
       :agent_identifier, :runner_registration_identifier
 
-    def self.agent(home:, user_public_id:, executor_public_id:, mode:, runner_executor_public_id: nil,
-      agent_identifier: nil, runner_registration_identifier: nil)
+    def self.agent(home:, user_public_id:, executor_public_id:, mode:, agent_identifier: nil)
       user_public_id = validate_public_id!(
         user_public_id, label: "Agent user", error_class: ConfigurationError
       )
       executor_public_id = validate_public_id!(
         executor_public_id, label: "Agent executor", error_class: ConfigurationError
       )
-      unless runner_executor_public_id.nil?
-        runner_executor_public_id = validate_public_id!(
-          runner_executor_public_id, label: "Runner executor", error_class: ConfigurationError
-        )
-      end
       new(
         home: home, root: home.identity_root(user_public_id), mode: validate_mode!(mode, %w[full agent]),
         user_public_id: user_public_id, executor_public_id: executor_public_id,
-        runner_executor_public_id: runner_executor_public_id, agent_identifier: agent_identifier,
-        runner_registration_identifier: runner_registration_identifier
+        agent_identifier: agent_identifier
       )
     end
 
@@ -57,7 +31,7 @@ module Rho
       new(
         home: home, root: home.runner_identity_root(executor_public_id), mode: "runner",
         user_public_id: nil, executor_public_id: executor_public_id,
-        runner_executor_public_id: executor_public_id, agent_identifier: nil,
+        agent_identifier: nil,
         runner_registration_identifier: runner_registration_identifier
       )
     end
@@ -78,8 +52,7 @@ module Rho
         agent(
           home: home, user_public_id: pointer.fetch("user_public_id"),
           executor_public_id: pointer.fetch("executor_public_id"), mode: mode,
-          runner_executor_public_id: pointer["runner_executor_public_id"],
-          agent_identifier: pointer["agent_identifier"], runner_registration_identifier: pointer["runner_registration_identifier"]
+          agent_identifier: pointer["agent_identifier"]
         )
       end
     rescue KeyError
@@ -89,7 +62,8 @@ module Rho
     end
 
     def self.validate_public_id!(public_id, label:, error_class:)
-      return public_id if public_id.is_a?(String) && !public_id.empty?
+      public_id = String.try_convert(public_id)
+      return public_id if public_id && !public_id.empty?
 
       raise error_class, "#{label} public id must be a non-empty String"
     end
@@ -100,14 +74,13 @@ module Rho
       raise ConfigurationError, "mode must be one of #{words.join(", ")}, got #{mode.inspect}"
     end
 
-    def initialize(home:, root:, mode:, user_public_id:, executor_public_id:, runner_executor_public_id:,
+    def initialize(home:, root:, mode:, user_public_id:, executor_public_id:,
       agent_identifier: nil, runner_registration_identifier: nil)
       @home = home
       @root = root
       @mode = mode
       @user_public_id = user_public_id
       @executor_public_id = executor_public_id
-      @runner_executor_public_id = runner_executor_public_id
       @agent_identifier = agent_identifier
       @runner_registration_identifier = runner_registration_identifier
     end
@@ -120,27 +93,12 @@ module Rho
 
     def runner_mode? = @mode == "runner"
 
+    def runner_executor_public_id = (@executor_public_id unless @mode == "agent")
+
     # Where this identity's tools land by default: the Profile's work root,
     # or the runner's own.
     def work_root
       runner_mode? ? @home.runner_work_root(@executor_public_id) : @home.identity_work_root(@user_public_id)
-    end
-
-    # The same Profile, now serving a runner too (agent→full, the runner-only
-    # ceremony's install) — and the reverse (`rho disconnect --runner`).
-    def with_runner(runner_executor_public_id, registration_identifier: nil)
-      self.class.agent(
-        home: @home, user_public_id: @user_public_id, executor_public_id: @executor_public_id,
-        mode: "full", runner_executor_public_id: runner_executor_public_id, agent_identifier: @agent_identifier,
-        runner_registration_identifier: registration_identifier || @runner_registration_identifier
-      )
-    end
-
-    def without_runner
-      self.class.agent(
-        home: @home, user_public_id: @user_public_id, executor_public_id: @executor_public_id, mode: "agent",
-        agent_identifier: @agent_identifier, runner_registration_identifier: @runner_registration_identifier
-      )
     end
 
     def pointer_document
@@ -149,7 +107,6 @@ module Rho
         "mode" => @mode,
         "user_public_id" => @user_public_id,
         "executor_public_id" => @executor_public_id,
-        "runner_executor_public_id" => @runner_executor_public_id,
         "agent_identifier" => @agent_identifier,
         "runner_registration_identifier" => @runner_registration_identifier,
       }.compact

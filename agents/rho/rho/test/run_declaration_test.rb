@@ -110,7 +110,12 @@ class RunDeclarationTest < Minitest::Test
     assert_raises(ArgumentError) { Rho::RunDeclaration.unique_entries([[original], [changed]]) }
   end
 
-  RunnerDocument = Data.define(:public_id, :served_tools)
+  RunnerDocument = Data.define(:public_id, :served_tools) do
+    def tools_for(role)
+      raise ArgumentError unless role == :runner
+      served_tools
+    end
+  end
 
   def test_declaration_keeps_sources_separate_from_carried_agent_entries
     kernel = %w[nexus.graph.delegate_task nexus.human.ask]
@@ -459,7 +464,7 @@ class RunDeclarationTest < Minitest::Test
   # — or the caller's own words; a runner that announced no fragment has
   # NO lead, and an empty lead sends no inline entry.
   def test_the_remote_lead_is_the_announced_snapshot_alone
-    environment = NexusDoubles.remote_runner("0199-h", root: "/srv/x").fetch("environment")
+    environment = NexusDoubles.remote_runner("0199-h", root: "/srv/x").fetch("services").fetch("runner").fetch("environment")
 
     assert_equal "Relative paths resolve against /srv/x.", Rho::RunDeclaration.remote_lead(environment)
     assert_equal "Relative paths resolve against /srv/x.\n\nBe brief.",
@@ -484,7 +489,7 @@ class RunDeclarationTest < Minitest::Test
 
   # Raw seeds keep the environment across compaction, behind stable guidance.
   def test_the_standalone_instructions_start_with_stable_guidance
-    environment = NexusDoubles.remote_runner("0199-h", root: "/srv/x").fetch("environment")
+    environment = NexusDoubles.remote_runner("0199-h", root: "/srv/x").fetch("services").fetch("runner").fetch("environment")
     [Rho::RunDeclaration.instructions(registry: registry), Rho::RunDeclaration.remote_instructions(environment)].each do |text|
       assert_includes text, "Conversation kind: standalone."
       refute_includes text, "{{conversation_kind}}"
@@ -556,7 +561,7 @@ class RunDeclarationTest < Minitest::Test
     hints = ["Do not wait for a detached call.", "Name every file you read."]
     block = "Do not wait for a detached call.\nName every file you read."
     lines = Rho::RunDeclaration.tool_lines(registry)
-    environment = NexusDoubles.remote_runner("0199-h", root: "/srv/x").fetch("environment")
+    environment = NexusDoubles.remote_runner("0199-h", root: "/srv/x").fetch("services").fetch("runner").fetch("environment")
 
     assert_equal "#{lines}\n\n#{block}", Rho::RunDeclaration.lead(registry: registry, hints: hints)
     assert_equal "Be brief.\n\n#{block}", Rho::RunDeclaration.lead(registry: registry, instructions: "Be brief.", hints: hints)
@@ -575,7 +580,7 @@ class RunDeclarationTest < Minitest::Test
   def test_steps_keep_remote_sources_separate_and_preserve_raw_instructions
     kernel = %w[nexus.graph.delegate_task]
     served = [NexusDoubles.served_tool("slow_read")]
-    instructions = Rho::RunDeclaration.remote_instructions(NexusDoubles.remote_runner("0199-h").fetch("environment"))
+    instructions = Rho::RunDeclaration.remote_instructions(NexusDoubles.remote_runner("0199-h").fetch("services").fetch("runner").fetch("environment"))
 
     step, = Rho::RunDeclaration.steps(runner_executor_public_id: "own-runner", prompt: "p", model: "m/x", registry: registry, served: served,
       instructions: instructions, kernel_tools: kernel, runner_executor_public_ids: %w[own-runner other-runner])

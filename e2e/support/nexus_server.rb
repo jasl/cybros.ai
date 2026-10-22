@@ -258,9 +258,12 @@ module E2E
       ).uniq.to_h { |key| [key, nil] }
       cleaned.merge(
         implicit_database_urls,
-        # The owning E2E world alone loads this fixture adapter. Production
-        # Nexus never reads a test path or accepts a private-network switch.
-        "RUBYOPT" => (@mcp_fixture_url ? "-r#{File.expand_path("mcp_fixture/nexus_prelude.rb", __dir__)}" : nil),
+        # E2E owns process boot policy and the optional fixture adapter.
+        # Production Nexus never loads either test path.
+        "RUBYOPT" => [
+          "-r#{File.expand_path("nexus_prelude.rb", __dir__)}",
+          ("-r#{File.expand_path("mcp_fixture/nexus_prelude.rb", __dir__)}" if @mcp_fixture_url),
+        ].compact.join(" "),
         "E2E_MCP_FIXTURE_URL" => @mcp_fixture_url,
         "E2E_MCP_OAUTH_FIXTURE_URL" => @mcp_oauth_fixture_url,
         "RUBYLIB" => nil,

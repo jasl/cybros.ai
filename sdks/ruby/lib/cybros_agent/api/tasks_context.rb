@@ -74,9 +74,9 @@ module CybrosAgent
 
       # THE APPROVER'S VERBS. A tool call the run's mode or a
       # rule parked rests at `needs_approval`, addressed to the host's
-      # agent application, on a 24 h clock; the run stays `running` and
+      # agent, on a 24 h clock; the run stays `running` and
       # announces `approval_required`. Any principal with write standing
-      # on the workspace decides — the agent application acting for its
+      # on the workspace decides — the agent acting for its
       # person included — and the fact on the answered task says who and
       # of what kind (`approval: {origin: human | agent, decided_by,
       # decided_at}`).

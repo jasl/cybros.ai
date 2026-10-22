@@ -16,8 +16,8 @@ module Rho
       LOST_REPORT = { planes: {}, lost: true }.freeze
       NOT_DURABLE = "the renewed credential is live but was not written down".freeze
       JOINABLE_PHASES = %i[starting pending pending_runner activating].freeze
-      # The two runner slots, `:runner` first (see Retirement).
-      SLOTS = %i[runner agent_runner].freeze
+      # The single executor runtime slot (see Retirement).
+      SLOTS = %i[runner].freeze
       # `expected:` omitted means unchecked; `nil` means "no credential", which
       # is what a recovery after a terminal loss legitimately expects.
       UNCHECKED = Object.new.freeze

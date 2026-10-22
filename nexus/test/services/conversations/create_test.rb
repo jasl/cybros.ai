@@ -134,7 +134,7 @@ class Conversations::CreateTest < ActiveSupport::TestCase
 
   test "an agent creator's announced address is never the binding; the named runner is" do
     address = executors(:address)
-    address.announce(tools: [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }])
+    address.announce(services: { address.executor_kind => { "tools" => [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } })
     wide = connect_wide_runner("wide-1")
 
     unnamed = Conversations::Create.call(command(creating_user: users(:agent)))

@@ -20,12 +20,12 @@ class ApiPlanesTest < Minitest::Test
   EXECUTOR_BODY = {
     "executor" => {
       "public_id" => "019f0000-0000-7000-8000-000000000002",
-      "kind" => "agent_application", "status" => "active",
+      "kind" => "agent", "status" => "active",
       "display_name" => "MacBook Pro", "credential_epoch" => 1,
       "presence" => "offline",
       "agent_public_id" => "019f0000-0000-7000-8000-000000000001",
       "registration_identifier" => "opaque-app-identity",
-      "assignment_scope" => nil, "assignment_agent_public_id" => nil,
+      "assignment_scope" => nil, "service_roles" => ["agent"],
     },
     "measured_at" => "2026-07-25T00:00:00Z",
   }.freeze
@@ -77,14 +77,14 @@ class ApiPlanesTest < Minitest::Test
     description = executor_client([[200, {}, EXECUTOR_BODY]]).executor
 
     assert_equal "019f0000-0000-7000-8000-000000000002", description.executor.public_id
-    assert_equal "agent_application", description.executor.kind
+    assert_equal "agent", description.executor.kind
     assert_equal "active", description.executor.status
     assert_equal "MacBook Pro", description.executor.display_name
     assert_equal 1, description.executor.credential_epoch
     assert_equal "019f0000-0000-7000-8000-000000000001", description.executor.agent_public_id
     assert_equal "opaque-app-identity", description.executor.registration_identifier
     assert_nil description.executor.assignment_scope
-    assert_nil description.executor.assignment_agent_public_id
+    assert_equal ["agent"], description.executor.service_roles
 
     request = @transport.requests.fetch(0)
     assert_equal 1, @transport.requests.length
@@ -95,18 +95,18 @@ class ApiPlanesTest < Minitest::Test
   def test_a_private_runner_self_description_carries_its_assignment_and_registration
     row = EXECUTOR_BODY.fetch("executor").merge(
       "kind" => "runner", "agent_public_id" => nil, "registration_identifier" => "opaque-runner-identity",
-      "assignment_scope" => "agent_private", "assignment_agent_public_id" => "019f0000-0000-7000-8000-000000000001"
+      "assignment_scope" => "user_private", "service_roles" => ["runner"]
     )
     address = executor_client([[200, {}, EXECUTOR_BODY.merge("executor" => row)]]).executor.executor
 
     assert_nil address.agent_public_id
     assert_equal "opaque-runner-identity", address.registration_identifier
-    assert_equal "agent_private", address.assignment_scope
-    assert_equal "019f0000-0000-7000-8000-000000000001", address.assignment_agent_public_id
+    assert_equal "user_private", address.assignment_scope
+    assert_equal ["runner"], address.service_roles
   end
 
   def test_malformed_executor_binding_metadata_is_refused_at_the_wire_boundary
-    %w[agent_public_id registration_identifier assignment_scope assignment_agent_public_id].each do |field|
+    %w[agent_public_id registration_identifier assignment_scope].each do |field|
       body = EXECUTOR_BODY.merge("executor" => EXECUTOR_BODY.fetch("executor").merge(field => ["invalid"]))
       assert_raises(CybrosAgent::Api::MalformedResponse) { executor_client([[200, {}, body]]).executor }
     end
@@ -141,17 +141,17 @@ class ApiPlanesTest < Minitest::Test
       { "name" => "bash", "effect_profile" => READ_ONLY.merge("kind" => "write"), "timeout_ms" => 30_000 },
     ]
 
-    description = executor_client([[200, {}, EXECUTOR_BODY]]).announce(tools: tools)
+    description = executor_client([[200, {}, EXECUTOR_BODY]]).announce(services: { "agent" => { "tools" => tools } })
 
     assert_equal "019f0000-0000-7000-8000-000000000002", description.executor.public_id
-    assert_equal "agent_application", description.executor.kind
+    assert_equal "agent", description.executor.kind
     assert_equal "2026-07-25T00:00:00Z", description.measured_at
 
     request = @transport.requests.fetch(0)
     assert_equal 1, @transport.requests.length
     assert_equal "/agent_api/v1/executor/announcement", request.fetch(:path)
     assert_equal :put, request.fetch(:method)
-    assert_equal({ "tools" => tools }, request.fetch(:body), "the entries ride as given, under `tools`")
+    assert_equal({ "services" => { "agent" => { "tools" => tools } } }, request.fetch(:body), "the entries ride as given, under `tools`")
     assert_equal "sk-transport", request.fetch(:credential)
   end
 
@@ -162,12 +162,12 @@ class ApiPlanesTest < Minitest::Test
                "input_schema" => { "type" => "object", "properties" => {} } }]
     environment = { "root" => "/w", "fragments" => [{ "extension" => "rho.coding", "text" => "Relative paths" }] }
 
-    executor_client([[200, {}, EXECUTOR_BODY]]).announce(tools: tools, environment: environment)
+    executor_client([[200, {}, EXECUTOR_BODY]]).announce(services: { "agent" => { "tools" => tools, "environment" => environment } })
 
     request = @transport.requests.fetch(0)
     assert_equal "/agent_api/v1/executor/announcement", request.fetch(:path)
     assert_equal :put, request.fetch(:method)
-    assert_equal({ "tools" => tools, "environment" => environment }, request.fetch(:body),
+    assert_equal({ "services" => { "agent" => { "tools" => tools, "environment" => environment } } }, request.fetch(:body),
       "the entries and the document ride as given")
   end
 
@@ -177,15 +177,15 @@ class ApiPlanesTest < Minitest::Test
     tools = [{ "name" => "skill", "effect_profile" => READ_ONLY }]
     documents = [{ "name" => "deploy-notes", "description" => "How this project is deployed." }]
 
-    executor_client([[200, {}, EXECUTOR_BODY]]).announce(tools: tools, documents: documents)
+    executor_client([[200, {}, EXECUTOR_BODY]]).announce(services: { "agent" => { "tools" => tools, "documents" => documents } })
 
     request = @transport.requests.fetch(0)
     assert_equal :put, request.fetch(:method)
-    assert_equal({ "tools" => tools, "documents" => documents }, request.fetch(:body),
+    assert_equal({ "services" => { "agent" => { "tools" => tools, "documents" => documents } } }, request.fetch(:body),
       "the documents ride as given; no environment key when none was given")
 
-    executor_client([[200, {}, EXECUTOR_BODY]]).announce(tools: tools, environment: { "root" => "/w" }, documents: [])
-    assert_equal({ "tools" => tools, "environment" => { "root" => "/w" }, "documents" => [] },
+    executor_client([[200, {}, EXECUTOR_BODY]]).announce(services: { "agent" => { "tools" => tools, "environment" => { "root" => "/w" }, "documents" => [] } })
+    assert_equal({ "services" => { "agent" => { "tools" => tools, "environment" => { "root" => "/w" }, "documents" => [] } } },
       @transport.requests.fetch(0).fetch(:body), "an empty list is sent: it clears")
   end
 
@@ -193,7 +193,7 @@ class ApiPlanesTest < Minitest::Test
     error = assert_raises(CybrosAgent::Api::InvalidRequest) do
       executor_client([[422, {}, { "error" => { "code" => "reserved_namespace",
                                                 "message" => "tools[0].name names a reserved kernel namespace (nexus.graph)" } }]])
-        .announce(tools: [{ "name" => "nexus.graph.private_tool", "effect_profile" => READ_ONLY }])
+        .announce(services: { "agent" => { "tools" => [{ "name" => "nexus.graph.private_tool", "effect_profile" => READ_ONLY }] } })
     end
 
     assert_equal "reserved_namespace", error.code
@@ -202,7 +202,7 @@ class ApiPlanesTest < Minitest::Test
   def test_an_announcement_naming_a_kernel_tool_is_an_invalid_request_carrying_the_kernels_code
     error = assert_raises(CybrosAgent::Api::InvalidRequest) do
       executor_client([[422, {}, { "error" => { "code" => "reserved_tool_name", "message" => "delegate_task is the kernel's" } }]])
-        .announce(tools: [{ "name" => "delegate_task", "effect_profile" => READ_ONLY }])
+        .announce(services: { "agent" => { "tools" => [{ "name" => "delegate_task", "effect_profile" => READ_ONLY }] } })
     end
 
     assert_equal "reserved_tool_name", error.code
@@ -318,22 +318,7 @@ class ApiPlanesTest < Minitest::Test
     runner_planes = CybrosAgent.planes_for(runner, base_url: "http://example.test")
     assert_nil runner_planes.client, "a runner is a delivery address, never a member principal"
     assert_instance_of CybrosAgent::ExecutorClient, runner_planes.executor_client
-    assert_nil runner_planes.runner_client
-    assert_nil planes.runner_client, "an agent bundle carries no second address"
-
-    # The combined shape: three planes, the third an executor
-    # client on the runner's own credential.
-    combined = CybrosAgent::DeviceFlow::Credentials.new(
-      access_token: "sk-member", refresh_token: "rt-1", token_type: "Bearer", expires_in: 1_209_600,
-      executor_access_token: "sk-transport",
-      runner_access_token: "sk-runner", runner_refresh_token: "rt-2"
-    )
-    combined_planes = CybrosAgent.planes_for(combined, base_url: "http://example.test")
-    assert_instance_of CybrosAgent::Client, combined_planes.client
-    assert_instance_of CybrosAgent::ExecutorClient, combined_planes.executor_client
-    assert_instance_of CybrosAgent::ExecutorClient, combined_planes.runner_client
-    refute_same combined_planes.executor_client, combined_planes.runner_client
-    assert_equal %i[client executor_client runner_client], combined_planes.members
+    assert_equal %i[client executor_client], planes.members
   end
 
   def test_credentials_report_which_planes_they_carry
@@ -347,22 +332,20 @@ class ApiPlanesTest < Minitest::Test
   end
 
   def test_plane_composition_accepts_a_static_bundle_without_an_oauth_lineage
-    bundle_type = Data.define(:access_token, :executor_access_token, :runner_access_token) do
+    bundle_type = Data.define(:access_token, :executor_access_token) do
       def member_plane? = !access_token.nil?
       def executor_plane? = !executor_access_token.nil?
-      def runner_plane? = !runner_access_token.nil?
     end
     transport = FakeTransport.new([
       [200, {}, PROFILE_BODY], [200, {}, EXECUTOR_BODY], [200, {}, EXECUTOR_BODY],
     ])
-    bundle = bundle_type.new(access_token: "static-member", executor_access_token: "static-app", runner_access_token: "static-runner")
+    bundle = bundle_type.new(access_token: "static-member", executor_access_token: "static-app")
     planes = CybrosAgent.planes_for(bundle, base_url: "http://example.test", transport: transport)
 
     planes.client.profile.fetch
     planes.executor_client.executor
-    planes.runner_client.executor
 
-    assert_equal %w[static-member static-app static-runner], transport.requests.map { |request| request.fetch(:credential) }
+    assert_equal %w[static-member static-app], transport.requests.map { |request| request.fetch(:credential) }
   end
 
   def test_every_diagnostic_redacts_the_credential

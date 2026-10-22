@@ -169,7 +169,7 @@ class OpsExtensionTest < Minitest::Test
 
     code, answer = create(daemon, { "prompt" => "fix it", "model" => "dev/mock-text" })
     assert_equal "201", code, answer.inspect
-    assert_equal "0199-runner", api.run_creates.last.dig("run", "default_runner_executor_public_id"),
+    assert_equal "0199-executor", api.run_creates.last.dig("run", "default_runner_executor_public_id"),
       "rho's own runner row"
     create(daemon, { "prompt" => "fix it", "model" => "dev/mock-text", "default_runner_executor_public_id" => "0199-named" })
     assert_equal "0199-named", api.run_creates.last.dig("run", "default_runner_executor_public_id")
@@ -319,14 +319,14 @@ class OpsExtensionTest < Minitest::Test
     assert_includes instructions, "Relative paths resolve against /srv/current."
     refute_includes instructions, daemon.context.tool_env.root
     refute_includes instructions, "You are working on the operator's own machine"
-    assert_equal "/srv/current", daemon.context.remote_runner("0199-h").environment.fetch("root")
+    assert_equal "/srv/current", daemon.context.remote_runner("0199-h").environment_for(:runner).fetch("root")
   end
 
   def test_a_standalone_code_mode_filter_uses_fresh_selected_runner_tools
     api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE,
       executors: [NexusDoubles.remote_runner("0199-h", tools: %w[old_read code].map { |name| NexusDoubles.served_tool(name) })])
     daemon = member_ready(boot, api)
-    assert_equal %w[old_read code], daemon.context.remote_runner("0199-h").served_tools.map(&:name)
+    assert_equal %w[old_read code], daemon.context.remote_runner("0199-h").tools_for(:runner).map(&:name)
     api.remove_executor("0199-h")
     api.stock_runner_unless_present("0199-h", tools: %w[new_read code].map { |name| NexusDoubles.served_tool(name) })
 
@@ -337,6 +337,6 @@ class OpsExtensionTest < Minitest::Test
     task = api.run_creates.last.dig("run", "steps", 0, "model")
     assert_equal ["new_read"], task.fetch("runner_tool_names")
     assert_equal ["new_read"], answer.fetch("tools")
-    assert_equal %w[new_read code], daemon.context.remote_runner("0199-h").served_tools.map(&:name)
+    assert_equal %w[new_read code], daemon.context.remote_runner("0199-h").tools_for(:runner).map(&:name)
   end
 end

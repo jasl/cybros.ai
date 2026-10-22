@@ -113,8 +113,8 @@ class ContractFixturesTest < Minitest::Test
 
     executors = E2E::ContractFixtures.executors
     assert_equal ["executors"], executors.fetch("discovery_envelope")
-    assert_equal %w[runner tool_provider], executors.fetch("discovery_kinds")
-    assert_equal ["kind"], executors.fetch("discovery_filters")
+    assert_equal %w[agent runner tool_provider], executors.fetch("discovery_kinds")
+    assert_equal %w[kind role], executors.fetch("discovery_filters")
 
     errors = E2E::ContractFixtures.errors
     assert_equal %w[conversation_hosted edge_authoring_refused invalid_steps stale_revision],

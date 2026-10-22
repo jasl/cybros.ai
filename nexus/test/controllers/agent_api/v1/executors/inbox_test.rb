@@ -76,8 +76,8 @@ class AgentAPI::V1::Executors::InboxTest < ActionDispatch::IntegrationTest
     assert_equal [@workspace.public_id, other.public_id], tasks.map { |task| task.fetch("workspace_public_id") }
   end
 
-  # An ask on the wire: the question and no tool fields, never claimed, addressed to the agent
-  # application — byte-pinned so the SDK's row and rho's `status` read exactly this. Authored with
+  # An ask on the wire: the question and no tool fields, never claimed, addressed to the Agent
+  # — byte-pinned so the SDK's row and rho's `status` read exactly this. Authored with
   # the budget a model's `ask` carries (`Asks::Run::TIMEOUT_MS`), the row this one stands for.
   test "an ask row lists on its addressee's inbox with its question and no tool fields" do
     run = seed(ask("q", "prompt" => "which database?", "timeout_ms" => Runs::Asks::Run::TIMEOUT_MS),
@@ -87,7 +87,7 @@ class AgentAPI::V1::Executors::InboxTest < ActionDispatch::IntegrationTest
     address = executors(:address)
     Task.where(id: run.tasks.sole.id).update_all(
       resolution_token: nil, status: "awaiting_input",
-      addressed_executor_id: address.id, addressed_role: "agent_application"
+      addressed_executor_id: address.id, addressed_role: "agent"
     )
     transport = create_bound_credential(executor: address, name: "Transport")
 
@@ -100,7 +100,7 @@ class AgentAPI::V1::Executors::InboxTest < ActionDispatch::IntegrationTest
     assert_equal run.public_id, row.fetch("run_public_id")
     assert_equal @workspace.public_id, row.fetch("workspace_public_id")
     assert_equal false, row.fetch("claimed")
-    assert_equal({ "role" => "agent_application", "executor_public_id" => address.public_id },
+    assert_equal({ "role" => "agent", "executor_public_id" => address.public_id },
       row.fetch("addressed_to"))
     assert_not_nil row.fetch("deadline_at")
     assert_equal Tasks::AwaitTask::MAX_HOLD_MS, row.fetch("timeout_ms"), "the ask's own budget, one park's ceiling"
@@ -123,7 +123,7 @@ class AgentAPI::V1::Executors::InboxTest < ActionDispatch::IntegrationTest
     connection = connect_runner(manager: users(:owner), registration_identifier: "pool-a", display_name: "Provider pool-a",
       assignment_scope: :account_wide, executor_kind: :tool_provider)
     provider = connection.executor_access_token.executor
-    assert_predicate provider.announce(tools: [{ "name" => "net_fetch", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }]), :accepted?
+    assert_predicate provider.announce(services: { provider.executor_kind => { "tools" => [{ "name" => "net_fetch", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } }), :accepted?
     2.times do |loop_index|
       start!(seed(parallel(*25.times.map { |i| tool("f#{loop_index}-#{i}", "net_fetch") }), tool("after-#{loop_index}")))
     end

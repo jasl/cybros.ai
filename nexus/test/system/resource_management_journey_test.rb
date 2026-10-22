@@ -26,19 +26,10 @@ module ResourceManagementJourney
       click_link "Connect runner"
       assert_current_path runner_connection_path
       assert_link "I have a device code"
-      click_link "Create private Runner for #{agent.display_name}"
-      fill_in "Name", with: "Runner#{"y" * 80}"
-      click_button "Create private runner"
-      assert_link "Create API key"
-      runner = agent.private_runners.sole
-      assert_current_path agent_private_runner_api_keys_path(agent, runner)
-      click_link "Create API key"
-      fill_in "Name", with: "Local runner"
-      click_button "Create API key"
-      assert_current_path agent_private_runner_api_keys_path(agent, runner)
-      assert_selector "h1", text: "API key created"
-      assert_text "Save this key"
-      click_link "View Runner"
+      assert_no_link text: /Create private Runner/
+      runner = connect_runner(manager: human, display_name: "Runner#{"y" * 80}").executor_access_token.executor
+      visit runners_url
+      click_link runner.display_name
       assert_current_path runner_path(runner)
       assert_text "Ready"
       assert_resource_page_width

@@ -93,7 +93,7 @@ class DaemonPlacementTest < Minitest::Test
     assert_respond_to daemon.host.checkpoints, :call, "the member is the callable, decided at boot"
     token = connect(daemon)
     await_workspace_state(daemon, "adopted", token: token)
-    wait_for { daemon.lineage.runners.length == 2 }
+    wait_for { daemon.lineage.runners.length == 1 }
 
     store = daemon.context.tool_env.checkpoints
     assert_kind_of Rho::Runner::Checkpoints::Store, store
@@ -198,17 +198,17 @@ end
     moved = Dir.mktmpdir("rho-moved")
     token = connect(daemon)
     await_workspace_state(daemon, "adopted", token: token)
-    wait_for { daemon.lineage.runners.length == 2 && api.runner_announcements.length == 1 }
+    wait_for { daemon.lineage.runners.length == 1 && api.announcements.length == 1 }
     runner = daemon.lineage.runner(:runner)
     before = daemon.context.tool_env
 
     daemon.context.repoint_tools(moved)
-    wait_for { api.runner_announcements.length == 2 }
+    wait_for { api.announcements.length == 2 }
 
     assert_same runner, daemon.lineage.runner(:runner), "the runner stands"
     refute_same before, daemon.context.tool_env, "placement zero is rebuilt, never mutated"
     assert_equal File.realpath(moved), File.realpath(daemon.context.tool_env.root)
-    assert_equal File.realpath(moved), File.realpath(api.runner_announcements.last.dig("environment", "root")),
+    assert_equal File.realpath(moved), File.realpath(api.announcements.last.dig("services", "runner", "environment", "root")),
       "the announcement names the root the tools serve"
     assert_equal File.realpath(moved), daemon.context.tool_env.checkpoints.root
     assert_same daemon.context.tool_env.checkpoints, daemon.host.checkpoints.call, "zero's store outside a call"
@@ -258,33 +258,33 @@ end
   # THE TWO LOOPS OF FULL MODE: the runner address serves
   # this machine's tools, the agent address its own. Agent mode places the
   # agent's run alone and registers no runner.
-  def test_full_mode_places_both_runs_and_agent_mode_the_agents_alone
+  def test_full_mode_places_one_runtime_with_both_roles_and_agent_mode_only_application
     api = NexusDoubles::FakeAgentApi.new(
       workspaces: [{ public_id: "0199-workspace", name: "Helper", dedicated: true }]
     )
     daemon = boot(device_flow: connection_device_flow, api_transport: api)
     token = connect(daemon)
     await_workspace_state(daemon, "adopted", token: token)
-    wait_for { daemon.lineage.runners.length == 2 }
+    wait_for { daemon.lineage.runners.length == 1 }
 
     document = JSON.parse(request(daemon, :get, "/runner", token: token).body)
     assert_includes document.fetch("runner").fetch("tools"), "bash"
     refute_includes document.fetch("runner").fetch("tools"), "summarize_history"
     assert_equal %w[list_extensions manage_extension code], document.fetch("agent").fetch("tools"),
       "the agent serves code and package management"
-    wait_for { api.runner_inbox_reads.positive? && api.executor_inbox_reads.positive? }
+    wait_for { api.executor_inbox_reads.positive? }
     log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
     # The default runner set includes coding, processes, checkpoints, the
     # environment binding, code mode and web reading.
-    assert_includes log, "event=executor.announced tools=21 address=runner"
-    assert_includes log, "event=executor.announced tools=3 address=agent"
+    assert_includes log, "event=executor.announced tools=21 role=runner"
+    assert_includes log, "event=executor.announced tools=3 role=agent"
 
     agent = boot(device_flow: connection_device_flow, api_transport: NexusDoubles::FakeAgentApi.new(
       workspaces: [{ public_id: "0199-workspace", name: "Helper", dedicated: true }]
     ), config: agent_mode, root: File.join(@root, "agent"))
     token = connect(agent)
     await_workspace_state(agent, "adopted", token: token)
-    wait_for { agent.lineage.runner(:agent_runner) }
+    wait_for { agent.lineage.runner }
     document = JSON.parse(request(agent, :get, "/runner", token: token).body)
     assert_nil document.fetch("runner")
     assert_equal %w[list_extensions manage_extension code], document.fetch("agent").fetch("tools")
@@ -331,10 +331,10 @@ end
       "zero requests under the member credential")
     assert_empty api.announcements, "nothing on the agent address"
     assert_equal 1, api.runner_announcements.length
-    refute_nil api.runner_announcements.first["environment"]
+    refute_nil api.runner_announcements.first.dig("services", "runner", "environment")
     log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
     # Runner mode keeps the same default local tools, including web reading.
-    assert_includes log, "event=executor.announced tools=21 address=runner"
+    assert_includes log, "event=executor.announced tools=21 role=runner"
     assert_equal "connected", JSON.parse(request(daemon, :get, "/environment", token: token).body).dig("environment", "root").then { |root| root ? "connected" : "unset" }
     assert_includes daemon.context.environment.root, File.join("runners", "0199-runner")
   end

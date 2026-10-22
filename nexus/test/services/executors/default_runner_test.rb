@@ -31,7 +31,7 @@ class Executors::DefaultRunnerTest < ActiveJob::TestCase
   end
 
   def announce!(executor, entries)
-    outcome = executor.announce(tools: entries)
+    outcome = executor.announce(services: { executor.executor_kind => { "tools" => entries } })
     assert_predicate outcome, :accepted?, outcome.outcome.to_s
   end
 

@@ -61,7 +61,7 @@ require "socket"
 # verb (E2E::ExitLongPump — the person saying "use the read tool", which the model reads in the next
 # tool result), `rho approve` for everything else. Asserted: at least one park; every park's
 # `approval.origin == "agent"` — the fact records the approver's KIND (`human|agent`, Tasks::Approve
-# and Tasks::Deny alike), and rho's verb is the agent application's grant, as live_approval pins;
+# and Tasks::Deny alike), and rho's verb is the agent's grant, as live_approval pins;
 # the `check-N` rows the goal's author appended carry `origin == "author"` and never parked; a
 # kernel-planted `k` row, if any, is `origin == "kernel"`. A denial is a recorded human act, not a
 # pass condition: the report prints `denied: N` and asserts nothing on it — a model that gives up
@@ -202,7 +202,7 @@ class LiveExitLongTest < Minitest::Test
     # THE PARKS — the one scripted intervention: a person decided every
     # runner call through `rho approve` / `rho deny`, and only runner calls
     # parked. The fact's origin is the approver's KIND (`human|agent`),
-    # never "person": rho's verb is the agent application's grant —
+    # never "person": rho's verb is the agent's grant —
     # live_approval's pin; Tasks::Deny stamps the same origin as Approve.
     refute_empty parks, "nothing parked under --approval ask"
     parks.each do |park|

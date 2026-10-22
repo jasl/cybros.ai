@@ -124,10 +124,10 @@ GEM
     ruby-progressbar (1.13.0)
     securerandom (0.4.1)
     simpleidn (0.3.0)
-    sqlite3 (2.10.0-aarch64-linux-gnu)
-    sqlite3 (2.10.0-arm64-darwin)
-    sqlite3 (2.10.0-x86_64-darwin)
-    sqlite3 (2.10.0-x86_64-linux-gnu)
+    sqlite3 (2.10.1-aarch64-linux-gnu)
+    sqlite3 (2.10.1-arm64-darwin)
+    sqlite3 (2.10.1-x86_64-darwin)
+    sqlite3 (2.10.1-x86_64-linux-gnu)
     tsort (0.2.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
@@ -159,6 +159,7 @@ CHECKSUMS
   async (2.46.0) sha256=34f984733dbf63a997376346451ec995e858cacc3105e86ccfeaf8877b4f490b
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   bigdecimal (4.1.3) sha256=61ebe1e5e559bdc3cc6f2c0ee7f427321fc838f59611c294356eb04d6e21cf66
+  bundler (4.0.22) sha256=d8d5ec84c8555e0af71db63ed7aee4d1a8fb839ec46d84212d61979242a5d75a
   concurrent-ruby (1.3.8) sha256=b2f1be836e968ccc78ccfce277ea79c72a88633f22306782c16ff23fb415d1e1
   connection_pool (3.0.2) sha256=33fff5ba71a12d2aa26cb72b1db8bba2a1a01823559fb01d29eb74c286e62e0a
   console (1.38.0) sha256=35b82f59130e95e9be6b832d9e539c8b3988fc192e4a8e9a86ab4922f44ad5de
@@ -202,10 +203,10 @@ CHECKSUMS
   ruby-progressbar (1.13.0) sha256=80fc9c47a9b640d6834e0dc7b3c94c9df37f08cb072b7761e4a71e22cff29b33
   securerandom (0.4.1) sha256=cc5193d414a4341b6e225f0cb4446aceca8e50d5e1888743fac16987638ea0b1
   simpleidn (0.3.0) sha256=12ca730bed2f3db04d11e9bfd1bca3e11fb37f55b21eb2e9793fb5814bf54d03
-  sqlite3 (2.10.0-aarch64-linux-gnu) sha256=dafeea94182af2eb53a10797be359fa6ec4270532bd45255d1c2beb69f2eb743
-  sqlite3 (2.10.0-arm64-darwin) sha256=f619f33adfd01a1827e8764a3da92b289c1a99d93707d021a242dccba6909c4e
-  sqlite3 (2.10.0-x86_64-darwin) sha256=67306588548e62095855a511285daf33389d7f4311c1c33a1addd23e2b90cec5
-  sqlite3 (2.10.0-x86_64-linux-gnu) sha256=295f48b240ba663efa2e3b6f38cbc0f19f5c8a2823a71fda3bf15531be5dd0e8
+  sqlite3 (2.10.1-aarch64-linux-gnu) sha256=48390cc2b809acd1280f5c9daaf3c2013833adb8a5ece9b0634f708651080ccd
+  sqlite3 (2.10.1-arm64-darwin) sha256=45f74dad0a8ee57ae5fadfac39bf160d1f09fb0484a442223310d869cd957d92
+  sqlite3 (2.10.1-x86_64-darwin) sha256=00d1cd2e8ecff5ad9fffa0c97de59d4f85c5fc54eada2587d53ca0bd933b7a5d
+  sqlite3 (2.10.1-x86_64-linux-gnu) sha256=661ecede31e23a412059cd8c684ed84e332f64f167e4a90902cf99e8ea2c8718
   tsort (0.2.0) sha256=9650a793f6859a43b6641671278f79cfead60ac714148aabe4e3f0060480089f
   tzinfo (2.0.6) sha256=8daf828cc77bcf7d63b0e3bdb6caa47e2272dcfaf4fbfe46f8c3a9df087a829b
   unicode-display_width (3.3.0) sha256=4b7aa66a4b11db50f6f7e98411215cd0dd10eaecb665d36eec5bcacb3fa0b613

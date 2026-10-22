@@ -46,25 +46,14 @@ class API::V1::AgentsTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
-  test "executor and private runner introspection returns their exact independent binding" do
+  test "executor introspection names the application and retired private runner routes are absent" do
     executor = create_key("#{@path}/executor/api_keys", "Executor")
     get agent_api_v1_executor_path, headers: bearer(executor.fetch("secret"))
     assert_response :success
     assert_equal @agent.public_id, response.parsed_body.dig("executor", "agent_public_id")
     assert_nil response.parsed_body.dig("executor", "assignment_scope")
     post "#{@path}/private_runners", params: { private_runner: { display_name: "Laptop" } }, headers: @headers, as: :json
-    assert_response :created
-    runner = response.parsed_body.fetch("private_runner")
-    assert_equal "agent_private", runner.fetch("assignment_scope")
-    assert_equal @agent.public_id, runner.fetch("assignment_agent_public_id")
-    key = create_key("#{@path}/private_runners/#{runner.fetch("public_id")}/api_keys", "Runner")
-    get agent_api_v1_executor_path, headers: bearer(key.fetch("secret"))
-    assert_response :success
-    assert_equal runner.fetch("registration_identifier"), response.parsed_body.dig("executor", "registration_identifier")
-    assert_equal @agent.public_id, response.parsed_body.dig("executor", "assignment_agent_public_id")
-    assert_nil response.parsed_body.dig("executor", "agent_public_id")
-    get agent_api_v1_profile_path, headers: bearer(key.fetch("secret"))
-    assert_response :unauthorized
+    assert_response :not_found
   end
 
   test "key and runner routes resolve within their owning Agent and steward" do
@@ -97,10 +86,7 @@ class API::V1::AgentsTest < ActionDispatch::IntegrationTest
   end
 
   test "issuance shares a Human limit across all key kinds and reports the retry delay" do
-    runner = @agent.build_private_runner(display_name: "Laptop")
-    runner.save!
-    routes = ["#{@path}/api_keys", "#{@path}/executor/api_keys",
-      "#{@path}/private_runners/#{runner.public_id}/api_keys"]
+    routes = ["#{@path}/api_keys", "#{@path}/executor/api_keys"]
     10.times do |index|
       post routes.fetch(index % routes.length), params: { api_key: { name: "Key #{index}" } },
         headers: @headers.merge("REMOTE_ADDR" => "192.0.2.#{index + 1}"), as: :json

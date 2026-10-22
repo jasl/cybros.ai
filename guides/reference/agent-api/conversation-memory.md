@@ -333,7 +333,7 @@ of those resources' own anchors.
 A document under the reserved prefix `workspace/skills/<name>` is a skill,
 the room's, and one under `agent/skills/<name>` is the answering agent's
 own. A skill callable resolves a name through its sources in order — the
-Agent application's announced documents, the Agent's `agent/skills/`, the
+Agent's announced documents, the Agent's `agent/skills/`, the
 room's `workspace/skills/`, the Agent-and-Speaker pair's `speaker/skills/`,
 then an explicitly selected Human `user/skills/` — and the first source that
 has it wins. Database skill sources must be present in the effective memory

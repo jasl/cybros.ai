@@ -6,7 +6,7 @@ module OAuth
 
     CONNECTION_FIELDS = %i[
       client_id scope agent_identifier agent_display_name executor_display_name
-      registration_identifier runner_display_name executor_kind connection_mode assignment_agent_public_id
+      registration_identifier runner_display_name executor_kind connection_mode
     ].freeze
     FIELDS = (CONNECTION_FIELDS + %i[
       response_type redirect_uri state code_challenge code_challenge_method
@@ -21,8 +21,6 @@ module OAuth
     validates :executor_display_name, length: { maximum: Executor::DISPLAY_NAME_MAX_LENGTH }, allow_nil: true
     validates :registration_identifier, length: { maximum: Executor::REGISTRATION_IDENTIFIER_MAX_LENGTH }, allow_nil: true
     validates :runner_display_name, length: { maximum: Executor::DISPLAY_NAME_MAX_LENGTH }, allow_nil: true
-    validates :assignment_agent_public_id,
-      format: { with: /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i }, allow_nil: true
     validate :connection_shape
     validate :application_shape
     validate :authorization_code_shape
@@ -48,7 +46,6 @@ module OAuth
         registration_identifier: registration_identifier,
         runner_display_name: runner_display_name,
         requested_executor_kind: (executor_kind if registration_identifier),
-        assignment_agent_public_id: assignment_agent_public_id,
         connection_mode: connection_mode,
         grant_type: flow.to_s,
         redirect_uri: (redirect_uri if code_flow?),
@@ -60,21 +57,18 @@ module OAuth
       FIELDS.to_h { |field| [field, public_send(field)] }.compact
     end
 
-    def agent_private_runner_connection?
-      registration_identifier.present? && (agent_identifier.present? || assignment_agent_public_id.present?)
-    end
-
     private
 
       def connection_shape
         agent = agent_identifier.present?
         runner = registration_identifier.present?
         errors.add(:agent_identifier, :blank) unless agent || runner
+        errors.add(:registration_identifier, :invalid) if agent && runner
         if agent
           errors.add(:agent_identifier, :invalid) unless identifier_valid?(agent_identifier)
           errors.add(:agent_display_name, :blank) if agent_display_name.blank?
           errors.add(:executor_display_name, :blank) if executor_display_name.blank?
-          errors.add(:executor_kind, :invalid) unless executor_kind.nil? || (runner && executor_kind == "runner")
+          errors.add(:executor_kind, :invalid) unless executor_kind.nil?
         elsif agent_display_name.present? || executor_display_name.present?
           errors.add(:agent_identifier, :blank)
         end
@@ -84,9 +78,6 @@ module OAuth
           errors.add(:executor_kind, :invalid) unless executor_kind.nil? || Executor::MACHINE_KINDS.include?(executor_kind)
         elsif runner_display_name.present? || executor_kind.present?
           errors.add(:registration_identifier, :blank)
-        end
-        if assignment_agent_public_id && (!runner || agent || executor_kind == "tool_provider")
-          errors.add(:assignment_agent_public_id, :invalid)
         end
       end
 

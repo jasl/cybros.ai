@@ -203,7 +203,7 @@ class RewindTest < Minitest::Test
       edit_detail = runs.run(@first_run_id).task(edit.key)
       assert_equal @h1, edit_detail.metadata.dig("checkpoint", "hash"), "the key rides the FIRST write's result"
       refute edit_detail.metadata.fetch("checkpoint").key?("runner"), "no runner in the key"
-      assert_nil runs.run(@first_run_id).task(bash.key).metadata, "the second write carries no key"
+      assert_nil runs.run(@first_run_id).task(bash.key).metadata["checkpoint"], "the second write carries no checkpoint key"
 
       world = reply_variant(@first_conversation).runner_effects
       assert_predicate world, :touched?

@@ -10,7 +10,8 @@ module E2E
         run = nil
         Async::Task.current.with_timeout(5) do
           run = runs.start_tool_call(runner_executor_public_id: executor_id, tool: "read",
-            input: { "path" => "concurrent-read.txt" }, idempotency_key: SecureRandom.uuid)
+            input: { "path" => "concurrent-read.txt" }, idempotency_key: SecureRandom.uuid,
+            executor_context: { "rho.environment" => { "root" => root, "directories" => [] } })
           key = CybrosAgent::Api::RunContext::TOOL_CALL_TASK_KEY
           await { run.task(key).task.status == "dispatched" }
           assert_equal :done, task_run.call(run_public_id: run.run_public_id, task_key: key, tool_name: "read")

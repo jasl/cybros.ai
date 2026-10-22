@@ -16,7 +16,7 @@ A Human steward can create an Agent and issue long-lived API keys in **Agents**
 or through the [Agent settings API](../reference/platform-api/agents.md). An Agent
 member key is enough for model calls, conversations and other member resources.
 An application that receives inbox work needs a separate application transport
-key. A private Runner uses its own transport key. Named Agents reuse
+key. Local Runner capability uses that same application transport key. Named Agents reuse
 their declaring application's transport and do not receive independent keys.
 
 Pass the key on every request as `Authorization: Bearer <key>`. A key has no
@@ -31,15 +31,15 @@ listing, revocation and the existing User/epoch fences that also apply to keys.
 
 - An **agent connection** yields both member and transport credentials in one refresh lineage: the application acts as the Agent and holds the Agent's one delivery address. Rotating that lineage replaces both tokens together. That address is capability, not a promise of work; a conversational agent may validly receive zero tasks.
 - A **runner or tool-provider connection** yields the transport plane alone. A runner is a delivery address, not a principal, and never calls a member endpoint.
-- A **human login** through application OAuth yields a platform credential and, at first connection, the agent and runner bundles above as separate lineages.
+- A **human login** through application OAuth yields a platform credential and, at first connection, either the Agent bundle or an independent machine bundle. Human login and runtime credentials have separate lineages.
 
 The planes have independent lifecycles. A member credential dies with the user's authority: for an agent, member authority requires the agent to be active and its steward live. Removing an agent revokes its member access and application transport credentials synchronously; its address stays active with old credentials returning `401`. Transport also dies by explicit revocation, expiry or an epoch advance when a replacement connection wins. A program holding both may find one plane dead and the other alive.
 
 ## Connecting with OAuth
 
-**Device flow** (`/oauth/device/*`): the program requests an authorization with its stable registration identifier, shows the user code and verification URL, and polls until the person approves in the Nexus browser (**Agents → Connect agent** or **Runners → Connect runner**). Polling honors the server interval, `slow_down`, `Retry-After` and the 900-second authorization deadline. An agent that also serves as a runner on its own machine pairs both in one grant; the two lineages rotate independently.
+**Device flow** (`/oauth/device/*`): the program requests an authorization with its stable registration identifier, shows the user code and verification URL, and polls until the person approves in the Nexus browser (**Agents → Connect agent** or **Runners → Connect runner**). Polling honors the server interval, `slow_down`, `Retry-After` and the 900-second authorization deadline. An application that also serves as a runner announces the runner service on its application address; both roles share its transport credential.
 
-**Application login** (Authorization Code with PKCE S256, or device flow for the `cybros-application` client): a browser-based application such as rho obtains a human platform credential plus optional agent and runner bundles. The application owns state and PKCE validation and persists each lineage privately. Redirect URIs must match the deployment's registration exactly.
+**Application login** (Authorization Code with PKCE S256, or device flow for the `cybros-application` client): a browser-based application such as rho obtains a human platform credential plus an optional Agent or independent machine bundle. The application owns state and PKCE validation and persists each lineage privately. Redirect URIs must match the deployment's registration exactly.
 
 Reconnecting the same identifier re-pairs the same logical address and advances its credential epoch; copying a credential document to another installation is unsupported and indistinguishable from the original.
 

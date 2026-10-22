@@ -17,8 +17,6 @@ fn claims() -> ConnectionClaims {
         agent_identifier: "agent".into(),
         agent_display_name: "Agent".into(),
         executor_display_name: "Executor".into(),
-        registration_identifier: None,
-        runner_display_name: None,
     })
 }
 fn form(body: &[u8]) -> BTreeMap<String, String> {
@@ -26,14 +24,14 @@ fn form(body: &[u8]) -> BTreeMap<String, String> {
 }
 #[test]
 fn grant_planes_and_discriminators_keep_independent_lineages() {
-    for key in [
-        "valid_agent_token_fixture",
-        "valid_runner_token_fixture",
-        "valid_combined_token_fixture",
-    ] {
+    for key in ["valid_agent_token_fixture", "valid_runner_token_fixture"] {
         TokenGrant::decode(fixture("oauth", key), false).unwrap();
     }
-    for key in ["unknown_plane_fixture", "unknown_token_type_fixture"] {
+    for key in [
+        "unknown_plane_fixture",
+        "unknown_token_type_fixture",
+        "retired_combined_token_fixture",
+    ] {
         assert!(TokenGrant::decode(fixture("oauth", key), false).is_err());
     }
     for key in [

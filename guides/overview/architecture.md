@@ -1,13 +1,13 @@
 # Architecture
 
-Nexus is the gateway. Every other component connects to it over outbound HTTP and, optionally, a WebSocket for low-latency hints. Nothing dials into an agent application or a runner.
+Nexus is the gateway. Every other component connects to it over outbound HTTP and, optionally, a WebSocket for low-latency hints. Nothing dials into an agent or a runner.
 
 ```
  people ──▶ rho browser page / Telegram / editor / CLI
                      │
                      ▼
             ┌──────────────────┐      ┌──────────────────────┐
-            │ agent application│◀────▶│        Nexus          │◀──── model providers
+            │ agent│◀────▶│        Nexus          │◀──── model providers
             │ (rho or yours)   │      │ kernel and gateway    │      (API key, subscription,
             └──────────────────┘      │ conversations, runs,  │       local server)
                                       │ inbox, approvals,     │
@@ -25,13 +25,13 @@ Nexus is the gateway. Every other component connects to it over outbound HTTP an
 
 Nexus owns **mechanisms**: prompt assembly, the round driver that calls a model and expands its tool calls into tasks, compaction with an overridable summarizer, memory, cross-conversation messaging, approval evaluation, task delivery, orchestration primitives, persistence, model catalog resolution, usage accounting, audit and recovery.
 
-The agent application owns **policy**: what a prompt means, which model to use and when to fall back, which tools to declare and what their approval rules are, how to orchestrate, how memory is written and ranked, how results are shown to people, and how external channels such as Telegram behave.
+The agent owns **policy**: what a prompt means, which model to use and when to fall back, which tools to declare and what their approval rules are, how to orchestrate, how memory is written and ranked, how results are shown to people, and how external channels such as Telegram behave.
 
 The kernel never branches on a concrete product. It reads approval rules against opaque tool input without knowing what `bash` means, resolves a declared model reference to a provider lane without choosing models, and compiles prompt documents without interpreting personas.
 
 ## rho on Nexus
 
-rho is an agent application in exactly the sense above. Application OAuth signs the human in and, at initial connection, pairs its Agent and optional private runner. The human, Agent bundle and runner bundle have separate refresh lineages; the Agent bundle contains both its member and application-transport tokens. It declares its tools and approval rules through the Agent API, drives conversations through inputs and feeds, serves its own tools (coding tools, web fetch, browser, MCP, code mode) through the executor inbox, and reaches human settings through the Platform API with the signed-in person's own credential. Its browser page, Telegram ingress, ACP server and CLI are thin consumers of one application core. Nothing it uses is private to it, which is why it works as the reference implementation.
+rho is an agent in exactly the sense above. Application OAuth signs the human in and, at initial connection, pairs its Agent. The Human login and Agent bundle have separate refresh lineages; the Agent bundle contains its member and application-transport tokens. In full mode, one Agent Executor announces both agent and runner services and uses one transport connection for them. It declares its tools and approval rules through the Agent API, drives conversations through inputs and feeds, serves its own tools (coding tools, web fetch, browser, MCP, code mode) through the executor inbox, and reaches human settings through the Platform API with the signed-in person's own credential. Its browser page, Telegram ingress, ACP server and CLI are thin consumers of one application core. Nothing it uses is private to it, which is why it works as the reference implementation.
 
 In the default bundle rho runs in full mode beside Nexus; in agent mode it answers conversations and sends tool calls to runners elsewhere; in runner mode it serves tools only. A second application can run on the same Nexus with its own Agent identity and policy.
 
@@ -39,7 +39,7 @@ In the default bundle rho runs in full mode beside Nexus; in agent mode it answe
 
 | Role | Credential | What it receives |
 | --- | --- | --- |
-| Agent application | A member credential (acts as the Agent) plus a transport credential (its delivery address) | Its own tool calls, approval requests and questions addressed to the application; everything on the member plane |
+| Agent | A member credential (acts as the Agent) plus a transport credential (its delivery address) | Its own tool calls, approval requests and questions addressed to the application; everything on the member plane |
 | Runner | A transport credential only | Tool calls accepted for its concrete target |
 | Tool provider | A transport credential only | Tool calls for the names it announced, claimed from a pool shared with other eligible providers |
 
@@ -65,4 +65,4 @@ A credential presented to the wrong plane is refused with `401` and no explanati
 
 ## Identity and persistence
 
-Public identifiers are UUIDv7 strings. Business data persists in Nexus wherever possible: memory addresses database rows, opaque recovery state uses scoped stores, artifacts use uploads. Local files, processes and working directories belong to the runner. An agent application's source, extensions and installed versions stay local to that installation; Nexus persists user documents, conversation and execution records and business data.
+Public identifiers are UUIDv7 strings. Business data persists in Nexus wherever possible: memory addresses database rows, opaque recovery state uses scoped stores, artifacts use uploads. Local files, processes and working directories belong to the runner. An agent's source, extensions and installed versions stay local to that installation; Nexus persists user documents, conversation and execution records and business data.

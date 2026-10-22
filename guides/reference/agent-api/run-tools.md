@@ -70,7 +70,7 @@ anchors on — so a re-cut of any other description regenerates nothing.
 `effect_profile` is trusted metadata for the host — kind, destructive,
 effect_scope, idempotency, reconciliation — and never rides the model's
 wire. It is what the approval gate reads: the effect profile frozen on
-the held row, rendered on the agent application's inbox row for the
+the held row, rendered on the agent's inbox row for the
 approver.
 
 ### Declaring is enabling

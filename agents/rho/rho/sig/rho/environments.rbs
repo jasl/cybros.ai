@@ -151,7 +151,7 @@ module Rho
     def agent_toolsets: (Rho::Runner::Extensions::Registry registry) -> Slot
     def read: (String conversation, ?plane: Extensions::MemberPlane?, ?run_public_id: String?, ?parent: String?, ?runner: String?) -> Resolved
     def binding_for: (String conversation, ?plane: Extensions::MemberPlane?, ?run_public_id: String?, ?parent: String?, ?workspace_public_id: String?, ?runner: String?) -> Rho::Runner::Environment::Binding?
-    def bind: (String conversation, root: String, directories: Array[String], ?plane: Extensions::MemberPlane?, ?runner: String?) -> (Resolved | Daemon::Refusal)
+    def bind: (String conversation, root: String, directories: Array[String], ?plane: Extensions::MemberPlane?, ?runner: String?, ?initialize_only: bool) -> (Resolved | Daemon::Refusal)
     def clear: (String conversation, ?plane: Extensions::MemberPlane?, ?runner: String?) -> (Resolved | Daemon::Refusal)
     def remember_copy: (String conversation, untyped binding, ?runner: String?) -> untyped
     def adopt_children: (String parent, Array[String] children) -> void

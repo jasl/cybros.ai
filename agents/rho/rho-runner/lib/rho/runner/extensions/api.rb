@@ -35,7 +35,7 @@ module Rho
         # A tool and the ADDRESS it is served on:
         # `:runner` — the environment tools, announced on the runner
         # address; `:agent` — the agent's application tools,
-        # announced on the agent-application address. A standalone runner
+        # announced on the agent address. A standalone runner
         # hosts the first kind alone.
         Registration = Data.define(:klass, :serves, :name, :validator, :admission) do
           def initialize(name: nil, admission: nil, **) = super

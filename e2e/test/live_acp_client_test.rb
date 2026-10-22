@@ -172,7 +172,7 @@ class LiveAcpClientTest < Minitest::Test
       end
       assert_empty leaked, "the scrub hands codex no credential-shaped, rho or Bundler name"
       refute handed.key?(@live_key_name), "the floor's own provider key never reaches codex"
-      served = @daemon.member_client.executors.show(runner_id).served_tools.map(&:name)
+      served = @daemon.member_client.executors.show(runner_id).tools_for(:runner).map(&:name)
       assert_includes served, "delegate_agent", "the row put the tool on rho's runner: #{served.inspect}"
     end
 
@@ -223,8 +223,8 @@ class LiveAcpClientTest < Minitest::Test
 
       File.read(capture_path, encoding: Encoding::UTF_8).scan(JWT).uniq.each { |token| E2E::SecretHygiene.register(token) }
       lines.select { |line| line.dig("message", "method") == "_auth/status_update" }.each do |line|
-        email = line.dig("message", "params", "authStatus", "account", "email")
-        E2E::SecretHygiene.register(email) if email.is_a?(String) && !email.empty?
+        email = String.try_convert(line.dig("message", "params", "authStatus", "account", "email"))
+        E2E::SecretHygiene.register(email) if email && !email.empty?
       end
     end
 

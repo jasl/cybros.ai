@@ -40,9 +40,9 @@ module CybrosAgent
     # claimed and a runner that listed are looking at the same object.
     #
     # `kind` is the row's inbox kind — `tool_call` for a parked tool row,
-    # `ask` for a model's question addressed to the agent application
+    # `ask` for a model's question addressed to the agent
     # (`prompt` carries the question, no tool field, never claimed, committed with no claim token), `approval` a tool call
-    # resting for an approver on the addressed agent application's inbox
+    # resting for an approver on the addressed agent's inbox
     # (never claimed — `claim` is 409 `not_claimable_kind` — its end is the member plane's `approve`/`deny` or the 24 h park clock) — and a word this gem predates is carried, not refused.
     # `claimed` is EVER claimed in this generation: a lapsed claim is not
     # re-granted, expiry is the sweep's alone.

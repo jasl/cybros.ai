@@ -16,10 +16,8 @@ class RunnersTest < ActionDispatch::IntegrationTest
       display_name: "My farm", assignment_scope: :account_wide)
     connect_runner(manager: @member, registration_identifier: "theirs",
       display_name: "Their laptop")
-    application_runner = connect_combined_session(
-      steward: @owner, agent_identifier: "my-application", registration_identifier: "mine-application",
-      display_name: "My application", device_name: "Application laptop"
-    ).runner.executor_access_token.executor
+    application = connect_agent_session(steward: @owner, agent_identifier: "my-application").executor_access_token.executor
+    application.announce(services: { "agent" => { "tools" => [] }, "runner" => { "tools" => [] } })
     private_runner = @owner.managed_executors.find_by!(registration_identifier: "mine-private")
     account_wide_runner = @owner.managed_executors.find_by!(registration_identifier: "mine-wide")
     their_runner = @member.managed_executors.sole
@@ -34,7 +32,7 @@ class RunnersTest < ActionDispatch::IntegrationTest
       assert_select "button[data-turbo-confirm]", count: 0
     end
     assert_select "tr[data-runner-id='#{account_wide_runner.public_id}']", text: /Account-wide/
-    assert_select "tr[data-runner-id='#{application_runner.public_id}']", text: /Application-private.*Application: My application/m
+    assert_select "tr[data-runner-id='#{application.public_id}']", count: 0
     assert_select "tr[data-runner-id='#{their_runner.public_id}']", count: 0
     assert_select "body", text: /mine-private|mine-wide/, count: 0
     assert_select "body", text: /Installation ID/, count: 0
@@ -87,14 +85,14 @@ class RunnersTest < ActionDispatch::IntegrationTest
   end
 
   test "the index query count does not grow with the number of displayed runners" do
-    connect_combined_session(steward: @owner, agent_identifier: "application-0", registration_identifier: "runner-0")
+    connect_runner(manager: @owner, registration_identifier: "runner-0")
 
     get runners_path
     assert_response :success
     one_runner_queries = page_render_query_count { get runners_path }
 
     5.times do |index|
-      connect_combined_session(steward: @owner, agent_identifier: "application-#{index + 1}",
+      connect_runner(manager: @owner,
         registration_identifier: "runner-#{index + 1}")
     end
     six_runner_queries = page_render_query_count { get runners_path }

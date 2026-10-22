@@ -232,7 +232,7 @@ class CliTerminalTest < Minitest::Test
   def test_connect_names_what_got_paired_per_mode
     boot
     cli.connect
-    assert_match(/^Connected as 0199-user — agent 0199-executor, runner 0199-runner \(private to you\)\.$/, @out.string)
+    assert_match(/^Connected as 0199-user — agent 0199-executor, runner 0199-executor \(private to you\)\.$/, @out.string)
     @daemons.pop.stop
     FileUtils.rm_rf(@root)
     FileUtils.mkdir_p(@root)
@@ -374,47 +374,16 @@ class CliTerminalTest < Minitest::Test
 
     document = cli.disconnect
 
-    assert_equal %w[runner agent], document["revoked"]
-    assert_equal [NexusDoubles::RUNNER_REFRESH_TOKEN, "rt-cybros-api-v1-a.b"], oauth.revocations
+    assert_equal ["agent"], document["revoked"]
+    assert_equal ["rt-cybros-api-v1-a.b"], oauth.revocations
     assert_equal :disconnected, daemon.phase
-    assert_equal ["Revoked the runner credential (0199-runner).",
-                  "Disconnected from https://nexus.example as 0199-user."], lines
+    assert_equal ["Disconnected from https://nexus.example as 0199-user."], lines
     reset_out
     cli.report_status
     assert_match(/state:     credentials expired/, @out.string)
   end
 
-  def test_disconnect_runner_prints_the_unclaimed_count_and_rewrites_the_pointers_mode
-    oauth = NexusDoubles::FakeOAuth.new
-    unclaimed = { "kind" => "tool_call", "run_public_id" => "al-1", "conversation_public_id" => nil,
-                  "parent_public_id" => nil, "task_key" => "t1", "tool_name" => "ls",
-                  "tool_input" => {}, "tool_call_id" => "call-t1", "started_at" => "2026-09-07T00:00:00Z",
-                  "deadline_at" => nil, "claimed" => false,
-                  "addressed_to" => { "role" => "runner", "executor_public_id" => "0199-runner" } }
-    api = NexusDoubles::FakeAgentApi.new(claim: :taken,
-      runner_inbox_tasks: [unclaimed, unclaimed.merge("task_key" => "t2", "tool_call_id" => "call-t2")])
-    daemon = boot(oauth: oauth, api: api)
-    cli.connect
-    reset_out
-
-    document = cli.disconnect(runner: true)
-
-    assert_equal ["runner"], document["revoked"]
-    assert_equal [NexusDoubles::RUNNER_REFRESH_TOKEN], oauth.revocations
-    pointer = Rho::StateFile.new(home.connection_pointer_path).read
-    assert_equal "agent", pointer.fetch("mode")
-    refute pointer.key?("runner_executor_public_id")
-    assert_equal :active, daemon.phase
-    refute daemon.lineage.credentials.runner?
-    assert_nil daemon.identity.runner_executor_public_id
-    assert_equal ["Revoked the runner credential (0199-runner).",
-                  "2 tasks addressed to this runner are unclaimed and will time out; accepted tasks retain their original target."], lines
-    reset_out
-    cli.report_status
-    assert_match(/^runner:    not registered$/, @out.string)
-  end
-
-  def test_disconnect_refuses_with_work_in_flight_and_a_runner_this_home_never_paired
+  def test_disconnect_refuses_with_work_in_flight_and_disconnects_an_agent_only_home
     daemon = boot
     cli.connect
     about = daemon.lineage.credentials
@@ -433,10 +402,10 @@ class CliTerminalTest < Minitest::Test
     FileUtils.rm_rf(@root)
     FileUtils.mkdir_p(@root)
 
-    boot(config: Rho::Config.from_hash({ "mode" => "agent" }), extensions: [Rho::Extensions::Ops])
+    agent_daemon = boot(config: Rho::Config.from_hash({ "mode" => "agent" }), extensions: [Rho::Extensions::Ops])
     cli.connect
-    error = assert_raises(Rho::Error) { cli.disconnect(runner: true) }
-    assert_equal "this home never paired a runner (mode agent)", error.message
+    cli.disconnect
+    assert_nil agent_daemon.lineage.credentials
   end
 
   # ---- rho status ----
@@ -460,8 +429,8 @@ class CliTerminalTest < Minitest::Test
     assert_match(/executor:  0199-executor/, @out.string)
     # The default runner includes web reading alongside coding, processes,
     # checkpoints, environment binding and code mode.
-    assert_match(/^runner:    0199-runner serving 21 tools \((socket connected|no socket), swept \d+\)$/, @out.string)
-    assert_match(/  runner_transport: live/, @out.string)
+    assert_match(/^runner:    0199-executor serving 21 tools \((socket connected|no socket), swept \d+\)$/, @out.string)
+    refute_match(/  runner_transport:/, @out.string)
     assert_match(/^adaptations: default \(gem\)$/, @out.string,
       "the default model's adaptation row and its source, off the daemon")
   end

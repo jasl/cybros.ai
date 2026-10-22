@@ -1,6 +1,6 @@
 # Rho
 
-Rho is an agent application for Nexus with browser, Telegram and editor entry
+Rho is an agent for Nexus with browser, Telegram and editor entry
 points, plus a CLI for service management and single requests. It uses the
 `cybros_agent` SDK and extensions to connect model work to local or remote
 runner tools. `rho server` starts its daemon.
@@ -51,7 +51,7 @@ rho connect
 Open rho's ordinary public URL and choose **Sign in with Nexus**. The browser
 uses Authorization Code with PKCE S256; **Use a device code** supports terminals
 and browsers that cannot use the configured callback. The first login connects
-this installation's Agent and, in full mode, its private Runner. Later logins
+this installation's Agent. Full mode announces Runner capability on that same application address. Later logins
 reuse that runtime connection. The page never asks for a separate rho password.
 
 If Nexus has no account yet, its authorization page continues through owner
@@ -185,7 +185,7 @@ See the [Telegram guide](../rho-ingress-telegram/README.md).
 A connected Rho identity has two credential planes:
 
 - a member credential for the Agent and `/profile`;
-- an executor transport credential for the Agent application's delivery
+- an executor transport credential for the Agent's delivery
   address and `/executor`.
 
 The profile's `user_public_id` selects the local identity root, while the
@@ -220,14 +220,14 @@ domain and are an unsupported deployment.
 
 Coding tools run on the runner role, and rho plays it in one of three modes —
 `rho server --mode full|agent|runner` (settings `mode`, `RHO_MODE`; default
-full). Full pairs ONE grant that registers both addresses: the agent's
-(serving application tools such as Code Mode) and a private runner (announcing Coding's,
-Processes' and the browser's tools with the environment document); its runner
-follows the executor inbox on the runner credential, and the member bearer
-never reaches a claim. This Runner belongs to this rho's application Agent:
-Main, its Bots and their Subagents can use it, while another rho under the same
-Human cannot. Adding a missing Runner to an already connected full-mode rho
-selects that existing Agent by public UUID and preserves its credentials.
+full). Full connects one Agent Executor, announcing `agent`
+for application tools and `runner` for Coding, Processes and environment tools.
+Both roles share one transport credential, inbox subscription and execution pool.
+The member bearer never reaches a claim. Local resolves to this application's
+Executor UUID before work is accepted. Its Main, Bots and Subagents can use that
+runner capability; another application under the same Human cannot. Switching
+between agent and full modes replaces the services announcement on the same
+address and credentials, without another pairing ceremony.
 Agent names a runner (`rho run … --runner`, the `runner`
 setting). Runner serves tools alone — the container runs
 `RHO_MODE=runner rho server` with `RHO_HOME` on a volume and an optional
@@ -236,7 +236,7 @@ Standalone Runner access remains the Human-private or account-wide scope chosen
 at connection.
 It constructs no member plane (no
 `run`; the Ops routes are not in the runner set, and rho-dev is never
-named on a runner home). `rho disconnect [--runner]` revokes and
+named on a runner home). `rho disconnect` revokes and
 forgets. Rho creates its own private, dedicated workspace when none is
 selected. `rho workspaces` lists its dedicated workspaces and visible shared
 workspaces; `rho workspaces create NAME` creates another dedicated workspace,
@@ -2068,7 +2068,7 @@ MCP selection while retaining their `rules` approval stage and matching deny/ask
 rules. A selected `ask` mode asks for every MCP call; `rules` narrows authored allows
 to selected MCP callables; `bypass` allows those callables unless a deny or ask matches.
 Private `rho approve --always` session grants do not pass to external Bots or their Subagents.
-Their memory and ordinary private Runner restrictions remain in force.
+Their memory and ordinary Local-environment restrictions remain in force.
 
 Use the Preset's **MCP connections and tools** switches for individual tools or
 whole connections. The Nexus management link opens connection credentials and

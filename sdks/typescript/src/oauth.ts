@@ -14,10 +14,10 @@ export interface OAuthCredentialsBundle {
 }
 export interface DeviceAuthorization {
   device_code: string; user_code: string; verification_uri: string; verification_uri_complete: string;
-  expires_in: number; interval: number; deadline: number; branch: 'agent' | 'runner' | 'combined' | 'application';
+  expires_in: number; interval: number; deadline: number; branch: 'agent' | 'runner' | 'application';
 }
-export interface AgentClaims { agent_identifier: string; agent_display_name: string; executor_display_name: string; registration_identifier?: string; runner_display_name?: string; }
-export interface RunnerClaims { registration_identifier: string; runner_display_name: string; executor_kind: 'runner' | 'tool_provider'; assignment_agent_public_id?: string; }
+export interface AgentClaims { agent_identifier: string; agent_display_name: string; executor_display_name: string; }
+export interface RunnerClaims { registration_identifier: string; runner_display_name: string; executor_kind: 'runner' | 'tool_provider'; }
 export type PollResult = { state: 'pending' } | { state: 'slow_down' } | { state: 'throttled'; retry_after: number } | { state: 'authorized'; credentials: OAuthCredentialsBundle };
 export interface OAuthAuthority { rotate(refreshToken: string): Promise<OAuthCredentialsBundle>; revoke(token: string): Promise<void>; }
 /** OAuth machine requests do not carry an existing bearer or follow redirects. */
@@ -31,7 +31,7 @@ export class DeviceFlow implements OAuthAuthority {
     this.transport = new Transport({ timeoutMs: 120_000, ...options }, 'member', true);
     this.origin = this.transport.baseURL; this.clientId = clientId;
   }
-  requestAuthorization(claims: AgentClaims): Promise<DeviceAuthorization> { return this.start(claims, claims.registration_identifier === undefined ? 'agent' : 'combined'); }
+  requestAuthorization(claims: AgentClaims): Promise<DeviceAuthorization> { return this.start(claims, 'agent'); }
   requestRunnerAuthorization(claims: RunnerClaims): Promise<DeviceAuthorization> { return this.start(claims, 'runner'); }
   protected async start(claims: object, branch: DeviceAuthorization['branch']): Promise<DeviceAuthorization> {
     const started = performance.now();
@@ -104,7 +104,7 @@ export class DeviceFlow implements OAuthAuthority {
   protected decode(data: unknown): OAuthCredentialsBundle { return decodeConnection(data); }
   protected validateInitial(bundle: OAuthCredentialsBundle, branch: DeviceAuthorization['branch']) {
     const member = bundle.access_token !== null, executor = bundle.executor_access_token !== null, runner = bundle.runner !== null;
-    if (!(branch === 'agent' && member && executor && !runner || branch === 'combined' && member && executor && runner || branch === 'runner' && !member && executor && !runner)) throw new MalformedResponse('Credential branch mismatch');
+    if (!(branch === 'agent' && member && executor && !runner || branch === 'runner' && !member && executor && !runner)) throw new MalformedResponse('Credential branch mismatch');
   }
   private async pollUntilReady(authorization: DeviceAuthorization): Promise<OAuthCredentialsBundle> {
     let interval = authorization.interval * 1000, transient = 0;
@@ -122,7 +122,7 @@ export class DeviceFlow implements OAuthAuthority {
     }
   }
 }
-export interface ApplicationClaims { agent_identifier?: string; agent_display_name?: string; executor_display_name?: string; registration_identifier?: string; runner_display_name?: string; executor_kind?: 'runner' | 'tool_provider'; assignment_agent_public_id?: string; }
+export interface ApplicationClaims { agent_identifier?: string; agent_display_name?: string; executor_display_name?: string; registration_identifier?: string; runner_display_name?: string; executor_kind?: 'runner' | 'tool_provider'; }
 export class ApplicationOAuth extends DeviceFlow {
   #exchanges = new Map<string, Promise<OAuthCredentialsBundle>>();
   override requestAuthorization(claims: AgentClaims) { return this.requestDeviceAuthorization(claims); }
@@ -168,13 +168,7 @@ function decodeConnection(data: unknown): OAuthCredentialsBundle {
   if (body.plane === 'member') {
     bundle.access_token = text(body.access_token, 'access_token');
     bundle.executor_access_token = body.executor_access_token == null ? null : text(body.executor_access_token, 'executor_access_token');
-    if (body.runner != null) {
-      // First-party combined grants omit metadata shared with their parent.
-      // Explicit child metadata still passes the same closed authority checks.
-      const runner = { plane: 'executor_transport', token_type: bundle.token_type, expires_in: bundle.expires_in, ...object(body.runner) };
-      if (runner.plane !== 'executor_transport') throw new MalformedResponse('Runner grant requires executor authority');
-      bundle.runner = decodeConnection(runner);
-    }
+    if (body.runner != null || body.agent != null) throw new MalformedResponse('Connection grant cannot carry nested authority');
   } else if (body.plane === 'executor_transport') {
     if (body.executor_access_token != null || body.runner != null) throw new MalformedResponse('Executor grant cannot carry additional executor authority');
     bundle.executor_access_token = text(body.access_token, 'access_token');

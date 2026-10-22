@@ -15,7 +15,7 @@ export async function submit(options: ClientOptions, keys: { workspace: string; 
 }
 
 export async function announce(options: ClientOptions) {
-  return new ExecutorClient(options).announce({ tools: [{ name: 'echo', input_schema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] }, effect_profile: { kind: 'read_only', destructive: false, effect_scope: 'closed', idempotency: 'intrinsic', reconciliation: 'none' } }] });
+  return new ExecutorClient(options).announce({ services: { agent: { tools: [{ name: 'echo', input_schema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] }, effect_profile: { kind: 'read_only', destructive: false, effect_scope: 'closed', idempotency: 'intrinsic', reconciliation: 'none' } }] } } });
 }
 export async function settings(options: ClientOptions) { return new PlatformClient(options).profile.fetch(); }
 export const askThenModel = [Steps.ask({ prompt: 'Continue?' }), Steps.model({ prompt: 'Summarize the result.' })];

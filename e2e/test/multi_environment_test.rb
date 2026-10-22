@@ -88,15 +88,15 @@ class MultiEnvironmentTest < Minitest::Test
 
     def discovery_keeps_the_two_environments_distinct
       executors = @daemon.member_client.executors
-      listed = executors.list(kind: "runner")
+      listed = executors.list(role: "runner")
       assert_includes listed.map(&:public_id), @rho_runner
       assert_includes listed.map(&:public_id), @h
       @local_executor = executors.show(@rho_runner)
       @remote_executor = executors.show(@h)
-      assert_equal ECHO_TOOLS.sort, @remote_executor.tool_names.sort
-      assert_equal @h_root, @remote_executor.environment.fetch("root")
-      @local_read = @local_executor.served_tools.find { |tool| tool.name == "read" }
-      @remote_read = @remote_executor.served_tools.find { |tool| tool.name == "read" }
+      assert_equal ECHO_TOOLS.sort, @remote_executor.tool_names(role: :runner).sort
+      assert_equal @h_root, @remote_executor.environment_for(:runner).fetch("root")
+      @local_read = @local_executor.tools_for(:runner).find { |tool| tool.name == "read" }
+      @remote_read = @remote_executor.tools_for(:runner).find { |tool| tool.name == "read" }
       refute_equal @local_read.input_schema, @remote_read.input_schema,
         "the coding Runner and echo Runner really expose different read schemas"
     end
@@ -122,6 +122,7 @@ class MultiEnvironmentTest < Minitest::Test
       prompt = "!mock tool_call=local_read:#{args},remote_read:#{args} -- summarize both results"
       run_id = author_and_start(nil, [{ "model" => {
         "key" => "plan", "model" => { "model" => MODEL }, "prompt" => prompt, "tools" => definitions,
+        "executor_contexts" => { @rho_runner => local_execution_context },
       } }])
       completed = await_run_status(run_id, "completed")
       calls = completed.fetch("tasks").select { |task| task["tool_name"] == "read" }
@@ -352,6 +353,7 @@ class MultiEnvironmentTest < Minitest::Test
       end
       context.append(steps: [{ "tool" => {
         "key" => "after", "name" => "read", "input" => { "path" => @note }, "route" => { "kind" => "runner" },
+        "executor_context" => local_execution_context,
       } }], idempotency_key: SecureRandom.uuid)
       assert_equal @rho_runner, task_of(run_row(run_id), "after").dig("target", "executor_public_id")
       context.set_default_runner(executor_public_id: nil)
@@ -402,6 +404,10 @@ class MultiEnvironmentTest < Minitest::Test
       created.run.public_id
     end
 
+    def local_execution_context
+      { "rho.environment" => { "root" => @home, "directories" => [] } }
+    end
+
     def run_path(run_id) = "/agent_api/v1/workspaces/#{@workspace_public_id}/runs/#{run_id}"
     def run_row(run_id) = agent_api(run_path(run_id)).fetch("run")
     def task_of(run, key) = run.fetch("tasks").find { |task| task.fetch("key") == key }
@@ -420,7 +426,7 @@ class MultiEnvironmentTest < Minitest::Test
       adopted = await_workspace_state("adopted")
       @workspace_public_id = adopted.dig("workspace", "public_id")
       @rho_runner = adopted.dig("identity", "runner_executor_public_id")
-      refute_nil @rho_runner, "a full-mode rho registers a runner row: #{adopted["identity"].inspect}"
+      refute_nil @rho_runner, "a full-mode rho exposes its application Runner capability: #{adopted["identity"].inspect}"
       await_rho_announced
       E2E.enable_dev_lane!
       E2E.hosts.start

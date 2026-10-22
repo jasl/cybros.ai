@@ -21,7 +21,7 @@ module Rho
           choices = choices.uniq { |row| row.fetch(:name) }
           unless base.fetch(:runner_executor_public_ids).empty?
             allowed = base.fetch(:runner_tool_names)
-            served = Array(@runner_candidate_ids).flat_map { |id| RunDeclaration.served_entries(remote_runners.get(id)&.served_tools) }
+            served = Array(@runner_candidate_ids).flat_map { |id| RunDeclaration.served_entries(remote_runners.get(id)&.tools_for(:runner)) }
             runners = served.filter_map do |entry|
               name = entry.fetch("name")
               next if entry["mcp"] || RunDeclaration.undeclared.include?(name) || !entry["description"] || !entry["input_schema"]

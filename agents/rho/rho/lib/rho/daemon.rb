@@ -19,18 +19,6 @@ require_relative "daemon/wire"
 require_relative "environments"
 
 module Rho
-  # One daemon per RHO_HOME: claim the home,
-  # load the extensions, serve the control surface, and stop keeping the home
-  # lock until every writer is dead. It is the ONLY lock: identity roots live inside it.
-  #
-  # THREE MODES ON ONE EXECUTABLE, a boot fact read from the
-  # settings before any connection exists: `full` pairs one combined grant
-  # and runs two runs — the runner address's (this machine's tools, the
-  # environment document) and the agent address's own; `agent` runs the
-  # agent's run alone and names a runner (`rho do --runner`, the `runner`
-  # setting); `runner` serves tools alone and constructs NO member plane —
-  # no `HostFollowers`, no `HostStore`, no page, no `/profile` read, no member
-  # socket, no Ensure-Workspace — pinned by a zero-member-request boot test.
   class Daemon
     # The browser uses Nexus OAuth login, separate from local CLI control.
     ANNOUNCEMENT_VERSION = 4
@@ -289,7 +277,7 @@ module Rho
           own_runner_public_id: -> { @lineage.identity&.runner_executor_public_id }, own_runner: ->(public_id) { @context.own_runner?(public_id) },
           processes: @host.processes,
           checkpoints: !@host.checkpoints.nil?, registrar: @loaded.conversation_servers, served: @loaded.registry,
-          servers_changed: -> { reannounce(:agent_runner) }
+          servers_changed: -> { reannounce(:runner) }
         )
         @executor_plane = ExecutorPlane.new(wire: @wire, lineage: @lineage, context: @context, log: log,
           booted_at: @booted_at)
@@ -303,7 +291,7 @@ module Rho
         @maintenance = Maintenance.new(
           lineage: @lineage, home: @home, wire: @wire, clock: @clock, interval: @renewal_interval,
           log: log, announce: -> { announce }, lose: ->(**edge) { lose_authority(**edge) },
-          lose_runner: ->(**edge) { lose_runner_authority(**edge) }, mode: @config.mode,
+          mode: @config.mode,
           workspace: @config.workspace, workspace_selection: -> { @config.workspace_selection(@home) },
           member_credential: ->(about) { member_credential_for(about) },
           on_workspace_adopted: ->(about, credential, public_id) { place_runners(about, credential, public_id) },
@@ -314,9 +302,8 @@ module Rho
           lineage: @lineage, home: @home, device_flow: @device_flow, wire: @wire, clock: @clock,
           display_name: @display_name, log: log, maintenance: @maintenance, mode: @config.mode,
           announce: -> { announce }, adopt: ->(**facts) { adopt_connection(**facts) },
-          adopt_runner: ->(**facts) { adopt_runner(**facts) },
           settle: ->(adoption, phase) { settle(adoption, phase) },
-          lose: ->(**edge) { lose_authority(**edge) }, lose_runner: ->(**edge) { lose_runner_authority(**edge) },
+          lose: ->(**edge) { lose_authority(**edge) },
           transition: ->(phase) { transition(phase) }
         )
         @browser_login = OAuthLogin.new(home: @home, config: @config, endpoint: -> { @endpoint },
@@ -386,7 +373,12 @@ module Rho
         end
         api.register_route("POST", "/device/cancel") { |_request, _ctx| @ceremony.cancel }
         api.register_route("POST", "/disconnect") do |request, _ctx|
-          @ceremony.disconnect(runner_only: ControlServer.json_body(request)["runner"] == true)
+          if ControlServer.json_body(request).key?("runner")
+            Refusal.new(status: 422, code: "invalid_request",
+              message: "Runner-only disconnect is no longer supported; change the local mode to disable runner capability")
+          else
+            @ceremony.disconnect
+          end
         end
         @host_followers&.register(api)
         Extensions::Manager.register(api)
@@ -432,8 +424,7 @@ module Rho
       # credential reaches `readopt` and the declaration, which are the
       # member plane's — once, whatever the slot count.
       def place_runners(about, credential, workspace_public_id)
-        slots = @config.mode == "full" ? Lineage::SLOTS : [:agent_runner]
-        slots.each { |slot| mount_runner(about, slot) }
+        mount_runner(about, :runner)
         @server.spawn do
           @host_followers.readopt(nil, workspace_public_id, credential_provider: about.method(:member_credential).to_proc)
         end
@@ -641,11 +632,11 @@ module Rho
       def runner_facts
         facts = { selected: selected_runner }.compact
         runner = @lineage.runner(:runner)
-        return facts if runner.nil?
+        return facts if runner.nil? || @config.mode == "agent"
 
         snapshot = runner.snapshot
         facts.merge(
-          running: snapshot.running, tools: snapshot.tools.length, swept: snapshot.swept, nudged: snapshot.nudged,
+          running: snapshot.running, tools: @loaded.registry.serving(:runner).names.length, swept: snapshot.swept, nudged: snapshot.nudged,
           in_flight: snapshot.in_flight, socket: @lineage.executor_realtime(:runner)&.connected? || false
         )
       end

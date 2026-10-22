@@ -2,18 +2,59 @@ require "test_helper"
 require "rbconfig"
 require "stringio"
 require "minitest/mock"
+require "open3"
 
 class NexusServerEnvironmentTest < Minitest::Test
+  def test_a_world_keeps_loaded_code_when_source_changes_without_disabling_csrf
+    server = E2E::NexusServer.new(nexus_root: E2E::NEXUS_ROOT)
+    script = <<~RUBY
+      require "rails"
+      require "action_controller/railtie"
+      require "tmpdir"
+      require "fileutils"
+      require "json"
+
+      Dir.mktmpdir do |root|
+        FileUtils.mkdir_p(File.join(root, "app/models"))
+        FileUtils.mkdir_p(File.join(root, "config/environments"))
+        File.write(File.join(root, "config/environments/development.rb"),
+          "Rails.application.configure { config.enable_reloading = true }")
+        source = File.join(root, "app/models/reload_probe.rb")
+        File.write(source, 'class ReloadProbe; def self.value = "before"; end')
+        app = Class.new(Rails::Application)
+        app.config.root = root
+        app.config.eager_load = false
+        app.config.secret_key_base = "isolated-e2e-boot-test"
+        app.initialize!
+        initial = app.reloader.wrap { ReloadProbe.value }
+        File.write(source, 'class ReloadProbe; def self.value = "after"; end')
+        observed = app.reloader.wrap { ReloadProbe.value }
+        puts JSON.generate([Rails.env, app.config.reloading_enabled?,
+          ActionController::Base.allow_forgery_protection, initial, observed])
+      end
+    RUBY
+    output, errors, status = Open3.capture3(
+      server.child_env.merge("BUNDLE_GEMFILE" => File.join(E2E::NEXUS_ROOT, "Gemfile")),
+      "bundle", "exec", Gem.ruby, "-e", script, chdir: E2E::NEXUS_ROOT
+    )
+
+    assert_predicate status, :success?, errors
+    assert_equal ["development", false, true, "before", "before"], JSON.parse(output)
+  ensure
+    server&.stop
+  end
+
   def test_mcp_fixture_preload_belongs_only_to_the_requested_world
     ordinary = E2E::NexusServer.new(nexus_root: E2E::NEXUS_ROOT)
     fixture = E2E::NexusServer.new(nexus_root: E2E::NEXUS_ROOT, mcp_fixture: true)
 
-    assert_nil ordinary.child_env.fetch("RUBYOPT")
+    boot_preload = "-r#{File.expand_path("../support/nexus_prelude.rb", __dir__)}"
+    assert_equal boot_preload, ordinary.child_env.fetch("RUBYOPT")
     assert_nil ordinary.child_env.fetch("E2E_MCP_FIXTURE_URL")
     assert_nil ordinary.child_env.fetch("E2E_MCP_OAUTH_FIXTURE_URL")
     assert_match(%r{\Ahttp://127\.0\.0\.1:\d+/mcp\z}, fixture.mcp_fixture_url)
     assert_equal fixture.mcp_fixture_url, fixture.child_env.fetch("E2E_MCP_FIXTURE_URL")
-    assert_equal "-r#{File.expand_path("../support/mcp_fixture/nexus_prelude.rb", __dir__)}", fixture.child_env.fetch("RUBYOPT")
+    assert_equal "#{boot_preload} -r#{File.expand_path("../support/mcp_fixture/nexus_prelude.rb", __dir__)}", fixture.child_env.fetch("RUBYOPT")
     assert_equal fixture.mcp_fixture_url, JSON.parse(File.read(fixture.operator_handle_path)).fetch("mcp_fixture_url")
     assert_match(%r{\Ahttp://127\.0\.0\.1:\d+/mcp\z}, fixture.mcp_oauth_fixture_url)
     refute_equal fixture.mcp_fixture_url, fixture.mcp_oauth_fixture_url

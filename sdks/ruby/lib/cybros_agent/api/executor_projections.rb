@@ -26,25 +26,23 @@ module CybrosAgent
     # `description` a model reads to choose; nothing more, no kind.
     ServedDocument = Data.define(:name, :description)
 
-    # One executor this principal may address. `environment` is the
-    # announced snapshot, opaque and frozen — placement plus whatever the
-    # machine chose to say, read by nobody here; `served_documents` the
-    # documents it announced beside its tools.
-    DiscoveredExecutor = Data.define(
-      :public_id, :kind, :display_name, :status, :assignment_scope, :assignment_agent_public_id,
-      :served_tools, :environment, :served_documents, :presence, :last_seen_at, :connected_at
-    ) do
-      def initialize(served_tools: [], environment: {}, served_documents: [], last_seen_at: nil,
-                     connected_at: nil, assignment_agent_public_id: nil, **members)
-        super(served_tools: served_tools, environment: environment, served_documents: served_documents,
-          last_seen_at: last_seen_at, connected_at: connected_at, assignment_agent_public_id: assignment_agent_public_id, **members)
-      end
+    ExecutorService = Data.define(:tools, :documents, :environment)
+    ExecutorServices = Data.define(:agent, :runner, :tool_provider) do
+      def for(role) = public_send(role)
+    end
 
-      def runner? = kind == "runner"
-      def tool_provider? = kind == "tool_provider"
+    # Registration kind is identity; services describe the roles it offers.
+    DiscoveredExecutor = Data.define(
+      :public_id, :kind, :display_name, :status, :assignment_scope, :agent_public_id,
+      :service_roles, :services, :presence, :last_seen_at, :connected_at
+    ) do
+      def provides?(role) = service_roles.include?(role.to_s)
       def online? = presence == "online"
-      def tool_names = served_tools.map(&:name)
-      def document_names = served_documents.map(&:name)
+      def tools_for(role) = services.for(role)&.tools || []
+      def documents_for(role) = services.for(role)&.documents || []
+      def environment_for(role) = services.for(role)&.environment || {}
+      def tool_names(role:) = tools_for(role).map(&:name)
+      def document_names(role:) = documents_for(role).map(&:name)
     end
 
     # The discovery document's wire grammar, read strictly where the kernel
@@ -58,14 +56,21 @@ module CybrosAgent
           kind: :string,
           display_name: :optional_string,
           status: :string,
-          assignment_scope: :string,
-          assignment_agent_public_id: :optional_string,
-          served_tools: [:shapes, ServedTool],
-          environment: :json_object_or_empty,
-          served_documents: [:shapes, ServedDocument],
+          assignment_scope: :optional_string,
+          agent_public_id: :optional_string,
+          service_roles: :string_list,
+          services: [:shape, ExecutorServices],
           presence: :string,
           last_seen_at: :optional_string,
           connected_at: :optional_string,
+        },
+        ExecutorServices => {
+          agent: [:optional_shape, ExecutorService],
+          runner: [:optional_shape, ExecutorService],
+          tool_provider: [:optional_shape, ExecutorService],
+        },
+        ExecutorService => {
+          tools: [:shapes, ServedTool], documents: [:shapes, ServedDocument], environment: :json_object,
         },
         ServedTool => {
           name: :string,

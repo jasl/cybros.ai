@@ -11,7 +11,7 @@ module Executors
 
       target = nil
       unless command.executor_public_id.nil?
-        target = Executor.where(account_id: host.account_id, executor_kind: :runner)
+        target = Executor.providing(:runner).where(account_id: host.account_id)
           .find_by(public_id: command.executor_public_id)
         return Outcome.refused(:runner_not_found) if target.nil?
         detail = ineligibility(target, host.answering_user)
@@ -26,7 +26,7 @@ module Executors
       return "no ready credential" unless Executor.credential_readiness_for([executor]).fetch(executor.id) == :ready
       return "shutdown pending" if executor.shutdown_pending?
 
-      "not in scope for this host's principal" unless executor.eligible_for?(principal)
+      "not in scope for this host's principal" unless executor.eligible_for_role?(:runner, principal)
     end
   end
 end

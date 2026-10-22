@@ -481,7 +481,8 @@ class RhoConversationTest < Minitest::Test
     # serves the call from a workspace it never adopted.
     note = File.join(project, "answered-note.txt")
     arguments = CGI.escape(JSON.generate({ "path" => note, "content" => "hello from the answered conversation\n" }))
-    reply = ask(chat, "!mock tool_call=write tool_args=#{arguments} -- write the note and say so")
+    reply = ask(chat, "!mock tool_call=write tool_args=#{arguments} -- write the note and say so",
+      executor_contexts: { rho_runner => { "rho.environment" => { "root" => project, "directories" => [] } } })
     assert_equal "run", reply.active_variant.source,
       "a Human's head on a conversation answered by rho runs under rho's engine: #{reply.to_h.inspect}"
     loop_id = reply.active_variant.run_public_id

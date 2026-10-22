@@ -56,26 +56,22 @@ module CybrosAgent
       end
 
       def request_authorization(agent_identifier:, agent_display_name:, executor_display_name:,
-        runner: nil, connection_mode: "connect")
+        connection_mode: "connect")
         claims = { agent_identifier: agent_identifier, agent_display_name: agent_display_name,
           executor_display_name: executor_display_name }
-        if runner
-          claims.merge!(registration_identifier: runner.fetch(:identifier), runner_display_name: runner.fetch(:display_name))
-        end
         request_device_authorization(claims: claims, connection_mode: connection_mode)
       end
 
       def request_runner_authorization(registration_identifier:, runner_display_name:,
-        executor_kind: RUNNER_KIND, assignment_agent_public_id: nil, connection_mode: "connect")
+        executor_kind: RUNNER_KIND, connection_mode: "connect")
         claims = { registration_identifier: registration_identifier,
           runner_display_name: runner_display_name, executor_kind: executor_kind }
-        claims[:assignment_agent_public_id] = assignment_agent_public_id if assignment_agent_public_id
         request_device_authorization(claims: claims, connection_mode: connection_mode)
       end
 
       def request_device_authorization(claims:, connection_mode: "connect")
         authorization = start_authorization(claims.merge(client_id: CLIENT_ID, scope: SCOPE, connection_mode: connection_mode),
-          branch: :application, executor_kind: claims.fetch(:executor_kind, AGENT_APPLICATION_KIND))
+          branch: :application, executor_kind: claims.fetch(:executor_kind, AGENT_KIND))
         authorization.with(verification_uri: browser_uri(authorization.verification_uri),
           verification_uri_complete: browser_uri(authorization.verification_uri_complete))
       end

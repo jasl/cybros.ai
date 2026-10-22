@@ -8,9 +8,9 @@ class AgentAPI::V1::Executors::OperationContractTest < ActionDispatch::Integrati
     @workspace = workspaces(:shared)
     DevModelLane.ensure_enabled!
     @runner = suite_runner
-    @runner.announce(tools: RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
+    @runner.announce(services: { @runner.executor_kind => { "tools" => RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
       "name" => "program", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
-    }])
+    }] } })
     context = @fixture.dig("pages", "initial", "operations", "context")
     @loop = seed(tool("program", "program", "route" => { "kind" => "runner" }, "model_defaults" => context.fetch("model_defaults").merge(
       "tools" => context.fetch("tools").map { |tool| tool.merge("route" => { "kind" => "runner", "runner_executor_public_id" => @runner.public_id, "tool_name" => "read_file" }) }

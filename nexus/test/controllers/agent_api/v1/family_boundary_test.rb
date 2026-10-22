@@ -50,11 +50,11 @@ class AgentAPI::V1::FamilyBoundaryTest < ActionDispatch::IntegrationTest
     assert_equal 'Bearer realm="Nexus"', response.headers["WWW-Authenticate"]
 
     put agent_api_v1_executor_announcement_path, headers: bearer(@transport.secret),
-      as: :json, params: { tools: [] }
+      as: :json, params: { services: { agent: { tools: [] } } }
     assert_response :success
 
     put agent_api_v1_executor_announcement_path, headers: bearer(@credential.secret),
-      as: :json, params: { tools: [] }
+      as: :json, params: { services: { agent: { tools: [] } } }
     assert_response :unauthorized
   end
 

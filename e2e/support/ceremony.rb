@@ -25,7 +25,7 @@ module E2E
   module Ceremony
     RUNNER_SENTENCE = "Also runs as a runner on that machine".freeze
     AGENT_SUBJECT = "agent program".freeze
-    BRANCHES = %w[agent combined runner login].freeze
+    BRANCHES = %w[agent runner login].freeze
 
     # What `RunnerGrant` reads off an authorization: the runner-mode daemon's
     # grant is branch B for a `runner`-kind registration.
@@ -40,8 +40,7 @@ module E2E
       if branch == "runner"
         confirm_runner_page(actor, started)
       else
-        runner = branch == "combined" || (branch == "login" && started.fetch("mode") == "full")
-        confirm_agent_page(actor, started, runner_sentence: runner, login: branch == "login")
+        confirm_agent_page(actor, started, runner_sentence: false, login: branch == "login")
       end
       await_active(status) if status
     end

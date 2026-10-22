@@ -345,7 +345,7 @@ class HarborAcpTest < Minitest::Test
         ceremony = File.join(home, "tmp", "acp-ceremony.json")
         daemon.answers["/device/start"] = [
           [503, { "error" => { "code" => "connection_bootstrapping", "message" => "still checking" } }],
-          [200, { "phase" => "pending", "branch" => "combined", "user_code" => "ABCD-1234",
+          [200, { "phase" => "pending", "branch" => "agent", "user_code" => "ABCD-1234",
                   "verification_uri" => "http://127.0.0.1:#{daemon.port}/device",
                   "verification_uri_complete" => "http://127.0.0.1:#{daemon.port}/device?code=ABCD-1234" }],
         ]
@@ -360,7 +360,7 @@ class HarborAcpTest < Minitest::Test
         assert_predicate status, :success?, err
         assert_equal "already_connected", JSON.parse(File.read(ceremony)).dig("error", "code"), "written too: a document with no code"
 
-        daemon.answers["/device/start"] = [[200, { "phase" => "error", "branch" => "combined", "mode" => "full",
+        daemon.answers["/device/start"] = [[200, { "phase" => "error", "branch" => "agent", "mode" => "full",
                                                    "error" => "the device authorization request failed" }]]
         _out, err, status = run.call("ceremony", ceremony)
         assert_predicate status, :success?, err
@@ -470,11 +470,11 @@ class HarborAcpTest < Minitest::Test
   # never mutated.
   def test_the_pairing_document_is_rewritten_from_the_containers_origin_to_the_stewards
     answer = { "verification_uri_complete" => "http://10.0.0.115:3111/oauth/device?user_code=ABCD-EFGH",
-               "verification_uri" => "http://10.0.0.115:3111/oauth/device", "user_code" => "ABCD-EFGH", "branch" => "combined" }.freeze
+               "verification_uri" => "http://10.0.0.115:3111/oauth/device", "user_code" => "ABCD-EFGH", "branch" => "agent" }.freeze
     seen = H.pairing_for_steward(answer, nexus_url: "http://10.0.0.115:3111", base_url: "http://127.0.0.1:3111")
     assert_equal "http://127.0.0.1:3111/oauth/device?user_code=ABCD-EFGH", seen["verification_uri_complete"]
     assert_equal "http://127.0.0.1:3111/oauth/device", seen["verification_uri"]
-    assert_equal %w[ABCD-EFGH combined], seen.values_at("user_code", "branch")
+    assert_equal %w[ABCD-EFGH agent], seen.values_at("user_code", "branch")
     assert_equal "http://10.0.0.115:3111/oauth/device", answer["verification_uri"], "the answer is not mutated"
 
     same = H.pairing_for_steward(answer, nexus_url: "http://127.0.0.1:3111", base_url: "http://127.0.0.1:3111")
@@ -637,7 +637,7 @@ class HarborAcpTest < Minitest::Test
     end
 
     def pairing(code)
-      JSON.generate("phase" => "pending", "branch" => "combined", "mode" => "full", "user_code" => code,
+      JSON.generate("phase" => "pending", "branch" => "agent", "mode" => "full", "user_code" => code,
         "verification_uri" => "http://host.docker.internal:3000/device",
         "verification_uri_complete" => "http://host.docker.internal:3000/device?code=#{code}")
     end

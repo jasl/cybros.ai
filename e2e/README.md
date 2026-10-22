@@ -649,7 +649,7 @@ shapes. They measure more than the baseline ability to generate usable
 JavaScript: a program may execute and return the correct isolated result while
 failing a parallel-placement assertion. Report these dimensions separately;
 retain the original strict verdict rather than changing captured failures into
-passes. Model tool exposure is the Agent application's policy; rho loads its
+passes. Model tool exposure is the Agent's policy; rho loads its
 agent-side code extension by default.
 
 ### Runner WebRTC PTY check

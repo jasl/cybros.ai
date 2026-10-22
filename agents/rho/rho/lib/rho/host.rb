@@ -78,12 +78,14 @@ module Rho
       # `deliver_at`/`deliver_in` are the
       # kernel's two wire fields, passed through as typed: the kernel is
       # the one parser, and the door judges the instant.
-      def input_fields(text, mode:, model: nil, tool_names: nil, approval_mode: nil, to: nil, attachments: nil,
-                       deliver_at: nil, deliver_in: nil)
+      def self.input_fields(text, mode:, model: nil, tool_names: nil, approval_mode: nil, to: nil, attachments: nil,
+                            deliver_at: nil, deliver_in: nil)
         { kind: "direct_reply", text: text, delivery_mode: mode, model: model, tool_names: tool_names,
           approval_mode: approval_mode, to: to, attachments: attachments,
           deliver_at: deliver_at, deliver_in: deliver_in }.compact
       end
+
+      def input_fields(...) = self.class.input_fields(...)
 
       def stop(context, force:)
         context.cancel

@@ -211,7 +211,7 @@ module Rho
         def effect_profile(name) = @entries.each_value.find { |entry| entry.name == name.to_s }&.effect_profile
 
         # THE ANNOUNCEMENT: what this registry SERVES,
-        # for `executor.announce(tools:)` — every entry's `Entry#announcement`,
+        # for the role's `tools` announcement — every entry's `Entry#announcement`,
         # sorted by name. ONE renderer for every announcer — rho's daemon
         # and the harness executor render one shape (moved down from rho's `RunDeclaration.announcement`, which delegates here; the bytes are pinned identical).
         def announcement

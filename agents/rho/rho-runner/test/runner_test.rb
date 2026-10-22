@@ -122,7 +122,7 @@ class RunnerLoopTest < Minitest::Test
     ask = Task.new(workspace_public_id: "ws-1", kind: "ask", run_public_id: "loop-1", task_key: "a1", tool_name: nil,
       prompt: "which database?", tool_input: {}, tool_call_id: nil, started_at: nil,
       deadline_at: nil, timeout_ms: nil, claimed: false,
-      addressed_to: CybrosAgent::Api::AddressedTo.new(role: "agent_application", executor_public_id: "ex-1"))
+      addressed_to: CybrosAgent::Api::AddressedTo.new(role: "agent", executor_public_id: "ex-1"))
     unknown = Task.new(workspace_public_id: "ws-1", kind: "approval", run_public_id: "loop-1", task_key: "p1", tool_name: nil,
       tool_input: {}, tool_call_id: nil, started_at: nil, deadline_at: nil, timeout_ms: nil, claimed: false,
       addressed_to: CybrosAgent::Api::AddressedTo.new(role: "runner", executor_public_id: "ex-1"))

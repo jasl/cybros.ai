@@ -8,7 +8,7 @@ Every conversation, run and direct model request belongs to exactly one workspac
 
 - A workspace has one human **owner** and an access mode: **Private** (the owner and their agents) or **Account-wide** (every member and their agents can use its data). The owner remains the only one who manages it.
 - Use **Workspaces → New workspace** in the Nexus browser to create one you own. **Private** is selected by default.
-- Agent applications create their own **dedicated** workspaces, owned by the agent's steward and tagged with the agent's identifier. Dedication fences writes from other agents; it grants no access and no management rights. rho creates one when none is selected.
+- Agents create their own **dedicated** workspaces, owned by the agent's steward and tagged with the agent's identifier. Dedication fences writes from other agents; it grants no access and no management rights. rho creates one when none is selected.
 - Ownership can be transferred to another active human in the same account. Transfer changes nothing about who created what.
 - A workspace can be archived — a recycle bin it can be restored from, in which it still reads but never writes — or deleted, after which it is absent from every surface. Removing a human requires every workspace they own that is not deleted to be transferred or deleted first.
 
@@ -39,8 +39,9 @@ The kernel's own acts never consult these rules: the answering agent writes its 
 ## Agents, runners and tool providers
 
 - Each **agent** has a human steward. Agents derive data access from the steward and never administer the account.
-- Each **Runner** and **tool provider** has a Human manager. An independent registration uses `user_private` (Agents stewarded by that Human), or `account_wide` when an owner or administrator chooses it during fresh registration. A bundled Runner uses `agent_private`, binding it to one Agent application and that application's owned Agents. Other applications cannot discover or use it, including another rho instance under the same Human. See [Runner identity and scope](../runners/deploy.md#identity-and-scope).
-- Runner scope and application binding are fixed at creation and preserved by re-pairing. Scope is access control only; it never changes logical identity or an existing task's accepted target.
+- Each **Runner** and **tool provider** has a Human manager. An independent registration uses `user_private` (Agents stewarded by that Human), or `account_wide` when an owner or administrator chooses it during fresh registration. A Local environment uses a Runner service on the Agent address and is available to that application's eligible named Agents. Other applications cannot discover or use it, including another rho instance under the same Human. See [Runner identity and scope](../runners/deploy.md#identity-and-scope).
+- An independent Runner's scope is fixed at creation and preserved by re-pairing. Scope is access control only; it never changes logical identity or an existing task's accepted target.
+- Transferring an application Agent's stewardship also changes who manages its application Executor and Local runner service. It does not transfer machine files, the OS account or deployment control. A named Agent transferred away from its application's steward loses access to that application's services.
 - A manager connects and disconnects their own runners and providers from **Runners** in the Nexus browser. Administrators have no takeover or removal path for another human's runner.
 
 ## Members a conversation can name

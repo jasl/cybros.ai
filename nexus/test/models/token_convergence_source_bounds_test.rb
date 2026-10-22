@@ -271,7 +271,7 @@ class TokenConvergenceSourceBoundsTest < ActiveJob::TestCase
       )
       executor = member.executors.create!(
         account: member.account,
-        executor_kind: :agent_application,
+        executor_kind: :agent,
         display_name: "Bounded source executor"
       )
       base_epoch = executor.credential_epoch + SecureRandom.random_number(1_000_000) + 1

@@ -11,6 +11,8 @@ class OAuth::DeviceAuthorizationsController < OAuth::MachineController
   def create
     return render_oauth_error(:invalid_client) unless OAuth::Client.registered?(scalar_field(:client_id))
 
+    return render_oauth_error(:invalid_request) if params.key?(:assignment_agent_public_id)
+
     attributes = OAuth::ConnectionRequest::CONNECTION_FIELDS.to_h { |field| [field, scalar_field(field)] }.compact
     connection = OAuth::ConnectionRequest.new(attributes)
     unless connection.valid?

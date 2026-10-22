@@ -68,7 +68,7 @@ class Nexus::Deployment::ClientTest < Minitest::Test
 
   def test_a_combined_reply_from_an_independently_deployed_updater_is_unavailable
     combined = release.merge("images" => release.fetch("images") + [
-      { "name" => "agent-application", "reference" => "example/agent-application@sha256:#{"b" * 64}" },
+      { "name" => "agent", "reference" => "example/agent@sha256:#{"b" * 64}" },
     ])
     with_updater(deployment.merge("candidate" => combined.merge("checked_at" => "2026-10-08T09:00:00Z"))) do |path, requests|
       result = Nexus::Deployment::Client.new(socket_path: path).check
@@ -83,7 +83,7 @@ class Nexus::Deployment::ClientTest < Minitest::Test
   def test_a_combined_selection_is_refused_before_contacting_the_updater
     candidate = Nexus::Deployment::Release.from_h(release)
     candidate = candidate.with(images: candidate.images + [
-      Nexus::Deployment::Image.new(name: "agent-application", reference: "example/agent-application@sha256:#{"b" * 64}"),
+      Nexus::Deployment::Image.new(name: "agent", reference: "example/agent@sha256:#{"b" * 64}"),
     ])
     Dir.mktmpdir("nexus-updater-") do |directory|
       path = File.join(directory, "updater.sock")

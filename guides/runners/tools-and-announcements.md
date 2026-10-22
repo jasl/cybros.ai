@@ -12,15 +12,63 @@ Executor plane. A whole replacement of the tools this address serves, the enviro
 
 ```json
 {
-  "tools": [
-    { "name": "bash", "effect_profile": { "kind": "write", "destructive": true, "effect_scope": "open", "idempotency": "none", "reconciliation": "none" },
-      "timeout_ms": 120000, "description": "…", "input_schema": { "type": "object", "…": "…" } },
-    { "name": "read", "effect_profile": { "kind": "read_only", "destructive": false, "effect_scope": "closed", "idempotency": "intrinsic", "reconciliation": "none" },
-      "description": "…", "input_schema": { "…": "…" } },
-    { "name": "files_bytes", "effect_profile": { "kind": "read_only", "destructive": false, "effect_scope": "closed", "idempotency": "intrinsic", "reconciliation": "none" } }
-  ],
-  "environment": { "os": "linux", "working_directory": "/home/runner", "…": "…" },
-  "documents": [ { "name": "workspace-tools", "description": "Tools installed in this image" } ]
+  "services": {
+    "runner": {
+      "tools": [
+        {
+          "name": "bash",
+          "effect_profile": {
+            "kind": "write",
+            "destructive": true,
+            "effect_scope": "open",
+            "idempotency": "none",
+            "reconciliation": "none"
+          },
+          "timeout_ms": 120000,
+          "description": "…",
+          "input_schema": {
+            "type": "object",
+            "…": "…"
+          }
+        },
+        {
+          "name": "read",
+          "effect_profile": {
+            "kind": "read_only",
+            "destructive": false,
+            "effect_scope": "closed",
+            "idempotency": "intrinsic",
+            "reconciliation": "none"
+          },
+          "description": "…",
+          "input_schema": {
+            "…": "…"
+          }
+        },
+        {
+          "name": "files_bytes",
+          "effect_profile": {
+            "kind": "read_only",
+            "destructive": false,
+            "effect_scope": "closed",
+            "idempotency": "intrinsic",
+            "reconciliation": "none"
+          }
+        }
+      ],
+      "environment": {
+        "os": "linux",
+        "working_directory": "/home/runner",
+        "…": "…"
+      },
+      "documents": [
+        {
+          "name": "workspace-tools",
+          "description": "Tools installed in this image"
+        }
+      ]
+    }
+  }
 }
 ```
 
@@ -30,20 +78,20 @@ Executor plane. A whole replacement of the tools this address serves, the enviro
 - `mcp: {server_key, tool_name}` identifies an MCP source on this executor. These tools require explicit declarations and are excluded from automatic default-Runner imports; the application owns its MCP selection policy. The metadata adds no execution authority.
 - `environment` is an opaque snapshot of environment facts (operating system, working directory, installed toolchains) that discovery and the `runners_list` kernel tool show to agents.
 - `documents` are skills the `skill` tool can load from this runner.
-- `tools: []` clears the list.
+- `services.runner.tools: []` clears the role's tool list. An application also includes its `agent` service on every update; omitting `runner` withdraws only that capability.
 
-Replacing an announcement affects future addressing. Work already accepted keeps its frozen declaration; a removed tool follows the ordinary failed-tool path if a later call cannot be served.
+A PUT replaces the complete service map. Replacing an announcement affects future addressing. Work already accepted keeps its frozen declaration; a removed tool follows the ordinary failed-tool path if a later call cannot be served.
 
 ## Discover and import
 
 An agent reads the runners it may address on the member plane:
 
 ```http
-GET /agent_api/v1/executors?kind=runner
+GET /agent_api/v1/executors?role=runner
 GET /agent_api/v1/executors/{public_id}
 ```
 
-Each row shows `served_tools` whole, `environment`, `served_documents`, `assignment_scope`, `presence` and `last_seen_at`. Discovery requires an active, credential-ready Runner that is not shutting down and whose [assignment scope](deploy.md#identity-and-scope) admits the Agent. The same scope governs tool assembly and execution: knowing a Runner UUID does not grant use of it. Presence does not determine eligibility.
+Each row shows its registration `kind`, `service_roles` and role-keyed `services` map. Read `services.runner.tools`, `services.runner.documents` and `services.runner.environment` for Runner capability. Discovery requires an active, credential-ready Runner that is not shutting down and whose [assignment scope](deploy.md#identity-and-scope) admits the Agent. The same scope governs tool assembly and execution: knowing a Runner UUID does not grant use of it. Presence does not determine eligibility.
 
 The tool assembly endpoint returns the declarations an agent should put into its configuration for a selected runner: each callable name, the served name, the schema and the `route`:
 

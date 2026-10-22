@@ -16,7 +16,6 @@ use std::{sync::Arc, time::Duration};
 pub enum AuthorizationBranch {
     Agent,
     Runner,
-    Combined,
     Application,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -24,10 +23,6 @@ pub struct AgentClaims {
     pub agent_identifier: String,
     pub agent_display_name: String,
     pub executor_display_name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub registration_identifier: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub runner_display_name: Option<String>,
 }
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -40,8 +35,6 @@ pub struct RunnerClaims {
     pub registration_identifier: String,
     pub runner_display_name: String,
     pub executor_kind: ExecutorKind,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub assignment_agent_public_id: Option<String>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -152,16 +145,10 @@ impl TokenGrant {
             match obj.get(key) {
                 None | Some(Value::Null) => Ok(None),
                 Some(v) => {
-                    // Combined device flow runner halves omit common type and lifetime fields.
-                    let mut v = v.clone();
-                    let o = v.as_object_mut().ok_or_else(bad)?;
                     if !application {
-                        o.entry("plane")
-                            .or_insert(Value::String("executor_transport".into()));
-                        o.entry("token_type")
-                            .or_insert(Value::String("Bearer".into()));
-                        o.entry("expires_in").or_insert(expires_in.into());
+                        return Err(bad());
                     }
+                    let v = v.clone();
                     Self::decode(v, false).map(|g| Some(Box::new(g)))
                 }
             }
@@ -203,11 +190,6 @@ impl TokenGrant {
             }
             AuthorizationBranch::Runner => {
                 self.access_token.is_none() && self.executor_access_token.is_some()
-            }
-            AuthorizationBranch::Combined => {
-                self.access_token.is_some()
-                    && self.executor_access_token.is_some()
-                    && self.runner.is_some()
             }
             AuthorizationBranch::Application => self.platform_access_token.is_some(),
         };
@@ -354,13 +336,7 @@ impl OAuthClient {
             AuthorizationBranch::Application
         } else {
             match claims {
-                Some(ConnectionClaims::Agent(a)) => {
-                    if a.registration_identifier.is_some() {
-                        AuthorizationBranch::Combined
-                    } else {
-                        AuthorizationBranch::Agent
-                    }
-                }
+                Some(ConnectionClaims::Agent(_)) => AuthorizationBranch::Agent,
                 Some(ConnectionClaims::Runner(_)) => AuthorizationBranch::Runner,
                 None => return Err(Error::Configuration("device connection requires claims")),
             }

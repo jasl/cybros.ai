@@ -244,7 +244,7 @@ class Runs::AwaitsTest < ActiveJob::TestCase
 
   # The ask's address is WRITTEN at start and listed in a later step: an agent's loop carries its
   # address on the row, a Human's standalone loop carries nobody — the person's door only.
-  test "a tokenless ask on an agent-created loop is addressed to the agent application, on a Human's to nobody" do
+  test "a tokenless ask on an agent-created loop is addressed to the agent, on a Human's to nobody" do
     agent = users(:agent)
     asking = model("round1", "tools" => [Nexus::Tools::ASK])
 
@@ -254,7 +254,7 @@ class Runs::AwaitsTest < ActiveJob::TestCase
     assert_equal "awaiting_input", asked.status
     assert_nil asked.resolution_token
     assert_equal Executor.address_for(agent).id, asked.addressed_executor_id
-    assert_equal "agent_application", asked.addressed_role
+    assert_equal "agent", asked.addressed_role
 
     on_human = seed(asking)
     Runs::Start.call(Runs::Start::Command.new(run: on_human, acting_user: @human))
@@ -282,7 +282,7 @@ class Runs::AwaitsTest < ActiveJob::TestCase
     assert_equal asked.node_key, row.fetch(:task_key)
     assert_equal false, row.fetch(:claimed)
     assert_not_nil row.fetch(:deadline_at), "the ask parks on its own clock"
-    assert_equal({ role: "agent_application", executor_public_id: address.public_id }, row.fetch(:addressed_to))
+    assert_equal({ role: "agent", executor_public_id: address.public_id }, row.fetch(:addressed_to))
     refute row.key?(:tool_name), "an ask names no tool"
     refute row.key?(:tool_input)
 

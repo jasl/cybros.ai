@@ -2,9 +2,9 @@
 
 Nexus is the Cybros kernel and gateway: a Rails application that owns accounts
 and membership, workspaces, conversations and agent loops, the task inbox that
-delivers work to agent applications, runners and tools providers, usage
+delivers work to agents, runners and tools providers, usage
 accounting, and the human console. Every general agent mechanism is kernel;
-product policy lives in agent applications built on its APIs. The
+product policy lives in agents built on its APIs. The
 [technical manual](../docs/README.md) introduces the components and API families.
 
 ## Requirements

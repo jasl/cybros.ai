@@ -111,32 +111,22 @@ Nexus treats the identifier as opaque and resolves it under the connecting
 Human steward. Reconnecting the same identifier re-pairs that logical address;
 never copy an access/refresh credential document to another installation.
 
-An agent that also serves as a runner on its own machine — rho in full mode —
-pairs both in ONE grant, the combined shape, by naming its runner pair on the
-same call:
+An application that also serves a local environment announces both services on its existing
+executor. It uses one transport credential, inbox and refresh lineage:
 
 ```ruby
-authorization = client.request_authorization(
-  agent_identifier: MyAgentProduct::AGENT_IDENTIFIER,
-  agent_display_name: "My Agent",
-  executor_display_name: "My Agent on this machine",
-  runner: { identifier: MyAgentProduct::REGISTRATION_IDENTIFIER, display_name: "My Agent on this machine" }
-)
-credentials = client.await_credentials(authorization) # branch :combined
 planes = CybrosAgent.planes_for(credentials, base_url: "https://nexus.example")
-planes.runner_client # the in-process runner's own ExecutorClient
+planes.executor_client.announce(services: {
+  "agent" => { "tools" => application_tools },
+  "runner" => { "tools" => runner_tools, "documents" => [], "environment" => { "root" => "/work" } }
+})
 ```
 
-The human approves one page; the winning poll carries TWO lineages — the
-agent's bundle as above plus `credentials.runner_half`, the runner's
-transport-led bundle with its own refresh token, which `Credentials::OAuth.issue`
-stores as a second lineage. The Runner is registered with `agent_private`
-assignment to the resolved application Agent. That Agent, its application-owned
-identities and their captured workers may use it; another application managed
-by the same Human cannot. Its kind is fixed `runner`; no
-`executor_kind` is sent. Each lineage rotates on its own refresh token and a
-rotation never carries the other half. `Credentials::OAuth#revoke` presents a
-lineage's refresh token to `/oauth/revoke` and empties its store.
+Each announcement replaces the entire map. Role-specific tool names, documents and effect
+profiles remain separate. Removing `runner` disables new environment work without reconnecting.
+Discovery uses `executors.list(role: "runner")` to include eligible application environments.
+The owning Agent and its eligible named Agents retain their own execution principals; another
+application under the same Human cannot use this environment.
 
 A Runner uses a separate stable `registration_identifier` for its logical registration:
 
@@ -162,13 +152,6 @@ The machine request carries no assignment scope. For a fresh registration,
 Browser Connect defaults to private access and lets an owner or administrator
 opt into account-wide access. Reconnecting a live registration preserves its
 stored access and presents no scope input.
-
-An application that already has an Agent and needs to add its own Runner passes
-`assignment_agent_public_id: agent_public_id` to `request_runner_authorization`.
-This binds the Runner to that application Agent's lineage without replacing the
-Agent's credentials. The selector is a public UUID; it is omitted for standalone
-Runners and is unnecessary for the combined request, whose resolved Agent owns
-the Runner. `ApplicationOAuth::Client` accepts the same optional keyword.
 
 `Credentials::OAuth` asks the application-supplied credential Store to
 serialize publish and re-read/rotate/persist inside the owning process. The
@@ -215,14 +198,13 @@ consecutive-failure budget with connection failures, so one proxy hiccup never
 kills a pending connection.
 
 For Agent authorization, the Agent branch itself fixes the executor kind to
-`agent_application` and sends no selector; Nexus derives executor creation,
+`agent` and sends no selector; Nexus derives executor creation,
 reuse, or reconnection internally from the final Agent. Branch B takes
 `executor_kind:` (`runner` by default, `tool_provider` for a provider) and
 always sends it; `Authorization#executor_kind` names the kind on both
 branches while `branch` stays the credential shape the poll validates
 (`:agent` receives both planes, `:runner` — either machine kind — transport
-only). On the executor plane, `ExecutorClient#announce(tools:, environment:,
-documents:)` replaces whole the list of tools this address serves (`{name,
+only). On the executor plane, `ExecutorClient#announce(services:)` replaces the complete role map this address serves (`{name,
 effect_profile, timeout_ms?, description?, input_schema?, mcp?}` entries, an
 optional `environment:` document and an optional `documents:` list, passed
 through as given) so the kernel can address work to it; the kernel refuses a
@@ -654,9 +636,9 @@ retain `Api::ConversationSpeaker`. Registration resolves without renaming or
 transferring ownership, and unregister is the bridge's refusal of future arrivals.
 See [the ingress contract](../../guides/reference/agent-api/ingress.md).
 
-**Discovery and Runner defaults.** `client.executors.list(kind: "runner")`
-returns eligible executors, their exact `served_tools` schemas, descriptive
-`environment`, and `served_documents`. `client.executors.show(id)` reads one.
+**Discovery and Runner defaults.** `client.executors.list(role: "runner")`
+returns eligible executors. Read their role-specific `tools_for(:runner)`,
+`environment_for(:runner)` and `documents_for(:runner)`. `client.executors.show(id)` reads one.
 `chat.set_default_runner(executor_public_id:)` and
 `run.set_default_runner(executor_public_id:)` choose the convenience default
 for future explicitly authored Runner work; `nil` clears it. Both reads expose
@@ -713,7 +695,7 @@ unless a rule names `author`). The answer's `content` carries a
 `resource_link` when the runner answered with a capture — its bytes read
 with `uploads.bytes` below. The runner-side capabilities a person requests
 this way (`files_bytes`, `process_log`) are announced without a
-description or a schema, so `served_tools` never yields a declaration for
+description or a schema, so the service tools never yield a declaration for
 them.
 
 Within an Async reactor, pass the shared optional `Realtime::Client` as
@@ -1737,10 +1719,10 @@ state across turns.
 The approving half is `context.tasks_context(key).approve` and
 `context.tasks_context(key).deny(reason: …)` on a tool call resting at
 `needs_approval` — parked by the Run's `ask` mode or a rule, announced as
-`approval_required` while the loop stays `running`, listed on the agent
-application's inbox as kind `approval` with the effect profile the approver
+`approval_required` while the loop stays `running`, listed on the agent's
+inbox as kind `approval` with the effect profile the approver
 reads (`InboxTask#effect_profile`, nil on every runner row). Any principal
-with write standing decides, the agent application included, and the
+with write standing decides, the agent included, and the
 answered task carries the fact as `approval` (`{origin, decided_by,
 decided_at}`); a denial's reason is the row's `error.detail`.
 
@@ -2094,7 +2076,7 @@ credential may keep the top-level state `authorized` while a new ceremony runs.
 The credential and all refresh operations remain Nexus-owned.
 
 `PlatformClient` exposes no workspaces, conversations or InferenceRequests. To exercise a
-model, use an independently authenticated member client or an agent application.
+model, use an independently authenticated member client or an agent.
 
 ### Agent administration, budgets and deployment
 
@@ -2108,8 +2090,6 @@ created = platform.agents.create(display_name: "Research assistant")
 agent = platform.agents.agent(created.public_id)
 member_key = agent.api_keys.create(name: "Research application")
 executor_key = agent.executor_api_keys.create(name: "Application executor")
-runner = agent.private_runners.create(display_name: "Research Runner")
-runner_key = agent.private_runners.runner(runner.public_id).api_keys.create(name: "Runner")
 
 agent.api_keys.list # Api::Page[Platform::APIKey]; no secrets
 agent.api_keys.revoke(member_key.api_key.public_id)
@@ -2208,7 +2188,7 @@ Closing local observation never repeats an upgrade or cancels server work.
 `CybrosAgent::ModelAdaptations` is a documented YAML data format the gem
 ships under `lib/cybros_agent/model_adaptations/` — the reference for other
 languages, and the ONE home of this text. It carries what an agent
-application applies on top of the kernel's facts, in rows matched to a
+applies on top of the kernel's facts, in rows matched to a
 model by PATTERN: the kernel tools' spellings for the models a row covers,
 a summarizer prompt and lead hints — every text the row's
 data, measured before it lands, never hand-tuned.

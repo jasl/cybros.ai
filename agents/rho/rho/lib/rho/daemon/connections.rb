@@ -30,19 +30,6 @@ module Rho
         @server.spawn { mount_runner(credentials, :runner) } if adoption.changed && credentials.runner?
       end
 
-      # THE RUNNER HALF, ADOPTED: the runner-only ceremony on a
-      # live agent attaches its OAuth under the monitor — the lineage does
-      # not move, its runs and sockets stand — and the `:runner` slot is
-      # mounted directly; the maintenance wake is for the workspace, not the
-      # runner.
-      def adopt_runner(about:, identity:, runner:, authority_report: nil)
-        return unless @lineage.adopt_runner(about, identity: identity, runner: runner, authority_report: authority_report)
-
-        log.info("runner.adopted", runner: identity.runner_executor_public_id)
-        announce
-        @server.spawn { mount_runner(about, :runner) }
-      end
-
       # What every lineage edge leaves the caller to do OUTSIDE the monitor.
       def settle(adoption, phase)
         retire(adoption.retired)
@@ -50,42 +37,13 @@ module Rho
         publish_phase_change(adoption.from, phase) if adoption.changed
       end
 
-      # Agent loss retires its own resources while an independent Runner
-      # stands. Without that second lineage the whole connection is lost.
+      # Connection loss retires the member followers and all executor roles.
       def lose_authority(about: nil, unless_stopping: false, report: nil)
         about ||= @lineage.credentials
-        if @config.mode == "full" && about&.runner? && !report&.dig(:runner_lost)
-          retired = @lineage.lose_agent(about, unless_stopping: unless_stopping, report: report)
-          return false if retired.nil?
-
-          retire(retired)
-          publish_member_connection
-          announce
-          return true
-        end
-
         adoption = @lineage.lose(about: about, unless_stopping: unless_stopping, report: report)
         return false if adoption.nil?
 
         settle(adoption, :disconnected)
-        true
-      end
-
-      # The runner lineage answered terminally, or `rho disconnect --runner`
-      # took it: the runner half drops with its slot and socket; the agent's
-      # own run and the lineage stand.
-      def lose_runner_authority(about:, unless_stopping: false, identity: nil)
-        return false if unless_stopping && @lineage.stopping?
-
-        retired = @lineage.lose_runner(about, identity: identity)
-        return false if retired.nil?
-
-        log.warn("runner.authority_lost")
-        retire(retired)
-        if @lineage.snapshot.observation&.report&.dig(:lost)
-          return true if lose_authority(about: about, unless_stopping: unless_stopping)
-        end
-        announce
         true
       end
 

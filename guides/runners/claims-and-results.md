@@ -8,7 +8,7 @@ The runner protocol lives on the executor plane and nowhere else. Four verbs: re
 GET /agent_api/v1/executor
 ```
 
-Answers which delivery address this credential is: `public_id`, `kind` (`agent_application`, `runner` or `tool_provider`), `status`, `display_name` and `credential_epoch`. Nothing is submitted; the response names no execution principal, because the address only receives work and each inbox row freezes the agent whose authority it uses.
+Answers which delivery address this credential is: `public_id`, `kind` (`agent`, `runner` or `tool_provider`), `status`, `display_name` and `credential_epoch`. Nothing is submitted; the response names no execution principal, because the address only receives work and each inbox row freezes the agent whose authority it uses.
 
 ## Read the inbox
 

@@ -3,11 +3,8 @@ module DeviceAuthorizations
   # membership, the one delivery address or the machine, the credential
   # bundle. Any failure leaves nothing behind.
   class Consume
-    # RFC 8628 device polling outcomes plus the mint on success. `runner` is
-    # the combined grant's second lineage — a transport-led Bundle for the
-    # runner — and nil for shapes A and B; it is nested rather than
-    # widening RefreshTokens::Bundle because a rotation is per family and
-    # would carry a permanently-nil half.
+    # Application OAuth may include a separately authorized machine transport
+    # beside its Human login. Agent grants carry only their own family.
     Result = Data.define(:outcome, *RefreshTokens::Bundle.members, :runner, :agent, :agent_public_id) do
       class << self
         def minted(bundle:, runner: nil, agent: nil, agent_public_id: nil)
@@ -80,9 +77,6 @@ module DeviceAuthorizations
       # A runner is not a principal: the consequence is a machine and
       # its transport credential, nothing more.
       def consume_runner(authorization)
-        # The application capture is assignment only. Lock it before its
-        # Human so removal/steward transfer cannot cross this mint unnoticed.
-        assignment_agent = User.lock.find_by(id: authorization.user_id) if authorization.assignment_agent_public_id
         # Every Runner has a Human manager. Locking that row serializes both ACL
         # scopes for the same (manager, registration_identifier) key; account-wide
         # placement therefore needs no Account-wide coordination lane.
@@ -91,11 +85,6 @@ module DeviceAuthorizations
         return invalidate(authorization) unless connector.authority_generation ==
           authorization.connected_by_authority_generation
         return invalidate(authorization) unless human_login_authority_live?(authorization, connector)
-        if authorization.assignment_agent_public_id &&
-            (!Executor.assignment_agent_eligible?(assignment_agent, manager: connector) ||
-              assignment_agent.authority_generation != authorization.user_authority_generation)
-          return invalidate(authorization)
-        end
         if authorization.selects_account_wide? &&
             !authorization.reconnecting_live_runner? &&
             !connector.admin?
@@ -110,18 +99,18 @@ module DeviceAuthorizations
         return expire_connected(authorization) if authorization.expires_at <= Time.current
 
         return invalidate(authorization) unless authorization.pairing_matches?(pairing_marker)
-        return invalidate(authorization) unless runner_half_mintable?(authorization, existing, assignment_agent: assignment_agent)
+        return invalidate(authorization) unless runner_mintable?(authorization, existing)
 
         if authorization.mode_login?
           return invalidate(authorization) unless existing
 
-          return consume_login(authorization, connector, executor: existing, assignment_agent: assignment_agent)
+          return consume_login(authorization, connector, executor: existing)
         end
 
-        runner = materialize_runner(authorization, connector, existing, assignment_agent: assignment_agent)
+        runner = materialize_runner(authorization, connector, existing)
         lineage = mint_runner_lineage(authorization, runner)
         authorization.record_consumption(
-          user: assignment_agent,
+          user: nil,
           executor: runner,
           access_token: lineage.transport_credential.token,
           refresh_token: lineage.refresh.token
@@ -136,17 +125,11 @@ module DeviceAuthorizations
         end
       end
 
-      # The runner half's own refusals, shared by branch B and the combined
-      # shape: a live key whose manager's authority is closed, or — the kind
-      # is the registration's, frozen at creation like its scope, and the
-      # key is kind-blind — a live key of the other kind, which is drift
-      # refused the way a forged scope is.
-      def runner_half_mintable?(authorization, existing, assignment_agent:)
+      def runner_mintable?(authorization, existing)
         existing.nil? ||
           (existing.connection_authority_open? &&
             existing.executor_kind == authorization.requested_executor_kind &&
-            existing.assignment_scope == authorization.selected_assignment_scope &&
-            existing.assignment_agent_id == assignment_agent&.id)
+            existing.assignment_scope == authorization.selected_assignment_scope)
       end
 
       # The logical registration identifier re-pairs its one live address in
@@ -169,7 +152,7 @@ module DeviceAuthorizations
         }
       end
 
-      def materialize_runner(authorization, connector, existing, assignment_agent:)
+      def materialize_runner(authorization, connector, existing)
         scope = authorization.selected_assignment_scope
         existing&.re_pair(display_name: authorization.runner_display_name) ||
           authorization.account.executors.create!(
@@ -177,7 +160,6 @@ module DeviceAuthorizations
             display_name: authorization.runner_display_name,
             registration_identifier: authorization.registration_identifier,
             assignment_scope: scope,
-            assignment_agent: assignment_agent,
             manager: connector
           )
       end
@@ -186,10 +168,6 @@ module DeviceAuthorizations
       RunnerLineage = Data.define(:transport_credential, :refresh)
       AgentLineage = Data.define(:member_credential, :transport_credential, :refresh)
 
-      # The runner's family and its one transport credential (transport-led:
-      # a machine is no principal). The tail — evidence on the grant, the
-      # Bundle — belongs to the caller, so the combined shape can mint this
-      # lineage beside the agent's and record ONE consumption.
       def mint_runner_lineage(authorization, runner)
         now = Time.current
         family = authorization.account.refresh_token_families.create!(
@@ -245,25 +223,8 @@ module DeviceAuthorizations
 
       LockedReferences = Data.define(:member, :connector)
 
-      # The single-mint path: lock, recheck the CAS conditions, then the
-      # whole consequence or none of it. Shape A and the combined shape A+B
-      # share it; the combined shape adds the runner half.
-      #
-      # THE LOCK ORDER: device_authorizations → users
-      # (agent before human) → executors, and WITHIN executors the
-      # agent address is locked explicitly BEFORE the runner row ("kind
-      # order"), so both rows are held when the checks run and two combined
-      # consumes never cross; `supersede_previous_connection` (an UPDATE on
-      # families, rank 7) follows both executors locks; the mints come
-      # last. The within-table pair is pinned by combined_connection_test's
-      # race test.
-      #
-      # CHECK-BEFORE-WRITE: `next Result.access_denied` inside `with_lock`
-      # COMMITS the invalidation, so every check of BOTH halves runs before
-      # `materialize_member` — a runner refusal after the member is restored
-      # would leave a re-paired member and an advanced agent epoch behind
-      # ("any failure leaves nothing behind", the header above). A check that
-      # cannot precede a write must refuse by RAISE (rollback), never `next`.
+      # Lock the grant, Agent, Human and application address before minting.
+      # Refusals before writes may commit invalidation; later failures must roll back.
       def attempt_mint(authorization)
         authorization.with_lock do
           # A concurrent terminal transition keeps its public OAuth
@@ -276,15 +237,12 @@ module DeviceAuthorizations
           existing = lock_agent_address(references.member)
           pairing_marker = existing ||
             (Executor.latest_address_for(references.member) if references.member)
-          combined = authorization.combined_connection?
-          runner_existing = find_runner(authorization, references.connector) if combined
           # The original deadline remains authoritative while authority and
           # address rows are contended. Check after the last required lock and
           # before the first membership, pairing or credential write.
           next expire_connected(authorization) if authorization.expires_at <= Time.current
 
-          unless mintable?(authorization, references, existing, pairing_marker) &&
-              (!combined || runner_half_mintable?(authorization, runner_existing, assignment_agent: references.member))
+          unless mintable?(authorization, references, existing, pairing_marker)
             # Commit invalidation in this same lock-owning transaction. A
             # queued poll cannot mint between the drift decision and its
             # terminal marker.
@@ -300,14 +258,10 @@ module DeviceAuthorizations
 
           member = materialize_member(authorization, references.member, references.connector)
           executor = resolve_executor(authorization, member, existing)
-          runner = materialize_runner(authorization, references.connector, runner_existing, assignment_agent: member) if combined
           supersede_previous_connection(member)
           agent = mint_agent_lineage(authorization, member, executor)
-          runner_lineage = mint_runner_lineage(authorization, runner) if runner
 
-          # ONE consumption: the evidence pointers are the agent's. The runner
-          # family leaves no pointer on the row — it is findable through
-          # refresh_token_families.executor_id (the recorded asymmetry).
+          # Record the application's member and transport lineage together.
           authorization.record_consumption(
             user: member,
             executor: executor,
@@ -318,14 +272,10 @@ module DeviceAuthorizations
             Result.minted(
               bundle: ApplicationCredentials.call(authorization: authorization, human: references.connector, agent: member),
               agent: agent_bundle(agent),
-              runner: (runner_bundle(runner_lineage) if runner_lineage),
               agent_public_id: member.public_id
             )
           else
-            Result.minted(
-              bundle: agent_bundle(agent),
-              runner: (runner_bundle(runner_lineage) if runner_lineage)
-            )
+            Result.minted(bundle: agent_bundle(agent))
           end
         end
       end
@@ -407,12 +357,12 @@ module DeviceAuthorizations
 
       # A routine browser login proves the existing binding but leaves every
       # running executor and its independent credential lineage untouched.
-      def consume_login(authorization, connector, executor:, member: nil, assignment_agent: nil)
+      def consume_login(authorization, connector, executor:, member: nil)
         bundle = ApplicationCredentials.call(
           authorization: authorization, human: connector, agent: member, runner: (executor unless member)
         )
         authorization.record_consumption(
-          user: member || assignment_agent, executor: executor,
+          user: member, executor: executor,
           access_token: bundle.access_token, refresh_token: bundle.refresh_token
         )
         Result.minted(bundle: bundle, agent_public_id: member&.public_id)
@@ -441,7 +391,7 @@ module DeviceAuthorizations
         ) ||
           member.executors.create!(
             account: member.account,
-            executor_kind: :agent_application,
+            executor_kind: :agent,
             display_name: authorization.requested_executor_display_name
           )
       end

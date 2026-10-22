@@ -72,7 +72,7 @@ class RhoDaemonHarnessTest < Minitest::Test
   def test_start_ceremony_waits_for_bootstrap_and_spends_the_device_budget_once
     started = daemon(Dir.tmpdir)
     bootstrapping = { "error" => { "code" => "connection_bootstrapping" } }
-    pending = { "phase" => "pending", "branch" => "combined", "user_code" => "ABCD-EFGH" }
+    pending = { "phase" => "pending", "branch" => "agent", "user_code" => "ABCD-EFGH" }
     responses = [bootstrapping, bootstrapping, pending]
     requests = []
     waits = []

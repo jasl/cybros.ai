@@ -126,7 +126,7 @@ class MemberConnectionTest < Minitest::Test
     assert_equal "0199-user", first.client.profile.fetch.member.public_id
   end
 
-  def test_agent_loss_retires_the_member_worker_while_the_independent_runner_stands
+  def test_agent_loss_retires_the_member_worker_and_application_connection
     events = Queue.new
     daemon = connected_boot(extensions: [Rho::Runner::Extensions::Coding,
       connection_extension { |connection| events << (connection || :lost) }])
@@ -137,8 +137,8 @@ class MemberConnectionTest < Minitest::Test
     daemon.maintenance.renewal_event(:lost, about)
 
     assert_equal :lost, events.pop(timeout: 2)
-    assert_same about, daemon.lineage.credentials
-    assert about.runner?
+    assert_nil daemon.lineage.credentials
+    assert_empty daemon.lineage.runners
   end
 
   def test_runner_disconnect_does_not_restart_the_member_worker
@@ -150,7 +150,7 @@ class MemberConnectionTest < Minitest::Test
 
     response = request(daemon, :post, "/disconnect", token: bearer(daemon), body: { runner: true })
 
-    assert_equal 200, response.code.to_i
+    assert_equal 422, response.code.to_i
     assert_nil events.pop(timeout: 0)
     assert daemon.lineage.credentials.agent?
   end

@@ -148,7 +148,7 @@ class RunsLockOrderTest < ActiveSupport::TestCase
     before = task.attributes
     other = connect_runner(manager: users(:owner), registration_identifier: "new-default",
       display_name: "Selected", assignment_scope: :account_wide).executor_access_token.executor
-    other.announce(tools: RunAuthoringTestHelper::TEST_SERVED_TOOLS)
+    other.announce(services: { other.executor_kind => { "tools" => RunAuthoringTestHelper::TEST_SERVED_TOOLS } })
 
     sequences = assert_ladder_order("default selection") do
       result = Executors::DefaultRunner.call(Executors::DefaultRunner::Command.new(
@@ -179,7 +179,7 @@ class RunsLockOrderTest < ActiveSupport::TestCase
     before = task.attributes
     other = connect_runner(manager: users(:owner), registration_identifier: "new-default",
       display_name: "Selected", assignment_scope: :account_wide).executor_access_token.executor
-    other.announce(tools: RunAuthoringTestHelper::TEST_SERVED_TOOLS)
+    other.announce(services: { other.executor_kind => { "tools" => RunAuthoringTestHelper::TEST_SERVED_TOOLS } })
 
     sequences = assert_ladder_order("standalone default selection") do
       result = Executors::DefaultRunner.call(Executors::DefaultRunner::Command.new(

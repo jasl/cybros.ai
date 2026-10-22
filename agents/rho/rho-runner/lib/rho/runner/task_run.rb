@@ -93,10 +93,11 @@ module Rho
       # and the commit ride this address's own plane. `toolsets`
       # answers a claimed row's placement (`Toolsets#for`). `sleeper`
       # paces the commit retries and is injected so a test does not wait.
-      def initialize(executor:, pool:, toolsets:, log:, clock: nil, hooks: nil, sleeper: nil, on_cancel: nil)
+      def initialize(executor:, pool:, toolsets:, log:, clock: nil, hooks: nil, sleeper: nil, on_cancel: nil, roles: nil)
         @executor = executor
         @pool = pool
         @toolsets = toolsets
+        @roles = roles
         @log = log
         @hooks = hooks || Extensions::Hooks::Host.new
         @clock = clock || -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }
@@ -104,7 +105,7 @@ module Rho
         @on_cancel = on_cancel
       end
 
-      attr_writer :hooks
+      attr_writer :hooks, :roles
 
       # Returns :done, :skipped (somebody else's), or :busy.
       #
@@ -119,8 +120,11 @@ module Rho
       # raising outright — and a ticket lost on that path was gone for the
       # daemon's life. Enough of them and the runner claimed nothing until
       # a restart, with nothing in its log to say why.
-      def call(run_public_id:, task_key:, tool_name: nil)
-        tools = @toolsets.zero.toolset.to_h
+      def call(run_public_id:, task_key:, tool_name: nil, role: nil)
+        return :busy if @roles && !@roles.key?(role)
+
+        toolsets = @roles ? @roles.fetch(role).toolsets : @toolsets
+        tools = toolsets.zero.toolset.to_h
         return :busy if tool_name.nil? && tools.values.any?(&:admission)
 
         rule = tools[tool_name]&.admission
@@ -134,7 +138,7 @@ module Rho
         # THE CLAIM IS THE MARK an operator reads a runner's holdings by:
         # `claimed` on the snapshot moves only after the answer.
         @log.info("runner_task_claimed",
-          task: task_key, tool: claimed.task.tool_name, deadline_at: claimed.deadline_at)
+          task: task_key, tool: claimed.task.tool_name, role: claimed.task.addressed_to&.role, deadline_at: claimed.deadline_at)
         owned = true
         execute(ticket, claimed)
         :done
@@ -277,9 +281,11 @@ module Rho
             owners.reverse_each(&:release) if last
           end
           value = @pool.run(ticket, context) do
-            placement = @toolsets.for(claimed.task)
-            hooks = @hooks
-            context.place(tool_env: placement.env, binding: placement.binding, ports: @toolsets.ports)
+            service = @roles&.fetch(claimed.task.addressed_to.role)
+            toolsets = service ? service.toolsets : @toolsets
+            placement = toolsets.for(claimed.task)
+            hooks = service ? service.hooks : @hooks
+            context.place(tool_env: placement.env, binding: placement.binding, ports: toolsets.ports)
             begin
               tool = placement.toolset.fetch(name)
             rescue KeyError

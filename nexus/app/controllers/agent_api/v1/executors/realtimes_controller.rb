@@ -35,7 +35,7 @@ class AgentAPI::V1::Executors::RealtimesController < AgentAPI::V1::Executors::Ba
 
       scope = run.tasks.where(type: "Tasks::ToolTask")
       node = (lock ? scope.lock : scope).find_by!(node_key: params.fetch(:task_key))
-      return node if current_executor.runner? && node.claimed_by?(current_executor, token: token)
+      return node if node.addressed_role == "runner" && node.claimed_by?(current_executor, token: token)
 
       render_error(:not_claimant, "Refused: not_claimant", status: :conflict)
       nil

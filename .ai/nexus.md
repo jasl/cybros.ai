@@ -56,7 +56,7 @@ without presenting them as implemented behavior or requiring a private developme
 - The main Agent's configuration PUT replaces configuration and its owned
   `system_prompt`/`summarizer` documents atomically under the User lock. Missing or null
   slots clear, empty content remains a document, and replacement slots are validated
-  against the new template. The Agent application owns whole/named declarations and
+  against the new template. The Agent owns whole/named declarations and
   individual Agent slot writes. The Human Platform and Nexus WebUI expose the current
   declaration as a read-only projection, obtained in one joined, unlocked database
   snapshot. Individual slot documents retain their version semantics; named Agents
@@ -124,7 +124,7 @@ Archive is immediate; it is not deferred until the work settles. Event and follo
 must distinguish archival visibility from completion of execution and delivery. Preserve the
 separate Stop, Workspace lifecycle, deletion and side-conversation cleanup contracts.
 
-Application Bot current pointers and switch recovery belong to the agent application, using
+Application Bot current pointers and switch recovery belong to the agent, using
 the existing scoped Store and generic Conversation idempotency. Nexus exposes readable root
 Conversation history across accessible, non-deleted Workspaces, with generic answerer and
 metadata filters applied before pagination. Every Conversation projection carries its owning
@@ -307,7 +307,7 @@ Conversation.
 
 Agent-side code orchestration is the accepted replacement for compose, not an additional
 permanent orchestration mode. The language frontend, model-facing declarations, and program
-evaluation belong to the Agent application. The core specification is language- and
+evaluation belong to the Agent. The core specification is language- and
 implementation-neutral: accepted operation identity, durable observations, outcomes, lifecycle
 and conformance must be implementable without JavaScript, Ruby, rho or a particular VM.
 Language bindings define their own syntax and control-flow mappings; JavaScript is the first
@@ -353,7 +353,7 @@ do not delete them merely because compose was a consumer. Incompatible unfinishe
 failed closed and regenerated; historical content remains tolerantly readable under
 `.ai/boundaries.md`. Update every current contract consumer with the implementation.
 The live HTTP contract is `guides/reference/agent-api/executor-operations.md`.
-Language-specific parsing and evaluation belong to the Agent application; the kernel
+Language-specific parsing and evaluation belong to the Agent; the kernel
 accepts the same tool, model, ask, step and observation operations from any runtime.
 
 ### Task-Scoped Operations
@@ -392,7 +392,7 @@ accepts the same tool, model, ask, step and observation operations from any runt
   without a matching allow; `rules` refuses unmatched work as data rather than granting or
   waiting for nobody. The shared grammar is tool glob, dotted input path, anchored glob,
   verdict, optional reason/origin; precedence is deny, ask, allow.
-- `needs_approval` is a real tool state addressed to the host's Agent application, shown on its
+- `needs_approval` is a real tool state addressed to the host's Agent, shown on its
   inbox as kind `approval` with the frozen effect profile. The run reports `approval_required`
   while the turn stays running. `approve`/`deny`, stop, or the 24-hour clock ends the park;
   expiry is `timed_out approval_expired` under the row's policy. Both decision verbs project
@@ -518,17 +518,17 @@ accepts the same tool, model, ask, step and observation operations from any runt
 
 ## Executor Roles And The Gateway
 
-- Follow `.ai/boundaries.md` for the Agent application, Runner, and tool-provider roles,
+- Follow `.ai/boundaries.md` for the Agent, Runner, and tool-provider roles,
   credential planes, registration identity, management, and lifecycle. The Agent's member
   credential drives conversation work; its separate executor credential serves its inbox.
-  A combined agent-plus-runner grant pairs both roles with one approval and two lineages,
-  giving the Runner `agent_private` scope bound to the paired Agent. Its active named
-  definitions share assignment through their application owner, without sharing principals.
-  A runner-only supplement may request that existing paired Agent's public UUID; re-pair
-  preserves and must match the stored assignment. Standalone `user_private` and `account_wide`
-  machines retain their broader sharing rules. The Agent application is never a host's default Runner or Runner target.
+  An application may announce a Runner service on the same address and transport. Its eligible
+  named definitions share that service through `application_owner`, retaining their own
+  principals. Runner targets may therefore name application UUIDs. Every tool, document and
+  environment lookup is role-qualified; `kind` filters registration identity and `role` filters
+  announced capability. Independent `user_private` and `account_wide` machines keep their
+  sharing rules. Removing a role prevents new claims without changing accepted settlement.
   Conversation-only products need not claim any task or register an executor to answer.
-- Five tool sources share one provenance model: kernel, Runner, tool provider, Agent application and MCP connection.
+- Five tool sources share one provenance model: kernel, Runner, tool provider, Agent and MCP connection.
   A name resolves to one authority, preserved on the row and wire. A declaration may alias a
   kernel tool and map parameters; canonical routing and reserved namespaces remain unchanged.
   Render descriptions with declared names, then execute calls under their canonical name.
@@ -599,7 +599,7 @@ accepts the same tool, model, ask, step and observation operations from any runt
   extended in time.
 - Inbox rows are their owner's tasks, not another delivery lifecycle. Subordinate payload/body
   rows do not duplicate mutable task metadata. A retry creates a lineage-linked task.
-  A model's ask and a call held for approval are listed on the Agent application's inbox as
+  A model's ask and a call held for approval are listed on the Agent's inbox as
   notices and are never claimed or committed there: the executor plane settles tool calls
   alone, and a person decides questions and approvals on the member plane (the resolution,
   approve and deny doors), where the deciding principal is recorded. Awareness notifications

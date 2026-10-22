@@ -426,7 +426,7 @@ class NexusMcpTest < Minitest::Test
       detail = run.task(held.key)
       assert_equal ["mcp", @connection.public_id, "echo"],
         [detail.task.target.kind, detail.task.target.connection_public_id, detail.task.target.tool_name]
-      assert_equal "agent_application", detail.task.addressed_to.role, "the application receives the approval notice"
+      assert_equal "agent", detail.task.addressed_to.role, "the application receives the approval notice"
       assert_equal({ "text" => text }, detail.tool_input)
       assert_equal @callables.values.sort, run.task("r1").tool_definitions.map { |tool| tool.dig("function", "name") }.sort
       @browser.visit("/workspaces/#{@workspace_id}/conversations/#{turn.fetch(:conversation).public_id}")

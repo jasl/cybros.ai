@@ -33,7 +33,7 @@ module RunAuthoringTestHelper
   def suite_runner
     @suite_runner ||= begin
       runner = suite_runner_connection.executor_access_token.executor
-      outcome = runner.announce(tools: TEST_SERVED_TOOLS)
+      outcome = runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS } })
       raise "the test vocabulary was refused: #{outcome.outcome} #{outcome.detail}" unless outcome.accepted?
 
       runner
@@ -58,9 +58,9 @@ module RunAuthoringTestHelper
       assignment_scope: assignment_scope, executor_kind: :tool_provider
     ).executor_access_token.executor
     entries = tools.map do |tool|
-      tool.is_a?(Hash) ? tool : { "name" => tool, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }
+      Hash.try_convert(tool) || { "name" => tool, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }
     end
-    outcome = provider.announce(tools: entries)
+    outcome = provider.announce(services: { provider.executor_kind => { "tools" => entries } })
     raise "the provider's announcement was refused: #{outcome.outcome} #{outcome.detail}" unless outcome.accepted?
 
     provider

@@ -23,20 +23,16 @@ class DeviceAuthorizationTest < ActiveSupport::TestCase
     )
   end
 
-  def mint_combined(**overrides)
-    DeviceAuthorizations::Issue.call(
-      account: @account,
-      agent_identifier: "install-#{SecureRandom.hex(4)}",
-      agent_display_name: "rho",
-      requested_executor_display_name: "rho on laptop",
-      registration_identifier: "rho",
-      runner_display_name: "rho on laptop",
-      **overrides
-    )
+  test "application and machine registrations are disjoint" do
+    assert_predicate mint.authorization, :agent_connection?
+    assert_predicate mint_runner.authorization, :runner_only_connection?
+    assert_no_difference -> { DeviceAuthorization.count } do
+      assert_raises(ActiveRecord::RecordInvalid) do
+        mint(registration_identifier: "old-runner", runner_display_name: "Old runner")
+      end
+    end
   end
 
-  # The three shapes partition every row: A (the agent triple alone), B (the
-  # runner pair alone), A+B (both sets complete — the combined grant).
   test "the published interval is the product default with the env unset" do
     assert_equal 5, DeviceAuthorization.default_interval
     assert_equal 5, mint.authorization.interval
@@ -53,75 +49,11 @@ class DeviceAuthorizationTest < ActiveSupport::TestCase
     ENV["NEXUS_DEVICE_FLOW_INTERVAL"] = previous
   end
 
-  test "the three connection shapes partition a row" do
-    agent = mint.authorization
-    runner = mint_runner.authorization
-    combined = mint_combined.authorization
 
-    assert_predicate agent, :agent_connection?
-    refute_predicate agent, :runner_only_connection?
-    refute_predicate agent, :combined_connection?
 
-    refute_predicate runner, :agent_connection?
-    assert_predicate runner, :runner_only_connection?
-    refute_predicate runner, :combined_connection?
 
-    refute_predicate combined, :agent_connection?
-    refute_predicate combined, :runner_only_connection?
-    assert_predicate combined, :combined_connection?
-    refute_predicate combined, :tool_provider_connection?
-    refute_predicate combined, :reconnecting_live_runner?,
-      "the runner half of a combined grant carries no marker to reconnect by"
-  end
 
-  test "a combined row is valid only with both claim sets complete" do
-    authorization = mint_combined.authorization
-    assert_predicate authorization, :valid?
 
-    {
-      runner_display_name: nil,
-      agent_display_name: nil,
-      requested_executor_display_name: nil,
-    }.each do |field, value|
-      broken = DeviceAuthorization.new(authorization.attributes.except("id").merge(field.to_s => value))
-      assert_not broken.valid?, "#{field} must be present on a combined row"
-      assert broken.errors.of_kind?(field, :blank), field
-    end
-
-    other_kind = DeviceAuthorization.new(
-      authorization.attributes.except("id").merge("requested_executor_kind" => "tool_provider")
-    )
-    assert_not other_kind.valid?, "a tools provider under an agent's grant is meaningless"
-    assert other_kind.errors.of_kind?(:requested_executor_kind, :inclusion)
-  end
-
-  test "a combined row's private scope is present while pending and survives every status" do
-    authorization = mint_combined.authorization
-    assert_predicate authorization, :selects_agent_private?
-
-    authorization.record_connection(
-      user: users(:agent),
-      connector: users(:owner),
-      expected_executor: executors(:address),
-      selected_assignment_scope: authorization.selected_assignment_scope
-    )
-    assert_predicate authorization.reload, :selects_agent_private?
-
-    authorization.record_cancellation
-    assert_predicate authorization.reload, :canceled?
-    assert_predicate authorization, :selects_agent_private?
-
-    unscoped = DeviceAuthorization.new(
-      mint_combined.authorization.attributes.except("id").merge("selected_assignment_scope" => nil)
-    )
-    assert_not unscoped.valid?
-    assert unscoped.errors.of_kind?(:selected_assignment_scope, :inclusion)
-
-    widened = DeviceAuthorization.new(
-      mint_combined.authorization.attributes.except("id").merge("selected_assignment_scope" => "account_wide")
-    )
-    assert_not widened.valid?, "the in-process runner is always private"
-  end
 
   test "the raw device code round-trips through the strict finder" do
     result = mint

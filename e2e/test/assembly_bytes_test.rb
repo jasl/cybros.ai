@@ -387,7 +387,7 @@ class AssemblyBytesTest < Minitest::Test
     def rho_member_client = @daemon.member_client
 
     def runner_environment_lead(runner)
-      announcement = rho_member_client.executors.show(runner).environment
+      announcement = rho_member_client.executors.show(runner).environment_for(:runner)
       fragments = announcement.fetch("fragments").map { |fragment| fragment.fetch("text") }
       ["Work environment: Runner #{runner}.", *fragments].join("\n\n")
     end

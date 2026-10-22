@@ -39,10 +39,7 @@ module Rho
 
       def initialize: (wire: Wire, lineage: Lineage, context: Context, log: untyped, ?booted_at: String?) -> void
       def announced: () -> Hash[String, Integer?]
-      def announce_tools: (
-        untyped credential, registry: Rho::Runner::Extensions::Registry, environment: Hash[String, untyped]?,
-        ?documents: Array[Hash[String, untyped]]?, ?slot: Symbol, ?extras: Array[Hash[String, untyped]]
-      ) -> void
+      def announce_services: (untyped credential, services: Hash[String, untyped]) -> untyped
       def environment_document: (Rho::Runner::Extensions::Registry registry) -> Hash[String, untyped]
       def documents: (Rho::Runner::Extensions::Registry registry) -> Array[Hash[String, untyped]]
       def nudge_stream: (untyped about, ?Symbol slot) -> void
@@ -192,9 +189,6 @@ module Rho
       def release_runner: (untyped about, ?slot: Symbol) -> bool
       def install_runner: (untyped about, untyped runner, untyped tool_env, ?slot: Symbol) -> bool
       def take_runner: (untyped about, ?slot: Symbol) -> [untyped, untyped]?
-      def adopt_runner: (untyped about, identity: untyped, runner: untyped, ?authority_report: Hash[Symbol, untyped]?) -> bool
-      def lose_agent: (untyped about, ?unless_stopping: bool, ?report: Hash[Symbol, untyped]?) -> Retired?
-      def lose_runner: (untyped about, ?identity: untyped) -> Retired?
       def admit: () -> bool
       def release: () -> void
       def begin_stop: () -> bool
@@ -220,7 +214,7 @@ module Rho
         lineage: Lineage, home: Home, device_flow: untyped, wire: Wire, clock: ^() -> Time,
         display_name: String, log: untyped, maintenance: Maintenance,
         announce: Proc, adopt: Proc, settle: Proc, lose: Proc, transition: Proc,
-        ?mode: String, ?adopt_runner: Proc, ?lose_runner: Proc
+        ?mode: String
       ) -> void
       class LoginPlan < Data
         attr_reader request: Symbol
@@ -234,7 +228,7 @@ module Rho
       def start: () -> untyped
       def cancel: () -> untyped
       def import_api_keys: (Hash[String, untyped] document) -> untyped
-      def disconnect: (runner_only: bool) -> untyped
+      def disconnect: () -> untyped
       def resume_stored: () -> void
       def prepare_for_stop: () -> void
       def drain_poller: () -> void
@@ -255,7 +249,7 @@ module Rho
       def initialize: (
         lineage: Lineage, home: Home, wire: Wire, clock: ^() -> Time, interval: Numeric,
         log: untyped, announce: Proc, lose: Proc, member_credential: Proc,
-        on_workspace_adopted: Proc, spawn: Proc, ?mode: String, ?workspace: String?, ?workspace_selection: (^() -> String?)?, ?lose_runner: Proc,
+        on_workspace_adopted: Proc, spawn: Proc, ?mode: String, ?workspace: String?, ?workspace_selection: (^() -> String?)?,
         ?sweep: Proc
       ) -> void
       def start: () -> Thread
@@ -263,7 +257,7 @@ module Rho
       def running?: () -> bool
       def run_once: (untyped about, verify: bool) -> untyped
       def refresh_workspace: (untyped about) -> untyped
-      def renewal_event: (Symbol event, untyped about, ?unless_stopping: bool, ?lineage: Symbol) -> untyped
+      def renewal_event: (Symbol event, untyped about, ?unless_stopping: bool) -> untyped
       def authority_snapshot: (?about: untyped) -> Probe?
     end
 
@@ -605,6 +599,6 @@ module Rho
     private
 
     def mount_runner: (untyped about, Symbol slot) -> Rho::Runner?
-    def build_runner: (untyped owner, Rho::Runner::Extensions::Registry registry, Symbol slot) -> Rho::Runner
+    def build_runner: (untyped owner) -> Rho::Runner
   end
 end

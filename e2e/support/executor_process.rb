@@ -19,7 +19,7 @@ module E2E
     # The same transport loop serves an application address, an explicitly
     # selected Runner, or a ToolProvider pool. The pairing credential owns
     # the kind; the script verifies that fact before announcing.
-    KINDS = %i[agent_application runner tool_provider].freeze
+    KINDS = %i[agent runner tool_provider].freeze
 
     # The child resolves against rho-runner's frozen lockfile, never the
     # harness's own.

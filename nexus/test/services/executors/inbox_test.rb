@@ -50,7 +50,7 @@ class Executors::InboxTest < ActiveJob::TestCase
       manager: users(:owner), registration_identifier: "test-runner-2",
       display_name: "Second runner", assignment_scope: :account_wide
     ).executor_access_token.executor.tap do |runner|
-      assert_predicate runner.announce(tools: TEST_SERVED_TOOLS), :accepted?
+      assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     end
   end
 
@@ -282,11 +282,11 @@ class Executors::InboxTest < ActiveJob::TestCase
   end
 
   # THE APPROVAL ROW IS AN INBOX ROW: a model-composed call parked under `ask` LISTS on the
-  # addressed agent application's inbox as kind `approval` with the call and the frozen effect
+  # addressed agent's inbox as kind `approval` with the call and the frozen effect
   # profile the approver reads, `claimed: false`, on the 24 h park clock — nudged once as
-  # `approval`, never claimed (the verbs are member-plane). A Human's loop has no agent application:
+  # `approval`, never claimed (the verbs are member-plane). A Human's loop has no agent:
   # its held row lists in no inbox and nudges nobody — the person's member door alone.
-  test "an approval row lists on the agent application's inbox with the effect profile, nudges once and is never claimable" do
+  test "an approval row lists on the agent's inbox with the effect profile, nudges once and is never claimable" do
     agent = users(:agent)
     address = Executor.address_for(agent)
     create_bound_credential(executor: address, name: "Lane transport")
@@ -313,7 +313,7 @@ class Executors::InboxTest < ActiveJob::TestCase
 
     stream, payload = broadcasts.sole
     assert_equal AgentAPI::V1::ExecutorInboxChannel.stream_name(address.public_id), stream,
-      "the park nudges the agent application, once"
+      "the park nudges the agent, once"
     assert_equal "approval", payload.dig(:event, :kind)
     assert_equal call.node_key, payload.dig(:event, :task_key)
 
@@ -324,7 +324,7 @@ class Executors::InboxTest < ActiveJob::TestCase
     assert_equal({ "path" => "notes.md" }, row.fetch(:tool_input))
     assert_equal call.effect_profile, row.fetch(:effect_profile), "what the approver reads: the profile frozen on the row"
     assert_equal false, row.fetch(:claimed)
-    assert_equal({ role: "agent_application", executor_public_id: address.public_id }, row.fetch(:addressed_to))
+    assert_equal({ role: "agent", executor_public_id: address.public_id }, row.fetch(:addressed_to))
     assert_in_delta call.await_started_at + Tasks::AwaitTask::MAX_HOLD, Time.iso8601(row.fetch(:deadline_at)), 1
     refute row.key?(:started_at), "nothing was dispatched"
     assert_equal [], inbox.tasks, "the runner the call would be dispatched to sees nothing yet"
@@ -667,14 +667,14 @@ class Executors::InboxTest < ActiveJob::TestCase
     # live only behind the inbox and the claim, so a lost push still
     # costs milliseconds and never a task.
     event = payload.fetch(:event)
-    assert_equal({ type: Executors::Nudge::WORK_AVAILABLE, kind: "tool_call",
+    assert_equal({ type: Executors::Nudge::WORK_AVAILABLE, kind: "tool_call", role: "runner",
                    run_public_id: run.public_id,
                    task_key: "alpha", tool_name: "read_file" }, event)
     assert_empty event.keys.map(&:to_s) & %w[tool_input tool_call_id claim_token],
       "the cable never carries what the runner would EXECUTE"
   end
 
-  # A model's ask on an agent-created loop is the agent application's inbox row: parking it nudges
+  # A model's ask on an agent-created loop is the agent's inbox row: parking it nudges
   # the agent's channel with the kind and the task — no tool, and never the question itself.
   test "an addressed ask nudges the agent's channel with kind ask and no tool" do
     agent = users(:agent)
@@ -687,7 +687,7 @@ class Executors::InboxTest < ActiveJob::TestCase
     assert_equal "awaiting_input", asked.status
     stream, payload = broadcasts.sole
     assert_equal AgentAPI::V1::ExecutorInboxChannel.stream_name(address.public_id), stream
-    assert_equal({ type: Executors::Nudge::WORK_AVAILABLE, kind: "ask",
+    assert_equal({ type: Executors::Nudge::WORK_AVAILABLE, kind: "ask", role: "agent",
                    run_public_id: run.public_id, task_key: asked.node_key },
       payload.fetch(:event))
     assert_equal [asked.node_key], inbox(executor: address).tasks.map { |row| row.fetch(:task_key) }

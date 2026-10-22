@@ -14,15 +14,15 @@ class Runs::Runners::ListTest < ActiveJob::TestCase
   test "listing reports frozen candidates with no selected Runner and ignores later profile and announcement changes" do
     runner = suite_runner
     runner.update!(display_name: "Workstation")
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS,
-      environment: { "fragments" => [{ "text" => "Accepted environment" }] }), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS,
+      "environment" => { "fragments" => [{ "text" => "Accepted environment" }] } } }), :accepted?
     run = seed(model("round1", "kernel_tools" => ["nexus.runners.list"],
       "runner_executor_public_ids" => [runner.public_id], "runner_tool_names" => []),
       default_runner_executor_public_id: nil, creating_user: users(:agent))
     frozen = loop_node(run, "round1").operation_context.fetch("environment").fetch("runner_candidates")
     run.answering_user.update!(runner_executor_public_ids: [])
     runner.update!(display_name: "Renamed")
-    runner.announce(tools: [], environment: { "fragments" => [{ "text" => "Later environment" }] })
+    runner.announce(services: { runner.executor_kind => { "tools" => [], "environment" => { "fragments" => [{ "text" => "Later environment" }] } } })
 
     start_loop(run)
     run_loop_round!(run, sse_success("list", tool_calls: [{ id: "list", name: "runners_list", arguments: "{}" }]))

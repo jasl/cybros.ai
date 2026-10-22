@@ -133,7 +133,7 @@ end
   def test_the_listing_carries_the_rows_of_the_runners_followed_hosts_are_bound_to
     remote_row = { "id" => "p4", "status" => "running", "pid" => 77, "owner" => "c-1", "run_public_id" => "al-9",
                    "command" => "python3 -m http.server", "workdir" => "/srv", "name" => "web" }
-    api = NexusDoubles::FakeAgentApi.new(task_detail: {
+    api = NexusDoubles::FakeAgentApi.new(executors: [NexusDoubles.remote_runner("0199-h")], task_detail: {
       "kind" => "tool_task", "lifetime" => "conversation", "wake" => "auto", "status" => "completed", "tool_name" => "list_processes",
       "output" => "p4  running  pid 77", "structured_content" => { "processes" => [remote_row] },
       "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-13T00:00:00Z",
@@ -154,7 +154,8 @@ end
     authored = api.run_creates.map { |body| body.dig("run", "steps", 0, "tool") }
     assert_equal [{ "name" => "list_processes", "input" => {}, "key" => "call_tool",
                     "timeout_ms" => Rho::Extensions::Processes::Remote::TIMEOUT_MS,
-                    "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-h" } }], authored,
+                    "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-h" },
+                    "executor_context" => { "rho.environment" => { "root" => "/srv/elsewhere", "directories" => [], "anchor" => nil } } }], authored,
       "ONE call_tool for the one remote runner two hosts share; this daemon's own runner is read from the table"
     assert_equal "0199-h", api.run_creates.first.dig("run", "default_runner_executor_public_id")
     paths = api.requests.map(&:first)
@@ -165,7 +166,7 @@ end
   # the composition's stop behind it — is ONE `unreachable` entry with the
   # error key, never a listing that looks empty or a 500.
   def test_a_runner_that_cannot_answer_is_one_unreachable_entry
-    api = NexusDoubles::FakeAgentApi.new(task_detail: {
+    api = NexusDoubles::FakeAgentApi.new(executors: [NexusDoubles.remote_runner("0199-h")], task_detail: {
       "kind" => "tool_task", "lifetime" => "conversation", "wake" => "auto", "status" => "timed_out", "tool_name" => "list_processes",
       "error" => { "key" => "tool_timeout", "detail" => "nobody claimed it" },
       "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-13T00:00:00Z",
@@ -187,7 +188,7 @@ end
   # flag an id this machine does not know is asked of the ONE runner the
   # followed hosts are bound to.
   def test_the_log_door_reads_a_row_elsewhere_through_process_log
-    api = NexusDoubles::FakeAgentApi.new(task_detail: {
+    api = NexusDoubles::FakeAgentApi.new(executors: [NexusDoubles.remote_runner("0199-h")], task_detail: {
       "kind" => "tool_task", "lifetime" => "conversation", "wake" => "auto", "status" => "completed", "tool_name" => "process_log",
       "output" => "p4  running  pid 77\n\nGET / 200",
       "structured_content" => { "process" => { "id" => "p4", "status" => "running" }, "path" => "/log/p4.log",
@@ -204,7 +205,8 @@ end
                    "path" => "/log/p4.log", "lines" => ["GET / 200"] }, named)
     assert_equal({ "name" => "process_log", "input" => { "id" => "p4", "lines" => 3 }, "key" => "call_tool",
                    "timeout_ms" => Rho::Extensions::Processes::Remote::TIMEOUT_MS,
-                   "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-h" } },
+                   "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-h" },
+                    "executor_context" => { "rho.environment" => { "root" => "/srv/elsewhere", "directories" => [], "anchor" => nil } } },
       api.run_creates.first.dig("run", "steps", 0, "tool"))
 
     unnamed = JSON.parse(request(daemon, :get, "/processes/log?id=p4", token: bearer(daemon)).body)
@@ -219,7 +221,7 @@ end
   # are read from the store on every request, so one daemon walks the
   # three counts: none, one (the call_tool names it), two (no call_tool at all).
   def test_the_log_door_infers_the_one_remote_runner_and_names_the_flag_for_several
-    api = NexusDoubles::FakeAgentApi.new(task_detail: {
+    api = NexusDoubles::FakeAgentApi.new(executors: [NexusDoubles.remote_runner("0199-h")], task_detail: {
       "kind" => "tool_task", "lifetime" => "conversation", "wake" => "auto", "status" => "completed", "tool_name" => "process_log",
       "output" => "p9  running  pid 91\n\nready",
       "structured_content" => { "process" => { "id" => "p9", "status" => "running" }, "path" => "/log/p9.log",
@@ -245,7 +247,8 @@ end
       "the relayed process_log is addressed to the one runner"
     assert_equal({ "name" => "process_log", "input" => { "id" => "p9", "lines" => 2 }, "key" => "call_tool",
                    "timeout_ms" => Rho::Extensions::Processes::Remote::TIMEOUT_MS,
-                   "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-h" } },
+                   "route" => { "kind" => "runner", "runner_executor_public_id" => "0199-h" },
+                    "executor_context" => { "rho.environment" => { "root" => "/srv/elsewhere", "directories" => [], "anchor" => nil } } },
       api.run_creates.first.dig("run", "steps", 0, "tool"))
 
     store.remember(Rho::Host::Conversation.new(public_id: "c-2"), workspace: "ws-1", runner: "0199-k")

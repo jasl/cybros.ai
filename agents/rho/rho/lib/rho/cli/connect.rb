@@ -39,7 +39,7 @@ module Rho
 
       # THE PAIR OF CONNECT: revoke and forget — the runner
       # half alone with `--runner` — then the lines that say what ended.
-      def disconnect(runner: false) = report_disconnect(core.disconnect(runner: runner))
+      def disconnect = report_disconnect(core.disconnect)
 
       private
 
@@ -57,9 +57,7 @@ module Rho
           end
 
           fields = mode == "runner" ? %w[executor_access_token] : %w[access_token executor_access_token]
-          fields << "runner_access_token" if mode == "full"
-          labels = { "access_token" => "Agent member API key", "executor_access_token" => "Executor API key",
-            "runner_access_token" => "Private Runner API key" }
+          labels = { "access_token" => "Agent member API key", "executor_access_token" => "Executor API key" }
           fields.to_h { |field| [field, input.getpass("#{labels.fetch(field)}: ")] }
         rescue JSON::ParserError
           raise ConnectionError, "API key input must be a JSON object"
@@ -75,8 +73,8 @@ module Rho
             # The daemon reports failure as an envelope or a bare string
             # (`failure_message` reads both); only the envelope form can carry
             # the bootstrapping code.
-            error = started["error"]
-            unless error.is_a?(Hash) && error["code"] == "connection_bootstrapping" &&
+            error = Hash.try_convert(started["error"])
+            unless error && error["code"] == "connection_bootstrapping" &&
                 Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
               return started
             end
@@ -99,10 +97,7 @@ module Rho
 
             case status["state"]
             when "active"
-              # A removed Profile is restored while its independent Runner
-              # remains active. During that handover the daemon state is still
-              # active, but the replacement ceremony is not complete yet; a
-              # `pending_runner` phase keeps polling the same way.
+              # Report only the completed ceremony or an already signed-in connection.
               phase = connection["phase"]
               if phase == "active" || (phase.nil? && status.dig("authority", "signed") == "signed_in")
                 return report(status["identity"], mode: status["mode"], runner: status["runner"])

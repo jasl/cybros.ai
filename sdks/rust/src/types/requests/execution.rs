@@ -94,7 +94,9 @@ request!(CreateSchedule {prompt:String,rule:ScheduleRuleRequest} {executor_conte
 request!(UpdateSchedule {expected_lock_version:i64} {executor_contexts:JsonObject,name:String,prompt:String,rule:ScheduleRuleRequest,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,model_selection:ModelSelection,fallback_models:Vec<String>});
 request!(AnnouncedTool {name:String,effect_profile:EffectProfile} {timeout_ms:u64,description:String,input_schema:JsonObject,mcp:JsonObject});
 request!(AnnouncedDocument {name:String,description:String} {});
-request!(Announcement {tools:Vec<AnnouncedTool>} {environment:JsonObject,documents:Vec<AnnouncedDocument>});
+request!(ServiceAnnouncement {tools:Vec<AnnouncedTool>} {environment:JsonObject,documents:Vec<AnnouncedDocument>});
+request!(ServiceAnnouncements {} {agent:ServiceAnnouncement,runner:ServiceAnnouncement,tool_provider:ServiceAnnouncement});
+request!(Announcement {services:ServiceAnnouncements} {});
 request!(ExtendClaim {claim_token:SecretString,timeout_ms:u64} {});
 request!(CommitTask {claim_token:SecretString} {content:Value,structured_content:Value,result_type:String,is_error:bool,outcome:Outcome,title:String,metadata:JsonObject});
 request!(SubmittedOperation {key:String,request:OperationRequest} {});

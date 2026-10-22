@@ -154,7 +154,6 @@ en:
       connection_unavailable: "This connection is no longer available. Check its current status or start a new connection from the %{subject}."
       shutdown_pending: "This %{subject} is still completing shutdown from a previous member removal. Try connecting again after it finishes."
       runner_registration_changed: "This Runner registration changed after the page loaded. Review its current assignment scope and connect again."
-      assignment_agent_not_eligible: "The requested application is not one of your currently available paired applications. Start a new connection from an application you manage."
       runner_assignment_mismatch: "This Runner has a different application binding or sharing scope. Reconnecting cannot change its assignment. Revoke the Runner first to register it again with the requested assignment."
       administrator_required: "Sharing a Runner with the installation needs an administrator. Connect it without sharing to serve the Agents you manage."
   invitation_acceptances:
@@ -215,8 +214,6 @@ en:
             agent:
               not_agent_member: "must be an agent member"
               not_eligible: "must be an active agent member with an active steward"
-            assignment_agent:
-              not_eligible: "must be an active paired Agent stewarded by this Runner's manager"
             manager:
               not_eligible: "must be an active human member of this account"
         access_token:

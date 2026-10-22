@@ -641,7 +641,7 @@ class RhoSpawnTest < Minitest::Test
     # An omitted Runner leaves B's conversation unbound; an explicit B Runner
     # reaches Nexus even though A cannot discover that private executor.
     [nil, peer_runner].each do |runner|
-      flags = runner ? ["--runner", runner] : []
+      flags = runner ? ["--runner", runner, "--dir", @world.project] : []
       opened, exit_status = @daemon.cli("do", "--model", MODEL, "--agent", "@#{peer_handle}", *flags)
       assert_predicate exit_status, :success?, "promptless rho do --agent failed:\n#{opened}"
       id = opened[/^conversation:\s+(\S+)/, 1]

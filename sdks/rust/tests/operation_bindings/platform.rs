@@ -200,44 +200,6 @@
             .list(&Default::default())
     );
     operation!(
-        "GET /api/v1/agents/{agent_id}/private_runners",
-        "GET",
-        "/api/v1/agents/fixture/private_runners",
-        platform
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .private_runners()
-            .list(&Default::default())
-    );
-    operation!(
-        "GET /api/v1/agents/{agent_id}/private_runners/{id}",
-        "GET",
-        "/api/v1/agents/fixture/private_runners/fixture",
-        platform
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .private_runners()
-            .runner("fixture")
-            .unwrap()
-            .fetch()
-    );
-    operation!(
-        "GET /api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys",
-        "GET",
-        "/api/v1/agents/fixture/private_runners/fixture/api_keys",
-        platform
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .private_runners()
-            .runner("fixture")
-            .unwrap()
-            .api_keys()
-            .list(&Default::default())
-    );
-    operation!(
         "GET /api/v1/agents/{id}",
         "GET",
         "/api/v1/agents/fixture",
@@ -439,47 +401,6 @@
             .agent("fixture")
             .unwrap()
             .executor_api_keys()
-            .key("fixture")
-            .unwrap()
-            .revoke()
-    );
-    operation!(
-        "POST /api/v1/agents/{agent_id}/private_runners",
-        "POST",
-        "/api/v1/agents/fixture/private_runners",
-        platform
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .private_runners()
-            .create(&Default::default())
-    );
-    operation!(
-        "POST /api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys",
-        "POST",
-        "/api/v1/agents/fixture/private_runners/fixture/api_keys",
-        platform
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .private_runners()
-            .runner("fixture")
-            .unwrap()
-            .api_keys()
-            .issue(&Default::default())
-    );
-    operation!(
-        "POST /api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys/{api_key_id}/revocation",
-        "POST",
-        "/api/v1/agents/fixture/private_runners/fixture/api_keys/fixture/revocation",
-        platform
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .private_runners()
-            .runner("fixture")
-            .unwrap()
-            .api_keys()
             .key("fixture")
             .unwrap()
             .revoke()

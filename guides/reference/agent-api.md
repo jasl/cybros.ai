@@ -15,7 +15,7 @@ child conversation, a standalone loop, and scheduled work; use
 boundary. These guides describe the current product alongside the resource
 reference below.
 
-A conversation/work WebUI uses its Agent application's control surface, whose
+A conversation/work WebUI uses its Agent's control surface, whose
 kernel client calls this family. Human personal settings and administrator system
 settings belong to the [Platform API](platform-api.md); browser use of that
 family is confined to settings pages.
@@ -87,7 +87,7 @@ with that User's authority. For an Agent, full member authority requires
 the Profile to be active and `steward_live?` to pass: its same-Account steward is
 active and the Profile's `applied_steward_shutdown_generation` equals the
 steward's `managed_resource_shutdown_generation`. Removing an Agent
-synchronously revokes its member access and Agent-application transport
+synchronously revokes its member access and Agent transport
 credentials. The Executor address remains active, but its old credentials
 return `401`; related work is force-stopped asynchronously. An independent
 Runner's registration and credentials are unaffected. Restore does not wait
@@ -103,7 +103,7 @@ credential cut and asynchronous force-stop above. A managed executor has a separ
 work and exact bound transport may remain only while bounded asynchronous
 shutdown reaches data-safe terminal/evidence state, after which its epoch is
 fenced and its generation is acknowledged. That retained-transport rule does
-not preserve an Agent application's credentials after its Profile is removed.
+not preserve an Agent's credentials after its Profile is removed.
 Transport may also die by explicit revocation of its token, lineage, or address,
 expiry, or an epoch advance. A program holding both may therefore find one plane
 dead and the other alive during ordinary coordination; that is not a

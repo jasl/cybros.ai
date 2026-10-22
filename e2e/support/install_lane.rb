@@ -27,7 +27,7 @@ module E2E
     DEFAULT_IMAGE = "rho-install-test:browser".freeze
     MODEL = "dev/mock-text".freeze
     EMPTY_PRELUDE = File.expand_path("empty_extensions_prelude.rb", __dir__)
-    ANNOUNCED_AGENT_NOTHING = /event=executor\.announced tools=0 address=agent\b/
+    ANNOUNCED_AGENT_NOTHING = /event=executor\.announced tools=0 role=agent\b/
     TROUBLE = /runner_task_failed|runner_submit_refused/
     AWAIT_SECONDS = 120
     LOOP_POLL = 1
@@ -152,10 +152,11 @@ module E2E
     # row is addressed to the installed runner, claimed in ITS log, and
     # answers the marker. The agent's log claims nothing.
     def read_through_runner!(workspace_public_id, runner_id, path)
-      project = File.join(@home, "project")
-      FileUtils.mkdir_p(project)
+      # The marker path belongs to the installed Runner's filesystem. A
+      # container cannot bind the agent's host-side temporary directory.
+      project = File.dirname(path)
       read = runner_read_callable(workspace_public_id, runner_id, project)
-      output, status = @daemon.cli("run", "!mock tool_call=#{read} tool_args=#{CGI.escape(JSON.generate({ "path" => path }))} -- say what you read",
+      output, status = @daemon.cli("run", "!mock tool_call=#{read} tool_args=#{CGI.escape(JSON.generate({ "path" => File.basename(path) }))} -- say what you read",
         "--model", MODEL, "--dir", project, "--runner", runner_id)
       assert_predicate status, :success?, "rho run failed:\n#{output}"
       loop_id = output[/^run:\s+(\S+)/, 1]

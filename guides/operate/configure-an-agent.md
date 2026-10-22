@@ -1,6 +1,6 @@
 # Inspect an Agent configuration
 
-The agent application owns its prompts, models, tools and reusable Presets. Nexus
+The agent owns its prompts, models, tools and reusable Presets. Nexus
 stores its generic declaration and captures configuration for each accepted execution.
 
 Open **Resources → Agents**, select an Agent, then open **Agent configuration**.

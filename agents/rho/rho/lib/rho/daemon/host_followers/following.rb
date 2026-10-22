@@ -75,6 +75,21 @@ module Rho
 
         private
 
+          # `:turn_follow`, fired with the RUN backing the turn, fail-OPEN: a
+          # hook that raises costs that gate, never the follower. One gate per
+          # run; the first answered stands.
+          def follow_gate(run_public_id, notes, ctx)
+            gates = @loaded.daemon_hooks.select { |hook| hook.event == :turn_follow }.filter_map do |hook|
+              hook.call(run_public_id, notes, ctx)
+            rescue StandardError => error
+              @log.warn("turn_follow_hook_failed", extension: hook.extension, run: run_public_id,
+                error_class: error.class.name)
+              nil
+            end
+            @log.warn("run_gate_ambiguous", run: run_public_id, gates: gates.length) if gates.length > 1
+            gates.first
+          end
+
           def install_gate(run, gate)
             return if gate.nil?
 

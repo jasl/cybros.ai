@@ -30,7 +30,7 @@ async function observe() {
 async function main(): Promise<object> {
   switch (config.action) {
     case 'executor_announce': {
-      const description = await executor().announce({ tools: [{ name: 'sdk_echo', description: 'Echo one test marker', input_schema: { type: 'object', properties: { marker: { type: 'string' } }, required: ['marker'] }, effect_profile: { kind: 'read_only', destructive: false, effect_scope: 'closed', idempotency: 'intrinsic', reconciliation: 'none' } }] });
+      const description = await executor().announce({ services: { agent: { tools: [] }, runner: { tools: [{ name: 'sdk_echo', description: 'Echo one test marker', input_schema: { type: 'object', properties: { marker: { type: 'string' } }, required: ['marker'] }, effect_profile: { kind: 'read_only', destructive: false, effect_scope: 'closed', idempotency: 'intrinsic', reconciliation: 'none' } }] } } });
       return { executor_public_id: description.executor.public_id };
     }
     case 'member_prepare': {

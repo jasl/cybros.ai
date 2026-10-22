@@ -111,7 +111,7 @@ class RhoDaemonTest < Minitest::Test
     # shape, the person approved ONE page carrying the runner sentence, and
     # the grant minted the agent address AND a private runner row — three
     # planes on one connection.
-    assert_equal "combined", started.fetch("branch"), started.inspect
+    assert_equal "agent", started.fetch("branch"), started.inspect
     E2E::Ceremony.confirm(actor: @actor, started: started, status: -> { status })
     connected = await_state("active")
 
@@ -121,12 +121,12 @@ class RhoDaemonTest < Minitest::Test
     runner = identity.fetch("runner_executor_public_id")
     refute_nil agent_public_id
     refute_nil address
-    refute_nil runner, "the combined grant registered this machine's runner: #{identity.inspect}"
-    refute_equal address, runner, "the runner is a second executor row, never the agent address"
+    refute_nil runner
+    assert_equal address, runner, "Local uses the application executor UUID"
     assert_equal "signed_in", connected.dig("authority", "signed")
     assert_equal "live", connected.dig("authority", "planes", "member")
     assert_equal "live", connected.dig("authority", "planes", "executor_transport")
-    assert_equal "live", connected.dig("authority", "planes", "runner_transport")
+    refute connected.fetch("authority").fetch("planes").key?("runner_transport")
 
     # A restart is invisible: the daemon resumes the connection it already has.
     # Under single-instance addressing a second ceremony would re-pair this
@@ -141,8 +141,7 @@ class RhoDaemonTest < Minitest::Test
     assert_equal runner, restarted.dig("identity", "runner_executor_public_id")
     assert_equal "live", restarted.dig("authority", "planes", "executor_transport"),
       "a fenced transport plane means the daemon re-ran a ceremony it should have resumed"
-    assert_equal "live", restarted.dig("authority", "planes", "runner_transport"),
-      "the runner lineage resumed from its own vault beside the agent's"
+    refute restarted.fetch("authority").fetch("planes").key?("runner_transport")
 
     # Agent removal fences both Agent planes. Recovery keeps the independently
     # managed Runner and re-pairs the Agent's original address.
@@ -157,7 +156,7 @@ class RhoDaemonTest < Minitest::Test
     assert_equal "unauthorized", degraded.dig("authority", "planes", "executor_transport")
     # The runner plane is the MANAGER's credential, not the Agent's:
     # removing the Agent leaves it live.
-    assert_equal "live", degraded.dig("authority", "planes", "runner_transport")
+    refute degraded.fetch("authority").fetch("planes").key?("runner_transport")
 
     restoring = start_ceremony
     # A refusal here is a document with an `error`, not a `phase`; a bare
@@ -179,8 +178,7 @@ class RhoDaemonTest < Minitest::Test
       "the restore kept the runner it had; it did not pair a second one"
     assert_equal "live", restored.dig("authority", "planes", "member")
     assert_equal "live", restored.dig("authority", "planes", "executor_transport")
-    assert_equal "live", restored.dig("authority", "planes", "runner_transport"),
-      "a fenced runner plane means the restore re-consumed the runner half"
+    refute restored.fetch("authority").fetch("planes").key?("runner_transport")
 
     # The steward ends the session from the console. rho must notice, say so in
     # the ordinary words, and stay up rather than pretending nothing happened.
@@ -190,7 +188,7 @@ class RhoDaemonTest < Minitest::Test
     revoked = await_signed("expired")
     assert_equal "active", revoked.fetch("state"), "rho stays up and reports; it does not fall over"
     assert_equal "unauthorized", revoked.dig("authority", "planes", "member")
-    assert_equal "live", revoked.dig("authority", "planes", "runner_transport")
+    refute revoked.fetch("authority").fetch("planes").key?("runner_transport")
   end
 
   # The CLI a person actually types, driven end to end: `rho connect` prints
@@ -393,7 +391,7 @@ class RhoDaemonTest < Minitest::Test
     end
     # The shipped CLI's ceremony is the daemon's: full mode, the combined
     # page with the sentence; the CLI itself waits the daemon out.
-    E2E::Ceremony.confirm(actor: @actor, started: started.merge("branch" => "combined"))
+    E2E::Ceremony.confirm(actor: @actor, started: started.merge("branch" => "agent"))
 
     exit_status = until_ready("rho connect never finished") do
       next unless Process.waitpid(@cli_pid, Process::WNOHANG)

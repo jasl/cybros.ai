@@ -208,7 +208,6 @@ export default defineConfig({
             { text: 'Persona', link: '/reference/platform-api/persona' },
             { text: 'Agent settings', link: '/reference/platform-api/agents' },
             { text: 'Agent API keys', link: '/reference/platform-api/agent-api-keys' },
-            { text: 'Private Runners', link: '/reference/platform-api/private-runners' },
             { text: 'Managed Runners', link: '/reference/platform-api/runners' },
             { text: 'MCP connections', link: '/reference/platform-api/mcp-connections' },
             { text: 'Admin users', link: '/reference/platform-api/admin-users' },

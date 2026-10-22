@@ -232,6 +232,64 @@ class UntilTest < Minitest::Test
     puts File.readlines(@daemon.rho_log_path).grep(/until.scan_completed/).last if ENV["E2E_RECOVERY_SCALE"]
   end
 
+  def test_until_creation_conflict_preserves_two_attempts_after_recovery_without_cache
+    boot_rho
+    project = File.join(@home, "retry-project").tap { |path| FileUtils.mkdir_p(path) }
+    start_independent_runner(project)
+    command = 'while [ ! -f .resume ]; do sleep 0.1; done; n=$(cat .checks 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > .checks; printf still-failing; exit 1'
+    body = { prompt: "!mock reply=attempt -- start the work", model: MODEL, title: "Creation retry",
+      idempotency_key: SecureRandom.uuid, default_runner_executor_public_id: @independent.executor_public_id,
+      environment: { root: project, directories: [] }, until: { command: command, attempts: 2 } }
+    opened = @daemon.control(:post, "/conversations", body: body, expected_status: 201)
+    conversation = opened.fetch("conversation").fetch("public_id")
+    workspace = @daemon.member_client.workspace(@workspace_public_id)
+    chat = workspace.conversation(conversation)
+    @daemon.await("the independent Runner never claimed the first check") { @independent.claimed_keys.include?("check-1") }
+    entry = @daemon.await("the first Until Run was not durably bound") do
+      summary = chat.store_entries.list.items.find { |row| row.namespace == "rho.host" && row.key == "policy" }
+      saved = summary && chat.store_entries.fetch(summary.public_id)
+      saved if saved&.value&.dig("notes", "rho.until", "run_public_id")
+    end
+    @offline_run = workspace.run(entry.value.dig("notes", "rho.until", "run_public_id"))
+    replay = @daemon.control(:post, "/conversations", body: body, expected_status: 201)
+    assert_equal conversation, replay.dig("conversation", "public_id")
+    assert_equal opened.dig("input", "public_id"), replay.dig("input", "public_id")
+    assert_equal entry, chat.store_entries.fetch(entry.public_id)
+    # Resubmit a changed request under the original identity, as a client
+    # that missed the successful response would do.
+    conflict = @daemon.control(:post, "/conversations", body: body.merge(until: { command: command, attempts: 20 }), expected_status: 409)
+    assert_equal "idempotency_envelope_mismatch", conflict.dig("error", "code")
+    unchanged = chat.store_entries.fetch(entry.public_id)
+    assert_equal entry.value, unchanged.value
+    assert_equal entry.lock_version, unchanged.lock_version
+
+    cache = @daemon.host_cache_path
+    @daemon.kill!
+    FileUtils.rm_f(cache)
+    FileUtils.rm_f(File.join(@home, "tmp", "announcement.json"))
+    File.write(File.join(project, ".resume"), "continue")
+    @daemon.await("the first check did not finish while rho was stopped") do
+      @offline_run.fetch.tasks.any? { |task| task.key == "check-1" && task.status == "completed" }
+    end
+    @daemon.start
+    await_workspace_state("adopted")
+    @daemon.await("the recovered Until goal did not report its two failed checks", timeout: 60) do
+      @offline_run.fetch.status == "completed"
+    end
+    keys = @offline_run.fetch.tasks.map(&:key)
+    assert_includes keys, "work-2"
+    assert_includes keys, "check-2"
+    assert_includes keys, "report"
+    %w[work-3 check-3 hold-3].each { |key| refute_includes keys, key }
+    assert_equal "2", File.read(File.join(project, ".checks")).strip
+    %w[check-1 check-2].each do |key|
+      check = @offline_run.task(key)
+      assert_equal 1, check.structured_content.fetch("exit_status")
+      assert_equal @independent.executor_public_id, check.task.claimed_by.executor_public_id
+    end
+    assert_equal entry.value, chat.store_entries.fetch(entry.public_id).value
+  end
+
   def test_a_cold_runner_uses_each_accepted_directory_and_fails_if_it_disappears
     boot_rho
     default = File.join(@home, "default").tap { |path| FileUtils.mkdir_p(path) }
@@ -322,6 +380,19 @@ class UntilTest < Minitest::Test
   end
 
   private
+
+    def start_independent_runner(project)
+      runner_home = File.join(@home, "retry-runner").tap { |path| FileUtils.mkdir_p(path) }
+      device = CybrosAgent::DeviceFlow::Client.new(base_url: @base_url, sleeper: ->(_seconds) { sleep 0.2 })
+      E2E::DeviceAuthorizationBudget.consume
+      authorization = device.request_runner_authorization(registration_identifier: "e2e-retry-#{SecureRandom.hex(4)}",
+        runner_display_name: "Independent retry environment")
+      E2E::RunnerGrant.visit_connection(actor: @actor, authorization: authorization)
+      E2E::RunnerGrant.connect_in_browser(actor: @actor, authorization: authorization)
+      credentials = device.await_credentials(authorization)
+      @independent = E2E::ExecutorProcess.new(base_url: @base_url, home: runner_home,
+        credential: credentials.executor_access_token, world: project, environment: project).start
+    end
 
     # One full-mode rho: paired on the combined page, adopting a workspace,
     # registering its own runner row and announcing its tools.

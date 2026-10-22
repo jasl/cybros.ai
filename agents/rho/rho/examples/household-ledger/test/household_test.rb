@@ -45,7 +45,9 @@ module HouseholdTest
   end
   RunSnapshot = Data.define(:approval_mode, :turn)
   Turn = Data.define(:answering_user_public_id)
-  ToolCall = Data.define(:declaring_task_key)
+  ToolCall = Data.define(:declaring_task_key, :task, :executor_context)
+  AddressedTask = Data.define(:addressed_to)
+  Address = Data.define(:executor_public_id)
   ModelTask = Data.define(:model)
   ModelRound = Data.define(:task, :tool_definitions, :model_selection, :fallback_models)
 
@@ -344,8 +346,11 @@ class HouseholdLedgerTest < Minitest::Test
     round = ModelRound.new(task: ModelTask.new(model: { "model" => "fixture/recovered", "reasoning_enabled" => false, "reasoning_effort" => "low" }),
       tool_definitions: [{ "type" => "function", "function" => { "name" => "household_cleaning_version" } }, { "type" => "function", "name" => "memory_read" }],
       model_selection: { "source" => "default", "model" => "fixture/initial", "constraint" => "any", "alternatives" => [] }, fallback_models: ["fixture/backup"])
+    environment = { "rho.environment" => { "root" => "/accepted/work", "directories" => [], "anchor" => @session.conversation } }
+    call = ToolCall.new(declaring_task_key: "round-2",
+      task: AddressedTask.new(addressed_to: Address.new(executor_public_id: "application-address")), executor_context: environment)
     run = Run.new(snapshot: RunSnapshot.new(approval_mode: "rules", turn: Turn.new(answering_user_public_id: "fixture-answerer")),
-      tasks: { "triage" => ToolCall.new(declaring_task_key: "round-2"), "round-2" => round })
+      tasks: { "triage" => call, "round-2" => round })
     workspace = Workspace.new(conversation_row: Conversation.new(store_entries: @store, schedules: @jobs), runs: Runs.new(rows: { "source-run" => run }))
     plane = lambda do |host_public_id:, workspace_public_id:|
       assert_equal @session.conversation, host_public_id
@@ -368,9 +373,10 @@ class HouseholdLedgerTest < Minitest::Test
     assert_equal %w[household_cleaning_version memory_read], fields.fetch(:tool_names)
     assert_equal "source-run", fields.fetch(:source_run_public_id)
     assert_equal "triage", fields.fetch(:source_task_key)
+    assert_equal({ "application-address" => environment }, fields.fetch(:executor_contexts))
     assert_equal 1, @notices.delivered.length
 
-    run.tasks["triage"] = ToolCall.new(declaring_task_key: nil)
+    run.tasks["triage"] = call.with(declaring_task_key: nil)
     assert_raises(Extension::Error) { session.creation_fields }
   end
 

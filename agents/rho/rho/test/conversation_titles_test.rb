@@ -113,7 +113,7 @@ class ConversationTitlesTest < Minitest::Test
     @logger.define_singleton_method(:warn) { |*args, **fields| @warnings << [args, fields] }
     @logger.instance_variable_set(:@warnings, @warnings)
     @titles = Rho::ConversationTitles.new(config: @config, log: @logger, clock: -> { @now }, sleeper: ->(seconds) { @now += seconds })
-    policy.replace(title_pending: true)
+    policy.establish(title_pending: true)
   end
 
   def test_first_accepted_input_runs_in_background_on_its_model_and_writes_once
@@ -194,7 +194,7 @@ class ConversationTitlesTest < Minitest::Test
     refute policy.read.title_pending
 
     @store = RhoTest::EnvironmentFixtures::FakeStore.new
-    policy.replace(title_pending: true)
+    policy.establish(title_pending: true)
     @conversation.document = @conversation.document.with(title: nil)
     accept(blocked: true)
     assert_empty @tasks
@@ -265,7 +265,7 @@ class ConversationTitlesTest < Minitest::Test
     assert_equal "文" * 255, @conversation.document.title
 
     @store = RhoTest::EnvironmentFixtures::FakeStore.new
-    policy.replace(title_pending: true)
+    policy.establish(title_pending: true)
     @conversation.document = Document.new(title: nil, lock_version: 0)
     @lane.result = Result.new(status: "completed", output_text: " \n ")
     accept(input: "empty-result")
@@ -303,7 +303,7 @@ class ConversationTitlesTest < Minitest::Test
   def test_failed_or_stopped_title_work_is_discarded_without_publishing
     %w[failed canceled timed_out].each do |status|
       @store = RhoTest::EnvironmentFixtures::FakeStore.new
-      policy.replace(title_pending: true)
+      policy.establish(title_pending: true)
       @lane.result = Result.new(status: status, output_text: "Not a title")
       accept
       @tasks.shift.call

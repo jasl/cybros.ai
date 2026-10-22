@@ -18,7 +18,6 @@
       t("runner_resources.manager") => Current.user.display_name,
       t("runners.index.scope") => t("runners.assignment_scopes.#{@runner_facts.fetch(:assignment_scope)}"),
       t("runner_resources.registered_at") => l(@runner.created_at, format: :long),
-      **(@runner.assignment_agent ? { t("runner_resources.assigned_agent") => @runner.assignment_agent.display_name } : {}),
     } %>
     <details class="text-sm">
       <summary class="cursor-pointer text-base-content/60"><%= t("runner_resources.current_user_eligibility") %></summary>
@@ -37,7 +36,6 @@
     } %>
     <div class="flex flex-wrap gap-2">
       <%= link_to t("runners.index.connect_runner"), runner_connection_path, class: "btn btn-outline btn-sm" %>
-      <% if @key_agent %><%= link_to t("agents.api_keys.kinds.runner"), agent_private_runner_api_keys_path(@key_agent, @runner), class: "btn btn-outline btn-sm" %><% end %>
     </div>
     <p class="text-sm text-base-content/60"><%= t(@runner.active? ? "resource_management.reconnect" : "resource_management.revoked_registration") %></p>
     <p class="text-xs text-base-content/60"><%= t("runner_resources.measured_at", time: l(@measured_at, format: :long)) %></p>
@@ -79,11 +77,11 @@
     <h2 id="runner-announcements-heading" class="font-medium"><%= t("runner_resources.announcements") %></h2>
     <p class="text-sm text-base-content/70"><%= t("runner_resources.announcement_scope") %></p>
     <h3 class="text-sm font-medium"><%= t("runner_resources.tools") %></h3>
-    <% if @runner_facts.fetch(:served_tools).empty? %>
+    <% if @runner_facts.fetch(:services).fetch(@runner.executor_kind).fetch("tools").empty? %>
       <p class="text-sm text-base-content/60"><%= t("runner_resources.no_tools") %></p>
     <% else %>
       <ul class="space-y-2">
-        <% @runner_facts.fetch(:served_tools).each do |tool| %>
+        <% @runner_facts.fetch(:services).fetch(@runner.executor_kind).fetch("tools").each do |tool| %>
           <li>
             <details class="rounded-box border border-base-300 p-3">
               <summary class="cursor-pointer text-sm font-medium wrap-anywhere"><%= tool.fetch("name") %></summary>
@@ -94,11 +92,11 @@
       </ul>
     <% end %>
     <h3 class="text-sm font-medium"><%= t("runner_resources.documents") %></h3>
-    <% if @runner_facts.fetch(:served_documents).empty? %>
+    <% if @runner_facts.fetch(:services).fetch(@runner.executor_kind).fetch("documents").empty? %>
       <p class="text-sm text-base-content/60"><%= t("runner_resources.no_documents") %></p>
     <% else %>
       <ul class="space-y-2 text-sm">
-        <% @runner_facts.fetch(:served_documents).each do |document| %>
+        <% @runner_facts.fetch(:services).fetch(@runner.executor_kind).fetch("documents").each do |document| %>
           <li class="space-y-1 rounded-box border border-base-300 p-3">
             <p class="font-medium wrap-anywhere"><%= document.fetch("name") %></p>
             <p class="text-base-content/70 wrap-anywhere"><%= document.fetch("description") %></p>
@@ -108,7 +106,7 @@
     <% end %>
     <details class="rounded-box border border-base-300 p-3">
       <summary class="cursor-pointer text-sm font-medium"><%= t("runner_resources.environment") %></summary>
-      <pre class="mt-3 max-w-full whitespace-pre-wrap break-all text-xs"><%= JSON.pretty_generate(@runner_facts.fetch(:environment)) %></pre>
+      <pre class="mt-3 max-w-full whitespace-pre-wrap break-all text-xs"><%= JSON.pretty_generate(@runner_facts.fetch(:services).fetch(@runner.executor_kind).fetch("environment")) %></pre>
     </details>
     <div class="flex flex-wrap gap-3 text-sm">
       <%= link_to t("runner_resources.mcp_connections"), settings_mcp_connections_path, class: "link" %>

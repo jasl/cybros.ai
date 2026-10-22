@@ -18,9 +18,9 @@ class PlatformManagedRunnersTest < Minitest::Test
     assert_instance_of CybrosAgent::Platform::ManagedRunnerPage, page
     assert_instance_of CybrosAgent::Platform::ManagedRunner, runner
     assert_equal fixture.dig("runners", 0, "manager_public_id"), runner.manager_public_id
-    assert_equal "agent_private", runner.assignment_scope
+    assert_equal "user_private", runner.assignment_scope
     assert_equal "ready", runner.credential_readiness
-    refute runner.eligible_for_current_user
+    assert runner.eligible_for_current_user
     assert_equal fixture.fetch("measured_at"), page.measured_at
     assert_equal "next opaque cursor", page.next_after
     request = @transport.requests.last
@@ -37,11 +37,11 @@ class PlatformManagedRunnersTest < Minitest::Test
 
     assert_instance_of CybrosAgent::Platform::ManagedRunnerSnapshot, snapshot
     assert_instance_of CybrosAgent::Platform::ManagedRunnerDetail, runner
-    assert_instance_of CybrosAgent::Api::ServedTool, runner.served_tools.first
-    assert_instance_of CybrosAgent::Api::ServedDocument, runner.served_documents.first
-    assert_equal fixture.dig("runner", "served_tools", 0, "input_schema"), runner.served_tools.first.input_schema
-    assert_equal fixture.dig("runner", "served_documents", 0, "name"), runner.served_documents.first.name
-    assert_equal fixture.dig("runner", "environment"), runner.environment
+    assert_instance_of CybrosAgent::Api::ServedTool, runner.services.runner.tools.first
+    assert_instance_of CybrosAgent::Api::ServedDocument, runner.services.runner.documents.first
+    assert_equal fixture.dig("runner", "services", "runner", "tools", 0, "input_schema"), runner.services.runner.tools.first.input_schema
+    assert_equal fixture.dig("runner", "services", "runner", "documents", 0, "name"), runner.services.runner.documents.first.name
+    assert_equal fixture.dig("runner", "services", "runner", "environment"), runner.services.runner.environment
     assert_equal fixture.dig("runner", "registered_at"), runner.registered_at
     assert_equal fixture.fetch("measured_at"), snapshot.measured_at
     assert_equal "/api/v1/runners/runner%2Fone", @transport.requests.last.fetch(:path)
@@ -50,16 +50,16 @@ class PlatformManagedRunnersTest < Minitest::Test
   def test_revoked_tool_provider_and_unknown_facts_remain_inspectable
     fixture = pack.fetch("valid_runner_fixture")
     fixture.fetch("runner").merge!("kind" => "tool_provider", "status" => "revoked",
-      "assignment_scope" => "user_private", "assignment_agent_public_id" => nil,
+      "assignment_scope" => "user_private",
       "credential_readiness" => "zz_future_readiness", "presence" => "zz_future_presence")
     runner = client([[200, {}, fixture]]).runners.fetch("provider").runner
 
     assert_equal "tool_provider", runner.kind
     assert_equal "revoked", runner.status
-    assert_nil runner.assignment_agent_public_id
+    assert_equal ["runner"], runner.service_roles
     assert_equal "zz_future_readiness", runner.credential_readiness
     assert_equal "zz_future_presence", runner.presence
-    refute runner.eligible_for_current_user
+    assert runner.eligible_for_current_user
   end
 
   def test_management_projection_requires_its_eligibility_boolean_and_measurement

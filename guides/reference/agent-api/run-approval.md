@@ -53,7 +53,7 @@ an `ask` rule naming its origin, and is refused by a deny rule naming it.
 ## The park
 
 A parked row rests at `needs_approval` addressed to the host's
-agent application (nobody on a Human's own standalone run — the member
+agent (nobody on a Human's own standalone run — the member
 door alone), with the effect profile the approver reads frozen on it and
 the 24 h park clock armed; it lists on that inbox as kind `approval`
 ([Executor inbox](executor-inbox.md)), the run announces `approval_required` naming

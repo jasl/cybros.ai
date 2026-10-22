@@ -161,7 +161,7 @@ class RhoWebuiTest < Minitest::Test
       E2E::SessionSignInBudget.consume
       @page.click_button "Sign in"
       @page.click_button "Continue"
-      assert @page.has_text?("Also runs as a runner on that machine")
+      assert @page.has_text?("This signs the application in as #{@steward.display_name}")
       @page.click_button "Connect", exact: true
       assert @page.has_text?(/Connection ready|This connection is complete/)
     end

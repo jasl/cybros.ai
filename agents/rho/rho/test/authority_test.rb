@@ -78,25 +78,12 @@ class AuthorityTest < Minitest::Test
 
   # ---- the planes are the mode's ----
 
-  def test_full_mode_asks_three_planes_and_a_missing_runner_lineage_is_absent
-    report = authority_for(oauth(runner: runner_lineage), mode: "full").check
-    assert_equal({ member: :live, executor_transport: :live, runner_transport: :live }, report[:planes])
-    assert_includes @api.calls, ["/agent_api/v1/executor", RUNNER]
-
+  def test_full_mode_uses_the_same_two_planes_as_agent_mode
     report = authority_for(oauth, mode: "full").check
-    assert_equal :absent, report[:planes][:runner_transport], "a full connection with no runner lineage"
-    assert_equal :live, report[:planes][:member]
+    assert_equal({ member: :live, executor_transport: :live }, report[:planes])
+    refute_includes @api.calls, ["/agent_api/v1/executor", RUNNER]
   end
 
-  def test_a_dead_runner_plane_leaves_the_agent_planes_alone
-    @api.accept(RUNNER, false)
-
-    report = authority_for(oauth(runner: runner_lineage), mode: "full").check
-    assert_equal :unauthorized, report[:planes][:runner_transport]
-    assert_equal :live, report[:planes][:member]
-    assert_equal :live, report[:planes][:executor_transport]
-    refute report[:lost]
-  end
 
   def test_runner_mode_asks_the_one_plane_and_its_loss_is_the_daemons
     lost = CybrosAgent::DeviceFlow::AuthorizationLostError.new(oauth_error: "invalid_grant")
@@ -109,23 +96,11 @@ class AuthorityTest < Minitest::Test
     refute report[:runner_lost]
   end
 
-  def test_a_terminally_lost_runner_lineage_beside_a_live_agent_is_runner_lost_never_lost
-    lost = CybrosAgent::DeviceFlow::AuthorizationLostError.new(oauth_error: "invalid_grant")
-    about = oauth(runner: runner_lineage(authority: rotating_authority(failure: lost), expires_in: 0))
-    @api.accept(RUNNER, false)
-
-    report = authority_for(about, mode: "full").check
-    assert report[:runner_lost]
-    refute report[:lost]
-    assert_equal :unauthorized, report[:planes][:runner_transport]
-    assert_equal :live, report[:planes][:member]
-  end
 
   def test_the_expected_identity_names_the_runner_plane_by_its_own_public_id
-    identity = Rho::Identity.agent(home: @home, user_public_id: "0199-user", executor_public_id: "0199-executor",
-      mode: "full", runner_executor_public_id: "0199-elsewhere")
-    authority = Rho::Authority.new(oauth: oauth(runner: runner_lineage), base_url: @home.base_url,
-      transport: @api, expected_identity: identity, mode: "full")
+    identity = Rho::Identity.runner(home: @home, executor_public_id: "0199-elsewhere")
+    authority = Rho::Authority.new(oauth: Rho::Credentials.new(runner: runner_lineage), base_url: @home.base_url,
+      transport: @api, expected_identity: identity, mode: "runner")
 
     error = assert_raises(Rho::StoredConnectionError) { authority.check }
     assert_match(/runner_transport credential names "0199-runner", expected "0199-elsewhere"/, error.message)

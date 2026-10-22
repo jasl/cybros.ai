@@ -20,7 +20,7 @@ GET  /oauth/device                   # the human's verification page
 
 ## Application login
 
-**Authorization Code with PKCE S256.** `GET /oauth/authorize` takes `client_id=cybros-application`, `response_type=code`, `redirect_uri`, `state`, `code_challenge`, `code_challenge_method=S256`, optional `scope=application`, `connection_mode=connect|login` (default `connect`) and the registration fields of the agent, combined agent-and-runner or machine-only shape. Approval requires a Nexus human browser session; a bearer cannot substitute. The code expires after five minutes, is single use and is bound to client, callback, PKCE challenge and approved consequence.
+**Authorization Code with PKCE S256.** `GET /oauth/authorize` takes `client_id=cybros-application`, `response_type=code`, `redirect_uri`, `state`, `code_challenge`, `code_challenge_method=S256`, optional `scope=application`, `connection_mode=connect|login` (default `connect`) and the registration fields of the Agent or machine shape. Approval requires a Nexus human browser session; a bearer cannot substitute. The code expires after five minutes, is single use and is bound to client, callback, PKCE challenge and approved consequence.
 
 `POST /oauth/token` with `grant_type=authorization_code`, `client_id`, `code`, `redirect_uri` and `code_verifier` answers `access_token`, `token_type: "Bearer"`, `plane: "platform"`, `expires_in`, `refresh_token`, `scope: "application"` and `user: { public_id, display_name, role }`. An initial connection nests the agent bundle under `agent` and the runner bundle under `runner`; `connection_mode=login` verifies current ownership and returns the human lineage alone.
 
@@ -30,13 +30,12 @@ If Nexus has not been initialized, the authorization page retains the validated 
 
 ## Device connection
 
-`POST /oauth/device_authorization` with `client_id=cybros-first-party-connector` and one of three branches:
+`POST /oauth/device_authorization` with `client_id=cybros-first-party-connector` and one of two branches:
 
 | Branch | Registration fields | Issues |
 | --- | --- | --- |
 | A — agent | `agent_identifier`, `agent_display_name`, `executor_display_name` | A member credential and an executor transport credential |
 | B — machine | `registration_identifier`, `runner_display_name`, optional `executor_kind: "tool_provider"` | A transport credential alone |
-| A+B — combined | Both, with the runner named beside the agent | The agent bundle plus a separate runner lineage with its own refresh token |
 
 The human opens the verification URL (**Agents → Connect agent** or **Runners → Connect runner** in the Nexus browser), checks the code and approves. A fresh machine registration selects its assignment scope there; a live registration re-pairs with its stored scope. Authorization by a human other than the instance's existing steward is refused before any credential is issued.
 

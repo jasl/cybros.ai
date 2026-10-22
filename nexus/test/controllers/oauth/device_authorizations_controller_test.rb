@@ -76,8 +76,8 @@ class OAuth::DeviceAuthorizationsControllerTest < ActionDispatch::IntegrationTes
     assert_equal "invalid_request", response.parsed_body["error"]
   end
 
-  test "an agent connection may not name a kind: agent_application is fixed by the branch" do
-    %w[tool_provider agent_application mainframe].each do |kind|
+  test "an agent connection may not name a kind: agent is fixed by the branch" do
+    %w[runner tool_provider agent mainframe].each do |kind|
       assert_no_difference -> { DeviceAuthorization.count }, kind do
         request_authorization(executor_kind: kind)
       end
@@ -103,48 +103,20 @@ class OAuth::DeviceAuthorizationsControllerTest < ActionDispatch::IntegrationTes
       "the machine's unknown assignment_scope field must not choose placement"
   end
 
-  # The combined shape A+B (r-modes M2): the COMPLETE agent triple and the
-  # COMPLETE runner pair on one request is an agent that also serves as a
-  # runner on its own machine. Its kind is fixed `runner` and its scope fixed
-  # `agent_private` at issuance; the half cases below stay a mix.
-  test "the complete agent triple with the complete runner pair is the combined shape" do
-    post oauth_device_authorization_path, params: BASE.merge(
-      registration_identifier: "rho",
-      runner_display_name: "rho on laptop"
-    )
-
-    assert_response :success
-    grant = DeviceAuthorization.find_by_device_code(response.parsed_body.fetch("device_code"))
-    assert_predicate grant, :combined_connection?
-    refute_predicate grant, :runner_only_connection?
-    assert_equal "install-abc123", grant.agent_identifier
-    assert_equal "rho", grant.registration_identifier
-    assert_equal "runner", grant.requested_executor_kind
-    assert_equal "agent_private", grant.selected_assignment_scope
-  end
-
-  test "a runner supplement captures its existing application UUID without creating a principal" do
-    assert_no_difference -> { User.count } do
-      post oauth_device_authorization_path, params: {
-        client_id: OAuth::DEVICE_CLIENT_ID,
-        registration_identifier: "application-runner",
-        runner_display_name: "Local runner",
-        assignment_agent_public_id: users(:agent).public_id,
-      }
+  test "a complete application and machine request is rejected without issuing a grant" do
+    assert_no_difference -> { DeviceAuthorization.count } do
+      post oauth_device_authorization_path, params: BASE.merge(
+        registration_identifier: "rho", runner_display_name: "rho on laptop")
     end
-
-    assert_response :success
-    grant = DeviceAuthorization.order(:id).last
-    assert_equal users(:agent).public_id, grant.assignment_agent_public_id
-    assert_predicate grant, :selects_agent_private?
-    assert_predicate grant, :runner_only_connection?
-    assert_nil grant.user, "Connect resolves and authorizes the requested application"
+    assert_response :bad_request
+    assert_equal "invalid_request", response.parsed_body.fetch("error")
   end
 
-  test "assignment UUID is valid only on a runner-only request and uses a public UUID" do
+  test "retired assignment selectors are rejected rather than creating a broader machine" do
     runner_request = { client_id: OAuth::DEVICE_CLIENT_ID, registration_identifier: "private-runner",
       runner_display_name: "Runner", assignment_agent_public_id: users(:agent).public_id }
     [
+      runner_request,
       runner_request.merge(assignment_agent_public_id: "not-a-uuid"),
       runner_request.merge(executor_kind: "tool_provider"),
       BASE.merge(assignment_agent_public_id: users(:agent).public_id),
@@ -159,7 +131,7 @@ class OAuth::DeviceAuthorizationsControllerTest < ActionDispatch::IntegrationTes
   end
 
   test "a kind other than runner on a combined request is invalid_request" do
-    %w[tool_provider agent_application mainframe].each do |kind|
+    %w[runner tool_provider agent mainframe].each do |kind|
       assert_no_difference -> { DeviceAuthorization.count }, kind do
         post oauth_device_authorization_path, params: BASE.merge(
           registration_identifier: "rho",
@@ -171,16 +143,6 @@ class OAuth::DeviceAuthorizationsControllerTest < ActionDispatch::IntegrationTes
     end
   end
 
-  test "a combined request may spell the runner kind it is fixed to" do
-    post oauth_device_authorization_path, params: BASE.merge(
-      registration_identifier: "rho",
-      runner_display_name: "rho on laptop",
-      executor_kind: "runner"
-    )
-
-    assert_response :success
-    assert_predicate DeviceAuthorization.order(:id).last, :combined_connection?
-  end
 
   # Combined = both sets complete; a half triple or a half pair is still a
   # mix. Each Branch A field alone must trip the guard — the enumeration once

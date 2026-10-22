@@ -70,14 +70,6 @@ module DeviceAuthorizations
         elsif authorization.runner_only_connection?
           connect_runner(authorization)
         else
-          # Shape A and the combined shape A+B take this one arm: the agent
-          # marker is frozen exactly as branch A freezes it. The runner half
-          # of a combined grant is NOT looked up, locked or recorded here —
-          # it rides the agent triple's fence (the recorded asymmetry: no
-          # second CAS triple), and it has no browser precondition: the page
-          # shows no runner block, and a registration that changed while the
-          # page was open is caught by Consume's own finder, which re-pairs
-          # the live `rho` row or creates one.
           connect_agent(authorization)
         end
       end
@@ -117,8 +109,6 @@ module DeviceAuthorizations
             return Result.blocked(:shutdown_pending)
           end
 
-          # A combined row keeps the private scope Issue fixed; an agent row
-          # carries none.
           authorization.record_connection(
             user: mapping.member,
             connector: connector,
@@ -129,17 +119,11 @@ module DeviceAuthorizations
         end
       end
 
-      # A runner-only connection creates no principal. An optional existing
-      # application narrows assignment and is frozen through the same User
-      # capture as an Agent connection, without rotating that application's lineage.
+      # A machine connection creates no principal. Its Human manager chooses
+      # the initial scope; reconnecting retains the existing registration scope.
       def connect_runner(authorization)
-        assignment_agent = lock_assignment_agent(authorization)
         connector = lock_connector
         return Result.blocked(:not_authorized) unless connector&.active_human_member?
-        if authorization.assignment_agent_public_id &&
-            !Executor.assignment_agent_eligible?(assignment_agent, manager: connector)
-          return Result.blocked(:assignment_agent_not_eligible)
-        end
 
         existing = runner_for(authorization, connector)
         return Result.blocked(:not_connected) if authorization.mode_login? && existing.nil?
@@ -148,20 +132,11 @@ module DeviceAuthorizations
         end
 
         pairing_marker = existing || latest_runner(authorization, connector)
-        assignment_scope =
-          if authorization.agent_private_runner_connection?
-            "agent_private"
-          else
-            existing&.assignment_scope || (@account_wide ? "account_wide" : "user_private")
-          end
-        if existing && (existing.assignment_agent_id != assignment_agent&.id ||
-            existing.assignment_scope != assignment_scope)
-          return Result.blocked(:runner_assignment_mismatch)
-        end
+        assignment_scope = existing&.assignment_scope || (@account_wide ? "account_wide" : "user_private")
         # Account-wide assignment is an administrator-selected ACL only when
         # creating a registration. A later manager demotion does not rewrite
         # the immutable ACL or prevent that manager from re-pairing it.
-        if existing.nil? && @account_wide && !authorization.agent_private_runner_connection? && !connector.admin?
+        if existing.nil? && @account_wide && !connector.admin?
           Result.blocked(:administrator_required)
         elsif authorization.expires_at <= Time.current
           expire(authorization)
@@ -172,21 +147,13 @@ module DeviceAuthorizations
           end
 
           authorization.record_connection(
-            user: assignment_agent,
+            user: nil,
             connector: connector,
             expected_executor: pairing_marker,
             selected_assignment_scope: assignment_scope
           )
           Result.connected(authorization)
         end
-      end
-
-      def lock_assignment_agent(authorization)
-        return unless authorization.assignment_agent_public_id
-
-        # Serialize the captured Agent authority with removal and steward
-        # transfer before taking the Human lock, as in the combined ceremony.
-        authorization.account.users.lock.find_by(public_id: authorization.assignment_agent_public_id)
       end
 
       def expire(authorization)

@@ -49,7 +49,7 @@ class TaskTest < ActiveSupport::TestCase
     assert_not node.valid?
     assert node.errors.of_kind?(:addressed_executor, :blank)
 
-    node.addressed_role = "agent_application"
+    node.addressed_role = "agent"
     assert_not node.valid?
 
     node.addressed_role = "tool_provider"

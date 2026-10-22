@@ -121,7 +121,7 @@ class RhoAcpClientTest < Minitest::Test
       assert_match(/^extension: rho\.acp-client \(delegate_agent\)$/, runner, "the extension loaded with its one tool:\n#{runner}")
       refute_match(/^FAILED:/, runner, "an extension failed to load:\n#{runner}")
 
-      served = @daemon.member_client.executors.show(rho_runner_id).served_tools
+      served = @daemon.member_client.executors.show(rho_runner_id).tools_for(:runner)
       tool = served.find { |candidate| candidate.name == "delegate_agent" }
       refute_nil tool, "the runner row serves delegate_agent: #{served.map(&:name).inspect}"
       assert_equal DEFAULT_TIMEOUT_MS, tool.timeout_ms, "the announced park is the longest enabled clock"
@@ -463,21 +463,21 @@ class RhoAcpClientTest < Minitest::Test
       refute plugin.dig("configuration", "value", "agents", "elicit", "enabled")
       assert_includes rho("acp-agents", "sessions"), "session:   #{previous_session}  elicit"
       assert alive?(Integer(previous_pid)), "the pending live change preserves the active child"
-      tool = @daemon.member_client.executors.show(rho_runner_id).served_tools.find { |candidate| candidate.name == "delegate_agent" }
+      tool = @daemon.member_client.executors.show(rho_runner_id).tools_for(:runner).find { |candidate| candidate.name == "delegate_agent" }
       assert_includes tool.input_schema.dig("properties", "agent", "enum"), "elicit", "the active declaration remains until restart"
 
       @daemon.stop
       assert await_process_group_gone(Integer(previous_group), within: GROUP_DEAD_SECONDS), "shutdown releases the old child"
       restart!
       refute_match(/  elicit  /, rho("acp-agents", "sessions"), "the saved disabled row starts no child")
-      tool = @daemon.member_client.executors.show(rho_runner_id).served_tools.find { |candidate| candidate.name == "delegate_agent" }
+      tool = @daemon.member_client.executors.show(rho_runner_id).tools_for(:runner).find { |candidate| candidate.name == "delegate_agent" }
       refute_includes tool.input_schema.dig("properties", "agent", "enum"), "elicit", "restart withdraws the disabled agent"
 
       @daemon.stop
       assert_equal "enabled elicit\n", rho("acp-agents", "enable", "elicit")
       assert_equal true, JSON.parse(File.read(File.join(@home, "settings.json"))).dig("plugins", "rho.acp-client", "configuration", "agents", "elicit", "enabled")
       restart!
-      tool = @daemon.member_client.executors.show(rho_runner_id).served_tools.find { |candidate| candidate.name == "delegate_agent" }
+      tool = @daemon.member_client.executors.show(rho_runner_id).tools_for(:runner).find { |candidate| candidate.name == "delegate_agent" }
       assert_includes tool.input_schema.dig("properties", "agent", "enum"), "elicit", "restart announces the enabled agent"
       _c, _t, loop = open_turn("!mock tool_call=#{directive("elicit", "back after enabling")} -- done", project)
       done = await_run_status(loop, "completed")
@@ -495,7 +495,7 @@ class RhoAcpClientTest < Minitest::Test
       restart!
       runner = rho("runner")
       refute_match(/delegate_agent/, runner, "no row, no tool:\n#{runner}")
-      refute_includes @daemon.member_client.executors.show(rho_runner_id).served_tools.map(&:name), "delegate_agent"
+      refute_includes @daemon.member_client.executors.show(rho_runner_id).tools_for(:runner).map(&:name), "delegate_agent"
       refute_match(/^FAILED:/, runner, "the extension loads clean without a row:\n#{runner}")
       await_rho_log(/event=acp\.no_agent_enabled rows=0/, "the tool-less load was never logged")
       assert_equal "", rho("acp-agents"), "no row to list"
@@ -624,7 +624,7 @@ class RhoAcpClientTest < Minitest::Test
       end
     end
 
-    AGENT_ANNOUNCED = /event=executor\.announced tools=\d+ address=agent\b/
+    AGENT_ANNOUNCED = /event=executor\.announced tools=\d+ role=agent\b/
 
     def agent_announcement_count = @daemon.log_text.scan(AGENT_ANNOUNCED).length
 

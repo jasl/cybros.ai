@@ -5,8 +5,7 @@ class CliAPIKeysTest < Minitest::Test
 
   def keys
     { "access_token" => NexusDoubles::MEMBER_TOKEN,
-      "executor_access_token" => NexusDoubles::TRANSPORT_TOKEN,
-      "runner_access_token" => NexusDoubles::RUNNER_TOKEN }
+      "executor_access_token" => NexusDoubles::TRANSPORT_TOKEN }
   end
 
   def test_stdin_import_uses_the_daemon_and_never_prints_keys
@@ -31,7 +30,7 @@ class CliAPIKeysTest < Minitest::Test
     cli.connect(api_key: true, input: input)
 
     assert_equal :active, daemon.phase
-    assert_equal ["Agent member API key: ", "Executor API key: ", "Private Runner API key: "], prompts
+    assert_equal ["Agent member API key: ", "Executor API key: "], prompts
     keys.values.each { |key| refute_includes @out.string, key }
   end
 

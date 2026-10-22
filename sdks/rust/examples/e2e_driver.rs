@@ -53,7 +53,7 @@ async fn run(v: Value) -> Result<Value> {
     match action.as_str() {
         "executor_announce" => {
             let c = ExecutorClient::new(&base, required(&v, "credential")?)?;
-            let reply=c.announce(&Announcement{tools:vec![AnnouncedTool{name:"sdk_echo".into(),effect_profile:EffectProfile{kind:EffectKind::ReadOnly,destructive:false,effect_scope:EffectScope::Closed,idempotency:Idempotency::Intrinsic,reconciliation:Reconciliation::None},input_schema:json!({"type":"object","properties":{"marker":{"type":"string"}},"required":["marker"]}).as_object().cloned().unwrap().into(),..Default::default()}],..Default::default()}).await?;
+            let reply=c.announce(&Announcement{services: ServiceAnnouncements { agent: cybros_agent::Field::Value(ServiceAnnouncement::default()), runner: cybros_agent::Field::Value(ServiceAnnouncement {tools:vec![AnnouncedTool{name:"sdk_echo".into(),effect_profile:EffectProfile{kind:EffectKind::ReadOnly,destructive:false,effect_scope:EffectScope::Closed,idempotency:Idempotency::Intrinsic,reconciliation:Reconciliation::None},input_schema:json!({"type":"object","properties":{"marker":{"type":"string"}},"required":["marker"]}).as_object().cloned().unwrap().into(),..Default::default()}],..Default::default()}), ..Default::default()} }).await?;
             Ok(json!({"executor_public_id":reply.body.executor.public_id}))
         }
         "member_prepare" => {
@@ -198,8 +198,6 @@ async fn run(v: Value) -> Result<Value> {
                 agent_identifier: required(&v, "agent_identifier")?,
                 agent_display_name: marker.clone(),
                 executor_display_name: marker,
-                registration_identifier: None,
-                runner_display_name: None,
             });
             let authorization = client
                 .request_authorization(Some(&claims), ConnectionMode::Login)

@@ -28,6 +28,7 @@ module E2E
       nexus_hosts_harness
       mcp_fixture_control_harness
       browser_actor_harness
+      rho_webui_browser_harness
       platform_http
       process_runner
       sdk_process

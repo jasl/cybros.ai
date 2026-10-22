@@ -14,31 +14,11 @@ class AuthorityLockOrderTest < ActiveSupport::TestCase
     assert_includes seen, "users"
   end
 
-  # The combined shape is a superset straight line of the agent ceremony, no
-  # new rank: device_authorizations → users → executors (the agent
-  # address, then the runner row) → the family writes. The within-table pair
-  # is pinned by combined_connection_test's race test.
-  test "the combined ceremony acquires every lock in ladder order" do
-    sequences = assert_ladder_order("issue → connect → consume, combined") do
-      result = connect_combined_session(
-        steward: users(:owner), agent_identifier: "install-guard-combined"
-      )
-      assert_equal :minted, result.outcome
-      assert_not_nil result.runner
-    end
-
-    seen = sequences.flatten.uniq
-    assert_includes seen, "device_authorizations"
-    assert_includes seen, "users"
-    assert_includes seen, "executors"
-  end
-
   test "application authorization and Human rotation keep the credential lock order" do
     grant = DeviceAuthorizations::Issue.call(
       account: accounts(:cybros), client_id: OAuth::APPLICATION_CLIENT_ID,
       agent_identifier: "application-lock-order", agent_display_name: "Application",
-      requested_executor_display_name: "Application executor",
-      registration_identifier: "application-lock-runner", runner_display_name: "Runner"
+      requested_executor_display_name: "Application executor"
     ).authorization
     result = nil
     assert_ladder_order("application connect and consume") do
@@ -54,7 +34,7 @@ class AuthorityLockOrderTest < ActiveSupport::TestCase
   test "credential rotation descends users, executor, family" do
     member = create_agent_member(steward: users(:owner), agent_identifier: "install-guard-rotate")
     executor = member.executors.create!(
-      account: member.account, executor_kind: :agent_application, display_name: "Guard app"
+      account: member.account, executor_kind: :agent, display_name: "Guard app"
     )
     initial = mint_family(member: member, executor: executor)
 
@@ -68,7 +48,7 @@ class AuthorityLockOrderTest < ActiveSupport::TestCase
   test "steward reassignment locks the profile and humans before the address" do
     member = create_agent_member(steward: users(:owner), agent_identifier: "install-guard-steward")
     member.executors.create!(
-      account: member.account, executor_kind: :agent_application, display_name: "Guard app"
+      account: member.account, executor_kind: :agent, display_name: "Guard app"
     )
 
     sequences = assert_ladder_order("change_steward") do
@@ -117,7 +97,7 @@ class AuthorityLockOrderTest < ActiveSupport::TestCase
     manager = users(:member)
     runner = connect_runner(manager: manager, registration_identifier: "revoked-runner", assignment_scope: :user_private)
       .executor_access_token.executor
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     created = create_loop(tool("probe"), default_runner_executor_public_id: runner.public_id, workspace: workspaces(:shared), creating_user: manager)
     assert_predicate created, :created?
     run = created.run

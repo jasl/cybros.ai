@@ -10,7 +10,7 @@ class AgentAPI::V1::Executors::AnnouncementsController < AgentAPI::V1::BaseContr
   serves_plane :executor_transport
 
   def update
-    outcome = current_credential.executor.announce(tools: tools, environment: environment, documents: documents)
+    outcome = current_credential.executor.announce(services: services)
 
     if outcome.accepted?
       render json: AgentAPI::ExecutorPresenter.description(outcome.value, measured_at: Time.current,
@@ -28,20 +28,12 @@ class AgentAPI::V1::Executors::AnnouncementsController < AgentAPI::V1::BaseContr
 
   private
 
-    # The list is opaque by contract and read from the request body as
-    # sent; the entry rules are the model's (Nexus::ToolAnnouncements). A
-    # missing list is the caller's 400; a present non-list is refused there.
-    def tools
-      tools = request.request_parameters["tools"]
-      raise ActionController::ParameterMissing, :tools if tools.nil?
+    # Service entry grammar and opaque tool/environment payloads belong to the
+    # announcement boundary; a missing envelope is the HTTP parameter error.
+    def services
+      document = request.request_parameters["services"]
+      raise ActionController::ParameterMissing, :services if document.nil?
 
-      tools
+      document
     end
-
-    # Opaque and optional: absent is "none", which the row stores as `{}`.
-    def environment = request.request_parameters["environment"]
-
-    # Optional and read as sent: absent is "none", which the row stores as
-    # `[]`; the entry rules are the model's (Nexus::ToolAnnouncements).
-    def documents = request.request_parameters["documents"]
 end

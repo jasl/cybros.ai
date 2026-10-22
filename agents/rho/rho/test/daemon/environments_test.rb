@@ -136,6 +136,56 @@ class DaemonEnvironmentsTest < Minitest::Test
     assert_equal [409, "environment_contended"], [refusal.status, refusal.code]
   end
 
+  def test_creation_binding_preserves_an_existing_own_record_and_initializes_a_fork_copy
+    store = FakeStore.new([row(value(@other))])
+    client = FakeClient.new(conversations: { "c-1" => FakeConversation.new(store: store) })
+    table = environments(client)
+    before = store.rows.first
+    bound = table.bind("c-1", root: @project, directories: [], plane: plane(client), initialize_only: true)
+    assert_equal @other, bound.root
+    assert_equal before, store.rows.first
+    assert_empty store.calls.select { |call| %i[create update].include?(call.first) }
+
+    store.patch(value(@other).merge("anchor" => "parent"))
+    bound = table.bind("c-1", root: @project, directories: [], plane: plane(client), initialize_only: true)
+    assert_equal binding, bound.binding
+    assert_equal "c-1", store.rows.first.value.fetch("anchor")
+  end
+
+  def test_creation_binding_keeps_another_writers_record_on_key_taken
+    store = FakeStore.new
+    client = FakeClient.new(conversations: { "c-1" => FakeConversation.new(store: store) })
+    table = environments(client)
+    original = store.method(:create)
+    winner = value(@other)
+    store.define_singleton_method(:create) do |**args|
+      store.singleton_class.remove_method(:create)
+      original.call(namespace: NAMESPACE, key: KEY, value: winner, idempotency_key: "winner")
+      original.call(**args)
+    end
+    bound = table.bind("c-1", root: @project, directories: [], plane: plane(client), initialize_only: true)
+    assert_equal [@other, 0], [bound.root, bound.lock_version]
+    assert_equal winner, store.rows.first.value
+    refute store.calls.any? { |call| call.first == :update }
+  end
+
+  def test_creation_binding_keeps_a_child_binding_that_wins_the_fork_copy_update
+    store = FakeStore.new([row(value(@other).merge("anchor" => "parent"))])
+    client = FakeClient.new(conversations: { "c-1" => FakeConversation.new(store: store) })
+    table = environments(client)
+    original = store.method(:update)
+    winner = value(@other)
+    store.define_singleton_method(:update) do |*args, **kwargs|
+      store.singleton_class.remove_method(:update)
+      store.patch(winner)
+      original.call(*args, **kwargs)
+    end
+    bound = table.bind("c-1", root: @project, directories: [], plane: plane(client), initialize_only: true)
+    assert_equal [@other, 1], [bound.root, bound.lock_version]
+    assert_equal winner, store.rows.first.value
+    assert_equal 1, store.calls.count { |call| call.first == :update }
+  end
+
   # A stale version whose re-read is ALREADY the tuple asked for is done
   # with no second write; the kernel's own bound refusals cross as themselves.
   def test_bind_is_done_when_the_re_read_matches_and_relays_the_kernels_bounds

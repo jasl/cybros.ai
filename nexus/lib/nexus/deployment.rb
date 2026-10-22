@@ -1,6 +1,6 @@
 module Nexus
   # The installation owner projects Nexus's own deployment across private IPC.
-  # Agent application installation state stays outside the kernel.
+  # Agent installation state stays outside the kernel.
   module Deployment
     Image = Data.define(:name, :reference) do
       def self.from_h(value)

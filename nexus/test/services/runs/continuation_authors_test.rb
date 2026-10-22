@@ -172,7 +172,7 @@ class Runs::ContinuationAuthorsTest < ActiveJob::TestCase
     unless Executor.credential_readiness_for([address]).fetch(address.id) == :ready
       create_bound_credential(executor: address, name: "Lane transport")
     end
-    assert_predicate address.announce(tools: [{ "name" => TOOL, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }]),
+    assert_predicate address.announce(services: { address.executor_kind => { "tools" => [{ "name" => TOOL, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } }),
       :accepted?
     run = seed(model("round1", "instructions" => "be useful", "prompt" => BULK),
       model("round2", "prompt" => BULK, "compaction" => { "mode" => "delegate", "tool_name" => TOOL }),

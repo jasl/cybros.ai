@@ -209,7 +209,7 @@ declarer's removal, and a remove-and-restore of the name keeps the same
 row and its documents. It is no workspace's, so no provider override
 reaches it and no conversation's `context_revision` moves; the next turn
 the row answers reads the documents live. `agent/skills/<name>` is a
-lawful skill row, resolved after the Agent application's announced
+lawful skill row, resolved after the Agent's announced
 documents and before the room's.
 
 The named Agent's `memory_context_limit` applies to this door too.

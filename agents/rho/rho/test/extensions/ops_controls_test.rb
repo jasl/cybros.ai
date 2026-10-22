@@ -6,7 +6,7 @@ class OpsControlsTest < Minitest::Test
   include RhoTest::OpsHarness
 
   # A lineage holding BOTH planes: the member bearer for the person's
-  # door, the transport credential for the agent application's own inbox.
+  # door, the transport credential for the agent's own inbox.
   def both_planes_ready(daemon, api)
     about = Object.new
     about.define_singleton_method(:member_credential) { NexusDoubles::MEMBER_TOKEN }
@@ -22,20 +22,20 @@ class OpsControlsTest < Minitest::Test
                      "reconciliation" => "none", "timeout_ms" => 600_000 }.freeze
 
   # The contract's `approval_fixture` shape (`executor_inbox.json`): a
-  # held call addressed to the agent application, never claimed.
+  # held call addressed to the agent, never claimed.
   def approval_row(key, command: "git push --force origin main")
     { "kind" => "approval", "run_public_id" => "al-9", "conversation_public_id" => nil,
       "parent_public_id" => nil, "task_key" => key, "tool_name" => "bash",
       "tool_input" => { "command" => command }, "effect_profile" => EFFECT_PROFILE, "tool_call_id" => "call-#{key}",
       "deadline_at" => "2026-09-08T00:00:00Z", "claimed" => false,
-      "addressed_to" => { "role" => "agent_application", "executor_public_id" => "0199-executor" } }
+      "addressed_to" => { "role" => "agent", "executor_public_id" => "0199-executor" } }
   end
 
   def ask_row(key, prompt: "which database?")
     { "kind" => "ask", "run_public_id" => "al-9", "conversation_public_id" => nil,
       "parent_public_id" => nil, "task_key" => key, "prompt" => prompt,
       "started_at" => "2026-09-07T00:00:00Z", "deadline_at" => "2026-09-08T00:00:00Z", "claimed" => false,
-      "addressed_to" => { "role" => "agent_application", "executor_public_id" => "0199-executor" } }
+      "addressed_to" => { "role" => "agent", "executor_public_id" => "0199-executor" } }
   end
 
   # ANSWERING IS AN OPS VERB WITH ONE DOOR: a person's answer goes to the

@@ -1,7 +1,7 @@
 require_relative "rho/version"
 require "socket"
 
-# The flagship agent application: the daemon body lives here as a
+# The flagship agent: the daemon body lives here as a
 # library — lifecycle, vault, connection, and the local protocol surface — and
 # `exe/rho` is the one human entry point dispatching onto it. "rho-server" is
 # a process mode (`rho server`), never a separate artifact.

@@ -27,7 +27,7 @@ export class Tools extends Resource {
 }
 export class ModelProviders extends Resource { list(options: RequestOptions = {}) { return this.many('ModelProvider', 'model_providers', options); } }
 export class Executors extends Resource {
-  list(query: { kind?: 'runner' | 'tool_provider' } = {}, options: RequestOptions = {}) { return this.many('DiscoveredExecutor', 'executors', { ...options, query }); }
+  list(query: { kind?: 'agent' | 'runner' | 'tool_provider'; role?: 'agent' | 'runner' | 'tool_provider' } = {}, options: RequestOptions = {}) { return this.many('DiscoveredExecutor', 'executors', { ...options, query }); }
   fetch(id: string, options: RequestOptions = {}) { return this.one('DiscoveredExecutor', `/${segment(id)}`, 'executor', options); }
 }
 export class McpConnections extends Resource {

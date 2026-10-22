@@ -12,7 +12,7 @@ After first boot, **Overview** offers **Connect an Agent** and **Create Workspac
 4. Under **Models**, choose **Visible** or **Hidden** for each model. A visible model also needs an enabled provider and usable credentials before an agent can select it.
 5. Choose **Test** beside a model and **Run connection test**. This sends one fixed request with the saved credentials and may incur charges. Saving configuration alone makes no call.
 
-Changing Nexus configuration does not change an agent application's default model; select it there and send a request to verify.
+Changing Nexus configuration does not change an agent's default model; select it there and send a request to verify.
 
 ### From rho
 

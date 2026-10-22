@@ -85,7 +85,7 @@ pub struct ExecutorAddress {
     pub agent_public_id: Option<String>,
     pub registration_identifier: Option<String>,
     pub assignment_scope: Option<String>,
-    pub assignment_agent_public_id: Option<String>,
+    pub service_roles: Vec<String>,
     #[serde(flatten)]
     pub extra: JsonObject,
 }
@@ -134,11 +134,10 @@ pub struct DiscoveredExecutor {
     pub kind: crate::types::names::ExecutorKind,
     pub display_name: Option<String>,
     pub status: crate::types::names::ExecutorStatus,
-    pub assignment_scope: String,
-    pub assignment_agent_public_id: Option<String>,
-    pub served_tools: Vec<ServedTool>,
-    pub environment: JsonObject,
-    pub served_documents: Vec<ServedDocument>,
+    pub assignment_scope: Option<String>,
+    pub agent_public_id: Option<String>,
+    pub service_roles: Vec<String>,
+    pub services: ExecutorServices,
     pub presence: String,
     pub last_seen_at: Option<String>,
     pub connected_at: Option<String>,
@@ -164,4 +163,18 @@ pub struct TaskRealtime {
     pub max_age_ms: u32,
     #[serde(flatten)]
     pub extra: JsonObject,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ExecutorService {
+    pub tools: Vec<ServedTool>,
+    pub documents: Vec<ServedDocument>,
+    pub environment: JsonObject,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ExecutorServices {
+    pub agent: Option<ExecutorService>,
+    pub runner: Option<ExecutorService>,
+    pub tool_provider: Option<ExecutorService>,
 }

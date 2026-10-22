@@ -40,7 +40,7 @@ Rows are ordered by public UUID and contain:
 | `public_id`, `kind`, `display_name`, `status` | Machine identity and lifecycle |
 | `manager_public_id` | Managing Human UUID |
 | `assignment_scope` | Current assignment scope |
-| `assignment_agent_public_id` | Assigned Agent UUID or `null` |
+| `service_roles` | Currently announced service roles |
 | `credential_readiness` | Current credential readiness |
 | `eligible_for_current_user` | Execution eligibility as the requesting Human |
 | `presence` | Current observed presence |
@@ -48,8 +48,8 @@ Rows are ordered by public UUID and contain:
 | `registered_at` | Machine record creation time |
 
 Assignment and credential eligibility follow the [Executor contract](../agent-api/executor.md).
-An Agent-private Runner can be managed by the Human while ineligible for that
-Human to execute. Conversation work checks eligibility as its answering Agent separately.
+Application addresses with Runner capability are not independent managed machines and do not
+appear here. Conversation work checks eligibility as its answering Agent separately.
 Presence is observational and does not decide admission or establish successful
 execution.
 
@@ -72,7 +72,7 @@ No body. `id` is a managed machine's public UUID.
 ### Response
 
 `200` returns `runner` and `measured_at`. The Runner includes the list fields plus
-`served_tools`, `served_documents` and `environment`, using the saved
+the role-keyed `services` map containing tools, documents and environment, using the saved
 [announcement shapes](../agent-api/executor.md). These reads perform no network
 probe. Contact time is not an announcement-specific update timestamp.
 

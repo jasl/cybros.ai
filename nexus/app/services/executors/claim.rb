@@ -55,7 +55,7 @@ module Executors
           return Outcome.refused(:not_addressed_here, node)
         end
         return Outcome.refused(:not_eligible, node) unless executor.eligible_for?(run.answering_user)
-        return Outcome.refused(:tool_not_served, node) unless Address.serves?(executor, node.tool_name, run.answering_user)
+        return Outcome.refused(:tool_not_served, node) unless Address.serves?(executor, node.tool_name, run.answering_user, role: node.addressed_role)
         return Outcome.refused(:not_authorized, node) unless
           run.workspace.data_writable_by?(run.creating_user)
         return Outcome.refused(:task_not_claimable, node) unless

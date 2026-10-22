@@ -26,7 +26,7 @@ class Runs::ToolDiscoveryTest < ActiveJob::TestCase
     ]))
     assert_predicate Executors::DefaultRunner.call(Executors::DefaultRunner::Command.new(
       host: run, executor_public_id: runner_b.public_id, acting_user: @human)), :accepted?
-    runner_b.announce(tools: [])
+    runner_b.announce(services: { runner_b.executor_kind => { "tools" => [] } })
     wrapper = loop_node(run, "r1t0")
     Runs::ToolDiscoveryJob.perform_now(wrapper.id)
     result = JSON.parse(wrapper.reload.output_body.effective_text)
@@ -51,14 +51,14 @@ class Runs::ToolDiscoveryTest < ActiveJob::TestCase
 
   test "search uses frozen skill summaries and can match a target plus a skill name" do
     runner = runner_b
-    runner.announce(tools: [{ "name" => "skill", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }],
-      documents: [{ "name" => "database-tuning", "description" => "Optimize PostgreSQL queries" }])
+    runner.announce(services: { runner.executor_kind => { "tools" => [{ "name" => "skill", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }],
+      "documents" => [{ "name" => "database-tuning", "description" => "Optimize PostgreSQL queries" }] } })
     skill = declaration("remote_skill", runner, served: "skill")
     run = execution([skill])
     run_loop_round!(run, sse_success("find", tool_calls: [
       { id: "search", name: "tool_search", arguments: { query: "#{runner.public_id} PostgreSQL" }.to_json },
     ]))
-    runner.announce(tools: [], documents: [])
+    runner.announce(services: { runner.executor_kind => { "tools" => [], "documents" => [] } })
     wrapper = loop_node(run, "r1t0")
     Runs::ToolDiscoveryJob.perform_now(wrapper.id)
     item = JSON.parse(wrapper.reload.output_body.effective_text).fetch("tools").sole
@@ -70,10 +70,10 @@ class Runs::ToolDiscoveryTest < ActiveJob::TestCase
   test "zero to one frozen skills leaves deferred provider tools unchanged" do
     runner = runner_b
     skill_tool = { "name" => "skill", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }
-    runner.announce(tools: [skill_tool], documents: [])
+    runner.announce(services: { runner.executor_kind => { "tools" => [skill_tool], "documents" => [] } })
     skill = declaration("remote_skill", runner, served: "skill")
     empty = execution([skill, Nexus::Tools::SKILL.merge("defer_loading" => true)])
-    runner.announce(tools: [skill_tool], documents: [{ "name" => "deploy", "description" => "Ship the project" }])
+    runner.announce(services: { runner.executor_kind => { "tools" => [skill_tool], "documents" => [{ "name" => "deploy", "description" => "Ship the project" }] } })
     populated = execution([skill, Nexus::Tools::SKILL.merge("defer_loading" => true)])
     first = loop_node(empty, "round1")
     second = loop_node(populated, "round1")
@@ -282,8 +282,8 @@ class Runs::ToolDiscoveryTest < ActiveJob::TestCase
 
   test "a wrapped operation owner pairs its final value while retaining its claim and never its internal leaf" do
     runner = suite_runner
-    runner.announce(tools: TEST_SERVED_TOOLS + [{ "name" => "program",
-      "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }])
+    runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [{ "name" => "program",
+      "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } })
     run = execution([declaration("local_program", runner, served: "program"), declaration("local_read", runner)])
     run_loop_round!(run, sse_success("run", tool_calls: [
       { id: "invoke", name: "tool_call", arguments: { name: "local_program", input: {} }.to_json },
@@ -331,8 +331,8 @@ class Runs::ToolDiscoveryTest < ActiveJob::TestCase
 
   test "a wrapped operation owner observes a refused child under the original claim" do
     runner = suite_runner
-    runner.announce(tools: TEST_SERVED_TOOLS + [{ "name" => "program",
-      "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }])
+    runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [{ "name" => "program",
+      "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } })
     run = execution([declaration("local_program", runner, served: "program"), declaration("local_read", runner)],
       approval_rules: [{ "tool" => "read_file", "verdict" => "deny", "reason" => "declared refusal" }])
     run_loop_round!(run, sse_success("run", tool_calls: [
@@ -414,7 +414,7 @@ class Runs::ToolDiscoveryTest < ActiveJob::TestCase
     def runner_b
       @runner_b ||= connect_runner(manager: users(:owner), registration_identifier: "discovery-b",
         display_name: "Build", assignment_scope: :account_wide).executor_access_token.executor.tap do |runner|
-        runner.announce(tools: [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }])
+        runner.announce(services: { runner.executor_kind => { "tools" => [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } })
       end
     end
 

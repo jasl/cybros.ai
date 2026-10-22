@@ -7,8 +7,8 @@ Gem::Specification.new do |spec|
   spec.authors = ["jasl"]
   spec.email = ["jasl9187@hotmail.com"]
 
-  spec.summary = "The flagship Cybros agent application: a connected-identity daemon and its CLI."
-  spec.description = "Rho is the flagship agent application for the Nexus kernel. The gem carries the daemon body — lifecycle, credential vault, device-flow connection, and the local protocol surface — as a library, plus the single `rho` entry point whose subcommands dispatch onto it."
+  spec.summary = "The flagship Cybros agent: a connected-identity daemon and its CLI."
+  spec.description = "Rho is the flagship agent for the Nexus kernel. The gem carries the daemon body — lifecycle, credential vault, device-flow connection, and the local protocol surface — as a library, plus the single `rho` entry point whose subcommands dispatch onto it."
   spec.homepage = "https://github.com/jasl/cybros.ai"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 4.0.0"

@@ -689,9 +689,11 @@ class RhoSettingsTest < Minitest::Test
       assert_equal [], @daemon.control(:get, "/settings").dig("settings", "fallback_models")
       rows = @daemon.control(:get, "/adaptations/rows").fetch("rows").map { |row| row.fetch("id") }
       assert_includes rows, "default"
-      adaptations = @page.find_field("Model adaptations")
-      assert_equal ["", "off", *rows], adaptations.all("option").map(&:value)
-      assert_equal "", adaptations.value
+      # Settings refreshes rebuild the choices. Keep the exact ordered values
+      # and selection in one synchronized Capybara query.
+      @page.assert_selector(:select, "Model adaptations", wait: WAIT) do |adaptations|
+        adaptations.all("option").map(&:value) == ["", "off", *rows] && adaptations.value == ""
+      end
 
       @page.within(".card", text: "Nexus tools") do
         @page.click_button "Save", exact: true

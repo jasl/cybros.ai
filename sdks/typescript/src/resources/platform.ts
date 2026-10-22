@@ -38,22 +38,12 @@ export class PlatformAgentScope extends Resource {
   restore(options: RequestOptions = {}) { return this.transition('restoration', options); }
   get apiKeys() { return new APIKeys(this.transport, this.path + '/api_keys', 'member'); }
   get executorApiKeys() { return new APIKeys(this.transport, this.path + '/executor/api_keys', 'executor_transport'); }
-  get privateRunners() { return new PrivateRunners(this.transport, this.path + '/private_runners'); }
   get budgets() { return new Budgets(this.transport, this.path + '/budgets'); }
   private transition(verb: string, options: RequestOptions) { return this.one('PlatformAgent', `/${verb}`, 'agent', { ...options, method: 'POST' }); }
 }
 export class PlatformRunners extends Resource {
   list(query: PlatformRunnerList = {}, options: RequestOptions = {}) { return this.one('PlatformRunnerPage', '', undefined, { ...options, query }); }
   fetch(id: string, options: RequestOptions = {}) { return this.one('PlatformRunnerSnapshot', `/${segment(id)}`, undefined, options); }
-}
-export class PrivateRunners extends Resource {
-  list(query: ListOptions = {}, options: RequestOptions = {}) { return this.paged('PlatformPrivateRunner', 'private_runners', { ...options, query }); }
-  create(display_name: string, options: RequestOptions = {}) { return this.one('PlatformPrivateRunner', '', 'private_runner', { ...options, method: 'POST', body: { private_runner: { display_name } }, success: [201] }); }
-  runner(id: string) { return new PrivateRunnerScope(this.transport, `${this.path}/${segment(id)}`); }
-}
-export class PrivateRunnerScope extends Resource {
-  fetch(options: RequestOptions = {}) { return this.one('PlatformPrivateRunner', '', 'private_runner', options); }
-  get apiKeys() { return new APIKeys(this.transport, this.path + '/api_keys', 'executor_transport'); }
 }
 export class APIKeys extends Resource {
   constructor(transport: Transport, path: string, readonly plane: 'member' | 'executor_transport') { super(transport, path); }

@@ -21,7 +21,7 @@ Deny binds everywhere, for every origin. `ask` parks every model call unless an 
 
 ## The park
 
-A parked call rests at `needs_approval`, addressed to the host's agent application, with the effect profile the approver reads frozen on it and a 24-hour clock armed. It appears on that application's inbox as kind `approval`, the run announces `approval_required` and stays `running`, and the addressee is nudged `work_available`. It ends by `approve` or `deny`, by the clock (`timed_out approval_expired` under the row's own failure policy; the next round reads that nobody approved it), or by a stop.
+A parked call rests at `needs_approval`, addressed to the host's agent, with the effect profile the approver reads frozen on it and a 24-hour clock armed. It appears on that application's inbox as kind `approval`, the run announces `approval_required` and stays `running`, and the addressee is nudged `work_available`. It ends by `approve` or `deny`, by the clock (`timed_out approval_expired` under the row's own failure policy; the next round reads that nobody approved it), or by a stop.
 
 Stopping cancels parked calls with the rest of the unstarted work. Revoking an executor clears a held row's addressee instead of failing it; the person's door still answers.
 

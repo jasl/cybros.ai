@@ -18,9 +18,9 @@ class TaskOperationGrowthBenchmark < ActionDispatch::IntegrationTest
     @human = users(:member)
     @workspace = workspaces(:shared)
     @runner = suite_runner
-    assert_predicate @runner.announce(tools: RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
+    assert_predicate @runner.announce(services: { @runner.executor_kind => { "tools" => RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
       "name" => "program", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
-    }]), :accepted?
+    }] } }), :accepted?
     @metrics = TaskOperationGrowthMetrics.new
     Thread.current[:task_operation_growth_metrics] = @metrics
   end

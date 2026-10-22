@@ -11,7 +11,7 @@ See [SDKs](sdks.md) for the shared contract and compatibility policy.
 | Area | What it provides |
 | --- | --- |
 | `CybrosAgent::DeviceFlow::Client` | Device authorization, polling with the server's intervals and deadline, refresh rotation and revocation |
-| `CybrosAgent::ApplicationOAuth::Client` | Authorization Code with PKCE and device flow for browser-based applications, returning a human platform credential plus optional agent and runner bundles |
+| `CybrosAgent::ApplicationOAuth::Client` | Authorization Code with PKCE and device flow for browser-based applications, returning a human platform credential plus an optional Agent or independent machine bundle |
 | `CybrosAgent::Credentials::OAuth` | Credential lineages stored through an application-supplied store, with interrupt-safe rotation |
 | `CybrosAgent::Credentials::APIKey` | Independent long-lived plane credentials in the same application-supplied store, without refresh |
 | `CybrosAgent::Client` | The member plane: profile, prompt documents, memory and store entries, workspaces and their management commands, conversations, inputs, turns, uploads, schedules, runs and their pending decisions, InferenceRequests, models and executors |

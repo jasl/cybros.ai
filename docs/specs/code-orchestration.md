@@ -7,7 +7,7 @@ under the [executor task API](../../guides/reference/agent-api/executor.md); the
 
 ## Purpose and scope
 
-An Agent application requests work from Nexus, observes its results, and decides what
+An Agent requests work from Nexus, observes its results, and decides what
 to do next. It may evaluate model-authored code or use another orchestration strategy.
 Nexus owns durable execution and general task-graph operations. The application owns
 the programming interface, language, model-facing adaptation and orchestration strategy.

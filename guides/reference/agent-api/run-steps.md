@@ -576,12 +576,15 @@ non-object values are refused.
 A member-authored Tool step can also carry `executor_context` for its own
 concrete target. If both the singular value and a matching map value are supplied,
 they must agree. The captured value is delivered as `executor_context` on the
-[executable task row](executor.md). Missing context projects as absent or null. Nexus treats
+[executable task row](executor.md#executor-context). Nexus treats
 the payload as application data; it does not interpret paths or fetch application
 Store entries to fill missing values. Do not place credentials in the payload.
 
 Model-generated continuations inherit the accepted map and cannot replace it.
-Each generated tool receives only the value for its concrete target. Model tool
+Each generated tool receives only the value selected for its execution address,
+including a tool provider. Pool viewers and claimants follow the
+[executor context selection rules](executor.md#executor-context); missing values
+never fall back to a different address. Model tool
 arguments and provider tool schemas contain no context field. Retry, approval,
 compaction, regeneration and child execution preserve captured context through
 their existing execution configuration. A later independent input may capture a

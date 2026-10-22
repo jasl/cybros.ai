@@ -672,7 +672,7 @@ module E2E
       def asked_keys(row)
         row.fetch("tasks").select do |task|
           task["kind"] == "await_task" && !Gallery::TERMINAL_TASK_STATUSES.include?(task["status"]) &&
-            task.dig("addressed_to", "role") == "agent_application"
+            task.dig("addressed_to", "role") == "agent"
         end.map { |task| task.fetch("key") }
       end
 

@@ -25,11 +25,6 @@ module Nexus
               public_id: "01900000-0000-7000-8000-000000000023", agent: agent, status: "active",
               last_seen_at: measured_at, connected_at: measured_at, presence_connection_id: nil, presence_server_id: nil
             )
-          runner = Struct.new(:public_id, :display_name, :status, :registration_identifier, :assignment_scope,
-            :assignment_agent, keyword_init: true).new(
-              public_id: "01900000-0000-7000-8000-000000000021", display_name: "Fixture runner", status: "active",
-              registration_identifier: "fixture.runner", assignment_scope: Executor.assignment_scopes.fetch("agent_private"), assignment_agent: agent
-            )
           key_type = Struct.new(:public_id, :name, :note, :credential_plane, :created_at, :last_used_at, :revoked_at,
             keyword_init: true) do
             def member_plane? = credential_plane == "member"
@@ -42,7 +37,6 @@ module Nexus
           agent_row = stringify_keys(API::AgentPresenter.basic(agent))
           connection = stringify_keys(API::AgentPresenter.application_connection(address,
             credential_readiness: :ready, live_server_ids: []))
-          runner_row = stringify_keys(API::PrivateRunnerPresenter.basic(runner))
           member_key = stringify_keys(API::APIKeyPresenter.basic(key))
           key.credential_plane = "executor_transport"
           executor_key = stringify_keys(API::APIKeyPresenter.basic(key))
@@ -51,8 +45,6 @@ module Nexus
             "valid_agent_detail_fixture" => { "agent" => agent_row.merge("application_connection" => connection) },
             "valid_agent_configuration_fixture" => stringify_keys(API::AgentPresenter.configuration(agent, measured_at: measured_at)),
             "valid_agents_fixture" => { "agents" => [agent_row], "pagination" => { "next_after" => nil } },
-            "valid_private_runner_fixture" => { "private_runner" => runner_row },
-            "valid_private_runners_fixture" => { "private_runners" => [runner_row], "pagination" => { "next_after" => nil } },
             "valid_member_keys_fixture" => { "api_keys" => [member_key], "pagination" => { "next_after" => nil } },
             "valid_executor_keys_fixture" => { "api_keys" => [executor_key], "pagination" => { "next_after" => nil } },
             "valid_member_key_grant_fixture" => { "api_key" => member_key, "secret" => "fixture-member-api-key" },

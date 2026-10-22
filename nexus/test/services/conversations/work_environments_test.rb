@@ -19,7 +19,7 @@ class Conversations::WorkEnvironmentsTest < ActiveSupport::TestCase
     seed = seed_of(reply_variant.run)
     assert_equal ["bash"], Nexus::ToolDeclarations.names(seed.tool_definitions)
     assert_equal @remote.public_id, seed.tool_definitions.sole.dig("route", "runner_executor_public_id")
-    assert_equal @remote.serving("bash").fetch("input_schema"), seed.tool_definitions.sole.dig("function", "parameters")
+    assert_equal @remote.serving("bash", role: @remote.executor_kind).fetch("input_schema"), seed.tool_definitions.sole.dig("function", "parameters")
     environment = seed.operation_context.fetch("environment")
     assert_equal @remote.public_id, environment.fetch("default_runner_executor_public_id")
     assert_equal [@local.public_id, @remote.public_id], environment.fetch("runner_candidates")
@@ -29,7 +29,7 @@ class Conversations::WorkEnvironmentsTest < ActiveSupport::TestCase
     assert_not_includes text, "Local workspace"
 
     @conversation.reload.update!(default_runner_executor: @local)
-    @remote.announce(tools: [], environment: { "fragments" => [{ "text" => "Changed environment" }] })
+    @remote.announce(services: { @remote.executor_kind => { "tools" => [], "environment" => { "fragments" => [{ "text" => "Changed environment" }] } } })
     @agent.update!(runner_executor_public_ids: [@local.public_id])
     assert_equal environment, seed.reload.operation_context.fetch("environment")
     assert_equal @remote.public_id, seed.tool_definitions.sole.dig("route", "runner_executor_public_id")
@@ -82,8 +82,8 @@ class Conversations::WorkEnvironmentsTest < ActiveSupport::TestCase
     skill = { "name" => "skill", "description" => "Read environment guidance",
       "input_schema" => { "type" => "object", "properties" => { "name" => { "type" => "string" } } },
       "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }
-    @remote.announce(tools: [*@remote.served_tools, skill], environment: @remote.environment,
-      documents: [{ "name" => "original-guide", "description" => "Guidance accepted with this task" }])
+    @remote.announce(services: { @remote.executor_kind => { "tools" => [*@remote.tools_for(:runner), skill], "environment" => @remote.environment_for(:runner),
+      "documents" => [{ "name" => "original-guide", "description" => "Guidance accepted with this task" }] } })
     reply!
     drain!
     origin = reply_variant.run
@@ -92,8 +92,8 @@ class Conversations::WorkEnvironmentsTest < ActiveSupport::TestCase
     Runs::Transition.run(origin, status: "completed", completed_at: Time.current)
     Conversations::Turns::Converge.call
     @conversation.reload.update!(default_runner_executor: @local)
-    @remote.announce(tools: @remote.served_tools, environment: @remote.environment,
-      documents: [{ "name" => "later-guide", "description" => "Guidance published after acceptance" }])
+    @remote.announce(services: { @remote.executor_kind => { "tools" => @remote.tools_for(:runner), "environment" => @remote.environment_for(:runner),
+      "documents" => [{ "name" => "later-guide", "description" => "Guidance published after acceptance" }] } })
     result = Conversations::Turns::Regenerate.call(Conversations::Turns::Regenerate::Command.new(
       conversation: @conversation, turn_public_id: turn.public_id, acting_user: @user,
       provider_id: "dev", model_ref: "mock-priced", reasoning_effort: nil, request_options: nil
@@ -115,10 +115,10 @@ class Conversations::WorkEnvironmentsTest < ActiveSupport::TestCase
     def runner(name, text)
       executor = connect_runner(manager: users(:owner), registration_identifier: "work-env-#{name}",
         assignment_scope: :account_wide).executor_access_token.executor
-      executor.announce(tools: [{ "name" => "bash", "description" => "Run a command in #{name}",
+      executor.announce(services: { executor.executor_kind => { "tools" => [{ "name" => "bash", "description" => "Run a command in #{name}",
         "input_schema" => { "type" => "object", "properties" => { "command" => { "type" => "string" } },
           "required" => ["command"] }, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }],
-        environment: { "fragments" => [{ "text" => text }] })
+        "environment" => { "fragments" => [{ "text" => text }] } } })
       executor
     end
 end

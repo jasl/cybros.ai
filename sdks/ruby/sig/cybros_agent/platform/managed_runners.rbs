@@ -6,15 +6,15 @@ module CybrosAgent
       attr_reader display_name: String
       attr_reader status: String
       attr_reader manager_public_id: String
-      attr_reader assignment_scope: String
-      attr_reader assignment_agent_public_id: String?
+      attr_reader assignment_scope: String?
+      attr_reader service_roles: Array[String]
       attr_reader credential_readiness: String
       attr_reader eligible_for_current_user: bool
       attr_reader presence: String
       attr_reader last_seen_at: String?
       attr_reader connected_at: String?
       attr_reader registered_at: String
-      def self.new: (public_id: String, kind: String, display_name: String, status: String, manager_public_id: String, assignment_scope: String, assignment_agent_public_id: String?, credential_readiness: String, eligible_for_current_user: bool, presence: String, last_seen_at: String?, connected_at: String?, registered_at: String) -> instance
+      def self.new: (public_id: String, kind: String, display_name: String, status: String, manager_public_id: String, assignment_scope: String?, service_roles: Array[String], credential_readiness: String, eligible_for_current_user: bool, presence: String, last_seen_at: String?, connected_at: String?, registered_at: String) -> instance
     end
 
     class ManagedRunnerDetail < Data
@@ -23,18 +23,16 @@ module CybrosAgent
       attr_reader display_name: String
       attr_reader status: String
       attr_reader manager_public_id: String
-      attr_reader assignment_scope: String
-      attr_reader assignment_agent_public_id: String?
+      attr_reader assignment_scope: String?
+      attr_reader service_roles: Array[String]
       attr_reader credential_readiness: String
       attr_reader eligible_for_current_user: bool
       attr_reader presence: String
       attr_reader last_seen_at: String?
       attr_reader connected_at: String?
       attr_reader registered_at: String
-      attr_reader served_tools: Array[Api::ServedTool]
-      attr_reader served_documents: Array[Api::ServedDocument]
-      attr_reader environment: Hash[String, untyped]
-      def self.new: (public_id: String, kind: String, display_name: String, status: String, manager_public_id: String, assignment_scope: String, assignment_agent_public_id: String?, credential_readiness: String, eligible_for_current_user: bool, presence: String, last_seen_at: String?, connected_at: String?, registered_at: String, served_tools: Array[Api::ServedTool], served_documents: Array[Api::ServedDocument], environment: Hash[String, untyped]) -> instance
+      attr_reader services: Api::ExecutorServices
+      def self.new: (public_id: String, kind: String, display_name: String, status: String, manager_public_id: String, assignment_scope: String?, service_roles: Array[String], credential_readiness: String, eligible_for_current_user: bool, presence: String, last_seen_at: String?, connected_at: String?, registered_at: String, services: Api::ExecutorServices) -> instance
     end
 
     class ManagedRunnerPage < Data

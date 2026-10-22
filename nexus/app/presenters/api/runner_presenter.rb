@@ -11,7 +11,7 @@ module API
           status: runner.status,
           manager_public_id: runner.manager.public_id,
           assignment_scope: runner.assignment_scope,
-          assignment_agent_public_id: runner.assignment_agent&.public_id,
+          service_roles: runner.service_roles,
           credential_readiness: readiness.fetch(runner.id),
           eligible_for_current_user: runner.eligible_for?(principal, readiness: readiness),
           presence: Nexus::Presence.of(runner, live_server_ids: live_server_ids),
@@ -23,9 +23,7 @@ module API
 
       def full(runner, **context)
         basic(runner, **context).merge(
-          served_tools: runner.served_tools,
-          served_documents: runner.served_documents,
-          environment: runner.environment,
+          services: runner.services.document,
         )
       end
     end

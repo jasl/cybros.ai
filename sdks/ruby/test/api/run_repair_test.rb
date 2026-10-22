@@ -104,7 +104,7 @@ class ApiRunRepairTest < Minitest::Test
     "key" => "r1t0", "kind" => "tool_task", "lifetime" => "conversation", "wake" => "auto", "status" => "needs_approval",
     "on_failure" => "absorb", "visibility" => "visible", "tool_name" => "bash",
     "created_at" => "2026-09-08T00:00:00Z",
-    "addressed_to" => { "role" => "agent_application", "executor_public_id" => "0199-app" },
+    "addressed_to" => { "role" => "agent", "executor_public_id" => "0199-app" },
   }.freeze
   FACT = {
     "origin" => "human", "decided_by" => "019f-owner", "decided_at" => "2026-09-08T00:00:05Z",

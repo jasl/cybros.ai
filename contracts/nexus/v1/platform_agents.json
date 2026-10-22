@@ -184,31 +184,6 @@
       "next_after": null
     }
   },
-  "valid_private_runner_fixture": {
-    "private_runner": {
-      "public_id": "01900000-0000-7000-8000-000000000021",
-      "display_name": "Fixture runner",
-      "status": "active",
-      "registration_identifier": "fixture.runner",
-      "assignment_scope": "agent_private",
-      "assignment_agent_public_id": "01900000-0000-7000-8000-000000000020"
-    }
-  },
-  "valid_private_runners_fixture": {
-    "private_runners": [
-      {
-        "public_id": "01900000-0000-7000-8000-000000000021",
-        "display_name": "Fixture runner",
-        "status": "active",
-        "registration_identifier": "fixture.runner",
-        "assignment_scope": "agent_private",
-        "assignment_agent_public_id": "01900000-0000-7000-8000-000000000020"
-      }
-    ],
-    "pagination": {
-      "next_after": null
-    }
-  },
   "valid_member_keys_fixture": {
     "api_keys": [
       {

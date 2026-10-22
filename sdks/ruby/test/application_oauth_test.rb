@@ -86,12 +86,11 @@ class ApplicationOAuthTest < Minitest::Test
     assert @transport.requests.all? { |_path, options| options.fetch(:form).fetch(:client_id) == "cybros-application" }
   end
 
-  def test_supplementary_runner_device_flow_keeps_the_application_agent_selector
+  def test_independent_runner_device_flow_names_only_its_machine_registration
     login = client([200, DEVICE])
-    login.request_runner_authorization(registration_identifier: "rho.instance", runner_display_name: "rho",
-      assignment_agent_public_id: "019b1000-0000-7000-8000-000000000001")
+    login.request_runner_authorization(registration_identifier: "rho.instance", runner_display_name: "rho")
     form = @transport.requests.first.last.fetch(:form)
-    assert_equal "019b1000-0000-7000-8000-000000000001", form.fetch(:assignment_agent_public_id)
+    refute form.key?(:assignment_agent_public_id)
     assert_equal "cybros-application", form.fetch(:client_id)
     refute form.key?(:agent_identifier)
   end

@@ -4,7 +4,7 @@ Three command-line tools, each with its own home and credentials. `COMMAND help`
 
 ## `rho`
 
-The agent application's control plane. In the Docker stack, run it as `./cybros rho …` from the installation directory.
+The agent's control plane. In the Docker stack, run it as `./cybros rho …` from the installation directory.
 
 | Command | Purpose |
 | --- | --- |
@@ -62,9 +62,8 @@ Run; a cost refusal uses task retry and preserves completed work.
 
 `rho connect --api-key` prompts for keys without echoing them. For automation,
 `--api-key-stdin` reads one JSON object from standard input: `access_token` for
-the Agent member key, `executor_access_token` for its application transport key,
-and `runner_access_token` for the private Runner in full mode. Agent mode omits
-the Runner key; Runner mode supplies only `executor_access_token`. The flags are
+the Agent member key and `executor_access_token` for its application transport key.
+Full and agent modes use this same pair; Runner mode supplies only `executor_access_token`. The flags are
 mutually exclusive. Keys are validated and saved in the same private credential
 stores used by OAuth, without refresh scheduling. See [Connect a host
 installation](../get-started/connect-a-host-installation.md).

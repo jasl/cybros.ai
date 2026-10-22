@@ -24,7 +24,7 @@ class DeploymentUpgradeTest < ApplicationSystemTestCase
       assert_title "System upgrade · Nexus"
       assert_text "Image sources"
       assert_text "registry.example/nexus"
-      assert_text "Agent applications are managed separately."
+      assert_text "Agents are managed separately."
       assert_text "Upgrade checks"
       assert_text "Ready to upgrade"
       assert_text "Image storage needs an operator check."

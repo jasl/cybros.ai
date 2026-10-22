@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.authors = ["jasl"]
   spec.email = ["jasl9187@hotmail.com"]
 
-  spec.summary = "Ruby SDK for Nexus agent applications, runners, and management tools."
+  spec.summary = "Ruby SDK for Nexus agents, runners, and management tools."
   spec.description = "CybrosAgent provides typed Member, Executor, and Human Platform APIs, OAuth credential ceremonies, durable event replay, and optional Action Cable subscriptions for the Nexus kernel."
   spec.homepage = "https://github.com/jasl/cybros.ai"
   spec.license = "MIT"

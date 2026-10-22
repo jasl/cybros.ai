@@ -890,27 +890,6 @@
       "sdk_supported": true
     },
     {
-      "id": "GET /api/v1/agents/{agent_id}/private_runners",
-      "plane": "platform",
-      "method": "GET",
-      "path": "/api/v1/agents/{agent_id}/private_runners",
-      "sdk_supported": true
-    },
-    {
-      "id": "GET /api/v1/agents/{agent_id}/private_runners/{id}",
-      "plane": "platform",
-      "method": "GET",
-      "path": "/api/v1/agents/{agent_id}/private_runners/{id}",
-      "sdk_supported": true
-    },
-    {
-      "id": "GET /api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys",
-      "plane": "platform",
-      "method": "GET",
-      "path": "/api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys",
-      "sdk_supported": true
-    },
-    {
       "id": "GET /api/v1/agents/{id}",
       "plane": "platform",
       "method": "GET",
@@ -1714,27 +1693,6 @@
       "plane": "platform",
       "method": "POST",
       "path": "/api/v1/agents/{agent_id}/executor/api_keys/{api_key_id}/revocation",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /api/v1/agents/{agent_id}/private_runners",
-      "plane": "platform",
-      "method": "POST",
-      "path": "/api/v1/agents/{agent_id}/private_runners",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys",
-      "plane": "platform",
-      "method": "POST",
-      "path": "/api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys/{api_key_id}/revocation",
-      "plane": "platform",
-      "method": "POST",
-      "path": "/api/v1/agents/{agent_id}/private_runners/{private_runner_id}/api_keys/{api_key_id}/revocation",
       "sdk_supported": true
     },
     {

@@ -49,18 +49,16 @@ class AccessTokensIssueAPIKeyTest < ActiveSupport::TestCase
     assert_equal member.token, AccessToken.authenticate_token(member.secret)
   end
 
-  test "private runner keys are transport credentials with no Agent member subject" do
-    runner = @agent.build_private_runner(display_name: "Private laptop")
-    runner.save!
+  test "independent runner keys are transport credentials with no Agent member subject" do
+    runner = connect_runner(manager: @owner).executor_access_token.executor
     first = AccessTokens::IssueAPIKey.call(user: nil, executor: runner, name: "First")
     second = AccessTokens::IssueAPIKey.call(user: nil, executor: runner, name: "Second")
 
     assert_equal :issued, first.outcome
     assert_nil first.token.user
     assert_nil first.token.user_authority_generation
-    assert_equal @agent, runner.assignment_agent
     assert_equal @owner, runner.manager
-    assert_predicate runner, :agent_private?
+    assert_predicate runner, :user_private?
     assert_nil AccessToken.authenticate_token(first.secret)
     AccessTokens::Revoke.call(first.token)
     assert_nil AccessToken.authenticate_executor_token(first.secret)

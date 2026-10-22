@@ -6,7 +6,7 @@ rotation (RFC 6749 §6, RFC 9700), and revocation (RFC 7009). The separate
 PKCE, and automatic Agent connection; rho uses that client.
 Authorization Code and redirects are not supported by the connector client.
 
-This protocol connects an Agent application, Runner, or tools provider to Nexus.
+This protocol connects an Agent, Runner, or tools provider to Nexus.
 For the interactive rho setup path, see [Getting started](../../get-started/install.md).
 It is separate from a model provider's [subscription authorization](../platform-api/provider-authorization.md):
 that flow installs the provider's credentials and does not connect an Agent to Nexus.
@@ -36,7 +36,7 @@ It is OAuth metadata, not a product entity. Every machine request must carry exa
   contract: any 5xx body may be JSON, non-JSON, or empty, and its media type and cache headers
   are not stable. Clients classify it from the status and tolerate all of those representations.
 - Machine endpoints never use cookies or CSRF state; the browser ceremony never accepts a bearer.
-- Each endpoint reads only its listed fields. Unknown parameters are ignored; empty values are
+- Each endpoint reads only its listed fields. Unknown parameters are ignored except the retired `assignment_agent_public_id`, which is rejected; empty values are
   treated as omitted. A duplicated scalar field, or an array/object where a scalar is required,
   returns `invalid_request`.
 - Raw `device_code`, access-token, and refresh-token values appear exactly once, in the issuing
@@ -63,12 +63,11 @@ contact sample.
 
 Starts one connection transaction.
 
-A request declares one of three **connection shapes**: branch A (the agent triple alone),
-branch B (the runner pair alone), or the combined shape A+B (BOTH claim sets, complete — an agent
-that also serves as a runner on its own machine). Combined = both sets
-complete; anything between — a half triple, a half pair — is a mix and `invalid_request`. All
-three share the same browser ceremony, poll, and error vocabulary, and differ only in what a
-winning consume materializes.
+A request declares one of two disjoint connection shapes: branch A (the Agent triple) or
+branch B (the machine pair). Mixing either set with any field from the other is
+`invalid_request`. Both use the same browser ceremony, polling and error vocabulary.
+An application adds local Runner capability later through its existing executor announcement;
+it does not register a second machine or receive another refresh lineage.
 
 Always required:
 
@@ -85,7 +84,7 @@ never contain a `scope` member.
 
 Materializes/reconnects the connecting human's Agent and opens its connection — the
 refresh lineage that records the signed-in program. The connection carries the profile's one
-`agent_application` delivery address, always: the response is a member credential plus that
+`agent` delivery address, always: the response is a member credential plus that
 address's executor transport credential.
 
 | Field | Rule |
@@ -98,50 +97,25 @@ address's executor transport credential.
 
 Materializes/re-pairs a machine delivery address only — a `runner` or a `tool_provider`, which is the same registration shape serving tools by name and
 claiming from pools. It creates no Agent and returns only an executor transport
-credential — a machine is not a principal. A Runner supplement may bind its
-assignment to an existing paired Agent without reconnecting that Agent.
+credential — a machine is not a principal.
 
 | Field | Rule |
 | --- | --- |
 | `registration_identifier` (required) | a stable, non-secret identifier for the machine program instance, combining its product constant with a locally persisted instance part; nonblank, at most 128 characters, compared exactly and case-sensitively |
 | `runner_display_name` (required) | nonblank, at most 100 characters |
 | `executor_kind` (optional) | `runner` (the default when absent) or `tool_provider`; any other value is `invalid_request`. The first-party SDK always sends it. |
-| `assignment_agent_public_id` (optional) | UUID of an existing paired Agent for an application-private Runner supplement; accepted only on a runner-only request, never a combined request or tool-provider request |
 
 A machine request never carries `agent_identifier`, `agent_display_name`, or
 `executor_display_name`: the transport consequence is implied by the identifier branch. The
 identifier branch is the request discriminator and `executor_kind` is branch B's alone: Nexus
-derives `agent_application` from an Agent request, and an `executor_kind` on branch A — any
+derives `agent` from an Agent request, and an `executor_kind` on branch A — any
 value — is `invalid_request`. The requested kind is frozen on the authorization
 (`requested_executor_kind`) and minted at Consume.
 `assignment_scope` is not part of the machine request schema or first-party SDK; any
 extra raw parameter is an unknown field and cannot influence authorization. Assignment scope is
 selected by the human at browser Connect for a standalone registration and applies only when
-Consume creates a fresh logical registration. A request with `assignment_agent_public_id`
-fixes `agent_private` instead. Connect checks that the named Agent is active, belongs to this
-Account, is stewarded by the connecting Human, and is a paired Agent rather than a named
-definition. Consume rechecks that relationship and its captured authority generation. A
-successful supplement leaves the Agent's member and application credentials unchanged.
-
-### Branch A+B: combined connection
-
-The five required fields of branches A and B on one request, each under its own branch's
-rule: `agent_identifier`, `agent_display_name`, `executor_display_name`, `registration_identifier`,
-`runner_display_name`. `executor_kind` may be absent or exactly `runner` — the runner half's kind is
-fixed `runner` (a tools provider under an agent's grant is meaningless; any other value is
-`invalid_request`). The grant fixes `agent_private` at issuance and binds the Runner to the
-paired Agent. Re-pair requires the live match to have that same scope and Agent binding. The human
-approves ONE page — branch A's page plus a facts row describing the runner's local read, write,
-and command capabilities and its application-private scope, with no scope selector. The winning
-consume materializes BOTH halves in one transaction: the agent's profile and address as branch A,
-and the runner registration as branch B (re-pairing a live `(account, manager, registration_identifier)`
-key in place, creating a fresh row otherwise), minting TWO refresh lineages (the family index is
-per executor) and returning the nested `runner` object of the Success shape below.
-
-Both halves commit together. A refused consume creates no partial Agent or Runner
-connection and returns no credentials. If the Runner's previous registration was
-revoked and collected, a successful combined connection creates a fresh Runner
-registration with a new public ID.
+Consume creates a fresh logical registration. The retired `assignment_agent_public_id`
+selector is rejected with `invalid_request`; it is never ignored to create a broader machine.
 
 #### The instance identifier
 
@@ -170,11 +144,9 @@ wire contract defines no compatibility mapping or outcome for a row created by b
 For the connecting Human manager, the same complete Runner instance identifier resolves the same
 `(account_id, manager_id, registration_identifier)` logical registration key regardless of assignment
 scope. A fresh home registers a distinct instance; reconnecting an existing home keeps its key.
-For a standalone machine, browser Connect chooses `user_private | account_wide` only for a
-fresh logical registration. Combined and Agent-bound supplement requests instead fix
-`agent_private` and their paired Agent. Re-pairing a live match preserves its stored scope and
-binding; a request for another scope or Agent is refused. After terminal revocation, a later
-fresh registration may choose again.
+Browser Connect chooses `user_private | account_wide` only for a fresh logical registration.
+Re-pairing a live match preserves its stored scope. After terminal revocation, a later fresh
+registration may choose again.
 
 #### Names
 
@@ -196,13 +168,12 @@ and no value is stored or returned. `admin`-family authority is structurally unr
 platform credential). Missing/invalid names or identifier, or
 an Agent request without `executor_display_name`, fail with `invalid_request`.
 Runner `assignment_scope` is a separate fresh-registration consequence: chosen in the browser
-for a standalone machine, or fixed to `agent_private` by a combined or Agent-bound supplement
-request. It is never a negotiated OAuth scope.
+for an independent machine. It is never a negotiated OAuth scope.
 
 #### What each branch materializes
 
 The connection shape is decided by the identifier branch. An Agent request always
-materializes or re-pairs the mapped Profile's `agent_application` address, named by the required
+materializes or re-pairs the mapped Profile's `agent` address, named by the required
 `executor_display_name`; a machine request materializes or re-pairs an address of the kind it
 requested — `runner` by default, `tool_provider` on request. The kind is a machine selector on
 branch B only, never a browser one (the grant page names it — "Connect runner" / "Connect tools
@@ -222,20 +193,20 @@ provider" — and offers no kind control), and is executed at the successful pol
   force-stopped asynchronously. An independent Runner's registration and credentials are not
   revoked by Agent removal. Ordinary restore does not revive the old credentials or wait for
   the stop sweep. A new successful connection restores the same Profile when necessary and
-  re-pairs its retained address with fresh credentials. A combined connection also performs
-  its ordinary Runner re-pair; that is a consequence of the new grant, not of Agent removal.
+  re-pairs its retained address with fresh credentials. Runner service on that application address
+  follows the same epoch and removal lifecycle.
 
 Branch B (machine) resolves the exact
 `(account_id, manager_id, registration_identifier)` key, which is kind-blind: one live address per key
 across both machine kinds. A partial database unique index over
 non-revoked rows is the hard boundary. A match **re-pairs that machine in place** — the delivery
-address, public id, kind, Human manager, stored assignment scope, and Agent binding survive; the epoch advances
+address, public id, kind, Human manager, stored assignment scope survive; the epoch advances
 and the previous device's credential is fenced. A live match whose kind differs from the one the
 authorization requested is drift, refused the way a forged scope is: the authorization is
 invalidated and the poll answers `access_denied` (the kind is the registration's, frozen at
-creation like its scope). A different Agent assignment is also refused. No live match creates a
-new machine of the requested kind managed by the connecting Human and applies the scope and
-optional Agent assignment frozen by the connection. A live Runner rotates its own credential through the OAuth protocol, while its Human
+creation like its scope). No live match creates a
+new machine of the requested kind managed by the connecting Human and applies the scope
+frozen by the connection. A live Runner rotates its own credential through the OAuth protocol, while its Human
 manager alone has the `/runners` management/revoke surface; after authorization loss the Runner
 reconnects under the same `registration_identifier` and keeps its identity.
 `account_wide` is pure new-work ACL and gives administrators no view, credential, revoke, takeover,
@@ -258,8 +229,6 @@ mint credentials; the others finish as `access_denied`. A new authorization issu
 after that success sees the new state and may deliberately re-pair again. An older connected
 authorization never refreshes its frozen precondition, so it cannot overwrite a newer pairing or
 reverse an explicit address/connection revoke.
-For a combined grant, this marker covers the Agent address only; the Runner half has no separate
-browser precondition or frozen pairing marker and is resolved at Consume.
 
 Success (200):
 
@@ -280,8 +249,7 @@ origin that created the authorization. When the deployment configures an interna
 complete URI only prefills the code. Connection requires a signed-in active human to compare the
 displayed code. An Agent connection always resolves that human's own steward key. A machine
 connection — a Runner's or a Tools provider's; the page names which — always resolves that
-Human as manager. A combined or Agent-bound supplement request fixes application-private scope
-and offers no account-wide control. For a standalone machine, an ordinary member's fresh registration is
+Human as manager. An ordinary member's fresh machine registration is
 fixed to `user_private`; an owner/admin connecting their own Runner gets one **account-wide**
 checkbox, default unchecked, and checking it selects `account_wide` for a fresh registration.
 That role permits only this initial ACL choice: it does not alter the manager key or grant
@@ -353,8 +321,7 @@ A new authorization after either terminal outcome requires an explicit
 application or operator action; never restart the browser ceremony automatically.
 
 A consumed code replays as `invalid_grant` even after the deadline. Success atomically mints the
-connection's whole credential bundle — one refresh family per executor, so a combined consume
-mints two (see Success shape) — together with its shape's executor consequence. In either branch, a matching non-revoked address re-pairs in
+connection's one credential bundle and refresh family together with its executor consequence. In either branch, a matching non-revoked address re-pairs in
 place and advances the epoch that fences the credential the previous connection held. A
 never-connected or terminally revoked key instead creates a new Executor/public id; revoked
 history is not revived (see Branch A above for the agent branch's full rule, including the
@@ -403,8 +370,7 @@ only in that case.
   "executor_access_token": "sk-cybros-api-v1-…",
   "refresh_token": "rt-cybros-api-v1-…",
   "token_type": "Bearer",
-  "expires_in": 1209600,
-  "runner": { "access_token": "sk-cybros-api-v1-…", "refresh_token": "rt-cybros-api-v1-…" }
+  "expires_in": 1209600
 }
 ```
 
@@ -416,14 +382,12 @@ its transport half alone and leads with that instead, exactly as an identity-les
 runner always does. `executor_access_token` accompanies the leading credential only when a
 bundle carries both planes, and is always the `executor_transport` one; a transport-led response
 never carries it. Agent removal is not such a transport-only downgrade: it fences the
-Agent application's epoch too, so the old refresh token returns `invalid_grant` and cannot mint
+Agent's epoch too, so the old refresh token returns `invalid_grant` and cannot mint
 either plane. Each secret answers exactly one plane: a
 member credential is rejected on executor-transport endpoints and vice versa. Refresh rotates the
 whole bundle atomically and returns the same shape; revoking any credential of the lineage ends
-the lineage. `runner` is present only on a combined consume, never on rotation — it is the SECOND
-lineage, the in-process runner's transport credential and its own refresh token, and each lineage
-rotates on its own refresh token (a rotation body never carries the other half; a transport-led
-response never carries it). There is no `scope` member — RFC 6749 §5.1 requires the echo only for
+the lineage. There is no nested `runner` bundle on this connector flow. Both application and
+Runner services use the application's one transport credential. There is no `scope` member — RFC 6749 §5.1 requires the echo only for
 a negotiated request, and nothing here negotiates. No other fields are returned.
 
 ## POST /oauth/revoke
@@ -452,11 +416,8 @@ name, executor kind, executor name, existing Agent candidates, or executor topol
 Agent or executor selector. For a standalone Runner, an ordinary member has a fixed personal
 `user_private` initial ACL; an owner/admin connecting their own Runner additionally sees one
 account-wide checkbox, default unchecked, only when no live registration matches. A live match
-instead renders its stored scope without a selector and re-pair preserves it. A combined grant
-renders the agent program's page with one added facts row for its runner half and no scope
-selector. Combined and Agent-bound supplement pages explain that the Runner is available only
-to the paired Agent and its active named Agents and subagents. Another Agent under the same
-Human cannot discover or address it.
+instead renders its stored scope without a selector and re-pair preserves it.
+An application connection has no machine-assignment selector.
 
 Every Agent and runner Connect page always renders the same conditional replacement warning,
 which itself does not claim whether the logical address is currently connected:
@@ -483,9 +444,8 @@ Connect deterministically resolves and freezes the branch consequence: reconnect
 create the current human's mapped Agent User; or re-pair the current Human's Runner, creating it
 with the authorized initial assignment scope when no live match exists. A standalone runner-only
 branch records the browser's choice as `selected_assignment_scope`; the machine cannot alter it.
-A combined or Agent-bound supplement grant fixes `selected_assignment_scope: agent_private`.
-Winning Consume applies the scope and Agent binding to a fresh registration, or requires a live
-match to retain the same assignment before re-pairing it. Cancel shares no authority. Connect
+Winning Consume applies that scope to a fresh registration and preserves it on re-pair.
+Cancel shares no authority. Connect
 durably freezes its consequence on the
 DeviceAuthorization Request but materializes no target/member/executor/credential consequence:
 Profile creation/restore/program-name write, the derived executor, and every credential commit

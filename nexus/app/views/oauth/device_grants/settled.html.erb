@@ -22,16 +22,12 @@
         <% if @grant.runner_only_connection? %>
           <% machine = device_grant_machine_label(@grant) %>
           <p class="hyphens-none text-base-content/60">
-            <% if @grant.agent_private_runner_connection? %>
-              <%= t("oauth.device.agent_private_runner") %>
-            <% elsif @grant.selects_account_wide? %>
+            <% if @grant.selects_account_wide? %>
               <%= t("oauth.device_grants.settled.this_subject_will_be_available_account_wide_for_authorized", subject: (machine)) %>
             <% else %>
               <%= t("oauth.device_grants.settled.this_subject_will_be_private_to_agents_managed_by", subject: (machine)) %>
             <% end %>
           </p>
-        <% elsif @grant.combined_connection? %>
-          <p class="hyphens-none text-base-content/60"><%= t("oauth.device.combined_runner") %></p>
         <% end %>
         <p class="hyphens-none text-base-content/60">
           <%= t("oauth.device_grants.settled.nothing_is_saved_until_the_program_finishes_you_can") %>

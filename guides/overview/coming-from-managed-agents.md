@@ -1,6 +1,6 @@
 # Coming from managed agents
 
-Claude Managed Agents and the OpenAI Agents API run an agent harness in the vendor's cloud; you send input and optionally attach an environment. Cybros runs the same kind of harness on your own infrastructure and splits it in two: Nexus provides the mechanisms, your agent application (or rho) provides the policy. This page maps the vocabulary.
+Claude Managed Agents and the OpenAI Agents API run an agent harness in the vendor's cloud; you send input and optionally attach an environment. Cybros runs the same kind of harness on your own infrastructure and splits it in two: Nexus provides the mechanisms, your agent (or rho) provides the policy. This page maps the vocabulary.
 
 ## Concept map
 

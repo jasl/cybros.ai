@@ -67,11 +67,10 @@ class PlatformAgentsTest < Minitest::Test
     assert_nil detail.application_connection
   end
 
-  def test_all_three_key_resources_keep_their_plane_and_show_secrets_only_once
+  def test_both_key_resources_keep_their_plane_and_show_secrets_only_once
     scopes = {
       "member" => [->(agent) { agent.api_keys }, "/api/v1/agents/agent/api_keys"],
       "executor" => [->(agent) { agent.executor_api_keys }, "/api/v1/agents/agent/executor/api_keys"],
-      "private_runner" => [->(agent) { agent.private_runners.runner("runner").api_keys }, "/api/v1/agents/agent/private_runners/runner/api_keys"],
     }
     scopes.each do |name, (select, path)|
       kind = name == "member" ? "member" : "executor"
@@ -89,16 +88,8 @@ class PlatformAgentsTest < Minitest::Test
     end
   end
 
-  def test_private_runners_have_an_explicit_agent_assignment
-    runners = client([[201, {}, pack.fetch("valid_private_runner_fixture")],
-      [200, {}, pack.fetch("valid_private_runners_fixture")], [200, {}, pack.fetch("valid_private_runner_fixture")]])
-      .agents.agent("agent").private_runners
-    created = runners.create(display_name: "Runner")
-    assert_equal created, runners.list.items.first
-    assert_equal created, runners.runner("runner").fetch
-    assert_equal "agent_private", created.assignment_scope
-    assert_equal({ "private_runner" => { "display_name" => "Runner" } }, @transport.requests.first.fetch(:body))
-    assert_equal "/api/v1/agents/agent/private_runners/runner", @transport.requests.last.fetch(:path)
+  def test_private_runner_management_is_not_part_of_an_agent
+    refute_respond_to client([]).agents.agent("agent"), :private_runners
   end
 
   def test_future_statuses_are_carried_but_a_key_cannot_change_credential_planes

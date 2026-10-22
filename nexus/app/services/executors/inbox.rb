@@ -10,7 +10,7 @@ module Executors
   # every eligible tools provider announcing its name until one claims it,
   # then for the claimant alone — a crashed claimant sees the row it holds,
   # another member never sees a row it can no longer take. An APPROVAL row
-  # lists for the addressed agent application with its `tool_name`,
+  # lists for the addressed agent with its `tool_name`,
   # `tool_input` and the frozen `effect_profile` the approver reads,
   # `claimed: false` for as long as it stands, and ends by the member verbs
   # or the clock.
@@ -51,7 +51,7 @@ module Executors
       # clock; a claim or an extension moves `deadline_at`, never this.
       # Every task also names its required workspace, including standalone loops, so
       # execution never infers its scope from a consumer's mutable default.
-      def row(node, deadline_at: node.wall_deadline_at)
+      def row(node, deadline_at: node.wall_deadline_at, executor: nil)
         {
           kind: node.inbox_kind,
           run_public_id: node.run.public_id,
@@ -65,7 +65,7 @@ module Executors
           tool_alias: node.tool_alias,
           target: Runs::TaskProjection.target(node),
           tool_input: (node.tool_input if node.tool_call?),
-          executor_context: (TaskOperations::Context.executor_context(node) if node.tool_call?),
+          executor_context: (TaskOperations::Context.executor_context(node, executor: executor) if node.tool_call?),
           effect_profile: (node.effect_profile if node.inbox_kind == "approval"),
           scope: (scope_of(node) if node.tool_call? && !node.mcp_call? && Nexus::ToolRegistry.kernel_name?(node.tool_name)),
           tool_call_id: node.tool_call_id,
@@ -125,7 +125,7 @@ module Executors
       maintenance_now = Deployments::Maintenance.effective_now(now) if rows.any?
       Result.new(
         tasks: rows.map do |node|
-          self.class.row(node, deadline_at: node.wall_deadline_at(now, maintenance_now: maintenance_now))
+          self.class.row(node, deadline_at: node.wall_deadline_at(now, maintenance_now: maintenance_now), executor: @executor)
         end,
         next_after: (InboxCursor.encode(fetched.last.id) if fetched.length == @limit)
       )
@@ -189,7 +189,7 @@ module Executors
 
       def addressee
         addressed = Task.where(addressed_executor_id: @executor.id)
-        names = @executor.served_tools.map { |entry| entry["name"] }
+        names = @executor.tools_for(:tool_provider).map { |entry| entry["name"] }
         return addressed unless @executor.tool_provider? && names.any?
 
         addressed.or(Task.where(POOL_FRONTIER_SQL, role: Pool::ROLE,

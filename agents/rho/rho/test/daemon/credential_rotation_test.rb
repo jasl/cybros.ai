@@ -66,7 +66,7 @@ class DaemonCredentialRotationTest < Minitest::Test
       @api.call(path, credential: plane, **options)
     end
 
-    def stock_inbox(row) = @api.stock_inbox(row, address: :runner)
+    def stock_inbox(row) = @api.stock_inbox(row, address: :agent)
     def commits = @api.commits
   end
 
@@ -81,10 +81,10 @@ class DaemonCredentialRotationTest < Minitest::Test
     daemon, = connected
     about = daemon.lineage.credentials
     runners = daemon.lineage.runners
-    assert_equal 2, runners.length
+    assert_equal 1, runners.length
 
     rotate_then_expire_original_access(daemon)
-    assert_equal({ member: :live, executor_transport: :live, runner_transport: :live },
+    assert_equal({ member: :live, executor_transport: :live },
       daemon.maintenance.authority_snapshot.report.fetch(:planes))
     runners.each { |runner| runner.send(:sweep) }
 
@@ -121,8 +121,8 @@ class DaemonCredentialRotationTest < Minitest::Test
       "executor_context" => { "rho.environment" => { "root" => daemon.context.tool_env.root, "directories" => [] } },
       "tool_name" => "bash", "tool_input" => { "command" => "while [ ! -e #{release} ]; do sleep 0.01; done; echo finished" },
       "tool_call_id" => "call-t1", "started_at" => "2026-09-19T00:00:00Z", "deadline_at" => nil, "claimed" => false,
-      "addressed_to" => { "role" => "runner", "executor_public_id" => "0199-runner" } })
-    daemon.context.spawn { runner.nudged(run_public_id: "other-profile-run", task_key: "t1", tool_name: "bash") }
+      "addressed_to" => { "role" => "runner", "executor_public_id" => "0199-executor" } })
+    daemon.context.spawn { runner.nudged(run_public_id: "other-profile-run", task_key: "t1", tool_name: "bash", role: "runner") }
     wait_for { runner.snapshot.in_flight == 1 }
 
     rotate_then_expire_original_access(daemon)
@@ -143,7 +143,7 @@ class DaemonCredentialRotationTest < Minitest::Test
     public_id = open_host(daemon).public_id
     daemon.stop
     restarted = boot_connection(oauth, api)
-    wait_for { restarted.lineage.follower(public_id) && restarted.lineage.runners.length == 2 }
+    wait_for { restarted.lineage.follower(public_id) && restarted.lineage.runners.length == 1 }
     restarted.maintenance.stop
     run = restarted.lineage.follower(public_id)
 
@@ -163,7 +163,7 @@ class DaemonCredentialRotationTest < Minitest::Test
       daemon = boot_connection(oauth, api)
       token = connect(daemon)
       await_workspace_state(daemon, "adopted", token: token)
-      wait_for { daemon.lineage.runners.length == 2 }
+      wait_for { daemon.lineage.runners.length == 1 }
       daemon.maintenance.stop
       [daemon, api, oauth]
     end
@@ -194,7 +194,7 @@ class DaemonCredentialRotationTest < Minitest::Test
 
     def rotate_then_expire_original_access(daemon)
       @now += 8 * 24 * 60 * 60
-      assert_equal [:renewed, :renewed], daemon.maintenance.run_once(daemon.lineage.credentials, verify: false)
+      assert_equal [:renewed], daemon.maintenance.run_once(daemon.lineage.credentials, verify: false)
       @now += 7 * 24 * 60 * 60
     end
 end

@@ -133,7 +133,7 @@ module Rho
 
         def approval_rules
           served = [RunDeclaration.announcement(registry: @loaded.registry, extras: @environments.servers.announcement),
-                    *Array(@runner_candidate_ids).filter_map { |id| remote_runners.get(id)&.served_tools }]
+                    *Array(@runner_candidate_ids).filter_map { |id| remote_runners.get(id)&.tools_for(:runner) }]
           RunDeclaration.approval_rules(guard: guard_enabled?, roots: Rho.protected_roots(@home),
             entries: served.flat_map { |list| RunDeclaration.served_entries(list) }, grants: @grants.map(&:rule))
         end
@@ -175,8 +175,8 @@ module Rho
           # discovered snapshot. An explicit null has no Runner environment.
           # The anchor's editor servers stay scoped to their conversation.
           def turn_surface(client, runner, model: nil, working_directory: nil, instructions: nil, binding: nil, code_mode: true, bare: false)
-            # Another application owns its environment and tools; its private
-            # Runner need not be discoverable by the member posting these words.
+            # Another application owns its environment and tools; its Local
+            # Runner capability need not be discoverable by the member posting these words.
             if bare
               return Surface.new(runner: runner, remote: !runner.nil? && !@context.own_runner?(runner),
                 environment: nil, own_names: [], lead: "")
@@ -198,7 +198,7 @@ module Rho
               # live; `anchor` never reaches the prompt itself.
               lead = @environments.describing_lead(binding&.anchor) do
                 RunDeclaration.lead(registry: registry, environment: environment, instructions: instructions, hints: hints, code_mode: code_mode,
-                  kernel_environment: true, environment_snapshot: remote_runners.get(runner)&.environment,
+                  kernel_environment: true, environment_snapshot: remote_runners.get(runner)&.environment_for(:runner),
                   root: binding&.root, directories: binding ? binding.directories : [])
               end
               return Surface.new(
@@ -211,7 +211,7 @@ module Rho
             document = remote_runner(runner, client: client)
             Surface.new(
               runner: runner, remote: true, environment: nil,
-              lead: RunDeclaration.remote_lead(document&.environment, instructions: instructions, hints: hints,
+              lead: RunDeclaration.remote_lead(document&.environment_for(:runner), instructions: instructions, hints: hints,
                 root: binding&.root, directories: binding ? binding.directories : [], kernel_environment: true),
               own_names: own_names
             )
@@ -224,8 +224,10 @@ module Rho
             contexts = targets.uniq.to_h do |target|
               selected = target == runner ? binding : nil
               selected ||= @environments.read(host, plane: plane, runner: target).binding if host
-              default = @context.own_runner?(target) ? @context.tool_env.root : remote_runner(target, client: client)&.environment&.fetch("root", nil)
-              value = selected || Rho::Runner::Environment::Binding.new(root: default, directories: [], anchor: host)
+              value = selected || begin
+                root = @context.own_runner?(target) ? @context.tool_env.root : remote_runner(target, client: client)&.environment_for(:runner)&.fetch("root", nil)
+                Rho::Runner::Environment::Binding.new(root: root, directories: [], anchor: host)
+              end
               unless value.root && Pathname.new(value.root).absolute?
                 raise CybrosAgent::Api::InvalidRequest.new("Runner #{target} has no concrete absolute environment root", code: "executor_environment_unavailable")
               end
@@ -319,7 +321,7 @@ module Rho
           # including offline Runners. Remembered hosts and cache misses never
           # expand that list.
           def runner_candidates(client)
-            documents = client.executors.list(kind: "runner")
+            documents = client.executors.list(role: "runner")
             documents.each { |document| learn_runner(document) }
             @runner_candidate_ids = documents.map(&:public_id).freeze
             documents

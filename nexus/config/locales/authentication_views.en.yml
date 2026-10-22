@@ -156,7 +156,7 @@ en:
           move and may fail, time out, or require reconciliation; work not yet started can continue on
           the new device.
         reconnecting_keeps_this_registration_s_existing_scope_revoke_the: >-
-          Reconnecting keeps this registration's existing scope and application binding. Revoke the
+          Reconnecting keeps this registration's existing scope. Revoke the
           %{subject} first to register it again with a different assignment.
         make_this_subject_available_account_wide: Make this %{subject} available account-wide
         leave_this_unchecked_to_keep_discovery_and_new_work: >-

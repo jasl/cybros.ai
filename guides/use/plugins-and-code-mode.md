@@ -99,3 +99,11 @@ without rerunning those checks. Paused work stays paused; stopped work and expir
 holds are not revived. Recovery requires rho's member connection and a still-valid
 hold deadline. It does not restore a lost Code Mode VM or replay an uncertain tool
 execution.
+
+Retry an uncertain creation with the same request identity and the same initial
+choices. Changing the prompt, Until command or attempt limit, model, modes, or
+execution context under that identity returns an idempotency conflict before
+changing the conversation's saved policy or environment. An unchanged retry
+finishes an interrupted creation and preserves later conversation settings and
+the original Until Run binding. Recovery therefore keeps the accepted attempt
+limit, including after the local follower cache is removed.

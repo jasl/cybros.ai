@@ -24,12 +24,12 @@ rho setup --nexus-url https://nexus.example
 
 The wizard lets you create an account in Nexus if needed, approve the device code, configure Telegram, optionally configure a provider through the same human OAuth login, and choose a saved default model. rho saves this terminal login for later setup commands. `rho setup` is available in full and agent modes; a runner-only installation uses `rho connect` instead and hosts no conversation UI.
 
-Full mode pairs a bundled Runner reserved for that rho instance, including its eligible Bots and Subagent work. A runner-only installation can instead serve several Agents; its manager approves the [sharing scope](../runners/deploy.md#identity-and-scope) during pairing.
+Full mode announces a Runner service on the application address, reserved for that rho instance, including its eligible Bots and Subagent work. A runner-only installation can instead serve several Agents; its manager approves the [sharing scope](../runners/deploy.md#identity-and-scope) during pairing.
 
 ## Connect with API keys
 
 In Nexus **Agents**, create an Agent and issue its member and application keys.
-For full mode, create a private Runner under that Agent and issue its key too.
+Full mode uses these same two keys for its agent and Runner services.
 Copy each value when it is shown; Nexus cannot reveal it again.
 
 ```sh
@@ -38,7 +38,7 @@ rho connect --api-key --nexus-url https://nexus.example
 
 The prompts hide the keys. For automation, `--api-key-stdin` accepts the JSON
 fields documented in [Command line](../reference/cli.md). rho verifies that the
-application and private Runner belong to the selected Agent, saves the keys
+application belongs to the selected Agent, saves the keys
 privately, and uses them directly on every request. No device approval or token
 refresh is needed for this connection.
 

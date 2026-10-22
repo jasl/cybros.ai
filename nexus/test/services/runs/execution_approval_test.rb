@@ -7,7 +7,7 @@ class Runs::ExecutionApprovalTest < ActiveJob::TestCase
   # ── THE APPROVAL STAGE ──────────────────────────
   #
   # Under `ask` a MODEL-composed tool row parks: it
-  # rests at `needs_approval` addressed to the host's agent application, on the 24 h park clock,
+  # rests at `needs_approval` addressed to the host's agent, on the 24 h park clock,
   # with the effect profile the approver reads, nothing dispatched — and the loop stays `running`,
   # announced `approval_required` naming the held key. Rows the append door or the kernel wrote are
   # pre-approved by their origin and never park.
@@ -30,7 +30,7 @@ class Runs::ExecutionApprovalTest < ActiveJob::TestCase
     run.tasks.find_by!(tool_call_id: "call_read")
   end
 
-  test "under ask a model-composed tool row rests at needs_approval addressed to the agent application, on the clock, announced" do
+  test "under ask a model-composed tool row rests at needs_approval addressed to the agent, on the clock, announced" do
     agent = users(:agent)
     run = seed(reading_model("round1"), creating_user: agent, approval_mode: "ask")
     start_as!(run, agent)
@@ -39,8 +39,8 @@ class Runs::ExecutionApprovalTest < ActiveJob::TestCase
     assert_equal "needs_approval", call.status
     assert_equal "model", call.authored_by
     assert_equal Executor.address_for(agent).id, call.addressed_executor_id
-    assert_equal "agent_application", call.addressed_role, "addressed to the approver's application, not the runner"
-    assert_equal suite_runner.effect_profile_for("read_file"), call.effect_profile,
+    assert_equal "agent", call.addressed_role, "addressed to the approver's application, not the runner"
+    assert_equal suite_runner.effect_profile_for("read_file", role: suite_runner.executor_kind), call.effect_profile,
       "the decision's profile, frozen for the approver to read"
     assert_not_nil call.await_started_at, "on the park clock"
     assert_nil call.started_at, "nothing was dispatched"
@@ -215,7 +215,7 @@ class Runs::ExecutionApprovalTest < ActiveJob::TestCase
     def fan_runner_aliases!(rules)
       remote = connect_runner(manager: users(:owner), registration_identifier: "approval-remote",
         display_name: "Remote reads", assignment_scope: :account_wide).executor_access_token.executor
-      assert_predicate remote.announce(tools: RunAuthoringTestHelper::TEST_SERVED_TOOLS), :accepted?
+      assert_predicate remote.announce(services: { remote.executor_kind => { "tools" => RunAuthoringTestHelper::TEST_SERVED_TOOLS } }), :accepted?
       aliases = { "local_read" => suite_runner, "remote_read" => remote }
       tools = aliases.map do |name, runner|
         RunLaneTestHelper::READ_TOOL.merge(

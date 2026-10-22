@@ -73,4 +73,4 @@ en:
       schedule_finished: This schedule is already completed or canceled.
       not_authorized: The current member or original creator can no longer write to this conversation.
       answerer_not_eligible: The saved answering agent is no longer eligible for this conversation.
-      invalid_input: The saved input could not be accepted. Review the schedule through your agent application.
+      invalid_input: The saved input could not be accepted. Review the schedule through your agent.

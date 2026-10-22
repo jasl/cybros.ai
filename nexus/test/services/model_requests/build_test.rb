@@ -63,7 +63,7 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
     first_runner = suite_runner
     second_runner = connect_runner(manager: users(:owner), registration_identifier: "deferred-second",
       display_name: "Second Runner", assignment_scope: :account_wide).executor_access_token.executor
-    assert_predicate second_runner.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate second_runner.announce(services: { second_runner.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     accessors = %w[tool_search tool_call].map { |name| Nexus::ToolRegistry.function_definition(name) }
     declarations = [first_runner, second_runner].map.with_index do |runner, index|
       TOOL.merge("defer_loading" => true,

@@ -132,9 +132,12 @@ module Rho
           end
 
           def create_policy(host, hosted, **fields)
-            defaults = { code_mode: CodeMode.enabled?(@config), subagent: @config.subagent_default }
-            policy = policy_for(host, hosted).replace(**defaults.merge(fields))
+            policy = policy_for(host, hosted).establish(**initial_policy(**fields))
             store.project(host, policy)
+          end
+
+          def initial_policy(**fields)
+            { code_mode: CodeMode.enabled?(@config), subagent: @config.subagent_default }.merge(fields)
           end
       end
     end

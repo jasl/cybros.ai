@@ -76,14 +76,14 @@ module Tools
       def load_executors
         routes = @explicit.filter_map { |entry| entry["route"] }.select { |route| route.fetch("kind") == "runner" }
         ids = (@candidate_ids + routes.map { |route| route.fetch("runner_executor_public_id") } + [@runner_id]).compact.uniq
-        rows = Executor.where(account_id: @principal.account_id, executor_kind: :runner, public_id: ids)
-          .includes(:manager, :assignment_agent).to_a
+        rows = Executor.providing(:runner).where(account_id: @principal.account_id, public_id: ids)
+          .includes(:manager, agent: :steward).to_a
         @readiness = Executor.credential_readiness_for(rows)
         @executors = rows.index_by(&:public_id)
       end
 
       def eligible?(public_id)
-        @executors[public_id]&.eligible_for?(@principal, readiness: @readiness)
+        @executors[public_id]&.eligible_for_role?(:runner, @principal, readiness: @readiness)
       end
 
       def base_definitions
@@ -100,7 +100,7 @@ module Tools
 
         # MCP selections use explicit routes, so an automatic Runner import
         # cannot restore a connection the application or parent disabled.
-        offered = runner.served_tools.select { |entry| entry["description"] && entry["input_schema"] && !entry["mcp"] }
+        offered = runner.tools_for(:runner).select { |entry| entry["description"] && entry["input_schema"] && !entry["mcp"] }
         if @runner_tool_names
           offered = offered.select { |entry| @runner_tool_names.include?(entry.fetch("name")) }
         end
@@ -171,7 +171,7 @@ module Tools
           when "runner"
             public_id = route.fetch("runner_executor_public_id")
             return :runner_not_eligible unless eligible?(public_id)
-            return :tool_not_served unless @executors.fetch(public_id).served?(route.fetch("tool_name"))
+            return :tool_not_served unless @executors.fetch(public_id).served?(route.fetch("tool_name"), role: :runner)
           when "mcp"
             connection = @connections[route.fetch("connection_public_id")]
             return :mcp_connection_unavailable unless connection&.usable_by?(@principal)
@@ -196,7 +196,7 @@ module Tools
 
       def executor_fact(executor)
         { "runner_executor_public_id" => executor.public_id,
-          "display_name" => executor.display_name, "environment" => executor.environment.deep_dup }
+          "display_name" => executor.display_name, "environment" => executor.environment_for(:runner).deep_dup }
       end
   end
 end

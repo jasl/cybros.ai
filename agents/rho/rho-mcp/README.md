@@ -227,7 +227,7 @@ server announce.
 
 `serves` is the address: stdio → the RUNNER row, beside Coding's tools;
 http → the AGENT row, beside other application tools, addressed by the
-kernel as `agent_application`. Override per row (`"serves": "runner"` for a
+kernel as `agent`. Override per row (`"serves": "runner"` for a
 localhost http server this machine owns). A mode that does not serve the
 row's address lists that row `down: config:` with the sentence saying which
 setting to change; in `mode: full` both serve. Each address uses the Runner's

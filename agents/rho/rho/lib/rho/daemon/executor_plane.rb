@@ -1,11 +1,6 @@
 module Rho
   class Daemon
-    # THE EXECUTOR PLANE'S TWO VERBS, out of `HostFollowers` because runner mode constructs no
-    # `HostFollowers`: what an ADDRESS announces it serves, and the nudge stream on that address's
-    # inbox channel. One implementation for every mode and both addresses — the runner's
-    # (`:runner`, the environment tools with the root's environment document) and the
-    # agent's (`:agent_runner`, the agent's own tools, no environment). The member-plane
-    # verbs stay in `HostFollowers`.
+    # Whole-service announcement and the single executor inbox subscription.
     class ExecutorPlane
       # The runner's cable: ONE channel keyed by the executor the
       # transport bearer names, no params; `work_available` names a kind, a
@@ -17,7 +12,7 @@ module Rho
       ASK_KIND = "ask".freeze
       APPROVAL_KIND = "approval".freeze
       # The address each slot serves, as the log names it.
-      ADDRESSES = { runner: "runner", agent_runner: "agent" }.freeze
+      ADDRESSES = { runner: "executor" }.freeze
       RECONNECT_SECONDS = 5.0
 
       # `booted_at` is the daemon's boot
@@ -37,31 +32,15 @@ module Rho
       # that loaded.
       def announced = @announced.dup
 
-      # WHAT AN ADDRESS SERVES, written on the same edge as
-      # the declaration but on the executor plane and BEFORE the runner
-      # follows: the kernel addresses a call to an address only if it
-      # announced the name, so a runner that followed first would meet
-      # `tool_not_served` on the turn's first call. `registry` is the
-      # address's projection; `environment` the ROOT's document
-      # for the runner address — nil for the agent's, so the SDK omits the
-      # key and the kernel stores none — and `documents` what the address's
-      # own providers announce:
-      # the runner's carries the root's skills and its stdio MCP servers'
-      # prompts, the agent's only what its extensions announce, no
-      # environment (an http MCP server's prompts). A refusal costs the
-      # announcement, never the runner — the snapshot's `announced` says so.
-      # `extras`: the agent slot's entries
-      # beyond the registry's — every anchor's editor servers — announced
-      # with the registry's as one list, a name once.
-      def announce_tools(credential, registry:, environment:, documents: nil, slot: :runner, extras: [])
-        address = ADDRESSES.fetch(slot)
-        tools = RunDeclaration.announcement(registry: registry, extras: extras)
-        @wire.executor_client(credential).announce(tools: tools, environment: environment, documents: documents)
-        @announced[address] = tools.length
-        @log.info("executor.announced", tools: tools.length, address: address, documents: documents&.length)
+      def announce_services(credential, services:)
+        @wire.executor_client(credential).announce(services: services)
+        @announced = services.transform_values { |service| service.fetch("tools").length }
+        @announced.each do |role, count|
+          @log.info("executor.announced", tools: count, role: role, documents: services.fetch(role).fetch("documents").length)
+        end
       rescue CybrosAgent::Error => error
-        @announced[address] = nil
-        @log.warn("executor.announcement_failed", address: address, error_class: error.class.name,
+        @announced = services.transform_values { nil }
+        @log.warn("executor.announcement_failed", error_class: error.class.name,
           code: error.code, error: CybrosAgent::Redaction.call(error.message))
       end
 
@@ -124,7 +103,7 @@ module Rho
               # One fiber per nudge: `nudged` waits for the tool's answer, and
               # running it here starved the next nudge until the current tool
               # finished. The pool declines when full, so this cannot pile up.
-              # An `ask` kind is the agent application's row, and
+              # An `ask` kind is the agent's row, and
               # an `approval` kind a call held for a person —
               # neither the runner's: each is noted — the daemon's ask or
               # approval notice — and never dispatched; the inbox is the
@@ -169,7 +148,7 @@ module Rho
 
           runner.nudged(
             run_public_id: event["run_public_id"],
-            task_key: event["task_key"], tool_name: event["tool_name"]
+            task_key: event["task_key"], tool_name: event["tool_name"], role: event["role"]
           )
         rescue *Rho::Runner::TaskRun::FATAL => error
           # A process-fatal raise from a tool would end the reactor thread and

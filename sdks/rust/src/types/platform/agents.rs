@@ -5,11 +5,11 @@ use crate::types::member::{AgentConfiguration, PromptDocument};
 pub struct AgentDetail {
     #[serde(flatten)]
     pub agent: Agent,
-    pub application_connection: Option<AgentApplicationConnection>,
+    pub application_connection: Option<AgentConnection>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AgentApplicationConnection {
+pub struct AgentConnection {
     pub executor_public_id: String,
     pub owner_agent_public_id: String,
     pub status: crate::types::names::ExecutorStatus,

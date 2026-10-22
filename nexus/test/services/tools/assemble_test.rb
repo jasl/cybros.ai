@@ -13,7 +13,7 @@ class Tools::AssembleTest < ActiveSupport::TestCase
     assert_predicate selected, :accepted?
     assert_equal %w[code read skill], selected.definitions.map { |entry| entry.fetch("route").fetch("tool_name") }
     read = selected.definitions.find { |entry| entry.dig("function", "name") == "read" }
-    assert_equal @runner_a.serving("read").fetch("input_schema"), read.dig("function", "parameters")
+    assert_equal @runner_a.serving("read", role: @runner_a.executor_kind).fetch("input_schema"), read.dig("function", "parameters")
     assert_equal @runner_a.public_id, read.dig("route", "runner_executor_public_id")
     assert_equal [@runner_b.public_id, @runner_a.public_id], selected.environment.fetch("runner_candidates")
       .map { |entry| entry.fetch("runner_executor_public_id") }
@@ -48,7 +48,7 @@ class Tools::AssembleTest < ActiveSupport::TestCase
     assert_predicate remote, :accepted?
     assert_equal ["read"], Nexus::ToolDeclarations.names(remote.definitions)
     assert_equal @runner_b.public_id, remote.definitions.sole.dig("route", "runner_executor_public_id")
-    assert_equal @runner_b.serving("read").fetch("input_schema"), remote.definitions.sole.dig("function", "parameters")
+    assert_equal @runner_b.serving("read", role: @runner_b.executor_kind).fetch("input_schema"), remote.definitions.sole.dig("function", "parameters")
 
     @agent.update!(runner_tool_names: %w[missing Read])
     result = assemble(runner: @runner_a)
@@ -58,7 +58,7 @@ class Tools::AssembleTest < ActiveSupport::TestCase
   end
 
   test "operator-only announcements do not become model tools" do
-    @runner_a.announce(tools: [announced("read"), { "name" => "capture", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }])
+    @runner_a.announce(services: { @runner_a.executor_kind => { "tools" => [announced("read"), { "name" => "capture", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } })
     assert_equal ["read"], Nexus::ToolDeclarations.names(assemble(runner: @runner_a).definitions)
     @agent.update!(runner_tool_names: ["capture"])
     result = assemble(runner: @runner_a)
@@ -67,12 +67,12 @@ class Tools::AssembleTest < ActiveSupport::TestCase
   end
 
   test "MCP announcements require explicit routes without hiding another Runner's ordinary names" do
-    @runner_a.announce(tools: [announced("read").merge("mcp" => { "server_key" => "notes", "tool_name" => "search" })])
+    @runner_a.announce(services: { @runner_a.executor_kind => { "tools" => [announced("read").merge("mcp" => { "server_key" => "notes", "tool_name" => "search" })] } })
     assert_empty assemble(runner: @runner_a).definitions
     assert_equal ["read"], Nexus::ToolDeclarations.names(assemble(runner: @runner_b).definitions)
 
     explicit = { "type" => "function", "function" => { "name" => "notes_search", "description" => "Search notes",
-      "parameters" => @runner_a.serving("read").fetch("input_schema") },
+      "parameters" => @runner_a.serving("read", role: @runner_a.executor_kind).fetch("input_schema") },
       "route" => { "kind" => "runner", "runner_executor_public_id" => @runner_a.public_id, "tool_name" => "read" } }
     @agent.update!(tool_definitions: [explicit])
     result = assemble(runner: @runner_b)
@@ -108,7 +108,7 @@ class Tools::AssembleTest < ActiveSupport::TestCase
       routed = result.definitions.find { |entry| entry.dig("route", "tool_name") == name }
       assert_match(/\A#{name}__[a-f0-9]{12}\z/, Nexus::ToolDeclarations.name_of(routed))
       assert_equal @runner_a.public_id, routed.dig("route", "runner_executor_public_id")
-      assert_equal @runner_a.serving(name).fetch("input_schema"), routed.dig("function", "parameters")
+      assert_equal @runner_a.serving(name, role: @runner_a.executor_kind).fetch("input_schema"), routed.dig("function", "parameters")
       assert_equal Nexus::ToolDeclarations.name_of(routed), Nexus::ToolDeclarations.name_of(
         assemble(runner: @runner_a).definitions.find { |entry| entry.dig("route", "tool_name") == name })
     end
@@ -140,7 +140,7 @@ class Tools::AssembleTest < ActiveSupport::TestCase
 
   test "explicit Runner routes remain independent capabilities and freeze their environment" do
     explicit = { "type" => "function", "function" => { "name" => "remote_read", "description" => "Read on Build",
-      "parameters" => @runner_b.serving("read").fetch("input_schema") },
+      "parameters" => @runner_b.serving("read", role: @runner_b.executor_kind).fetch("input_schema") },
       "route" => { "kind" => "runner", "runner_executor_public_id" => @runner_b.public_id, "tool_name" => "read" } }
     @agent.update!(runner_executor_public_ids: [], tool_definitions: [explicit])
     result = assemble
@@ -149,7 +149,7 @@ class Tools::AssembleTest < ActiveSupport::TestCase
     assert_empty result.environment.fetch("runner_candidates")
     assert_equal [@runner_b.public_id], result.environment.fetch("executors").map { |entry| entry.fetch("runner_executor_public_id") }
     frozen = result.environment.deep_dup
-    @runner_b.announce(tools: [], environment: { "fragments" => [{ "text" => "Changed machine" }] })
+    @runner_b.announce(services: { @runner_b.executor_kind => { "tools" => [], "environment" => { "fragments" => [{ "text" => "Changed machine" }] } } })
     assert_equal frozen, result.environment
     assert_equal :tool_not_served, assemble.refusal
     @runner_b.revoke_credentials
@@ -186,7 +186,7 @@ class Tools::AssembleTest < ActiveSupport::TestCase
 
   test "explicit routes use the same UUID identity normalization as candidates" do
     explicit = { "type" => "function", "function" => { "name" => "remote_read", "description" => "Read on Build",
-      "parameters" => @runner_b.serving("read").fetch("input_schema") },
+      "parameters" => @runner_b.serving("read", role: @runner_b.executor_kind).fetch("input_schema") },
       "route" => { "kind" => "runner", "runner_executor_public_id" => @runner_b.public_id.upcase, "tool_name" => "read" } }
     @agent.update!(runner_executor_public_ids: [], tool_definitions: [explicit])
     result = assemble
@@ -210,7 +210,7 @@ class Tools::AssembleTest < ActiveSupport::TestCase
     def runner(identifier, display_name, tools:)
       connect_runner(manager: users(:owner), registration_identifier: identifier,
         display_name: display_name, assignment_scope: :account_wide).executor_access_token.executor.tap do |row|
-        outcome = row.announce(tools: tools, environment: { "fragments" => [{ "text" => display_name }] })
+        outcome = row.announce(services: { row.executor_kind => { "tools" => tools, "environment" => { "fragments" => [{ "text" => display_name }] } } })
         assert_predicate outcome, :accepted?
       end
     end

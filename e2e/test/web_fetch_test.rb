@@ -170,7 +170,7 @@ class WebFetchTest < Minitest::Test
 
       # DISCOVERY: the runner row's served tools carry the declaration
       # VERBATIM — the class's constants, byte for byte — beside Coding's.
-      served = @daemon.member_client.executors.show(rho_runner_id).served_tools
+      served = @daemon.member_client.executors.show(rho_runner_id).tools_for(:runner)
       tool = served.find { |candidate| candidate.name == Fetch::NAME }
       refute_nil tool, "web_fetch is not on the runner row: #{served.map(&:name).inspect}"
       assert_equal PROFILE, tool.effect_profile
@@ -491,7 +491,7 @@ class WebFetchTest < Minitest::Test
       refute plugin.dig("configuration", "value", "allow_private_network")
       assert_includes plugin.dig("configuration", "diagnostics"),
         { "path" => ["allow_private_network"], "reason" => "type", "fallback" => "default" }
-      assert_includes @daemon.member_client.executors.show(rho_runner_id).served_tools.map(&:name), "web_fetch"
+      assert_includes @daemon.member_client.executors.show(rho_runner_id).tools_for(:runner).map(&:name), "web_fetch"
       note = File.join(project, "note.txt")
       File.write(note, "still served\n")
       _c, _t, loop = open_turn("!mock tool_call=read tool_args=#{CGI.escape(JSON.generate("path" => note))} -- done", project)

@@ -2,52 +2,16 @@ require "cybros_agent"
 require "time"
 
 module Rho
-  # One connection ceremony, from the code a human types to a credential
-  # installed in its destination root.
-  # The connection phases are: idle → starting → pending → activating → active, with error
-  # as the retryable arm. They exist because a human is watching: `starting` means the
-  # code has been asked for and has not arrived, `pending` means it is on screen and the
-  # poll is running, and `activating` is the one window where credentials exist but the
-  # daemon is not yet connected. The runner-only shape spells its pending phase
-  # `pending_runner`: the same code on screen, for a grant that adds a runner beside a
-  # live agent.
-  #
-  # ONE CONNECTION, THREE REQUEST SHAPES, decided by the
-  # daemon's Ceremony from the mode and the planes it still holds:
-  #   :combined — full mode from idle (or both planes lost): ONE grant
-  #     carrying the agent triple AND the runner pair; the poll answers
-  #     three access tokens on two lineages (`Rho::Credentials`).
-  #   :agent — agent mode, or a full-mode restore whose runner plane is
-  #     LIVE: branch A alone. A restore NEVER fences a live runner plane —
-  #     a combined re-consume would `re_pair` the runner row and fence the
-  #     credential the daemon's runner run is claiming with — so the
-  #     `existing` runner OAuth is kept by object identity and never
-  #     re-consumed.
-  #   :runner — runner mode from idle (identifier `rho-runner`, its own
-  #     root), or full mode with the agent planes live and the runner plane
-  #     absent/lost (identifier `rho`): branch B, the agent half untouched;
-  #     the daemon attaches the minted runner OAuth under its monitor.
-  #
-  # Two rules shape everything here:
-  #
-  #   Nothing durable is keyed until the identity is known. The token response
-  #   carries no identity, so the minted bundle waits in a home-scoped
-  #   staging slot until a bootstrap read says whose it is. Staging is never an
-  #   active credential source — nothing composes planes from it and no
-  #   rotation runs against it.
-  #
-  #   A retry never re-runs a ceremony it already won. If activation fails
-  #   after the mint — identity resolution refused, a lock held, a vault that
-  #   would not write — the staged bundle is still there, and retrying resumes
-  #   at `activating`. Running the browser ceremony again would burn a second
-  #   authorization and re-pair the address at a new
-  #   epoch — fencing the staged bundle we are still holding.
+  # One ceremony installs either an application connection (member and transport)
+  # or a standalone machine transport. Full mode adds a service to the application
+  # address; it never registers another machine. Staging makes a won exchange
+  # recoverable before identity resolution and credential persistence finish.
   class Connection
-    STAGING_VERSION = 5
-    REQUESTS = %i[combined agent runner login].freeze
+    STAGING_VERSION = 6
+    REQUESTS = %i[agent runner login].freeze
     PENDING_PHASES = %i[pending pending_runner].freeze
 
-    attr_reader :phase, :identity, :oauth, :runner_oauth, :authority_report, :user_code,
+    attr_reader :phase, :identity, :oauth, :authority_report, :user_code,
       :verification_uri, :verification_uri_complete, :error_message, :request, :mode
 
     # `request` defaults to the mode's idle shape; `existing` is the
@@ -60,6 +24,10 @@ module Rho
       @mode = Config::MODES.include?(mode) ? mode : raise(ArgumentError, "unknown mode #{mode.inspect}")
       @request = request || self.class.idle_request(mode)
       raise ArgumentError, "unknown request shape #{@request.inspect}" unless REQUESTS.include?(@request)
+
+      unless @request == :login || @request == self.class.idle_request(@mode)
+        raise ArgumentError, "request shape does not match mode #{@mode}"
+      end
 
       @existing = existing
       @existing_identity = existing_identity
@@ -74,24 +42,9 @@ module Rho
     end
 
     # The shape a mode pairs from idle.
-    def self.idle_request(mode)
-      case mode
-      when "runner" then :runner
-      when "agent" then :agent
-      else :combined
-      end
-    end
+    def self.idle_request(mode) = mode == "runner" ? :runner : :agent
 
-    def self.recovery_request(mode, lost)
-      return :runner if mode == "runner"
-
-      agent_lost = (lost - [:runner_transport]).any?
-      runner_lost = lost.include?(:runner_transport)
-      if agent_lost && runner_lost then :combined
-      elsif runner_lost then :runner
-      else :agent
-      end
-    end
+    def self.recovery_request(mode, _lost) = idle_request(mode)
 
     # The branch a staged bundle was minted on, or nil without one — read
     # before the boot-time resume decides what stands behind it.
@@ -272,8 +225,6 @@ module Rho
 
     # THE RUNNER-ONLY SHAPE ON A LIVE AGENT installs by attaching, under the
     # daemon's monitor, never by replacing the lineage: the daemon reads
-    # `runner_oauth` and `identity` and adopts through `adopt_runner`.
-    def adopts_runner? = @request == :runner && @mode == "full"
 
     def to_h
       document = { "phase" => @phase.to_s, "branch" => @request.to_s, "mode" => @mode }
@@ -301,15 +252,7 @@ module Rho
         @verification_uri_complete = @authorization.verification_uri_complete
       end
 
-      # The wire request per shape: the combined grant names
-      # both identities on one row; branch B names the runner identifier the
-      # MODE presents — `rho` for the in-process runner, `rho-runner` for
-      # runner mode — so a full rho and a runner-mode rho under one manager
-      # hold two live rows. THE ONE PAIRING SITE: every
-      # identifier is the program's constant plus this home's instance
-      # part — `rho.3f9a2c1e` — so several installs of one program pair
-      # under one steward as separate rows, and a reconnect of the SAME
-      # home presents the same identifier and re-pairs the same Profile.
+      # Stable per-home identifiers reconnect the same registered application or machine.
       def request_authorization
         case @request
         when :login
@@ -319,15 +262,8 @@ module Rho
           else
             @device_flow.request_authorization(agent_identifier: agent_identifier,
               agent_display_name: @display_name, executor_display_name: @display_name,
-              runner: (@mode == "full" ? { identifier: registration_identifier, display_name: @display_name } : nil),
               connection_mode: "login")
           end
-        when :combined
-          @device_flow.request_authorization(
-            agent_identifier: agent_identifier, agent_display_name: @display_name,
-            executor_display_name: @display_name,
-            runner: { identifier: registration_identifier, display_name: @display_name }
-          )
         when :agent
           @device_flow.request_authorization(
             agent_identifier: agent_identifier, agent_display_name: @display_name,
@@ -335,8 +271,7 @@ module Rho
           )
         else
           @device_flow.request_runner_authorization(
-            registration_identifier: registration_identifier, runner_display_name: @display_name,
-            assignment_agent_public_id: (@existing_identity.user_public_id if @mode == "full")
+            registration_identifier: registration_identifier, runner_display_name: @display_name
           )
         end
       end
@@ -376,10 +311,6 @@ module Rho
         else
           document.merge!("refresh_token" => credentials.refresh_token,
             "token_type" => credentials.token_type, "expires_in" => credentials.expires_in)
-          if credentials.runner_plane?
-            document["runner"] = { "access_token" => credentials.runner_access_token,
-              "refresh_token" => credentials.runner_refresh_token }
-          end
         end
         @staging.write(document)
         credentials
@@ -405,15 +336,12 @@ module Rho
         end
         raise StoredConnectionError, "Unknown staged authentication kind" unless @authentication_kind == "oauth"
 
-        runner = document["runner"] || {}
         CybrosAgent::DeviceFlow::Credentials.new(
           access_token: document["access_token"],
           executor_access_token: document["executor_access_token"],
           refresh_token: document.fetch("refresh_token"),
           token_type: document.fetch("token_type"),
-          expires_in: document.fetch("expires_in"),
-          runner_access_token: runner["access_token"],
-          runner_refresh_token: runner["refresh_token"]
+          expires_in: document.fetch("expires_in")
         )
       rescue KeyError
         raise StoredConnectionError, "the staged connection is incomplete"
@@ -451,40 +379,20 @@ module Rho
       def resolve_identity
         planes = CybrosAgent.planes_for(@credentials, base_url: @home.base_url, transport: @api_transport)
         case @request
-        when :combined
-          address = require_plane(planes.executor_client, "executor_transport").executor.executor
-          runner = runner_address(require_plane(planes.runner_client, "runner_transport"))
-          profile = require_plane(planes.client, "member").profile.fetch
-          verify_agent(profile, address)
-          verify_private_runner(runner, profile.member.public_id)
-          @authority_report = live_report(%i[member executor_transport runner_transport], profile: profile)
-          Identity.agent(
-            home: @home, user_public_id: profile.member.public_id, executor_public_id: address.public_id,
-            mode: @mode, runner_executor_public_id: runner.public_id, agent_identifier: profile.member.agent_identifier,
-            runner_registration_identifier: runner.registration_identifier
-          )
         when :agent
           address = require_plane(planes.executor_client, "executor_transport").executor.executor
           profile = require_plane(planes.client, "member").profile.fetch
           verify_agent(profile, address)
           @authority_report = live_report(%i[member executor_transport], profile: profile)
-          kept_runner = @existing&.runner && @existing_identity&.runner_executor_public_id
-          @authority_report[:planes][:runner_transport] = kept_runner_plane(profile.member.public_id) if kept_runner
           Identity.agent(
             home: @home, user_public_id: profile.member.public_id, executor_public_id: address.public_id,
-            mode: @mode, runner_executor_public_id: kept_runner, agent_identifier: profile.member.agent_identifier,
-            runner_registration_identifier: @existing_identity&.runner_registration_identifier
+            mode: @mode, agent_identifier: profile.member.agent_identifier
           )
         else
           runner = runner_address(require_plane(planes.executor_client, "runner_transport"))
           @authority_report = live_report(%i[runner_transport])
-          if @mode == "runner"
-            Identity.runner(home: @home, executor_public_id: runner.public_id,
-              runner_registration_identifier: runner.registration_identifier)
-          else
-            verify_private_runner(runner, require_existing_identity.user_public_id)
-            require_existing_identity.with_runner(runner.public_id, registration_identifier: runner.registration_identifier)
-          end
+          Identity.runner(home: @home, executor_public_id: runner.public_id,
+            runner_registration_identifier: runner.registration_identifier)
         end
       end
 
@@ -494,20 +402,6 @@ module Rho
       def live_report(planes, profile: nil)
         { planes: planes.to_h { |plane| [plane, :live] }, lost: false,
           member_handle: profile&.member&.handle }.compact
-      end
-
-      # The runner plane a restore keeps is asked, not assumed: one read on
-      # its own credential, reported the way the authority probe reports.
-      def kept_runner_plane(agent_public_id)
-        address = CybrosAgent::ExecutorClient.new(
-          base_url: @home.base_url, credential: @existing.runner_credential, transport: @api_transport
-        ).executor.executor
-        verify_private_runner(address, agent_public_id)
-        :live
-      rescue CybrosAgent::Api::Unauthorized, CybrosAgent::Credentials::PlaneUnavailable
-        :unauthorized
-      rescue CybrosAgent::Api::Error, CybrosAgent::TransportError, CybrosAgent::Error
-        :unknown
       end
 
       def runner_address(client)
@@ -526,20 +420,9 @@ module Rho
         unless member.kind == "agent" && !member.agent_identifier.to_s.empty?
           raise ConnectionError, "The member key must belong to an Agent"
         end
-        unless address.kind == "agent_application" && address.agent_public_id == member.public_id
+        unless address.kind == "agent" && address.agent_public_id == member.public_id
           raise ConnectionError, "The application executor key must belong to the same Agent"
         end
-      end
-
-      def verify_private_runner(address, agent_public_id)
-        unless address.assignment_scope == "agent_private" && address.assignment_agent_public_id == agent_public_id
-          raise ConnectionError, "Full mode requires a private Runner assigned to the same Agent"
-        end
-      end
-
-      def require_existing_identity
-        @existing_identity ||
-          raise(ConnectionError, "a runner grant on a full-mode daemon needs the live agent connection to attach to")
       end
 
       # A ceremony that produced no credential for a required bootstrap read
@@ -557,16 +440,10 @@ module Rho
       def install
         @oauth =
           case @request
-          when :combined
-            Rho::Credentials.new(agent: issue(@credentials, @identity.vault),
-              runner: issue(@credentials.runner_half, @identity.runner_vault))
           when :agent
-            # THE PIN: the restore keeps the live runner OAuth object and
-            # never re-consumes it.
-            Rho::Credentials.new(agent: issue(@credentials, @identity.vault), runner: @existing&.runner)
+            Rho::Credentials.new(agent: issue(@credentials, @identity.vault))
           else
-            @runner_oauth = issue(@credentials, @identity.runner_vault)
-            @mode == "runner" ? Rho::Credentials.new(runner: @runner_oauth) : @existing
+            Rho::Credentials.new(runner: issue(@credentials, @identity.runner_vault))
           end
         @identity.record(clock: @clock)
         Rho::StateFile.new(@home.connection_pointer_path).write(@identity.pointer_document)

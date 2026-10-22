@@ -25,7 +25,7 @@ kind whose effect reaches the person's own files and shell; a model round
 is admitted by the admission plane and has no stage. Under `bypass` the
 stage is crossed and granted in one transaction and never observed at
 rest; under `ask` or `rules` a model-composed call the rules do not
-decide rests there, addressed to the host's agent application, listed on
+decide rests there, addressed to the host's agent, listed on
 its inbox as kind `approval`, announced on the run as
 `approval_required` while the turn stays `running`, and ended by
 `approve`, `deny`, the 24 h park clock (`timed_out approval_expired`

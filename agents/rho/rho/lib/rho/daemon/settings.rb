@@ -190,7 +190,7 @@ module Rho
         @environments.configure(config: @config, registry: @loaded.registry.serving(:runner),
           agent_registry: @loaded.registry.serving(:agent), registrar: @loaded.conversation_servers,
           served: @loaded.registry, checkpoints: !@host.checkpoints.nil?)
-        Lineage::SLOTS.each { |slot| @lineage.runner(slot)&.configure(hooks: registry_for(slot).hooks) }
+        @lineage.runner&.configure(roles: execution_roles)
         @server.configure(routes: @routes.table, static_root: @webui)
       end
 

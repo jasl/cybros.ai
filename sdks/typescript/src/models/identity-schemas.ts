@@ -1,6 +1,6 @@
 import type { Reader } from "../schemas.js";
 const platformAgent: Record<string, Reader> = { public_id: ["string"], handle: ["nullable_string"], display_name: ["string"], status: ["string"], agent_identifier: ["nullable_string"], named_agent_scope: ["nullable_string"], description: ["nullable_string"], derived_from_public_id: ["nullable_string"] };
-const platformRunner: Record<string, Reader> = { public_id: ["string"], kind: ["string"], display_name: ["string"], status: ["string"], manager_public_id: ["string"], assignment_scope: ["string"], assignment_agent_public_id: ["nullable_string"], credential_readiness: ["string"], eligible_for_current_user: ["boolean"], presence: ["string"], last_seen_at: ["nullable_string"], connected_at: ["nullable_string"], registered_at: ["string"] };
+const platformRunner: Record<string, Reader> = { public_id: ["string"], kind: ["string"], display_name: ["string"], status: ["string"], manager_public_id: ["string"], assignment_scope: ["nullable_string"], service_roles: ["string_list"], credential_readiness: ["string"], eligible_for_current_user: ["boolean"], presence: ["string"], last_seen_at: ["nullable_string"], connected_at: ["nullable_string"], registered_at: ["string"] };
 export const identitySchemas: Record<string, Record<string, Reader>> = {
   PlatformMcpConnection: {"public_id": ["string"], "name": ["string"], "account_label": ["nullable_string"], "endpoint_url": ["string"], "auth_type": ["string"], "enabled": ["boolean"], "available": ["boolean"], "credential_configured": ["boolean"], "authorization_status": ["string"], "authorization_expires_at": ["nullable_string"], "tools": ["json_array"], "catalog_refreshed_at": ["nullable_string"], "lock_version": ["integer"]},
   PlatformMcpAuthorization: {"connection_public_id": ["string"], "authorization_url": ["string"], "expires_at": ["string"]},
@@ -29,10 +29,9 @@ export const identitySchemas: Record<string, Record<string, Reader>> = {
   PlatformAgentConnection: { executor_public_id: ["string"], owner_agent_public_id: ["string"], status: ["string"], credential_readiness: ["string"], presence: ["string"], last_seen_at: ["nullable_string"], connected_at: ["nullable_string"] },
   PlatformAgentConfiguration: { agent: ["shape", "PlatformAgent"], configuration: ["shape", "AgentConfiguration"], prompt_documents: ["shapes", "PromptDocument"], agent_updated_at: ["string"], measured_at: ["string"] },
   PlatformRunner: platformRunner,
-  PlatformRunnerDetail: { ...platformRunner, served_tools: ["shapes", "ServedTool"], served_documents: ["shapes", "ServedDocument"], environment: ["json_object"] },
+  PlatformRunnerDetail: { ...platformRunner, services: ["shape", "ExecutorServices"] },
   PlatformRunnerPage: { items: ["shapes", "PlatformRunner", "runners"], next_after: ["nullable_string", "pagination", "next_after"], measured_at: ["string"] },
   PlatformRunnerSnapshot: { runner: ["shape", "PlatformRunnerDetail"], measured_at: ["string"] },
-  PlatformPrivateRunner: {"public_id": ["string"], "display_name": ["string"], "status": ["string"], "registration_identifier": ["string"], "assignment_scope": ["string"], "assignment_agent_public_id": ["string"]},
   PlatformAPIKey: {"public_id": ["string"], "name": ["string"], "note": ["nullable_string"], "plane": ["string"], "created_at": ["string"], "last_used_at": ["nullable_string"], "revoked_at": ["nullable_string"], "usable": ["boolean"]},
   PlatformAPIKeyGrant: {"api_key": ["shape", "PlatformAPIKey"], "secret": ["string"]},
   PlatformAuthorizationSession: {"public_id": ["string"], "kind": ["string"], "state": ["string"], "progress": ["string"], "outcome": ["nullable_string"], "expires_at": ["nullable_string"], "verification_uri": ["nullable_string"], "user_code": ["nullable_string"], "owned_by_current_user": ["boolean"]},

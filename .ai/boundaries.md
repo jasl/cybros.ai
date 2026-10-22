@@ -85,7 +85,7 @@
   its declarer's application transport while both remain active under the same Human steward;
   this shares no identity, memory or announced skill documents. Its removal or steward transfer
   ends new shared serving without revoking that declarer's credential. Agent removal
-  synchronously fences member access and its agent-application transport, retaining the address,
+  synchronously fences member access and its agent transport, retaining the address,
   then asynchronously force-stops related work (Administration Boundary below). Its independent
   Runner is unaffected. Human removal additionally owns the existing
   managed-resource shutdown generation protocol; becoming a removed Agent also applies
@@ -100,14 +100,14 @@
   reach only the documented member/data resources for their User kind — the current Workspace
   family explicitly permits a Human owner's member credential as well as Agent data access, while
   keeping management Human-owner-only. Agent Users never gain Platform authority. An
-  executor-transport credential is bound to one executor — an agent application, a runner, or a
+  executor-transport credential is bound to one executor — an agent, a runner, or a
   tool provider — and reaches only that executor's transport and execution resources
   (inbox, claims, commits, captures, progress and Cable)
   and nothing on the member plane; none of the three roles gains member or Platform authority
-  from that binding. An agent that plays the runner role does so on a SECOND executor row of
-  kind `runner` — a transport-only credential paired beside its agent-application address
-  (Product Boundaries below) — never by lending its member
-  bearer to the inbox. A client-side generic HTTP primitive
+  from that binding. An application may also announce the runner role on its existing
+  agent address, sharing that address's transport credential and inbox while
+  retaining role-qualified task dispatch. Its member bearer never reaches the inbox.
+  A client-side generic HTTP primitive
   can never widen these server-owned planes.
 
 ## Threat-Model And Portability Gate
@@ -180,7 +180,7 @@ framework mechanism is insufficient, and a test that fails without the added des
   Agent program source, extension packages, installed versions and assembly configuration remain
   local to the agent installation; the operator chooses how to back them up. Nexus persists user
   documents, conversation/execution records and business data, not the composition of rho or
-  another agent application. Do not add package-retention or installation state to scoped stores.
+  another agent. Do not add package-retention or installation state to scoped stores.
 - Automatic work derived from restricted content must not silently widen its audience. Choose
   an existing carrier with the required source ownership and access before copying the content;
   check persisted prompts, results and their read surfaces, not only the final displayed value.
@@ -194,7 +194,7 @@ framework mechanism is insufficient, and a test that fails without the added des
   The kernel owns general mechanisms: compaction with an overridable default summarizer, memory,
   messaging, prompt assembly, approval, scoped stores, task delivery, orchestration, persistence,
   catalog resolution, usage, audit and recovery. Kernel details live in `nexus.md`.
-- Agent applications own prompt meaning, model selection/routing, tiers, UI semantics,
+- Agents own prompt meaning, model selection/routing, tiers, UI semantics,
   orchestration strategy, approval policy, memory extraction/ranking and commercial policy.
   The kernel resolves a declared model reference to a provider lane; it ships no model selector.
   It compiles raw/assembly/default prompts and durable prompt documents without interpreting
@@ -205,11 +205,12 @@ framework mechanism is insufficient, and a test that fails without the added des
   not authority; only `task_result` and `child` identify kernel-owned mail acts. Side conversations
   use the kernel's fork/boundary/shared-prefix mechanism; one-open-side limits, idle TTL and
   instruction text are application policy.
-- Three executor roles have separate delivery addresses and transport credentials: agent
-  application, runner, and tool provider. A runner supplies environment-bound tools and may run
+- Three executor roles are agent, runner, and tool provider. An application address
+  may serve both agent and runner roles through one transport credential and inbox.
+  Independent runners and tool providers have their own addresses. A runner supplies environment-bound tools and may run
   separately in a container or the cloud. A tool provider supplies external tools and may
   override kernel tools by name under the Workspace's explicit opt-in. An Agent playing the
-  runner role pairs a second runner-kind row; it never lends its member bearer to transport.
+  runner role announces that service on its application address; it never lends its member bearer to transport.
   A runner may serve multiple Agents within its assignment scope because each task freezes
   its own execution principal separately from its destination. Tool processes, files and working
   directories are executor-local state.
@@ -295,7 +296,7 @@ framework mechanism is insufficient, and a test that fails without the added des
 ## Administration Boundary
 
 - Nexus deployment administration covers Nexus and its own worker processes only.
-  Agent application releases, installation state and lifecycle remain owned by each
+  Agent releases, installation state and lifecycle remain owned by each
   application's installer or the enclosing deployment tools. A combined installation
   does not authorize Nexus to manage those applications; generic image lists or a private
   IPC bridge do not change that ownership. Joint upgrades belong to the installation layer.
@@ -310,44 +311,36 @@ framework mechanism is insufficient, and a test that fails without the added des
   allowance entry, the billing service derives and applies that hidden second effect atomically;
   the administrator supplies no Agent selector and receives no Agent identity or detail, so this is
   not an independent Agent-allowance command.
-- Every Runner has one Human manager regardless of assignment scope. Its logical registration key
-  is `(account_id, manager_id, registration_identifier)`; `assignment_scope ∈ { agent_private,
-  user_private, account_wide }` is pure ACL and never part of identity, address, credential
-  lifecycle, or task history. `agent_private` binds a Runner to one paired Agent through creation-frozen
-  `assignment_agent_id`, separate from an application address's `agent_id`. It admits that
-  active Agent and its active named Agents while they share the Runner manager as Human
-  steward; role executions retain their existing principal. Other applications under that Human
-  are ineligible. The Human's management authority alone grants no execution access.
-  `user_private` admits Agents managed by that Human; `account_wide` admits eligible
-  Agents across the Account. That broader ACL grants no lifecycle or credential authority:
-  the manager is the sole current manager through their member-owned `/runners` surface, and an
-  administrator has no takeover, offboarding, or removal-time emergency bypass for another
-  Human's Runner. Each logical registration has at most one non-revoked address/current pairing;
-  re-pair advances its epoch rather than creating a sibling address. A tool provider is an
-  executor under the same identity model — the same registration key (so one manager cannot hold
-  a runner and a provider under one identifier: the kind is the registration's, frozen at
-  creation like its scope, and a re-pair naming the other kind is refused at Consume), at most
-  one non-revoked address, an epoch that re-pair advances, a transport-only credential — and its
-  manager is the connecting Human and its admission scope is the browser's
-  `user_private | account_wide` choice, exactly as a standalone Runner's.
-  A combined Agent/Runner connection always requests `agent_private` for its paired Agent.
-  A runner-only supplement may name an existing active paired Agent by
-  `assignment_agent_public_id`; Connect and Consume validate its current Human and captured
-  authority generation without rotating its Agent lineage. Re-pair requires the same scope and
-  binding; it cannot convert an existing shared registration or move a private Runner between
-  applications. Scope and binding narrow discovery and new execution admission through one
-  eligibility predicate; accepted claims retain their exact transport and result path.
-  For standalone machines, Browser Connect selects scope only when it creates a fresh logical
-  registration: an ordinary member is fixed to `user_private`, while an owner/admin connecting a Runner as its manager may
-  opt into `account_wide` through one default-unchecked control. A live registration instead
-  renders its stored scope without a selector, and re-pair preserves it; after terminal
-  revocation, a later fresh registration may select again. The machine cannot self-assert scope.
-  No scope-change or manager-transfer command exists. A later scope change affects only
-  discovery/admission/publication begun after it commits; existing inbox tasks retain their frozen
-  principal, executor, and
-  authority facts. A future manager transfer requires its own explicit authorization and route contract;
-  pure ACL never implies one. None of this claims that Nexus can identify the physical process
-  holding a copied bearer.
+- `executor_kind` is registration identity; `services` is a whole-address map of announced
+  roles. An `agent` address always provides `agent` and may also provide
+  `runner`. A `runner` registration provides only `runner`; a `tool_provider` provides only
+  `tool_provider`. Each role owns its tools, documents and environment, so the same tool name
+  may have different schemas and effect profiles under different roles. Dispatch and claim
+  resolve `(executor, role, tool_name)`; a role's tools never satisfy another role's claim.
+- An application's Runner capability uses its existing UUID, epoch, transport credentials,
+  inbox, presence and lifecycle. Its owning Agent and eligible named Agents use it through
+  `application_owner` while retaining their own execution principals. Another application under
+  the same Human is ineligible. Local is product policy resolved to a concrete application UUID
+  before acceptance, never a kernel address kind or a magic target. Withdrawing `services.runner`
+  closes new admission without rotating credentials or preventing an already claimed task from
+  settling on its original transport. Re-pair, removal, revocation and shutdown retain their
+  existing epoch and authority semantics for the whole address.
+- Every independent Runner or Tool provider has one Human manager. Its logical registration key
+  is `(account_id, manager_id, registration_identifier)` and is kind-blind across the two machine
+  kinds. `assignment_scope` is `user_private | account_wide`, frozen at creation and separate
+  from registration identity. `user_private` admits the manager and Agents they steward;
+  `account_wide` admits eligible Account principals. An ordinary Human gets `user_private`;
+  an owner/admin may choose `account_wide` on a fresh registration through a default-unchecked
+  browser control. Re-pair preserves the stored scope and kind, advances the epoch and keeps
+  the address. A different requested kind is refused. Terminal revocation permits a later
+  fresh registration with a new UUID. Only the current manager controls the machine; administrator
+  status supplies no takeover or emergency bypass. No scope-change or manager-transfer command
+  exists. A copied bearer identifies authority, not a distinguishable physical process.
+- Agent and machine connection claims are disjoint. There is no combined registration or
+  application-assigned private machine. Old private registrations are terminally revoked during
+  the cutover, retaining UUIDs and task/effect history; they are never widened to shared scope.
+  Old combined or assignment-selecting pending grants are invalidated. Independent machine
+  registrations and named-Agent `application_owner` relationships remain unchanged.
 - Human managed-resource shutdown is a durable generation protocol, not a status-only sweep.
   Human Users advance `managed_resource_shutdown_generation` only when removal is accepted.
   Stewarded Agents record `applied_steward_shutdown_generation`, and Executors record
@@ -359,7 +352,7 @@ framework mechanism is insufficient, and a test that fails without the added des
   of these applied generations; the Agent consequence does not replace this Human protocol.
 - Administrator commands for a specific Agent User are limited to steward reassignment and the
   remove/restore lifecycle. Removal synchronously fences member/data access through status and
-  `authority_generation`, and revokes the Agent application's credentials through its existing
+  `authority_generation`, and revokes the Agent's credentials through its existing
   executor credential epoch. The address stays active and is not rebound; an independent Runner's
   address and lineage are untouched. Related Conversations and live runs are force-stopped
   asynchronously; status lag and eventual task timeout are accepted.
@@ -495,7 +488,7 @@ member-resource management and the Human work console. Its work pages browse rea
 Conversations and Runs, inspect execution, export diagnostics, and invoke existing authorized
 Run/Task commands. They use the Human's browser Session and CSRF protection and share the
 member plane's domain queries, readers and commands; they never borrow an Agent credential or
-put content operations into the settings API. Agent applications retain their conversation
+put content operations into the settings API. Agents retain their conversation
 product experience, prompt meaning and configuration policy. The Human console inspects
 Agent declarations. Applications own configuration editors, Presets and standing
 declaration writes; Nexus validates generic declarations and captures execution values.
@@ -506,7 +499,7 @@ alter the credential planes defined in Trust Domain.
 The four primary entries are Overview, Connect an Agent, Agents and Workspaces. Work lists
 are Workspace-scoped; details keep their canonical URLs. Agents and Runners share management
 layout conventions while retaining their distinct identity, credential and lifecycle owners.
-Runner connection guidance reuses Device Flow and independent-Agent private Runner keys.
+Independent Runner connection guidance uses Device Flow and the machine registration scope selector.
 Runner-related Runs live under `/runners/:public_id/runs`, fixed to the managed address and
 filtered by current content visibility and retained Task targets/claimants. `/attention/runs`
 fixes the existing non-null attention-reason query. There is no global HTML `/runs` collection;
@@ -536,18 +529,18 @@ explicit missing-material and completion markers, without another persistence li
 usage reports provide Account aggregates and provider/model/workload/status filters, never
 member, payer, billing-subject or Workspace activity selectors.
 
-Agent applications may use long-lived API keys issued by their Human steward through personal
+Agents may use long-lived API keys issued by their Human steward through personal
 settings. Keys retain the existing member or executor-transport plane, User authority generation
 and executor epoch. Each key is independently revocable, has no refresh lineage or expiry, and
 fails authentication on the next request after revocation. An Agent can hold member authority
 without an application address; issuing its first application transport key creates that address.
-Named Agents never obtain their own key or address. A private Runner remains a separate
-managed executor with its own transport key. Whole-connection revocation and OAuth replacement
+Named Agents never obtain their own key or address. Local runner capability uses the
+application address and its transport keys; independent machines keep their own registration. Whole-connection revocation and OAuth replacement
 also fence existing static member keys; ordinary single-key revocation does not replace the
 connection or revoke its other keys.
 
 rho uses Nexus application OAuth for Human login. Initial Agent/Runner connection may use OAuth
-or explicitly imported API keys. Imported member, application and private Runner keys are checked
+or explicitly imported API keys. Imported member and executor keys are checked
 against the existing profile and executor self-descriptions before installation. Their opaque
 registration identifiers stay with the connection so later Human login selects that same Agent
 without re-pairing its runtime. Static keys use the existing credential stores and connection
@@ -571,7 +564,8 @@ preserve untouched overrides and secret values, and report saved versus active s
 
 Personal joint installations start at rho's public Connect page. Nexus first boot creates and
 signs in the owner, then resumes the original validated authorization request. Approval binds the
-Agent and optional private Runner and returns to rho. Device Flow provides the equivalent
+Agent and its application Executor and returns to rho. Optional Local runner capability is
+announced on that same address. Device Flow provides the equivalent
 headless/browser-code path. Pairing does not wait for model configuration. The installer supplies
 no first-boot secret by default: a visitor who can reach the uninitialized deployment may create
 the first owner directly. An operator may explicitly configure `NEXUS_SETUP_SECRET` to require
@@ -800,7 +794,7 @@ longer than the accepted-order cut requires, or a convergence job growing an unb
 - Top-level projects are independently buildable/testable unless a change crosses them. Bundled
   projects own toolchain files and explicit root CI jobs.
 - Shared protocol changes reach every affected owner: kernel, SDK, operator tooling and E2E.
-  `nexus/app/**` never depends on concrete agent application constants.
+  `nexus/app/**` never depends on concrete agent constants.
 - Development/test placement and the one-way dependency from tests into production are defined
   in `repository.md`, Development And Test Placement. A test consumer does not make production
   behavior test-only, and deployment conveniences remain product capabilities.

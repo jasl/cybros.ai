@@ -168,8 +168,8 @@ module Rho
     # `require_daemon`: one core is one verb's worth of calls, and a surface
     # that outlives a daemon builds a new core.
     def running_daemon
-      document = Rho::StateFile.new(@home.announcement_path).read
-      return nil unless document.is_a?(Hash) && document["endpoint"]
+      document = Hash.try_convert(Rho::StateFile.new(@home.announcement_path).read)
+      return nil unless document && document["endpoint"]
 
       response =
         begin
@@ -182,7 +182,7 @@ module Rho
       health = parse(response)
       unless document["version"] == Daemon::ANNOUNCEMENT_VERSION &&
           health["status"] == "ok" &&
-          health["version"].is_a?(String) &&
+          String.try_convert(health["version"]) &&
           health["control_version"] == Daemon::ANNOUNCEMENT_VERSION
         raise ConnectionError, "the live local daemon does not report a valid health document"
       end
@@ -227,7 +227,8 @@ module Rho
     # ceremony that failed. Both are strings to a human.
     def failure_message(document)
       error = document["error"]
-      (error.is_a?(Hash) ? error["message"] : error).to_s
+      envelope = Hash.try_convert(error)
+      (envelope ? envelope["message"] : error).to_s
     end
 
     # ---- the ceremony ----
@@ -252,13 +253,13 @@ module Rho
     end
 
     # THE PAIR OF CONNECT: revoke this machine's credentials on
-    # Nexus and forget them — the runner half alone with `runner: true`.
+    # Nexus and forget the connection.
     # Through the daemon when one runs (it refuses while work is in flight),
     # else in-process from the vault under the same boot lock. Answers the
     # daemon's document, or the same shape built from the in-process result.
-    def disconnect(runner: false)
+    def disconnect
       daemon = running_daemon
-      daemon ? disconnect_through(daemon, runner: runner) : disconnect_in_process(runner: runner)
+      daemon ? disconnect_through(daemon) : disconnect_in_process
     end
 
     # The ceremony with no daemon: the identical flow in-process under the
@@ -456,12 +457,12 @@ module Rho
       # message, its code word and the response's status beside it.
       def refuse(response, document, fallback)
         error = document["error"]
-        error = { "message" => error } unless error.is_a?(Hash)
+        error = Hash.try_convert(error) || { "message" => error }
         raise Refused.new(error["message"] || fallback, code: error["code"], status: response.code.to_i)
       end
 
-      def disconnect_through(daemon, runner:)
-        response = post(daemon, "/disconnect", { "runner" => runner }, budget: Budget::KERNEL_ROUND_TRIP)
+      def disconnect_through(daemon)
+        response = post(daemon, "/disconnect", {}, budget: Budget::KERNEL_ROUND_TRIP)
         document = parse(response)
         return document if response.code.to_i == 200
 
@@ -469,7 +470,7 @@ module Rho
       end
 
       # No daemon: the vaults under the boot lock, every stored lineage.
-      def disconnect_in_process(runner:)
+      def disconnect_in_process
         lock = Lock.acquire(@home.boot_lock_path)
         pointer = stored_connection
         raise Rho::Error, "this home is not connected" if pointer.nil?
@@ -477,11 +478,7 @@ module Rho
         identity = stored_identity(pointer)
         device_flow = ApplicationConnection.new(home: @home)
         credentials = Rho::Credentials.load(identity: identity, authority: device_flow)
-        if runner && (!credentials.runner? || identity.runner_mode?)
-          raise Rho::Error, identity.runner_mode? ? "this home runs in mode runner: the runner IS the whole connection — `rho disconnect` without --runner" : "this home has no runner credential to revoke"
-        end
-
-        result = Rho::Disconnect.call(home: @home, identity: identity, credentials: credentials, runner_only: runner,
+        result = Rho::Disconnect.call(home: @home, identity: identity, credentials: credentials,
           executor_client: ->(credential) { CybrosAgent::ExecutorClient.new(base_url: @home.base_url, credential: credential) })
         { "revoked" => result.revoked, "unclaimed" => result.unclaimed, "mode" => result.mode,
           "runner_executor_public_id" => result.runner_executor_public_id,

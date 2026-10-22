@@ -103,21 +103,20 @@ class ApiPublicContractPackTest < Minitest::Test
     transport = CybrosAgentTest::FakeTransport.new([[200, {}, executors.fetch("valid_fixture")]])
     CybrosAgent::ExecutorClient.new(base_url: "http://example.test", credential: "fixture-executor-token",
       transport: transport)
-      .announce(tools: request.fetch("tools"), environment: request.fetch("environment"),
-        documents: request.fetch("documents"))
+      .announce(services: request.fetch("services"))
     assert_equal request, transport.requests.fetch(0).fetch(:body), "the fixture rides the announcement verbatim"
 
     discovery = executors.fetch("discovery_fixture")
     discovered = api_client("executors" => [discovery]).executors.list.fetch(0)
-    assert_equal discovery.fetch("served_documents").map { |entry| entry.fetch("name") }, discovered.document_names
-    assert_equal executors.fetch("served_document_keys"), discovery.fetch("served_documents").fetch(0).keys
-    assert_equal discovery.fetch("served_documents"),
-      discovered.served_documents.map { |document| document.to_h.transform_keys(&:to_s) }
-    assert_equal discovery.fetch("served_tools").map { |entry| entry.fetch("name") }, discovered.tool_names
-    assert_equal discovery.fetch("served_tools"), discovered.served_tools.map { |tool| tool.to_h.transform_keys(&:to_s) }
-    mcp_tool = discovered.served_tools.find { |tool| tool.mcp }
+    assert_equal discovery.dig("services", "runner", "documents").map { |entry| entry.fetch("name") }, discovered.document_names(role: :runner)
+    assert_equal executors.fetch("served_document_keys"), discovery.dig("services", "runner", "documents").fetch(0).keys
+    assert_equal discovery.dig("services", "runner", "documents"),
+      discovered.documents_for(:runner).map { |document| document.to_h.transform_keys(&:to_s) }
+    assert_equal discovery.dig("services", "runner", "tools").map { |entry| entry.fetch("name") }, discovered.tool_names(role: :runner)
+    assert_equal discovery.dig("services", "runner", "tools"), discovered.tools_for(:runner).map { |tool| tool.to_h.transform_keys(&:to_s) }
+    mcp_tool = discovered.tools_for(:runner).find { |tool| tool.mcp }
     assert_equal executors.fetch("mcp_metadata_keys"), mcp_tool.mcp.keys
-    assert_includes discovered.tool_names, "skill", "an address announcing documents announces skill"
+    assert_includes discovered.tool_names(role: :runner), "skill", "an address announcing documents announces skill"
   end
 
   def test_a_delegation_catalog_keeps_the_parent_tool_names_in_the_configuration_wire_shape
@@ -408,7 +407,7 @@ class ApiPublicContractPackTest < Minitest::Test
   end
 
   # THE APPROVAL ROW: a tool call resting for an approver lists
-  # on the addressed agent application's inbox as kind `approval` with the
+  # on the addressed agent's inbox as kind `approval` with the
   # frozen effect profile the approver reads — the one row kind that
   # carries it — `claimed: false` for as long as it stands, and a
   # deadline the park clock set; the valid runner row carries no profile.
@@ -424,7 +423,7 @@ class ApiPublicContractPackTest < Minitest::Test
     assert_predicate row.effect_profile, :frozen?
     assert_equal fixture.fetch("tool_name"), row.tool_name
     assert_equal fixture.fetch("tool_input"), row.tool_input
-    assert_equal "agent_application", row.addressed_to.role
+    assert_equal "agent", row.addressed_to.role
     refute_predicate row, :claimed?, "never claimed: the verbs are member-plane"
     assert_nil row.started_at, "a held row has not started"
     refute_nil row.deadline_at, "the park clock"
@@ -476,7 +475,7 @@ class ApiPublicContractPackTest < Minitest::Test
     assert_nil ask.tool_name
     refute ask_fixture.key?("tool_name")
     refute_predicate ask, :claimed?
-    assert_equal "agent_application", ask.addressed_to.role
+    assert_equal "agent", ask.addressed_to.role
   end
 
   # THE SOURCE-ROUTED ROW: a model's `skill {name}`

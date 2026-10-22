@@ -7,7 +7,7 @@ contract. The companion
 [terminology specification](nexus-terminology.md) supplies the Run, Task,
 RunnerEffects and default-runner names used below. The [Profile](../../guides/reference/agent-api/profile.md)
 and [Tool assembly](../../guides/reference/agent-api/tool-assembly.md) manuals document the current
-declaration and assembly APIs. Agent applications own background-work and
+declaration and assembly APIs. Agents own background-work and
 environment-selection policy.
 
 The owner subsequently authorized the complete Nexus, SDK and rho breaking
@@ -22,7 +22,7 @@ Runners. An Agent can inspect files on a Mac, run a build on a Linux Runner and
 observe both results in the same execution. Each accepted Runner task names
 exactly one destination. Changing a host's default never moves accepted work.
 
-Agent applications retain planning, prompt meaning and environment selection.
+Agents retain planning, prompt meaning and environment selection.
 Nexus owns task acceptance, authorization, approval, delivery, observation and
 lifecycle. Runner-local files, processes, browser contexts, login state and local
 network access remain where they were created. Moving a file or Git revision is
@@ -44,7 +44,7 @@ Before this cutover, the implementation had four relevant constraints:
   Conversation. `Executors::Handoff` changes that binding and readdresses
   dispatched, unclaimed Runner tasks.
 - `Executors::Address` chooses the bound Runner at start. During approval,
-  `ScheduleReady` stores the Agent application's inbox address, and `Tasks::Approve`
+  `ScheduleReady` stores the Agent's inbox address, and `Tasks::Approve`
   resolves the execution address again. The inbox address therefore cannot also
   represent an immutable execution target.
 - The SDK already supports a targeted `request` by creating an ordinary one-tool
@@ -66,7 +66,7 @@ paths and announced metadata are descriptive, never routing identities. Several
 Runner identities may describe the same physical machine; Nexus does not infer
 shared state or exclusivity from that description.
 
-The Agent, its member credential, the Agent application's executor
+The Agent, its member credential, the Agent's executor
 address and a Runner executor address remain distinct. Every target is checked
 against the execution's answerer and the existing Runner assignment scope;
 the submitting principal also needs the ordinary host write standing. Choosing
@@ -176,7 +176,7 @@ collide with explicit or kernel names receive stable target-qualified names;
 the route retains the served name. A remaining duplicate is refused. Nexus does
 not union schemas, rewrite accepted tools from later announcements, or expose one
 catch-all `invoke(environment, tool, arguments)` tool. The existing kernel,
-Agent-application and provider-pool authorities remain distinct. A Runner route
+Agent and provider-pool authorities remain distinct. A Runner route
 never falls through to another authority serving the same name. New Runner
 declarations must use explicit route metadata; remove the old inference that a
 plain unknown tool name should first try the host's Runner.
@@ -266,7 +266,7 @@ It imports no tools and changes no selection. A model can choose a candidate
 for newly created work through `spawn.default_runner_executor_public_id`;
 omission inherits the source execution's frozen default, and null selects none.
 There is no model-facing `runners.change` or default-mutation tool. Runner
-selection does not select a model; model routing remains Agent application policy.
+selection does not select a model; model routing remains Agent policy.
 
 rho marks Runner, external provider and skill schemas `defer_loading: true` and keeps
 the kernel search/call entry points eager. Nexus retains the complete declaration
@@ -286,7 +286,7 @@ document name and source UUID. Equal document names on A and B remain distinct;
 the frozen catalog and declaration choose the source, never a later name merge.
 The existing source-routed skill family is the explicit exception to the ban on
 Runner routes for kernel names; other reserved names remain forbidden. Kernel
-and Agent-application documents retain their source authority and existing
+and Agent documents retain their source authority and existing
 non-Runner precedence, frozen for the execution. Withdrawal fails on that source
 rather than loading a same-named document elsewhere. Loading a skill from A
 cannot implicitly send its environment-local script to B when a default changes.
@@ -296,7 +296,7 @@ Input `tool_names` and all branch narrowing still apply. There is no new registr
 
 Acceptance saves the Runner target separately from the current inbox addressee.
 Queued, approval-held, dispatched and claimed work all retain it.
-An approval inbox item is delivered to the Agent application while showing the
+An approval inbox item is delivered to the Agent while showing the
 actual Runner UUID/display name, served tool, display alias, arguments and
 effect profile. The displayed target is the one approval releases.
 
@@ -310,7 +310,7 @@ At dispatch and claim, the target's current authority still matters. No longer
 served means `tool_not_served`; a revoked or ineligible target uses the owning
 lifecycle/eligibility refusal. A selected but disconnected Runner uses ordinary
 task delivery and deadline recovery. No case silently substitutes another
-Runner, an Agent application, a provider pool or a kernel implementation.
+Runner, an Agent, a provider pool or a kernel implementation.
 
 Runner transport remains outbound HTTP with droppable Cable hints. Claim
 checks the precise task address and execution principal. Commit requires the
@@ -342,9 +342,9 @@ or inherited process/browser handles on a different Runner.
 ## Child operations and execution lifetime
 
 A Runner-hosted parent tool retains its accepted Runner target while waiting and
-through explicit retry. Agent-application and provider-pool tools retain their existing
+through explicit retry. Agent and provider-pool tools retain their existing
 addressing and reconnection contracts; they do not acquire a permanent machine binding.
-Each child operation can use a different declared Runner. An Agent-application parent
+Each child operation can use a different declared Runner. An Agent parent
 can therefore await work on A and B without becoming either Runner or carrying their
 transport credentials.
 

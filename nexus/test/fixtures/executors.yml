@@ -1,7 +1,12 @@
 address:
   account: cybros
   agent: agent
-  executor_kind: agent_application
+  executor_kind: agent
   display_name: Agent app
   status: active
   credential_epoch: 1
+  services:
+    agent:
+      tools: []
+      documents: []
+      environment: {}

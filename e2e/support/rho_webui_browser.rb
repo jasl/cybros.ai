@@ -171,7 +171,7 @@ module E2E
 
       def menu_choices(name)
         @page.find("button[aria-label^='#{name}: ']").click
-        labels = @page.all('[role="menuitemradio"] .menu__label', wait: WAIT).map(&:text)
+        labels = menu_labels('[role="menuitemradio"] .menu__label')
         @page.send_keys :escape
         assert @page.has_no_css?('[role="menu"]', wait: WAIT)
         labels
@@ -179,10 +179,18 @@ module E2E
 
       def menu_items(name, scope: ".conversation__header")
         @page.within(scope) { @page.click_button name }
-        labels = @page.all('[role="menuitem"]', wait: WAIT).map(&:text)
+        labels = menu_labels('[role="menuitem"]')
         @page.send_keys :escape
         assert @page.has_no_css?('[role="menu"]', wait: WAIT)
         labels
+      end
+
+      def menu_labels(selector)
+        # A late memory-review read can refresh the open menu. Query and
+        # read the whole collection within Capybara's stale-element handling.
+        @page.find('[role="menu"]', wait: WAIT).synchronize(WAIT) do
+          @page.all(selector, wait: WAIT).map(&:text)
+        end
       end
 
       # The header menu; the list rows have one of the same name.

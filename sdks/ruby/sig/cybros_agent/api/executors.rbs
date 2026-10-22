@@ -113,16 +113,16 @@ module CybrosAgent
       attr_reader agent_public_id: String?
       attr_reader registration_identifier: String?
       attr_reader assignment_scope: String?
-      attr_reader assignment_agent_public_id: String?
+      attr_reader service_roles: Array[String]
 
-      def self.new: (String public_id, String kind, String status, String? display_name, Integer credential_epoch, String presence, ?String? last_seen_at, ?String? connected_at, ?String? agent_public_id, ?String? registration_identifier, ?String? assignment_scope, ?String? assignment_agent_public_id) -> instance
-                  | (public_id: String, kind: String, status: String, display_name: String?, credential_epoch: Integer, presence: String, ?last_seen_at: String?, ?connected_at: String?, ?agent_public_id: String?, ?registration_identifier: String?, ?assignment_scope: String?, ?assignment_agent_public_id: String?) -> instance
-      def self.[]: (String public_id, String kind, String status, String? display_name, Integer credential_epoch, String presence, ?String? last_seen_at, ?String? connected_at, ?String? agent_public_id, ?String? registration_identifier, ?String? assignment_scope, ?String? assignment_agent_public_id) -> instance
-                 | (public_id: String, kind: String, status: String, display_name: String?, credential_epoch: Integer, presence: String, ?last_seen_at: String?, ?connected_at: String?, ?agent_public_id: String?, ?registration_identifier: String?, ?assignment_scope: String?, ?assignment_agent_public_id: String?) -> instance
-      def self.members: () -> [:public_id, :kind, :status, :display_name, :credential_epoch, :presence, :last_seen_at, :connected_at, :agent_public_id, :registration_identifier, :assignment_scope, :assignment_agent_public_id]
+      def self.new: (String public_id, String kind, String status, String? display_name, Integer credential_epoch, String presence, ?String? last_seen_at, ?String? connected_at, ?String? agent_public_id, ?String? registration_identifier, ?String? assignment_scope, ?Array[String] service_roles) -> instance
+                  | (public_id: String, kind: String, status: String, display_name: String?, credential_epoch: Integer, presence: String, ?last_seen_at: String?, ?connected_at: String?, ?agent_public_id: String?, ?registration_identifier: String?, ?assignment_scope: String?, ?service_roles: Array[String]) -> instance
+      def self.[]: (String public_id, String kind, String status, String? display_name, Integer credential_epoch, String presence, ?String? last_seen_at, ?String? connected_at, ?String? agent_public_id, ?String? registration_identifier, ?String? assignment_scope, ?Array[String] service_roles) -> instance
+                 | (public_id: String, kind: String, status: String, display_name: String?, credential_epoch: Integer, presence: String, ?last_seen_at: String?, ?connected_at: String?, ?agent_public_id: String?, ?registration_identifier: String?, ?assignment_scope: String?, ?service_roles: Array[String]) -> instance
+      def self.members: () -> [:public_id, :kind, :status, :display_name, :credential_epoch, :presence, :last_seen_at, :connected_at, :agent_public_id, :registration_identifier, :assignment_scope, :service_roles]
 
-      def initialize: (?last_seen_at: String?, ?connected_at: String?, ?agent_public_id: String?, ?registration_identifier: String?, ?assignment_scope: String?, ?assignment_agent_public_id: String?, **untyped members) -> void
-      def members: () -> [:public_id, :kind, :status, :display_name, :credential_epoch, :presence, :last_seen_at, :connected_at, :agent_public_id, :registration_identifier, :assignment_scope, :assignment_agent_public_id]
+      def initialize: (?last_seen_at: String?, ?connected_at: String?, ?agent_public_id: String?, ?registration_identifier: String?, ?assignment_scope: String?, ?service_roles: Array[String], **untyped members) -> void
+      def members: () -> [:public_id, :kind, :status, :display_name, :credential_epoch, :presence, :last_seen_at, :connected_at, :agent_public_id, :registration_identifier, :assignment_scope, :service_roles]
     end
 
     class ExecutorDescription < Data
@@ -168,26 +168,41 @@ module CybrosAgent
       def initialize: (name: String, description: String) -> void
     end
 
+    class ExecutorService < Data
+      attr_reader tools: Array[ServedTool]
+      attr_reader documents: Array[ServedDocument]
+      attr_reader environment: Hash[String, untyped]
+      def self.new: (tools: Array[ServedTool], documents: Array[ServedDocument], environment: Hash[String, untyped]) -> instance
+    end
+
+    class ExecutorServices < Data
+      attr_reader agent: ExecutorService?
+      attr_reader runner: ExecutorService?
+      attr_reader tool_provider: ExecutorService?
+      def self.new: (agent: ExecutorService?, runner: ExecutorService?, tool_provider: ExecutorService?) -> instance
+      def for: (String | Symbol role) -> ExecutorService?
+    end
+
     class DiscoveredExecutor < Data
       attr_reader public_id: String
       attr_reader kind: String
       attr_reader display_name: String?
       attr_reader status: String
-      attr_reader assignment_scope: String
-      attr_reader assignment_agent_public_id: String?
-      attr_reader served_tools: Array[ServedTool]
-      attr_reader environment: Hash[String, untyped]
-      attr_reader served_documents: Array[ServedDocument]
+      attr_reader assignment_scope: String?
+      attr_reader agent_public_id: String?
+      attr_reader service_roles: Array[String]
+      attr_reader services: ExecutorServices
       attr_reader presence: String
       attr_reader last_seen_at: String?
       attr_reader connected_at: String?
-
-      def initialize: (public_id: String, kind: String, display_name: String?, status: String, assignment_scope: String, ?assignment_agent_public_id: String?, ?served_tools: Array[ServedTool], ?environment: Hash[String, untyped], ?served_documents: Array[ServedDocument], presence: String, ?last_seen_at: String?, ?connected_at: String?) -> void
-      def runner?: () -> bool
-      def tool_provider?: () -> bool
+      def self.new: (public_id: String, kind: String, display_name: String?, status: String, assignment_scope: String?, agent_public_id: String?, service_roles: Array[String], services: ExecutorServices, presence: String, last_seen_at: String?, connected_at: String?) -> instance
+      def provides?: (String | Symbol role) -> bool
       def online?: () -> bool
-      def tool_names: () -> Array[String]
-      def document_names: () -> Array[String]
+      def tools_for: (String | Symbol role) -> Array[ServedTool]
+      def documents_for: (String | Symbol role) -> Array[ServedDocument]
+      def environment_for: (String | Symbol role) -> Hash[String, untyped]
+      def tool_names: (role: String | Symbol) -> Array[String]
+      def document_names: (role: String | Symbol) -> Array[String]
     end
 
     module ExecutorProjections
@@ -201,7 +216,7 @@ module CybrosAgent
       PATH: String
 
       def initialize: (dispatch: _Dispatch) -> void
-      def list: (?kind: String) -> Array[DiscoveredExecutor]
+      def list: (?kind: String, ?role: String) -> Array[DiscoveredExecutor]
       def show: (String public_id) -> DiscoveredExecutor
     end
 

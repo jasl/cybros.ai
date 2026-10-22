@@ -148,7 +148,7 @@ class RhoAcpAgentTest
     await_run_status(loop_id, "completed")
     task = task_detail(loop_id, key)
     assert_equal %w[mcp__fx__echo completed], task.values_at("tool_name", "status"), task.inspect
-    assert_equal "agent_application", task.dig("addressed_to", "role"), "the editor's server runs on this daemon's agent slot"
+    assert_equal "agent", task.dig("addressed_to", "role"), "the editor's server runs on this daemon's agent slot"
     assert_equal "#{E2E::McpFixture::ECHO_TEXT_PREFIX}hello from acp", task_output(loop_id, key).strip
     listed, status = @daemon.cli("mcp")
     assert_predicate status, :success?, "rho mcp failed:\n#{listed}"

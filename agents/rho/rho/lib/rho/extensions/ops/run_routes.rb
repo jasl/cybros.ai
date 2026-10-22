@@ -112,7 +112,7 @@ module Rho
 
               runs = ctx.runs_for(client, workspace_public_id)
               runner = ctx.runner_selection(body)
-              candidates = client.executors.list(kind: "runner")
+              candidates = client.executors.list(role: "runner")
               candidates.each { |document| ctx.learn_runner(document) }
               selected = candidates.find { |document| document.public_id == runner }
               remote = selected unless ctx.own_runner?(runner)
@@ -137,10 +137,10 @@ module Rho
               # they ride a conversation turn's.
               hints = ctx.lead_hints(model)
               lead = if assembled
-                remote ? Rho::RunDeclaration.remote_lead(remote.environment, instructions: body["instructions"], hints: hints, kernel_environment: true) :
+                remote ? Rho::RunDeclaration.remote_lead(remote.environment_for(:runner), instructions: body["instructions"], hints: hints, kernel_environment: true) :
                   Rho::RunDeclaration.lead(registry: registry, environment: environment, instructions: body["instructions"],
                     hints: hints, code_mode: code_mode, kernel_environment: true,
-                    environment_snapshot: selected&.environment)
+                    environment_snapshot: selected&.environment_for(:runner))
               end
               # The explicit default shell uses the kernel's template, not
               # this profile's. Its known kind rides the existing input lead.
@@ -149,13 +149,13 @@ module Rho
               end
               steps = Rho::RunDeclaration.steps(
                 prompt: assembled ? Rho::RunDeclaration.led(lead, prompt) : prompt,
-                model: model, registry: registry, served: selected&.served_tools, runner_executor_public_id: runner,
+                model: model, registry: registry, served: selected&.tools_for(:runner), runner_executor_public_id: runner,
                 environment: environment, prompt_mechanism: mechanism, system_prompt: system_prompt,
                 agent_configuration: declaration,
                 # A remote seed's system field is composed whole here, hints
                 # inside it; a local one composes it in `steps`.
                 hints: (remote ? [] : hints),
-                instructions: remote ? Rho::RunDeclaration.remote_instructions(remote.environment,
+                instructions: remote ? Rho::RunDeclaration.remote_instructions(remote.environment_for(:runner),
                   instructions: body["instructions"], system_prompt: system_prompt, hints: hints) : body["instructions"],
                 **ctx.kernel_tool_configuration(client), code_mode: code_mode,
                 runner_executor_public_ids: candidates.map(&:public_id)
@@ -295,7 +295,7 @@ module Rho
               next grant if grant in Rho::Daemon::Refusal
 
               context = runs.run(public_id).tasks_context(task_key)
-              reason = body["reason"] if body["reason"].is_a?(String)
+              reason = String.try_convert(body["reason"])
               task = verb == "deny" ? context.deny(reason: reason) : context.approve
               answer = { task: { key: task.key, status: task.status, error: task.error,
                                  approval: task.approval }.compact }
@@ -312,9 +312,9 @@ module Rho
           # the conversation is the run's binding's (a standalone run
           # names none); the time is the daemon's clock.
           def grant_for(ctx, runs, public_id, task_key, body)
-            match = body["match"]
+            match = String.try_convert(body["match"])
             return nil unless body["always"] == true || body.key?("match")
-            return Rho::Daemon::Refusal.malformed("match must be a string") unless match.nil? || match.is_a?(String)
+            return Rho::Daemon::Refusal.malformed("match must be a string") unless body["match"].nil? || match
 
             detail = runs.run(public_id).task(task_key)
             unless detail.task.status == "needs_approval"
@@ -591,8 +591,8 @@ module Rho
           # whole — what was accepted, the mirror, and the new answer.
           def append(request, ctx)
             ctx.run_command(request) do |runs, public_id, body|
-              steps = body["steps"]
-              next Rho::Daemon::Refusal.malformed("steps must be an array") unless steps.is_a?(Array)
+              steps = Array.try_convert(body["steps"])
+              next Rho::Daemon::Refusal.malformed("steps must be an array") unless steps
 
               fields = { steps: steps, idempotency_key: body["idempotency_key"] || SecureRandom.uuid }
               fields[:resolve] = body["resolve"] if body.key?("resolve")

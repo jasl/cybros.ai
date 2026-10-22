@@ -2,7 +2,7 @@ module CybrosAgent
 
   module DeviceFlow
     type request_params = Hash[Symbol, String]
-    type branch = :agent | :runner | :combined | :application
+    type branch = :agent | :runner | :application
     type runner_claims = { identifier: String, display_name: String }
     type cancellation_outcome = :canceled | :consumed
     type plane = "member" | "executor_transport"
@@ -71,23 +71,19 @@ module CybrosAgent
       attr_reader token_type: String
       attr_reader expires_in: Integer
       attr_reader executor_access_token: String?
-      attr_reader runner_access_token: String?
-      attr_reader runner_refresh_token: String?
 
-      def self.new: (String? access_token, String refresh_token, String token_type, Integer expires_in, String? executor_access_token, ?String? runner_access_token, ?String? runner_refresh_token) -> instance
-                  | (access_token: String?, refresh_token: String, token_type: String, expires_in: Integer, executor_access_token: String?, ?runner_access_token: String?, ?runner_refresh_token: String?) -> instance
-      def self.[]: (String? access_token, String refresh_token, String token_type, Integer expires_in, String? executor_access_token, ?String? runner_access_token, ?String? runner_refresh_token) -> instance
-                 | (access_token: String?, refresh_token: String, token_type: String, expires_in: Integer, executor_access_token: String?, ?runner_access_token: String?, ?runner_refresh_token: String?) -> instance
-      def self.members: () -> [:access_token, :refresh_token, :token_type, :expires_in, :executor_access_token, :runner_access_token, :runner_refresh_token]
+      def self.new: (String? access_token, String refresh_token, String token_type, Integer expires_in, String? executor_access_token) -> instance
+                  | (access_token: String?, refresh_token: String, token_type: String, expires_in: Integer, executor_access_token: String?) -> instance
+      def self.[]: (String? access_token, String refresh_token, String token_type, Integer expires_in, String? executor_access_token) -> instance
+                 | (access_token: String?, refresh_token: String, token_type: String, expires_in: Integer, executor_access_token: String?) -> instance
+      def self.members: () -> [:access_token, :refresh_token, :token_type, :expires_in, :executor_access_token]
 
-      def initialize: (access_token: String?, refresh_token: String, token_type: String, expires_in: Integer, executor_access_token: String?, ?runner_access_token: String?, ?runner_refresh_token: String?) -> void
-      def members: () -> [:access_token, :refresh_token, :token_type, :expires_in, :executor_access_token, :runner_access_token, :runner_refresh_token]
+      def initialize: (access_token: String?, refresh_token: String, token_type: String, expires_in: Integer, executor_access_token: String?) -> void
+      def members: () -> [:access_token, :refresh_token, :token_type, :expires_in, :executor_access_token]
       def member_plane?: () -> bool
       def executor_plane?: () -> bool
-      def runner_plane?: () -> bool
       def platform_plane?: () -> bool
       def platform_access_token: () -> nil
-      def runner_half: () -> Credentials?
       def inspect: () -> String
       def to_s: () -> String
       def pretty_print: (untyped printer) -> void
@@ -125,7 +121,7 @@ module CybrosAgent
       CLIENT_ID: String
       DEVICE_GRANT: String
       REFRESH_GRANT: String
-      AGENT_APPLICATION_KIND: String
+      AGENT_KIND: String
       RUNNER_KIND: String
       TRANSIENT_RETRY_DELAY: Integer
       TRANSIENT_RETRY_LIMIT: Integer
@@ -144,15 +140,13 @@ module CybrosAgent
       def request_authorization: (
         agent_identifier: String,
         agent_display_name: String,
-        executor_display_name: String,
-        ?runner: runner_claims?
+        executor_display_name: String
       ) -> Authorization
 
       def request_runner_authorization: (
         registration_identifier: String,
         runner_display_name: String,
-        ?executor_kind: String,
-        ?assignment_agent_public_id: String?
+        ?executor_kind: String
       ) -> Authorization
 
       def poll: (Authorization authorization) -> poll_outcome

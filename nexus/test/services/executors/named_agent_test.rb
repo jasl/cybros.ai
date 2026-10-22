@@ -1,6 +1,6 @@
 require "test_helper"
 
-class Executors::NamedAgentApplicationTest < ActiveJob::TestCase
+class Executors::NamedAgentTest < ActiveJob::TestCase
   include InvocationHarness
   include RunLaneTestHelper
 
@@ -24,12 +24,14 @@ class Executors::NamedAgentApplicationTest < ActiveJob::TestCase
   end
 
   test "a named answerer uses its declaring application's claim and keeps its execution authority" do
-    call = start_call
+    context = { "root" => "/application/work" }
+    call = start_call(executor_contexts: { @address.public_id => context })
     assert_equal "dispatched", call.status
     assert_equal @address, call.addressed_executor
     assert_nil Executor.address_for(@definition)
     assert_equal @definition, call.run.execution_agent
     assert_equal @definition, call.run.answering_user
+    assert_equal context, Executors::Inbox.row(call).fetch(:executor_context)
 
     granted = claim(call)
     assert_predicate granted, :accepted?, granted.outcome.inspect
@@ -40,6 +42,7 @@ class Executors::NamedAgentApplicationTest < ActiveJob::TestCase
     child = call.run.tasks.find_by!(node_key: operation.value.dig("operation", "receipt", "task_keys").sole)
     schedule_loop!(call.run)
     assert_equal @address, child.reload.addressed_executor
+    assert_equal context, Executors::Inbox.row(child).fetch(:executor_context)
     child_claim = claim(child)
     assert_predicate child_claim, :accepted?
     assert_predicate commit(child_claim.value), :applied?
@@ -67,6 +70,13 @@ class Executors::NamedAgentApplicationTest < ActiveJob::TestCase
     assert_equal :ready, Executor.credential_readiness_for([@address]).fetch(@address.id)
     assert_predicate @agent.reload, :active?
     assert_equal :not_eligible, claim(call.run.reload.tasks.find(call.id)).outcome
+  end
+
+  test "a named answerer's explicit context must match its application context" do
+    run = start_run(executor_contexts: { @address.public_id => { "root" => "/accepted" } })
+    payload = { "type" => Tasks::ToolTask.sti_name, "tool_name" => "application_read",
+                "operation_context" => { "executor_context" => { "root" => "/different" } } }
+    assert_equal :executor_context_mismatch, Executors::Targets.prepare(run: run, payload: payload)
   end
 
   test "an application address does not serve an unrelated execution principal" do
@@ -156,9 +166,9 @@ class Executors::NamedAgentApplicationTest < ActiveJob::TestCase
 
   test "sharing application transport does not import the publisher's skill documents" do
     @definition.update!(kernel_tools: ["nexus.skill.load"])
-    assert_predicate @address.announce(tools: @address.served_tools + [{
+    assert_predicate @address.announce(services: { @address.executor_kind => { "tools" => @address.tools_for(:agent) + [{
       "name" => "skill", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
-    }], documents: [{ "name" => "private-handbook", "description" => "Publisher-only documents." }]), :accepted?
+    }], "documents" => [{ "name" => "private-handbook", "description" => "Publisher-only documents." }] } }), :accepted?
 
     [nil, { "bindings" => [{ "name" => "conversation", "scope" => "conversation", "access" => "read_write" }] }].each do |limit|
       @definition.update!(memory_context_limit: limit)
@@ -173,17 +183,17 @@ class Executors::NamedAgentApplicationTest < ActiveJob::TestCase
 
   private
 
-    def start_call
-      run = start_run
+    def start_call(**input)
+      run = start_run(**input)
       run_loop_round!(run, sse_success("working", tool_calls: [
         { id: "application_call", name: "application_work", arguments: "{}" },
       ]))
       run.tasks.find_by!(tool_call_id: "application_call")
     end
 
-    def start_run
+    def start_run(**input)
       conversation = Conversation.create!(workspace: @workspace, creating_user: @agent, answering_user: @definition)
-      _, run = materialize_loop_reply!(conversation, agent: @agent)
+      _, run = materialize_loop_reply!(conversation, agent: @agent, **input)
       schedule_loop!(run)
       run
     end

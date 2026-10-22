@@ -207,7 +207,7 @@ class CliCommandTest < Minitest::Test
     disconnect, disconnect_status = run_rho("help", "disconnect")
     assert_equal 0, disconnect_status
     assert_match(/Revoke this machine's credentials on Nexus and forget them/, disconnect)
-    assert_match(/--runner/, disconnect)
+    refute_match(/--runner/, disconnect)
   end
 
   # In runner mode the conversation verbs are not here, and the footer says so.
@@ -356,6 +356,13 @@ class CliCommandTest < Minitest::Test
 
     assert_equal 1, status, "a mistyped verb must not read as success to a supervisor"
     assert_match(/bogus/, out)
+  end
+
+  def test_disconnect_refuses_the_retired_runner_only_flag
+    out, status = run_rho("disconnect", "--runner")
+
+    assert_equal 1, status
+    assert_match(/called with arguments \["--runner"\]/, out)
   end
 
   # A verb nobody answers names the extension that might have; a verb

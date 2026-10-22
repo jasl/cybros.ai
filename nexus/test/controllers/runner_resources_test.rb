@@ -6,20 +6,20 @@ class RunnerResourcesTest < ActionDispatch::IntegrationTest
     sign_in_as @human
   end
 
-  test "detail separates application assignment from Human eligibility and keeps saved announcement text escaped" do
-    connection = connect_combined_session(steward: @human, agent_identifier: "detail-app", registration_identifier: "detail-runner")
-    runner = connection.runner.executor_access_token.executor
+  test "detail shows Human eligibility and keeps saved announcement text escaped" do
+    connection = connect_runner(manager: @human, registration_identifier: "detail-runner")
+    runner = connection.executor_access_token.executor
     assert_predicate runner.announce(
-      tools: [{ "name" => "read", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
+      services: { runner.executor_kind => { "tools" => [{ "name" => "read", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
         "description" => "<script>announced</script>", "input_schema" => { "type" => "object" } }],
-      documents: [{ "name" => "project", "description" => "<script>document</script>" }],
-      environment: { "root" => "<script>environment</script>" }
+      "documents" => [{ "name" => "project", "description" => "<script>document</script>" }],
+      "environment" => { "root" => "<script>environment</script>" } } }
     ), :accepted?
 
     assert_no_enqueued_jobs { get runner_path(runner) }
     assert_response :success
     assert_select "h1", runner.display_name
-    assert_select "dd[data-execution-eligible=false]", text: "Not allowed"
+    assert_select "dd[data-execution-eligible=true]", text: "Allowed"
     assert_select "dd", text: "Ready"
     assert_select "dd", text: "Not yet seen"
     assert_select "summary", text: "read"

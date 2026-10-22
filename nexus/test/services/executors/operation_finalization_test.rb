@@ -13,9 +13,9 @@ class Executors::OperationFinalizationTest < ActiveJob::TestCase
     @human = users(:member)
     @workspace = workspaces(:shared)
     @runner = suite_runner
-    @runner.announce(tools: RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
+    @runner.announce(services: { @runner.executor_kind => { "tools" => RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
       "name" => "program", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
-    }])
+    }] } })
   end
 
   test "success waits for the accepted child's observation and then publishes one immutable final" do

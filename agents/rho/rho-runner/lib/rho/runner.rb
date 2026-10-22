@@ -96,6 +96,8 @@ module Rho
     # The one inbox kind a runner answers; the rest are the agent's.
     TOOL_CALL_KIND = "tool_call".freeze
 
+    Service = Data.define(:toolsets, :hooks)
+
     # `nudged` and `swept` are two meters on purpose, and the pair is the
     # diagnosis: a runner doing work with `nudged: 0` is being carried
     # entirely by its own polling, which is the product WORKING and the
@@ -116,9 +118,10 @@ module Rho
     # `hooks` is the extension plane's tool-call chain. Absent means an
     # empty host, so a runner assembled without extensions costs nothing
     # per call and reads the same either way.
-    def initialize(executor:, toolsets:, log:, pool: nil, sleeper: nil, hooks: nil, admission: nil)
+    def initialize(executor:, toolsets:, log:, pool: nil, sleeper: nil, hooks: nil, admission: nil, roles: nil)
       @executor = executor
       @toolsets = toolsets
+      @roles = roles
       @log = log
       @pool = pool || Pool.new(worker_threads: default_workers, admission: admission || Admission.new)
       @wake = Thread::SizedQueue.new(1)
@@ -127,7 +130,7 @@ module Rho
       @sleeper = sleeper || ->(seconds) { sleep(seconds) }
       @task_run = TaskRun.new(
         executor: executor, pool: @pool, toolsets: toolsets, log: log,
-        hooks: hooks || Extensions::Hooks::Host.new, sleeper: @sleeper,
+        hooks: hooks || Extensions::Hooks::Host.new, roles: roles, sleeper: @sleeper,
         on_cancel: ->(reason) { @monitor.synchronize { @canceled += 1 } if reason == :canceled }
       )
       @monitor = Monitor.new
@@ -144,12 +147,16 @@ module Rho
       @monitor.synchronize do
         Snapshot.new(running: !@stopping, in_flight: @pool.in_flight,
           claimed: @claimed, swept: @swept, nudged: @nudged, canceled: @canceled,
-          tools: @toolsets.names)
+          tools: (@roles ? @roles.values.flat_map { |service| service.toolsets.names }.uniq : @toolsets.names))
       end
     end
 
-    def configure(hooks:)
-      @task_run.hooks = hooks
+    def configure(hooks: nil, roles: nil)
+      @task_run.hooks = hooks if hooks
+      if roles
+        @roles = roles
+        @task_run.roles = roles
+      end
     end
 
     # The fiber body. Level-triggered and safe to run at any time: a pass
@@ -176,13 +183,13 @@ module Rho
 
     # A nudge from the cable. It names WHICH task, so this takes exactly that
     # one and never lists — the claim IS the fetch.
-    def nudged(run_public_id:, task_key:, tool_name: nil)
+    def nudged(run_public_id:, task_key:, tool_name: nil, role: nil)
       return if stopping? || task_key.nil? || run_public_id.nil?
 
       @monitor.synchronize { @nudged += 1 }
       wake if tool_name.nil?
       take(run_public_id: run_public_id, task_key: task_key,
-        tool_name: tool_name)
+        tool_name: tool_name, role: role)
     end
 
     # A cancel from the cable names the loop and its task key; keys repeat
@@ -238,7 +245,7 @@ module Rho
       # crash must see the work it already holds — and is left alone: its
       # holder's deadline is the only thing that releases it.
       # A ROW OF ANOTHER KIND IS NOT THE RUNNER'S: an `ask` is
-      # the agent application's to answer — listed on the same inbox for
+      # the agent's to answer — listed on the same inbox for
       # its addressee, never claimed — and a word this runner does not know
       # is carried, never taken; both are left where they stand rather than
       # claimed and refused `not_claimable_kind` every pass.
@@ -256,9 +263,9 @@ module Rho
           next unless takeable?(task)
 
           if (scope = Async::Task.current?)
-            scope.async { take(run_public_id: task.run_public_id, task_key: task.task_key, tool_name: task.tool_name) }
+            scope.async { take(run_public_id: task.run_public_id, task_key: task.task_key, tool_name: task.tool_name, role: task.addressed_to&.role) }
           else
-            take(run_public_id: task.run_public_id, task_key: task.task_key, tool_name: task.tool_name)
+            take(run_public_id: task.run_public_id, task_key: task.task_key, tool_name: task.tool_name, role: task.addressed_to&.role)
           end
         end
       rescue CybrosAgent::Api::Unauthorized
@@ -291,10 +298,10 @@ module Rho
       # per-fiber dispatch a raise here ends one fiber that nothing else
       # reads, and the daemon's log was the only place it could be seen —
       # it was not. A process-fatal exception is not an error and passes.
-      def take(run_public_id:, task_key:, tool_name:)
+      def take(run_public_id:, task_key:, tool_name:, role: nil)
         @monitor.synchronize { @answering += 1 }
         outcome = @task_run.call(run_public_id: run_public_id,
-          task_key: task_key, tool_name: tool_name)
+          task_key: task_key, tool_name: tool_name, role: role)
         @monitor.synchronize { @claimed += 1 } if outcome == :done
         outcome
       rescue StandardError => error

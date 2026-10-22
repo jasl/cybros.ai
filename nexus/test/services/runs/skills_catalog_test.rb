@@ -72,14 +72,36 @@ class Runs::SkillsCatalogTest < ActiveJob::TestCase
     end
   end
 
+  test "one executor preserves separate same named documents for its two roles" do
+    address = Executor.address_for(@agent)
+    create_bound_credential(executor: address, name: "Application transport")
+    assert_predicate address.announce(services: {
+      "agent" => { "tools" => [SKILL_ENTRY], "documents" => [document("review", "Application review")] },
+      "runner" => { "tools" => [SKILL_ENTRY], "documents" => [document("review", "Project review")] },
+    }), :accepted?
+
+    entries = Catalog.for(tools: [routed_skill(address), Nexus::Tools::SKILL],
+      address: address, context: memory_context)
+
+    assert_equal %w[runner agent], entries.map(&:source)
+    assert_equal [address.public_id, address.public_id], entries.map(&:executor_public_id)
+    assert_equal %w[runner_skill skill], entries.map(&:callable)
+    assert_equal ["Project review", "Application review"], entries.map(&:description)
+    assert_predicate address.announce(services: {
+      "agent" => { "tools" => [SKILL_ENTRY], "documents" => [document("review", "Application review")] },
+    }), :accepted?
+    refute Catalog.announces?(address, "review", role: :runner)
+    assert Catalog.announces?(address, "review", role: :agent)
+  end
+
   test "Runner and non Runner documents keep separate callable and source identities" do
     runner = suite_runner
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS + [SKILL_ENTRY],
-      documents: [document("deploy-notes", "The runner's."), document("zeta")]), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [SKILL_ENTRY],
+      "documents" => [document("deploy-notes", "The runner's."), document("zeta")] } }), :accepted?
     address = Executor.address_for(@agent)
     create_bound_credential(executor: address, name: "Lane transport")
-    assert_predicate address.announce(tools: [SKILL_ENTRY],
-      documents: [document("deploy-notes", "The address's."), document("alpha")]), :accepted?
+    assert_predicate address.announce(services: { address.executor_kind => { "tools" => [SKILL_ENTRY],
+      "documents" => [document("deploy-notes", "The address's."), document("alpha")] } }), :accepted?
     row!("workspace/skills/deploy-notes", "The workspace's.")
     row!("workspace/skills/commit-style", "The team's commits.")
     row!("user/skills/commit-style", "My commits.", user: users(:owner))
@@ -92,7 +114,7 @@ class Runs::SkillsCatalogTest < ActiveJob::TestCase
     same_name = merged.select { |entry| entry.name == "deploy-notes" }
     assert_equal %w[runner_skill skill], same_name.map(&:callable)
     assert_equal [runner.public_id, address.public_id], same_name.map(&:executor_public_id)
-    assert_equal %w[runner agent_application], same_name.map(&:source)
+    assert_equal %w[runner agent], same_name.map(&:source)
     assert_equal "The team's commits.", merged.find { |entry| entry.name == "commit-style" }.description
     assert_equal "user", merged.last.source
 
@@ -106,18 +128,18 @@ class Runs::SkillsCatalogTest < ActiveJob::TestCase
 
   test "an announcer contributes by presence and its source UUID survives in the catalog" do
     runner = suite_runner
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS, documents: [document("deploy-notes")]), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS, "documents" => [document("deploy-notes")] } }), :accepted?
     tools = [routed_skill(runner)]
     entries = Catalog.for(tools: tools, address: nil, context: memory_context)
     assert_equal %w[deploy-notes], names(entries)
     assert_equal runner.public_id, entries.sole.executor_public_id
-    assert Catalog.announces?(runner, "deploy-notes")
-    assert_not Catalog.announces?(runner, "commit-style")
-    assert_not Catalog.announces?(nil, "deploy-notes")
+    assert Catalog.announces?(runner, "deploy-notes", role: :runner)
+    assert_not Catalog.announces?(runner, "commit-style", role: :runner)
+    assert_not Catalog.announces?(nil, "deploy-notes", role: :runner)
 
     runner.update!(status: :revoked)
     assert_empty Catalog.for(tools: tools, address: nil, context: memory_context)
-    assert_not Catalog.announces?(runner, "deploy-notes")
+    assert_not Catalog.announces?(runner, "deploy-notes", role: :runner)
   end
 
   test "the provider presence rule reads the frozen catalog without live queries" do

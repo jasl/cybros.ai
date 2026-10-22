@@ -420,7 +420,7 @@ class ExecutorPlaneTest < Minitest::Test
       }],
       approval_mode: "bypass", approval_rules: nil, prompt_mechanism: "default", compaction_policy: nil
     )
-    executor.announce(tools: [{ "name" => tool_name, "effect_profile" => E2E::EchoTools::READ_ONLY }])
+    executor.announce(services: { "agent" => { "tools" => [{ "name" => tool_name, "effect_profile" => E2E::EchoTools::READ_ONLY }] } })
 
     # A Human-created conversation must stop when its answerer is removed.
     human = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)

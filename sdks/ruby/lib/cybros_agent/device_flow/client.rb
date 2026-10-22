@@ -30,9 +30,9 @@ module CybrosAgent
       EXECUTOR_PLANE = "executor_transport".freeze
       PLANES = [MEMBER_PLANE, EXECUTOR_PLANE].freeze
       # The executor kinds a connection names: branch A fixes
-      # the agent application's; branch B takes a machine kind, the runner's
+      # the agent's; branch B takes a machine kind, the runner's
       # by default.
-      AGENT_APPLICATION_KIND = "agent_application".freeze
+      AGENT_KIND = "agent".freeze
       RUNNER_KIND = "runner".freeze
 
       class MalformedResponse < StandardError; end
@@ -55,29 +55,18 @@ module CybrosAgent
       end
 
       # Branch A: resolves the connecting human's Agent
-      # and its current agent_application delivery address. The branch fixes
+      # and its current agent delivery address. The branch fixes
       # the address kind: winning Consume creates one when absent or re-pairs a
       # matching non-revoked one.
       #
-      # With `runner: { identifier:, display_name: }` the request is the
-      # COMBINED shape: the same grant also registers a runner
-      # on this machine — private to this application Agent and its
-      # application-owned identities, its kind fixed `runner`, so no `executor_kind`
-      # is sent — and the winning poll carries two lineages (`runner_half`).
-      def request_authorization(agent_identifier:, agent_display_name:, executor_display_name:, runner: nil)
+      def request_authorization(agent_identifier:, agent_display_name:, executor_display_name:)
         params = {
           client_id: @client_id,
           agent_identifier: agent_identifier,
           agent_display_name: agent_display_name,
           executor_display_name: executor_display_name,
         }
-        if runner
-          params = params.merge(
-            registration_identifier: runner.fetch(:identifier),
-            runner_display_name: runner.fetch(:display_name)
-          )
-        end
-        start_authorization(params, branch: runner ? :combined : :agent, executor_kind: AGENT_APPLICATION_KIND)
+        start_authorization(params, branch: :agent, executor_kind: AGENT_KIND)
       end
 
       # Branch B: identity-less. A machine receives only its
@@ -89,13 +78,10 @@ module CybrosAgent
       # door, and a re-pair naming the other kind for a live key is
       # invalidated at consume. For a fresh standalone registration, Browser Connect
       # lets an owner or administrator opt into account-wide access;
-      # re-pairing a live registration preserves its stored access. An
-      # application adding its own Runner selects its existing Agent by UUID.
-      def request_runner_authorization(registration_identifier:, runner_display_name:, executor_kind: RUNNER_KIND,
-        assignment_agent_public_id: nil)
+      # re-pairing a live registration preserves its stored access.
+      def request_runner_authorization(registration_identifier:, runner_display_name:, executor_kind: RUNNER_KIND)
         params = { client_id: @client_id, registration_identifier: registration_identifier,
           runner_display_name: runner_display_name, executor_kind: executor_kind }
-        params[:assignment_agent_public_id] = assignment_agent_public_id if assignment_agent_public_id
         start_authorization(params, branch: :runner, executor_kind: executor_kind)
       end
 
@@ -298,12 +284,6 @@ module CybrosAgent
         @sleeper.call([delay, remaining].min) if remaining.positive?
       end
 
-      # The response names the plane of its leading `access_token`, and
-      # `executor_access_token` accompanies it only when a bundle carries both
-      # (guides/reference/oauth/device-flow.md, Success shape). The typed result sorts
-      # them by plane so no caller has to infer which is which — and a
-      # transport-led response can never carry a second transport credential,
-      # the nested `runner` object of a combined consume included.
       def credentials(body, malformed:)
         connection_credentials(body, malformed: malformed)
       end
@@ -318,38 +298,28 @@ module CybrosAgent
         raise MalformedResponse unless PLANES.include?(plane)
 
         accompanying = body["executor_access_token"]
-        runner = body["runner"]
+        raise MalformedResponse unless body["runner"].nil?
         transport_led = plane == EXECUTOR_PLANE
-        raise MalformedResponse if transport_led && !(accompanying.nil? && runner.nil?)
+        raise MalformedResponse if transport_led && !accompanying.nil?
         accompanying = nonempty_string(body, "executor_access_token") unless accompanying.nil?
-        runner = response_hash(runner) unless runner.nil?
 
         Credentials.new(
           access_token: (leading unless transport_led),
           executor_access_token: transport_led ? leading : accompanying,
           refresh_token: nonempty_string(body, "refresh_token"),
           token_type: token_type,
-          expires_in: positive_integer(body, "expires_in"),
-          runner_access_token: (nonempty_string(runner, "access_token") if runner),
-          runner_refresh_token: (nonempty_string(runner, "refresh_token") if runner)
+          expires_in: positive_integer(body, "expires_in")
         )
       rescue MalformedResponse
         raise malformed, cause: nil
       end
 
-      # Initial Consume has a stronger branch contract than later rotation:
-      # Agent connects with both planes and no runner half; Runner connects
-      # with transport only; the combined shape connects with all three.
-      # Rotation intentionally keeps using the generic parser because member
-      # authority may disappear while transport authority survives.
       def validate_initial_credentials(credentials, branch:)
         valid = case branch
         when :agent
-          credentials.member_plane? && credentials.executor_plane? && !credentials.runner_plane?
+          credentials.member_plane? && credentials.executor_plane?
         when :runner
           !credentials.member_plane? && credentials.executor_plane?
-        when :combined
-          credentials.member_plane? && credentials.executor_plane? && credentials.runner_plane?
         else
           false
         end

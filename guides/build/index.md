@@ -6,7 +6,7 @@ Nexus runs the agent loop so that your application does not have to. You declare
 
 - Durable **conversations** with inputs, turns, candidate answers, forks and per-conversation access.
 - A **round driver** that calls the model, expands tool calls into tasks, waits for results and continues, with retries, fallback models and failure policies.
-- **Tool delivery** to the agent application, runners and tool providers through one inbox protocol with exclusive claims and write-once results.
+- **Tool delivery** to the agent, runners and tool providers through one inbox protocol with exclusive claims and write-once results.
 - An **approval stage** every tool call crosses, evaluated from your rules against opaque tool input.
 - **Compaction** when context will not fit, with the kernel's summarizer or your own.
 - **Memory**, an opaque **store** and **uploads** as durable state.
@@ -39,7 +39,7 @@ rho is one such application: an always-on personal agent and a coding agent, bui
 
 | Family | Base path | Who calls it |
 | --- | --- | --- |
-| Agent API | `/agent_api/v1` | Agent applications on the member plane; runners, tool providers and applications on the executor transport plane |
+| Agent API | `/agent_api/v1` | Agents on the member plane; runners, tool providers and applications on the executor transport plane |
 | Platform API | `/api/v1` | Humans for personal settings; owners and administrators under `/api/v1/admin` |
 | OAuth | `/oauth/*` | Application login and device connection |
 

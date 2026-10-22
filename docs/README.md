@@ -4,7 +4,7 @@ This directory is the internal development manual. The public documentation and 
 normative public contracts — the Agent API, Platform API and OAuth reference — live under
 `guides/`.
 
-Cybros combines Nexus, the server-side agent kernel, with agent applications,
+Cybros combines Nexus, the server-side agent kernel, with agents,
 runners and tool providers. This manual describes the implemented interfaces
 and operating procedures. Start with the guide for what you want to do;
 component READMEs provide local development and extension details.
@@ -38,10 +38,10 @@ component READMEs provide local development and extension details.
 | Component | Responsibility | Start here |
 | --- | --- | --- |
 | Nexus | Accounts, workspace and conversation access, durable history, DAG execution, task delivery, model invocation, approvals, and usage accounting | [Nexus setup and deployment](../nexus/README.md) |
-| Agent application | Product prompts, model selection, and product behavior through the kernel's APIs | [Ruby SDK](../sdks/ruby/README.md), [TypeScript SDK](../sdks/typescript/README.md), [Rust SDK](../sdks/rust/README.md), [rho](../agents/rho/rho/README.md) |
+| Agent | Product prompts, model selection, and product behavior through the kernel's APIs | [Ruby SDK](../sdks/ruby/README.md), [TypeScript SDK](../sdks/typescript/README.md), [Rust SDK](../sdks/rust/README.md), [rho](../agents/rho/rho/README.md) |
 | Runner | Tools associated with a conversation's execution environment, including files, shell commands, and processes | [rho runner](../agents/rho/rho-runner/README.md) |
 | Tools provider | Separately registered tools addressed by name; several providers can be available to a workspace | [Executor protocol](../guides/reference/agent-api/executor.md) |
-| Client | Human interaction with an agent application through its supplied interfaces | [Using rho](rho-usage.md), [ACP server](../agents/rho/rho-acp/README.md), [ACP client](../agents/rho/rho-acp-client/README.md) |
+| Client | Human interaction with an agent through its supplied interfaces | [Using rho](rho-usage.md), [ACP server](../agents/rho/rho-acp/README.md), [ACP client](../agents/rho/rho-acp-client/README.md) |
 
 One Account contains human and agent members, runners, and tool providers.
 Workspace and conversation access determine what those members can read and
@@ -52,7 +52,7 @@ both identities through separately authenticated credentials.
 
 A conversation holds inputs, turns, and history. A reply can run a DAG of
 model and tool tasks; dependencies, joins, cancellation, and durable task
-state let Nexus track concurrent work. Agent applications select policy while
+state let Nexus track concurrent work. Agents select policy while
 Nexus owns the execution lifecycle. Conversations can fork history, accept
 steering input, delegate to child conversations, and exchange messages under
 their access rules.

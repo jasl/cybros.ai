@@ -11,7 +11,7 @@ class RefreshTokens::RotateTest < ActiveSupport::TestCase
   setup do
     @owner = users(:owner)
     @member = create_agent_member(steward: @owner, display_name: "Rotator", agent_identifier: "install-rotate")
-    @executor = @member.executors.create!(account: @member.account, executor_kind: :agent_application, display_name: "Rotator app")
+    @executor = @member.executors.create!(account: @member.account, executor_kind: :agent, display_name: "Rotator app")
     @initial = mint_family
   end
 
@@ -209,7 +209,7 @@ class RefreshTokens::RotateTest < ActiveSupport::TestCase
     )
     executor = member.executors.create!(
       account: member.account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Pending shutdown app"
     )
     initial = mint_family(member:, executor:)

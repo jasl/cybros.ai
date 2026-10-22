@@ -280,10 +280,11 @@ class RhoRunTest < Minitest::Test
 
     assert_predicate status, :success?, "rho run --until failed:\n#{output}"
     _conversation, _turn, loop = ids_of(output)
-    assert_match(/^until:\s+true \(1 checks, in #{Regexp.escape(project)}\)$/, output, output)
+    check = task_detail(loop, "check-1")
+    runner = check.fetch("addressed_to").fetch("executor_public_id")
+    assert_match(/^until:\s+true \(1 checks, on runner #{Regexp.escape(runner)} in #{Regexp.escape(project)}\)$/, output, output)
     assert_match(/^status:    completed$/, output, output)
     assert_equal "completed", loop_row(loop).fetch("status")
-    check = task_detail(loop, "check-1")
     assert_equal "completed", check.fetch("status"), check.inspect
     assert_equal 0, check.dig("structured_content", "exit_status"), "the acceptance check actually passed: #{check.inspect}"
   end

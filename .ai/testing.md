@@ -49,7 +49,7 @@
   integration case at that boundary, alongside focused unit coverage. For principal or access
   changes, choose principals whose permissions differ in the relevant way: for example, a Workspace
   reader excluded from the source Conversation, or a sender that cannot discover the answerer's
-  private Runner. Prove both the permitted work and the denied access while the derived work
+  Local Runner capability. Prove both the permitted work and the denied access while the derived work
   exists; disabling the feature or checking only after deletion does not prove its access boundary.
   Reuse the existing fixture world and cover the distinguishing combinations, not an exhaustive
   permissions matrix.

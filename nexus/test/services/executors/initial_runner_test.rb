@@ -2,9 +2,9 @@ require "test_helper"
 
 # THE INITIAL BINDING: the runner the creator NAMES, else none — the kernel infers no execution host
 # (the creator names the runner; an unnamed runner leaves the host unbound). A name is refused
-# unless it is a live runner-kind row eligible for the principal: eligibility is a row fact —
-# active, credential ready, not shutdown-pending, in scope — never an announcement: an agent
-# application's address is never a binding however much it announced, and a tools provider never is.
+# unless it provides the runner role and is eligible for the principal: active, credential ready,
+# not shutdown-pending and in scope. Announcing tools under the agent role alone does not provide
+# runner capability; a tool provider cannot provide that role either.
 class Executors::InitialRunnerTest < ActiveSupport::TestCase
   setup do
     @owner = users(:owner)
@@ -57,17 +57,17 @@ class Executors::InitialRunnerTest < ActiveSupport::TestCase
     assert_refused bind(requested: private_runner.public_id, principal: @member)
   end
 
-  test "a revoked runner, a tools provider and an announced agent address are refused by name" do
+  test "a revoked runner, a tools provider and an agent address without runner capability are refused by name" do
     revoked = runner("gone")
     revoked.revoke
     provider = connect_provider(identifier: "provider-1", tools: ["read_file"])
     address = executors(:address)
-    address.announce(tools: [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }])
+    address.announce(services: { address.executor_kind => { "tools" => [{ "name" => "read_file", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } })
 
     assert_refused bind(requested: revoked.public_id)
     assert_refused bind(requested: provider.public_id)
     assert_refused bind(requested: address.public_id, principal: @agent),
-      "an announced agent address is never a binding (the deleted arm's own case)"
+      "tools announced under the agent role do not provide runner capability"
     assert_refused bind(requested: "not-a-public-id")
   end
 

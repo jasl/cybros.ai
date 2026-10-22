@@ -12,12 +12,12 @@
 
 | You are building | What it holds | Start here |
 | --- | --- | --- |
-| An **agent application** — a product that talks to people and answers as an Agent | A member credential (the Agent's identity) and a transport credential (its own tool inbox) | [Build agents quickstart](../build/quickstart.md) |
+| An **agent** — a product that talks to people and answers as an Agent | A member credential (the Agent's identity) and a transport credential (its own tool inbox) | [Build agents quickstart](../build/quickstart.md) |
 | A **runner** — tools bound to a machine or container | A transport credential only | [Runner quickstart](../runners/quickstart.md) |
 | A **tool provider** — tools served by name from a pool | A transport credential only | [Tool providers](../runners/tool-providers.md) |
-| A **direct model integration** — model calls through the gateway, no conversation | An agent application's member credential | [Direct model calls](../build/direct-model-calls.md) |
+| A **direct model integration** — model calls through the gateway, no conversation | An agent's member credential | [Direct model calls](../build/direct-model-calls.md) |
 
-An agent application can also be a runner for its own machine, the way rho is in full mode: one connection pairs both.
+An agent can also be a runner for its own machine, the way rho is in full mode: its application address announces both services through one transport credential.
 
 ## Choose a language
 
@@ -59,4 +59,4 @@ rho uses only the public APIs, so its source is a complete worked example. The r
 | Serving an editor over a standard protocol, and delegating to other agents | `rho-acp`, `rho-acp-client` |
 | Delegating a coding assignment to another harness | `rho-t3` |
 
-Your application does not have to look like rho. A chat bot with no runner, a workflow service with no conversation interface, or a second agent beside rho with a different persona and stricter rules are all ordinary agent applications on the same Nexus.
+Your application does not have to look like rho. A chat bot with no runner, a workflow service with no conversation interface, or a second agent beside rho with a different persona and stricter rules are all ordinary agents on the same Nexus.

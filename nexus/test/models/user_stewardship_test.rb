@@ -160,7 +160,7 @@ class UserStewardshipTest < ActiveSupport::TestCase
     )
     address = profile.executors.create!(
       account: @account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Agent app"
     )
 
@@ -187,7 +187,7 @@ class UserStewardshipTest < ActiveSupport::TestCase
     )
     profile.executors.create!(
       account: @account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Agent app"
     )
     invocation = create_model_work(profile)
@@ -240,7 +240,7 @@ class UserStewardshipTest < ActiveSupport::TestCase
     )
     address = profile.executors.create!(
       account: @account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Agent app"
     )
     invocation = create_model_work(profile)

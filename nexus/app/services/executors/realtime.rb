@@ -19,7 +19,7 @@ module Executors
       return view("waiting", "offer_required") unless signal
       return view("closed", "claim_changed") unless signal.claim_digest == Digest::SHA256.hexdigest(@task.claim_token.to_s)
 
-      transport = credential(signal.executor_credential_public_id, :refresh_token_family, executor: [:manager, :assignment_agent])
+      transport = credential(signal.executor_credential_public_id, :refresh_token_family, executor: [:manager, { agent: :steward }])
       unless transport&.executor_usable? && transport.executor_id == @task.claimed_by_executor_id &&
           transport.executor.eligible_for?(run.execution_agent, readiness: { transport.executor_id => :ready })
         return view("closed", "executor_credential_revoked")
@@ -45,7 +45,7 @@ module Executors
 
     # Caller holds Run then Task. Same-id retries never change the handshake.
     def offer(connection_id:, sdp:, token:, previous_connection_id: nil)
-      return :not_claimant unless @credential.executor.runner? && @task.claimed_by?(@credential.executor, token: token)
+      return :not_claimant unless @task.addressed_role == "runner" && @task.claimed_by?(@credential.executor, token: token)
       return :realtime_unavailable if execution_refusal || run.paused? || !Deployments::Maintenance.admitting?
 
       old = @task.realtime_signal

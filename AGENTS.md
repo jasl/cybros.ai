@@ -70,7 +70,7 @@ task spans categories, read every applicable module and the nearest nested
   correctness boundary, not tenancy.
 - Nexus is a fat, complete, orthogonal kernel: every
   general agent mechanism is kernel; product policy — prompt meaning, model
-  routing, tiers — is the agent application's. Nexus must not branch on concrete
+  routing, tiers — is the agent's. Nexus must not branch on concrete
   agent product names.
 - Keep development-only code in Nexus minimal, preferring the owning test/E2E
   tree without imposing a blanket location ban.

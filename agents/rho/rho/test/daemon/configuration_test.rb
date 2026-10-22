@@ -73,26 +73,26 @@ class DaemonConfigurationTest < Minitest::Test
   # The RUNNER address's announcement: the environment tools and
   # the root's document, under the runner's credential.
   def announced(api, count = 1)
-    wait_for { api.runner_announcements.length >= count }
-    api.runner_announcements.fetch(count - 1).fetch("tools")
+    wait_for { api.announcements.length >= count }
+    api.announcements.fetch(count - 1).fetch("services").fetch("runner").fetch("tools")
   end
 
   def announced_environment(api, count = 1)
-    wait_for { api.runner_announcements.length >= count }
-    api.runner_announcements.fetch(count - 1).fetch("environment")
+    wait_for { api.announcements.length >= count }
+    api.announcements.fetch(count - 1).fetch("services").fetch("runner").fetch("environment")
   end
 
   # The runner address's third list: the root's
   # skills, announced beside the tools and the environment document.
   def announced_documents(api, count = 1)
-    wait_for { api.runner_announcements.length >= count }
-    api.runner_announcements.fetch(count - 1).fetch("documents")
+    wait_for { api.announcements.length >= count }
+    api.announcements.fetch(count - 1).fetch("services").fetch("runner").fetch("documents")
   end
 
   # The Agent address announces application tools without an environment.
   def agent_announced(api, count = 1)
     wait_for { api.announcements.length >= count }
-    api.announcements.fetch(count - 1)
+    api.announcements.fetch(count - 1).fetch("services").fetch("agent")
   end
 
   def runner_document(daemon, token)
@@ -124,7 +124,7 @@ class DaemonConfigurationTest < Minitest::Test
     assert_equal({ "mode" => "off" }, latest.fetch("compaction_policy"), "removing the compaction plugin disables its policy")
     assert_empty latest.fetch("tool_definitions")
     assert_equal ["nexus.graph.delegate_task"], latest.fetch("kernel_tools")
-    assert_includes original.fetch("runner_executor_public_ids"), "0199-runner"
+    assert_includes original.fetch("runner_executor_public_ids"), "0199-executor"
     assert_predicate daemon.host_followers.adaptations, :off?
     assert_equal WORKSPACE.fetch(:public_id), host_store(daemon).find(host.public_id).workspace
     api.declared_configuration["default_model"] = "previous/declaration"
@@ -187,7 +187,7 @@ class DaemonConfigurationTest < Minitest::Test
       keys << "timeout_ms" unless %w[code list_extensions].include?(entry.fetch("name"))
       assert_equal keys.sort, entry.keys.sort
     end
-    refute agent.key?("environment"), "the environment document is the runner address's"
+    assert_empty agent.fetch("environment"), "the environment document is the runner address's"
 
     paths = api.requests.map(&:first)
     assert_operator paths.index("/agent_api/v1/executor/announcement"), :<,
@@ -221,8 +221,8 @@ class DaemonConfigurationTest < Minitest::Test
     assert_equal %w[name effect_profile description input_schema], announced(api).find { |entry| entry.fetch("name") == "skill" }.keys,
       "an explicit Runner source carries its exact schema"
     wait_for { api.announcements.length >= 1 }
-    assert_equal [], api.announcements.first.fetch("documents"), "the agent address announces its own projection: none"
-    refute api.announcements.first.key?("environment"), "the environment document is the runner address's"
+    assert_equal [], api.announcements.first.dig("services", "agent", "documents"), "the agent address announces its own projection: none"
+    assert_empty api.announcements.first.dig("services", "agent", "environment"), "the environment document is the runner address's"
   end
 
   # THE RUNNER ADDRESS ALONE: the
@@ -240,9 +240,9 @@ class DaemonConfigurationTest < Minitest::Test
 
     assert_equal "200", response.code, response.body
     assert_equal announced(api, 1), announced(api, 2), "the same announcement, written again"
-    assert_equal File.realpath(root), File.realpath(api.runner_announcements.last.dig("environment", "root")),
+    assert_equal File.realpath(root), File.realpath(api.announcements.last.dig("services", "runner", "environment", "root")),
       "on the new root"
-    assert_equal 1, api.announcements.length, "the agent's own carries no environment: not rewritten"
+    assert_equal 2, api.announcements.length, "root changes replace the complete services map"
   end
 
   # A refusal costs the announcement and is written down; the runner still
@@ -287,10 +287,8 @@ class DaemonConfigurationTest < Minitest::Test
     assert_empty daemon.lineage.runners
     assert_equal({ runner: nil, agent: nil }, daemon.context.runner_snapshot, "no runner: the honest answer, not an idle shape")
     assert daemon.lineage.reserve_runner(about), "the runner reservation was given back"
-    assert daemon.lineage.reserve_runner(about, slot: :agent_runner), "and the agent's"
     log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
-    assert_includes log, "runner.not_placed slot=runner reason=\"runner plane unavailable\""
-    assert_includes log, "runner.not_placed slot=agent_runner reason=\"agent plane unavailable\""
+    assert_includes log, "runner.not_placed reason=\"executor plane unavailable\""
     assert_empty api.announcements, "nothing to announce from"
     assert_empty api.runner_announcements
     refute(api.requests.any? { |path, _| (path == "/agent_api/v1/executor" || path.start_with?("/agent_api/v1/executor/")) },
@@ -298,25 +296,18 @@ class DaemonConfigurationTest < Minitest::Test
     assert_nil daemon.lineage.executor_realtime
   end
 
-  # A lineage with the agent's transport credential and no runner lineage
-  # (agent mode, or a full home whose runner is gone): the agent's own run
-  # is placed, the runner slot says why it is not.
-  def test_a_lineage_with_no_runner_credential_places_the_agents_run_alone
+  def test_an_application_transport_places_both_roles_without_an_independent_runner_credential
     api = NexusDoubles::FakeAgentApi.new(workspaces: [WORKSPACE], tools: CATALOG)
     daemon = member_ready(boot, api)
     about = daemon.lineage.credentials
     about.define_singleton_method(:executor_credential) { NexusDoubles::TRANSPORT_TOKEN }
-    about.define_singleton_method(:agent) { self }
 
     daemon.send(:place_runners, about, NexusDoubles::MEMBER_TOKEN, "ws-1")
 
-    assert_nil daemon.lineage.runner(:runner)
-    refute_nil daemon.lineage.runner(:agent_runner)
+    assert_equal 1, daemon.lineage.runners.length
     assert_equal %w[list_extensions manage_extension code], daemon.context.runner_snapshot.fetch(:agent).fetch(:tools)
-    assert_nil daemon.context.runner_snapshot.fetch(:runner)
-    log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
-    assert_includes log, "runner.not_placed slot=runner"
-    assert_equal 1, api.announcements.length, "the agent address announced its own"
+    assert_includes daemon.context.runner_snapshot.fetch(:runner).fetch(:tools), "bash"
+    assert_equal %w[agent runner], api.announcements.last.fetch("services").keys
     assert_empty api.runner_announcements
   end
 
@@ -328,15 +319,15 @@ class DaemonConfigurationTest < Minitest::Test
     owner.define_singleton_method(:executor_credential) { NexusDoubles::RUNNER_TOKEN }
     about = Rho::Credentials.new(runner: owner)
     daemon.lineage.adopt(identity: RUNNER_IDENTITY, credentials: about)
-    registry_for = daemon.method(:registry_for)
-    daemon.define_singleton_method(:registry_for) do |slot|
-      lineage.lose_runner(about)
-      registry_for.call(slot)
+    execution_roles = daemon.method(:execution_roles)
+    daemon.define_singleton_method(:execution_roles) do
+      lineage.lose(about: about)
+      execution_roles.call
     end
 
     assert_nil daemon.send(:mount_runner, about, :runner)
 
-    assert_nil about.runner
+    assert_nil daemon.lineage.credentials
     assert_nil daemon.lineage.runner(:runner)
     assert_empty api.runner_announcements
   end
@@ -349,12 +340,12 @@ class DaemonConfigurationTest < Minitest::Test
     names = configuration.fetch("tool_definitions").map { |entry| entry.dig("function", "name") }
     assert_equal %w[code list_extensions manage_extension skill spawn], names
     assert_equal CATALOG.map { |entry| entry.fetch("canonical_name") } - %w[nexus.conversation.spawn nexus.image.generate], configuration.fetch("kernel_tools")
-    assert_equal ["0199-runner"], configuration.fetch("runner_executor_public_ids")
+    assert_equal ["0199-executor"], configuration.fetch("runner_executor_public_ids")
     assert_nil configuration.fetch("runner_tool_names")
     refute configuration.fetch("tool_definitions").any? { |entry| entry.key?("route") },
       "Runner schemas and routes belong to Nexus assembly"
     assembled = daemon.context.member_plane(require_workspace: false) do |client, *|
-      client.tools.assemble(default_runner_executor_public_id: "0199-runner").tool_definitions
+      client.tools.assemble(default_runner_executor_public_id: "0199-executor").tool_definitions
     end
     assert_equal FLAT.first.fetch("definition"), assembled.find { |entry| entry.dig("function", "name") == "delegate_task" },
       "rho consumes the kernel's exact projected schema"
@@ -546,7 +537,7 @@ class DaemonConfigurationTest < Minitest::Test
 
     names = declared(api).fetch("tool_definitions").map { |entry| entry.dig("function", "name") }
     assert_includes names, "code"
-    assert_equal ["0199-runner"], declared(api).fetch("runner_executor_public_ids")
+    assert_equal ["0199-executor"], declared(api).fetch("runner_executor_public_ids")
     assert_empty declared(api).fetch("kernel_tools")
     refute_includes names, "delegate_task"
   end

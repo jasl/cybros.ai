@@ -15,8 +15,10 @@ module Rho
             key = body["idempotency_key"].to_s
             next Rho::Daemon::Refusal.malformed("runner_executor_public_id and idempotency_key are required") if runner.empty? || key.empty?
 
+            captured = ctx.execution_contexts(client, tools: [], runner: runner).fetch(runner)
             context = ctx.runs_for(client, workspace_public_id).start_tool_call(
               runner_executor_public_id: runner, tool: "terminal", input: {}, idempotency_key: key,
+              executor_context: captured,
               approval_rules: Rho::RunDeclaration.request_rules(guard: ctx.config.plugin_enabled?("rho.guard"), roots: Rho.protected_roots(ctx.home))
             )
             [201, { terminal: { public_id: context.run_public_id, task_key: TASK_KEY, workspace_public_id: workspace_public_id } }]

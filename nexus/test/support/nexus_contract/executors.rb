@@ -7,14 +7,14 @@ module Nexus
           valid = {
             "executor" => {
               "public_id" => "01900000-0000-7000-8000-000000000030",
-              "kind" => "agent_application",
+              "kind" => "agent",
               "status" => "active",
               "display_name" => "Fixture executor",
               "credential_epoch" => 1,
               "agent_public_id" => "01900000-0000-7000-8000-000000000020",
               "registration_identifier" => nil,
               "assignment_scope" => nil,
-              "assignment_agent_public_id" => nil,
+              "service_roles" => ["agent"],
               # Presence beside the contact sample (r-modes M4): an HTTP
               # self-read has just stamped contact and holds no socket.
               "presence" => "offline",
@@ -27,7 +27,7 @@ module Nexus
           # THE ANNOUNCEMENT'S ONE WRITE SHAPE: the three lists the verb replaces whole — the tools,
           # the environment document, the DOCUMENTS this executor can load for a model as `{name,
           # description}` under the skill grammar — and DISCOVERY rendered by the real presenter
-          # over that announcement: `served_documents` beside `served_tools` and `environment`.
+          # over that announcement: `services.runner.documents` beside `services.runner.tools` and `environment`.
           announcement = {
             "tools" => [
               { "name" => "read", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
@@ -46,14 +46,16 @@ module Nexus
             ],
           }
           discovered = Data.define(
-            :public_id, :executor_kind, :display_name, :status, :assignment_scope, :assignment_agent, :served_tools, :environment,
-            :served_documents, :presence_connection_id, :presence_server_id, :last_seen_at, :connected_at
-          ).new(
+            :public_id, :executor_kind, :display_name, :status, :assignment_scope, :agent, :services,
+            :presence_connection_id, :presence_server_id, :last_seen_at, :connected_at
+          ) do
+            def service_roles = services.roles
+          end.new(
             public_id: "01900000-0000-7000-8000-000000000032", executor_kind: "runner", display_name: "lab-mac",
-            status: "active", assignment_scope: "user_private", assignment_agent: nil,
-            served_tools: Nexus::ToolAnnouncements.canonical(announcement.fetch("tools")),
-            environment: announcement.fetch("environment"),
-            served_documents: Nexus::ToolAnnouncements.canonical_documents(announcement.fetch("documents")),
+            status: "active", assignment_scope: "user_private", agent: nil,
+            services: Executor::Services.new(runner: announcement.merge(
+              "tools" => Nexus::ToolAnnouncements.canonical(announcement.fetch("tools")),
+              "documents" => Nexus::ToolAnnouncements.canonical_documents(announcement.fetch("documents")))),
             presence_connection_id: nil, presence_server_id: nil,
             last_seen_at: Time.utc(2026, 7, 30, 0, 0, 0), connected_at: nil
           )
@@ -62,7 +64,7 @@ module Nexus
             "executor_kinds" => Executor.executor_kinds.keys.sort,
             "statuses" => Executor.statuses.keys.sort,
             "valid_fixture" => valid,
-            "announcement_request_fixture" => announcement,
+            "announcement_request_fixture" => { "services" => { "agent" => announcement } },
             "served_tool_keys" => Nexus::ToolAnnouncements::ENTRY_KEYS,
             "mcp_metadata_keys" => Nexus::ToolAnnouncements::MCP_KEYS,
             "served_document_keys" => Nexus::ToolAnnouncements::DOCUMENT_KEYS,
@@ -70,9 +72,10 @@ module Nexus
             # closed words — the machine kinds alone; absent lists both.
             "discovery_envelope" => %w[executors],
             "discovery_singular_envelope" => %w[executor],
-            "discovery_filters" => %w[kind],
-            "discovery_kinds" => Executor::MACHINE_KINDS,
+            "discovery_filters" => %w[kind role],
+            "discovery_kinds" => Executor.executor_kinds.keys,
             "discovery_fixture" => stringify_keys(AgentAPI::ExecutorPresenter.discovery(discovered, live_server_ids: [])),
+            "valid_discovery_role_filter_request" => { "role" => "runner" },
             "valid_discovery_kind_filter_request" => { "kind" => Executor::MACHINE_KINDS.first },
             "unknown_discovery_kind_filter_request" => { "kind" => UNKNOWN_VALUE_FIXTURE },
             "unknown_kind_fixture" => valid.merge(
@@ -154,7 +157,7 @@ module Nexus
             tool_name: nil, tool_input: nil, tool_call_id: nil,
             started_at: started_at, deadline_at: started_at + Tasks::AwaitTask::MAX_HOLD,
             effective_timeout_ms: Tasks::AwaitTask::MAX_HOLD_MS, claimed_at: nil,
-            addressed_role: "agent_application", addressed_executor: executor
+            addressed_role: "agent", addressed_executor: executor
           )))
           structured_ask = stringify_keys(Executors::Inbox.row(node_type.new(
             inbox_kind: "ask", run: run, node_key: "r1t0-ask-2", prompt: "Configure the run",
@@ -165,7 +168,7 @@ module Nexus
             tool_name: nil, tool_input: nil, tool_call_id: nil,
             started_at: started_at, deadline_at: started_at + Tasks::AwaitTask::MAX_HOLD,
             effective_timeout_ms: Tasks::AwaitTask::MAX_HOLD_MS, claimed_at: nil,
-            addressed_role: "agent_application", addressed_executor: executor
+            addressed_role: "agent", addressed_executor: executor
           )))
           overridden = stringify_keys(Executors::Inbox.row(node_type.new(
             inbox_kind: "tool_call", run: anchored_loop, node_key: "r3t0", tool_name: "memory_read",
@@ -192,7 +195,7 @@ module Nexus
                               "idempotency" => "none", "reconciliation" => "none", "timeout_ms" => 600_000 },
             started_at: nil, deadline_at: started_at + Tasks::AwaitTask::MAX_HOLD,
             effective_timeout_ms: Tasks::AwaitTask::MAX_HOLD_MS, claimed_at: nil,
-            addressed_role: "agent_application", addressed_executor: executor
+            addressed_role: "agent", addressed_executor: executor
           )))
           list = { "tasks" => [row], "pagination" => { "next_after" => Task::InboxCursor.encode(2) } }
           progress = progress_fixtures(executor_public_id: executor_public_id, run_public_id: run.public_id)

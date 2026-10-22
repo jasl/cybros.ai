@@ -44,7 +44,7 @@ class Conversations::SkillsBlockTest < ActiveJob::TestCase
   # announced tier of the merge.
   def bind_announcing_runner!(documents)
     runner = suite_runner
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS + [SKILL_ENTRY], documents: documents), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [SKILL_ENTRY], "documents" => documents } }), :accepted?
     @conversation.update!(default_runner_executor: runner)
     runner
   end
@@ -195,7 +195,7 @@ class Conversations::SkillsBlockTest < ActiveJob::TestCase
     runners = 3.times.map do |index|
       runner = connect_runner(manager: @owner, registration_identifier: "catalog-runner-#{index}",
         assignment_scope: :account_wide).executor_access_token.executor
-      assert_predicate runner.announce(tools: [SKILL_ENTRY], documents: documents), :accepted?
+      assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => [SKILL_ENTRY], "documents" => documents } }), :accepted?
       runner
     end
     tools = runners.each_with_index.map { |runner, index| routed_skill(runner, "runner_skill_#{index}") }
@@ -259,8 +259,8 @@ class Conversations::SkillsBlockTest < ActiveJob::TestCase
   # The seed step's declarations select the catalog sealed once at create.
   test "a standalone Run's seed carries the declared Runner and workspace catalogs frozen at create" do
     runner = suite_runner
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS + [SKILL_ENTRY],
-      documents: [document("deploy-notes", "How this project is deployed.")]), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS + [SKILL_ENTRY],
+      "documents" => [document("deploy-notes", "How this project is deployed.")] } }), :accepted?
     row!("workspace/skills/commit-style", "How we commit.")
 
     with_tool = seed(model("seed", "prompt" => "find the bug", "tools" => [routed_skill(runner), Nexus::Tools::SKILL]),

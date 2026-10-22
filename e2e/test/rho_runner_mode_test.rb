@@ -26,8 +26,8 @@ class RhoRunnerModeTest < Minitest::Test
   MODEL = "dev/mock-text".freeze
   # Readiness of a runner-mode rho is its runner address's announcement —
   # never a workspace, which a runner adopts none of.
-  ANNOUNCED_RUNNER = /event=executor\.announced tools=\d+ address=runner\b/
-  ANNOUNCED_AGENT_NOTHING = /event=executor\.announced tools=0 address=agent\b/
+  ANNOUNCED_RUNNER = /event=executor\.announced tools=\d+ role=runner\b/
+  ANNOUNCED_AGENT_NOTHING = /event=executor\.announced tools=0 role=agent\b/
   # A runner-mode home lists no conversation verb: not the core's `run`,
   # not rho-dev's (this product-shaped home names no extension).
   CONVERSATION_VERBS = %w[run do say stop compact watch].freeze
@@ -106,7 +106,7 @@ class RhoRunnerModeTest < Minitest::Test
     # none — the agent-mode rho announced nothing and held nothing.
     assert_includes @runner.claimed_keys, tool_task.fetch("key"),
       "the runner-mode rho's own log says it took the row: #{@runner.claims.inspect}"
-    assert_equal "runner", @runner.claims.find { |claim| claim["task"] == tool_task.fetch("key") }["address"]
+    assert_equal "runner", @runner.claims.find { |claim| claim["task"] == tool_task.fetch("key") }["role"]
     assert_empty @daemon.claimed_keys, "the agent-mode rho claimed a row it could not serve"
     refute_match TROUBLE, @runner.log_text, "the runner-mode rho met a refusal or a failure"
     refute_match TROUBLE, @daemon.log_text, "the agent-mode rho met a refusal or a failure"
@@ -144,20 +144,24 @@ class RhoRunnerModeTest < Minitest::Test
       refused = daemon.control(:post, "/runs/call_tool", expected_status: 422, body: {
         runner_executor_public_id: other, tool: "read", input: { path: "private-runner.txt" },
       })
-      assert_equal "runner_not_eligible", refused.fetch("error").fetch("code"),
+      assert_equal "executor_environment_unavailable", refused.fetch("error").fetch("code"),
         "an explicit foreign UUID cannot bypass Runner discovery"
+      workspace = daemon.status.fetch("workspace").fetch("public_id")
+      error = assert_raises(CybrosAgent::Api::InvalidRequest) do
+        daemon.member_client.workspace(workspace).runs.start_tool_call(
+          runner_executor_public_id: other, tool: "read", input: { path: "private-runner.txt" },
+          idempotency_key: SecureRandom.uuid)
+      end
+      assert_equal "runner_not_eligible", error.code, "the kernel also refuses direct admission"
     end
   end
 
-  def test_adding_a_runner_to_an_agent_mode_instance_binds_it_to_the_existing_agent
+  def test_full_mode_adds_runner_service_to_the_existing_application_without_pairing
     workspace_id = boot_agent_rho
     original = @daemon.status.fetch("identity")
     @daemon.stop
     @daemon = E2E::RhoDaemon.new(base_url: @base_url, home: @home, env: { "RHO_MODE" => "full" })
     @daemon.start
-    started = @daemon.start_ceremony
-    assert_equal "runner", started.fetch("branch"), "adding a Runner does not re-pair the Agent"
-    E2E::Ceremony.confirm(actor: @actor, started: started, status: -> { @daemon.status })
     @daemon.await_announced(address: "runner")
     adopted = await_workspace_state("adopted")
     identity = adopted.fetch("identity")
@@ -166,14 +170,14 @@ class RhoRunnerModeTest < Minitest::Test
     assert_equal workspace_id, adopted.fetch("workspace").fetch("public_id")
     assert_equal "live", adopted.fetch("authority").fetch("planes").fetch("member")
     private_runner = identity.fetch("runner_executor_public_id")
-    refute_nil private_runner
+    assert_equal original.fetch("executor_public_id"), private_runner
 
     @runner = E2E::RhoDaemon.new(base_url: @base_url, home: @runner_home, env: { "RHO_MODE" => "full" })
     boot_full_rho(@runner)
     own = @daemon.control(:get, "/runners", expected_status: 200).fetch("runners").map { |row| row.fetch("public_id") }
     foreign = @runner.control(:get, "/runners", expected_status: 200).fetch("runners").map { |row| row.fetch("public_id") }
     assert_includes own, private_runner
-    refute_includes foreign, private_runner, "a supplementary Runner has the same private assignment as a combined pair"
+    refute_includes foreign, private_runner, "application family ownership does not widen to another application"
   end
 
   def test_a_runner_without_a_member_plane_imports_a_file_from_an_earlier_turn
@@ -230,7 +234,7 @@ class RhoRunnerModeTest < Minitest::Test
         JSON.generate({ "settings_version" => 1, "plugins" => {} }), perm: 0o600)
       daemon.start
       started = daemon.start_ceremony
-      assert_equal "combined", started.fetch("branch")
+      assert_equal "agent", started.fetch("branch")
       E2E::Ceremony.confirm(actor: @actor, started: started, status: -> { daemon.status })
       daemon.await("the full instance never adopted its workspace") { daemon.status.dig("workspace", "state") == "adopted" }
       daemon.await_announced(address: "runner")

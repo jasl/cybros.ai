@@ -5,10 +5,10 @@ module Executors
   # runner the creator NAMES, else none: the kernel infers no execution
   # host (the creator names actively; unnamed is allowed and unbound, and a
   # runner-tool call on a nil binding fails `tool_not_served` at start). A
-  # name is refused unless it is a live runner-kind row eligible for the
-  # principal — a row fact (active, credential ready, not shutdown-pending,
-  # in scope), never an announcement: an agent application's address never
-  # binds, a tools provider never does.
+  # name is refused unless its live address provides the runner role and is
+  # eligible for the principal (credential ready, not shutdown-pending, in
+  # scope). An agent address with that capability can bind; an address
+  # without it cannot, regardless of the tools announced under another role.
   module InitialRunner
     Decision = Data.define(:executor) do
       def refused? = false
@@ -26,8 +26,8 @@ module Executors
     def for(requested:, principal:)
       return Decision.new(executor: nil) if requested.blank?
 
-      runner = Executor.live.where(executor_kind: :runner).find_by(public_id: requested)
-      unless runner&.eligible_for?(principal)
+      runner = Executor.live.providing(:runner).find_by(public_id: requested)
+      unless runner&.eligible_for_role?(:runner, principal)
         return Refusal.new(error_key: NOT_ELIGIBLE,
           detail: "#{requested} is not a live runner eligible for this host's answerer")
       end

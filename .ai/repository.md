@@ -77,7 +77,7 @@ change is explicitly shared.
 - `guides`: the public documentation site — VitePress, built and served with Bun. Its Markdown
   is the public manual and the normative public contract (`.ai/README.md`, Current Rules):
   task-oriented pages for people using rho, operating an installation, building an agent
-  application and running executors, plus the reference pages that own every wire fact. It
+  and running executors, plus the reference pages that own every wire fact. It
   follows the self-contained documentation rule above and never links into `docs/`, the
   internal development manual.
 
@@ -174,8 +174,8 @@ rho consists of these independently packaged surfaces:
   newly produced replies or recoverable execution.
 - `rho-runner`: filesystem/process tools, checkout skill loading, checkpoints and capture/restore
   capabilities executed where the files live. It runs separately in `RHO_MODE=runner` through
-  the same executable, or in full mode as a second runner-kind executor beside rho's application
-  address. Its credential is transport-only. The current runner reserves local worker-pool
+  the same executable, or in full mode as a Runner service on rho's application
+  address. Full mode uses one transport owner and inbox for both roles. The current runner reserves local worker-pool
   admission capacity before claiming a task. Extensions can declare a shared local resource
   and concurrency limit at registration. An exclusive resource admits one task at a time;
   ordinary CLI and filesystem tools retain independent startup capacity. Resource permits
@@ -183,12 +183,12 @@ rho consists of these independently packaged surfaces:
   That policy belongs to the runner, never a kernel lock (`.ai/nexus.md`, The Task Inbox).
   Each accepted Runner call records its explicit
   target; a host's nullable default applies only to future authored calls with an omitted target.
-  Full mode's Runner is private to its application Agent lineage: this rho's Main,
-  Bots and their Subagents use it; another rho under the same Human cannot. New combined
-  connections bind both together; adding a missing Runner names the existing Agent by public
-  UUID without replacing its credentials. Standalone Runner mode retains the chosen
-  Human-private or account-wide assignment. A Runner may serve multiple Agents within its
-  assignment scope. Operator-facing capabilities are
+  Full mode's Local environment uses the application UUID and serves this rho's Main, Bots and
+  Subagents through their existing application ownership. Another rho under the same Human
+  cannot use it. Agent/full mode changes withdraw or add the Runner service without a second
+  connection or credential family. Standalone Runner mode retains its Human-private or
+  account-wide assignment. One role-dispatching execution owner shares admission resources
+  across both services. Operator-facing capabilities are
   announced without model descriptions or schemas and hidden from model declarations.
 - `rho-webui`: plain browser ES modules and CSS, with no build step or Node/Deno server dependency.
   It registers its page through `Api#register_webui`; full/agent modes select it by default,
@@ -441,7 +441,7 @@ tools. It declares required kernel tools and selected MCP tools under `rules`, r
 deny/ask rules and exact executor/connection targets. An authored `ask` mode asks for every
 selected MCP call; `rules` narrows authored allows to selected MCP callables; `bypass` adds
 exact MCP allows without overriding deny/ask rules. Ordinary
-private Runner/custom tools, the owner's persona and private session grants remain excluded.
+Local Runner/custom tools, the owner's persona and private session grants remain excluded.
 A delegated role cannot restore capabilities prohibited by that source instance; a Subagent's conversation-only memory limit
 narrows further. This does not require every role to have exactly its parent's visible tool
 list. Changing an external identity to private requires a fresh identity.
@@ -463,7 +463,7 @@ uses the client's selected Workspace. A bound ingress Conversation exposes its s
 other writes return `409 ingress_bound`. This cooperative surface guard grants no kernel access.
 
 Nexus administration and rho settings remain separate. The WebUI reaches Nexus's Human personal
-settings (including steward-owned Agent API keys and private Runners) and admin settings
+settings (including steward-owned Agent API keys and managed independent Runners) and admin settings
 (providers, models, members, deployment) only through the daemon's Human-platform-credential
 proxy (`POST /nexus/request`), never with the Agent's runtime credential. The Nexus page presents
 provider lanes with their models and configuration actions, with destructive actions in menus,

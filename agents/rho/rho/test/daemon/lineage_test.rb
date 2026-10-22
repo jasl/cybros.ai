@@ -47,6 +47,7 @@ class LineageTest < Minitest::Test
     credential = Object.new
     credential.define_singleton_method(:member_credential) { token }
     credential.define_singleton_method(:runner) { nil }
+    credential.define_singleton_method(:agent) { nil }
     credential
   end
 
@@ -302,7 +303,7 @@ class LineageTest < Minitest::Test
   def test_executor_realtime_for_mints_one_client_per_lineage_and_retires_it_with_the_rest
     credential = about
     credential.define_singleton_method(:runner) { credential }
-    credential.define_singleton_method(:runner_credential) { "runner-token" }
+    credential.define_singleton_method(:executor_credential) { "runner-token" }
     adopted(credential)
     assert_nil @lineage.executor_realtime_for(about)
 
@@ -323,102 +324,11 @@ class LineageTest < Minitest::Test
 
   # TWO SLOTS ON ONE ABOUT: the runner address's run and the agent address's, each with
   # its own socket on its own credential, both retired together with the lineage.
-  def test_two_slots_hold_two_runners_and_two_sockets_on_one_about
-    credential = about
-    credential.define_singleton_method(:runner) { credential }
-    credential.define_singleton_method(:executor_credential) { "transport-token" }
-    credential.define_singleton_method(:runner_credential) { "runner-token" }
-    adopted(credential)
 
-    assert @lineage.reserve_runner(credential, slot: :runner)
-    assert @lineage.reserve_runner(credential, slot: :agent_runner), "the other slot is free"
-    assert @lineage.install_runner(credential, :serving, :env, slot: :runner)
-    assert @lineage.install_runner(credential, :own, :env2, slot: :agent_runner)
-    assert_equal :serving, @lineage.runner
-    assert_equal :own, @lineage.runner(:agent_runner)
-    assert_equal [:serving, :own], @lineage.runners
-    assert_equal :env2, @lineage.tool_env(:agent_runner)
-    refute @lineage.reserve_runner(credential, slot: :runner), "each slot holds one"
-
-    runner_socket = @lineage.executor_realtime_for(credential, slot: :runner)
-    agent_socket = @lineage.executor_realtime_for(credential, slot: :agent_runner)
-    refute_same runner_socket, agent_socket
-    assert_equal %w[runner-token transport-token], @minted.map(&:call).sort, "each socket on its own credential"
-    assert_same runner_socket, @lineage.executor_realtime
-    assert_same agent_socket, @lineage.executor_realtime(:agent_runner)
-
-    assert_equal [:own, :env2], @lineage.take_runner(credential, slot: :agent_runner)
-    assert_equal [:serving], @lineage.runners
-
-    retired = @lineage.retire_runs
-    assert_equal [:serving], retired.runners
-    assert_equal [runner_socket, agent_socket], retired.executor_realtimes
-    assert_empty @lineage.runners
-    assert_nil @lineage.executor_realtime(:agent_runner)
-  end
-
-  def test_a_preserved_runner_reader_is_fenced_when_its_own_oauth_is_replaced
-    oauth = Data.define(:executor_credential).new(executor_credential: "runner-token")
-    old = Rho::Credentials.new(agent: about, runner: oauth)
-    adopted(old)
-    @lineage.reserve_runner(old)
-    @lineage.install_runner(old, :serving, :env)
-    socket = @lineage.executor_realtime_for(old)
-    reader = @minted.last
-
-    restored = Rho::Credentials.new(agent: about("new-agent"), runner: oauth)
-    adoption = @lineage.adopt(identity: IDENTITY, credentials: restored)
-    assert_empty adoption.retired.runners
-    assert_same socket, @lineage.executor_realtime_for(restored)
-    assert_equal "runner-token", reader.call
-    refute @lineage.reserve_runner(restored), "the preserved slot belongs to the new holder"
-
-    replacement = Rho::Credentials.new(agent: about, runner: oauth.with(executor_credential: "new-runner"))
-    adoption = @lineage.adopt(identity: IDENTITY, credentials: replacement)
-    assert_equal [:serving], adoption.retired.runners
-    assert_equal [socket], adoption.retired.executor_realtimes
-    assert_raises(CybrosAgent::Error) { reader.call }
-  end
 
   # `adopt_runner` attaches the runner half under the monitor and moves the
   # identity with it; `lose_runner` drops that half, retires the :runner
   # slot and its socket ALONE, and the lineage still holds its about.
-  def test_adopt_runner_and_lose_runner_move_the_runner_half_without_moving_the_lineage
-    credential = Rho::Credentials.new(agent: about)
-    adopted(credential)
-    identity = Data.define(:user_public_id, :executor_public_id, :runner_executor_public_id)
-      .new(user_public_id: "user-1", executor_public_id: "executor-1", runner_executor_public_id: "runner-1")
-    runner_oauth = Object.new
-    runner_oauth.define_singleton_method(:executor_credential) { "runner-token" }
-    before = @lineage.announcement_facts.generation
-
-    refute @lineage.adopt_runner(about, identity: identity, runner: runner_oauth), "a stale about adopts nothing"
-    assert @lineage.adopt_runner(credential, identity: identity, runner: runner_oauth)
-    assert_same runner_oauth, credential.runner
-    assert_same identity, @lineage.identity
-    assert_same credential, @lineage.credentials, "the lineage did not move"
-    assert_operator @lineage.announcement_facts.generation, :>, before
-
-    @lineage.reserve_runner(credential, slot: :runner)
-    @lineage.install_runner(credential, :serving, :env, slot: :runner)
-    @lineage.reserve_runner(credential, slot: :agent_runner)
-    @lineage.install_runner(credential, :own, :env, slot: :agent_runner)
-    socket = @lineage.executor_realtime_for(credential, slot: :runner)
-    other = @lineage.executor_realtime_for(credential, slot: :agent_runner)
-
-    assert_nil @lineage.lose_runner(about), "another object's loss is not this lineage's"
-    retired = @lineage.lose_runner(credential)
-    assert_equal [:serving], retired.runners
-    assert_equal [socket], retired.executor_realtimes
-    assert_empty retired.followers
-    refute credential.runner?
-    assert @lineage.holds?(credential)
-    assert_equal :active, @lineage.phase
-    assert_equal [:own], @lineage.runners, "the agent's own run stands"
-    assert_same other, @lineage.executor_realtime(:agent_runner)
-    assert_nil @lineage.lose_runner(credential), "nothing left to lose"
-    assert @lineage.reserve_runner(credential, slot: :runner), "the slot is free for the next grant"
-  end
 
   # A reservation given back without a runner — the executor plane had no
   # credential — so a later edge may place one; a held runner is not released.

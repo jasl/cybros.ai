@@ -138,8 +138,8 @@ class RhoConversationTest
     # machine kinds a member may address), and an agent address "binds
     # nothing and is nobody's to address" (the SDK's `Executors`) — `show`
     # on rho's agent id is `NotFound` to a member, by design, so its
-    # `served_tools` is never readable here. The daemon logs
-    # `executor.announced` with `address=agent` and the list's length
+    # `services.runner.tools` is never readable here. The daemon logs
+    # `executor.announced` with `role=agent` and the list's length
     # AFTER the kernel accepted the PUT (executor_plane.rb
     # `announce_tools`), and the slot's list is the registry's entries
     # union every anchor's served entries, a name once (daemon.rb
@@ -148,7 +148,7 @@ class RhoConversationTest
     # own, and the last close one counting them off.
     def agent_announcements
       @daemon.log_lines.filter_map do |line|
-        Integer(line.fetch("tools")) if line["event"] == "executor.announced" && line["address"] == "agent"
+        Integer(line.fetch("tools")) if line["event"] == "executor.announced" && line["role"] == "agent"
       end
     end
 
@@ -554,9 +554,11 @@ class RhoConversationTest
     # One `direct_reply` on the conversation, as whoever `chat` speaks for,
     # and its settled reply: the first completed assistant turn past the
     # positions already on the timeline (memory_scopes's shape).
-    def ask(chat, text)
+    def ask(chat, text, executor_contexts: nil)
       after = chat.turns.list.items.map(&:position).max || -1
-      chat.inputs.create(kind: "direct_reply", model: MODEL, text: text, idempotency_key: SecureRandom.uuid)
+      fields = { kind: "direct_reply", model: MODEL, text: text, idempotency_key: SecureRandom.uuid }
+      fields[:executor_contexts] = executor_contexts unless executor_contexts.nil?
+      chat.inputs.create(**fields)
       await("no reply settled for #{text.inspect}", every: FEED_POLL) do
         newer = chat.turns.list.items.select { |turn| turn.position > after && turn.role == "assistant" }
         failed = newer.find { |turn| turn.status == "failed" }

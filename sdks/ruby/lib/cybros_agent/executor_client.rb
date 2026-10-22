@@ -16,31 +16,11 @@ module CybrosAgent
       shape(Api::ExecutorDescription, dispatch.call(EXECUTOR_PATH))
     end
 
-    # What this address SERVES: a whole replacement of
-    # the list the kernel addresses work by — `[]` clears it. `tools` is a
-    # list of `{name, effect_profile, timeout_ms?, description?, input_schema?, mcp?}`
-    # entries passed through as given: the kernel validates the vocabulary
-    # and refuses its reserved namespaces (`reserved_namespace`) and squatted
-    # names (`reserved_tool_name`); nothing is lowered here. Optional `mcp`
-    # names the source's `server_key` and remote `tool_name`; this executor
-    # still owns delivery. `environment` is
-    # the document this address's tools are bound to — opaque to the kernel;
-    # discovery reads it — replaced whole with the list and cleared when
-    # omitted. `documents` is the third list the same
-    # verb replaces whole: what this address can LOAD for a model — a
-    # project's skills, an MCP server's prompts and resources curated into
-    # the shape — as `{name, description}` entries under the skill name
-    # grammar, passed through as given (the kernel judges them,
-    # `invalid_announcement` naming `documents[i].<field>`) and cleared when
-    # omitted; an address announcing documents must also announce `skill`,
-    # the kernel tool a load of its names is routed to. The answer is the
-    # same description `executor` reads — neither the served list, the
-    # environment nor the documents is this address's to read back.
-    def announce(tools:, environment: nil, documents: nil)
-      body = { "tools" => tools }
-      body = body.merge("environment" => environment) unless environment.nil?
-      body = body.merge("documents" => documents) unless documents.nil?
-      shape(Api::ExecutorDescription, dispatch.call(ANNOUNCEMENT_PATH, method: :put, body: body))
+    # Replace the complete role map. Each role owns its tools, documents and
+    # environment; omitting an optional role withdraws it for future claims.
+    def announce(services:)
+      shape(Api::ExecutorDescription, dispatch.call(ANNOUNCEMENT_PATH,
+        method: :put, body: { "services" => services }))
     end
 
     # THE INBOX: every row the kernel addressed to this
@@ -80,7 +60,8 @@ module CybrosAgent
     # task. The two fences raise `Api::Conflict`; a frame over
     # `envelope_bound` or keyed by neither kind is unprocessable. Answers nil.
     def report_progress(frame)
-      raise ArgumentError, "frame must be a Hash" unless frame.is_a?(Hash)
+      frame = Hash.try_convert(frame)
+      raise ArgumentError, "frame must be a Hash" unless frame
 
       dispatch.call(PROGRESS_PATH, method: :post, body: { "frame" => frame }, success: 202)
       nil
@@ -100,7 +81,7 @@ module CybrosAgent
         agent_public_id: :optional_string,
         registration_identifier: :optional_string,
         assignment_scope: :optional_string,
-        assignment_agent_public_id: :optional_string,
+        service_roles: :string_list,
       },
     }.freeze
   end

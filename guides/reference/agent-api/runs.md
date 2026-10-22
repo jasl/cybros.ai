@@ -881,7 +881,7 @@ clock applies, so time spent paused does not consume the hold. 409
 `not_adjudicable` unless the run is `running | paused |
 needs_attention` (a `needs_attention` run approves without releasing
 its hold); 403 without write standing on the workspace — the approver
-is any principal with it, the agent application acting for its person
+is any principal with it, the agent acting for its person
 included.
 
 ### Deny a held call

@@ -64,9 +64,9 @@ module E2E
       Rho::Runner::WebrtcConnection.new(executable: @wrappers.fetch("runner"), context: context, servers: @servers)
     end
 
-    def peer(role: "member", trusted: true)
+    def peer(role: "member", trusted: true, context: nil)
       executable = trusted ? @wrappers.fetch(role) : peer_wrapper(role, trusted: false)
-      Rho::Runner::WebrtcTransport.new(executable: executable)
+      Rho::Runner::WebrtcTransport.new(executable: executable, context: context)
     end
 
     def block_direct

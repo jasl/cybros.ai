@@ -45,7 +45,7 @@ in-process orchestration class called Runner in some SDKs.
 | Agent Preset | An application's reusable configuration package | Has no identity, conversation or memory of its own |
 | Named Agent | Persistent Agent identity declared by another Agent and served by its application | Has its own configuration and memory; not a temporary Subagent |
 | Subagent | Temporary delegated child execution using a captured role configuration | Not a persistent Agent or Bot identity |
-| Agent application | Product runtime implementing an Agent's behavior and policy | Separate from Nexus and from a Runner |
+| Agent | Product runtime implementing an Agent's behavior and policy | Separate from Nexus and from a Runner |
 | Steward | Human responsible for an Agent | Keep distinct from account role, data ownership and executor manager |
 | Speaker | Attribution of who spoke on an input or turn | Never the authenticating principal or execution authority |
 | Executor | A delivery address and transport lifecycle | Not a Member or physical machine |

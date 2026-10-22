@@ -52,9 +52,9 @@ class AgentAPILoadTest < Minitest::Test
     @executor_credential = device.await_credentials(authorization).executor_access_token
     executor = CybrosAgent::ExecutorClient.new(base_url: @base_url, credential: @executor_credential)
     @executor_id = executor.executor.executor.public_id
-    executor.announce(tools: [{ "name" => "read", "effect_profile" =>
+    executor.announce(services: { "runner" => { "tools" => [{ "name" => "read", "effect_profile" =>
       { "kind" => "read_only", "destructive" => false, "effect_scope" => "closed",
-        "idempotency" => "intrinsic", "reconciliation" => "none" }, "timeout_ms" => 120_000 }])
+        "idempotency" => "intrinsic", "reconciliation" => "none" }, "timeout_ms" => 120_000 }] } })
     E2E.hosts.start
     @report = { environment: "isolated development, loopback HTTP, no model calls",
       tasks_per_width: TASKS_PER_WIDTH, event_reads_per_worker: EVENT_READS_PER_WORKER, runs: [] }

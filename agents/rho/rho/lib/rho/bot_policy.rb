@@ -6,7 +6,7 @@ require_relative "preset_execution/mcp"
 module Rho
   # External prompts may choose work only inside the Bot's declared surface.
   # The kernel enforces these existing rules and scope limits when it captures
-  # execution. Ordinary private Runner and custom callables stay excluded; MCP
+  # execution. Ordinary Local Runner and custom callables stay excluded; MCP
   # follows the same explicit selection as owner conversations.
   module BotPolicy
     KERNEL_TOOLS = %w[

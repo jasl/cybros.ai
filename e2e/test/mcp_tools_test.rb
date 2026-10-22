@@ -7,7 +7,7 @@ require "support/mcp_fixture/journey"
 # speaks MCP, addresses, judges and settles the call exactly as it does `bash`. A stdio server
 # (`fx`) rides the RUNNER address; a streamable-HTTP server (`remote`, the same fixture under puma
 # on a loopback port, `tools: "*"`) rides the AGENT address — announced by the daemon's agent slot
-# beside rho's application tools, addressed by the kernel as `agent_application`. Each server's
+# beside rho's application tools, addressed by the kernel as `agent`. Each server's
 # prompts and resources are DOCUMENTS on its row: `fx-*` announced by the runner address and loaded
 # by its `skill`, `remote-*` by the agent address and the plane's `skill` rho-mcp registers there;
 # the kernel routes each `skill` row to its announcer. Driven through the shipped binary: `rho
@@ -113,7 +113,7 @@ class McpToolsTest < Minitest::Test
       # under the worst-case profile and the row's park, beside Coding's;
       # nothing of the http server rides it.
       runner_row = @daemon.member_client.executors.show(rho_runner_id)
-      served = runner_row.served_tools
+      served = runner_row.tools_for(:runner)
       mcp = served.select { |tool| tool.name.start_with?("mcp__") }
       assert_equal announced_names, mcp.map(&:name).sort
       assert_verbatim(mcp, E2E::McpFixture.announced(SERVER), TIMEOUT_MS)
@@ -123,19 +123,18 @@ class McpToolsTest < Minitest::Test
       # beside the project's (none); nothing of the http server's. The kernel serves the list
       # ordered by name.
       assert_equal E2E::McpFixture.documents(SERVER).sort_by { |document| document.fetch("name") },
-        runner_row.served_documents.map { |document| { "name" => document.name, "description" => document.description } },
+        runner_row.documents_for(:runner).map { |document| { "name" => document.name, "description" => document.description } },
         "the runner row announces the stdio server's documents verbatim"
-      assert_match(/event=executor\.announced tools=\d+ address=runner documents=3\b/, @daemon.log_text)
+      assert_match(/event=executor\.announced tools=\d+ role=runner documents=3\b/, @daemon.log_text)
 
-      # THE AGENT ROW is not a machine kind: the kernel's discovery never offers an agent
-      # application's row to a member (`executors#index` lists `MACHINE_KINDS`), so its announcement
-      # is read where it is written — the daemon's own line for the kernel's accepted PUT: the
+      # The agent role's announcement is also visible where it is written:
+      # the daemon's own line for the kernel's accepted PUT records the
       # http tools beside `list_extensions`, `manage_extension`, `code` and the plane's
       # `skill` for the row's three documents.
       # The bytes the kernel holds for them are
       # pinned on the wire in step 2, and the addressing to the agent there; the documents by the
       # loads of step 2.
-      assert_match(/event=executor\.announced tools=#{remote_names.length + 4} address=agent documents=3\b/, @daemon.log_text,
+      assert_match(/event=executor\.announced tools=#{remote_names.length + 4} role=agent documents=3\b/, @daemon.log_text,
         "the agent address announced the http tools beside extensions, code and skill, with the http server's documents:\n" \
         "#{@daemon.log_text.scan(/event=executor\.\S+.*/).join("\n")}")
       refute_match(/event=executor\.announcement_failed/, @daemon.log_text)
@@ -199,7 +198,7 @@ class McpToolsTest < Minitest::Test
       end
       # THE HTTP ROW is addressed to the daemon's AGENT address and answered
       # by its agent slot: the same fixture's text, over the gem's HTTP client.
-      assert_equal "agent_application", remote_echo.dig("addressed_to", "role"), "addressed to the agent: #{remote_echo.inspect}"
+      assert_equal "agent", remote_echo.dig("addressed_to", "role"), "addressed to the agent: #{remote_echo.inspect}"
       assert_equal rho_agent_id, remote_echo.dig("addressed_to", "executor_public_id")
       assert_equal "#{E2E::McpFixture::ECHO_TEXT_PREFIX}over http", task_output(loop, remote_echo.fetch("key")).strip,
         "the http echo's content is the fixture's text"
@@ -266,7 +265,7 @@ class McpToolsTest < Minitest::Test
         assert_equal rho_runner_id, row.dig("addressed_to", "executor_public_id")
       end
       remote = details.fetch("remote-summarize")
-      assert_equal "agent_application", remote.dig("addressed_to", "role"), "the http server's document loads through the agent address: #{remote.inspect}"
+      assert_equal "agent", remote.dig("addressed_to", "role"), "the http server's document loads through the agent address: #{remote.inspect}"
       assert_equal rho_agent_id, remote.dig("addressed_to", "executor_public_id")
       assert_nil details.fetch("fx-greet")["addressed_to"], "a name nobody announced runs in-process"
 
@@ -282,7 +281,7 @@ class McpToolsTest < Minitest::Test
       assert_equal 4, claims.length, "the two slots claimed the four announced loads and nothing else: #{claims.inspect}"
       assert_equal details.values_at("fx-summarize", "fx-readme", "fx-notes", "remote-summarize").map { |row| row.fetch("key") }.sort,
         claims.map { |line| line.fetch("task") }.sort, "the claims are the four announced loads' rows"
-      assert_equal %w[agent runner runner runner], claims.map { |line| line["address"] }.sort,
+      assert_equal %w[agent runner runner runner], claims.map { |line| line["role"] }.sort,
         "three loads on the runner slot, one on the agent slot: #{claims.inspect}"
       claims.each { |line| assert_equal "skill", line.fetch("tool"), "the same `skill` row, addressed to its announcer" }
     end
@@ -411,7 +410,7 @@ class McpToolsTest < Minitest::Test
       assert_match(/^server:\s+remote\s+http\s+.*serves agent\s+connected\s/, listed, "one row's fault is one row's:\n#{listed}")
       assert_equal 1, listed.scan(/^  documents: 3 announced of 5 listed$/).length, "the http row's documents alone:\n#{listed}"
       assert_match(/^total:     7 tools announced, [\d,]+ bytes; 3 documents$/, listed, listed)
-      assert_empty @daemon.member_client.executors.show(rho_runner_id).served_documents, "the row down announces no document"
+      assert_empty @daemon.member_client.executors.show(rho_runner_id).documents_for(:runner), "the row down announces no document"
       assert_equal announced_before + 1, @daemon.log_text.scan(/event=mcp\.announced/).length,
         "the http row announced again; nothing for the row down"
       assert_match(/event=mcp\.server_config_invalid server=fx/, @daemon.log_text)
@@ -460,7 +459,7 @@ class McpToolsTest < Minitest::Test
         "the boot re-listed and announced again"
       assert_match(/connected \(pid \d+, pgid \d+\)/, rho("mcp"))
       await("the restored row never announced its documents again") do
-        listed = @daemon.member_client.executors.show(rho_runner_id).served_documents.map(&:name)
+        listed = @daemon.member_client.executors.show(rho_runner_id).documents_for(:runner).map(&:name)
         listed if listed == E2E::McpFixture.documents(SERVER).map { |document| document.fetch("name") }.sort
       end
     end

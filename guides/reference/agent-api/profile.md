@@ -52,7 +52,7 @@ steward must be active, and its `applied_steward_shutdown_generation` must equal
 that steward's current `managed_resource_shutdown_generation`. Human removal therefore fences this
 resource even for an Agent that has no executor. Agent convergence removes
 the Agent and acknowledges that snapshot. Whenever an Agent becomes removed,
-its member access and Agent-application credentials are fenced, and its related
+its member access and Agent credentials are fenced, and its related
 work is force-stopped asynchronously; an independent Runner is unaffected.
 Restore keeps the same Agent and does not wait for cleanup, but old credentials
 stay invalid. Reconnect supplies fresh credentials for the retained address.

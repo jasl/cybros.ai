@@ -49,7 +49,7 @@ class InputStepsLockOrderTest < ActiveSupport::TestCase
     first = suite_runner
     second = connect_runner(manager: users(:owner), registration_identifier: "second-input-runner",
       display_name: "Second runner", assignment_scope: :account_wide).executor_access_token.executor
-    assert_predicate second.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate second.announce(services: { second.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     @agent.update!(runner_executor_public_ids: [first.public_id, second.public_id])
     @conversation.set_default_runner(first, by: @human)
     queued([tool("check", "bash", "input" => { "command" => "true" }), ask("hold")])

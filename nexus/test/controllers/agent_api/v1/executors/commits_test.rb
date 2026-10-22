@@ -152,7 +152,7 @@ class AgentAPI::V1::Executors::CommitsTest < ActionDispatch::IntegrationTest
     address = executors(:address)
     Task.where(id: run.tasks.sole.id).update_all(
       resolution_token: nil, status: "awaiting_input",
-      addressed_executor_id: address.id, addressed_role: "agent_application"
+      addressed_executor_id: address.id, addressed_role: "agent"
     )
     transport = create_bound_credential(executor: address, name: "Transport")
 

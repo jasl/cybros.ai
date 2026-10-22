@@ -15,7 +15,7 @@ else
 
   # THE DISPATCH LOG: one `METHOD PATH` line per request the daemon sends the kernel, appended to
   # `RHO_HOME/dispatch.log`. It records that the daemon never called `/runs` create, start or
-  # inputs for its own turn, and that both addresses announced before the profile declaration.
+  # inputs for its own turn, and that the services were announced before the profile declaration.
   # The journey reads the accepted tool surface from the public model-task resource instead of
   # inferring it from the profile's source configuration. The CLI loads this too and dispatches nothing.
   module E2E

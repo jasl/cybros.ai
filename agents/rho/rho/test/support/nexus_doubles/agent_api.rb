@@ -348,7 +348,8 @@ module NexusDoubles
           respond(200, { "model_providers" => @model_providers })
         when [:get, "/agent_api/v1/executors", MEMBER_TOKEN]
           kind = params && params["kind"]
-          respond(200, { "executors" => @executors.select { |row| kind.nil? || row.fetch("kind") == kind } })
+          role = params && params["role"]
+          respond(200, { "executors" => @executors.select { |row| (kind.nil? || row.fetch("kind") == kind) && (role.nil? || row.fetch("service_roles").include?(role)) } })
         when [:get, "/agent_api/v1/executor", TRANSPORT_TOKEN] then respond(200, executor)
         when [:get, "/agent_api/v1/executor", RUNNER_TOKEN] then respond(200, runner_executor)
         when [:put, "/agent_api/v1/executor/announcement", TRANSPORT_TOKEN]
@@ -373,7 +374,7 @@ module NexusDoubles
             run_response(method, path, credential, body) ||
             respond(401, { "error" => { "code" => "unauthorized", "message" => "Unauthorized" } })
         end
-      raise response if response.is_a?(Exception)
+      raise response if response in Exception
 
       response
     end

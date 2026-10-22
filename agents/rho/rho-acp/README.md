@@ -142,7 +142,7 @@ currently supplies a checkout-based installation instead.
   conversations start from the global default; loading or resuming an existing
   conversation reads its saved choice independently of later default changes. It affects subsequent requests, while
   existing work keeps its captured tools. Conversations answered by another
-  agent application omit this option.
+  agent omit this option.
 - **Slash commands**: `retry` (the holding turn re-followed), `abandon`,
   `compact`, then the checkout's skills; a `/skill-name …` prompt is posted
   verbatim, the model holds the `skill` tool. Loading or resuming an existing

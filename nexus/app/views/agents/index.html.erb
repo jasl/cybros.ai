@@ -60,7 +60,7 @@
               </td>
               <td>
                 <% if agent.named_agent? %>
-                  <% shared_address = @agent_application_addresses[agent.id] %>
+                  <% shared_address = @serving_agent_addresses[agent.id] %>
                   <p class="text-xs text-base-content/60">
                     <%= shared_address ? t("agent_resources.shared_readiness", readiness: t("executors.credential_readiness.#{@agent_credential_readiness.fetch(shared_address.id)}")) : t("agent_resources.shared_unavailable") %>
                   </p>

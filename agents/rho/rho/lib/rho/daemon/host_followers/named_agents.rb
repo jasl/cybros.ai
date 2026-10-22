@@ -210,7 +210,7 @@ module Rho
           def bot_preset_declaration(client, preset, parent, settings, send_targets: [])
             declaration = compile_preset_declaration(client, preset, parent, settings: settings, send_targets: send_targets)
             runners = declaration.fetch(:runner_executor_public_ids).flat_map do |id|
-              RunDeclaration.runner_model_tool_names(remote_runners.get(id)&.served_tools)
+              RunDeclaration.runner_model_tool_names(remote_runners.get(id)&.tools_for(:runner))
             end.uniq
             BotPolicy.conversation(declaration, subagent: settings.subagent, runner_names: runners)
           end
@@ -246,7 +246,7 @@ module Rho
           def declaration_entry(parent, definition, display_name:, scope: STEWARD)
             configuration = RunDeclaration.derived_declaration(parent, definition,
               kernel_tool_names: kernel_catalog(nil).wire_names,
-              runner_names: Array(@runner_candidate_ids).flat_map { |id| RunDeclaration.runner_model_tool_names(remote_runners.get(id)&.served_tools) }.uniq, log: @log)
+              runner_names: Array(@runner_candidate_ids).flat_map { |id| RunDeclaration.runner_model_tool_names(remote_runners.get(id)&.tools_for(:runner)) }.uniq, log: @log)
             { name: definition.name, scope: scope, description: definition.description, display_name: display_name,
               system_prompt: definition.body,
               summarizer: summarizer_text(configuration.fetch(:compaction_policy)), configuration: configuration }

@@ -181,9 +181,9 @@ class Runs::SpawnTest < ActiveJob::TestCase
     replacement = connect_runner(manager: users(:owner), registration_identifier: "spawn-replacement",
       assignment_scope: :account_wide).executor_access_token.executor
     [original, replacement].each do |executor|
-      executor.announce(tools: [{ "name" => "bash", "description" => "Execute on #{executor.public_id}",
+      executor.announce(services: { executor.executor_kind => { "tools" => [{ "name" => "bash", "description" => "Execute on #{executor.public_id}",
         "input_schema" => { "type" => "object" }, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }],
-        environment: { "fragments" => [{ "text" => "Workspace #{executor.public_id}" }] })
+        "environment" => { "fragments" => [{ "text" => "Workspace #{executor.public_id}" }] } } })
     end
     @agent.update!(runner_executor_public_ids: [original.public_id, replacement.public_id])
     @conversation.update!(default_runner_executor: original)

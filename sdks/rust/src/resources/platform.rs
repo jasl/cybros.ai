@@ -379,7 +379,6 @@ impl AgentContext {
             ApiKeyPlane::ExecutorTransport,
         )
     }
-    child!(private_runners, "private_runners", PrivateRunners);
 }
 handle!(Runners);
 impl Runners {
@@ -455,29 +454,6 @@ impl ApiKeys {
 handle!(ApiKeyContext);
 impl ApiKeyContext {
     command!(revoke, POST, "revocation", Empty, None);
-}
-handle!(PrivateRunners);
-impl PrivateRunners {
-    list!(list, "", PageQuery, PrivateRunner, "private_runners");
-    write!(
-        create,
-        POST,
-        "",
-        CreatePrivateRunner,
-        Some("private_runner"),
-        PrivateRunner,
-        Some("private_runner")
-    );
-    pub fn runner(&self, id: &str) -> Result<PrivateRunnerContext> {
-        Ok(PrivateRunnerContext(self.0.id(id)?))
-    }
-}
-handle!(PrivateRunnerContext);
-impl PrivateRunnerContext {
-    get!(fetch, "", PrivateRunner, Some("private_runner"));
-    pub fn api_keys(&self) -> ApiKeys {
-        ApiKeys(self.0.child("api_keys"), ApiKeyPlane::ExecutorTransport)
-    }
 }
 handle!(Budgets);
 impl Budgets {

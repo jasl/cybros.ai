@@ -1,6 +1,6 @@
 {
   "executor_kinds": [
-    "agent_application",
+    "agent",
     "runner",
     "tool_provider"
   ],
@@ -11,14 +11,16 @@
   "valid_fixture": {
     "executor": {
       "public_id": "01900000-0000-7000-8000-000000000030",
-      "kind": "agent_application",
+      "kind": "agent",
       "status": "active",
       "display_name": "Fixture executor",
       "credential_epoch": 1,
       "agent_public_id": "01900000-0000-7000-8000-000000000020",
       "registration_identifier": null,
       "assignment_scope": null,
-      "assignment_agent_public_id": null,
+      "service_roles": [
+        "agent"
+      ],
       "presence": "offline",
       "last_seen_at": "2026-07-30T00:00:00Z",
       "connected_at": null
@@ -26,74 +28,78 @@
     "measured_at": "2026-07-30T00:00:00Z"
   },
   "announcement_request_fixture": {
-    "tools": [
-      {
-        "name": "read",
-        "effect_profile": {
-          "kind": "read_only",
-          "destructive": false,
-          "effect_scope": "closed",
-          "idempotency": "intrinsic",
-          "reconciliation": "none"
-        },
-        "description": "Read a file under the root.",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "path": {
-              "type": "string"
+    "services": {
+      "agent": {
+        "tools": [
+          {
+            "name": "read",
+            "effect_profile": {
+              "kind": "read_only",
+              "destructive": false,
+              "effect_scope": "closed",
+              "idempotency": "intrinsic",
+              "reconciliation": "none"
+            },
+            "description": "Read a file under the root.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ]
             }
           },
-          "required": [
-            "path"
+          {
+            "name": "skill",
+            "effect_profile": {
+              "kind": "read_only",
+              "destructive": false,
+              "effect_scope": "closed",
+              "idempotency": "intrinsic",
+              "reconciliation": "none"
+            }
+          },
+          {
+            "name": "mcp_docs_search",
+            "effect_profile": {
+              "kind": "read_only",
+              "destructive": false,
+              "effect_scope": "closed",
+              "idempotency": "intrinsic",
+              "reconciliation": "none"
+            },
+            "description": "Search company documents.",
+            "input_schema": {
+              "type": "object"
+            },
+            "mcp": {
+              "server_key": "Company docs",
+              "tool_name": "documents.search"
+            }
+          }
+        ],
+        "environment": {
+          "root": "/srv/lab",
+          "platform": "darwin",
+          "fragments": [
+            {
+              "extension": "rho.coding",
+              "text": "Relative paths resolve against /srv/lab."
+            }
           ]
-        }
-      },
-      {
-        "name": "skill",
-        "effect_profile": {
-          "kind": "read_only",
-          "destructive": false,
-          "effect_scope": "closed",
-          "idempotency": "intrinsic",
-          "reconciliation": "none"
-        }
-      },
-      {
-        "name": "mcp_docs_search",
-        "effect_profile": {
-          "kind": "read_only",
-          "destructive": false,
-          "effect_scope": "closed",
-          "idempotency": "intrinsic",
-          "reconciliation": "none"
         },
-        "description": "Search company documents.",
-        "input_schema": {
-          "type": "object"
-        },
-        "mcp": {
-          "server_key": "Company docs",
-          "tool_name": "documents.search"
-        }
+        "documents": [
+          {
+            "name": "deploy-notes",
+            "description": "How this project is deployed. Use before any deploy or release step."
+          }
+        ]
       }
-    ],
-    "environment": {
-      "root": "/srv/lab",
-      "platform": "darwin",
-      "fragments": [
-        {
-          "extension": "rho.coding",
-          "text": "Relative paths resolve against /srv/lab."
-        }
-      ]
-    },
-    "documents": [
-      {
-        "name": "deploy-notes",
-        "description": "How this project is deployed. Use before any deploy or release step."
-      }
-    ]
+    }
   },
   "served_tool_keys": [
     "name",
@@ -118,9 +124,11 @@
     "executor"
   ],
   "discovery_filters": [
-    "kind"
+    "kind",
+    "role"
   ],
   "discovery_kinds": [
+    "agent",
     "runner",
     "tool_provider"
   ],
@@ -130,78 +138,88 @@
     "display_name": "lab-mac",
     "status": "active",
     "assignment_scope": "user_private",
-    "assignment_agent_public_id": null,
-    "served_tools": [
-      {
-        "name": "mcp_docs_search",
-        "effect_profile": {
-          "kind": "read_only",
-          "destructive": false,
-          "effect_scope": "closed",
-          "idempotency": "intrinsic",
-          "reconciliation": "none"
-        },
-        "description": "Search company documents.",
-        "input_schema": {
-          "type": "object"
-        },
-        "mcp": {
-          "server_key": "Company docs",
-          "tool_name": "documents.search"
-        }
-      },
-      {
-        "name": "read",
-        "effect_profile": {
-          "kind": "read_only",
-          "destructive": false,
-          "effect_scope": "closed",
-          "idempotency": "intrinsic",
-          "reconciliation": "none"
-        },
-        "description": "Read a file under the root.",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "path": {
-              "type": "string"
+    "agent_public_id": null,
+    "service_roles": [
+      "runner"
+    ],
+    "services": {
+      "runner": {
+        "tools": [
+          {
+            "name": "mcp_docs_search",
+            "effect_profile": {
+              "kind": "read_only",
+              "destructive": false,
+              "effect_scope": "closed",
+              "idempotency": "intrinsic",
+              "reconciliation": "none"
+            },
+            "description": "Search company documents.",
+            "input_schema": {
+              "type": "object"
+            },
+            "mcp": {
+              "server_key": "Company docs",
+              "tool_name": "documents.search"
             }
           },
-          "required": [
-            "path"
+          {
+            "name": "read",
+            "effect_profile": {
+              "kind": "read_only",
+              "destructive": false,
+              "effect_scope": "closed",
+              "idempotency": "intrinsic",
+              "reconciliation": "none"
+            },
+            "description": "Read a file under the root.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ]
+            }
+          },
+          {
+            "name": "skill",
+            "effect_profile": {
+              "kind": "read_only",
+              "destructive": false,
+              "effect_scope": "closed",
+              "idempotency": "intrinsic",
+              "reconciliation": "none"
+            }
+          }
+        ],
+        "documents": [
+          {
+            "name": "deploy-notes",
+            "description": "How this project is deployed. Use before any deploy or release step."
+          }
+        ],
+        "environment": {
+          "root": "/srv/lab",
+          "platform": "darwin",
+          "fragments": [
+            {
+              "extension": "rho.coding",
+              "text": "Relative paths resolve against /srv/lab."
+            }
           ]
         }
-      },
-      {
-        "name": "skill",
-        "effect_profile": {
-          "kind": "read_only",
-          "destructive": false,
-          "effect_scope": "closed",
-          "idempotency": "intrinsic",
-          "reconciliation": "none"
-        }
       }
-    ],
-    "environment": {
-      "root": "/srv/lab",
-      "platform": "darwin",
-      "fragments": [
-        {
-          "extension": "rho.coding",
-          "text": "Relative paths resolve against /srv/lab."
-        }
-      ]
     },
-    "served_documents": [
-      {
-        "name": "deploy-notes",
-        "description": "How this project is deployed. Use before any deploy or release step."
-      }
-    ],
     "presence": "offline",
     "last_seen_at": "2026-07-30T00:00:00Z",
     "connected_at": null
+  },
+  "valid_discovery_role_filter_request": {
+    "role": "runner"
   },
   "valid_discovery_kind_filter_request": {
     "kind": "runner"
@@ -219,7 +237,9 @@
       "agent_public_id": "01900000-0000-7000-8000-000000000020",
       "registration_identifier": null,
       "assignment_scope": null,
-      "assignment_agent_public_id": null,
+      "service_roles": [
+        "agent"
+      ],
       "presence": "offline",
       "last_seen_at": "2026-07-30T00:00:00Z",
       "connected_at": null
@@ -229,14 +249,16 @@
   "unknown_status_fixture": {
     "executor": {
       "public_id": "01900000-0000-7000-8000-000000000030",
-      "kind": "agent_application",
+      "kind": "agent",
       "status": "zz_unknown_value",
       "display_name": "Fixture executor",
       "credential_epoch": 1,
       "agent_public_id": "01900000-0000-7000-8000-000000000020",
       "registration_identifier": null,
       "assignment_scope": null,
-      "assignment_agent_public_id": null,
+      "service_roles": [
+        "agent"
+      ],
       "presence": "offline",
       "last_seen_at": "2026-07-30T00:00:00Z",
       "connected_at": null
@@ -246,14 +268,16 @@
   "terminal_status_fixture": {
     "executor": {
       "public_id": "01900000-0000-7000-8000-000000000030",
-      "kind": "agent_application",
+      "kind": "agent",
       "status": "revoked",
       "display_name": "Fixture executor",
       "credential_epoch": 1,
       "agent_public_id": "01900000-0000-7000-8000-000000000020",
       "registration_identifier": null,
       "assignment_scope": null,
-      "assignment_agent_public_id": null,
+      "service_roles": [
+        "agent"
+      ],
       "presence": "offline",
       "last_seen_at": "2026-07-30T00:00:00Z",
       "connected_at": null

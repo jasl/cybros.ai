@@ -1,7 +1,7 @@
 require "test_helper"
 
 # A Runner is a machine address, not an Agent's record. Every Runner has one Human manager,
-# while its assignment scope is a registration-time ACL over future work. An agent_application
+# while its assignment scope is a registration-time ACL over future work. An agent
 # executor instead belongs to its Agent and has neither fact.
 class RunnerOwnershipTest < ActiveSupport::TestCase
   setup do
@@ -10,7 +10,7 @@ class RunnerOwnershipTest < ActiveSupport::TestCase
     @agent = users(:agent)
   end
 
-  test "an agent_application belongs to its Agent and has no Runner management facts" do
+  test "an agent belongs to its Agent and has no Runner management facts" do
     executor = executors(:address)
 
     assert_equal @agent, executor.agent

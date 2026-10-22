@@ -91,7 +91,7 @@ class Runs::Tasks::DenyTest < ActiveJob::TestCase
       "(approval_denied) use ls#{pairing::ERROR_CLOSE}", paired_results(run, "r1").fetch("call_read")
   end
 
-  test "deny without a reason carries no detail, and by the agent application reads origin agent" do
+  test "deny without a reason carries no detail, and by the agent reads origin agent" do
     run, call = park!
     assert_predicate deny(run, call.node_key, acting_user: @agent), :accepted?
     call.reload

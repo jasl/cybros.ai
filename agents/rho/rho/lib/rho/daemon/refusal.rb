@@ -30,7 +30,7 @@ module Rho
       end
 
       # The executor plane's twin: no transport credential
-      # stands, so the agent application has no inbox to read or commit on
+      # stands, so the agent has no inbox to read or commit on
       # — the fact `runner.not_placed` logs at boot.
       def self.executor_plane_unavailable
         new(status: 503, code: "executor_plane_unavailable",

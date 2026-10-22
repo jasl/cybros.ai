@@ -7,9 +7,9 @@ module AgentAPI
   # executor declared it and it is not the executor's to read back.
   #
   # DISCOVERY is a DIFFERENT reader: what a principal may address,
-  # with the declaration facts the machine announced — `served_tools` whole
+  # with the declaration facts the machine announced — `services.runner.tools` whole
   # (name, effect_profile, timeout_ms?, description?, input_schema?), the
-  # environment snapshot and `served_documents` (the `{name, description}`
+  # environment snapshot and `services.runner.documents` (the `{name, description}`
   # entries it can load for a model) — the feeder of
   # a remote runner's declaration.
   # Presence, the contact sample and `connected_at` ride it for display,
@@ -27,7 +27,7 @@ module AgentAPI
             agent_public_id: executor.agent&.public_id,
             registration_identifier: executor.registration_identifier,
             assignment_scope: executor.assignment_scope,
-            assignment_agent_public_id: executor.assignment_agent&.public_id,
+            service_roles: executor.service_roles,
             presence: Nexus::Presence.of(executor, live_server_ids: live_server_ids),
             last_seen_at: executor.last_seen_at,
             connected_at: executor.connected_at,
@@ -43,10 +43,9 @@ module AgentAPI
           display_name: executor.display_name,
           status: executor.status,
           assignment_scope: executor.assignment_scope,
-          assignment_agent_public_id: executor.assignment_agent&.public_id,
-          served_tools: executor.served_tools,
-          environment: executor.environment,
-          served_documents: executor.served_documents,
+          agent_public_id: executor.agent&.public_id,
+          service_roles: executor.service_roles,
+          services: executor.services.document,
           presence: Nexus::Presence.of(executor, live_server_ids: live_server_ids),
           last_seen_at: executor.last_seen_at,
           connected_at: executor.connected_at,

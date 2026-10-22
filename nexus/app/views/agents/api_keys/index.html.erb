@@ -1,11 +1,11 @@
 <% content_for :title, t("agents.api_keys.kinds.#{key_kind}") %>
 
 <div class="space-y-6">
-  <%= render "shared/back_navigation", path: @private_runner ? runner_path(@private_runner) : agent_path(@agent), label: @private_runner&.display_name || @agent.display_name %>
+  <%= render "shared/back_navigation", path: agent_path(@agent), label: @agent.display_name %>
   <header class="flex flex-wrap items-end justify-between gap-3">
     <div class="space-y-1">
       <h1 class="text-xl font-medium tracking-tight"><%= t("agents.api_keys.kinds.#{key_kind}") %></h1>
-      <p class="text-sm text-base-content/60"><%= @private_runner&.display_name || @agent.display_name %></p>
+      <p class="text-sm text-base-content/60"><%= @agent.display_name %></p>
       <p class="text-sm text-base-content/60"><%= t("agents.api_keys.purposes.#{key_kind}") %></p>
     </div>
     <%= link_to t("agents.api_keys.create"), new_key_path, class: "btn btn-primary btn-sm" %>

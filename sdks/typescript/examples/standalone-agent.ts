@@ -204,7 +204,7 @@ async function prepare(member: Client, executor: ExecutorClient, options: Extrac
 }
 
 async function announce(executor: ExecutorClient, signal: AbortSignal): Promise<void> {
-  await executor.announce({ tools: [{ name: toolName, description, input_schema: inputSchema, effect_profile: effectProfile, timeout_ms: 300_000 }] }, { signal });
+  await executor.announce({ services: { agent: { tools: [{ name: toolName, description, input_schema: inputSchema, effect_profile: effectProfile, timeout_ms: 300_000 }] } } }, { signal });
 }
 
 export function captureText(input: JsonObject): string {
@@ -294,7 +294,7 @@ export async function main(argv: string[]): Promise<void> {
       // These reads also prove both saved credential planes belong to the same Agent.
       const profile = await member.profile.fetch();
       const address = await executor.executor();
-      if (address.executor.kind !== 'agent_application' || address.executor.agent_public_id !== profile.member.public_id) throw new Error('Saved credentials do not describe one Agent application.');
+      if (address.executor.kind !== 'agent' || address.executor.agent_public_id !== profile.member.public_id) throw new Error('Saved credentials do not describe one Agent.');
       emit('connected', { agent_public_id: profile.member.public_id, executor_public_id: address.executor.public_id });
       signal.throwIfAborted();
     } else if (options.command === 'start') {

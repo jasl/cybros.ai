@@ -82,7 +82,7 @@
     "token_type": "Bearer",
     "expires_in": 1209600
   },
-  "valid_combined_token_fixture": {
+  "retired_combined_token_fixture": {
     "access_token": "fixture-member-token",
     "plane": "member",
     "executor_access_token": "fixture-executor-token",

@@ -86,5 +86,5 @@ helpers do not define another cross-language Nexus contract.
 ## Operator tooling
 
 - [cmctl](../operate/cmctl.md) is the Human operator CLI over the Ruby Platform client.
-- [rho](../reference/cli.md) is the reference agent application, with connection,
+- [rho](../reference/cli.md) is the reference agent, with connection,
   settings and request commands of its own.

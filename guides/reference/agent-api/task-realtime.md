@@ -29,7 +29,7 @@ GET /agent_api/v1/executor/inbox/{run_public_id}/{task_key}/realtime
 ### Authentication
 
 Use the Runner's executor-transport bearer and original `Claim-Token` header. Only the exact
-claimant of a ToolTask can use this door; agent-application and tool-provider executors cannot.
+claimant of a ToolTask can use this door; agent and tool-provider executors cannot.
 
 ### Request
 

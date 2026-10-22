@@ -117,33 +117,6 @@ class ApiIdentityContractPackTest < Minitest::Test
 
     assert_predicate credentials, :member_plane?
     assert_predicate credentials, :executor_plane?
-    refute_predicate credentials, :runner_plane?
-
-    # The combined fixture parses through the:combined branch:
-    # three planes, the runner half in the transport-led shape.
-    combined_client, combined_transport = device_flow_client([
-      [200, {}, oauth.fetch("valid_device_authorization_fixture")],
-      [200, {}, oauth.fetch("valid_combined_token_fixture")],
-    ])
-    combined_authorization = combined_client.request_authorization(
-      agent_identifier: "fixture-agent",
-      agent_display_name: "Fixture agent",
-      executor_display_name: "Fixture executor",
-      runner: { identifier: "fixture-rho", display_name: "Fixture rho" }
-    )
-    assert_equal :combined, combined_authorization.branch
-    assert_equal [
-      ["/oauth/device_authorization", oauth.fetch("agent_authorization_request").merge(
-        "registration_identifier" => "fixture-rho", "runner_display_name" => "Fixture rho"
-      )],
-    ], combined_transport.calls
-    combined = combined_client.poll(combined_authorization)
-    assert_predicate combined, :runner_plane?
-    assert_equal oauth.dig("valid_combined_token_fixture", "runner", "access_token"),
-      combined.runner_half.executor_access_token
-    assert_equal oauth.dig("valid_combined_token_fixture", "runner", "refresh_token"),
-      combined.runner_half.refresh_token
-    refute_predicate combined.runner_half, :member_plane?
 
     unknown_plane_client, = device_flow_client([
       [200, {}, oauth.fetch("valid_device_authorization_fixture")],

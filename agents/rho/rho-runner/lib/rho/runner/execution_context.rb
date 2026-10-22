@@ -71,7 +71,7 @@ module Rho
       # outside a task; a tool that holds a resource across calls owns it
       # by this, the loop being display.
       # `workspace_public_id` is the task's execution container, independent
-      # of an agent application's current default or followed hosts.
+      # of an agent's current default or followed hosts.
       # `scope` is the kernel's stamp on an externally served kernel row.
       # Memory overrides receive named database `bindings` with access modes;
       # source-routed skills receive the host's workspace/conversation/user IDs.

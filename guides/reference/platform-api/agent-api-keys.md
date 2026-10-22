@@ -1,7 +1,7 @@
 # Agent API keys
 
 These Human personal settings issue long-lived keys for a steward's Agent,
-its application address, or a private Runner managed by that Human. Authentication
+or its application address. Authentication
 follows the [Platform API contract](../platform-api.md). Each key has one fixed
 plane, no expiry and no refresh token. Agent runtime keys cannot call these
 management routes.
@@ -15,9 +15,6 @@ POST /api/v1/agents/{agent_id}/api_keys/{key_id}/revocation
 GET /api/v1/agents/{agent_id}/executor/api_keys
 POST /api/v1/agents/{agent_id}/executor/api_keys
 POST /api/v1/agents/{agent_id}/executor/api_keys/{key_id}/revocation
-GET /api/v1/agents/{agent_id}/private_runners/{runner_id}/api_keys
-POST /api/v1/agents/{agent_id}/private_runners/{runner_id}/api_keys
-POST /api/v1/agents/{agent_id}/private_runners/{runner_id}/api_keys/{key_id}/revocation
 ```
 
 ## List keys
@@ -27,7 +24,6 @@ POST /api/v1/agents/{agent_id}/private_runners/{runner_id}/api_keys/{key_id}/rev
 ```http
 GET /api/v1/agents/{agent_id}/api_keys
 GET /api/v1/agents/{agent_id}/executor/api_keys
-GET /api/v1/agents/{agent_id}/private_runners/{runner_id}/api_keys
 ```
 
 ### Request
@@ -79,7 +75,6 @@ A scoped owner lookup miss returns `404 not_found`.
 ```http
 POST /api/v1/agents/{agent_id}/api_keys
 POST /api/v1/agents/{agent_id}/executor/api_keys
-POST /api/v1/agents/{agent_id}/private_runners/{runner_id}/api_keys
 ```
 
 ### Request
@@ -95,7 +90,6 @@ neither is caller-selectable. Named Agents cannot receive independent keys.
 Issuing the first application key creates the Agent's application address.
 Subsequent keys share that address's current epoch. Creating a key does not
 rotate an existing key, advance the epoch or revoke another credential.
-Create a [private Runner](private-runners.md) before issuing its key.
 
 ### Response
 
@@ -134,7 +128,6 @@ limited to ten requests per Human per three minutes; `429 rate_limited` carries
 ```http
 POST /api/v1/agents/{agent_id}/api_keys/{key_id}/revocation
 POST /api/v1/agents/{agent_id}/executor/api_keys/{key_id}/revocation
-POST /api/v1/agents/{agent_id}/private_runners/{runner_id}/api_keys/{key_id}/revocation
 ```
 
 ### Request

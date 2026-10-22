@@ -88,18 +88,13 @@ class ApiKeyConnectionTest < Minitest::Test
     path = agent_path(agent)
     member_key = issue_key("#{path}/api_keys", "rho member")
     application_key = issue_key("#{path}/executor/api_keys", "rho application")
-    runner = create_private_runner(path)
-    runner_key = issue_key("#{path}/private_runners/#{runner.fetch("public_id")}/api_keys", "rho Runner")
     foreign = create_agent("Other API-key Agent")
     foreign_application_key = issue_key("#{agent_path(foreign)}/executor/api_keys", "Other application")
     application = executor_client(application_key).executor.executor
-    runner_address = executor_client(runner_key).executor.executor
     assert_equal agent.fetch("public_id"), application.agent_public_id
-    assert_equal "agent_private", runner_address.assignment_scope
-    assert_equal agent.fetch("public_id"), runner_address.assignment_agent_public_id
 
     start_daemon
-    imported = { access_token: member_key, executor_access_token: application_key, runner_access_token: runner_key }
+    imported = { access_token: member_key, executor_access_token: application_key }
     output, status = @daemon.cli("connect", "--api-key-stdin",
       stdin: JSON.generate(imported.merge(executor_access_token: foreign_application_key)))
     refute_predicate status, :success?, E2E::SecretHygiene.redact(output)
@@ -122,7 +117,6 @@ class ApiKeyConnectionTest < Minitest::Test
     await_adopted
     assert_equal identity, @daemon.status.fetch("identity")
     assert_equal application.credential_epoch, executor_client(application_key).executor.executor.credential_epoch
-    assert_equal runner_address.credential_epoch, executor_client(runner_key).executor.executor.credential_epoch
     @daemon.await_announced(address: "runner")
     E2E.enable_dev_lane!
     E2E.hosts.start
@@ -140,7 +134,6 @@ class ApiKeyConnectionTest < Minitest::Test
     assert_equal @steward.public_id, profile.dig("body", "member", "public_id")
     assert_equal application.credential_epoch, executor_client(application_key).executor.executor.credential_epoch,
       "Human login must preserve the API-key application transport"
-    assert_equal runner_address.credential_epoch, executor_client(runner_key).executor.executor.credential_epoch
     assert_equal agent.fetch("public_id"), member_client(member_key).profile.fetch.member.public_id
   end
 
@@ -190,15 +183,11 @@ class ApiKeyConnectionTest < Minitest::Test
 
     def agent_path(agent) = "/api/v1/agents/#{agent.fetch("public_id")}"
 
-    def create_private_runner(path)
-      response = @http.post("#{path}/private_runners", body: { private_runner: { display_name: "API-key rho Runner" } },
-        bearer: @session.token)
-      assert_equal 201, response.status, response.body.inspect
-      response.body.fetch("private_runner")
-    end
 
     def issue_key(path, name)
-      response = @http.post(path, body: { api_key: { name: name } }, bearer: @session.token)
+      # Other journeys share this steward's issuance quota. Wait only for an
+      # explicit refusal before continuing the credential lifecycle assertions.
+      response = @http.post(path, body: { api_key: { name: name } }, bearer: @session.token, retry_rate_limit: true)
       assert_equal 201, response.status, E2E::SecretHygiene.redact(response.body.inspect)
       key = E2E::SecretHygiene.register(response.body.fetch("secret"))
       @keys << key

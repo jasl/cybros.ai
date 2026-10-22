@@ -194,7 +194,8 @@ class UntilExtensionTest < Minitest::Test
   # snapshot and the log say where the check ran.
   def test_a_remote_runners_policy_takes_the_snapshots_root_and_names_the_runner
     document = CybrosAgent::Api::DiscoveredExecutor.new(
-      **NexusDoubles.remote_runner("R1", root: "/srv/remote").transform_keys(&:to_sym)
+      **NexusDoubles.remote_runner("R1", root: "/srv/remote").transform_keys(&:to_sym),
+      agent_public_id: nil, last_seen_at: nil, connected_at: nil
     )
     ctx = author_ctx(remote_runners: { "R1" => document })
     body = { "until" => { "command" => "make test" }, "default_runner_executor_public_id" => "R1" }

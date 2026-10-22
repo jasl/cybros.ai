@@ -27,7 +27,7 @@ class DaemonExecutorPlaneTest < Minitest::Test
       "executor_context" => { "rho.environment" => { "root" => root, "directories" => [] } },
       "tool_input" => input, "tool_call_id" => "call-#{key}", "started_at" => "2026-09-07T00:00:00Z",
       "deadline_at" => nil, "claimed" => false,
-      "addressed_to" => { "role" => "runner", "executor_public_id" => "0199-runner" } }
+      "addressed_to" => { "role" => "runner", "executor_public_id" => "0199-executor" } }
   end
 
   # One cable double per plane, handed out by the credential the lineage
@@ -40,7 +40,7 @@ class DaemonExecutorPlaneTest < Minitest::Test
       realtime_factory: ->(credential) { fakes.fetch(credential.call.to_s) }, **options)
     token = connect(daemon)
     await_workspace_state(daemon, "adopted", token: token)
-    [daemon, token, fakes.fetch(NexusDoubles::RUNNER_TOKEN), fakes.fetch(NexusDoubles::MEMBER_TOKEN),
+    [daemon, token, fakes.fetch(NexusDoubles::TRANSPORT_TOKEN), fakes.fetch(NexusDoubles::MEMBER_TOKEN),
      fakes.fetch(NexusDoubles::TRANSPORT_TOKEN)]
   end
 
@@ -62,7 +62,7 @@ class DaemonExecutorPlaneTest < Minitest::Test
     assert_equal [[EXECUTOR_CHANNEL, {}]], agent.subscriptions.map { |sub| [sub.channel, sub.params] },
       "the agent address's own socket, on its own credential"
     assert_empty member.subscriptions, "the member socket carries feeds, never the inbox"
-    wait_for { api.runner_inbox_reads.positive? }
+    wait_for { api.executor_inbox_reads.positive? }
     assert(api.requests.none? { |path, _| path.include?("task_inbox") }, "no member-plane inbox read")
   end
 
@@ -70,9 +70,9 @@ class DaemonExecutorPlaneTest < Minitest::Test
     api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE])
     daemon, token, executor, = cabled(api)
     wait_for { executor.subscriptions.any? && runner_document(daemon, token).fetch("swept").positive? }
-    api.stock_inbox(inbox_row("t1"), address: :runner)
+    api.stock_inbox(inbox_row("t1"), address: :agent)
 
-    assert_equal 1, executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t1", "kind" => "tool_call", "tool_name" => "ls"))
+    assert_equal 1, executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t1", "kind" => "tool_call", "tool_name" => "ls", "role" => "runner"))
 
     wait_for { api.commits.length == 1 }
     assert_equal ["t1"], api.claims, "claiming IS the fetch: nudged, then claimed on the executor plane"
@@ -88,7 +88,7 @@ class DaemonExecutorPlaneTest < Minitest::Test
 
   def test_a_work_canceled_frame_reaches_the_runner_by_run_and_task_key
     api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE],
-      runner_inbox_tasks: [inbox_row("t1", tool: "bash", input: { "command" => "sleep 30" })])
+      inbox_tasks: [inbox_row("t1", tool: "bash", input: { "command" => "sleep 30" })])
     daemon, token, executor, = cabled(api)
     wait_for { executor.subscriptions.any? && runner_document(daemon, token).fetch("in_flight") == 1 }
 
@@ -106,7 +106,7 @@ class DaemonExecutorPlaneTest < Minitest::Test
   def test_a_work_canceled_frame_leaves_the_same_task_key_in_another_run_running
     release_path = File.join(@root, "release-other-run")
     other_command = "while [ ! -e #{release_path} ]; do sleep 0.01; done; echo other-run-finished"
-    api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE], runner_inbox_tasks: [
+    api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE], inbox_tasks: [
       inbox_row("t1", tool: "bash", input: { "command" => "sleep 30" }),
       inbox_row("t1", tool: "bash", input: { "command" => other_command }).merge("run_public_id" => "al-2"),
     ])
@@ -127,7 +127,7 @@ class DaemonExecutorPlaneTest < Minitest::Test
     assert_equal 0, runner_document(daemon, token).fetch("in_flight")
   end
 
-  # An `ask` frame is the agent application's notice, never the runner's
+  # An `ask` frame is the agent's notice, never the runner's
   # work: it is written down as the daemon's ask notice and
   # never dispatched — the inbox is the level-triggered truth `rho status`
   # reads — and the next tool_call frame still lands.
@@ -135,10 +135,10 @@ class DaemonExecutorPlaneTest < Minitest::Test
     api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE])
     daemon, token, executor, = cabled(api)
     wait_for { executor.subscriptions.any? && runner_document(daemon, token).fetch("swept").positive? }
-    api.stock_inbox(inbox_row("t1"), address: :runner)
+    api.stock_inbox(inbox_row("t1"), address: :agent)
 
     executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "a1", "kind" => "ask"))
-    executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t1", "kind" => "tool_call", "tool_name" => "ls"))
+    executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t1", "kind" => "tool_call", "tool_name" => "ls", "role" => "runner"))
 
     wait_for { api.commits.length == 1 }
     assert_equal ["t1"], api.claims, "the ask was never taken"
@@ -149,8 +149,8 @@ class DaemonExecutorPlaneTest < Minitest::Test
     assert_includes notice, "task=a1"
   end
 
-  # THE PARK'S NUDGE: an `approval` frame is the agent
-  # application's row — a call held for a person — noted as the daemon's
+  # THE PARK'S NUDGE: an `approval` frame is the agent's
+  # row — a call held for a person — noted as the daemon's
   # approval notice and never dispatched (the pool never sees it; the
   # inbox read lists it and claims nothing); the next tool_call frame
   # still lands.
@@ -158,10 +158,10 @@ class DaemonExecutorPlaneTest < Minitest::Test
     api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE])
     daemon, token, executor, = cabled(api)
     wait_for { executor.subscriptions.any? && runner_document(daemon, token).fetch("swept").positive? }
-    api.stock_inbox(inbox_row("t1"), address: :runner)
+    api.stock_inbox(inbox_row("t1"), address: :agent)
 
     executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "r1t0", "kind" => "approval", "tool_name" => "bash"))
-    executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t1", "kind" => "tool_call", "tool_name" => "ls"))
+    executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t1", "kind" => "tool_call", "tool_name" => "ls", "role" => "runner"))
 
     wait_for { api.commits.length == 1 }
     assert_equal ["t1"], api.claims, "the held call was never taken"
@@ -175,7 +175,7 @@ class DaemonExecutorPlaneTest < Minitest::Test
   # E4's unit twin: with the socket off, no executor subscription is opened
   # and the sweep alone carries the work — `nudged: 0` beside `claimed: 1`.
   def test_with_the_executor_socket_off_the_sweep_still_claims
-    api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE], runner_inbox_tasks: [inbox_row("t1")])
+    api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE], inbox_tasks: [inbox_row("t1")])
     daemon, token, executor, = cabled(api, config: Rho::Config.from_hash({ "executor_socket" => false }))
 
     wait_for { api.commits.length == 1 }
@@ -214,13 +214,13 @@ class DaemonExecutorPlaneTest < Minitest::Test
     response = request(daemon, :post, "/environment", token: token, body: { "root" => root })
 
     assert_equal "200", response.code, response.body
-    wait_for { api.runner_announcements.length == 2 }
+    wait_for { api.announcements.length == 2 }
     assert_same before, daemon.lineage.runner, "the runner stands: only placement zero moved"
-    assert_equal File.realpath(root), File.realpath(api.runner_announcements.last.dig("environment", "root")),
+    assert_equal File.realpath(root), File.realpath(api.announcements.last.dig("services", "runner", "environment", "root")),
       "the announcement names the new root"
-    assert_kind_of String, api.runner_announcements.last.dig("environment", "booted_at"), "and this daemon's boot"
-    assert_equal api.runner_announcements.first.dig("environment", "booted_at"),
-      api.runner_announcements.last.dig("environment", "booted_at"), "constant across re-points"
+    assert_kind_of String, api.announcements.last.dig("services", "runner", "environment", "booted_at"), "and this daemon's boot"
+    assert_equal api.announcements.first.dig("services", "runner", "environment", "booted_at"),
+      api.announcements.last.dig("services", "runner", "environment", "booted_at"), "constant across re-points"
     assert_equal File.realpath(root), daemon.context.tool_env.checkpoints.root, "the store follows the root"
     assert_operator runner_document(daemon, token).fetch("swept"), :>=, swept_before, "the meters never restart"
     assert_equal 1, executor.subscriptions.length, "the lineage's socket, opened once on adoption"
@@ -230,8 +230,8 @@ class DaemonExecutorPlaneTest < Minitest::Test
     refute_includes log, "executor_nudge_stream_ended", "no second connect on the one client"
     assert_equal 2, log.scan("event=profile.declared").length
 
-    api.stock_inbox(inbox_row("t1"), address: :runner)
-    assert_equal 1, executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t1", "kind" => "tool_call", "tool_name" => "ls"))
+    api.stock_inbox(inbox_row("t1"), address: :agent)
+    assert_equal 1, executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t1", "kind" => "tool_call", "tool_name" => "ls", "role" => "runner"))
 
     wait_for { api.commits.length == 1 }
     assert_equal ["t1"], api.claims
@@ -255,8 +255,8 @@ class DaemonExecutorPlaneTest < Minitest::Test
     wait_for { executor.subscriptions.any? && runner_document(daemon, token).fetch("swept").positive? }
     wait_for { api.configuration_declarations.length == 1 && api.announcements.length == 1 }
     agent_before = api.announcements.length
-    runner_before = api.runner_announcements.length
-    registry_names = api.announcements.last.fetch("tools").map { |tool| tool.fetch("name") }
+    runner_before = api.announcements.length
+    registry_names = api.announcements.last.fetch("services").fetch("agent").fetch("tools").map { |tool| tool.fetch("name") }
     runner = daemon.lineage.runner
     src = File.join(@root, "src")
     FileUtils.mkdir_p(src)
@@ -276,19 +276,19 @@ class DaemonExecutorPlaneTest < Minitest::Test
 
     assert_equal "200", response.code, response.body
     wait_for { api.announcements.length == agent_before + 1 }
-    announced = api.announcements.last.fetch("tools").map { |tool| tool.fetch("name") }
+    announced = api.announcements.last.fetch("services").fetch("agent").fetch("tools").map { |tool| tool.fetch("name") }
     assert_equal (registry_names + %w[mcp__fx__lookup mcp__fx__paths]).sort, announced.sort, "the registry's ∪ the anchor's, a name once"
     assert_equal announced, announced.sort, "sorted by name as the registry's own list is"
-    fx = api.announcements.last.fetch("tools").find { |tool| tool.fetch("name") == "mcp__fx__lookup" }
+    fx = api.announcements.last.fetch("services").fetch("agent").fetch("tools").find { |tool| tool.fetch("name") == "mcp__fx__lookup" }
     assert_equal ["lookup on fx", { "type" => "object", "properties" => { "q" => { "type" => "string" } } }],
       fx.values_at("description", "input_schema"), "the declaration facts a peer authors from"
-    assert_equal runner_before, api.runner_announcements.length, "the runner address is not touched"
+    assert_equal agent_before + 1, api.announcements.length, "both roles publish in one whole map"
     assert_same runner, daemon.lineage.runner, "nothing rebuilt"
     assert_equal 2, api.configuration_declarations.length, "the union declared once for the set"
     names = api.configuration_declarations.last.dig("configuration", "tool_definitions").map { |e| e.dig("function", "name") }
     assert_includes names, "mcp__fx__lookup"
     assert_equal 0, names.count("bash"), "Runner schemas are assembled by Nexus"
-    assert_equal ["0199-runner"], api.configuration_declarations.last.dig("configuration", "runner_executor_public_ids")
+    assert_equal ["0199-executor"], api.configuration_declarations.last.dig("configuration", "runner_executor_public_ids")
     assert_equal 2, File.read(daemon.home.log_path, encoding: Encoding::UTF_8).scan("event=profile.declared").length
 
     assert_equal "200", bind.call(mcp: [RhoTest::ConversationServers.stdio("fx")]).code
@@ -298,11 +298,11 @@ class DaemonExecutorPlaneTest < Minitest::Test
 
     assert_equal "200", bind.call(mcp: []).code
     wait_for { api.announcements.length == agent_before + 2 }
-    assert_equal registry_names.sort, api.announcements.last.fetch("tools").map { |tool| tool.fetch("name") }.sort, "closed: the registry's alone"
+    assert_equal registry_names.sort, api.announcements.last.fetch("services").fetch("agent").fetch("tools").map { |tool| tool.fetch("name") }.sort, "closed: the registry's alone"
     assert_equal 3, api.configuration_declarations.length
     refute_includes api.configuration_declarations.last.dig("configuration", "tool_definitions").map { |e| e.dig("function", "name") }, "mcp__fx__lookup"
     assert_equal ["c-1"], File.read(closes).split("\n")
-    assert_equal runner_before, api.runner_announcements.length
+    assert_equal agent_before + 2, api.announcements.length
   end
 
   # THE METERS ARE THE RUNNER'S OWN: with no
@@ -312,8 +312,8 @@ class DaemonExecutorPlaneTest < Minitest::Test
     api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE])
     daemon, token, executor, = cabled(api)
     wait_for { executor.subscriptions.any? && runner_document(daemon, token).fetch("swept").positive? }
-    api.stock_inbox(inbox_row("t1"), address: :runner)
-    executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t1", "kind" => "tool_call", "tool_name" => "ls"))
+    api.stock_inbox(inbox_row("t1"), address: :agent)
+    executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t1", "kind" => "tool_call", "tool_name" => "ls", "role" => "runner"))
     wait_for { api.commits.length == 1 }
     root = File.join(@root, "elsewhere")
     FileUtils.mkdir_p(root)
@@ -321,9 +321,9 @@ class DaemonExecutorPlaneTest < Minitest::Test
     response = request(daemon, :post, "/environment", token: token, body: { "root" => root })
 
     assert_equal "200", response.code, response.body
-    wait_for { api.runner_announcements.length == 2 }
-    api.stock_inbox(inbox_row("t2"), address: :runner)
-    executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t2", "kind" => "tool_call", "tool_name" => "ls"))
+    wait_for { api.announcements.length == 2 }
+    api.stock_inbox(inbox_row("t2"), address: :agent)
+    executor.deliver(EXECUTOR_CHANNEL, frame("work_available", "t2", "kind" => "tool_call", "tool_name" => "ls", "role" => "runner"))
     wait_for { api.commits.length == 2 }
 
     assert_equal 2, runner_document(daemon, token).fetch("nudged"), "the same runner counted both"
@@ -335,7 +335,7 @@ class DaemonExecutorPlaneTest < Minitest::Test
     JSON.parse(request(daemon, :get, "/status", token: token).body).fetch("runner")
   end
 
-  def test_agent_loss_closes_only_its_executor_socket
+  def test_application_loss_closes_the_single_executor_socket
     api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE])
     daemon, _token, executor, _member, agent = cabled(api)
     wait_for { executor.subscriptions.any? && agent.subscriptions.any? }
@@ -345,31 +345,12 @@ class DaemonExecutorPlaneTest < Minitest::Test
 
     wait_for { agent.closed? }
     assert_nil daemon.lineage.executor_realtime(:agent_runner), "the Agent's slot retired its socket"
-    refute executor.closed?, "the independent Runner transport remains usable"
-    assert_same executor, daemon.lineage.executor_realtime
+    assert executor.closed?
+    assert_nil daemon.lineage.executor_realtime
   end
 
   # THE RUNNER HALF LOST: its slot and socket retire alone; the
   # agent's own run and socket stand, the daemon stays active.
-  def test_losing_the_runner_lineage_retires_the_runner_slot_and_its_socket_alone
-    api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE])
-    daemon, token, executor, _member, agent = cabled(api)
-    wait_for { executor.subscriptions.any? && agent.subscriptions.any? }
-    about = daemon.lineage.credentials
-
-    assert daemon.maintenance.renewal_event(:lost, about, lineage: :runner)
-
-    wait_for { executor.closed? }
-    refute agent.closed?, "the agent address's socket stands"
-    assert_nil daemon.lineage.runner(:runner)
-    refute_nil daemon.lineage.runner(:agent_runner)
-    refute about.runner?
-    body = JSON.parse(request(daemon, :get, "/status", token: token).body)
-    assert_equal "active", body["state"]
-    assert_equal "0199-runner", body.dig("identity", "runner_executor_public_id"), "the identity keeps the id"
-    assert_nil body["runner"]["tools"], "local truth: no runner slot"
-    assert_includes File.read(daemon.home.log_path, encoding: Encoding::UTF_8), "runner.authority_lost"
-  end
 
   def test_stopping_the_daemon_closes_the_executor_socket
     api = NexusDoubles::FakeAgentApi.new(workspaces: [RUNNER_WORKSPACE])

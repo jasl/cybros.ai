@@ -8,7 +8,7 @@ class RefreshTokens::IssueTest < ActiveSupport::TestCase
     )
     executor = @member.executors.create!(
       account: @member.account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Refresh issuer app"
     )
     @family = RefreshTokenFamily.create!(

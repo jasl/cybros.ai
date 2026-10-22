@@ -8,7 +8,7 @@ en:
     attention_runs_description: Readable runs with a recorded attention reason. This includes runs you can inspect but cannot change; actionable tasks remain on the Attention page.
     reconnect: "Reconnect from the running program to replace its credentials. Its connection and sharing settings are kept."
     revoked_registration: "This connection has been permanently removed. Reconnect the program, then select the new connection in your application."
-    revoke_credentials_description: "Invalidate this connection’s keys. Keep the connection so the program can reconnect or use a new private Runner key."
+    revoke_credentials_description: "Invalidate this connection’s keys. Keep the connection so the program can reconnect through Device Flow."
     revoke_credentials_confirm: "Revoke all keys for %{name}? Existing keys stop working. The connection is kept for reconnection."
     revoke_registration_description: "Permanently remove this connection and invalidate its keys. Reconnecting the program creates a new connection."
     revoke_registration_confirm: "Permanently remove the connection for %{name}? This connection cannot be restored."
@@ -20,12 +20,7 @@ en:
     deployment_guide: Runner deployment guide
     enter_code: I have a device code
     scope: A new standalone Runner is private to your Agents by default. Account administrators may choose account-wide assignment when connecting their own Runner. Reconnecting preserves the existing assignment.
-    bundled: If your Agent application already connected a bundled Runner, find it in Runners. You do not need to create another one.
-    private: Create a private Runner for an Agent
-    private_instructions: Choose an independent Agent you steward, then create its private Runner and issue a transport API key. Import the key into your program using its documented setup; named Agents share their application's assignment.
-    create_for: "Create private Runner for %{name}"
-    no_agents: You have no active independent Agents. Create an Agent identity first.
+    bundled: An application with Local runner capability uses its application connection. Manage that connection under Agents; connect a standalone Runner here only for a separate environment.
     check: Check the connection and use it
     check_instructions: After the program collects its credentials, open the Runner details to inspect credentials, recent contact and saved capabilities. These facts do not prove execution. Select the Runner for new work in your application or SDK, then inspect the resulting Run and Tasks here.
     refresh: Refresh connection status
-    key_created: Save this key and import it into your Runner program. Issuing a key does not start the program or prove that its tools work.

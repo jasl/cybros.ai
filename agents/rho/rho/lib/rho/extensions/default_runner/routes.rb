@@ -20,7 +20,7 @@ module Rho
           # the profile is refreshed from the complete eligible candidate list.
           def runners(ctx)
             ctx.member_plane(require_workspace: false) do |client, *|
-              listed = client.executors.list(kind: "runner")
+              listed = client.executors.list(role: "runner")
               listed.each { |document| ctx.learn_runner(document) }
               bindings = ctx.host_bindings
               selection = ctx.settings_runner
@@ -66,7 +66,7 @@ module Rho
               {
                 public_id: document.public_id, display_name: document.display_name,
                 presence: document.presence, last_seen_at: document.last_seen_at,
-                root: document.environment["root"], tools: document.tool_names,
+                root: document.environment_for(:runner)["root"], tools: document.tool_names(role: :runner),
                 own: ctx.own_runner?(document.public_id), selected: document.public_id == selection,
                 default_hosts: bindings.select { |binding| binding[:runner] == document.public_id }
                   .map { |binding| binding.fetch(:host).public_id },

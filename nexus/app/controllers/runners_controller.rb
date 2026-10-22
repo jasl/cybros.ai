@@ -5,7 +5,7 @@ class RunnersController < Runners::BaseController
     filters = params.permit(:kind, :status)
     @kind = filters[:kind].presence
     @status = filters[:status].presence || "active"
-    machines = Current.user.managed_executors.preload(:assignment_agent).order_by_recency
+    machines = Current.user.managed_executors.order_by_recency
     machines = machines.where(executor_kind: @kind) if @kind
     machines = machines.where(status: @status) unless @status == "all"
     @runners_pagy, @runners = pagy(
@@ -22,8 +22,6 @@ class RunnersController < Runners::BaseController
     readiness = Executor.credential_readiness_for([@runner], now: @measured_at)
     @runner_facts = API::RunnerPresenter.full(@runner, principal: Current.user,
       readiness: readiness, live_server_ids: NexusServer.live_ids)
-    assigned_agent = @runner.assignment_agent
-    @key_agent = assigned_agent if assigned_agent && !assigned_agent.named_agent? && assigned_agent.steward_id == Current.user.id
     @run_counts = Run.visible_to(Current.user).for_executor(@runner.public_id).group(:status).count
   end
 

@@ -34,7 +34,7 @@ test('managed Runner reads preserve management, eligibility, announcements and m
   const { platform, requests } = client(listing);
   const page = await platform.runners.list({ kind: 'runner', status: 'revoked', after: 'cursor', limit: 5 });
   expect(page.items[0]?.manager_public_id).toBe(listing.runners[0]?.manager_public_id);
-  expect(page.items[0]?.eligible_for_current_user).toBe(false);
+  expect(page.items[0]?.eligible_for_current_user).toBe(true);
   expect(page.items[0]?.credential_readiness).toBe('ready');
   expect(page.measured_at).toBe(listing.measured_at);
   expect(requests[0]?.url.searchParams.get('kind')).toBe('runner');
@@ -42,8 +42,8 @@ test('managed Runner reads preserve management, eligibility, announcements and m
   expect(requests[0]?.url.searchParams.get('after')).toBe('cursor');
   const detail = fixture('platform_runners', 'valid_runner_fixture') as { runner: PlatformRunnerDetail; measured_at: string };
   const actual = await client(detail).platform.runners.fetch('runner');
-  expect(actual.runner.served_tools[0]?.input_schema).toEqual(detail.runner.served_tools[0]?.input_schema);
-  expect(actual.runner.served_documents).toEqual(detail.runner.served_documents);
-  expect(actual.runner.environment).toEqual(detail.runner.environment);
+  expect(actual.runner.services.runner!.tools[0]?.input_schema).toEqual(detail.runner.services.runner!.tools[0]?.input_schema);
+  expect(actual.runner.services.runner!.documents).toEqual(detail.runner.services.runner!.documents);
+  expect(actual.runner.services.runner!.environment).toEqual(detail.runner.services.runner!.environment);
   expect(actual.measured_at).toBe(detail.measured_at);
 });

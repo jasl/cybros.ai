@@ -25,7 +25,7 @@ class DeviceAuthorizations::MachineCancelTest < ActiveSupport::TestCase
     )
     executor = member.executors.create!(
       account: @account,
-      executor_kind: :agent_application,
+      executor_kind: :agent,
       display_name: "Connected app"
     )
     connected = mint(identifier: member.agent_identifier).authorization

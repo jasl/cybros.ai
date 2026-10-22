@@ -119,9 +119,9 @@ class Runs::ToolSurfaceWorkTest < ActiveJob::TestCase
       routed = (1..4).flat_map do |index|
         runner = connect_runner(manager: users(:owner), registration_identifier: "tool-surface-#{index}",
           display_name: "Environment #{index}", assignment_scope: :account_wide).executor_access_token.executor
-        assert_predicate runner.announce(tools: names.map { |name|
+        assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => names.map { |name|
           { "name" => name, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }
-        }), :accepted?
+        } } }), :accepted?
         names.map do |name|
           READ_TOOL.deep_merge("function" => { "name" => "environment_#{index}_#{name}" }).merge(
             "route" => { "kind" => "runner", "runner_executor_public_id" => runner.public_id, "tool_name" => name })

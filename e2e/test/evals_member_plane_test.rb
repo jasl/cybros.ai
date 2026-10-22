@@ -475,7 +475,7 @@ class EvalsMemberPlaneTest < Minitest::Test
     { "public_id" => loop_id, "status" => "running",
       "attention" => { "reason" => E2E::Evals::MemberPlane::ASKING_REASON },
       "tasks" => [{ "key" => key, "kind" => "await_task", "status" => "waiting",
-                    "addressed_to" => { "role" => "agent_application" } }] }
+                    "addressed_to" => { "role" => "agent" } }] }
   end
 
   def settled_row(loop_id = "loop-9") = { "public_id" => loop_id, "status" => "completed", "tasks" => [] }
@@ -649,7 +649,7 @@ class EvalsMemberPlaneTest < Minitest::Test
                         { "key" => "r1", "kind" => "model_task", "status" => "completed" },
                         { "key" => "r1t0", "kind" => "tool_task", "status" => "completed", "tool_name" => "code" },
                         { "key" => "r1t0-ask-1", "kind" => "await_task", "status" => "waiting",
-                          "addressed_to" => { "role" => "agent_application" } },
+                          "addressed_to" => { "role" => "agent" } },
                       ] }
     @row_script = [branch_asking, branch_asking, settled_row]
 

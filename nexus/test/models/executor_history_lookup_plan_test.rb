@@ -59,7 +59,7 @@ class ExecutorHistoryLookupPlanTest < ActiveSupport::TestCase
     profile_history = indexes.fetch("index_executors_on_agent_and_recency")
 
     assert_nil account_history.where,
-      "the account-leading replacement must cover agent_application rows too"
+      "the account-leading replacement must cover agent rows too"
     assert_equal %w[account_id manager_id registration_identifier created_at id],
       account_history.columns
     assert_equal %w[agent_id created_at id], profile_history.columns
@@ -73,6 +73,7 @@ class ExecutorHistoryLookupPlanTest < ActiveSupport::TestCase
           account_id: @account.id,
           manager_id: @manager.id,
           executor_kind: "runner",
+          services: { runner: {} },
           registration_identifier: identifier,
           assignment_scope: "user_private",
           display_name: "Runner history",
@@ -88,7 +89,8 @@ class ExecutorHistoryLookupPlanTest < ActiveSupport::TestCase
         {
           account_id: @account.id,
           agent_id: profile.id,
-          executor_kind: "agent_application",
+          executor_kind: "agent",
+          services: { agent: {} },
           display_name: "Address history",
           status: "revoked",
           created_at: @now + index.seconds,

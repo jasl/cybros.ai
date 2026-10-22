@@ -48,8 +48,8 @@ module Executors
 
         target = runner(run, public_id)
         unless model_origin
-          return :runner_not_eligible unless target&.eligible_for?(run.answering_user)
-          return :tool_not_served unless target.served?(payload.fetch("tool_name"))
+          return :runner_not_eligible unless target&.eligible_for_role?(:runner, run.answering_user)
+          return :tool_not_served unless target.served?(payload.fetch("tool_name"), role: :runner)
         end
         payload["target_executor_id"] = target&.id
         payload["target_executor_public_id"] = public_id
@@ -66,11 +66,11 @@ module Executors
         end
         targets = routes.select { |entry| entry.fetch("kind") == "runner" }.map { |entry| entry.fetch("runner_executor_public_id") }.uniq
         executors = targets.map { |id| runner(run, id) }
-        return :runner_not_eligible unless executors.all? { |executor| executor&.eligible_for?(run.answering_user) }
+        return :runner_not_eligible unless executors.all? { |executor| executor&.eligible_for_role?(:runner, run.answering_user) }
         Array(tools).each do |entry|
           next unless entry.dig("route", "kind") == "runner"
           target = executors.find { |executor| executor.public_id == entry.fetch("route").fetch("runner_executor_public_id") }
-          return :tool_not_served unless target.served?(entry.fetch("route").fetch("tool_name"))
+          return :tool_not_served unless target.served?(entry.fetch("route").fetch("tool_name"), role: :runner)
         end
         environment = snapshot(run, tools, executors)
       elsif environment.nil? && (payload["type"] == Tasks::ModelTask.sti_name || route)
@@ -87,7 +87,7 @@ module Executors
       contexts = context["executor_contexts"] || inherited&.fetch("executor_contexts", nil) || run.agent_configuration&.executor_contexts
       contexts = Nexus::ExecutorContexts.normalize(contexts) if contexts
       if context["executor_context"] && contexts
-        target_id = payload["target_executor_public_id"] || Executor.address_for(run.execution_agent)&.public_id
+        target_id = payload["target_executor_public_id"] || (Executor.application_address_for(run.execution_agent)&.public_id if run.execution_agent)
         return :executor_context_mismatch if contexts.key?(target_id) && contexts[target_id] != context["executor_context"]
       end
       if contexts && payload["type"] == Tasks::ModelTask.sti_name
@@ -101,14 +101,14 @@ module Executors
     end
 
     def runner(run, public_id)
-      Executor.where(account_id: run.account_id, executor_kind: :runner).find_by(public_id: public_id)
+      Executor.where(account_id: run.account_id).providing(:runner).find_by(public_id: public_id)
     end
 
     def snapshot(run, tools, executors)
       {
         "default_runner_executor_public_id" => run.default_runner&.public_id,
         "executors" => executors.map do |executor|
-          { "runner_executor_public_id" => executor.public_id, "environment" => executor.environment }
+          { "runner_executor_public_id" => executor.public_id, "environment" => executor.environment_for(:runner) }
         end,
         "runner_candidates" => [],
         "skills" => skills(run, tools),

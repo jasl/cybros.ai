@@ -120,17 +120,6 @@ class Nexus::ContractProducerTest < ActionDispatch::IntegrationTest
     assert_wire_shape oauth.fetch("valid_runner_token_fixture"), response.parsed_body
     assert_equal "executor_transport", response.parsed_body["plane"]
     refute response.parsed_body.key?("executor_access_token")
-
-    # The combined shape (r-modes M2): the member-led agent body plus the
-    # nested runner lineage — the pack's third token fixture.
-    combined_code = connected_combined_code
-    post oauth_token_path,
-      params: oauth.fetch("device_token_request").merge("device_code" => combined_code),
-      as: :json
-    assert_response :success
-    assert_wire_shape oauth.fetch("valid_combined_token_fixture"), response.parsed_body
-    assert_equal "member", response.parsed_body["plane"]
-    assert_wire_shape oauth.dig("valid_combined_token_fixture", "runner"), response.parsed_body.fetch("runner")
   end
 
   test "unknown OAuth request fixtures are rejected by the real token endpoint" do
@@ -671,22 +660,6 @@ class Nexus::ContractProducerTest < ActionDispatch::IntegrationTest
 
     # The combined request is the agent request plus the runner pair, over
     # the wire; the human connects it on the ONE agent page.
-    def connected_combined_code
-      oauth = contract("oauth.json")
-      post oauth_device_authorization_path,
-        params: oauth.fetch("agent_authorization_request").merge(
-          "registration_identifier" => "fixture-rho", "runner_display_name" => "Fixture rho"
-        ),
-        as: :json
-      assert_response :success
-
-      code = response.parsed_body.fetch("device_code")
-      authorization = DeviceAuthorization.find_by_device_code(code)
-      assert_predicate authorization, :combined_connection?
-      assert_equal :connected,
-        DeviceAuthorizations::Connect.call(authorization: authorization, connector: users(:owner)).outcome
-      code
-    end
 
     def connected_runner_code
       oauth = contract("oauth.json")
@@ -730,7 +703,7 @@ class Nexus::ContractProducerTest < ActionDispatch::IntegrationTest
       assert_wire_shape fixture.fetch("body"), response.parsed_body
       expected_error = fixture.dig("body", "error")
       actual_error = response.parsed_body.fetch("error")
-      if expected_error.is_a?(Hash)
+      if expected_error in Hash
         assert_equal expected_error.fetch("code"), actual_error.fetch("code")
       else
         assert_equal expected_error, actual_error

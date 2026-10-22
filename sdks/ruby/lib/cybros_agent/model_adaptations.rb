@@ -2,7 +2,7 @@ require "yaml"
 
 module CybrosAgent
   # THE MODEL-ADAPTATIONS PACK: a documented YAML data format whose rows are matched to a
-  # model by PATTERN (`ModelPattern`), that an agent application applies on top of the
+  # model by PATTERN (`ModelPattern`), that an agent applies on top of the
   # kernel's facts — the kernel tools' spellings for the models a row covers (`tool_style`,
   # `tool_descriptions`), a summarizer prompt, lead hints — every text is its
   # row's data, measured in the e2e harness before it lands.

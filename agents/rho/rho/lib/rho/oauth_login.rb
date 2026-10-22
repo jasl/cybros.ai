@@ -328,15 +328,13 @@ module Rho
       end
 
       def claims(plan)
-        request = plan.request
-        runner = { registration_identifier: plan.identity&.runner_registration_identifier || "#{@config.mode == "runner" ? Rho::STANDALONE_REGISTRATION_IDENTIFIER : Rho::REGISTRATION_IDENTIFIER}.#{@home.instance_id}",
-          runner_display_name: @display_name }
-        runner[:assignment_agent_public_id] = plan.identity.user_public_id if request == :runner && @config.mode == "full"
-        return runner.merge(executor_kind: "runner") if request == :runner || @config.mode == "runner"
+        if @config.mode == "runner"
+          return { registration_identifier: plan.identity&.runner_registration_identifier || "#{Rho::STANDALONE_REGISTRATION_IDENTIFIER}.#{@home.instance_id}",
+            runner_display_name: @display_name, executor_kind: "runner" }
+        end
 
-        agent = { agent_identifier: plan.identity&.agent_identifier || "#{Rho::AGENT_IDENTIFIER}.#{@home.instance_id}",
+        { agent_identifier: plan.identity&.agent_identifier || "#{Rho::AGENT_IDENTIFIER}.#{@home.instance_id}",
           agent_display_name: @display_name, executor_display_name: @display_name }
-        request == :combined || (request == :login && @config.mode == "full") ? agent.merge(runner) : agent
       end
 
       def new_transaction(plan, callback: true)

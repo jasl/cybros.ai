@@ -17,8 +17,8 @@ module RunLaneTestHelper
 
   # The declaration AND the announcement, as rho makes them from one registry: what the model sees,
   # and what the agent's own address serves — with a transport credential, since addressing asks the
-  # address for eligibility. The loop-backed lane's calls are thereby addressed to the agent
-  # application.
+  # address for eligibility. The loop-backed lane's calls are thereby addressed to the agent.
+  #
   def declare_tools!(agent, tools: [READ_TOOL], compaction_policy: nil, approval_mode: "bypass",
                      approval_rules: nil, default_model: nil, fallback_models: nil)
     outcome = Users::DeclareConfiguration.call(user: agent,
@@ -42,9 +42,9 @@ module RunLaneTestHelper
     unless Executor.credential_readiness_for([address]).fetch(address.id) == :ready
       create_bound_credential(executor: address, name: "Lane transport")
     end
-    announced = address.announce(tools: names.map { |name|
+    announced = address.announce(services: { address.executor_kind => { "tools" => names.map { |name|
       { "name" => name, "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }
-    })
+    } } })
     assert_predicate announced, :accepted?, announced.detail.to_s
   end
 

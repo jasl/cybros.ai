@@ -176,7 +176,7 @@ class CeremonyTest < Minitest::Test
     started = JSON.parse(request(daemon, :post, "/device/start", token: token).body)
     assert_equal "pending", started["phase"]
     assert_equal "full", started["mode"]
-    assert_equal "combined", started["branch"], "ONE grant for the two addresses"
+    assert_equal "agent", started["branch"], "one application connection for both service roles"
     assert_equal "BCDF-GHJK", started["user_code"]
     assert_equal "https://nexus.example/oauth/device", started["verification_uri"]
 
@@ -195,8 +195,8 @@ class CeremonyTest < Minitest::Test
     plane_probes = api.requests.count do |path, _|
       %w[/agent_api/v1/profile /agent_api/v1/executor].include?(path)
     end
-    assert_equal 3, plane_probes,
-      "the three bootstrap reads (the runner's on its own credential) are the observation status reuses"
+    assert_equal 2, plane_probes,
+      "member and executor bootstrap reads are the observation status reuses"
 
     await_workspace_state(daemon, "adopted", token: token)
     # The adopted edge declares the profile's configuration; let that land
@@ -254,7 +254,7 @@ class CeremonyTest < Minitest::Test
     # The action path is where a human asks to reconnect, and where spending
     # one rotation to answer them honestly is proportionate.
     recovery = request(daemon, :post, "/device/start", token: token)
-    assert_equal 2, rotations, "one consultation per lineage (agent, runner), from the human's own action"
+    assert_equal 1, rotations, "one consultation for the application connection"
     assert_equal 200, recovery.code.to_i, "the diagnosis must unblock the only way back"
     refute_nil JSON.parse(recovery.body)["user_code"]
 
@@ -460,7 +460,7 @@ class CeremonyTest < Minitest::Test
   # THE PIN: the agent planes lost beside a live runner plane
   # — a Profile removed and restored — sends branch A ALONE and keeps the
   # runner OAuth by object identity; the runner plane reads live after.
-  def test_a_restore_never_fences_a_live_runner_plane
+  def test_a_restore_replaces_the_single_application_connection
     api = NexusDoubles::SelectiveApi.new
     oauth = NexusDoubles::FakeOAuth.new
     accept_on_device_grant(oauth, api, [NexusDoubles::MEMBER_TOKEN, NexusDoubles::TRANSPORT_TOKEN], grant: 2)
@@ -469,8 +469,7 @@ class CeremonyTest < Minitest::Test
     request(daemon, :post, "/device/start", token: token)
     await_state(daemon, "active", token: token)
     old = daemon.lineage.credentials
-    runner = old.runner
-    assert_equal "0199-runner", daemon.identity.runner_executor_public_id
+    assert_equal "0199-executor", daemon.identity.runner_executor_public_id
 
     api.accept(NexusDoubles::MEMBER_TOKEN, false)
     api.accept(NexusDoubles::TRANSPORT_TOKEN, false)
@@ -483,49 +482,14 @@ class CeremonyTest < Minitest::Test
     wait_for { !daemon.lineage.credentials.equal?(old) }
     restored = daemon.lineage.credentials
     refute_same old, restored
-    assert_same runner, restored.runner, "the live runner OAuth, kept — never re-consumed"
-    assert_equal "0199-runner", body.dig("identity", "runner_executor_public_id")
+    assert_nil restored.runner, "no independent runner credential"
+    assert_equal "0199-executor", body.dig("identity", "runner_executor_public_id")
     assert_equal 2, oauth.requests.count { |path, _| path == "/oauth/device_authorization" }
     refute oauth.requests.last(3).any? { |path, params| path == "/oauth/device_authorization" && params[:registration_identifier] }
-    wait_for { JSON.parse(request(daemon, :get, "/status", token: token).body).dig("authority", "planes", "runner_transport") == "live" }
+    wait_for { JSON.parse(request(daemon, :get, "/status", token: token).body).dig("authority", "planes", "executor_transport") == "live" }
   end
 
-  # The agent planes live and the runner plane gone under full mode: branch
-  # B for the in-process identifier, spelled `pending_runner`, the agent
-  # half untouched — and the runner attached without moving the lineage.
-  def test_a_lost_runner_plane_under_full_mode_opens_the_runner_only_shape
-    oauth = NexusDoubles::FakeOAuth.new
-    daemon = boot(device_flow: connection_device_flow(oauth), api_transport: NexusDoubles::FakeAgentApi.new)
-    token = bearer(daemon)
-    request(daemon, :post, "/device/start", token: token)
-    await_state(daemon, "active", token: token)
-    about = daemon.lineage.credentials
-    agent = about.agent
-    executor = daemon.identity.executor_public_id
-
-    assert daemon.maintenance.renewal_event(:lost, about, lineage: :runner)
-    refute about.runner?
-    wait_for { JSON.parse(request(daemon, :get, "/status", token: token).body).dig("authority", "planes", "runner_transport") == "absent" }
-
-    adding = JSON.parse(request(daemon, :post, "/device/start", token: token).body)
-    assert_equal %w[runner pending_runner], adding.values_at("branch", "phase")
-    refute_nil adding["user_code"]
-    # The connection publishes active before its poller attaches the runner.
-    wait_for { about.runner? }
-    body = await_connection_phase(daemon, "active", token: token)
-    request = oauth.requests.select { |path, _| path == "/oauth/device_authorization" }.last.last
-    assert_equal ["rho.imported-runner", "runner"], request.values_at(:registration_identifier, :executor_kind)
-    refute request.key?(:agent_identifier)
-    assert_same about, daemon.lineage.credentials, "the lineage did not move"
-    assert_same agent, about.agent, "the agent half untouched"
-    assert about.runner?
-    assert_equal executor, body.dig("identity", "executor_public_id")
-    assert_equal "0199-runner", body.dig("identity", "runner_executor_public_id")
-    wait_for { daemon.lineage.runner(:runner) }
-    assert_equal "full", Rho::StateFile.new(daemon.home.connection_pointer_path).read.fetch("mode")
-  end
-
-  def test_both_planes_lost_opens_the_combined_shape_again
+  def test_both_planes_lost_opens_the_application_shape_again
     api = NexusDoubles::SelectiveApi.new
     oauth = NexusDoubles::FakeOAuth.new
     daemon = boot(device_flow: connection_device_flow(oauth), api_transport: api)
@@ -538,9 +502,10 @@ class CeremonyTest < Minitest::Test
     api.accept(NexusDoubles::RUNNER_TOKEN, false)
     again = JSON.parse(request(daemon, :post, "/device/start", token: token).body)
 
-    assert_equal %w[combined pending], again.values_at("branch", "phase")
+    assert_equal %w[agent pending], again.values_at("branch", "phase")
     request = oauth.requests.select { |path, _| path == "/oauth/device_authorization" }.last.last
-    assert request.key?(:agent_identifier) && request.key?(:registration_identifier)
+    assert request.key?(:agent_identifier)
+    refute request.key?(:registration_identifier)
   end
 
   # Core recovery remains available when every optional tool is disabled.

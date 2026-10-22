@@ -5,7 +5,7 @@ module Runs
     class Revoke
       ERROR_KEY = "executor_revoked".freeze
       ERROR_DETAIL = "the executor this call was addressed to was removed before it took the call".freeze
-      APPROVAL_DETAIL = "the agent application this approval was addressed to was removed; " \
+      APPROVAL_DETAIL = "the agent this approval was addressed to was removed; " \
         "a person with write standing on the workspace decides it".freeze
 
       def self.call(run:, node:)

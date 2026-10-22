@@ -61,17 +61,6 @@ class CredentialsTest < Minitest::Test
   # The slot writers are pure (no IO) so the lineage may run them under its
   # monitor; the holder's identity is what every daemon edge keys on, and it
   # never changes when the runner half does.
-  def test_attach_and_drop_move_the_runner_slot_and_keep_the_holders_identity
-    about = Rho::Credentials.new(agent: agent)
-    attached = runner
-
-    assert_same about, about.attach_runner(attached)
-    assert_same attached, about.runner
-    assert_equal RUNNER, about.runner_credential
-    assert_same attached, about.drop_runner
-    refute about.runner?
-    assert_nil about.drop_runner, "dropping twice drops nothing"
-  end
 
   def test_no_diagnostic_renders_a_credential
     about = Rho::Credentials.new(agent: agent, runner: runner)

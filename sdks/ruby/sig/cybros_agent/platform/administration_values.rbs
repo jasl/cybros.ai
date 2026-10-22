@@ -45,16 +45,6 @@ module CybrosAgent
       def self.new: (agent: Agent, configuration: Api::AgentConfiguration, prompt_documents: Array[Api::PromptDocument], agent_updated_at: String, measured_at: String) -> instance
     end
 
-    class PrivateRunner < Data
-      attr_reader public_id: String
-      attr_reader display_name: String
-      attr_reader status: String
-      attr_reader registration_identifier: String
-      attr_reader assignment_scope: String
-      attr_reader assignment_agent_public_id: String
-      def self.new: (public_id: String, display_name: String, status: String, registration_identifier: String, assignment_scope: String, assignment_agent_public_id: String) -> instance
-    end
-
     class APIKey < Data
       attr_reader public_id: String
       attr_reader name: String

@@ -1,10 +1,9 @@
 require "cybros_agent"
 
 module Rho
-  # `rho disconnect [--runner]` revokes each stored owner's credentials and
-  # forgets it only after successful revocation. OAuth revokes its refresh
-  # lineage; API keys revoke their individual tokens. `--runner` leaves the
-  # Agent owner in place and changes the recorded mode from full to agent.
+  # `rho disconnect` revokes the connection owner's credentials and forgets
+  # them only after successful revocation. OAuth revokes its refresh lineage;
+  # API keys revoke their individual tokens.
   #
   # ONE FLOW for the daemon's route (which adds the in-flight refusal and
   # the lineage edges) and the daemon-less CLI (under the boot lock). What
@@ -17,21 +16,13 @@ module Rho
 
     # `credentials` is the `Rho::Credentials` holder; `identity` its
     # identity; `executor_client` builds the runner's inbox reader.
-    def call(home:, identity:, credentials:, runner_only:, executor_client:, log: nil)
+    def call(home:, identity:, credentials:, executor_client:, log: nil)
       unclaimed = unclaimed_count(credentials, executor_client, log)
       revoked = []
       if credentials.runner?
         credentials.runner.revoke
         revoked << "runner"
       end
-      if runner_only
-        remaining = identity.runner_mode? ? identity : identity.without_runner
-        Rho::StateFile.new(home.connection_pointer_path).write(remaining.pointer_document)
-        remaining.record(clock: -> { Time.now })
-        return Result.new(revoked: revoked, unclaimed: unclaimed,
-          runner_executor_public_id: identity.runner_executor_public_id, identity: remaining, mode: remaining.mode)
-      end
-
       if credentials.agent?
         credentials.agent.revoke
         revoked << "agent"
@@ -45,9 +36,10 @@ module Rho
     # ONE `inbox.list` on the runner credential; a read that fails costs
     # the count, never the disconnect.
     def unclaimed_count(credentials, executor_client, log)
-      return 0 unless credentials.runner?
+      owner = credentials.agent || credentials.runner
+      return 0 unless owner
 
-      page = executor_client.call(credentials.runner_credential).inbox.list
+      page = executor_client.call(owner.executor_credential).inbox.list
       page.items.count { |row| !row.claimed }
     rescue CybrosAgent::Error => error
       log&.warn("disconnect.inbox_unread", error_class: error.class.name)

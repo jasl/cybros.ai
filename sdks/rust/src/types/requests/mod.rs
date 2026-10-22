@@ -236,7 +236,10 @@ query!(HistoryQuery {
     execution_prefix: String
 });
 query!(ModelListQuery { workload: Workload });
-query!(ExecutorListQuery { kind: MachineKind });
+query!(ExecutorListQuery {
+    kind: crate::types::names::ExecutorKind,
+    role: crate::types::names::ExecutorKind
+});
 query!(MaterializationQuery {
     include_hidden: bool
 });

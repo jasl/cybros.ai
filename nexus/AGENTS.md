@@ -11,7 +11,7 @@ Entry point for work under `nexus/`. Read the root `AGENTS.md` first, then:
 
 - Nexus is product-blind: no concrete agent product names, no product prompt text (prompt
   MEANING), and no routing policy in `nexus/app/**`. Prompt assembly, templates and persona
-  entities are kernel mechanism (`.ai/nexus.md`); product policy belongs to agent applications
+  entities are kernel mechanism (`.ai/nexus.md`); product policy belongs to agents
   built on the API.
 - Minimize development-only code in Nexus, preferring `nexus/test/**` or the owning root `e2e/**`
   project without a blanket location ban (`.ai/repository.md`, Development And Test Placement).

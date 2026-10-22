@@ -132,12 +132,12 @@ class AgentAPI::V1::Executors::ClaimStatusTest < ActionDispatch::IntegrationTest
     connection = connect_runner(manager: manager, registration_identifier: "claim-status-provider",
       assignment_scope: :account_wide, executor_kind: :tool_provider)
     executor = connection.executor_access_token.executor
-    assert_predicate executor.announce(tools: [{ "name" => "remote_read",
-      "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }]), :accepted?
+    assert_predicate executor.announce(services: { executor.executor_kind => { "tools" => [{ "name" => "remote_read",
+      "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED }] } }), :accepted?
     run = start_loop(seed(tool("held", "remote_read"), default_runner_executor_public_id: nil))
     token = claim(run, secret: connection.executor_access_secret)
     assert_nil task(run).addressed_executor_id
-    assert_predicate executor.announce(tools: []), :accepted?
+    assert_predicate executor.announce(services: { executor.executor_kind => { "tools" => [] } }), :accepted?
     assert_equal :removed, manager.remove
     Executor.converge
     assert_predicate executor.reload, :shutdown_pending?
@@ -153,7 +153,7 @@ class AgentAPI::V1::Executors::ClaimStatusTest < ActionDispatch::IntegrationTest
     replacement = connect_runner(manager: users(:owner), registration_identifier: "replacement",
       assignment_scope: :account_wide)
     runner = replacement.executor_access_token.executor
-    assert_predicate runner.announce(tools: TEST_SERVED_TOOLS), :accepted?
+    assert_predicate runner.announce(services: { runner.executor_kind => { "tools" => TEST_SERVED_TOOLS } }), :accepted?
     assert_predicate Executors::DefaultRunner.call(Executors::DefaultRunner::Command.new(
       host: run, executor_public_id: runner.public_id, acting_user: @human
     )), :accepted?

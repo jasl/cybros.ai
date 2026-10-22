@@ -1,5 +1,5 @@
 use super::*;
-use crate::types::member::{ServedDocument, ServedTool};
+use crate::types::member::ExecutorServices;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Runner {
@@ -8,8 +8,8 @@ pub struct Runner {
     pub display_name: Option<String>,
     pub status: crate::types::names::ExecutorStatus,
     pub manager_public_id: String,
-    pub assignment_scope: crate::types::names::AssignmentScope,
-    pub assignment_agent_public_id: Option<String>,
+    pub assignment_scope: Option<crate::types::names::AssignmentScope>,
+    pub service_roles: Vec<String>,
     pub credential_readiness: String,
     pub eligible_for_current_user: bool,
     pub presence: String,
@@ -24,9 +24,7 @@ pub struct Runner {
 pub struct RunnerDetail {
     #[serde(flatten)]
     pub runner: Runner,
-    pub served_tools: Vec<ServedTool>,
-    pub served_documents: Vec<ServedDocument>,
-    pub environment: JsonObject,
+    pub services: ExecutorServices,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -7,8 +7,8 @@ module CybrosAgent
   # codepoint-sorted, no insignificant whitespace, raw UTF-8, a zero float
   # spelled `0.0` (`content_addressing.json`, `encoding: canonical_json`)
   # — never on the bytes a caller happened to send. `ENVELOPE_BOUND` is
-  # the bound on an executor's announcement (`served_tools`,
-  # `served_documents`), which the kernel refuses WHOLE above it; an
+  # the bound on an executor's announcement (`services.runner.tools`,
+  # `services.runner.documents`), which the kernel refuses WHOLE above it; an
   # announcer composing several sources into one PUT measures each here
   # first (rho-mcp's per-server budget). Pinned against the pack's value
   # and its canonical vectors by the gem's own test.

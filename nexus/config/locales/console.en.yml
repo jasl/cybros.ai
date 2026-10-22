@@ -60,7 +60,6 @@ en:
       runner: Runner
       tool_provider: Tools provider
     assignment_scopes:
-      agent_private: Application-private
       user_private: Human-private
       account_wide: Account-wide
   executors:
@@ -107,12 +106,6 @@ en:
         also: Also
       agent_program: Agent program
       expires_from_now: "%{time} from now"
-      combined_runner: >-
-        Also runs as a runner on that machine — it can read, write and run commands there — private
-        to this application and its named Agents.
-      agent_private_runner: >-
-        This Runner is private to this application and its named Agents. Other applications, including
-        those you manage, cannot use it.
   pagination:
     summary: Showing %{from}–%{to} of %{total} %{noun}
     nouns:

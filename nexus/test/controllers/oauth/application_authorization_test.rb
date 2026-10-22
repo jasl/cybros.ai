@@ -32,10 +32,8 @@ class OAuth::ApplicationAuthorizationTest < ActionDispatch::IntegrationTest
       registration_identifier: "application-runner", runner_display_name: "Hidden runner name"
     )
 
-    assert_response :success
-    assert_select "p", text: /private to this application and its named Agents/
-    assert_select "input[name=account_wide]", count: 0
-    assert_select "body", text: /Hidden runner name/, count: 0
+    assert_response :bad_request
+    assert_nil response.headers["Location"]
   end
 
   test "adding a Runner through code consent fixes its application assignment and hides sharing" do
@@ -47,12 +45,8 @@ class OAuth::ApplicationAuthorizationTest < ActionDispatch::IntegrationTest
       assignment_agent_public_id: users(:agent).public_id
     )
 
-    assert_response :success
-    assert_select "p", text: /private to this application and its named Agents/
-    assert_select "input[name=account_wide]", count: 0
-    assert_select "input[name=expected_live_runner][value=absent]"
-    assert_select "input[name=assignment_agent_public_id][value=?]", users(:agent).public_id
-    assert_select "body", text: /Hidden runner name|#{Regexp.escape(users(:agent).display_name)}/, count: 0
+    assert_response :bad_request
+    assert_nil response.headers["Location"]
   end
 
   test "standalone code consent offers sharing only for a fresh Runner and renders the existing scope on reconnect" do
@@ -78,14 +72,14 @@ class OAuth::ApplicationAuthorizationTest < ActionDispatch::IntegrationTest
     assert_select "input[name=expected_live_runner][value=?]", runner.public_id
   end
 
-  test "code login mints distinct Human Agent and Runner planes after consent" do
-    code = approve_code(registration_identifier: "application-runner", runner_display_name: "Application runner")
+  test "code login mints Human and application authority after consent" do
+    code = approve_code
     assert_no_difference -> { AccessToken.count } do
       exchange(code, code_verifier: "wrong" * 10)
     end
     assert_equal "invalid_grant", response.parsed_body.fetch("error")
 
-    assert_difference -> { RefreshTokenFamily.count }, 3 do
+    assert_difference -> { RefreshTokenFamily.count }, 2 do
       exchange(code)
     end
     assert_response :success
@@ -94,7 +88,8 @@ class OAuth::ApplicationAuthorizationTest < ActionDispatch::IntegrationTest
     assert_equal "application", credentials.fetch("scope")
     assert_equal users(:member).public_id, credentials.dig("user", "public_id")
     assert_equal "member", credentials.dig("agent", "plane")
-    assert_equal "executor_transport", credentials.dig("runner", "plane")
+    assert_nil credentials["runner"]
+    assert credentials.dig("agent", "executor_access_token")
     agent = User.find_by!(public_id: credentials.fetch("agent_public_id"))
     assert_equal users(:member), agent.steward
     assert_equal "no-store", response.headers["Cache-Control"]

@@ -86,7 +86,7 @@ class Runs::TaskOperationsTest < ActiveJob::TestCase
   test "an unserved child is observed without replaying its parent" do
     parent = start_program
     child = queue_child(parent)
-    assert_predicate @runner.announce(tools: @runner.served_tools.select { |entry| entry.fetch("name") == "program" }), :accepted?
+    assert_predicate @runner.announce(services: { @runner.executor_kind => { "tools" => @runner.tools_for(:runner).select { |entry| entry.fetch("name") == "program" } } }), :accepted?
     Runs::ScheduleReady.call(run_id: parent.run_id)
 
     assert_equal %w[failed tool_not_served], child.reload.values_at(:status, :error_key)
@@ -270,9 +270,9 @@ class Runs::TaskOperationsTest < ActiveJob::TestCase
     end
 
     def announce_program(profile: Nexus::ToolRegistry::READ_ONLY_CLOSED)
-      assert_predicate @runner.announce(tools: RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
+      assert_predicate @runner.announce(services: { @runner.executor_kind => { "tools" => RunAuthoringTestHelper::TEST_SERVED_TOOLS + [{
         "name" => "program", "effect_profile" => profile,
-      }]), :accepted?
+      }] } }), :accepted?
     end
 
     def start_program(timeout_ms: 90_000, approval_rules: nil, model_defaults: nil)

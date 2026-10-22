@@ -9,13 +9,8 @@ module Rho
     # thread and the ceremony half of an orderly stop. No lock of its own:
     # the slot is the Lineage's.
     #
-    # THE CEREMONY DECIDES THE SHAPE: from idle, the mode's
-    # (full → combined, agent → A, runner → B); from `active`, from the
-    # planes the daemon still holds — the agent planes lost beside a live
-    # runner → A alone (a restore never fences a live runner plane); the
-    # agent planes live and the runner plane absent or lost under full mode
-    # → B for the in-process identifier (`pending_runner`); both lost →
-    # combined.
+    # Full and agent modes share one application credential lineage.
+    # Runner mode registers an independent machine address.
     class Ceremony
       include Stop
       include Disconnect
@@ -30,12 +25,10 @@ module Rho
       LOST_PLANE_STATES = %i[unauthorized absent].freeze
       LoginPlan = Data.define(:request, :credentials, :identity)
 
-      # The lineage edges (adopt, adopt_runner, settle, lose, lose_runner,
-      # transition) are the daemon's callbacks: what they do outside the
+      # The lineage edges (adopt, settle, lose, transition) are the daemon's callbacks: what they do outside the
       # monitor needs the server.
       def initialize(lineage:, home:, device_flow:, wire:, clock:, display_name:, log:, maintenance:,
-        announce:, adopt:, settle:, lose:, transition:, mode: "full", adopt_runner: ->(**) { nil },
-        lose_runner: ->(**) { nil })
+        announce:, adopt:, settle:, lose:, transition:, mode: "full")
         @lineage = lineage
         @home = home
         @device_flow = device_flow
@@ -46,10 +39,8 @@ module Rho
         @maintenance = maintenance
         @announce = announce
         @adopt = adopt
-        @adopt_runner = adopt_runner
         @settle = settle
         @lose = lose
-        @lose_runner = lose_runner
         @transition = transition
         @mode = mode
       end
@@ -99,8 +90,7 @@ module Rho
         end
 
         # `starting` has nothing to cancel yet; `activating`/`active` are past
-        # Consume; an error corpse with an authorization still asks Nexus. A
-        # `pending_runner` cancel leaves the daemon active with no runner.
+        # Consume; a failed ceremony with an authorization still asks Nexus.
         if phase == :active ||
             (slot.phase == :active && !%i[pending pending_runner error starting activating].include?(phase))
           return Refusal.new(status: 409, code: "already_connected", message: "Already connected")
@@ -139,16 +129,7 @@ module Rho
       # second browser ceremony; failure leaves it up and disconnected,
       # serving the flow that can fix it.
       def resume_stored
-        # Staging is the latest unfinished commit intent: replacement writes
-        # vault → session → pointer → deletes staging, so any crash before
-        # that last step resumes the replacement, not the older pointer —
-        # except either staged half on a full-mode daemon, which keeps the
-        # pointer's other lineage and needs it adopted first.
-        if @mode == "full" && %w[agent runner].include?(Connection.staged_branch(@home))
-          resume_pointer
-          resume_staged(existing: @lineage.credentials, existing_identity: @lineage.identity)
-          return
-        end
+        # Finish the latest staged installation before reading the durable pointer.
         return if resume_staged
         resume_pointer
       rescue StoredConnectionError, CybrosAgent::Error, Rho::Error => error
@@ -251,6 +232,11 @@ module Rho
 
           identity = Identity.from_pointer(home: @home, pointer: pointer).verify_belongs_here
           verify_mode(identity.mode)
+          unless identity.runner_mode?
+            identity = Identity.agent(home: @home, user_public_id: identity.user_public_id,
+              executor_public_id: identity.executor_public_id, mode: @mode,
+              agent_identifier: identity.agent_identifier)
+          end
           credentials = stored_credentials(identity)
 
           # The pointer says where to look; only a terminal refresh-lineage
@@ -260,15 +246,9 @@ module Rho
             oauth: credentials, base_url: @home.base_url, transport: @wire.api_transport,
             expected_identity: identity, mode: @mode
           ).check
-          if report[:lost] && !(@mode == "full" && credentials.runner? && !report[:runner_lost])
+          if report[:lost]
             @settle.call(@lineage.adopt_lost(identity: identity, credentials: credentials, report: report), :disconnected)
             return
-          end
-          if report[:runner_lost]
-            # The runner half answered terminally: adopted without it, the
-            # identity keeping the id so status can say what was lost.
-            credentials.drop_runner
-            @log.warn("runner.authority_lost", runner: identity.runner_executor_public_id)
           end
 
           @log.info("connection.resumed", mode: identity.mode,
@@ -284,7 +264,7 @@ module Rho
         # switch sentence.
         def verify_mode(stored)
           return if stored == @mode
-          return if stored == "agent" && @mode == "full"
+          return if %w[agent full].include?(stored) && %w[agent full].include?(@mode)
 
           raise StoredConnectionError,
             "this home was paired in mode #{stored}; settings say #{@mode} — `rho disconnect`, " \
@@ -304,8 +284,8 @@ module Rho
 
         def claim_connection(expected_credentials, shape)
           existing = expected_credentials.equal?(Lineage::UNCHECKED) ? nil : expected_credentials
-          candidate = build_connection(request: shape, existing: (existing if shape != :combined),
-            existing_identity: (@lineage.identity if existing && shape != :combined))
+          candidate = build_connection(request: shape, existing: existing,
+            existing_identity: (@lineage.identity if existing))
           unless candidate.reserve(notify: false)
             raise StateError, "a fresh Agent connection could not reserve the ceremony slot"
           end
@@ -355,16 +335,8 @@ module Rho
         # its runner under the daemon's monitor; every other shape adopts
         # the connection's holder whole.
         def adopt(connection)
-          if connection.adopts_runner?
-            @adopt_runner.call(about: connection.oauth, identity: connection.identity, runner: connection.runner_oauth,
-              authority_report: connection.authority_report)
-          else
-            @adopt.call(
-              identity: connection.identity,
-              credentials: connection.oauth,
-              authority_report: connection.authority_report
-            )
-          end
+          @adopt.call(identity: connection.identity, credentials: connection.oauth,
+            authority_report: connection.authority_report)
         end
 
         # `[state, about, shape]`: what the daemon still holds decides which
@@ -388,7 +360,6 @@ module Rho
             return [:unknown, about, nil] if planes.values.include?(:unknown)
 
             lost = planes.select { |_plane, state| LOST_PLANE_STATES.include?(state) }.keys
-            lost |= [:runner_transport] if report[:runner_lost] && planes.key?(:runner_transport)
             return [:complete, about, nil] if lost.empty?
 
             return [:recoverable, about, Connection.recovery_request(@mode, lost)]

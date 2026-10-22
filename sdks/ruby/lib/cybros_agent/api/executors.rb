@@ -22,11 +22,11 @@ module CybrosAgent
         @dispatch = dispatch
       end
 
-      # `kind:` is `runner` or `tool_provider`; omitted, both machine kinds
-      # list. An agent address is never listed — it binds nothing and is
-      # nobody's to address — and asking for it is the server's 400.
-      def list(kind: UNSET)
-        params = UNSET.equal?(kind) ? nil : { "kind" => required_string(kind, "kind") }
+      # Registration kind and offered role are independent filters.
+      def list(kind: UNSET, role: UNSET)
+        params = {}
+        params["kind"] = required_string(kind, "kind") unless UNSET.equal?(kind)
+        params["role"] = required_string(role, "role") unless UNSET.equal?(role)
         body = @dispatch.call(PATH, params: params)
         shapes(DiscoveredExecutor, body, "executors")
       end

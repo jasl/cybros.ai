@@ -99,7 +99,7 @@ class CeremonyResumeTest < Minitest::Test
     assert_empty oauth.requests, "the won bundle was on disk; nothing needed asking again"
   end
 
-  def test_a_restart_finishes_an_agent_only_restore_without_losing_its_runner
+  def test_a_restart_finishes_a_staged_application_restore
     oauth = NexusDoubles::FakeOAuth.new
     api = NexusDoubles::SelectiveApi.new
     fail_install = false
@@ -112,7 +112,7 @@ class CeremonyResumeTest < Minitest::Test
     end
     oauth.define_singleton_method(:post) do |path, params, timeout:|
       if path == "/oauth/token" && params[:grant_type] == CybrosAgent::DeviceFlow::Client::DEVICE_GRANT &&
-          branches.last == :agent
+          branches.length == 2
         fail_install = true
       end
       super(path, params, timeout: timeout)
@@ -128,7 +128,7 @@ class CeremonyResumeTest < Minitest::Test
     body = start_and_fail(daemon, token: token)
 
     assert_equal "agent", body.dig("connection", "branch")
-    assert_equal [:combined, :agent], oauth.branches
+    assert_equal [:agent, :agent], oauth.branches
     assert_equal "agent", Rho::StateFile.new(daemon.home.pending_connection_path).read.fetch("branch")
     assert_equal original.pointer_document, Rho::StateFile.new(daemon.home.connection_pointer_path).read
     @daemons.pop.stop
@@ -139,7 +139,7 @@ class CeremonyResumeTest < Minitest::Test
 
     assert_equal :active, restarted.phase
     assert_equal original.runner_executor_public_id, restarted.identity.runner_executor_public_id
-    assert_equal NexusDoubles::RUNNER_TOKEN, restarted.lineage.credentials.runner_credential
+    assert_equal NexusDoubles::TRANSPORT_TOKEN, restarted.lineage.credentials.executor_credential
     assert_equal restarted.identity.pointer_document, Rho::StateFile.new(restarted.home.connection_pointer_path).read
     assert_nil Rho::StateFile.new(restarted.home.pending_connection_path).read
     assert_empty resumed_oauth.requests, "the staged Agent grant must resume without re-pairing either address"
@@ -167,10 +167,10 @@ class CeremonyResumeTest < Minitest::Test
 
     assert_equal :active, restarted.phase
     plane_probes = refusing.calls.count { |path, _| %w[/agent_api/v1/profile /agent_api/v1/executor].include?(path) }
-    assert_equal 3, plane_probes, "every plane of the mode, the runner's on its own credential"
+    assert_equal 2, plane_probes, "member and the single application executor"
     assert_includes refusing.calls, ["/agent_api/v1/profile", NexusDoubles::MEMBER_TOKEN]
     assert_includes refusing.calls, ["/agent_api/v1/executor", NexusDoubles::TRANSPORT_TOKEN]
-    assert_includes refusing.calls, ["/agent_api/v1/executor", NexusDoubles::RUNNER_TOKEN]
+    refute_includes refusing.calls, ["/agent_api/v1/executor", NexusDoubles::RUNNER_TOKEN]
     body = JSON.parse(request(restarted, :get, "/status", token: bearer(restarted)).body)
     assert_equal "expired", body.dig("authority", "signed")
     refute_nil body.dig("authority", "measured_at")
@@ -223,10 +223,10 @@ class CeremonyResumeTest < Minitest::Test
     body = JSON.parse(request(restarted, :get, "/status", token: token).body)
     assert_equal "active", body["state"]
     assert_equal "full", body["mode"]
-    assert_equal "absent", body.dig("authority", "planes", "runner_transport")
+    refute body.fetch("authority").fetch("planes").key?("runner_transport")
     assert_equal "signed_in", body.dig("authority", "signed"), "the runner plane never moves the login word"
-    started = JSON.parse(request(restarted, :post, "/device/start", token: token).body)
-    assert_equal %w[runner pending_runner], started.values_at("branch", "phase")
+    wait_for { restarted.lineage.runner }
+    assert_equal restarted.identity.executor_public_id, restarted.identity.runner_executor_public_id
   end
 
   # A runner-mode restart resumes the one lineage from `runner_credentials.json`.

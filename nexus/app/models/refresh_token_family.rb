@@ -123,7 +123,7 @@ class RefreshTokenFamily < ApplicationRecord
         if bound_agent && (bound_agent.account_id != account_id || bound_agent.steward_id != user_id || !bound_agent.agent_member?)
           errors.add(:bound_agent, :foreign_account)
         end
-        if bound_runner && (bound_runner.account_id != account_id || bound_runner.manager_id != user_id || bound_runner.agent_application?)
+        if bound_runner && (bound_runner.account_id != account_id || bound_runner.manager_id != user_id || bound_runner.agent?)
           errors.add(:bound_runner, :foreign_account)
         end
         errors.add(:client_id, :invalid) unless client_id == OAuth::APPLICATION_CLIENT_ID

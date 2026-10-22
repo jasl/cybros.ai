@@ -93,10 +93,10 @@ test('API keys have no refresh lifecycle and refuse missing planes', () => {
   expect(keys.memberCredential()).toBe('key'); expect(() => keys.executorCredential()).toThrow(PlaneUnavailable);
 });
 const grant = () => ({ token_type: 'Bearer', plane: 'member', access_token: 'member', executor_access_token: 'executor', refresh_token: 'refresh', expires_in: 3600, runner: { token_type: 'Bearer', plane: 'executor_transport', access_token: 'runner', refresh_token: 'runner-refresh', expires_in: 1800 } });
-test('nested Runner grants validate their own authority and preserve their own expiry', async () => {
+test('retired nested Runner grants are refused', async () => {
   const value = grant();
   const flow = new DeviceFlow({ baseURL: 'http://nexus.example', fetch: async () => Response.json(value) });
-  const parsed = await flow.rotate('refresh'); expect(parsed.runner?.expires_in).toBe(1800); expect(parsed.runner?.executor_access_token).toBe('runner');
+  await expect(flow.rotate('refresh')).rejects.toBeInstanceOf(AuthorizationLost);
   for (const field of ['plane', 'token_type', 'expires_in'] as const) {
     const malformed = structuredClone(value) as unknown as { runner: Record<string, unknown> }; malformed.runner[field] = 'unknown';
     const invalid = new DeviceFlow({ baseURL: 'http://nexus.example', fetch: async () => Response.json(malformed) });

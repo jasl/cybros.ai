@@ -17,7 +17,7 @@ class AgentAPI::V1::Executors::AnnouncementsTest < ActionDispatch::IntegrationTe
 
   def announce(tools, secret: @transport.secret, **rest)
     put agent_api_v1_executor_announcement_path, headers: bearer(secret), as: :json,
-      params: { tools: tools, **rest }
+      params: { services: { agent: { tools: tools, **rest } } }
   end
 
   def bearer(secret) = { "Authorization" => "Bearer #{secret}" }
@@ -39,12 +39,12 @@ class AgentAPI::V1::Executors::AnnouncementsTest < ActionDispatch::IntegrationTe
     assert_not announced.fetch("executor").key?("served_tools"), "the announcement is not the executor's to read back"
     assert_not announced.key?("environment"), "nor is the environment"
 
-    assert_equal %w[bash read_file], @executor.reload.served_tools.map { |entry| entry["name"] }
-    assert_equal 30_000, @executor.serving("bash").fetch("timeout_ms")
-    assert_equal "Run a command", @executor.serving("bash").fetch("description")
-    assert_equal READ_SCHEMA, @executor.serving("bash").fetch("input_schema")
-    assert_equal "/w", @executor.environment.fetch("root")
-    assert_equal ["rho.coding"], @executor.environment.fetch("fragments").map { |fragment| fragment["extension"] }
+    assert_equal %w[bash read_file], @executor.reload.tools_for(@executor.reload.executor_kind).map { |entry| entry["name"] }
+    assert_equal 30_000, @executor.serving("bash", role: @executor.executor_kind).fetch("timeout_ms")
+    assert_equal "Run a command", @executor.serving("bash", role: @executor.executor_kind).fetch("description")
+    assert_equal READ_SCHEMA, @executor.serving("bash", role: @executor.executor_kind).fetch("input_schema")
+    assert_equal "/w", @executor.environment_for(:agent).fetch("root")
+    assert_equal ["rho.coding"], @executor.environment_for(:agent).fetch("fragments").map { |fragment| fragment["extension"] }
   end
 
   test "an empty list clears what was served" do
@@ -52,7 +52,7 @@ class AgentAPI::V1::Executors::AnnouncementsTest < ActionDispatch::IntegrationTe
     assert_response :success
     announce([])
     assert_response :success
-    assert_equal [], @executor.reload.served_tools
+    assert_equal [], @executor.reload.tools_for(@executor.reload.executor_kind)
   end
 
   test "a member bearer is fenced from the executor plane" do
@@ -71,7 +71,7 @@ class AgentAPI::V1::Executors::AnnouncementsTest < ActionDispatch::IntegrationTe
       assert_equal "tools[0].name names a reserved kernel namespace (#{namespace})",
         response.parsed_body.dig("error", "message"), name
     end
-    assert_equal [], @executor.reload.served_tools, "a refusal writes nothing"
+    assert_equal [], @executor.reload.tools_for(@executor.reload.executor_kind), "a refusal writes nothing"
   end
 
   # Admitted by the door and never addressed until a workspace opts in: honest and inert. The dotted
@@ -79,7 +79,7 @@ class AgentAPI::V1::Executors::AnnouncementsTest < ActionDispatch::IntegrationTe
   test "an overridable kernel wire name is admitted and stored as announced" do
     announce([{ name: "memory_read", effect_profile: READ }])
     assert_response :success
-    assert @executor.reload.served?("memory_read")
+    assert @executor.reload.served?("memory_read", role: @executor.reload.executor_kind)
 
     announce([{ name: "nexus.memory.read", effect_profile: READ }])
     assert_response :unprocessable_content
@@ -120,7 +120,7 @@ class AgentAPI::V1::Executors::AnnouncementsTest < ActionDispatch::IntegrationTe
       documents: [{ name: "deploy-notes", description: "How this project is deployed.", kind: "skill" }])
     assert_response :success
     assert_equal [{ "name" => "deploy-notes", "description" => "How this project is deployed." }],
-      @executor.reload.served_documents
+      @executor.reload.documents_for(@executor.reload.executor_kind)
     assert_not response.parsed_body.fetch("executor").key?("served_documents"), "not the executor's to read back"
 
     [
@@ -135,28 +135,28 @@ class AgentAPI::V1::Executors::AnnouncementsTest < ActionDispatch::IntegrationTe
       assert_equal "invalid_announcement", response.parsed_body.dig("error", "code"), documents.inspect
       assert_includes response.parsed_body.dig("error", "message"), message
     end
-    assert_equal ["deploy-notes"], @executor.reload.served_documents.map { |entry| entry["name"] }, "a refusal writes nothing"
+    assert_equal ["deploy-notes"], @executor.reload.documents_for(@executor.reload.executor_kind).map { |entry| entry["name"] }, "a refusal writes nothing"
 
     announce([{ name: "skill", effect_profile: READ }])
     assert_response :success
-    assert_equal [], @executor.reload.served_documents, "whole replacement: absent clears"
+    assert_equal [], @executor.reload.documents_for(@executor.reload.executor_kind), "whole replacement: absent clears"
   end
 
   test "a missing environment is an empty document, not a bad request" do
     announce([{ name: "bash", effect_profile: READ }], environment: { root: "/w" })
     assert_response :success
-    assert_equal({ "root" => "/w" }, @executor.reload.environment)
+    assert_equal({ "root" => "/w" }, @executor.reload.environment_for(:agent))
 
     announce([{ name: "bash", effect_profile: READ }])
     assert_response :success
-    assert_equal({}, @executor.reload.environment, "whole replacement: absent clears")
+    assert_equal({}, @executor.reload.environment_for(:agent), "whole replacement: absent clears")
   end
 
   test "an environment over its bound is validation_failed" do
     announce([], environment: { text: "a" * Nexus::SizeBounds.fetch(:executor_environment_bound) })
     assert_response :unprocessable_content
     assert_equal "validation_failed", response.parsed_body.dig("error", "code")
-    assert_includes response.parsed_body.dig("error", "message"), "Environment"
+    assert_includes response.parsed_body.dig("error", "message"), "Services"
   end
 
   test "the body is read opaque: a non-list is refused and a missing list is a bad request" do
@@ -167,5 +167,47 @@ class AgentAPI::V1::Executors::AnnouncementsTest < ActionDispatch::IntegrationTe
     put agent_api_v1_executor_announcement_path, headers: bearer(@transport.secret), as: :json, params: {}
     assert_response :bad_request
     assert_equal "parameter_missing", response.parsed_body.dig("error", "code")
+  end
+  test "an application announces isolated roles and discovery filters by role independently of kind" do
+    services = {
+      agent: { tools: [{ name: "skill", effect_profile: READ }],
+        documents: [{ name: "app", description: "Application skill" }] },
+      runner: { tools: [{ name: "skill", effect_profile: READ }],
+        documents: [{ name: "project", description: "Project skill" }], environment: { root: "/work" } },
+    }
+    put agent_api_v1_executor_announcement_path, headers: bearer(@transport.secret), as: :json,
+      params: { services: services }
+    assert_response :success
+    assert_equal %w[agent runner], response.parsed_body.dig("executor", "service_roles")
+    member = AccessTokens::IssueAPIKey.call(user: @executor.agent, name: "Application member")
+    get agent_api_v1_executors_path, headers: bearer(member.secret), params: { role: "runner" }
+    assert_response :success
+    row = response.parsed_body.fetch("executors").sole
+    assert_equal "agent", row.fetch("kind")
+    assert_equal "app", row.dig("services", "agent", "documents", 0, "name")
+    assert_equal "project", row.dig("services", "runner", "documents", 0, "name")
+    get agent_api_v1_executors_path, headers: bearer(member.secret), params: { kind: "runner", role: "runner" }
+    assert_response :success
+    assert_empty response.parsed_body.fetch("executors")
+
+    put agent_api_v1_executor_announcement_path, headers: bearer(@transport.secret), as: :json,
+      params: { services: services.merge(tool_provider: { tools: [] }) }
+    assert_response :unprocessable_content
+    assert_equal "invalid_announcement", response.parsed_body.dig("error", "code")
+    assert_equal %w[agent runner], @executor.reload.service_roles
+  end
+
+  test "the retired agent role spelling cannot replace or supplement the announcement" do
+    original = @executor.services.document
+    [
+      { agent_application: { tools: [] } },
+      { agent: { tools: [] }, agent_application: { tools: [] } },
+    ].each do |services|
+      put agent_api_v1_executor_announcement_path, headers: bearer(@transport.secret), as: :json,
+        params: { services: services }
+      assert_response :unprocessable_content
+      assert_equal "invalid_announcement", response.parsed_body.dig("error", "code")
+      assert_equal original, @executor.reload.services.document
+    end
   end
 end
