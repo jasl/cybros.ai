@@ -17,7 +17,7 @@ that same catalog available.
 
 `git`, `git-lfs`, `gh`, `rg`, `fd`, `jq`, `zip`, `unzip`, `xz`, C/C++ compilers,
 `cmake`, `ninja`, `sqlite3`, and common development headers are installed. The preinstalled
-project runtimes are Node LTS with npm, Go, Rust Stable and Python 3.14. Node, Go and Rust
+project runtimes are Node LTS with npm, Go, Rust Stable and Python 3.15. Node, Go and Rust
 are managed by `mise`; Python is managed by `uv`. Rust includes cargo, rustc, rustfmt and
 clippy without the rust-docs component. `pnpm`, `prettier`, `eslint`, `typescript`, `ruff`,
 `pyright` and `mypy` are available. Image releases pin concrete runtime versions in the
@@ -40,14 +40,14 @@ Choose the runtime and version the project needs; these commands update its mise
 and require network access for uncached downloads. rho's own portable Ruby is independent of
 project Ruby. The default rho user's `~/.gemrc` sets RubyGems to `--no-document`.
 
-`uv` and `uvx` are available, with Python 3.14 preinstalled. Install another Python only when
+`uv` and `uvx` are available, with Python 3.15 preinstalled. Install another Python only when
 the project needs it, for example `uv python install 3.13`. Run project commands with that
 version using `uv run --python 3.13 python script.py`; their dependencies remain separate
 from the Cowork environment below.
 
 ## Documents, spreadsheets, slides, PDFs and images
 
-`python` and `python3` default to `/opt/cowork/bin`, a Python 3.14 virtual environment.
+`python` and `python3` default to `/opt/cowork/bin`, a Python 3.15 virtual environment.
 It includes `python-docx`, `openpyxl`, `python-pptx`, `pypdf`, `reportlab`, `Pillow`,
 `pandas` and `matplotlib`. Use these imports directly:
 

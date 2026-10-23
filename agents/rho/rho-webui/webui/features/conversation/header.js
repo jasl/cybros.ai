@@ -3,6 +3,7 @@ import { t } from "../../kernel/i18n.js";
 import { listOutlet } from "../../kernel/outlets.js";
 import { iconButton, menuButton, tag } from "../../primitives/index.js";
 import { conversationControls } from "./lifecycle.js";
+import { openMemoryBindings } from "./memory_bindings.js";
 
 const composing = (event) => event.isComposing || event.keyCode === 229;
 
@@ -29,6 +30,7 @@ export function createHeader({ conversations, shell }) {
   let outlet = null;
   let outletFor;
   let shownReview;
+  let memory;
 
   function menuItems() {
     const value = get();
@@ -38,6 +40,11 @@ export function createHeader({ conversations, shell }) {
       { type: "item", label: t("conversation.rename"), icon: "rename", disabled: !controls.writable, onSelect: rename },
       { type: "item", label: restore ? t("conversation.restore") : t("common.archive"), icon: restore ? "restore" : "archive",
         disabled: !controls.writable, onSelect: () => (restore ? conversations.restore(value.id) : conversations.archive(value.id)) },
+      { type: "item", label: t("memory_bindings.title"), icon: "thought", disabled: !value.detail || value.access === "unavailable",
+        onSelect: () => {
+          memory?.dispose();
+          memory = openMemoryBindings({ editor: conversations.memoryEditor(), writable: controls.send, id: value.id });
+        } },
       ...(value.review ? [{ type: "separator" }, reviewItem(value, controls)] : []),
       { type: "separator" },
       { type: "item", label: t("common.refresh"), icon: "refresh", onSelect: () => conversations.refresh() },
@@ -111,6 +118,7 @@ export function createHeader({ conversations, shell }) {
     runner.hidden = !value.id || !value.detail;
     menu.element.hidden = !value.id;
     if (editor && value.id !== editor.id) editor.cancel();
+    if (memory && value.id !== memory.id) { memory.dispose(); memory = null; }
   }
 
   const stops = [
@@ -119,6 +127,6 @@ export function createHeader({ conversations, shell }) {
   ];
   return {
     element,
-    dispose() { for (const stop of stops) stop(); outlet?.dispose(); menu.dispose(); },
+    dispose() { for (const stop of stops) stop(); outlet?.dispose(); menu.dispose(); memory?.dispose(); },
   };
 }

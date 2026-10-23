@@ -107,15 +107,7 @@ module CybrosAgent
         StoreEntriesContext.new(dispatch: @dispatch, path: "#{path}/store_entries")
       end
 
-      # THE ROOM'S OWN MEMORY DOOR: the
-      # `workspace/` scope without a conversation — the rows every
-      # conversation of this workspace assembles from, written and read
-      # here by anyone with write standing on the room. The same four
-      # verbs as `chat.memory`; this door serves `workspace/` alone, and
-      # refuses the other two scopes `memory_scope_unavailable`. While the
-      # workspace's memory is overridden to a provider every plain verb
-      # answers `Conflict` `memory_overridden` — a `skills/` path passes.
-      def memory = MemoryContext.new(dispatch: @dispatch, path: "#{path}/memory")
+      def memory_collections = OwnedMemoryCollectionsContext.new(dispatch: @dispatch, path: "#{path}/memory_collections")
 
       # THE PRINCIPALS LISTING: who may be named on a conversation's
       # access carrier — every member with access to this workspace, of

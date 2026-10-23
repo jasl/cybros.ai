@@ -1,7 +1,7 @@
 module Runs
   # The drain's recovering sweep and hard end: quiescence re-evaluated
   # level-triggered over every canceling loop, and a drain older than the
-  # longest park escalates to the forced-stop arm — the bound on what a hang
+  # finite park ceiling escalates to the forced-stop arm — the bound on what a hang
   # can cost. The job is its shell.
   class DrainSweep
     HARD_LIMIT = ::Tasks::AwaitTask::MAX_HOLD

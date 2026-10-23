@@ -1,0 +1,303 @@
+# The deploy remote uses Linux Docker runners accepting untagged jobs.
+# Keep the bounded checks aligned with .github/workflows/ci.yml.
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+stages: [test]
+
+default:
+  interruptible: true
+  timeout: 20m
+
+variables:
+  # Docker's latest published Ruby image as of 2026-10-24.
+  RUBY_VERSION: "4.0.8"
+  BUN_VERSION: "1.4.4"
+  BUNDLE_FROZEN: "true"
+  DEBIAN_FRONTEND: noninteractive
+
+.bun_setup:
+  before_script: &install_bun
+    - export BUN_INSTALL=/usr/local/bun
+    - export PATH="$BUN_INSTALL/bin:$PATH"
+    - curl -fsSL https://bun.sh/install | bash -s -- "bun-v${BUN_VERSION}"
+
+.ruby:
+  image: ruby:${RUBY_VERSION}
+  cache:
+    key: ruby-${RUBY_VERSION}-${CI_JOB_NAME_SLUG}
+    paths:
+      - vendor/bundle/
+  before_script: &ruby_setup
+    - apt-get update -qq
+    - apt-get install --no-install-recommends -y curl unzip ${CI_APT_PACKAGES:-}
+    # The Ruby image sets BUNDLE_APP_CONFIG globally. Each project needs its own
+    # config so isolated E2E children can find their bundle after clearing ENV.
+    - unset BUNDLE_APP_CONFIG
+    - cd "$CI_PROJECT_DIR/$PROJECT_DIR"
+    - bundle config set --local path "$CI_PROJECT_DIR/vendor/bundle"
+    - bundle config set --local frozen true
+    - bundle install --jobs 1
+
+.ruby_bun:
+  extends: .ruby
+  before_script:
+    - *ruby_setup
+    - *install_bun
+
+.gem:
+  extends: .ruby
+  script:
+    - bundle exec rake
+    - bundle exec rake build
+
+.postgres:
+  services:
+    - name: postgres:18
+      alias: postgres
+  variables:
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    POSTGRES_DB: postgres
+    RAILS_DB_URL_BASE: postgres://postgres:postgres@postgres:5432
+    PGHOST: postgres
+    PGPORT: "5432"
+    PGUSER: postgres
+    PGPASSWORD: postgres
+
+.nexus:
+  extends: .ruby_bun
+  variables:
+    PROJECT_DIR: nexus
+    CI_APT_PACKAGES: libpq-dev libvips
+
+nexus_lint:
+  extends: .nexus
+  script:
+    - ruby ../bin/lint-eof
+    - bin/brakeman --no-pager
+    - bin/bundler-audit
+    - bin/rubocop
+    - bundle exec archspec check
+
+nexus_lint_js:
+  image: node:24-bookworm
+  before_script:
+    - apt-get update -qq
+    - apt-get install --no-install-recommends -y unzip
+    - *install_bun
+  script:
+    - cd nexus
+    - bun install --frozen-lockfile
+    - bun run lint:js
+    - bun run test:js
+    - node --version
+    - |
+      bun -e 'const s = require("./package.json").scripts; for (const [k, v] of Object.entries(s)) { if (!/^bun( |$)/.test(v)) { console.error(k + " does not run under bun: " + v); process.exit(1) } }'
+      bun -e 'if (!process.versions.bun) process.exit(1)'
+
+nexus_test:
+  extends: [.nexus, .postgres]
+  variables:
+    RAILS_ENV: test
+  script:
+    - EDITOR=cat bin/rails credentials:edit
+    - bin/test-smoke
+  artifacts:
+    when: on_failure
+    expire_in: 7 days
+    paths:
+      - nexus/log/test.log
+
+nexus_system_test:
+  extends: [.nexus, .postgres]
+  variables:
+    RAILS_ENV: test
+    CI_APT_PACKAGES: libpq-dev libvips chromium chromium-driver
+    SE_BROWSER_PATH: /usr/local/bin/chrome-ci
+  script:
+    # Chromium runs inside the disposable job container as root. Keep these
+    # flags in CI instead of changing the application's browser assertions.
+    - |
+      cat > "$SE_BROWSER_PATH" <<'SH'
+      #!/bin/sh
+      exec /usr/bin/chromium --no-sandbox --disable-dev-shm-usage "$@"
+      SH
+      chmod +x "$SE_BROWSER_PATH"
+    - EDITOR=cat bin/rails credentials:edit
+    - bin/rails db:test:prepare test:system
+  artifacts:
+    when: on_failure
+    expire_in: 7 days
+    paths:
+      - nexus/tmp/screenshots/
+      - nexus/log/test.log
+
+simple_inference:
+  extends: .ruby
+  variables:
+    PROJECT_DIR: nexus/vendor/simple_inference
+  script:
+    - bundle exec rake
+
+agent_sdk_ruby:
+  extends: .gem
+  variables:
+    PROJECT_DIR: sdks/ruby
+
+agent_sdk_typescript:
+  image: node:${NODE_VERSION}-bookworm
+  parallel:
+    matrix:
+      - NODE_VERSION: ["22", "24"]
+  cache:
+    key: pnpm-${NODE_VERSION}
+    paths:
+      - .cache/pnpm/
+  before_script:
+    - cd sdks/typescript
+    - npm install --global "$(node -p 'require("./package.json").packageManager')"
+    - pnpm install --frozen-lockfile --store-dir "$CI_PROJECT_DIR/.cache/pnpm"
+  script:
+    - pnpm run check
+
+agent_sdk_rust:
+  image: rust:1.99.1
+  variables:
+    CARGO_HOME: $CI_PROJECT_DIR/.cache/cargo
+  cache:
+    key: rust-1.99.1
+    paths:
+      - .cache/cargo/registry/
+      - .cache/cargo/git/
+      - sdks/rust/target/
+  before_script:
+    - rustup component add rustfmt clippy
+    - rustup toolchain install 1.88.0 --profile minimal
+    - cd sdks/rust
+  script:
+    - bin/ci
+
+cmctl:
+  extends: .gem
+  variables:
+    PROJECT_DIR: cmctl
+
+agent_rho:
+  extends: .gem
+  variables:
+    PROJECT_DIR: agents/rho/rho
+    CI_APT_PACKAGES: shellcheck
+  script:
+    - bundle exec rake smoke rubocop rbs:validate install:check
+    - bundle exec rake build
+    - RHO_INSTALL_TEST_OFFLINE=1 ../../../install/test/run.sh
+
+agent_rho_runner:
+  extends: .gem
+  variables:
+    PROJECT_DIR: agents/rho/rho-runner
+    CI_APT_PACKAGES: ripgrep fd-find
+
+agent_rho_t3:
+  extends: [.gem, .ruby_bun]
+  variables:
+    PROJECT_DIR: agents/rho/rho-t3
+
+agent_rho_browser:
+  extends: .gem
+  variables:
+    PROJECT_DIR: agents/rho/rho-browser
+
+agent_rho_mcp:
+  extends: .gem
+  variables:
+    PROJECT_DIR: agents/rho/rho-mcp
+
+agent_rho_web_tools:
+  extends: .gem
+  variables:
+    PROJECT_DIR: agents/rho/rho-web-tools
+
+agent_rho_codemode:
+  extends: .gem
+  variables:
+    PROJECT_DIR: agents/rho/rho-codemode
+
+agent_rho_webui:
+  extends: [.gem, .ruby_bun]
+  variables:
+    PROJECT_DIR: agents/rho/rho-webui
+
+agent_rho_ingress_telegram:
+  extends: [.gem, .ruby_bun]
+  variables:
+    PROJECT_DIR: agents/rho/rho-ingress-telegram
+
+agent_rho_dev:
+  extends: .ruby
+  variables:
+    PROJECT_DIR: agents/rho/rho-dev
+  script:
+    - bundle exec rake
+
+agent_rho_acp:
+  extends: .gem
+  variables:
+    PROJECT_DIR: agents/rho/rho-acp
+
+agent_rho_acp_client:
+  extends: .gem
+  variables:
+    PROJECT_DIR: agents/rho/rho-acp-client
+
+guides_build:
+  image: oven/bun:${BUN_VERSION}
+  before_script:
+    # VitePress reads Git history when building page timestamps.
+    - apt-get update -qq
+    - apt-get install --no-install-recommends -y git
+  script:
+    - cd guides
+    - bun install --frozen-lockfile
+    - bun run build
+    - |
+      bun -e 'const s = require("./package.json").scripts; for (const [k, v] of Object.entries(s)) { if (!/^bun( |$)/.test(v)) { console.error(k + " does not run under bun: " + v); process.exit(1) } }'
+
+e2e:
+  extends: [.ruby, .postgres]
+  timeout: 30m
+  variables:
+    PROJECT_DIR: e2e
+    CI_APT_PACKAGES: libpq-dev libvips ripgrep fd-find
+    E2E_WORLDS: "1"
+    E2E_DEADLINE_SECONDS: "300"
+    E2E_TEARDOWN_DEADLINE_SECONDS: "60"
+    A: "-v"
+  before_script:
+    - *ruby_setup
+    - *install_bun
+    - |
+      for project in nexus agents/rho/rho; do
+        cd "$CI_PROJECT_DIR/$project"
+        bundle config set --local path "$CI_PROJECT_DIR/vendor/bundle"
+        bundle config set --local frozen true
+        bundle install --jobs 1
+      done
+    - cd "$CI_PROJECT_DIR/e2e"
+  script:
+    - |
+      set -o pipefail
+      mkdir -p tmp
+      bundle exec rake smoke_harness_test smoke rubocop 2>&1 | tee tmp/ci-smoke.log
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - e2e/artifacts/
+      - e2e/tmp/ci-smoke.log

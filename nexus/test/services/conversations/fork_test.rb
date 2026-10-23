@@ -17,7 +17,7 @@ class Conversations::ForkTest < ActiveSupport::TestCase
   end
 
   def create_conversation
-    Conversation.create!(workspace: @workspace, creating_user: @user)
+    Conversation.create!(workspace: @workspace, creating_user: @user).tap { |owner| MemoryCollection.default_for(owner) }
   end
 
   def build_turn(conversation:, position:, **overrides)
@@ -100,7 +100,7 @@ class Conversations::ForkTest < ActiveSupport::TestCase
   # room, and neither is the conversation's.
   test "a fork copies no user/ rows — they are the person's, not the conversation's" do
     @source.update!(memory_context: { "bindings" => %w[conversation workspace user].map do |scope|
-      { "name" => scope, "scope" => scope, "access" => "read_write" }
+      { "name" => scope, "source" => { "scope" => scope }, "access" => "read_write" }
     end })
     target = build_turn(conversation: @source, position: 0)
     build_variant(turn: target)
@@ -110,15 +110,15 @@ class Conversations::ForkTest < ActiveSupport::TestCase
     Conversations::Memory::Apply.write(expected: memory_expectation_for(conversation: @source, path: "user/notes.md", by: @user),
       conversation: @source, path: "user/notes.md", content: "mine", by: @user
     ).then { |result| assert_predicate result, :accepted?, result.outcome.inspect }
-    user_rows = MemoryDocument.for_user(@user.id).count
+    user_rows = @user.memory_documents.count
 
     result = fork!(turn: target)
 
     assert_predicate result, :accepted?
     child = result.value
     assert_equal ["conversation/plan.md"],
-      MemoryDocument.for_conversation(child.id).map(&:path)
-    assert_equal user_rows, MemoryDocument.for_user(@user.id).count
+      child.memory_documents.map(&:path)
+    assert_equal user_rows, @user.memory_documents.count
   end
 
   # A store row is MUTABLE, so it is copied as a current value with a fresh lock_version, never
@@ -336,6 +336,7 @@ class Conversations::ForkTest < ActiveSupport::TestCase
     )
     @source = Conversation.create!(workspace: @workspace, creating_user: @user,
       answering_user: users(:agent), default_runner_executor: runner)
+    MemoryCollection.default_for(@source)
     build_variant(turn: build_turn(conversation: @source, position: 0))
     settled = build_turn(conversation: @source, position: 1, kind: "direct_reply", role: "assistant")
     build_variant(turn: settled)
@@ -361,7 +362,7 @@ class Conversations::ForkTest < ActiveSupport::TestCase
     assert_equal [0, 1, 2], child.timeline.entries(surface: :timeline).map(&:position)
     assert_equal users(:agent), child.answering_user, "the stored answerer, never the derivation (Q6)"
     assert_equal runner.id, child.default_runner_executor_id
-    assert_equal ["conversation/plan.md"], MemoryDocument.for_conversation(child.id).map(&:path)
+    assert_equal ["conversation/plan.md"], child.memory_documents.map(&:path)
     assert_equal [{ "step" => 1 }], StoreEntry.for_conversation(child.id).pluck(:value)
     narration = @source.event_items.sole
     assert_equal "fork_created", narration.item_type

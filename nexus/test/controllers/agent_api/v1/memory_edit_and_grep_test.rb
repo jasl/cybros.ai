@@ -6,11 +6,12 @@ class AgentAPI::V1::MemoryEditAndGrepTest < ActionDispatch::IntegrationTest
     @workspace = workspaces(:shared)
     @secret = create_access_token_fixture(user: @human, name: "Memory editor").secret
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human)
+    @collection = MemoryCollection.default_for(@conversation)
   end
 
   test "each memory door searches and conditionally edits its own documents" do
     doors.each do |base, scope|
-      path = "#{scope}/notes.md"
+      path = "#{scope}notes.md"
       document = create_document(base, path, "first\nPLAN\nplan\n")
 
       post "#{base}/grep", headers: bearer, as: :json,
@@ -34,7 +35,7 @@ class AgentAPI::V1::MemoryEditAndGrepTest < ActionDispatch::IntegrationTest
 
   test "edit requires the observed row and refuses missing or ambiguous passages without changing it" do
     base, scope = doors.first
-    document = create_document(base, "#{scope}/notes.md", "same same")
+    document = create_document(base, "#{scope}notes.md", "same same")
     [["", "memory_edit_invalid"], ["absent", "memory_edit_not_found"], ["same", "memory_edit_ambiguous"]].each do |old_text, code|
       assert_no_difference -> { MemoryDocumentVersion.count } do
         post "#{base}/edit", headers: bearer, as: :json,
@@ -53,7 +54,7 @@ class AgentAPI::V1::MemoryEditAndGrepTest < ActionDispatch::IntegrationTest
   { "ASCII" => ["ababa", "aba"], "multibyte" => ["雪あいあいあ", "あいあ"] }.each do |kind, (content, old_text)|
     test "edit refuses overlapping #{kind} passages without changing the document" do
       doors.each do |base, scope|
-        document = create_document(base, "#{scope}/overlap.md", content)
+        document = create_document(base, "#{scope}overlap.md", content)
         stored = MemoryDocument.find_by!(public_id: document.fetch("public_id"))
 
         assert_no_changes -> { [stored.reload.memory_document_version_id, stored.lock_version,
@@ -102,7 +103,7 @@ class AgentAPI::V1::MemoryEditAndGrepTest < ActionDispatch::IntegrationTest
 
   test "an archived workspace allows grep but refuses edit" do
     base, scope = doors.fetch(1)
-    document = create_document(base, "#{scope}/notes.md", "plan")
+    document = create_document(base, "#{scope}notes.md", "plan")
     @workspace.update!(state: "archived", archived_at: Time.current)
 
     post "#{base}/grep", headers: bearer, as: :json, params: { memory: { pattern: "plan" } }
@@ -117,7 +118,7 @@ class AgentAPI::V1::MemoryEditAndGrepTest < ActionDispatch::IntegrationTest
 
   test "editing a skill preserves its description" do
     base, scope = doors.first
-    document = create_document(base, "#{scope}/skills/commit-style", "Old instructions", description: "Commit style")
+    document = create_document(base, "#{scope}skills/commit-style", "Old instructions", description: "Commit style")
     post "#{base}/edit", headers: bearer, as: :json,
       params: { memory: edit_fields(document, old_text: "Old", new_text: "New") }
 
@@ -132,20 +133,21 @@ class AgentAPI::V1::MemoryEditAndGrepTest < ActionDispatch::IntegrationTest
 
     def doors
       workspace = "/agent_api/v1/workspaces/#{@workspace.public_id}"
-      [["/agent_api/v1/profile/memory", "user"], ["#{workspace}/memory", "workspace"],
-       ["#{workspace}/conversations/#{@conversation.public_id}/memory", "conversation"]]
+      [["/agent_api/v1/memory_collections/#{MemoryCollection.default_for(@human).public_id}/documents", ""],
+       ["/agent_api/v1/memory_collections/#{MemoryCollection.default_for(@workspace).public_id}/documents", ""],
+       ["#{workspace}/conversations/#{@conversation.public_id}/memory", "conversation/"]]
     end
 
     def create_document(base, path, content, description: nil)
       post base, headers: bearer, as: :json,
         params: { memory: { path: path, content: content, description: description,
-                            expected_public_id: nil, expected_lock_version: nil } }
+                            expected_collection_public_id: @collection.public_id, expected_public_id: nil, expected_lock_version: nil } }
       assert_response :created
       response.parsed_body.fetch("memory")
     end
 
     def edit_fields(document, old_text:, new_text:)
       { path: document.fetch("path"), old_text: old_text, new_text: new_text,
-        expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version") }
+        expected_collection_public_id: document.fetch("collection_public_id"), expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version") }
     end
 end

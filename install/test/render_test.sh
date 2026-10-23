@@ -27,6 +27,7 @@ ruby -rjson -e '
   data = JSON.parse(File.read(path))
   data.fetch("runtime")["version"] = "9.8.7"
   data.fetch("tools").fetch("rg").fetch("artifacts").fetch("darwin-arm64")["sha256"] = "f" * 64
+  data.fetch("toolchains").fetch("native_coding")["allow_scripts"] = ["fixture-one", "@fixture/two"]
   File.write(path, JSON.pretty_generate(data) + "\n")
 ' "$copy/manifest.json"
 assert_exit 1 "manifest edits require rendering" -- check
@@ -66,3 +67,7 @@ grep -q "^RHO_MANIFEST_JSON=\$(cat <<'RHO_MANIFEST_JSON_EOF'" "$copy/install.sh"
 digest=$(/bin/bash -c '. "$1"; printf "%s" "$RHO_TOOL_rg_darwin_arm64_SHA256"' _ "$copy/manifest.sh")
 assert_eq "$digest" "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" "manifest.sh sources and carries the authored sha"
 pass "manifest.sh is a sourceable rendering"
+
+allowed_scripts=$(/bin/bash -c '. "$1"; printf "%s" "$RHO_NATIVE_CODING_ALLOW_SCRIPTS"' _ "$copy/manifest.sh")
+assert_eq "$allowed_scripts" "fixture-one,@fixture/two" "npm receives a comma-separated install-script approval list"
+pass "native coding install-script approvals retain scoped package names"

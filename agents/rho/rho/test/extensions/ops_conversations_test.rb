@@ -47,6 +47,10 @@ class OpsConversationsTest < Minitest::Test
         rows = archived == !@row["archived_at"].nil? ? [@row] : []
         return respond(200, { "conversations" => rows, "pagination" => { "next_after" => "page-2" } })
       end
+      if method == :post && path.end_with?("/conversations/c-1/memory_context")
+        @row["memory_context"] = body.fetch("memory_context")
+        return respond(200, { "conversation" => @row })
+      end
       if path.match?(%r{/conversations/c-1(?:/archive|/unarchive)?\z})
         case method
         when :patch
@@ -122,6 +126,22 @@ class OpsConversationsTest < Minitest::Test
     assert_nil row.dig("usage_summary", "cost_unit")
     assert_nil row.dig("usage_summary", "cache_hit_rate")
     assert_nil row.fetch("context")
+  end
+
+  def test_memory_binding_save_preserves_the_full_conversation_projection
+    daemon = member_ready(boot, CatalogApi.new)
+    response = request(daemon, :post, "/conversations/memory_context", token: bearer(daemon),
+      body: { "public_id" => "c-1", "memory_context" => { "bindings" => [] } })
+    assert_equal "200", response.code, response.body
+    saved = JSON.parse(response.body).fetch("conversation")
+    detail = JSON.parse(request(daemon, :get, "/conversations/detail?public_id=c-1", token: bearer(daemon)).body).fetch("conversation")
+
+    assert_equal({ "bindings" => [] }, saved.fetch("memory_context"))
+    assert_equal "runner-1", saved.fetch("default_runner").fetch("executor_public_id")
+    assert_equal 440, saved.fetch("usage_summary").fetch("total_tokens")
+    assert_equal "dev", saved.fetch("context").fetch("as_of_model").fetch("provider_id")
+    assert_equal "full", saved.fetch("access").fetch("entries").first.fetch("level")
+    assert_equal detail, saved
   end
 
   def test_inputs_do_not_need_a_remembered_host

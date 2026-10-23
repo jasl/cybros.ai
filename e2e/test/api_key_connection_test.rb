@@ -183,7 +183,6 @@ class ApiKeyConnectionTest < Minitest::Test
 
     def agent_path(agent) = "/api/v1/agents/#{agent.fetch("public_id")}"
 
-
     def issue_key(path, name)
       # Other journeys share this steward's issuance quota. Wait only for an
       # explicit refusal before continuing the credential lifecycle assertions.

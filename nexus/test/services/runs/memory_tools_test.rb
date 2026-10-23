@@ -55,7 +55,7 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
 
   def human_bindings
     { "bindings" => %w[conversation workspace user].map do |scope|
-      { "name" => scope, "scope" => scope, "access" => "read_write" }
+      { "name" => scope, "source" => { "scope" => scope }, "access" => "read_write" }
     end }
   end
 
@@ -155,7 +155,7 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
       { "path" => "conversation/plan.md", "content" => "the plan" })
     refute errored?(written), output(written)
     assert_includes output(written), "conversation/plan.md"
-    assert MemoryDocument.for_conversation(conversation.id).exists?(name: "plan.md")
+    assert conversation.memory_documents.exists?(name: "plan.md")
     assert_equal before + 1, conversation.reload.context_revision
 
     listed = run_tool!("memory_ls", { "path" => "conversation/" })
@@ -273,7 +273,7 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
   { "ASCII" => ["ababa", "aba"], "multibyte" => ["雪あいあいあ", "あいあ"] }.each do |kind, (content, old_text)|
     test "edit refuses overlapping #{kind} passages without changing the document" do
       run_tool!("memory_write", { "path" => "workspace/overlap.md", "content" => content })
-      document = MemoryDocument.for_workspace(@workspace.id).find_by!(name: "overlap.md")
+      document = @workspace.memory_documents.find_by!(name: "overlap.md")
 
       assert_no_changes -> { [document.reload.memory_document_version_id, document.lock_version, document.content] } do
         edited = run_tool!("memory_edit",
@@ -302,8 +302,8 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
     assert_includes output(refused), "memory_scope_unavailable"
     private_note = run_tool!("memory_write", { "path" => "agent/notes.md", "content" => "private Agent note" })
     refute errored?(private_note), output(private_note)
-    assert MemoryDocument.for_user(users(:agent).id).exists?(name: "notes.md")
-    assert_not MemoryDocument.for_user(users(:owner).id).exists?
+    assert users(:agent).memory_documents.exists?(name: "notes.md")
+    assert_not users(:owner).memory_documents.exists?
 
     human_documents!(users(:owner))
     read = run_tool!("memory_read", { "path" => "user/notes.md" })
@@ -331,9 +331,9 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
 
     written = run_tool!("memory_write", { "path" => "speaker/notes.md", "content" => "on the child" })
     refute errored?(written), output(written)
-    assert MemoryDocument.for_speaker(users(:agent).id, speaker.id).exists?(name: "notes.md")
-    assert_not MemoryDocument.for_user(users(:owner).id).exists?, "no implicit steward document"
-    assert_not MemoryDocument.for_user(@human.id).exists?, "not a Human-owned document"
+    assert MemoryCollection.default_for(users(:agent), speaker: speaker).memory_documents.exists?(name: "notes.md")
+    assert_not users(:owner).memory_documents.exists?, "no implicit steward document"
+    assert_not @human.memory_documents.exists?, "not a Human-owned document"
     binding = Executors::Inbox.scope_of(written).fetch(:bindings).find { |entry| entry[:name] == "speaker" }
     assert_equal users(:agent).public_id, binding.fetch(:agent_public_id)
     assert_equal speaker.public_id, binding.fetch(:speaker_public_id)
@@ -342,7 +342,7 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
     assert_equal "speaker/notes.md:1: on this speaker", output(run_tool!("memory_grep", { "path" => "speaker/", "pattern" => "this speaker" }))
     assert_match(/\Aspeaker\/notes.md /, output(run_tool!("memory_ls", { "path" => "speaker/" })))
     refute errored?(run_tool!("memory_delete", { "path" => "speaker/notes.md" }))
-    assert_not MemoryDocument.for_speaker(users(:agent).id, speaker.id).exists?
+    assert_not MemoryCollection.default_for(users(:agent), speaker: speaker).memory_documents.exists?
   end
 
   # A path names no Human. Another steward's agent resolves ITS steward's
@@ -371,7 +371,7 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
   # user rung of it is the loop's controlling Human's ONLY: a foreign
   # steward's user/ rows never appear, in a shared workspace or anywhere.
   test "empty-path ls and grep answer the union of three scopes, filtered to the loop's Human" do
-    foreign = Scopes::Anchor.call(path: "user/theirs.md", user: users(:member))
+    foreign = memory_anchor(path: "user/theirs.md", user: users(:member))
     MemoryDocuments::Write.call(anchor: foreign, expected: memory_expectation_at(foreign), content: "a foreign steward's note")
 
     human_documents!(users(:owner))
@@ -429,7 +429,7 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
   # THE HUMAN-B CASE: a turn's user/ is the TURN's principal's, never the conversation creator's. B
   # posting into A's conversation reads and writes B's scope; A's next turn sees none of it.
   test "a turn another Human posts into a conversation uses THAT Human's user/" do
-    owner_anchor = Scopes::Anchor.call(path: "user/owners.md", user: users(:owner))
+    owner_anchor = memory_anchor(path: "user/owners.md", user: users(:owner))
     MemoryDocuments::Write.call(anchor: owner_anchor, expected: memory_expectation_at(owner_anchor), content: "the owner's note")
 
     conversation = run_backed!(creating_user: users(:owner), acting_user: users(:member), memory_context: human_bindings)
@@ -437,8 +437,8 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
     assert_equal "No memory documents.", output(listed), "the owner's user/ is not this turn's"
 
     run_tool!("memory_write", { "path" => "user/members.md", "content" => "the member's note" })
-    assert MemoryDocument.for_user(users(:member).id).exists?(name: "members.md")
-    assert_not MemoryDocument.for_user(users(:owner).id).exists?(name: "members.md")
+    assert users(:member).memory_documents.exists?(name: "members.md")
+    assert_not users(:owner).memory_documents.exists?(name: "members.md")
 
     # The BLOCK, not the history: the history echoes B's tool call arguments.
     as_owner = Conversations::ContextAssembly.assemble(
@@ -471,7 +471,7 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
   # refuse a `skills/` path as data; `read`, `ls` and `grep` see the row as any document — the
   # recorded overlap (`ls` shows the storage, the catalog shows the merge).
   test "memory_write, memory_edit and memory_delete refuse skills/ paths; read and ls see the rows" do
-    anchor = Scopes::Anchor.call(path: "workspace/skills/commit-style", workspace: @workspace)
+    anchor = memory_anchor(path: "workspace/skills/commit-style", workspace: @workspace)
     MemoryDocument.transaction do
       anchor.lockable.lock!
       assert_predicate MemoryDocuments::Write.call(anchor: anchor, expected: memory_expectation_at(anchor), content: "# Commits\n",
@@ -485,7 +485,7 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
       assert errored?(node), verb
       assert_includes output(node), "memory_reserved_prefix", verb
     end
-    assert_equal "# Commits\n", MemoryDocument.for_workspace(@workspace.id).find_by!(name: "skills/commit-style").content
+    assert_equal "# Commits\n", @workspace.memory_documents.find_by!(name: "skills/commit-style").content
 
     written = run_tool!("memory_write", { "path" => "user/skills/mine", "content" => "x" })
     assert errored?(written)
@@ -506,7 +506,7 @@ class Runs::MemoryToolsTest < ActiveJob::TestCase
   # `read` answers; a name in neither rung is the one error word `skill_unknown`, an error result
   # the model reads on its next round.
   def skill_row!(path, content, description: "A description.", user: nil, agent: nil)
-    anchor = Scopes::Anchor.call(path: path, workspace: @workspace, user: user, agent: agent)
+    anchor = memory_anchor(path: path, workspace: @workspace, user: user, agent: agent)
     MemoryDocument.transaction do
       anchor.lockable.lock!
       result = MemoryDocuments::Write.call(anchor: anchor, expected: memory_expectation_at(anchor), content: content, description: description)

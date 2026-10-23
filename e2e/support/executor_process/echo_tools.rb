@@ -183,7 +183,6 @@ module E2E
 
     TOOLS = [Read, Grep, Ls, Find, SlowRead, SlowWrite, Capture, Structure].freeze
 
-
     class << self
       def names = TOOLS.map { |klass| klass::NAME }
 

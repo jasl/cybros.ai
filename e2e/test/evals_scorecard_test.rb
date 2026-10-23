@@ -487,7 +487,6 @@ class EvalsScorecardTest < Minitest::Test
     end
   end
 
-
   # THE FALLBACK'S WORK IS NEVER THE MODEL'S: a record whose refused steps the answerer's declared
   # fallback served (`facts.refusals_served`) is green, and counts toward the model under test only
   # in the `+M` term — `N (+M by fallback)/R`, the percentage over the model's own N — in the family

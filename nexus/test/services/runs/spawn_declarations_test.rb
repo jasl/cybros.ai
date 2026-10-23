@@ -11,11 +11,12 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
     @workspace = workspaces(:shared)
     DevModelLane.ensure_enabled!(@account)
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
+    MemoryCollection.default_for(@conversation)
     declare_tools!(@agent, tools: [Nexus::Tools::SPAWN, READ_TOOL])
     @catalog = [{ "name" => "reviewer", "description" => "Review the supplied task", "model_mode" => "caller",
       "declaration" => { "default_model" => "dev/mock-priced", "fallback_models" => ["dev/mock-unmetered"],
         "system_prompt" => { "content" => "Review the task carefully." },
-        "memory_context_limit" => { "bindings" => [{ "name" => "conversation", "scope" => "conversation", "access" => "read_write" }] } } }]
+        "memory_context_limit" => { "bindings" => [{ "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" }] } } }]
     @agent.update!(delegation_catalog: @catalog)
   end
 
@@ -34,11 +35,11 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
     assert_equal child.agent_configuration.as_json, brief.agent_configuration.as_json
     assert_equal @contexts, child.agent_configuration.executor_contexts
     assert_equal %w[dev mock-text], [brief.provider_id, brief.model_ref]
-    assert_equal ["conversation"], child.effective_memory_context.fetch("bindings").map { |entry| entry.fetch("scope") }
+    assert_equal ["conversation"], child.effective_memory_context.fetch("bindings").map { |entry| entry.fetch("source").fetch("scope") }
 
     @agent.update!(delegation_catalog: [], default_model: "dev/mock-priced", memory_context_limit: nil)
     assert_equal "Review the task carefully.", child.reload.agent_configuration.system_prompt.content
-    assert_equal ["conversation"], child.effective_memory_context.fetch("bindings").map { |entry| entry.fetch("scope") }
+    assert_equal ["conversation"], child.effective_memory_context.fetch("bindings").map { |entry| entry.fetch("source").fetch("scope") }
   end
 
   test "a declaration's default model and a task's explicit override stay distinct" do
@@ -190,7 +191,7 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
     assert_equal "route", grandchild.model_selection.constraint
     assert_equal "inherited", grandchild.model_selection.source
     assert_equal ["reviewer"], grandchild.agent_configuration.delegation_catalog.map(&:name)
-    assert_equal ["conversation"], grandchild.effective_memory_context.fetch("bindings").map { |entry| entry.fetch("scope") }
+    assert_equal ["conversation"], grandchild.effective_memory_context.fetch("bindings").map { |entry| entry.fetch("source").fetch("scope") }
 
     fresh = spawn!({ "declaration" => "reviewer", "prompt" => "New independent request." })
     assert_nil child_of(fresh)
@@ -216,19 +217,21 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
     input = child_input(fork)
     assert_equal "Review the task carefully.", input.agent_configuration.system_prompt.content
     assert_equal "mock-text", input.model_ref
-    assert_equal ["conversation"], input.execution_memory_context.fetch("bindings").map { |entry| entry.fetch("scope") }
+    assert_equal ["conversation"], input.execution_memory_context.fetch("bindings").map { |entry| entry.fetch("source").fetch("scope") }
   end
 
   test "a declared child's tools skills and provider scope exclude private roots and other conversation aliases" do
     shared = Conversation.create!(workspace: @workspace, creating_user: @human)
-    configuration = { "bindings" => MemoryContext::DEFAULT.bindings.map { |binding| binding.to_h.transform_values { |value| value&.to_s }.compact.stringify_keys } + [
-      { "name" => "group", "scope" => "conversation", "access" => "read_write", "conversation_public_id" => shared.public_id },
+    MemoryCollection.default_for(shared)
+    MemoryCollection.default_for(@conversation)
+    configuration = { "bindings" => MemoryContext::DEFAULT.bindings.map(&:to_h) + [
+      { "name" => "group", "source" => { "scope" => "conversation", "conversation_public_id" => shared.public_id }, "access" => "read_write" },
     ] }
     @conversation.update!(memory_context: configuration)
     foreign = Conversations::Memory::Apply.write(conversation: shared, by: @human, path: "conversation/private.md",
       content: "Another task's fact", expected: nil)
     assert_predicate foreign, :accepted?
-    workspace_skill = MemoryDocuments::Write.call(anchor: Scopes::Anchor.call(path: "workspace/skills/private-guide", workspace: @workspace),
+    workspace_skill = MemoryDocuments::Write.call(anchor: memory_anchor(path: "workspace/skills/private-guide", workspace: @workspace),
       content: "Workspace guide", description: "Private workspace guidance", expected: nil)
     assert_predicate workspace_skill, :written?
     @catalog.first.fetch("declaration").merge!(
@@ -240,7 +243,7 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
     run = child.turns.sole.active_variant.run
     round = loop_node(run, "r1")
-    assert_equal ["conversation"], run.memory_context.fetch("bindings").map { |binding| binding.fetch("scope") }
+    assert_equal ["conversation"], run.memory_context.fetch("bindings").map { |binding| binding.fetch("source").fetch("scope") }
     assert_empty round.operation_context.fetch("environment").fetch("skills")
     assert_not_includes round.input_body.effective_text, "Another task's fact"
     assert_not_includes round.input_body.effective_text, "Private workspace guidance"
@@ -264,7 +267,7 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
     own = run.tasks.find_by!(tool_call_id: "own_write")
     assert_not own.output_summary["is_error"]
     assert_equal "Review result", child.memory_documents.find_by!(name: "result.md").content
-    assert_not MemoryDocument.for_user(@agent.id).exists?(name: "new.md")
+    assert_not MemoryCollection.default_for(@agent).memory_documents.exists?(name: "new.md")
   end
 
   test "later input and preview keep child defaults after source details and the first input are reaped" do
@@ -283,7 +286,7 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
     assert_equal %w[dev mock-text], [accepted.provider_id, accepted.model_ref]
     assert_equal "inherited", accepted.model_selection.source
     assert_equal ["dev/mock-unmetered"], accepted.fallback_models
-    assert_equal ["conversation"], accepted.execution_memory_context.fetch("bindings").map { |entry| entry.fetch("scope") }
+    assert_equal ["conversation"], accepted.execution_memory_context.fetch("bindings").map { |entry| entry.fetch("source").fetch("scope") }
     assert_equal true, AgentAPI::ConversationPresenter.full(child, acting_user: @agent).fetch(:agent_configuration_present)
 
     estimate = Conversations::ContextEstimate.call(Conversations::ContextEstimate::Command.new(
@@ -408,6 +411,7 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
 
     def spawn!(input, conversation: nil, **options)
       conversation ||= Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
+      MemoryCollection.default_for(conversation)
       post_input!(conversation, acting_user: @human, text: "Delegate this task.")
       _turn, run = materialize_loop_reply!(conversation, agent: @agent, text: nil, **options)
       schedule_loop!(run)

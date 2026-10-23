@@ -1,73 +1,86 @@
 require "test_helper"
 
-# ONE ANCHOR FOR THE THREE SCOPES: the path's first segment is the scope, the resolver answers which
-# row to lock and which rows to list, and WHOSE User the `user/` rung means is the CALLER's to pass
-# — memory passes the controlling Human, the store will pass the acting User. The resolver itself
-# reads no principal off a path, because a path names none.
+# Product paths resolve through the selected bindings and their actual owner.
+# Fixture constructors cannot establish execution or member authority.
 class MemoryDocuments::AnchorTest < ActiveSupport::TestCase
   setup do
     @workspace = workspaces(:shared)
     @human = users(:owner)
+    @agent = users(:agent)
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human)
+    MemoryCollection.default_for(@conversation)
   end
 
-  def anchor(path, workspace: @workspace, conversation: @conversation, user: @human)
-    Scopes::Anchor.call(path: path, workspace: workspace, conversation: conversation, user: user)
+  def context(conversation: @conversation, principal: @human, agent: @agent)
+    configuration = { "bindings" => %w[conversation workspace user agent].map do |scope|
+      { "name" => scope, "access" => "read_write", "source" => { "scope" => scope } }
+    end }
+    MemoryDocuments::Context.new(workspace: @workspace, conversation: conversation,
+      principal: principal, agent: agent, configuration: configuration)
   end
 
-  test "user/ resolves to the person: the users row is the lockable, for_user the documents" do
+  def anchor(path, **) = context(**).resolve(path)
+
+  test "explicit user memory resolves to the acting Human and its default collection" do
     resolved = anchor("user/notes.md")
     assert_predicate resolved, :resolved?
     assert_equal "user", resolved.scope
     assert_equal "notes.md", resolved.name
     assert_equal @human, resolved.lockable
-    assert_equal({ user: @human }, resolved.attributes)
-    assert_equal MemoryDocument.for_user(@human.id).to_sql, resolved.documents.to_sql
+    assert_equal memory_collections(:owner), resolved.collection
+    assert_equal memory_collections(:owner).memory_documents.to_sql, resolved.documents.to_sql
   end
 
-  test "each scope locks its own row, in ladder order the callers honour" do
+  test "each natural binding resolves its own owner and collection" do
     assert_equal @conversation, anchor("conversation/plan.md").lockable
     assert_equal @workspace, anchor("workspace/notes.md").lockable
-    assert_equal({ conversation: @conversation }, anchor("conversation/plan.md").attributes)
-    assert_equal({ workspace: @workspace }, anchor("workspace/notes.md").attributes)
+    assert_equal @agent, anchor("agent/notes.md").lockable
+    assert_equal @conversation.memory_collections.find_by!(is_default: true), anchor("conversation/plan.md").collection
+    assert_equal memory_collections(:shared), anchor("workspace/notes.md").collection
+    assert_equal memory_collections(:agent), anchor("agent/notes.md").collection
   end
 
-  test "a scope whose row is absent is unavailable, as data the caller reads" do
+  test "standalone context has no Conversation but retains its selected Workspace and Human sources" do
     assert_equal :memory_scope_unavailable, anchor("conversation/plan.md", conversation: nil).refusal
-    assert_equal :memory_scope_unavailable, anchor("workspace/notes.md", workspace: nil).refusal
-    assert_equal :memory_scope_unavailable, anchor("user/notes.md", user: nil).refusal
-    assert_predicate anchor("user/notes.md", workspace: nil, conversation: nil), :resolved?,
-      "the profile door passes a user and nothing else"
+    assert_equal @workspace, anchor("workspace/notes.md", conversation: nil).lockable
+    assert_equal @human, anchor("user/notes.md", conversation: nil).lockable
   end
 
-  # The system user has no steward (user.rb), so the nil it answers for
-  # `controlling_human` is what reaches `user:` — a refusal, never a nil deref.
-  test "the system user's controlling Human is nil, and user/ refuses on it" do
+  test "a system principal has no Human memory" do
     assert_nil users(:system).controlling_human
     assert_equal :memory_scope_unavailable,
-      anchor("user/notes.md", user: users(:system).controlling_human).refusal
+      anchor("user/notes.md", principal: users(:system), agent: users(:system)).refusal
   end
 
-  # A path names no Human. An agent stewarded by someone else passes ITS
-  # steward and resolves ITS steward's scope — the other person's rows are
-  # simply not there. Invisibility is a different row set, not a refusal.
-  test "another steward's agent resolves its OWN steward's scope" do
+  test "an Agent never resolves user memory through its steward" do
     other = users(:member)
-    foreign_agent = other.account.users.create!(
-      kind: :agent, role: :member, display_name: "Other's Agent",
-      steward: other, agent_identifier: "other-agent"
-    )
-    resolved = anchor("user/notes.md", user: foreign_agent.controlling_human)
+    foreign_agent = other.create_agent(display_name: "Other's Agent")
+    assert_equal other, foreign_agent.controlling_human
+    assert_equal :memory_scope_unavailable,
+      anchor("user/notes.md", principal: foreign_agent, agent: foreign_agent).refusal
+    assert_equal foreign_agent, anchor("agent/notes.md", principal: foreign_agent, agent: foreign_agent).lockable
+
+    resolved = anchor("user/notes.md", principal: other, agent: foreign_agent)
     assert_predicate resolved, :resolved?
     assert_equal other, resolved.lockable
     assert_not_equal @human, resolved.lockable
   end
 
-  test "a bare name and an unknown scope are invalid paths" do
+  test "bare paths are invalid and a root absent from the selection is unavailable" do
     assert_equal :memory_path_invalid, anchor("notes.md").refusal
-    assert_equal :memory_path_invalid, anchor("elsewhere/notes.md").refusal
+    assert_equal :memory_scope_unavailable, anchor("elsewhere/notes.md").refusal
     assert_equal :memory_path_invalid, anchor("user/").refusal
     assert_equal [nil, nil], Scopes::Anchor.split("notes.md")
     assert_equal %w[user notes.md], Scopes::Anchor.split("user/notes.md")
+  end
+
+  test "a deleted default is unavailable and resolution cannot allocate a replacement" do
+    collection = memory_collections(:owner)
+    assert_predicate collection.tombstone, :accepted?
+    assert_no_difference "MemoryCollection.count" do
+      assert_equal :memory_scope_unavailable, anchor("user/notes.md").refusal
+      assert_equal :memory_scope_unavailable, context.selection_refusal
+    end
+    assert_equal collection, @human.memory_collections.find_by!(is_default: true)
   end
 end

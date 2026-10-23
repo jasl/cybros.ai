@@ -14,8 +14,7 @@ class DaemonHostFollowersTest < Minitest::Test
       executors: [NexusDoubles.remote_runner("0199-set"), NexusDoubles.remote_runner("0199-named")])
     daemon = member_ready(boot, api)
     open(daemon, { "prompt" => "fix it", "model" => "dev/mock-text" })
-    assert_equal [{ "conversation" => { "default_runner_executor_public_id" => nil,
-      "memory_context" => Rho::Speakers.memory_context } }], api.conversation_creates, "no setting or own Runner explicitly selects no environment"
+    assert_conversation_created(api, runner: nil)
 
     open(daemon, { "prompt" => "fix it", "model" => "dev/mock-text", "default_runner_executor_public_id" => "0199-named" })
     assert_equal "0199-named", api.conversation_creates.last.dig("conversation", "default_runner_executor_public_id")
@@ -538,8 +537,7 @@ class DaemonHostFollowersTest < Minitest::Test
     wait_for { daemon.lineage.follower("c-1")&.snapshot&.run_public_id == "al-1" }
     assert_equal %w[al-1], followed(daemon).fetch(0).fetch("run_public_ids")
 
-    assert_equal [{ "conversation" => { "default_runner_executor_public_id" => nil,
-      "memory_context" => Rho::Speakers.memory_context } }], api.conversation_creates
+    assert_conversation_created(api, runner: nil)
     input = api.inputs.fetch(0).fetch("input")
     assert_equal ["direct_reply", "fix it", "queue"], [input.fetch("kind"), input.fetch("text"), input.fetch("delivery_mode")]
     refute input.key?("steps"), "a plain turn creates no trailing tasks"
@@ -585,8 +583,7 @@ class DaemonHostFollowersTest < Minitest::Test
     assert_equal({ "public_id" => "c-1" }, answer.fetch("conversation"))
     assert_equal({ "executor_public_id" => "0199-runner" }, answer.fetch("default_runner"), "this machine's own runner, its id alone")
     %w[turn run pending adaptations until].each { |key| refute answer.key?(key), "#{key} rides a turn; none was opened" }
-    assert_equal [{ "conversation" => { "default_runner_executor_public_id" => "0199-runner",
-      "memory_context" => Rho::Speakers.memory_context } }], api.conversation_creates
+    assert_conversation_created(api, runner: "0199-runner")
     assert_empty api.inputs, "no prompt, no input"
     assert_equal ["c-1"], daemon.lineage.followers.map(&:public_id), "the conversation is followed"
     row = store.rows.fetch(0)
@@ -788,4 +785,13 @@ class DaemonHostFollowersTest < Minitest::Test
     assert_equal({ "row" => "default", "source" => "gem" }, answer.fetch("adaptations"))
     refute answer.key?("error")
   end
+
+  private
+
+    def assert_conversation_created(api, runner:)
+      digest = api.conversation_creates.fetch(0).fetch("conversation").fetch("metadata").fetch("rho.creation_digest")
+      assert_match(/\A[0-9a-f]{64}\z/, digest)
+      assert_equal [{ "conversation" => { "default_runner_executor_public_id" => runner,
+        "memory_context" => Rho::Speakers.memory_context, "metadata" => { "rho.creation_digest" => digest } } }], api.conversation_creates
+    end
 end

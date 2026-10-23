@@ -3,10 +3,7 @@ module Nexus
     class << self
       private
 
-        # DURABLE MEMORY at its two doors, and A SKILL AS A ROW: the listing entry and the full
-        # document as the one presenter renders them — `description` on both shapes, null on a plain
-        # document, the skill row's line on a `skills/` one. The path carries the scope and rides
-        # the body on every verb.
+        # The document presenter is shared by collection and conversation doors.
         def memory_documents
           plain, skill = memory_document_presenter_fixtures
           listing = memory_listing_fixture
@@ -15,9 +12,9 @@ module Nexus
           {
             # Human-owned `user/` stays separate from the answering Agent's `agent/`
             # and its `(Agent, Speaker)` pair. Ordinary execution defaults omit `user/`.
-            "scopes" => Scopes::Anchor::WORDS,
+            "scopes" => MemoryContext::SCOPES.map(&:to_s),
             "default_scopes" => MemoryContext::DEFAULT_SCOPES.map(&:to_s),
-            "max_documents_per_anchor" => MemoryDocument::MAX_DOCUMENTS_PER_ANCHOR,
+            "max_documents_per_collection" => MemoryDocument::MAX_DOCUMENTS_PER_COLLECTION,
             "name_max_length" => MemoryDocument::NAME_MAX_LENGTH,
             "content_bound" => Nexus::SizeBounds.fetch(:memory_document_bound),
             "skills_prefix" => Nexus::Skills::PREFIX,
@@ -25,13 +22,8 @@ module Nexus
             "skill_name_max_length" => Nexus::Skills::NAME_MAX_LENGTH,
             "skill_description_max_length" => Nexus::Skills::DESCRIPTION_MAX_LENGTH,
             "skill_anchors" => %w[agent workspace speaker user],
-            # These are the scopes each door can serve, subject to the current bindings
-            # and profile limit. The profile's two words belong to different caller kinds.
-            "door_scopes" => { "profile" => %w[user agent], "profile_agent" => %w[agent],
-                               "workspace" => %w[workspace],
-                               "conversation" => MemoryContext::SCOPES.map(&:to_s) },
-            "profile_scopes_by_principal" => { "human" => %w[user], "agent" => %w[agent] },
-            "speaker_anchor_fields" => %w[agent_public_id speaker_public_id],
+            "door_paths" => { "collection" => "relative", "conversation" => "binding/name" },
+            "speaker_owner_fields" => %w[owner_public_id speaker_public_id],
             "binding_name_format" => MemoryContext::NAME.source,
             "max_bindings" => MemoryContext::MAX_BINDINGS,
             "binding_access" => %w[read read_write],
@@ -51,24 +43,29 @@ module Nexus
             "valid_list_fixture" => list_fixture,
             "valid_write_request" => {
               "memory" => { "path" => plain.fetch("path"), "content" => plain.fetch("content"),
+                            "expected_collection_public_id" => plain.fetch("collection_public_id"),
                             "expected_public_id" => nil, "expected_lock_version" => nil },
             },
             "valid_skill_write_request" => {
               "memory" => { "path" => skill.fetch("path"), "content" => skill.fetch("content"),
                             "description" => skill.fetch("description"),
+                            "expected_collection_public_id" => plain.fetch("collection_public_id"),
                             "expected_public_id" => nil, "expected_lock_version" => nil },
             },
             "valid_update_request" => {
               "memory" => { "path" => plain.fetch("path"), "content" => "the revised plan",
+                            "expected_collection_public_id" => plain.fetch("collection_public_id"),
                             "expected_public_id" => plain.fetch("public_id"),
                             "expected_lock_version" => plain.fetch("lock_version") },
             },
             "valid_delete_request" => {
-              "memory" => { "path" => plain.fetch("path"), "expected_public_id" => plain.fetch("public_id"),
+              "memory" => { "path" => plain.fetch("path"), "expected_collection_public_id" => plain.fetch("collection_public_id"),
+                            "expected_public_id" => plain.fetch("public_id"),
                             "expected_lock_version" => plain.fetch("lock_version") },
             },
             "valid_edit_request" => {
               "memory" => { "path" => plain.fetch("path"), "old_text" => "the plan", "new_text" => "the revised plan",
+                            "expected_collection_public_id" => plain.fetch("collection_public_id"),
                             "expected_public_id" => plain.fetch("public_id"), "expected_lock_version" => plain.fetch("lock_version") },
             },
             "valid_grep_request" => { "memory" => { "pattern" => "plan", "path" => "workspace/" } },
@@ -88,11 +85,12 @@ module Nexus
         # content's, the description is the row's.
         def memory_document_presenter_fixtures
           version_type = Data.define(:created_at)
-          document_type = Data.define(:path, :public_id, :lock_version, :bytesize, :description, :content, :memory_document_version)
+          document_type = Data.define(:memory_collection, :path, :public_id, :lock_version, :bytesize, :description, :content, :memory_document_version)
+          collection = Data.define(:public_id).new(public_id: "01995000-0000-7000-8000-000000000010")
           version = version_type.new(created_at: Time.utc(2026, 9, 15))
-          plain = document_type.new(public_id: "01995000-0000-7000-8000-000000000001", lock_version: 2, path: "workspace/notes.md", bytesize: "the plan".bytesize,
+          plain = document_type.new(memory_collection: collection, public_id: "01995000-0000-7000-8000-000000000001", lock_version: 2, path: "workspace/notes.md", bytesize: "the plan".bytesize,
             description: nil, content: "the plan", memory_document_version: version)
-          skill = document_type.new(public_id: "01995000-0000-7000-8000-000000000002", lock_version: 0, path: "workspace/skills/commit-style",
+          skill = document_type.new(memory_collection: collection, public_id: "01995000-0000-7000-8000-000000000002", lock_version: 0, path: "workspace/skills/commit-style",
             bytesize: "# Commits\n\nOne line, imperative.\n".bytesize,
             description: "How this team writes commit messages. Use before every commit.",
             content: "# Commits\n\nOne line, imperative.\n", memory_document_version: version)
@@ -105,12 +103,42 @@ module Nexus
         def memory_listing_fixture
           written_at = Time.utc(2026, 9, 15)
           entries = [
-            MemoryDocuments::Listing::Entry.new(public_id: "01995000-0000-7000-8000-000000000003", lock_version: 0, path: "user/skills/review-checklist", bytesize: 24,
+            MemoryDocuments::Listing::Entry.new(collection_public_id: "01995000-0000-7000-8000-000000000010", public_id: "01995000-0000-7000-8000-000000000003", lock_version: 0, path: "user/skills/review-checklist", bytesize: 24,
               description: "How I review a change. Use before approving a pull request.", written_at: written_at),
-            MemoryDocuments::Listing::Entry.new(public_id: "01995000-0000-7000-8000-000000000001", lock_version: 2, path: "workspace/notes.md", bytesize: 8,
+            MemoryDocuments::Listing::Entry.new(collection_public_id: "01995000-0000-7000-8000-000000000010", public_id: "01995000-0000-7000-8000-000000000001", lock_version: 2, path: "workspace/notes.md", bytesize: 8,
               description: nil, written_at: written_at),
           ]
           AgentAPI::MemoryPresenter.listing(entries).map { |row| stringify_keys(row) }
+        end
+
+        def memory_collections
+          owner = Data.define(:public_id).new(public_id: "01900000-0000-7000-8000-000000000001")
+          row = Data.define(:public_id, :name, :description, :natural_scope, :owner, :speaker,
+            :is_default, :archived_at, :lock_version, :created_at, :updated_at).new(
+            public_id: "01995000-0000-7000-8000-000000000010", name: "Team notes", description: "Shared references",
+            natural_scope: :workspace, owner: owner, speaker: nil, is_default: false, archived_at: nil,
+            lock_version: 2, created_at: Time.utc(2026, 10, 23), updated_at: Time.utc(2026, 10, 23))
+          access = Object.new
+          def access.writable?(_collection) = true
+          def access.manageable?(_collection) = true
+          full = stringify_keys(AgentAPI::MemoryCollectionPresenter.full(row, access: access))
+          plain, skill = memory_document_presenter_fixtures.map { |item| item.merge("path" => item.fetch("path").split("/", 2).last) }
+          {
+            "projection" => full.keys,
+            "valid_fixture" => { "memory_collection" => full },
+            "valid_default_fixture" => { "memory_collection" => stringify_keys(AgentAPI::MemoryCollectionPresenter.full(
+              row.with(name: nil, description: nil, is_default: true), access: access)) },
+            "valid_list_fixture" => { "memory_collections" => [full], "pagination" => { "next_after" => nil } },
+            "valid_create_request" => { "memory_collection" => { "name" => full.fetch("name"), "description" => full.fetch("description") } },
+            "valid_update_request" => { "memory_collection" => { "name" => "Revised notes", "lock_version" => full.fetch("lock_version") } },
+            "valid_lifecycle_request" => { "memory_collection" => { "lock_version" => full.fetch("lock_version") } },
+            "valid_document_fixture" => { "memory" => plain },
+            "valid_skill_fixture" => { "memory" => skill },
+            "valid_documents_fixture" => { "memory" => [plain.except("content")] },
+            "valid_write_request" => { "memory" => { "path" => plain.fetch("path"), "content" => plain.fetch("content"),
+              "expected_public_id" => nil, "expected_lock_version" => nil } },
+            "valid_delete_fixture" => { "status" => 204, "body" => nil },
+          }
         end
 
         # THE THREE SLOTS: one entity kind on memory's anchor shape, addressed by slot in the URL at

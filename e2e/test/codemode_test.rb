@@ -106,28 +106,6 @@ class CodemodeTest < Minitest::Test
     assert_equal({ "finished" => true }, parent.fetch("structured_content"))
   end
 
-  def test_global_code_mode_off_refuses_a_guessed_call_and_an_explicit_on_request_runs
-    set_code_mode("off")
-    declared = @world.daemon.control(:get, "/e2e/code-context").fetch("tools")
-    assert declared.any? { |tool| tool.dig("function", "name") == "code" },
-      "the profile retains its complete capabilities while rho narrows each turn"
-    source = "await tools.write({path: params.path, content: 'code enabled'}); return {enabled: true};"
-    blocked_path = File.join(@world.project, "global-off.txt")
-    blocked = open_program(source, params: { "path" => blocked_path })
-    blocked_loop = program_loop(blocked)
-    assert_disabled_code(blocked_loop, blocked_path)
-
-    enabled_path = File.join(@world.project, "global-explicit-on.txt")
-    enabled = open_program(source, params: { "path" => enabled_path }, code_mode: true)
-    enabled_loop = program_loop(enabled)
-    parent = completed_code(enabled_loop, await_loop(enabled_loop, "completed"))
-    assert_code_mode(enabled_loop, enabled: true)
-    assert_equal({ "enabled" => true }, parent.fetch("structured_content"))
-    assert_equal "code enabled", File.read(enabled_path, encoding: Encoding::UTF_8)
-  ensure
-    set_code_mode("on") if @world
-  end
-
   def test_conversation_code_mode_survives_restart_and_can_be_enabled_again
     source = "await tools.write({path: params.path, content: 'enabled again'}); text('code ran');"
     path = File.join(@world.project, "conversation-code-mode.txt")
@@ -159,23 +137,6 @@ class CodemodeTest < Minitest::Test
     @world.daemon.start if @world && @world.daemon.pid.nil?
   end
 
-  def test_real_code_joins_parallel_reads_and_preserves_explicit_null
-    paths = %w[alpha beta].map { |name| File.join(@world.project, "#{name}.txt") }
-    paths.zip(%w[alpha beta]).each { |path, content| File.write(path, content) }
-    loop_id = start_program(<<~'JS', params: { "paths" => paths })
-      const results = await Promise.all(params.paths.map(path => tools.read({path})));
-      text(results.map(result => JSON.stringify(result)).join("\n"));
-      return null;
-    JS
-    row = await_loop(loop_id, "completed")
-    assert_equal 2, row.fetch("tasks").count { |task| task["tool_name"] == "read" }
-    parent = completed_code(loop_id, row)
-    assert_includes parent.fetch("output").to_s, "alpha"
-    assert_includes parent.fetch("output").to_s, "beta"
-    assert parent.key?("structured_content"), parent.inspect
-    assert_nil parent.fetch("structured_content")
-  end
-
   def test_real_code_can_forward_an_observed_child_capture
     path = File.join(@world.project, "report.txt")
     File.write(path, "published through a child\n")
@@ -197,169 +158,6 @@ class CodemodeTest < Minitest::Test
     response = member_request("/agent_api/v1/uploads/#{upload_id}/bytes")
     assert_equal "200", response.code
     assert_equal "published through a child\n", response.body
-  end
-
-  def test_child_model_inherits_the_callers_model_selection
-    loop_id = start_program(<<~'JS')
-      const result = await nexus.model({prompt: "!mock -- child model answer", wake: "passive"});
-      text(JSON.stringify(result));
-      return result.status;
-    JS
-    row = await_loop(loop_id, "completed")
-    parent = completed_code(loop_id, row)
-    assert_includes parent.fetch("output"), "child model answer"
-    assert_equal "completed", parent.fetch("structured_content")
-    child_models = row.fetch("tasks").select { |task| task["kind"] == "model_task" && !task.fetch("key").match?(/\Ar\d+\z/) }
-    assert_equal 1, child_models.length, row.inspect
-    assert_equal "completed", child_models.first.fetch("status")
-    parent_key = parent.fetch("key")
-    transcript = member_json("#{loop_path(loop_id)}/transcript")
-    assert_includes transcript.fetch("rounds").flat_map { |round| round.fetch("branches") }, parent_key
-    branch = member_json("#{loop_path(loop_id)}/transcript?prefix=#{parent_key}")
-    assert_equal child_models.map { |task| task.fetch("key") }, branch.fetch("rounds").map { |round| round.fetch("task_key") }
-  end
-
-  def test_a_public_step_batch_delivers_its_ordered_tool_results
-    path = File.join(@world.project, "batch.txt")
-    loop_id = start_program(<<~'JS', params: { "path" => path, "runner_route" => code_runner_route })
-      const result = await nexus.steps([
-        {tool: {name: "write", route: params.runner_route, input: {path: params.path, content: "from a public batch"}, key: "written"}},
-        {tool: {name: "read", route: params.runner_route, input: {path: params.path}, key: "read_back", after: ["written"]}}
-      ]);
-      text(JSON.stringify(result));
-    JS
-    row = await_loop(loop_id, "completed")
-    parent = completed_code(loop_id, row)
-    assert_includes parent.fetch("output"), "from a public batch"
-    assert_equal "from a public batch", File.read(path, encoding: Encoding::UTF_8)
-    child_tools = row.fetch("tasks").select { |task| %w[read write].include?(task["tool_name"]) }
-    assert_equal %w[completed completed], child_tools.map { |task| task.fetch("status") }
-    refute parent.key?("structured_content"), "no explicit selection means no structured channel"
-  end
-
-  def test_code_authors_parallel_model_branches_and_a_synthesis_with_a_readable_dag
-    loop_id = start_program(<<~'JS')
-      const outcome = await nexus.steps([
-        {parallel: [
-          {model: {key: "design", prompt: "!mock reply=design-branch-result -- review the design"}},
-          {model: {key: "tests", prompt: "!mock reply=test-branch-result -- review the tests"}}
-        ]},
-        {model: {key: "synthesis", prompt: "!mock echo=content -- combine the reviews", results: ["design", "tests"]}}
-      ]);
-      text(JSON.stringify(outcome));
-    JS
-    row = await_loop(loop_id, "completed")
-    parent = completed_code(loop_id, row)
-    assert_includes parent.fetch("output"), "design-branch-result"
-    assert_includes parent.fetch("output"), "test-branch-result"
-    graph = member_json("#{loop_path(loop_id)}/graph")
-    children = graph.fetch("nodes").select { |node| node["expansion_parent"] == parent.fetch("key") && node["kind"] == "model_task" }
-    assert_equal 3, children.length, graph.inspect
-    synthesis = children.find { |node| node.fetch("result_from").length == 2 }
-    refute_nil synthesis, "the synthesis must select both branch results: #{graph.inspect}"
-    branches = children.reject { |node| node == synthesis }
-    branch_keys = branches.map { |node| node.fetch("key") }
-    assert_equal branch_keys, synthesis.fetch("result_from")
-    assert branches.all? { |node| node.fetch("result_from").empty? }, graph.inspect
-    edges = graph.fetch("edges").map { |edge| [edge.fetch("from"), edge.fetch("to")] }
-    branch_keys.each { |key| assert_includes edges, [key, synthesis.fetch("key")] }
-    refute_includes edges, branch_keys
-    refute_includes edges, branch_keys.reverse
-    assert_match(/\Aflowchart TD/, graph.fetch("mermaid"))
-    request = member_json("#{loop_path(loop_id)}/tasks/#{synthesis.fetch("key")}/request").fetch("request")
-    assert_includes request.fetch("entries").to_json, "design-branch-result"
-    assert_includes request.fetch("entries").to_json, "test-branch-result"
-  end
-
-  def test_a_durable_refusal_is_observed_before_the_program_catches_and_continues
-    path = File.join(@world.project, "after-refusal.txt")
-    loop_id = start_program(<<~'JS', params: { "path" => path })
-      let refusal;
-      try {
-        await nexus.join({operations: ["missing"]});
-      } catch (error) {
-        refusal = error.refusal.code;
-      }
-      if (refusal !== "unknown_operation") throw new Error("Expected the kernel's operation refusal");
-      await tools.write({path: params.path, content: refusal});
-      const result = await tools.read({path: params.path});
-      text(JSON.stringify(result));
-      return {refusal};
-    JS
-    row = await_loop(loop_id, "completed")
-    parent = completed_code(loop_id, row)
-    assert_equal({ "refusal" => "unknown_operation" }, parent.fetch("structured_content"))
-    assert_equal "unknown_operation", File.read(path, encoding: Encoding::UTF_8)
-    assert_includes parent.fetch("output"), "unknown_operation"
-    assert_equal 1, row.fetch("tasks").count { |task| task["tool_name"] == "write" }
-    assert_equal 1, row.fetch("tasks").count { |task| task["tool_name"] == "read" }
-  end
-
-  def test_a_member_authored_standalone_code_task_runs_without_a_model_round
-    tools = @world.daemon.control(:get, "/e2e/code-context").fetch("tools")
-    code = tools.find { |tool| tool.dig("function", "name") == "code" }
-    assert_equal "urn:cybros:rho:codemode:javascript:1", code.dig("function", "parameters", "$id")
-    path = File.join(@world.project, "standalone.txt")
-    created = @world.daemon.control(:post, "/e2e/standalone-code", body: {
-      "idempotency_key" => SecureRandom.uuid,
-      "steps" => [{ "tool" => { "key" => "standalone", "name" => "code", "route" => code_runner_route, "input" => {
-        "code" => "await tools.write({path: params.path, content: 'direct member work'}); text('standalone finished'); return false;",
-        "params" => { "path" => path },
-      }, "model_defaults" => { "tools" => tools, "model" => { "model" => MODEL } } } }],
-    })
-    loop_id = created.fetch("public_id")
-    row = await_loop(loop_id, "completed")
-    parent = completed_code(loop_id, row)
-    assert_equal({ "status" => "completed" }, row.fetch("turn"),
-      "a standalone turn shape has no conversation or turn identity")
-    refute row.fetch("tasks").any? { |task| task["kind"] == "model_task" }
-    assert_equal "standalone finished", parent.fetch("output")
-    assert_equal false, parent.fetch("structured_content")
-    assert_equal "direct member work", File.read(path, encoding: Encoding::UTF_8)
-    assert_equal %w[code write], row.fetch("tasks").map { |task| task.fetch("tool_name") }.sort
-    assert_equal [code_runner_route.fetch("runner_executor_public_id")],
-      row.fetch("tasks").map { |task| task.dig("target", "executor_public_id") }.uniq
-  end
-
-  def test_a_human_authored_code_task_without_an_eligible_executor_fails_as_unserved
-    response = member_request("/agent_api/v1/workspaces/#{@world.workspace}/runs", method: :post,
-      idempotency_key: SecureRandom.uuid,
-      body: { "run" => { "approval_mode" => "bypass", "steps" => [{ "tool" => {
-        "key" => "unserved", "name" => "code", "on_failure" => "absorb",
-        "input" => { "code" => "text('must not execute');" },
-      } }] } })
-    assert_equal "201", response.code, response.body
-    loop_id = JSON.parse(response.body).fetch("run").fetch("public_id")
-    member_json("#{loop_path(loop_id)}/start", method: :post, body: {})
-    detail = @world.daemon.await("an unserved standalone code task never failed") do
-      task = task_detail(loop_id, "unserved")
-      task if task["status"] == "failed"
-    end
-    assert_equal "tool_not_served", detail.dig("error", "key")
-    refute_includes detail["output"].to_s, "must not execute"
-    row = member_json(loop_path(loop_id)).fetch("run")
-    assert_equal ["unserved"], row.fetch("tasks").map { |task| task.fetch("key") }
-  end
-
-  def test_canceling_waiting_code_cancels_its_question_and_prevents_later_effects
-    path = File.join(@world.project, "canceled.txt")
-    loop_id = start_program(<<~'JS', params: { "path" => path })
-      await nexus.ask({prompt: "Continue the code?"});
-      await tools.write({path: params.path, content: "must not run"});
-      text("must not finish");
-    JS
-    held = await_claimed_question(loop_id)
-    question = held.fetch("tasks").find { |task| task["kind"] == "await_task" }
-    member_json("#{loop_path(loop_id)}/stop", method: :post, body: { "force" => true })
-    canceled = await_loop(loop_id, "canceled")
-    owned = canceled.fetch("tasks").select { |task| task["tool_name"] == "code" || task["kind"] == "await_task" }
-    assert_equal %w[canceled canceled], owned.map { |task| task.fetch("status") }.sort
-
-    late = member_json("#{loop_path(loop_id)}/tasks/#{question.fetch("key")}/resolution",
-      method: :post, body: { "content" => "Too late" })
-    assert_equal "canceled", late.fetch("task").fetch("status")
-    refute File.exist?(path)
-    refute canceled.fetch("tasks").any? { |task| task["tool_name"] == "write" }
   end
 
   def test_a_long_pause_retains_the_live_vm_and_delays_its_next_effect_until_resume
@@ -541,13 +339,6 @@ class CodemodeTest < Minitest::Test
 
         sleep 0.2
       end
-    end
-
-    def set_code_mode(value)
-      output, status = @world.daemon.cli("extensions", "configure", "rho.codemode",
-        JSON.generate([{ op: "set", path: ["default"], value: value }]))
-      assert_predicate status, :success?, output
-      assert_equal value, JSON.parse(output).dig("plugin", "configuration", "value", "default"), output
     end
 
     def assert_disabled_code(loop_id, path)

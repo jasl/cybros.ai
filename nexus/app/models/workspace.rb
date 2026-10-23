@@ -22,10 +22,11 @@ class Workspace < ApplicationRecord
   belongs_to :account
   belongs_to :creator, class_name: "User"
   belongs_to :owner, class_name: "User"
-  # Workspace-scope memory. Pointer rows cascade; the versions they name
-  # are shared with whatever forked from a conversation here and are the
-  # reclaim sweep's business, never this cascade's.
-  has_many :memory_documents, dependent: :delete_all
+  # Collections drain before Workspace destruction. Their immutable content
+  # versions remain subject to the shared-version reclaim sweep.
+  # The FK refuses an incomplete drain.
+  has_many :memory_collections
+  has_many :memory_documents, through: :memory_collections
   has_many :prompt_documents, dependent: :delete_all
 
   enum :access_mode, %w[account_wide private].index_by(&:itself),

@@ -163,11 +163,28 @@ class Conversations::InputsStepsExecutionTest < ActiveJob::TestCase
     run = applied.value.active_variant.run
     assert_equal contexts, run.agent_configuration.executor_contexts
     assert_equal contexts, loop_node(run, "r1").operation_context.fetch("executor_contexts")
-    assert_equal contexts.fetch(address.public_id), Executors::Inbox.row(loop_node(run, "check")).fetch(:executor_context)
+    check = loop_node(run, "check")
+    assert_equal "queued", check.status
+    assert_nil check.started_at
+    assert_not Executors::Inbox.row(check).key?(:executor_context), "queued application work has no execution address yet"
+    assert_empty Executors::Inbox.call(executor: address).tasks
+
     schedule_loop!(run)
     run_loop_round!(run, sse_success("reading", tool_calls: [{ id: "call", name: "read_file", arguments: '{"path":"relative"}' }]))
     child = run.tasks.where(type: Tasks::ToolTask.sti_name, authored_by: "model").sole
+    assert_equal "dispatched", child.status
+    assert_equal address, child.addressed_executor
     assert_equal contexts.fetch(address.public_id), Executors::Inbox.row(child).fetch(:executor_context)
+
+    settle_tool(child)
+    schedule_loop!(run)
+    run_loop_round!(run, sse_success("The generated tool finished"))
+    assert_equal "dispatched", check.reload.status
+    assert_equal address, check.addressed_executor
+    assert_equal contexts.fetch(address.public_id), Executors::Inbox.row(check).fetch(:executor_context)
+    inbox = Executors::Inbox.call(executor: address).tasks.sole
+    assert_equal [run.public_id, "check"], inbox.values_at(:run_public_id, :task_key)
+    assert_equal contexts.fetch(address.public_id), inbox.fetch(:executor_context)
   end
 
   private

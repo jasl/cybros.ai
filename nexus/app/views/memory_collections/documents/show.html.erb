@@ -1,0 +1,13 @@
+<%= render layout: "memory_collections/shell", locals: { back_path: memory_collection_documents_path(@collection), back_label: memory_collection_name(@collection), error: @error, title: @document.name } do %>
+  <p class="text-sm text-base-content/60"><%= t("data_console.memory.metadata", version: @document.lock_version, bytes: @document.bytesize, time: l(@document.memory_document_version.created_at, format: :long)) %></p>
+  <p class="font-mono text-xs wrap-anywhere"><%= @document.public_id %></p>
+  <% if @document.description.present? %><p class="text-sm wrap-anywhere"><%= @document.description %></p><% end %>
+  <pre class="rounded-box border border-base-300 bg-base-200 p-4 sm:p-6 whitespace-pre-wrap wrap-anywhere text-sm"><%= @document.content %></pre>
+  <% if @data_writable %>
+    <div class="flex flex-wrap gap-3">
+      <%= link_to t("data_console.edit"), edit_memory_collection_document_path(@collection, path: @document.name), class: "btn btn-primary btn-sm" %>
+      <%= button_to t("data_console.delete"), memory_collection_document_path(@collection), method: :delete, params: { memory: { path: @document.name, expected_public_id: @document.public_id, expected_lock_version: @document.lock_version } }, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("data_console.memory.delete_confirmation") } %>
+    </div>
+  <% end %>
+  <p class="text-xs text-base-content/60"><%= t("data_console.memory.retention") %></p>
+<% end %>

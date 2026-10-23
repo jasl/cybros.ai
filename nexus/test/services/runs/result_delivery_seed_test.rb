@@ -201,7 +201,7 @@ class Runs::ResultDeliverySeedTest < ActiveJob::TestCase
     source_environment = loop_node(source, "r1").operation_context.fetch("environment")
     assert_equal ["private-review"], source_environment.fetch("skills").map { |entry| entry.fetch("name") }
     @agent.update!(memory_context_limit: { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
     ] })
 
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id)

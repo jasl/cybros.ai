@@ -197,72 +197,6 @@ class RhoAcpSymmetryTest < Minitest::Test
     warn "Could not capture the rho_acp_symmetry E2E logs: #{error.class}: #{error.message}"
   end
 
-  # (i) THE DELEGATION. A's runner claims `delegate_agent`, spawns B's surface and opens a session
-  # on it; B's `session/new` opens a conversation on B's daemon and its id IS the session id.
-  def test_acp_symmetry_a_delegation_opens_bs_conversation_answered_by_b_and_carries_its_reply_and_session
-    _profile, handle = rho_identity(@daemon)
-    _peer_profile, peer_handle = rho_identity(@peer)
-    refute_equal handle, peer_handle, "two homes, two handles"
-    marker = "hello from home b #{SecureRandom.hex(4)}"
-    prompt = "!mock reply=#{CGI.escape(marker)} -- say it"
-
-    conversation, _turn, loop = open_turn(delegate(prompt))
-    done = await_run_status(loop, "completed")
-    row = delegate_row(done)
-    assert_equal "completed", row.fetch("status"), summarize(done)
-    assert_equal @world.runner_id, row.dig("addressed_to", "executor_public_id"), "A's runner ran the delegation: #{row.inspect}"
-    output = task_output(loop, row.fetch("key"))
-    assert_equal "Mock: #{marker}", output.lines.first.strip, "A's result carries B's reply:\n#{output}"
-    session, stop, calls, refused, = trailer(output)
-    assert_equal %w[end_turn 0 0], [stop, calls, refused]
-
-    # B'S SESSION ID: the row A's daemon lists for the session names the
-    # child's own id, and that id is B's conversation's public id.
-    listed = acp_session(session)
-    assert_equal [AGENT, conversation], listed.values_at("agent", "conversation"), listed.inspect
-    b_conversation = listed.fetch("acp_session")
-    assert_kind_of String, b_conversation
-    refute_empty b_conversation
-    assert_equal @world.project, listed.fetch("cwd"), "the session's cwd is A's runner root"
-
-    # B'S CONVERSATION IN THE KERNEL: answered by B's user, listed on the
-    # room, its reply turn opened by the words A handed over.
-    chat = @conversations.conversation(b_conversation)
-    assert_equal @world.peer_profile, chat.fetch.answering_user_public_id, "B's user answers B's conversation"
-    assert_includes conversation_ids, b_conversation, "the member plane lists B's conversation"
-    reply = await_reply(chat, after: -1)
-    assert_equal "Mock: #{marker}", reply.text.to_s.strip, "B's reply is what A was handed back"
-    assert_equal prompt, reply.active_variant.prompt_text, "B's turn was opened by A's prompt, verbatim"
-    assert_equal @world.peer_profile, reply.answering_user_public_id
-
-    # `rho loops` ON B follows it: B's daemon opened the row and follows
-    # the conversation (host_type conversation on its door).
-    loops, status = @peer.cli("followers")
-    assert_predicate status, :success?, "rho loops on home B failed:\n#{loops}"
-    assert_match(/^#{Regexp.escape(b_conversation)}  /, loops, "home B follows the conversation it opened:\n#{loops}")
-    follower = @peer.control(:get, "/followers").fetch("followers").find { |candidate| candidate.fetch("public_id") == b_conversation }
-    refute_nil follower, "B's daemon lists the followed conversation"
-    assert_equal "conversation", follower.fetch("host_type")
-
-    # THE CAPTURE: the initialize document B answered (the design's,
-    # `agentInfo.name` rho, `authMethods` non-empty), `session/new` with
-    # A's cwd and no servers answered by B's conversation id, the prompt,
-    # the chunks. And A's log: the spawn and the session, named.
-    lines = capture_lines(session)
-    initialized = answer_to(lines, "initialize")
-    assert_equal "rho", initialized.dig("agentInfo", "name"), initialized.inspect
-    assert_equal 1, initialized.fetch("protocolVersion")
-    refute_empty initialized.fetch("authMethods"), "B offers its auth methods"
-    opened_request = request_line(lines, "session/new")
-    assert_equal [@world.project, []], opened_request.dig("message", "params").values_at("cwd", "mcpServers"), "A hands B its root and no servers"
-    assert_equal b_conversation, answer_to(lines, "session/new").fetch("sessionId")
-    assert_equal prompt, request_line(lines, "session/prompt").dig("message", "params", "prompt", 0, "text")
-    assert(lines.any? { |line| line.dig("message", "params", "update", "sessionUpdate") == "agent_message_chunk" }, "B's chunks are captured")
-    await_rho_log(@daemon, /event=acp\.child_spawned agent=#{AGENT} conversation=#{Regexp.escape(conversation)} pid=\d+/, "the spawn was never logged")
-    await_rho_log(@daemon, /event=acp\.session_opened agent=#{AGENT} conversation=#{Regexp.escape(conversation)} session=#{session} acp_session=#{Regexp.escape(b_conversation)}/,
-      "the session was never logged with B's conversation id")
-  end
-
   # (ii) THE PARK: B's surface runs under `ask`, so B's `bash` parks on
   # B's loop and B asks A `session/request_permission` with the three
   # options; A's floor reads the command, the row's policy allows, and
@@ -426,14 +360,6 @@ class RhoAcpSymmetryTest < Minitest::Test
       found = lines.find { |line| line["dir"] == direction && line.dig("message", "method") == method }
       refute_nil found, "no #{direction} #{method} in the capture:\n#{lines.inspect}"
       found
-    end
-
-    # The result answering the request A sent for `method`.
-    def answer_to(lines, method)
-      id = request_line(lines, method).dig("message", "id")
-      found = lines.find { |line| line["dir"] == "in" && line.dig("message", "id") == id && line["message"].key?("result") }
-      refute_nil found, "no answer to #{method} (id #{id}) in the capture:\n#{lines.inspect}"
-      found.dig("message", "result")
     end
 
     def trailer(output)

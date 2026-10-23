@@ -376,7 +376,8 @@ module Conversations
             approval_mode: hooked ? execution_configuration.approval_mode : "bypass",
             approval_rules: hooked ? execution_configuration.approval_rules : nil,
             lifecycle_hooks: execution_configuration&.lifecycle_hooks,
-            memory_context: @conversation.effective_memory_context(execution_configuration: execution_configuration),
+            memory_context: MemoryContext.constrain(configuration: @trigger.memory_context || { "bindings" => [] },
+              limit: execution_configuration&.memory_context_limit, conversation_public_id: @conversation.public_id),
             conversation_reach: @conversation.effective_conversation_reach(execution_configuration: execution_configuration)
           )
           # A refused seed leaves a turn and a variant behind, so the

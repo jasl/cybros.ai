@@ -67,7 +67,7 @@ class SetupsControllerTest < ActionDispatch::IntegrationTest
 
   test "an invalid advanced cost unit leaves no founding records" do
     Account.destroy_all
-    invalid_unit = "x" * (Account::COST_UNIT_MAX_LENGTH + 1)
+    invalid_unit = "x" * (Constants::COST_UNIT_MAX_LENGTH + 1)
 
     assert_no_difference [-> { Account.count }, -> { Identity.count }, -> { User.count }] do
       post setup_path, params: { setup: valid_setup_params(cost_unit: invalid_unit) }

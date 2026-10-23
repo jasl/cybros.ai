@@ -1,0 +1,75 @@
+en:
+  activerecord:
+    errors:
+      models:
+        memory_collection:
+          exactly_one_anchor: A collection must have exactly one owner.
+          owner_unavailable: The collection owner is unavailable.
+  pagination:
+    nouns:
+      memory_collections:
+        one: collection
+        other: collections
+  memory_collections:
+    title: Memory collections
+    description: Browse and manage persistent notes for you, your workspaces and conversations.
+    new: New collection
+    edit: Edit collection
+    name: Name
+    description_label: Description
+    save: Save collection
+    saved: Collection saved.
+    empty: No readable collections.
+    default_name: Default collection
+    unnamed: Untitled collection
+    archived: Archived
+    read_only: You can read this collection, but cannot currently write its documents.
+    archived_help: This collection is read only. Restore it to permit writes within the original permissions.
+    documents: Documents
+    documents_help: These documents belong to this collection. Conversation bindings choose which collections future replies use.
+    archive_action: Archive collection
+    restore_action: Restore collection
+    archive: Collection archived.
+    restore: Collection restored.
+    tombstone: Collection deleted.
+    lifecycle_help: Archive preserves readable content. Delete removes access immediately and does not cancel running work or erase previously read content. These actions affect kernel content only.
+    delete_confirmation: Delete this collection permanently? Its contents will become unavailable. A deleted default collection will not be replaced automatically.
+    search: Search collections
+    search_placeholder: Search by name or exact ID
+    scope: Scope
+    all_scopes: All scopes
+    owner: Owner
+    status: Status
+    statuses:
+      active: Active
+      archived: Archived
+      all: All statuses
+    created: Created
+    updated: Last updated
+    size: Size
+    identifier: Collection ID
+    filter: Filter
+    clear: Clear filters
+    default_badge: Default
+    navigation: Collection pages
+    overview: Overview
+    details: Collection details
+    cancel: Cancel
+    more_actions: More actions
+    lifecycle_title: Archive or delete
+    usage_title: Using this collection
+    default_help: This is the owner's default collection. Agents can use it when their conversation's memory selection includes this scope. A default collection is not automatically available to every agent.
+    binding_help: Your agent application chooses which collections a conversation uses. Creating this collection alone will not make it available in replies.
+    open_document: Open document
+    owned_by: "Collections owned by %{owner}"
+    create_for: "Create a collection owned by %{owner}."
+    create_help: Ownership stays fixed after creation. To create workspace or conversation memory, open Memory collections from that workspace or conversation.
+    empty_help: Try another name, scope or status, or create a collection to keep notes for future work.
+    documents_empty_help: Add a document to keep notes here. Archived collections remain readable and must be restored before editing.
+    inventory_help: This list shows collections you can manage or read, not every collection an agent uses. Agent and speaker memory remain private to their owning agent.
+    scopes:
+      user: Personal
+      agent: Agent
+      speaker: Speaker
+      workspace: Workspace
+      conversation: Conversation

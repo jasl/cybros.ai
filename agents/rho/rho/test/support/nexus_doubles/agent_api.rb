@@ -293,7 +293,9 @@ module NexusDoubles
     # write left it: `door` is "profile" or a
     # conversation id.
     def stock_memory(door, path, content, description: nil)
-      @memory[door][path] = memory_row(path, content, description)
+      collection = %w[profile workspace].include?(door)
+      path = path.split("/", 2).last if collection
+      @memory[door][path] = memory_row(path, content, description, collection_public_id: collection ? "collection-#{door}" : "collection-1")
       nil
     end
 

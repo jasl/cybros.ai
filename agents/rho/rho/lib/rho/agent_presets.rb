@@ -55,9 +55,11 @@ module Rho
       "type" => %w[object null], "required" => ["bindings"], "additionalProperties" => false,
       "properties" => {
         "bindings" => { "type" => "array", "maxItems" => 16, "items" => {
-          "type" => "object", "required" => %w[name scope access], "additionalProperties" => false,
+          "type" => "object", "required" => %w[name source access], "additionalProperties" => false,
           "properties" => {
-            "name" => { "enum" => MEMORY_SCOPES }, "scope" => { "enum" => MEMORY_SCOPES },
+            "name" => { "enum" => MEMORY_SCOPES },
+            "source" => { "type" => "object", "required" => ["scope"], "additionalProperties" => false,
+              "properties" => { "scope" => { "enum" => MEMORY_SCOPES } } },
             "access" => { "enum" => %w[read read_write] },
           },
         } },
@@ -273,7 +275,7 @@ module Rho
 
         bindings = limit.fetch("bindings")
         names = bindings.map { |binding| binding.fetch("name") }
-        unless bindings.all? { |binding| binding.fetch("name") == binding.fetch("scope") } &&
+        unless bindings.all? { |binding| binding.fetch("name") == binding.fetch("source").fetch("scope") } &&
             names.uniq.length == names.length && (names.empty? || names.include?("conversation"))
           raise Error, "Invalid Preset field /configuration/memory_context_limit: use unique natural roots including conversation"
         end

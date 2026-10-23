@@ -1,5 +1,0 @@
-<%= render layout: "workspaces/data/shell", locals: { workspace: @workspace, data_writable: @data_writable, error: @error, validation_errors: @validation_errors, title: t("data_console.memory.title") } do %>
-  <p class="font-mono text-sm wrap-anywhere"><%= @draft["path"] %></p>
-  <%= link_to t("data_console.read_saved"), workspace_memory_document_path(@workspace, path: @draft["path"]), class: "link link-hover" %>
-  <%= link_to t("data_console.memory.back"), workspace_memory_documents_path(@workspace), class: "link link-hover" %>
-<% end %>

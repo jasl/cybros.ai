@@ -8,7 +8,6 @@ module CybrosAgent
 
       PATH = "/agent_api/v1/profile".freeze
       CONFIGURATION_PATH = "#{PATH}/configuration".freeze
-      MEMORY_PATH = "#{PATH}/memory".freeze
       STORE_ENTRIES_PATH = "#{PATH}/store_entries".freeze
       PROMPT_DOCUMENTS_PATH = "#{PATH}/prompt_documents".freeze
       AGENTS_PATH = "#{PATH}/agents".freeze
@@ -86,9 +85,7 @@ module CybrosAgent
         shape(Profile, @dispatch.call(CONFIGURATION_PATH, method: :put, body: body))
       end
 
-      # The caller's own profile memory: a Human manages `user/…`, and an
-      # Agent manages its own `agent/…`. The same verbs as `chat.memory`.
-      def memory = MemoryContext.new(dispatch: @dispatch, path: MEMORY_PATH)
+      def memory_collections = OwnedMemoryCollectionsContext.new(dispatch: @dispatch, path: "#{PATH}/memory_collections")
 
       # THE PRINCIPAL'S OWN STORE: the ACTING user's row — an
       # agent's entries are the agent's, not its steward's; the steward's

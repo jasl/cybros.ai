@@ -2,7 +2,7 @@
 
 Typed server SDK for the Nexus member, executor and Platform APIs. Supports Node 22 and Node 24, with ESM JavaScript and declarations. This package is currently built from this repository; it is not published to a registry.
 
-Development uses Node 22.13+ or Node 24 and pnpm 11.11.0, pinned in `packageManager`.
+Development uses Node 22.13+ or Node 24 and pnpm 12.15.0, pinned in `packageManager`.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -33,6 +33,18 @@ Full Conversation documents expose `cost_limit: string | null` and `cost_limit_r
 
 `client.schedules.list({ workspace_public_id })` narrows currently readable schedules to a Workspace; global and scoped lists share its status filter. Schedule execution references include `variant_public_id`; use `conversation.turns.variant(turnId, variantId)` to read that exact retained result as `{ variant, turn_public_id, turn_inherited }`. Human budget reads are available through `client.profile.budgets` and `platform.profile.budgets`. Administrators use `platform.budgets(humanId)`, while current Agent stewards use `platform.agents.agent(agentId).budgets` for allowance reads and explicit-key mutations. Lists preserve `current_budget`, measurement time, exact headroom and pagination; `fetch()` returns the budget with its measurement time, and `entries()` exposes amount ledger metadata. See [budgets and allowances](../../guides/reference/platform-api/budgets.md).
 
+`client.memoryCollections` exposes global list/fetch/update/archive/restore/delete
+and `documents(collectionId)`. Owner-scoped `memoryCollections` on profile,
+named Agent, Workspace and Conversation handles adds create and paginated discovery.
+Direct document paths are relative. `chat.memory` retains binding paths; its writes,
+edits and deletes require `expected_collection_public_id` along with the original
+document UUID/version, including null/null document conditions for create. Use
+`chat.memory.bindings()` to select the UUID when the document is absent.
+`MemoryBinding.source` is either a natural scope source or `{collection_public_id}`;
+`MemoryContextLimit` accepts only natural sources without private identities.
+Collection metadata uses its own `lock_version`. See
+[Memory collections](../../guides/reference/agent-api/memory-collections.md).
+
 `Client`, `ExecutorClient` and `PlatformClient` accept exactly one static `credential` or asynchronous `credentialProvider`, resolved once per request. `Sessions`, `DeviceFlow` and `ApplicationOAuth` cover password, device and PKCE ceremonies. `OAuthCredentials` accepts an application-owned atomic `CredentialStore`; refreshes serialize through `withLock`, retain a newly issued pair if publication fails and expose it through `NotDurable.credentials`. Call `persist()` to retry storage, and `drain()` before shutdown. A replacement issue supersedes the old connection. `APIKeyCredentials` is a static holder with no refresh lifecycle.
 
 Mutation keys are explicit. The SDK does not retry mutations, choose keys, follow redirects, log credentials or write filesystem state. Receipts expose the resource, HTTP status, replay flag and request ID. Errors retain HTTP status, code, details, Retry-After, request ID and at most 4096 characters of response body. A local AbortSignal never cancels accepted server work. Request deadlines cover credential resolution, connection and body consumption; downloads remain caller-owned streams that must be consumed or canceled.
@@ -41,6 +53,6 @@ Durable feeds freeze replay watermarks, reconcile live gaps and reconnects, and 
 
 `rewind()` forks history and restores retained checkpoints independently on their original Runners. Its explicit root idempotency key deterministically derives separate keys for each Runner operation. A restore refusal or failure stays attached to that Runner; this is not a global rollback. `waitForToolResult()` has explicit polling/patience options and never stops server work on local timeout or cancellation.
 
-Coverage is checked against `contracts/nexus/v1/operations.json`: all 274 supported routes have actual public-method dispatch tests. Administrator Human removal is deliberately excluded. Ruby ModelPattern/ModelAdaptations policy loaders are application policy and are not included. No compatibility aliases or generic raw HTTP API are exported.
+Coverage is checked against `contracts/nexus/v1/operations.json`: all supported routes have actual public-method dispatch tests. Administrator Human removal is deliberately excluded. Ruby ModelPattern/ModelAdaptations policy loaders are application policy and are not included. No compatibility aliases or generic raw HTTP API are exported.
 
 See [the guide](../../guides/build/sdk-typescript.md), [the compiled example](examples/server.ts), and [the shared API contracts](../../contracts/nexus/v1). `pnpm run test` runs behavior and contract tests with Vitest. After building, `pnpm run test:node` runs native HTTP, binary streaming, multipart, SSE and Cable tests against the build; `pnpm run test:package` repeats those checks against a tarball and compiles its exported declarations, guide and example. CI runs the complete `pnpm run check` under Node 22 and Node 24, including strict types, shared fixtures, route coverage and both package checks.

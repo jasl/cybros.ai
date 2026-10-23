@@ -122,6 +122,7 @@ class Invitation < ApplicationRecord
         member = account.users.create!(
           kind: :human, role: role, identity: identity, display_name: display_name
         )
+        MemoryCollection.default_for(member)
         # Deleting the row is the acceptance winner rule: losing to a
         # concurrent revoke (or another acceptance) rolls the member creation
         # back, so a revoked invitation can never still mint a member.

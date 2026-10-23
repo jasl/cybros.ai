@@ -14,8 +14,8 @@ module Conversations
       class << self
         # `description:` is a skill row's (a `skills/` path); the writer
         # refuses one on any other path and requires one on that.
-        def write(conversation:, path:, content:, by:, expected:, description: nil, speaker: nil)
-          apply(conversation, path, by, speaker) do |anchor|
+        def write(conversation:, path:, content:, by:, expected:, description: nil, speaker: nil, expected_collection_public_id: nil)
+          apply(conversation, path, by, speaker, expected_collection_public_id) do |anchor|
             result = MemoryDocuments::Write.call(
               anchor: anchor, content: content, expected: expected,
               revises: conversation, description: description
@@ -24,16 +24,16 @@ module Conversations
           end
         end
 
-        def edit(conversation:, path:, old_text:, new_text:, by:, expected:, speaker: nil)
-          apply(conversation, path, by, speaker) do |anchor|
+        def edit(conversation:, path:, old_text:, new_text:, by:, expected:, speaker: nil, expected_collection_public_id: nil)
+          apply(conversation, path, by, speaker, expected_collection_public_id) do |anchor|
             result = MemoryDocuments::Edit.call(anchor: anchor, old_text: old_text,
               new_text: new_text, expected: expected, revises: conversation)
             result.written? ? Outcome.accepted(result.document) : Outcome.refused(result.outcome)
           end
         end
 
-        def delete(conversation:, path:, by:, expected:, speaker: nil)
-          apply(conversation, path, by, speaker) do |anchor|
+        def delete(conversation:, path:, by:, expected:, speaker: nil, expected_collection_public_id: nil)
+          apply(conversation, path, by, speaker, expected_collection_public_id) do |anchor|
             result = MemoryDocuments::Delete.call(anchor: anchor, expected: expected, revises: conversation)
             result.deleted? ? Outcome.accepted : Outcome.refused(result.outcome)
           end
@@ -41,7 +41,7 @@ module Conversations
 
         private
 
-          def apply(conversation, path, by, speaker)
+          def apply(conversation, path, by, speaker, expected_collection_public_id)
             return Outcome.refused(:not_found) if conversation.tombstoned?
             return Outcome.refused(:conversation_archived) if conversation.archived?
 
@@ -55,6 +55,17 @@ module Conversations
               next Outcome.refused(:not_found) if conversation.tombstoned?
               # Archived is read-only, like every other content verb here.
               next Outcome.refused(:conversation_archived) if conversation.archived?
+
+              # The host lock orders binding changes. Never follow a changed
+              # path to a different owner while holding the old owner's locks.
+              current = MemoryDocuments::Context.new(workspace: conversation.workspace,
+                conversation: conversation, principal: by, configuration: conversation.effective_memory_context(speaker: speaker),
+                agent: conversation.answering_agent).resolve(path, authoring: true)
+              next Outcome.refused(current.refusal) unless current.resolved?
+              if current.collection.public_id != anchor.collection.public_id ||
+                  (expected_collection_public_id && current.collection.public_id != expected_collection_public_id)
+                next Outcome.refused(:stale_object)
+              end
 
               yield(anchor)
             end

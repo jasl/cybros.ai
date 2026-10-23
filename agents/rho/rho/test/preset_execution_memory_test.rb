@@ -34,5 +34,5 @@ class PresetExecutionMemoryTest < Minitest::Test
 
   private
 
-    def binding(scope, access) = { "name" => scope, "scope" => scope, "access" => access }
+    def binding(scope, access) = { "name" => scope, "source" => { "scope" => scope }, "access" => access }
 end

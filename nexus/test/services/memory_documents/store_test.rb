@@ -9,10 +9,11 @@ class MemoryDocuments::StoreTest < ActiveSupport::TestCase
     @human = users(:member)
     @workspace = workspaces(:shared)
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human)
+    MemoryCollection.default_for(@conversation)
   end
 
   def anchor(path, conversation: @conversation)
-    Scopes::Anchor.call(
+    memory_anchor(
       path: path, workspace: @workspace, conversation: conversation
     )
   end
@@ -21,7 +22,8 @@ class MemoryDocuments::StoreTest < ActiveSupport::TestCase
   def write!(path, content, conversation: @conversation)
     resolved = anchor(path, conversation:)
     MemoryDocument.transaction do
-      resolved.lockable.lock!
+      resolved.lockable.lock!("FOR NO KEY UPDATE")
+      resolved.collection.lock!
       MemoryDocuments::Write.call(anchor: resolved, expected: memory_expectation_at(resolved), content: content)
     end
   end
@@ -44,12 +46,12 @@ class MemoryDocuments::StoreTest < ActiveSupport::TestCase
   # — so this refusal is DATA the model reads and retries against, never a
   # node failure.
   test "conversation scope is unavailable where there is no conversation" do
-    refused = Scopes::Anchor.call(
+    refused = memory_anchor(
       path: "conversation/plan.md", workspace: @workspace, conversation: nil
     )
     assert_equal :memory_scope_unavailable, refused.refusal
 
-    resolved = Scopes::Anchor.call(
+    resolved = memory_anchor(
       path: "workspace/notes.md", workspace: @workspace, conversation: nil
     )
     assert_predicate resolved, :resolved?
@@ -115,8 +117,8 @@ class MemoryDocuments::StoreTest < ActiveSupport::TestCase
     assert_equal "shared", read("conversation/plan.md", conversation: child).content
   end
 
-  test "the cap is per anchor, and a replace never spends a slot" do
-    MemoryDocument::MAX_DOCUMENTS_PER_ANCHOR.times do |n|
+  test "the cap is per collection, and a replace never spends a slot" do
+    MemoryDocument::MAX_DOCUMENTS_PER_COLLECTION.times do |n|
       assert_predicate write!("workspace/n#{n}.md", "x"), :written?
     end
     assert_equal :memory_full, write!("workspace/one-too-many.md", "x").outcome
@@ -138,7 +140,7 @@ class MemoryDocuments::StoreTest < ActiveSupport::TestCase
     child = fork!
 
     entry = MemoryDocuments::Listing.call(
-      documents: MemoryDocument.for_conversation(child.id)
+      documents: child.memory_documents
     ).sole
     assert_equal "conversation/plan.md", entry.path
     assert_in_delta authored, entry.written_at, 1.second,
@@ -150,7 +152,7 @@ class MemoryDocuments::StoreTest < ActiveSupport::TestCase
     write!("workspace/b.md", "beta again")
 
     found = MemoryDocuments::Search.call(
-      documents: MemoryDocument.for_workspace(@workspace.id), pattern: "beta"
+      documents: MemoryCollection.default_for(@workspace).memory_documents, pattern: "beta"
     )
     assert_predicate found, :found?
     assert_equal [["workspace/a.md", 2], ["workspace/b.md", 1]],
@@ -159,7 +161,7 @@ class MemoryDocuments::StoreTest < ActiveSupport::TestCase
 
     assert_equal :memory_pattern_invalid,
       MemoryDocuments::Search.call(
-        documents: MemoryDocument.for_workspace(@workspace.id), pattern: "["
+        documents: MemoryCollection.default_for(@workspace).memory_documents, pattern: "["
       ).refusal
   end
 
@@ -168,7 +170,7 @@ class MemoryDocuments::StoreTest < ActiveSupport::TestCase
     version_id = read("conversation/plan.md").memory_document_version_id
     # The cascade a conversation teardown performs: pointers go, versions
     # stay, and no writer runs to reclaim them.
-    MemoryDocument.where(conversation_id: @conversation.id).delete_all
+    @conversation.with_lock { MemoryCollections::Drain.call(owner: @conversation, budget: 10) }
 
     assert_not_nil MemoryDocumentVersion.find_by(id: version_id)
     result = MemoryDocuments::ReclaimVersions.call

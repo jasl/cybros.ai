@@ -1,3 +1,4 @@
+require_relative "../memory_collections"
 require "net/http"
 require "securerandom"
 
@@ -307,8 +308,8 @@ module E2E
         conversation, loop_id = open_turn(task.instruction, project, model: @model, flags: task.flags)
         await_loop_completion_unattended(loop_id, deadline: task.deadline_seconds)
         client = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)
-        paths = client.profile.memory.list.map(&:path)
-        saved = paths.include?("user/token.md") ? client.profile.memory.read("user/token.md").content.to_s : nil
+        paths = E2E::MemoryCollections.default_documents(client.profile).list.map(&:path)
+        saved = paths.include?("token.md") ? E2E::MemoryCollections.default_documents(client.profile).read("token.md").content.to_s : nil
         puts "memory:  #{paths.inspect}"
         reply = ask_in_another_workspace(client, seed)
         Run.one(loop_id, conversation, "reply" => result_of(loop_id), "memory_paths" => paths,

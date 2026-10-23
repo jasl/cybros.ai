@@ -12,12 +12,13 @@ class Conversations::MemoryBindingsExecutionTest < ActiveJob::TestCase
     DevModelLane.ensure_enabled!(@account)
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
     @shared = Conversation.create!(workspace: @workspace, creating_user: @human)
+    [@conversation, @shared].each { |owner| MemoryCollection.default_for(owner) }
     @configuration = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-      { "name" => "group", "scope" => "conversation", "access" => "read_write", "conversation_public_id" => @shared.public_id },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+      { "name" => "group", "source" => { "scope" => "conversation", "conversation_public_id" => @shared.public_id }, "access" => "read_write" },
     ] }
     write(@shared, "conversation/shared.md", "shared database fact")
-    anchor = Scopes::Anchor.call(path: "user/private.md", user: @human)
+    anchor = memory_anchor(path: "user/private.md", user: @human)
     result = MemoryDocuments::Write.call(anchor: anchor, content: "unselected user fact", expected: nil)
     assert_predicate result, :written?
     @conversation.update!(memory_context: @configuration)
@@ -30,6 +31,10 @@ class Conversations::MemoryBindingsExecutionTest < ActiveJob::TestCase
     result = Conversations::Memory::Apply.write(conversation: conversation, path: path,
       content: content, by: @human, expected: nil)
     assert_predicate result, :accepted?, result.outcome.to_s
+  end
+
+  def selection(captured)
+    captured.merge("bindings" => captured.fetch("bindings").map { |entry| entry.except("capture") })
   end
 
   def open_turn
@@ -63,8 +68,9 @@ class Conversations::MemoryBindingsExecutionTest < ActiveJob::TestCase
 
   test "materialization freezes selected paths for injection and later tools" do
     turn, loop = open_turn
-    assert_equal @configuration, turn.active_variant.memory_context
-    assert_equal @configuration, loop.memory_context
+    assert_equal @configuration, selection(turn.active_variant.memory_context)
+    assert_equal MemoryCollection.default_for(@shared).public_id, turn.active_variant.memory_context.dig("bindings", 1, "capture", "collection_public_id")
+    assert_equal turn.active_variant.memory_context, loop.memory_context
     assert_includes seed_text(loop), "group/shared.md"
     assert_includes seed_text(loop), "shared database fact"
     refute_includes seed_text(loop), "unselected user fact"
@@ -92,8 +98,8 @@ class Conversations::MemoryBindingsExecutionTest < ActiveJob::TestCase
       provider_id: "dev", model_ref: "mock-priced", reasoning_effort: nil, request_options: nil
     ))
     assert_predicate result, :accepted?, result.outcome.to_s
-    assert_equal @configuration, result.value.memory_context
-    assert_equal @configuration, result.value.run.memory_context
+    assert_equal loop.memory_context, result.value.memory_context
+    assert_equal loop.memory_context, result.value.run.memory_context
     assert_includes seed_text(result.value.run), "shared database fact"
     refute_includes seed_text(result.value.run), "unselected user fact"
   end
@@ -111,7 +117,7 @@ class Conversations::MemoryBindingsExecutionTest < ActiveJob::TestCase
     assert_predicate result, :accepted?, result.outcome.to_s
     Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id)
     mailed = @conversation.turns.order(:position).last.active_variant.run
-    assert_equal @configuration, mailed.memory_context
+    assert_equal loop.memory_context, mailed.memory_context
     assert_includes seed_text(mailed), "shared database fact"
 
     peer = Input.new(host: @conversation, origin: "agent", sender_run_public_id: loop.public_id)
@@ -138,7 +144,8 @@ class Conversations::MemoryBindingsExecutionTest < ActiveJob::TestCase
     assert_equal :memory_scope_unavailable, context.resolve("user/private.md").refusal
 
     child_run = deliver_brief(child, loop)
-    assert_equal @configuration, child_run.memory_context
+    assert_equal @configuration, selection(child_run.memory_context)
+    assert_equal MemoryCollection.default_for(child).public_id, child_run.memory_context.dig("bindings", 0, "capture", "collection_public_id")
     assert_includes seed_text(child_run), "shared database fact"
   end
 
@@ -146,9 +153,9 @@ class Conversations::MemoryBindingsExecutionTest < ActiveJob::TestCase
     first = Speakers::Resolve.member(account: @account, user: @human)
     second = Speakers::Resolve.member(account: @account, user: users(:owner))
     configuration = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-      { "name" => "speaker", "scope" => "speaker", "access" => "read", "speaker_public_id" => first.public_id },
-      { "name" => "colleague", "scope" => "speaker", "access" => "read_write", "speaker_public_id" => second.public_id },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+      { "name" => "speaker", "source" => { "scope" => "speaker", "speaker_public_id" => first.public_id }, "access" => "read" },
+      { "name" => "colleague", "source" => { "scope" => "speaker", "speaker_public_id" => second.public_id }, "access" => "read_write" },
     ] }
     @conversation.update!(memory_context: configuration)
     _turn, source = open_turn
@@ -160,7 +167,7 @@ class Conversations::MemoryBindingsExecutionTest < ActiveJob::TestCase
 
     child = result.value
     child_run = deliver_brief(child, source)
-    assert_equal configuration, child_run.memory_context
+    assert_equal configuration, selection(child_run.memory_context)
     context = MemoryDocuments::Context.new(workspace: @workspace, conversation: child,
       principal: @agent, configuration: child_run.memory_context, agent: @agent)
     assert_equal :memory_read_only, context.resolve("speaker/notes.md", authoring: true).refusal

@@ -7,7 +7,7 @@
 # Checks the prerequisites it never installs
 # (git, bash, curl, tar, a C compiler), then, into a prefix YOU own
 # (default ~/.local/share/rho, never sudo), unpacks Homebrew's portable
-# Ruby 4.0.7 bottle (sha256-pinned, the sha IS the download address),
+# Ruby 4.0.9 bottle (sha256-pinned, the sha IS the download address),
 # installs the lock's bundler into it, copies rho's packaged gem trees out of
 # the checkout this script sits in and runs `bundle install --deployment`
 # there, adds the tool rows of the chosen profile (rg, fd; jq, uv; Node +

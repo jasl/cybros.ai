@@ -27,11 +27,10 @@ module Conversations
       # SEALED body — an earlier loop's seed input — identity-copied onto
       # the new seed node, pointer rows onto the same fragments and
       # uploads, zero content bytes, nothing re-proven. One of the two.
-      def create(conversation:, variant:, creating_user:, steps:, tip:, approval_mode:, approval_rules:,
+      def create(conversation:, variant:, creating_user:, steps:, tip:, approval_mode:, approval_rules:, memory_context:,
                  seed_body: nil, seed_uploads: [], seed_source: nil, prompt_mechanism: nil,
                  authored_steps: nil, append_key: nil,
                  lifecycle_hooks: variant.turn.answering_user.lifecycle_hooks,
-                 memory_context: conversation.memory_context,
                  conversation_reach: conversation.effective_conversation_reach(execution_configuration: variant.turn.answering_user))
         raise ArgumentError, "seed_body and seed_source are two spellings of one seed" if seed_body && seed_source
 

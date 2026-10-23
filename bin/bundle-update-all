@@ -1,0 +1,73 @@
+#!/usr/bin/env ruby
+# Update every tracked or non-ignored Gemfile, including vendored projects.
+# Run from any directory; --dry-run lists the work without changing dependencies.
+
+require "open3"
+require "optparse"
+require "rubygems"
+
+root = File.expand_path("..", __dir__)
+dry_run = false
+parser = OptionParser.new do |options|
+  options.banner = "Usage: bin/bundle-update-all [--dry-run]"
+  options.separator "Updates bundles sequentially with the latest installed Bundler."
+  options.on("-n", "--dry-run", "List commands without running them") { dry_run = true }
+  options.on("-h", "--help", "Show this help") do
+    puts options
+    exit 0
+  end
+end
+
+begin
+  parser.parse!
+  if ARGV.any?
+    raise OptionParser::InvalidArgument, ARGV.join(" ")
+  end
+rescue OptionParser::ParseError => error
+  abort "#{error.message}\n#{parser}"
+end
+
+files, status = Open3.capture2(
+  "git", "ls-files", "--cached", "--others", "--exclude-standard", "-z",
+  "--", "Gemfile", "**/Gemfile", chdir: root
+)
+abort "Could not discover Gemfiles with git ls-files." unless status.success?
+
+gemfiles = files.split("\0").uniq.sort.select { |path| File.file?(File.join(root, path)) }
+abort "No Gemfiles found." if gemfiles.empty?
+
+# Override lockfile Bundler selection so a missing older executable cannot block updates.
+bundler = Gem::Specification.find_all_by_name("bundler").max_by(&:version)
+abort "Bundler is not installed. Run gem install bundler first." unless bundler
+
+command = %w[bundle update -j 1 --cooldown 0]
+failed = []
+$stdout.sync = true
+puts "#{dry_run ? 'Would update' : 'Updating'} #{gemfiles.length} bundles with Bundler #{bundler.version}."
+
+gemfiles.each.with_index(1) do |gemfile, index|
+  directory = File.dirname(gemfile)
+  puts "\n[#{index}/#{gemfiles.length}] #{directory}: #{command.join(' ')}"
+  unless dry_run
+    environment = {
+      "BUNDLER_VERSION" => bundler.version.to_s,
+      "BUNDLE_GEMFILE" => File.join(root, gemfile)
+    }
+    unless system(environment, *command, chdir: File.join(root, directory))
+      if $?.signaled? || [130, 143].include?($?.exitstatus)
+        exit($?.exitstatus || 128 + $?.termsig)
+      end
+      failed << directory
+    end
+  end
+end
+
+if dry_run
+  puts "\nDry run complete; no bundles updated."
+elsif failed.empty?
+  puts "\nAll #{gemfiles.length} bundles updated successfully."
+else
+  warn "\nFailed to update #{failed.length} of #{gemfiles.length} bundles:"
+  failed.each { |directory| warn "  #{directory}" }
+  exit 1
+end

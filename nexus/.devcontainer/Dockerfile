@@ -17,7 +17,7 @@ ENV BINDING="0.0.0.0"
 # in exactly the shell a person opens.
 ENV BUN_INSTALL=/usr/local/bun
 ENV PATH=/usr/local/bun/bin:$PATH
-ARG BUN_VERSION=1.4.2
+ARG BUN_VERSION=1.4.4
 USER root
 RUN curl -fsSL https://bun.sh/install | bash -s -- "bun-v${BUN_VERSION}" && \
     chmod -R a+rX /usr/local/bun && \

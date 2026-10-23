@@ -6,11 +6,11 @@ module Runs
     Command = Data.define(
       :workspace, :creating_user, :steps, :billing_subject, :idempotency_key,
       :prompt_mechanism, :approval_mode, :approval_rules, :default_runner_executor_public_id, :speaker_public_id,
-      :model_selection, :fallback_models
+      :model_selection, :fallback_models, :memory_context
     ) do
       def initialize(prompt_mechanism: nil, approval_mode: nil, approval_rules: nil,
                      default_runner_executor_public_id: nil, speaker_public_id: nil,
-                     model_selection: nil, fallback_models: nil, **) = super
+                     model_selection: nil, fallback_models: nil, memory_context: nil, **) = super
     end
 
     # The configuration shell: one of the three mechanism words — `raw`: the
@@ -83,6 +83,17 @@ module Runs
       )
       return Result.refused(:runner_not_eligible) if binding.refused?
 
+      configuration = MemoryContext.capture(configuration: MemoryContext.constrain(
+        configuration: @command.memory_context, limit: @command.creating_user.memory_context_limit),
+        speaker: speaker || Speakers::Resolve.member(account: @command.creating_user.account, user: @command.creating_user))
+      context = MemoryDocuments::Context.new(workspace: @command.workspace, conversation: nil,
+        principal: @command.creating_user, configuration: configuration,
+        agent: (@command.creating_user if @command.creating_user.agent?), execution: true)
+      context.prepare_defaults
+      refusal = context.selection_refusal
+      return Result.refused(refusal) if refusal
+
+      captured_memory = context.capture
       run = nil
       appended = nil
       seed_refusal = nil
@@ -102,9 +113,7 @@ module Runs
             approval_rules: @command.approval_rules),
           model_selection: @command.model_selection,
           fallback_models: @command.fallback_models || creating_user.fallback_models || [],
-          memory_context: MemoryContext.capture(configuration: MemoryContext.constrain(
-            configuration: nil, limit: creating_user.memory_context_limit),
-            speaker: speaker || Speakers::Resolve.member(account: creating_user.account, user: creating_user)),
+          memory_context: captured_memory,
           conversation_reach: creating_user.conversation_reach || "workspace",
           default_runner_executor: binding.executor,
           **attribution
@@ -236,7 +245,8 @@ module Runs
           "approval_rules" => @command.approval_rules,
           "default_runner_executor_public_id" => @command.default_runner_executor_public_id,
           "speaker_public_id" => @command.speaker_public_id,
-          "model_selection" => @command.model_selection, "fallback_models" => @command.fallback_models
+          "model_selection" => @command.model_selection, "fallback_models" => @command.fallback_models,
+          "memory_context" => @command.memory_context
         )
       end
 

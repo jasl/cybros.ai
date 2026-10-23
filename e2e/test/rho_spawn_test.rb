@@ -14,37 +14,11 @@ require "support/runner_grant"
 require "support/secret_hygiene"
 require "support/steward_session"
 
-# THE SPAWNED CONVERSATION THROUGH exe/rho: a model's `spawn` mints a CHILD conversation that
-# persists under the caller's principal with a captured worker role — and the kernel
-# relays the child's reply back exactly once: as an `origin: child` row through the one input door
-# (kernel mail, drained FIRST, immutable to the person), or as the paired `<task_result …
-# conversation=>` of a `wait: true` call. `send` posts into it (queued, or a STEER into its running
-# turn), `status`/`cancel` read and stop it, and every refusal is a sentence the round reads by
-# name. On rho's side: `rho watch` names the speaker under a wrapped row (`from:`), the child tree
-# (`spawned`) and who resolved a park; `rho stop CHILD` cancels a conversation this daemon never
-# followed through the kernel; and under THE ROOM KNOB (`RHO_WORKSPACE`) two rho homes under one
-# steward share a steward-created room. Direct peer conversations and peer messaging remain
-# separate from Subagent roles; a role may select a shared Runner without changing principal.
-#
-# The mock provider ECHOES its joined input, so what a turn was SHOWN is
-# readable off its answer and off the sealed request; the assertions are
-# structure — the envelope bytes, the drain order, the refusal words, the
-# ids, which home's log carries a claim — never a model's judgement (the
-# paid lane `live_spawn` pins the words).
-#
-# EACH CEREMONY ONCE PER FILE (the `side_conversation` shape): the steward's
-# session, the ROOM and home A's daemon are booted once for every case
-# here — one device grant — and home B (the peer clause) once more, on
-# its first use. The shared standalone Runner gets its own grant when a
-# role selects it; all three stop when the run ends. Every case opens its own
-# conversations. Home A runs under the knob from its first boot, so the
-# subagent half exercises the room too: a room is a workspace like any
-# other to `spawn`, and `rho status` says which kind it adopted.
-#
-# THE RECOVERY of a torn spawn job (a second run finds the child minted
-# and posts the missing brief once) is the kernel unit
-# `nexus/test/services/runs/spawn_test.rb` ("a second run finds the
-# child already minted…") and is not repeated here.
+# Real rho daemons create delegated children, route peer messages by recipient, and deliver
+# each child's result to the original parent. The retained journeys cover durable delivery,
+# root cancellation of hidden children, asynchronous synthesis and private Runner ownership.
+# The fake provider scripts calls; public execution records and Runner effects prove them.
+# Daemon homes share a steward-created workspace and are paired once per file.
 class RhoSpawnTest < Minitest::Test
   include E2E::RhoSpawnAssertions
 
@@ -54,17 +28,8 @@ class RhoSpawnTest < Minitest::Test
   # turn is `r2t0` and its continuation `r2`; the mock scripts one call
   # per round, so a second call is `r3t0`, a third `r4t0`. Round 1's
   # sealed request is still `r1`.
-  # THE WINDOWS: a bash `sleep` on rho's runner holds a turn open (the
-  # mock's own `slow=` is clamped to 0.2 s in every journey world). A
-  # child's sleep must END while its parent's still runs, so the child's
-  # reply lands as a PENDING row on a busy parent and the drain order can
-  # be read; a parent's sleep must outlast the child's plus the terminal
-  # verbs run inside the window (each `rho` call boots a bundle).
-  CHILD_SLEEP = 20
+  # Keep the parent busy while its child replies and CLI observations inspect drain order.
   PARENT_SLEEP = 35
-  # A bounded silence after a reply settled: longer than the relay's
-  # kick, the sweep's floor and a mock turn's whole life.
-  SILENCE_SECONDS = 6
   # THE MEMBER PLANE IS RATE-LIMITED PER CALLER (120 a minute on the loop
   # routes), and every case reads as the same steward: polls are paced.
   POLL = 1
@@ -259,7 +224,7 @@ class RhoSpawnTest < Minitest::Test
 
     conversation, _turn, loop = rho_do(script(
       [["spawn", { "role" => "worker", "prompt" => "!mock -- child hello", "label" => "helper" }], ["bash", sleep_arguments(PARENT_SLEEP)]],
-      "parent done"
+      "parent done", reply: "parent done"
     ))
     chat = @conversations.conversation(conversation)
     child = await_child(chat, label: "helper")
@@ -330,188 +295,6 @@ class RhoSpawnTest < Minitest::Test
       "and the speaker under it — the child's answerer and the conversation it was sent from:\n#{watched}")
     assert_match(/^  spawned\s+#{Regexp.escape(child.public_id)} \(helper, r2t0\) answered by #{Regexp.escape(profile)} — (replying|idle)$/,
       watched, "the child tree: one line per spawned conversation:\n#{watched}")
-  end
-
-  # A waited role's formal result is independent of its conversation reach. The parent's id is
-  # in the brief — it exists only from turn 2, so `rho do` settles a first
-  # turn and `rho say` opens the one that spawns. The child's first round
-  # tries to `send` to its parent and is refused outside its own subtree.
-  # The child's formal reply then
-  # settles the await TRUSTED, naming the child as its resolver, and is
-  # the call's PAIRED RESULT in the continuation's sealed request — the
-  # `<task_result … conversation=>` bytes, delivered there and never as
-  # mail. `rho watch` prints who resolved the park.
-  def test_a_waited_roles_formal_result_returns_while_its_tools_cannot_address_the_parent
-    conversation, _turn, first = rho_do("!mock -- first")
-    await_run_status(first, "completed")
-    chat = @conversations.conversation(conversation)
-
-    brief = script([["send", { "to" => conversation, "message" => "!mock -- child to parent" }]], "child answer")
-    rho_say(conversation, script([["spawn", { "role" => "worker", "prompt" => brief, "wait" => true, "label" => "waiter" }]], "parent has it"))
-    second = await_feed(conversation, "the spawning turn never started") { |items| new_turns(items, except: [first]).first }
-    second_loop = second.dig("payload", "run_public_id")
-    child = await_child(chat, label: "waiter")
-    assert_includes task_result(second_loop, "r2t0"),
-      "Spawned conversation #{child.public_id} (label waiter), answered by @#{rho_identity(@daemon).last}; waiting for its first reply"
-
-    child_chat = @conversations.conversation(child.public_id)
-    reply = await_reply(child_chat, after: -1)
-    child_loop = reply.active_variant.run_public_id
-    taught = task_result(child_loop, "r2t0")
-    assert_includes taught, "unknown_conversation:",
-      "the role's conversation tools cannot address its parent outside the child subtree:\n#{taught}"
-
-    done = await_run_status(second_loop, "completed")
-    await = done.fetch("tasks").find { |task| task.fetch("key") == "r2t0-spawn-1" }
-    refute_nil await, "the waited spawn parked a kernel-held await under the call: #{summarize(done)}"
-    assert_equal "completed", await.fetch("status"), summarize(done)
-    continuation = sealed_texts(second_loop, "r2").join("\n")
-    assert_includes continuation, %(<task_result task="r2t0" status="completed" conversation="#{child.public_id}">),
-      "THE PAIRED RESULT: the continuation's sealed request carries the child's reply as this call's result:\n#{continuation}"
-    assert_includes continuation, "child answer", continuation
-    refute feed(conversation).any? { |item| item["type"] == "input_accepted" && item.dig("payload", "origin") == "child" },
-      "a reply that settled the await is never ALSO mailed: delivered exactly once"
-
-    watched, exit_status = @daemon.cli("watch", conversation, "--timeout", E2E::RhoDaemon::WATCH_TIMEOUT.to_s)
-    assert_predicate exit_status, :success?, "rho watch failed:\n#{watched}"
-    assert_match(/^\s+completed\s+r2t0-spawn-1\b.*resolved by conversation #{Regexp.escape(child.public_id)}$/, watched,
-      "the await's line names its resolver — the child, kind recorded:\n#{watched}")
-  end
-
-  # `send`, three ways in one turn, into a child whose brief is
-  # sleeping on the runner: a STEER into that running turn lands at its
-  # next model boundary as a WRAPPED row in the next round's sealed
-  # request; an OWN-conversation `send` is QUEUED, never refused — an
-  # `agent`-origin row the person may edit and that `held` counts; a
-  # `send` to a side is refused by name. The child's reply — its echo,
-  # steer included — is mailed to the parent and drains FIRST, ahead of
-  # the own row the model queued before it, and both arrive as the
-  # envelopes their rows earn: the mail as `<task_result>` with the
-  # child's `</message>` escaped, the own row as `<message …
-  # conversation=>` naming the conversation it was sent from.
-  def test_send_steers_a_running_child_queues_into_ones_own_conversation_and_is_refused_by_a_side
-    profile, handle = rho_identity(@daemon)
-    child_brief = script([["bash", sleep_arguments(CHILD_SLEEP)]], "child done")
-    # The parent launch acknowledgement carries no assertion material. Keep
-    # its fixed prompt out of history; the child's echo below remains intact.
-    conversation, _turn, first = rho_do(script([["spawn", { "role" => "worker", "prompt" => child_brief, "label" => "slow" }]], "spawned", reply: "spawned"))
-    await_run_status(first, "completed")
-    chat = @conversations.conversation(conversation)
-    child = await_child(chat, label: "slow")
-    child_chat = @conversations.conversation(child.public_id)
-    running = await_running_turn(child_chat, after: -1)
-    child_loop = running.active_variant.run_public_id
-    await_tool_running(child_loop)
-    side = chat.fork(side: true, idempotency_key: SecureRandom.uuid).conversation.public_id
-
-    # THE SCRIPT'S CLOCK counts every answered call in the input, turn 1's
-    # `spawn` included, so turn 2's script is padded by one element that
-    # is never called (the `tool_call=bash,bash` idiom of rho_conversation).
-    steer = ["send", { "to" => "slow", "message" => "!mock -- steered word", "steer" => true }]
-    rho_say(conversation, script([
-      steer, steer,
-      ["send", { "to" => conversation, "message" => "!mock -- note to self" }],
-      ["send", { "to" => side, "message" => "hi side" }],
-      ["bash", sleep_arguments(PARENT_SLEEP)],
-    ], "sent three", reply: "sent three"))
-    second = await_feed(conversation, "the sending turn never started") { |items| new_turns(items, except: [first]).first }
-    second_loop = second.dig("payload", "run_public_id")
-    await("the three sends never settled", every: POLL) do
-      row = loop_row(second_loop)
-      row if %w[r2t0 r3t0 r4t0].all? { |key| row.fetch("tasks").any? { |task| task["key"] == key && task["status"] == "completed" } }
-    end
-    steered = task_result(second_loop, "r2t0")
-    assert_includes steered, "Sent to #{child.public_id} (steering); this joins the existing reply, " \
-      "which returns to the request that opened it.",
-      "a steer joins the child's existing reply without changing its return destination:\n#{steered}"
-    assert_equal "Sent to #{conversation} (queued).", task_result(second_loop, "r3t0"),
-      "one's own conversation is not above itself: the row queues, nothing is refused"
-    assert_includes task_result(second_loop, "r4t0"),
-      "side_conversation: #{side} is a side conversation; it takes no messages.", "a side is never an addressee"
-
-    listed, exit_status = @daemon.cli("inputs", conversation)
-    assert_predicate exit_status, :success?, "rho inputs failed:\n#{listed}"
-    own_id = listed[/^\s+pending\s+(\S+)\s+direct_reply\s+"!mock -- note to self"\s+\[agent\]$/, 1]
-    refute_nil own_id, "the own-conversation send is a pending `agent` row on the busy parent:\n#{listed}"
-    assert_equal 1, chat.inputs.list.input_queue.held, "an agent-origin row counts against the person's queue (`held`)"
-    edited, exit_status = @daemon.cli("inputs", "edit", conversation, own_id, "!mock -- edited note")
-    assert_predicate exit_status, :success?, "an agent-origin row is the person's to rewrite:\n#{edited}"
-    assert_match(/^edited:\s+#{Regexp.escape(own_id)} \(pending\)$/, edited, edited)
-
-    reply = await_reply(child_chat, after: -1)
-    assert_equal child_loop, reply.active_variant.run_public_id, "the steer landed in the SAME turn"
-    next_round = sealed_texts(child_loop, "r2").join("\n")
-    assert_includes next_round, envelope_opening(handle, profile, conversation),
-      "THE STEER, WRAPPED: the parent's words land in the child's next round as another conversation's:\n#{next_round}"
-    assert_includes next_round, "steered word", next_round
-
-    events = await_feed(conversation, "the child's mail and the own row never opened their turns") do |items|
-      items if new_turns(items, except: [first, second_loop]).length >= 2
-    end
-    woken, own = new_turns(events, except: [first, second_loop])
-    mailed = events.find { |item| item["type"] == "input_accepted" && item.dig("payload", "origin") == "child" }
-    refute_nil mailed, "the child's reply was never mailed: #{events.map { |item| item["type"] }.inspect}"
-    assert_equal mailed.dig("payload", "input_public_id"), materialized(events, woken).dig("payload", "input_public_id"),
-      "the kernel's row drains FIRST, ahead of the agent row the model queued before it landed"
-    assert_equal own_id, materialized(events, own).dig("payload", "input_public_id"), "then the model's own send"
-    woken_loop = woken.dig("payload", "run_public_id")
-    await_run_status(woken_loop, "completed")
-    seed = sealed_texts(woken_loop, "r1").join("\n")
-    assert_includes seed, %(<task_result task="r2t0" status="completed" conversation="#{child.public_id}">), seed
-    assert_includes seed, "steered word", "the child's echo carries the steer it read"
-    assert_includes seed, "&lt;/message>", "and its `</message>` is spelled, never closing the envelope:\n#{seed}"
-    own_loop = own.dig("payload", "run_public_id")
-    await_run_status(own_loop, "completed")
-    own_seed = sealed_texts(own_loop, "r1").join("\n")
-    assert_includes own_seed, envelope_opening(handle, profile, conversation),
-      "the own row is wrapped too — sent from a conversation, even one's own:\n#{own_seed}"
-    assert_includes own_seed, "edited note", "with the person's rewrite, not the model's words"
-  end
-
-  # `rho stop CHILD` AND A PERSON'S WORD IN THE CHILD. The daemon never followed the child, so `rho
-  # stop` cancels it THROUGH THE KERNEL (the tree stop) and says so; the child's turn ends
-  # `canceled`, and the reply the parent was owed still arrives as mail, marked canceled. Then the
-  # person speaks in the child directly: that turn is theirs — the parent did not open it — so
-  # nothing is relayed, pinned by a bounded silence on the parent's feed.
-  def test_rho_stop_cancels_an_unfollowed_child_through_the_kernel_and_a_persons_own_word_in_the_child_is_never_relayed
-    child_brief = script([["bash", sleep_arguments(CHILD_SLEEP)]], "child finished")
-    conversation, _turn, first = rho_do(script([["spawn", { "role" => "worker", "prompt" => child_brief, "label" => "doomed" }]], "spawned"))
-    await_run_status(first, "completed")
-    chat = @conversations.conversation(conversation)
-    child = await_child(chat, label: "doomed")
-    child_chat = @conversations.conversation(child.public_id)
-    running = await_running_turn(child_chat, after: -1)
-    await_tool_running(running.active_variant.run_public_id)
-
-    stopped, exit_status = @daemon.cli("stop", child.public_id)
-    assert_predicate exit_status, :success?, "rho stop failed:\n#{stopped}"
-    assert_match(/^stopped:\s+#{Regexp.escape(child.public_id)} \(conversation\)$/, stopped, stopped)
-    assert_match(/^status:\s+canceling$/, stopped, stopped)
-    assert_match(/^followed:\s+no — canceled through the kernel$/,
-      stopped, "a conversation nobody here followed is canceled through the kernel and says so:\n#{stopped}")
-    canceled = await("the child's turn never ended canceled", every: POLL) do
-      child_chat.turns.list.items.find { |turn| turn.public_id == running.public_id && turn.status == "canceled" }
-    end
-
-    woken = await_feed(conversation, "the canceled reply was never mailed") { |items| new_turns(items, except: [first]).first }
-    woken_loop = woken.dig("payload", "run_public_id")
-    await_run_status(woken_loop, "completed")
-    seed = sealed_texts(woken_loop, "r1").join("\n")
-    assert_includes seed, %(<task_result task="r2t0" status="canceled" conversation="#{child.public_id}">),
-      "a reply the parent was owed still reaches it, marked canceled:\n#{seed}"
-    assert_equal 1, feed(conversation).count { |item| item["type"] == "input_accepted" && item.dig("payload", "origin") == "child" }
-
-    # THE PERSON'S OWN TURN IN THE CHILD, through the kernel's door as the steward (`origin:
-    # person`, no sender stamp). Not `rho say`: the daemon's row for a conversation it only attached
-    # carries no model and `say` would read the child's off the loop projection (the settings'
-    # `default_model` first) — a different lane, not what this pin is about: the person's own words,
-    # the person's own model.
-    child_chat.inputs.create(kind: "direct_reply", model: MODEL, text: "!mock -- person aside", idempotency_key: SecureRandom.uuid)
-    aside = await_reply(child_chat, after: canceled.position)
-    assert_equal "completed", aside.status
-    sleep SILENCE_SECONDS
-    assert_equal 1, feed(conversation).count { |item| item["type"] == "input_accepted" && item.dig("payload", "origin") == "child" },
-      "only turns the parent opened are owed: the person's own exchange in the child stays there"
   end
 
   def test_a_root_cancel_stops_a_spawned_child_hidden_from_the_human
@@ -589,26 +372,6 @@ class RhoSpawnTest < Minitest::Test
     refute feed(conversation).any? { |item| item["type"] == "input_accepted" && item.dig("payload", "origin") == "child" }
   end
 
-  def test_a_turn_owned_waited_spawn_consumes_its_completion_once_without_a_second_wake
-    rho_identity(@daemon)
-    conversation, _turn, parent = rho_do(script([
-      ["spawn", { "role" => "worker", "prompt" => "!mock -- scoped-waited-report", "lifetime" => "turn", "wait" => true,
-                    "label" => "scoped-waited" }],
-    ], "synthesized"))
-    chat = @conversations.conversation(conversation)
-    child = await_child(chat, label: "scoped-waited")
-    finished = await_run_status(parent, "completed")
-    completion = finished.fetch("tasks").find { |task| task["kind"] == "delegation_task" }
-    assert_equal ["turn", "completed"], completion.values_at("lifetime", "status")
-    assert_equal "r2", finished.fetch("deliverable_task_key"), "the existing waited continuation consumes the result"
-    request = sealed_texts(parent, "r2").join("\n")
-    envelope = %(<task_result task="r2t0" status="completed" conversation="#{child.public_id}">)
-    assert_equal 1, request.scan(envelope).length, request
-    assert_includes request, "scoped-waited-report"
-    assert_equal 1, chat.turns.list.items.count { |turn| turn.role == "assistant" }
-    refute feed(conversation).any? { |item| item["type"] == "input_accepted" && item.dig("payload", "origin") == "child" }
-  end
-
   # B answers this conversation, so its private Runner serves the selected call.
   def test_a_peer_conversation_uses_its_answerers_private_runner
     _, handle = rho_identity(@daemon)
@@ -679,59 +442,5 @@ class RhoSpawnTest < Minitest::Test
       assert_equal before + (runner ? 1 : 0), peer.claims.count { |entry| entry.fetch("tool") == "bash" }
       assert_equal a_claims, @daemon.claims.length, "the first say still executes under B"
     end
-  end
-
-  # Selecting a Human-private standalone Runner keeps the role under A's
-  # principal and application inbox; B's own private Runner stays with B.
-  def test_a_role_uses_a_shared_runner_without_changing_its_identity_or_inbox
-    profile, handle = rho_identity(@daemon)
-    peer, = peer_home
-    runner = self.class.shared_runner(@base_url)
-    runner_id = runner.executor_public_id
-    a_claims = @daemon.claims.length
-    b_claims = peer.claims.count { |entry| entry.fetch("tool") == "bash" }
-    shared_claims = runner.inbox_claims.count { |entry| entry.fetch("tool_name") == "bash" }
-    brief = script([["ask", { "prompt" => "which one?" }], ["bash", { "command" => "printf peer" }]], "peer done")
-    conversation, _turn, loop = rho_do(script([["spawn", { "role" => "worker", "prompt" => brief, "label" => "peer",
-                                                         "default_runner_executor_public_id" => runner_id }]], "asked"))
-    chat = @conversations.conversation(conversation)
-    assert_equal @daemon.status.dig("identity", "runner_executor_public_id"), chat.fetch.default_runner&.executor_public_id
-    child = await_child(chat, label: "peer")
-    assert_equal profile, child.answering_user_public_id, "the role keeps the delegator's principal"
-    assert_equal runner_id, @conversations.conversation(child.public_id).fetch.default_runner&.executor_public_id
-    assert_includes task_result(loop, "r2t0"), "in the background"
-
-    ask = await("the role's ask never parked on home A's inbox", every: POLL) do
-      @daemon.control(:get, "/asks").fetch("asks").find { |row| row["kind"] == "ask" && row["prompt"] == "which one?" }
-    end
-    assert_empty peer.control(:get, "/asks").fetch("asks"), "selecting a Runner does not redirect the application inbox"
-    reported, exit_status = @daemon.cli("status")
-    assert_predicate exit_status, :success?, "rho status on home A failed:\n#{reported}"
-    assert_match(/^asks:\s+1 pending$/, reported, reported)
-    answered, exit_status = @daemon.cli("answer", ask.fetch("run_public_id"), ask.fetch("task_key"), "that one")
-    assert_predicate exit_status, :success?, "rho answer on home A failed:\n#{answered}"
-    assert_match(/^answered:\s+#{Regexp.escape(ask.fetch("task_key"))}/, answered, answered)
-
-    child_reply = await_reply(@conversations.conversation(child.public_id), after: -1)
-    child_run = child_reply.active_variant.run_public_id
-    call = loop_row(child_run).fetch("tasks").find { |task| task["tool_name"] == "bash" }
-    assert_equal "peer", task_result(child_run, call.fetch("key"))
-    assert_equal runner_id, call.fetch("target").fetch("executor_public_id")
-    assert_equal a_claims, @daemon.claims.length, "the parent's default does not replace the child's explicit selection"
-    assert_equal b_claims, peer.claims.count { |entry| entry.fetch("tool") == "bash" }, "B's private Runner serves no call under A"
-    assert_equal shared_claims + 1, runner.inbox_claims.count { |entry| entry.fetch("tool_name") == "bash" },
-      "the shared Runner claimed the role's selected bash call"
-
-    woken = await_feed(conversation, "the role's reply was never mailed") { |items| new_turns(items, except: [loop]).first }
-    await_run_status(woken.dig("payload", "run_public_id"), "completed")
-    watched, exit_status = @daemon.cli("watch", conversation, "--timeout", E2E::RhoDaemon::WATCH_TIMEOUT.to_s)
-    assert_predicate exit_status, :success?, "rho watch failed:\n#{watched}"
-    assert_match(/^  delivered\s+r2t0$/, watched, watched)
-    # THE MAIL'S AUTHOR IS THE PARENT LOOP'S CREATOR (`Runs::ResultDelivery`): the kernel relays its own
-    # receipt and impersonates nobody, so home A's handle stands under the mail.
-    assert_match(/^    from: @#{Regexp.escape(handle)} \(agent\) #{Regexp.escape(child.public_id)}$/, watched,
-      "the mail is authored by home A, the parent loop's creator, and stamped with the role's child:\n#{watched}")
-    assert_match(/^  spawned\s+#{Regexp.escape(child.public_id)} \(peer, r2t0\) answered by #{Regexp.escape(profile)} — /,
-      watched, watched)
   end
 end

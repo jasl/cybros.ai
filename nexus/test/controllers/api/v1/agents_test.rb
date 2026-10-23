@@ -20,6 +20,9 @@ class API::V1::AgentsTest < ActionDispatch::IntegrationTest
     assert_match(/\A[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/, row.agent_identifier)
     assert_equal row.agent_identifier, response.parsed_body.dig("agent", "agent_identifier")
     assert_nil Executor.address_for(row)
+    collection = row.memory_collections.where(is_default: true, speaker: nil).sole
+    assert_equal :agent, collection.natural_scope
+    assert_equal row.account, collection.account
     get "/api/v1/agents", headers: @headers
     assert_response :success
     assert_includes response.parsed_body.fetch("agents").map { |item| item.fetch("public_id") }, row.public_id

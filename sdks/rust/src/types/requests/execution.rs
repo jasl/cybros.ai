@@ -51,7 +51,7 @@ request!(ContextEstimate {} {prompt:String,render:bool,answering_user_public_id:
 request!(ViewState {} {visibility:String,concealed:bool});
 request!(EditTurn {} {text:String,entries:Vec<Value>});
 request!(RegenerateTurn {} {model:ModelRequest,configuration:JsonObject,agent_configuration:AgentConfigurationRequest,model_selection:ModelSelection,fallback_models:Vec<String>});
-request!(CreateRun {steps:Vec<Step>,approval_mode:ApprovalMode} {billing_subject:String,prompt_mechanism:PromptMechanism,approval_rules:Vec<ApprovalRule>,default_runner_executor_public_id:String,speaker_public_id:String,model_selection:ModelSelection,fallback_models:Vec<String>});
+request!(CreateRun {steps:Vec<Step>,approval_mode:ApprovalMode} {billing_subject:String,prompt_mechanism:PromptMechanism,approval_rules:Vec<ApprovalRule>,default_runner_executor_public_id:String,speaker_public_id:String,memory_context:MemoryContext,model_selection:ModelSelection,fallback_models:Vec<String>});
 request!(AppendTasks {steps:Vec<Step>} {expected_revision:i64,resolve:Vec<TaskResolution>});
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -91,7 +91,7 @@ impl Default for ScheduleRuleRequest {
     }
 }
 request!(CreateSchedule {prompt:String,rule:ScheduleRuleRequest} {executor_contexts:JsonObject,name:String,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,model_selection:ModelSelection,fallback_models:Vec<String>,source_run_public_id:String,source_task_key:String});
-request!(UpdateSchedule {expected_lock_version:i64} {executor_contexts:JsonObject,name:String,prompt:String,rule:ScheduleRuleRequest,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,model_selection:ModelSelection,fallback_models:Vec<String>});
+request!(UpdateSchedule {expected_lock_version:i64} {executor_contexts:JsonObject,name:String,prompt:String,rule:ScheduleRuleRequest,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,memory_context:MemoryContext,model_selection:ModelSelection,fallback_models:Vec<String>});
 request!(AnnouncedTool {name:String,effect_profile:EffectProfile} {timeout_ms:u64,description:String,input_schema:JsonObject,mcp:JsonObject});
 request!(AnnouncedDocument {name:String,description:String} {});
 request!(ServiceAnnouncement {tools:Vec<AnnouncedTool>} {environment:JsonObject,documents:Vec<AnnouncedDocument>});

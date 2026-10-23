@@ -12,7 +12,7 @@ class Admin::CostUnitsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_select "[role=alert]"
     assert_nil account.reload.cost_unit
-    invalid = "x" * (Account::COST_UNIT_MAX_LENGTH + 1)
+    invalid = "x" * (Constants::COST_UNIT_MAX_LENGTH + 1)
     patch admin_cost_unit_path, params: { account: { cost_unit: invalid } }
     assert_response :unprocessable_entity
     assert_select "input[name=?][value=?]", "account[cost_unit]", invalid

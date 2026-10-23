@@ -8,13 +8,14 @@ module Conversations
     # One row, now: a tombstoned side skips the retention clock. The
     # caller holds the row's lock; a fence answers false and the sweep
     # rediscovers the row.
-    def self.reap_now(id) = new(batch: 1).send(:reap_one, id)
+    def self.reap_now(id) = new(batch: 200).send(:reap_one, id)
 
     # Shared with workspace collection. The caller holds the conversation
     # lock: retire its engines before deleting the variants that identify
     # their host. A draining loop keeps its own settlement/reap lifecycle.
     def self.destroy_aggregate(conversation)
-      return false if Runs::Delegations.retained_conversation?(conversation)
+      return false unless destroyable?(conversation)
+      return false if conversation.memory_collections.exists?
 
       tombstoned_at = conversation.tombstoned_at || Time.current
       conversation.hosted_runs.find_each do |run|
@@ -38,8 +39,20 @@ module Conversations
       true
     end
 
+    # Shared by both owner collectors and rechecked under the Conversation
+    # lock before any memory is drained. References to memory are not pins.
+    def self.destroyable?(conversation)
+      id = conversation.id
+      !ConversationAncestry.where(ancestor_conversation_id: id).exists? &&
+        !Runs::Delegations.retained_conversation?(conversation) &&
+        !ModelInvocation.nonterminal.where(conversation_id: id).exists? &&
+        !ModelInvocationAttempt.where(settlement_state: "pending").joins(:model_invocation)
+          .where(model_invocations: { conversation_id: id }).exists?
+    end
+
     def initialize(batch:, after_tombstoned_at: nil, after_id: 0)
       @batch = batch
+      @memory_remaining = batch
       @cutoff = Conversation::RETENTION_PERIOD.ago
       @after_tombstoned_at = Time.zone.iso8601(after_tombstoned_at) if after_tombstoned_at
       @after_id = after_id
@@ -51,9 +64,10 @@ module Conversations
 
       # One sweep's tally, the accepted answer's value.
       Outcome.accepted(Sweeps::Pass.new(
-        counts: { scanned: rows.length, reaped: reaped },
-        cursor: rows.last && [rows.last.tombstoned_at.iso8601(6), rows.last.id],
-        more: @batch.positive? && rows.length == @batch
+        counts: { scanned: rows.length, reaped: reaped, memory_processed: @batch - @memory_remaining },
+        cursor: @memory_remaining.zero? ? [@after_tombstoned_at&.iso8601(6), @after_id] :
+          rows.last && [rows.last.tombstoned_at.iso8601(6), rows.last.id],
+        more: @batch.positive? && (@memory_remaining.zero? || rows.length == @batch)
       ))
     end
 
@@ -80,13 +94,11 @@ module Conversations
           eligible = ApplicationRecord.uncached do
             locked.tombstoned_at.present? &&
               (locked.side? || locked.tombstoned_at <= @cutoff) &&
-              !ConversationAncestry.where(ancestor_conversation_id: id).exists? &&
-              !nonterminal_work_for(id)
+              self.class.destroyable?(locked)
           end
           next false unless eligible
 
-          # The cascade takes the conversation's memory pointers and its
-          # own store rows (StoreHost) with the row.
+          @memory_remaining -= MemoryCollections::Drain.call(owner: locked, budget: @memory_remaining)
           self.class.destroy_aggregate(locked)
         end
       rescue ActiveRecord::StatementInvalid => error
@@ -95,16 +107,6 @@ module Conversations
         # A concurrent fork won the ancestry pin. Rediscover the row when
         # the descendant dies; unrelated teardown failures still propagate.
         false
-      end
-
-      def nonterminal_work_for(id)
-        # Pending settlement may still write a receipt without holding the
-        # invocation lock, so its aggregate remains until that obligation ends.
-        ModelInvocation.nonterminal.where(conversation_id: id).exists? ||
-          ModelInvocationAttempt.where(settlement_state: "pending")
-            .joins(:model_invocation)
-            .where(model_invocations: { conversation_id: id })
-            .exists?
       end
   end
 end

@@ -35,6 +35,7 @@ class Runs::StandaloneSeedTest < ActiveJob::TestCase
     # A conversation in the room: the writer of the room's memory, and the
     # owner of rows a standalone loop must never read.
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
+    MemoryCollection.default_for(@conversation)
     register!("system_prompt", SYSTEM_PROMPT, on: @agent, role: "developer")
     register!("character", CHARACTER, on: @workspace)
     register!("persona", PERSONA, on: @owner, role: "user")

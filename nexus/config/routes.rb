@@ -94,6 +94,12 @@ Rails.application.routes.draw do
   end
   get "usage", to: "usage_reports#show", as: :usage
   get "usage/export", to: "usage_exports#show", as: :usage_export
+  resources :memory_collections, param: :public_id do
+    post :archive, on: :member
+    post :restore, on: :member
+    resources :documents, only: [:index, :new, :create], controller: "memory_collections/documents"
+    resource :document, only: [:show, :edit, :update, :destroy], controller: "memory_collections/documents"
+  end
 
   # The member-facing Workspace surface: reads resolve inside effective
   # access, Humans create their own rows and manage them through named resources,
@@ -106,8 +112,6 @@ Rails.application.routes.draw do
       resource :settings, only: :show, controller: "settings"
       resource :data, only: :show, controller: :data
       resource :data_export, only: :show
-      resources :memory_documents, only: [:index, :new, :create], path: "memory"
-      resource :memory_document, only: [:show, :edit, :update, :destroy], path: "memory/document", controller: :memory_documents
       resource :character, only: [:show, :edit, :update, :destroy], controller: :characters
       resources :store_entries, only: [:index, :show, :new, :create, :edit, :update, :destroy], param: :public_id
       resource :access_mode, only: :update
@@ -278,6 +282,19 @@ Rails.application.routes.draw do
   namespace :agent_api do
     namespace :v1 do
       resources :mcp_connections, only: [:index, :show]
+      resources :memory_collections, only: [:index, :show, :destroy], param: :public_id do
+        patch "", action: :update, on: :member
+        resource :archive, only: :create, controller: "memory_collections/archives"
+        resource :restore, only: :create, controller: "memory_collections/restores"
+        resources :documents, only: [:index, :create], controller: "memory_collections/documents" do
+          collection do
+            post :show, path: "show"
+            post :delete, path: "delete"
+            resource :edit, only: :create, controller: "memory_collections/documents/edits"
+            resource :grep, only: :create, controller: "memory_collections/documents/greps"
+          end
+        end
+      end
       resources :conversations, only: :index
       resources :run_candidates, only: :index
       resources :runs, only: :index
@@ -290,20 +307,7 @@ Rails.application.routes.draw do
           resources :entries, only: :index, controller: "profiles/budgets/entries"
         end
         resources :ingress_speakers, only: :create, controller: "profiles/ingress_speakers"
-        # THE PERSON'S OWN DOOR to memory's `user/` scope: the scope
-        # follows the acting user's controlling Human, so an agent writes
-        # its steward's notes here and reads them from any workspace;
-        # `workspace/` and `conversation/` have their own doors. `path`
-        # carries a slash (`user/notes.md`), so it rides the body rather
-        # than the URL on every verb that names one.
-        resources :memory, only: [:index, :create], controller: "profiles/memory" do
-          collection do
-            post :show, path: "show"
-            post :delete, path: "delete"
-            resource :grep, only: :create, controller: "profiles/memory/greps"
-            resource :edit, only: :create, controller: "profiles/memory/edits"
-          end
-        end
+        resources :memory_collections, only: [:index, :create], controller: "profiles/memory_collections"
         # THE PRINCIPAL'S OWN STORE: the ACTING user's row — an agent's is
         # the agent's, not its steward's; no receipt table — a repeat of one
         # (namespace, key) is `key_taken`.
@@ -324,21 +328,9 @@ Rails.application.routes.draw do
         # or capitalized name is a route miss, never a `format`
         # surprise.
         resources :agents, only: [:index, :destroy], param: :name, format: false,
-          constraints: { name: User::Handle::SEGMENT }, controller: "profiles/agents" do
+          constraints: { name: Constants::HANDLE_SEGMENT }, controller: "profiles/agents" do
           put "", action: :update, on: :member
-          # THE NAMED ROW'S OWN MEMORY (`agent/…`): the notes a definition
-          # carries into every conversation it answers, managed by the
-          # declarer that minted it. The profile memory door's shape on
-          # the named row's anchor; `path` rides the body as everywhere.
-          resources :memory, only: [:index, :create], controller: "profiles/agents/memory",
-            constraints: { agent_name: User::Handle::SEGMENT } do
-            collection do
-              post :show, path: "show"
-              post :delete, path: "delete"
-              resource :grep, only: :create, controller: "profiles/agents/memory/greps"
-              resource :edit, only: :create, controller: "profiles/agents/memory/edits"
-            end
-          end
+          resources :memory_collections, only: [:index, :create], controller: "profiles/agents/memory_collections"
         end
       end
       # THE ONE WRITER of the Agent's standing declaration: PUT and
@@ -447,6 +439,7 @@ Rails.application.routes.draw do
           # access carrier — the members with access here, of either kind
           # — the one user listing the member plane has.
           resources :principals, only: :index
+          resources :memory_collections, only: [:index, :create]
           resources :store_entries, only: [:index, :show, :create, :destroy], param: :public_id do
             patch "", action: :update, on: :member
           end
@@ -454,18 +447,6 @@ Rails.application.routes.draw do
           # fence; a fenced agent reads it and never writes it.
           resources :prompt_documents, only: [:index, :show, :destroy], param: :slot do
             put "", action: :update, on: :member
-          end
-          # THE ROOM'S OWN MEMORY DOOR: the `workspace/` scope without a
-          # conversation — the profile door's shape; write standing on the
-          # workspace; the override guard the conversation door shares.
-          # `path` rides the body (a slash).
-          resources :memory, only: [:index, :create] do
-            collection do
-              post :show, path: "show"
-              post :delete, path: "delete"
-              resource :grep, only: :create, controller: "memory/greps"
-              resource :edit, only: :create, controller: "memory/edits"
-            end
           end
           # One resource carries the workload in the payload. Cancel is a
           # named POST command; DELETE tombstones terminal work.
@@ -582,6 +563,7 @@ Rails.application.routes.draw do
               resources :events, only: :index
               resource :context_estimate, only: :create
               resource :memory_context, only: :create
+              resources :memory_collections, only: [:index, :create]
               # COMPACT NOW. The kernel still picks no threshold; this is
               # a caller asking, which the wall-only trigger never left
               # room for.

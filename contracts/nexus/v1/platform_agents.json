@@ -106,22 +106,30 @@
         "bindings": [
           {
             "name": "conversation",
-            "scope": "conversation",
+            "source": {
+              "scope": "conversation"
+            },
             "access": "read_write"
           },
           {
             "name": "workspace",
-            "scope": "workspace",
+            "source": {
+              "scope": "workspace"
+            },
             "access": "read"
           },
           {
             "name": "agent",
-            "scope": "agent",
+            "source": {
+              "scope": "agent"
+            },
             "access": "read_write"
           },
           {
             "name": "speaker",
-            "scope": "speaker",
+            "source": {
+              "scope": "speaker"
+            },
             "access": "read_write"
           }
         ]

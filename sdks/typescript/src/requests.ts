@@ -31,7 +31,7 @@ export interface AgentConfigurationInput {
   approval_rules?: ApprovalRule[] | null; prompt_mechanism?: 'default' | 'raw' | 'assembly' | null; compaction_policy?: JsonValue;
   prompt_template?: JsonValue; default_model?: string | null; image_model?: string | null; lifecycle_hooks?: JsonValue;
   fallback_models?: string[]; kernel_tools?: string[] | null; runner_executor_public_ids?: string[] | null;
-  runner_tool_names?: string[] | null; mcp_tools?: McpToolImport[] | null; memory_context_limit?: JsonObject | null;
+  runner_tool_names?: string[] | null; mcp_tools?: McpToolImport[] | null; memory_context_limit?: MemoryContextLimit | null;
   conversation_reach?: string | null; delegation_catalog?: JsonValue[] | null;
 }
 export interface DeclareConfiguration { configuration: AgentConfigurationInput; prompt_documents?: Partial<Record<'system_prompt' | 'summarizer', { content: string; role?: 'system' | 'developer' | 'user' } | null>> | null; }
@@ -48,7 +48,7 @@ export interface ConversationAccessInput { default: 'full' | 'read' | 'none'; en
 export interface CreateConversation {
   title?: string | null; metadata?: JsonObject; billing_subject?: string | null; cost_limit?: string | null;
   default_runner_executor_public_id?: string | null; answering_user_public_id?: string;
-  access?: ConversationAccessInput; memory_context?: JsonObject | null;
+  access?: ConversationAccessInput; memory_context?: MemorySelection | null;
 }
 export interface ConversationList extends ListOptions { order_by?: 'public_id' | 'last_activity_at'; answering_user_public_id?: string; }
 export interface WorkspaceConversationList extends ConversationList { side?: boolean; }
@@ -81,7 +81,7 @@ export interface EstimateInput extends Pick<InputConfiguration, 'model' | 'confi
 export interface CreateRun {
   steps: Step[]; approval_mode: 'bypass' | 'ask' | 'rules'; billing_subject?: string | null;
   prompt_mechanism?: 'default' | 'raw' | 'assembly'; approval_rules?: ApprovalRule[]; default_runner_executor_public_id?: string | null;
-  speaker_public_id?: string; model_selection?: ModelSelectionIntent | null; fallback_models?: string[] | null;
+  speaker_public_id?: string; memory_context?: MemorySelection | null; model_selection?: ModelSelectionIntent | null; fallback_models?: string[] | null;
 }
 export interface RunList extends ListOptions { status?: string | string[]; attention?: string; from?: string; to?: string; answering_user_public_id?: string; agent_public_id?: string; executor_public_id?: string; kind?: 'all' | 'standalone' | 'conversation'; }
 export interface AllRunList extends RunList { workspace_public_id?: string; }
@@ -92,6 +92,20 @@ export interface AppendTasks { steps: Step[]; resolve?: AppendResolution[]; expe
 export interface ResolveTask { answer?: JsonObject; resolution_token?: string; content?: JsonValue; structured_content?: JsonValue; result_type?: string; outcome?: 'completed' | 'failed'; }
 export interface ToolCall { runner_executor_public_id: string; tool: string; input?: JsonObject; timeout_ms?: number; approval_rules?: ApprovalRule[]; }
 export interface CreateStoreEntry { namespace: string; key: string; value: JsonValue; }
+export type MemoryScope = 'conversation' | 'workspace' | 'user' | 'agent' | 'speaker';
+export type MemoryAccess = 'read' | 'read_write';
+export type MemorySource =
+  | { scope: 'conversation'; conversation_public_id?: string; collection_public_id?: never; speaker_public_id?: never }
+  | { scope: 'speaker'; speaker_public_id?: string; collection_public_id?: never; conversation_public_id?: never }
+  | { scope: 'workspace' | 'user' | 'agent'; collection_public_id?: never; conversation_public_id?: never; speaker_public_id?: never }
+  | { collection_public_id: string; scope?: never; conversation_public_id?: never; speaker_public_id?: never };
+export interface MemoryBinding { name: string; source: MemorySource; access: MemoryAccess; }
+export interface MemorySelection { bindings: MemoryBinding[]; }
+export interface MemoryContextLimit { bindings: { name: MemoryScope; source: { scope: MemoryScope }; access: MemoryAccess }[]; }
+export interface MemoryCollectionCondition { expected_collection_public_id: string; }
+export interface OwnedMemoryCollectionList extends ListOptions { default?: boolean; speaker_public_id?: string; }
+export interface CreateMemoryCollection { name?: string | null; description?: string | null; speaker_public_id?: string; default?: boolean; }
+export interface UpdateMemoryCollection extends Version { name?: string | null; description?: string | null; }
 export interface MemoryVersion { expected_public_id: string | null; expected_lock_version: number | null; }
 export interface ExistingMemoryVersion { expected_public_id: string; expected_lock_version: number; }
 export interface WriteMemory extends MemoryVersion { path: string; content: string; description?: string | null; }

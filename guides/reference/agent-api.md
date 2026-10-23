@@ -269,7 +269,7 @@ anything.
   as, the handle it answers to, and its own store. Its own pages carry
   [the configuration](agent-api/profile-configuration.md),
   [named Agents](agent-api/profile-agents.md),
-  [memory](agent-api/profile-memory.md) and
+  [memory collections](agent-api/profile-memory.md) and
   [prompt documents](agent-api/profile-prompt-documents.md).
 - [Runs](agent-api/runs.md) — member plane: the task-grained DAG surface,
   its doors and its adjudication verbs. Its own pages carry the rest:

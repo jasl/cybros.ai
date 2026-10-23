@@ -45,86 +45,120 @@ module Conversations
       end
 
       def call
-        outcome = ApplicationRecord.transaction do
-          @conversation = Conversation.lock.find_by(id: @conversation_id)
-          next Outcome.refused(:not_available) if @conversation.nil? ||
-            @conversation.tombstoned?
+        outcome = nil
+        # Preparation may insert a User/Speaker FK. Release the host first,
+        # then resolve the actual head again under its lock. One retry covers
+        # ordinary first use; continued edits leave the queue for its normal wake.
+        2.times do
+          @memory_preparation = nil
+          outcome = materialize_next
+          break unless @memory_preparation
 
-          busy = ApplicationRecord.uncached do
-            @conversation.turns.active.exists?
-          end
-          next Outcome.refused(:conversation_busy) if busy
-
-          # DUE: a row before its time is not in the room — neither the head
-          # nor a blocker — read against the database's clock, once. A
-          # blocked row is always due: it blocked at materialization, which
-          # only a due row reaches, and an edit that re-times it re-pends it
-          # first (Update#apply).
-          now = DatabaseClock.now
-          candidates = @conversation.inputs
-            .where(state: %w[pending blocked])
-            .merge(Input.due(now))
-            .in_read_order
-          # Usually only the head can run; leave later prompts in the queue
-          # instead of loading their potentially large assembly intent.
-          head = ApplicationRecord.uncached { candidates.first }
-          next Outcome.refused(:input_queue_empty) if head.nil?
-
-          # The head is the first row in read order that is blocked (the
-          # queue stops where it stands) or not held; under kernel-first a
-          # held receipt would otherwise sit ahead of the one row that can
-          # repair the hold — the person's post-settle word.
-          tail = @conversation.turns.order(:position).last
-          if head.state != "blocked" && held_behind?(head, tail)
-            candidates = ApplicationRecord.uncached { candidates.to_a }
-            head = candidates.find { |row| row.state == "blocked" || !held_behind?(row, tail) }
-            next hold(candidates.first, tail.active_variant) if head.nil?
-          end
-          next Outcome.refused(:input_blocked) if head.state == "blocked"
-          # THE FENCE, RE-READ: the door judged the author once, and a
-          # scheduled word can outlive that judgement by a week. The same
-          # predicate the door read, on the same row, on every principal's
-          # head — one rule, no branch on `deliver_at` — parked with a name
-          # the person can act on (delete, or restore the author's
-          # standing). The kernel's rows are exempt as at the door.
-          next block(head, :author_not_authorized) unless authorized?(head)
-
-          callbacks = callback_batch(head, candidates)
-          Runs::SourceWork.with_sources(callbacks.map(&:sender_run_public_id)) do |sources|
-            delegation = Runs::Delegations.for_input(head)
-            # A stopped dispatch never becomes a fresh runnable successor.
-            # Materialization and exact cleanup share this Conversation lock.
-            if Runs::SourceWork.stopped?(head.sender_run_public_id, sources[head.sender_run_public_id]) ||
-                Runs::Delegations.owner_stopped?(delegation)
-              head.lock!
-              Destroy.remove(head)
-            else
-              @delegation_lifetime = delegation ? "turn" : "conversation"
-              @replaced_loop_id = tail&.live_run&.id
-              if head.kind == "message"
-                materialize(head)
-              else
-                # The head already passed its fence under this transaction's
-                # source locks. An ancestor cut may land between reads; do not
-                # re-read the head into an empty prefix after accepting it.
-                callbacks = [head] + callbacks.drop(1).take_while do |input|
-                  !Runs::SourceWork.stopped?(input.sender_run_public_id, sources[input.sender_run_public_id])
-                end
-                materialize_callbacks(head, callbacks)
-              end
-            end
-          end
+          @memory_preparation.prepare_defaults
         end
-        # After commit, never under the lock: the REPLACE arm takes the loop,
-        # and round one is minted by a scheduler pass like every round.
-        if outcome.accepted? && @replaced_loop_id
-          Turns::ConvergeJob.perform_later(@conversation_id, { "run_id" => @replaced_loop_id })
-        end
-        Runs::ScheduleJob.perform_later(@materialized_loop_id) if @materialized_loop_id
+        DrainJob.perform_later(@conversation_id) if @memory_preparation
         outcome
       end
 
       private
+
+        def materialize_next
+          outcome = ApplicationRecord.transaction(requires_new: true) do
+            @conversation = Conversation.lock.find_by(id: @conversation_id)
+            next Outcome.refused(:not_available) if @conversation.nil? ||
+              @conversation.tombstoned?
+
+            busy = ApplicationRecord.uncached do
+              @conversation.turns.active.exists?
+            end
+            next Outcome.refused(:conversation_busy) if busy
+
+            # DUE: a row before its time is not in the room — neither the head
+            # nor a blocker — read against the database's clock, once. A
+            # blocked row is always due: it blocked at materialization, which
+            # only a due row reaches, and an edit that re-times it re-pends it
+            # first (Update#apply).
+            now = DatabaseClock.now
+            candidates = @conversation.inputs
+              .where(state: %w[pending blocked])
+              .merge(Input.due(now))
+              .in_read_order
+            # Usually only the head can run; leave later prompts in the queue
+            # instead of loading their potentially large assembly intent.
+            head = ApplicationRecord.uncached { candidates.first }
+            next Outcome.refused(:input_queue_empty) if head.nil?
+
+            # The head is the first row in read order that is blocked (the
+            # queue stops where it stands) or not held; under kernel-first a
+            # held receipt would otherwise sit ahead of the one row that can
+            # repair the hold — the person's post-settle word.
+            tail = @conversation.turns.order(:position).last
+            if head.state != "blocked" && held_behind?(head, tail)
+              candidates = ApplicationRecord.uncached { candidates.to_a }
+              head = candidates.find { |row| row.state == "blocked" || !held_behind?(row, tail) }
+              next hold(candidates.first, tail.active_variant) if head.nil?
+            end
+            next Outcome.refused(:input_blocked) if head.state == "blocked"
+            # THE FENCE, RE-READ: the door judged the author once, and a
+            # scheduled word can outlive that judgement by a week. The same
+            # predicate the door read, on the same row, on every principal's
+            # head — one rule, no branch on `deliver_at` — parked with a name
+            # the person can act on (delete, or restore the author's
+            # standing). The kernel's rows are exempt as at the door.
+            next block(head, :author_not_authorized) unless authorized?(head)
+
+            # Resolve new sources before taking any originating Run lock. Mail
+            # carries an existing capture and never performs a new selection.
+            unless head.kernel_origin?
+              context = MemoryDocuments::Context.new(workspace: @conversation.workspace, conversation: @conversation,
+                principal: head.authoring_user, configuration: memory_selection(head),
+                agent: head.execution_agent, execution: true)
+              if context.defaults_missing?
+                @memory_preparation = context
+                # Roll back this savepoint so its host lock is released even
+                # when a caller already owns an outer transaction.
+                raise ActiveRecord::Rollback
+              end
+              refusal = context.selection_refusal
+              next block(head, refusal) if refusal
+
+              head.selected_memory_context = context.capture
+            end
+            callbacks = callback_batch(head, candidates)
+            Runs::SourceWork.with_sources(callbacks.map(&:sender_run_public_id)) do |sources|
+              delegation = Runs::Delegations.for_input(head)
+              # A stopped dispatch never becomes a fresh runnable successor.
+              # Materialization and exact cleanup share this Conversation lock.
+              if Runs::SourceWork.stopped?(head.sender_run_public_id, sources[head.sender_run_public_id]) ||
+                  Runs::Delegations.owner_stopped?(delegation)
+                head.lock!
+                Destroy.remove(head)
+              else
+                @delegation_lifetime = delegation ? "turn" : "conversation"
+                @replaced_loop_id = tail&.live_run&.id
+                if head.kind == "message"
+                  materialize(head)
+                else
+                  # The head already passed its fence under this transaction's
+                  # source locks. An ancestor cut may land between reads; do not
+                  # re-read the head into an empty prefix after accepting it.
+                  callbacks = [head] + callbacks.drop(1).take_while do |input|
+                    !Runs::SourceWork.stopped?(input.sender_run_public_id, sources[input.sender_run_public_id])
+                  end
+                  materialize_callbacks(head, callbacks)
+                end
+              end
+            end
+          end
+          outcome ||= Outcome.refused(:conversation_busy) if @memory_preparation
+          # After commit, never under the lock: the REPLACE arm takes the loop,
+          # and round one is minted by a scheduler pass like every round.
+          if outcome.accepted? && @replaced_loop_id
+            Turns::ConvergeJob.perform_later(@conversation_id, { "run_id" => @replaced_loop_id })
+          end
+          Runs::ScheduleJob.perform_later(@materialized_loop_id) if @materialized_loop_id
+          outcome
+        end
 
         # THE FIT WALL: the implicit fit overflowed. Internal to this lane
         # — it arms or slides, and never parks a head, because a request
@@ -133,6 +167,18 @@ module Conversations
         # The history cuts the fit wall reads: the window's tokens or the
         # seal's bytes crossed, or the candidate window's end.
         FIT_CUTS = %w[budget_exceeded candidate_limit].freeze
+
+        # Input projects the role/access ceiling from stored values. Current
+        # source availability belongs to this accepting application boundary.
+        def memory_selection(input)
+          selected = input.execution_memory_context
+          return selected unless input.origin == "agent" && input.sender_run_public_id
+
+          source = Run.find_by(public_id: input.sender_run_public_id)
+          inherited = source ? MemoryDocuments::Context.inherit_from(source) : { "bindings" => [] }
+          MemoryContext.inherit(configuration: selected, source: inherited,
+            conversation_public_id: @conversation.public_id)
+        end
 
         def authorized?(head) = head.kernel_origin? || @conversation.writable_by?(head.authoring_user)
 

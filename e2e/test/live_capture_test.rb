@@ -16,7 +16,7 @@ require "stringio"
 # report line; out of the text sweep, whose selected models need not support images.
 class LiveCaptureTest < Minitest::Test
   MODEL = ENV.fetch("E2E_VISION_MODEL", "").freeze
-  DRIVER = ENV.fetch("RHO_BROWSER_PLAYWRIGHT_CLI", "npx -y playwright-core@1.62.1").freeze
+  DRIVER = ENV.fetch("RHO_BROWSER_PLAYWRIGHT_CLI", "npx -y playwright-core@1.64.0").freeze
   COST_STOP_USD = 1.0
   PNG_MAGIC = "\x89PNG\r\n\x1a\n".b.freeze
   NOT_SHOWN = "image content omitted: this model does not support image input".freeze

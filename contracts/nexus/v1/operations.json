@@ -1,6 +1,13 @@
 {
   "operations": [
     {
+      "id": "DELETE /agent_api/v1/memory_collections/{public_id}",
+      "plane": "member",
+      "method": "DELETE",
+      "path": "/agent_api/v1/memory_collections/{public_id}",
+      "sdk_supported": true
+    },
+    {
       "id": "DELETE /agent_api/v1/profile/agents/{name}",
       "plane": "member",
       "method": "DELETE",
@@ -232,6 +239,27 @@
       "sdk_supported": true
     },
     {
+      "id": "GET /agent_api/v1/memory_collections",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/memory_collections",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/memory_collections/{memory_collection_public_id}/documents",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/memory_collections/{memory_collection_public_id}/documents",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/memory_collections/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/memory_collections/{public_id}",
+      "sdk_supported": true
+    },
+    {
       "id": "GET /agent_api/v1/model_providers",
       "plane": "member",
       "method": "GET",
@@ -260,10 +288,10 @@
       "sdk_supported": true
     },
     {
-      "id": "GET /agent_api/v1/profile/agents/{agent_name}/memory",
+      "id": "GET /agent_api/v1/profile/agents/{agent_name}/memory_collections",
       "plane": "member",
       "method": "GET",
-      "path": "/agent_api/v1/profile/agents/{agent_name}/memory",
+      "path": "/agent_api/v1/profile/agents/{agent_name}/memory_collections",
       "sdk_supported": true
     },
     {
@@ -288,10 +316,10 @@
       "sdk_supported": true
     },
     {
-      "id": "GET /agent_api/v1/profile/memory",
+      "id": "GET /agent_api/v1/profile/memory_collections",
       "plane": "member",
       "method": "GET",
-      "path": "/agent_api/v1/profile/memory",
+      "path": "/agent_api/v1/profile/memory_collections",
       "sdk_supported": true
     },
     {
@@ -477,6 +505,13 @@
       "sdk_supported": true
     },
     {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory_collections",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory_collections",
+      "sdk_supported": true
+    },
+    {
       "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/regeneration_receipt",
       "plane": "member",
       "method": "GET",
@@ -603,10 +638,10 @@
       "sdk_supported": true
     },
     {
-      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/memory",
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/memory_collections",
       "plane": "member",
       "method": "GET",
-      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory_collections",
       "sdk_supported": true
     },
     {
@@ -967,6 +1002,13 @@
       "sdk_supported": true
     },
     {
+      "id": "PATCH /agent_api/v1/memory_collections/{public_id}",
+      "plane": "member",
+      "method": "PATCH",
+      "path": "/agent_api/v1/memory_collections/{public_id}",
+      "sdk_supported": true
+    },
+    {
       "id": "PATCH /agent_api/v1/profile/store_entries/{public_id}",
       "plane": "member",
       "method": "PATCH",
@@ -1114,38 +1156,59 @@
       "sdk_supported": true
     },
     {
-      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory",
+      "id": "POST /agent_api/v1/memory_collections/{memory_collection_public_id}/archive",
       "plane": "member",
       "method": "POST",
-      "path": "/agent_api/v1/profile/agents/{agent_name}/memory",
+      "path": "/agent_api/v1/memory_collections/{memory_collection_public_id}/archive",
       "sdk_supported": true
     },
     {
-      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory/delete",
+      "id": "POST /agent_api/v1/memory_collections/{memory_collection_public_id}/documents",
       "plane": "member",
       "method": "POST",
-      "path": "/agent_api/v1/profile/agents/{agent_name}/memory/delete",
+      "path": "/agent_api/v1/memory_collections/{memory_collection_public_id}/documents",
       "sdk_supported": true
     },
     {
-      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory/edit",
+      "id": "POST /agent_api/v1/memory_collections/{memory_collection_public_id}/documents/delete",
       "plane": "member",
       "method": "POST",
-      "path": "/agent_api/v1/profile/agents/{agent_name}/memory/edit",
+      "path": "/agent_api/v1/memory_collections/{memory_collection_public_id}/documents/delete",
       "sdk_supported": true
     },
     {
-      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory/grep",
+      "id": "POST /agent_api/v1/memory_collections/{memory_collection_public_id}/documents/edit",
       "plane": "member",
       "method": "POST",
-      "path": "/agent_api/v1/profile/agents/{agent_name}/memory/grep",
+      "path": "/agent_api/v1/memory_collections/{memory_collection_public_id}/documents/edit",
       "sdk_supported": true
     },
     {
-      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory/show",
+      "id": "POST /agent_api/v1/memory_collections/{memory_collection_public_id}/documents/grep",
       "plane": "member",
       "method": "POST",
-      "path": "/agent_api/v1/profile/agents/{agent_name}/memory/show",
+      "path": "/agent_api/v1/memory_collections/{memory_collection_public_id}/documents/grep",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/memory_collections/{memory_collection_public_id}/documents/show",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/memory_collections/{memory_collection_public_id}/documents/show",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/memory_collections/{memory_collection_public_id}/restore",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/memory_collections/{memory_collection_public_id}/restore",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/profile/agents/{agent_name}/memory_collections",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/profile/agents/{agent_name}/memory_collections",
       "sdk_supported": true
     },
     {
@@ -1156,38 +1219,10 @@
       "sdk_supported": true
     },
     {
-      "id": "POST /agent_api/v1/profile/memory",
+      "id": "POST /agent_api/v1/profile/memory_collections",
       "plane": "member",
       "method": "POST",
-      "path": "/agent_api/v1/profile/memory",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /agent_api/v1/profile/memory/delete",
-      "plane": "member",
-      "method": "POST",
-      "path": "/agent_api/v1/profile/memory/delete",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /agent_api/v1/profile/memory/edit",
-      "plane": "member",
-      "method": "POST",
-      "path": "/agent_api/v1/profile/memory/edit",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /agent_api/v1/profile/memory/grep",
-      "plane": "member",
-      "method": "POST",
-      "path": "/agent_api/v1/profile/memory/grep",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /agent_api/v1/profile/memory/show",
-      "plane": "member",
-      "method": "POST",
-      "path": "/agent_api/v1/profile/memory/show",
+      "path": "/agent_api/v1/profile/memory_collections",
       "sdk_supported": true
     },
     {
@@ -1317,6 +1352,13 @@
       "sdk_supported": true
     },
     {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory_collections",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory_collections",
+      "sdk_supported": true
+    },
+    {
       "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory_context",
       "plane": "member",
       "method": "POST",
@@ -1415,38 +1457,10 @@
       "sdk_supported": true
     },
     {
-      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory",
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory_collections",
       "plane": "member",
       "method": "POST",
-      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/delete",
-      "plane": "member",
-      "method": "POST",
-      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory/delete",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/edit",
-      "plane": "member",
-      "method": "POST",
-      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory/edit",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/grep",
-      "plane": "member",
-      "method": "POST",
-      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory/grep",
-      "sdk_supported": true
-    },
-    {
-      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/show",
-      "plane": "member",
-      "method": "POST",
-      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory/show",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/memory_collections",
       "sdk_supported": true
     },
     {

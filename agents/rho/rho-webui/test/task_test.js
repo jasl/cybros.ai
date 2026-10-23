@@ -51,7 +51,7 @@ test("MCP task detail names its callable and remote account, retaining an identi
 function tab(answer) {
   const slots = createSlots();
   const requests = [];
-  const shell = { artifactBytes: async () => new Blob(), call: async (path, options = {}) => { requests.push([path, options.signal]); return answer(); } };
+  const shell = { artifactBytes: async () => new Blob(), call: async (path, options = {}) => { requests.push([path, options.signal]); return answer(path); } };
   register({ slots: { register: (name, options, component) => slots.register(name, options, component) } }, shell);
   const registration = slots.winner("dock.tab", "task");
   const panel = registration.component({ conversation: { id: "c-1", workspace: "w-1" }, params: { runId: "run-1", taskKey: "t-9", title: "bash" }, close: () => {} });
@@ -79,6 +79,42 @@ test("a task that cannot be read says so instead of an empty tab", async () => {
   const t = tab(() => { throw Object.assign(new Error("No such task"), { status: 404 }); });
   await flush();
   expect(t.panel.element.querySelector(".alert--error").textContent).toBe("No such task");
+});
+
+test("a model round without text can inspect its sealed input on demand", async () => {
+  const request = { entries: [{ role: "user", parts: [{ text: "Read notes <div>" }] }], request_options: { tools: [] } };
+  const view = tab((path) => path.startsWith("/runs/request?") ? { request } : { task: { kind: "model_task", status: "completed" } });
+  await flush();
+  expect(view.panel.element.textContent).toContain("This model round returned no text.");
+  expect(view.requests).toHaveLength(1);
+  view.panel.element.querySelectorAll("button").find((node) => node.textContent === "Read sealed model request").click();
+  await flush();
+  expect(view.requests[1][0]).toBe("/runs/request?public_id=run-1&workspace_public_id=w-1&task_key=t-9");
+  expect(view.panel.element.querySelector(".task__request pre").textContent).toBe(JSON.stringify(request, null, 2));
+  expect(view.panel.element.querySelector(".task__request pre").children).toEqual([]);
+  view.panel.dispose();
+  expect(view.requests[1][1].aborted).toBe(true);
+});
+
+test("an unavailable sealed request reports its error and can be retried without losing task output", async () => {
+  let attempts = 0;
+  const view = tab((path) => {
+    if (!path.startsWith("/runs/request?")) return { task: { kind: "model_task", status: "completed", output: "Kept answer" } };
+    if (++attempts === 1) throw new Error("Request no longer retained");
+    return { request: { entries: [], request_options: {} } };
+  });
+  await flush();
+  const read = view.panel.element.querySelectorAll("button").find((node) => node.textContent === "Read sealed model request");
+  read.click();
+  await flush();
+  expect(view.panel.element.textContent).toContain("Kept answer");
+  expect(view.panel.element.textContent).toContain("Request no longer retained");
+  expect(read.disabled).toBe(false);
+  read.click();
+  await flush();
+  expect(view.panel.element.querySelector(".task__request pre")).not.toBeNull();
+  expect(view.panel.element.textContent).not.toContain("Request no longer retained");
+  view.panel.dispose();
 });
 
 test("only a live tool task offers the terminal entry", async () => {

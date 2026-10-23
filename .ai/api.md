@@ -44,6 +44,23 @@ Trust-domain and credential authority remain owned by `.ai/boundaries.md`.
   keys are operation scoped; exact replays return the stored response only when the contract says
   the operation is replayable.
 
+## Memory Collection Resources
+
+- `/agent_api/v1/memory_collections` is the authorized collection inventory and UUID resource.
+  Creation is nested under profile, named Agent, Workspace or Conversation. Document paths
+  inside a collection are relative; Conversation memory routes retain binding paths.
+- List/details share owner-scoped authorization. Content write standing and metadata/lifecycle
+  authority are separate; a Human steward/admin does not gain Agent/Speaker private access.
+  Owner list `default=true` with optional Speaker subject is a bounded read, never allocation.
+  Metadata/lifecycle commands recheck management standing inside the owner/collection locks.
+- Collection metadata/lifecycle require collection `lock_version`. Documents require their own
+  UUID/version. Conversation-path writes additionally require original collection UUID even
+  for absent creation; binding changes must refuse before old text can reach a new target.
+  SDKs expose these conditions without fetching/retrying them implicitly.
+- Binding authoring uses `source` with a scope selector or exact collection UUID. Captures and
+  member management projections are distinct from the unchanged provider scope projection.
+  Workspace provider overrides block ordinary collection UUID content as well as context doors.
+
 ## API Families And Connection Contracts
 
 - API families follow responsibility: `/agent_api/v1` serves

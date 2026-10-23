@@ -28,6 +28,8 @@ export function taskDetail(detail, artifacts) {
     detail.tool_input ? block(t("task.input"), el("pre", { class: "code-block", text: JSON.stringify(detail.tool_input, null, 2) })) : null,
     detail.output ? block(t("task.output"), el("pre", { class: "code-block", text: detail.output }),
       artifactsIn(detail.output).map((artifact) => artifacts.figure(artifact))) : null,
+    detail.kind === "model_task" && detail.status === "completed" && !detail.output
+      ? el("p", { class: "task__status", text: t("task.no_text") }) : null,
     taskCaptures(detail).map((capture) => artifacts.figure(capture)),
     overflow ? el("p", { class: "notice notice--warn", text: t("errors.provider_context_overflow") }) : null,
     detail.error ? el("pre", { class: "code-block task__error", text: JSON.stringify(detail.error, null, 2) }) : null);
@@ -55,6 +57,23 @@ function taskPanel(shell, initialProps) {
       const { task } = await shell.call(query("/runs/task", values), { signal: reads.signal });
       if (version === reading && !reads.signal.aborted) {
         body.replaceChildren(taskDetail(task, artifacts));
+        if (task.kind === "model_task") {
+          const content = el("div", { class: "task__request" });
+          const read = button({ label: t("task.read_request"), size: "sm", async onClick() {
+            read.disabled = true;
+            content.replaceChildren(spinner());
+            try {
+              const { request } = await shell.call(query("/runs/request", values), { signal: reads.signal });
+              if (version !== reading || reads.signal.aborted) return;
+              content.replaceChildren(el("pre", { class: "code-block", text: JSON.stringify(request, null, 2) }));
+            } catch (error) {
+              if (version !== reading || reads.signal.aborted || error.name === "AbortError" || error.status === 401) return;
+              content.replaceChildren(alert({ tone: "error", text: error.message || t("task.request_failed") }).element);
+              read.disabled = false;
+            }
+          } });
+          body.append(block(t("task.sealed_request"), read, content));
+        }
         if (task.kind === "tool_task" && ["running", "dispatched"].includes(task.status) && !terminal) {
           body.prepend(button({ label: t("terminal.open"), size: "sm", onClick(event) {
             event.currentTarget.disabled = true;

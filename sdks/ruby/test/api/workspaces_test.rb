@@ -578,36 +578,29 @@ class ApiWorkspacesTest < Minitest::Test
     end
   end
 
-  # THE ROOM'S OWN MEMORY DOOR: `workspace.memory`
-  # is the `workspace/` scope without a conversation — the same four verbs,
-  # the same path-in-body rule, at the workspace's own path; the pack's
-  # `door_scopes` says this door serves `workspace/` alone, and a path of
-  # another scope is the kernel's `memory_scope_unavailable`.
-  def test_the_workspaces_memory_door_serves_the_workspace_scope_at_its_own_path
-    pack = CybrosAgentTest::ContractFixtures.pack("memory_documents.json")
-    assert_equal %w[workspace], pack.fetch("door_scopes").fetch("workspace")
-    fixture = pack.fetch("valid_fixture").fetch("memory")
+  def test_workspace_collection_documents_use_the_global_uuid_and_relative_paths
+    pack = CybrosAgentTest::ContractFixtures.pack("memory_collections.json")
+    fixture = pack.fetch("valid_document_fixture").fetch("memory")
     write = pack.fetch("valid_write_request").fetch("memory")
-
-    doc = client([[201, {}, { "memory" => fixture }]]).workspace(SUMMARY.fetch("public_id")).memory
+    uuid = fixture.fetch("collection_public_id")
+    doc = client([[201, {}, { "memory" => fixture }]]).workspace(SUMMARY.fetch("public_id")).memory_collections.documents(uuid)
       .write(write.fetch("path"), write.fetch("content"),
-        expected_public_id: write.fetch("expected_public_id"), expected_lock_version: write.fetch("expected_lock_version"))
-    assert_equal "/agent_api/v1/workspaces/#{SUMMARY.fetch("public_id")}/memory", request.fetch(:path)
+        expected_public_id: nil, expected_lock_version: nil)
+    assert_equal "/agent_api/v1/memory_collections/#{uuid}/documents", request.fetch(:path)
     assert_equal :post, request.fetch(:method)
     assert_equal({ "memory" => write }, request.fetch(:body))
-    assert_equal "workspace", doc.scope
+    assert_equal uuid, doc.collection_public_id
     assert_equal fixture.fetch("content"), doc.content
 
-    listed = client([[200, {}, pack.fetch("valid_list_fixture")]]).workspace(SUMMARY.fetch("public_id")).memory.list
-    assert_equal "/agent_api/v1/workspaces/#{SUMMARY.fetch("public_id")}/memory", request.fetch(:path)
-    assert_equal :get, request.fetch(:method)
+    listed = client([[200, {}, pack.fetch("valid_documents_fixture")]]).workspace(SUMMARY.fetch("public_id")).memory_collections.documents(uuid).list
+    assert_equal "/agent_api/v1/memory_collections/#{uuid}/documents", request.fetch(:path)
     assert_nil listed.first.content, "a listing carries sizes and ages, never text"
 
     error = assert_raises(CybrosAgent::Api::InvalidRequest) do
-      client([[422, {}, { "error" => { "code" => "memory_scope_unavailable", "message" => "not this door's" } }]])
-        .workspace(SUMMARY.fetch("public_id")).memory.read("user/notes.md")
+      client([[422, {}, { "error" => { "code" => "memory_path_invalid", "message" => "relative path required" } }]])
+        .workspace(SUMMARY.fetch("public_id")).memory_collections.documents(uuid).read("/notes.md")
     end
-    assert_equal "memory_scope_unavailable", error.code
-    assert_equal({ "memory" => { "path" => "user/notes.md" } }, request.fetch(:body), "the path rides the body on a read")
+    assert_equal "memory_path_invalid", error.code
+    assert_equal({ "memory" => { "path" => "/notes.md" } }, request.fetch(:body))
   end
 end

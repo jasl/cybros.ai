@@ -94,8 +94,8 @@ class ApiProfileTest < Minitest::Test
 
   def test_memory_limits_and_conversation_reach_are_declared_and_read_as_snapshots
     limit = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-      { "name" => "speaker", "scope" => "speaker", "access" => "read_write" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+      { "name" => "speaker", "source" => { "scope" => "speaker" }, "access" => "read_write" },
     ] }
     body = AGENT_BODY.merge("configuration" => CONFIGURATION.merge(
       "memory_context_limit" => limit, "conversation_reach" => "subtree"
@@ -304,12 +304,13 @@ class ApiProfileTest < Minitest::Test
 
   # --- the person's own memory scope -------------------------
   #
-  # A Human's `client.profile.memory` serves that person's own `user/`
-  # scope, reachable without a workspace. The path rides the body here too.
+  # Owned collections are discovered through profile metadata, then documents
+  # use a collection UUID and relative path without a workspace.
 
   USER_DOC = {
+    "collection_public_id" => "collection",
     "public_id" => "019f0000-0000-7000-8000-000000000902", "lock_version" => 0,
-    "path" => "user/notes.md", "bytesize" => 9,
+    "path" => "notes.md", "bytesize" => 9,
     "written_at" => "2026-09-07T00:00:00Z",
   }.freeze
 
@@ -317,27 +318,27 @@ class ApiProfileTest < Minitest::Test
   # rides the write only when given and comes back on both shapes; a plain
   # document's write carries no description.
   def test_a_user_skill_is_written_with_its_description_and_read_back_with_it
-    skill = memory_pack.fetch("valid_skill_fixture").fetch("memory").merge("path" => "user/skills/review-checklist")
-    request_fields = memory_pack.fetch("valid_skill_write_request").fetch("memory")
+    skill = memory_pack.fetch("valid_skill_fixture").fetch("memory").merge("path" => "skills/review-checklist")
+    request_fields = memory_pack.fetch("valid_skill_write_request").fetch("memory").except("expected_collection_public_id")
     doc = profile([[201, {}, { "memory" => skill }]])
-      .memory.write("user/skills/review-checklist", request_fields.fetch("content"),
+      .memory_collections.documents("collection").write("skills/review-checklist", request_fields.fetch("content"),
         expected_public_id: request_fields.fetch("expected_public_id"), expected_lock_version: request_fields.fetch("expected_lock_version"),
         description: request_fields.fetch("description"))
 
-    assert_equal({ "memory" => request_fields.merge("path" => "user/skills/review-checklist") }, request.fetch(:body))
+    assert_equal({ "memory" => request_fields.merge("path" => "skills/review-checklist") }, request.fetch(:body))
     assert_equal request_fields.fetch("description"), doc.description
     assert_predicate doc, :skill?
-    assert_equal "user", doc.scope
+    assert_equal "01995000-0000-7000-8000-000000000010", doc.collection_public_id
 
-    plain = profile([[201, {}, { "memory" => USER_DOC.merge("content" => "n") }]]).memory.write("user/notes.md", "n",
+    plain = profile([[201, {}, { "memory" => USER_DOC.merge("content" => "n") }]]).memory_collections.documents("collection").write("notes.md", "n",
       expected_public_id: nil, expected_lock_version: nil)
-    assert_equal({ "memory" => { "path" => "user/notes.md", "content" => "n",
+    assert_equal({ "memory" => { "path" => "notes.md", "content" => "n",
                                 "expected_public_id" => nil, "expected_lock_version" => nil } }, request.fetch(:body),
       "a plain write carries no description key at all")
     assert_nil plain.description
     refute_predicate plain, :skill?
 
-    listed = profile([[200, {}, memory_pack.fetch("valid_list_fixture")]]).memory.list
+    listed = profile([[200, {}, memory_pack.fetch("valid_list_fixture")]]).memory_collections.documents("collection").list
     assert_equal [true, false], listed.map(&:skill?)
     assert_equal ["How I review a change. Use before approving a pull request.", nil], listed.map(&:description)
   end
@@ -345,32 +346,32 @@ class ApiProfileTest < Minitest::Test
   def memory_pack = CybrosAgentTest::ContractFixtures.pack("memory_documents.json")
 
   def test_the_persons_memory_lists_under_the_profile
-    docs = profile([[200, {}, { "memory" => [USER_DOC] }]]).memory.list
+    docs = profile([[200, {}, { "memory" => [USER_DOC] }]]).memory_collections.documents("collection").list
 
-    assert_equal "/agent_api/v1/profile/memory", request.fetch(:path)
+    assert_equal "/agent_api/v1/memory_collections/collection/documents", request.fetch(:path)
     assert_equal :get, request.fetch(:method)
-    assert_equal "user/notes.md", docs.first.path
-    assert_equal "user", docs.first.scope
+    assert_equal "notes.md", docs.first.path
+    assert_equal "collection", docs.first.collection_public_id
     assert_nil docs.first.content, "a listing carries sizes and ages, never text"
   end
 
   def test_reading_the_persons_document_posts_its_path
     doc = profile([[200, {}, { "memory" => USER_DOC.merge("content" => "the notes") }]])
-      .memory.read("user/notes.md")
+      .memory_collections.documents("collection").read("notes.md")
 
     assert_equal :post, request.fetch(:method)
-    assert_equal "/agent_api/v1/profile/memory/show", request.fetch(:path)
-    assert_equal({ "memory" => { "path" => "user/notes.md" } }, request.fetch(:body))
+    assert_equal "/agent_api/v1/memory_collections/collection/documents/show", request.fetch(:path)
+    assert_equal({ "memory" => { "path" => "notes.md" } }, request.fetch(:body))
     assert_equal "the notes", doc.content
   end
 
   def test_writing_the_persons_document_replaces_it_whole
     doc = profile([[201, {}, { "memory" => USER_DOC.merge("content" => "new notes", "lock_version" => 1) }]])
-      .memory.write("user/notes.md", "new notes", expected_public_id: USER_DOC.fetch("public_id"), expected_lock_version: 0)
+      .memory_collections.documents("collection").write("notes.md", "new notes", expected_public_id: USER_DOC.fetch("public_id"), expected_lock_version: 0)
 
     assert_equal :post, request.fetch(:method)
-    assert_equal "/agent_api/v1/profile/memory", request.fetch(:path)
-    assert_equal({ "memory" => { "path" => "user/notes.md", "content" => "new notes",
+    assert_equal "/agent_api/v1/memory_collections/collection/documents", request.fetch(:path)
+    assert_equal({ "memory" => { "path" => "notes.md", "content" => "new notes",
                                 "expected_public_id" => USER_DOC.fetch("public_id"), "expected_lock_version" => 0 } },
       request.fetch(:body))
     refute request.fetch(:headers).key?("Idempotency-Key")
@@ -379,11 +380,11 @@ class ApiProfileTest < Minitest::Test
   end
 
   def test_deleting_the_persons_document_posts_the_path_and_answers_nothing
-    assert_nil profile([[204, {}, nil]]).memory.delete("user/notes.md",
+    assert_nil profile([[204, {}, nil]]).memory_collections.documents("collection").delete("notes.md",
       expected_public_id: USER_DOC.fetch("public_id"), expected_lock_version: 0)
 
-    assert_equal "/agent_api/v1/profile/memory/delete", request.fetch(:path)
-    assert_equal({ "memory" => { "path" => "user/notes.md",
+    assert_equal "/agent_api/v1/memory_collections/collection/documents/delete", request.fetch(:path)
+    assert_equal({ "memory" => { "path" => "notes.md",
                                 "expected_public_id" => USER_DOC.fetch("public_id"), "expected_lock_version" => 0 } }, request.fetch(:body))
   end
 
@@ -457,23 +458,23 @@ class ApiProfileTest < Minitest::Test
   # every memory door; the paired program's own `agent/` rides the profile
   # door.
   def test_a_named_agents_memory_is_managed_under_its_own_path
-    doc = USER_DOC.merge("path" => "agent/notes.md", "content" => "short answers")
-    read = profile([[200, {}, { "memory" => doc }]]).agents.memory(name: "reviewer").read("agent/notes.md")
+    doc = USER_DOC.merge("path" => "notes.md", "content" => "short answers")
+    read = profile([[200, {}, { "memory" => doc }]]).agents.memory_collections(name: "reviewer").documents("collection").read("notes.md")
 
     assert_equal :post, request.fetch(:method)
-    assert_equal "/agent_api/v1/profile/agents/reviewer/memory/show", request.fetch(:path)
-    assert_equal({ "memory" => { "path" => "agent/notes.md" } }, request.fetch(:body))
-    assert_equal "agent", read.scope
+    assert_equal "/agent_api/v1/memory_collections/collection/documents/show", request.fetch(:path)
+    assert_equal({ "memory" => { "path" => "notes.md" } }, request.fetch(:body))
+    assert_equal "collection", read.collection_public_id
     assert_equal "short answers", read.content
 
-    written = profile([[201, {}, { "memory" => doc }]]).agents.memory(name: "reviewer")
-      .write("agent/notes.md", "short answers", expected_public_id: nil, expected_lock_version: nil)
-    assert_equal "/agent_api/v1/profile/agents/reviewer/memory", request.fetch(:path)
-    assert_equal "agent/notes.md", written.path
+    written = profile([[201, {}, { "memory" => doc }]]).agents.memory_collections(name: "reviewer").documents("collection")
+      .write("notes.md", "short answers", expected_public_id: nil, expected_lock_version: nil)
+    assert_equal "/agent_api/v1/memory_collections/collection/documents", request.fetch(:path)
+    assert_equal "notes.md", written.path
 
-    own = profile([[200, {}, { "memory" => [doc] }]]).memory.list
-    assert_equal "/agent_api/v1/profile/memory", request.fetch(:path)
-    assert_equal ["agent"], own.map(&:scope)
+    own = profile([[200, {}, { "memory" => [doc] }]]).memory_collections.documents("collection").list
+    assert_equal "/agent_api/v1/memory_collections/collection/documents", request.fetch(:path)
+    assert_equal ["collection"], own.map(&:collection_public_id)
   end
 
   def test_the_principals_store_lists_under_the_profile

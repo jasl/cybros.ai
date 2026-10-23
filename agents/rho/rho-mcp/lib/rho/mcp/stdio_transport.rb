@@ -12,7 +12,7 @@ module Rho
     # members are overridden — the whole set that touches `@wait_thread`,
     # `@stderr_thread` or respawns — and the rest of the SDK (the
     # handshake, the modern probe, the framed reads, the ping answer) is
-    # used as it is; the four names are the coupling pinned to `mcp ~> 1.6.0`:
+    # used as it is; the four names are the coupling pinned to `mcp ~> 1.8.0`:
     #
     # - `start`: the child through the runner's `OwnedProcess` (its own
     #   GROUP, the `true(1)` guard reserving the pgid), `unsetenv_others:

@@ -110,7 +110,6 @@ class RhoAcpAgentTest
 
     def ask_call(question) = ["ask", { "prompt" => question }]
 
-
     def echo_call(text) = ["mcp__fx__echo", { "text" => text }]
 
     # ---- what the wire carried ----

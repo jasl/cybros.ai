@@ -191,9 +191,9 @@ class HomeTest < Minitest::Test
     previous = ENV["RHO_HOME"]
     ENV["RHO_HOME"] = ""
 
-    resolved = Rho::Home.resolve(base_url: "https://nexus.example")
-    assert_equal File.expand_path(Rho::Home::DEFAULT_ROOT), resolved.root
-    refute_equal Dir.pwd, resolved.root
+    root = Rho::Home.default_root
+    assert_equal Rho::Home::DEFAULT_ROOT, root
+    refute_equal Dir.pwd, File.expand_path(root)
   ensure
     ENV["RHO_HOME"] = previous
   end

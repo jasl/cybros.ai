@@ -59,7 +59,8 @@ module Conversations
         def arm(selection)
           armed = Arm.call(
             conversation: @conversation, selection: selection,
-            trigger: Trigger.manual(user: @command.acting_user, agent_configuration: newest_variant&.agent_configuration)
+            trigger: Trigger.manual(user: @command.acting_user, agent_configuration: newest_variant&.agent_configuration,
+              memory_context: newest_variant&.memory_context)
           )
           return armed unless armed.accepted?
 

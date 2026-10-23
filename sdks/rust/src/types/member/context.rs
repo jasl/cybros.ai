@@ -87,6 +87,7 @@ pub struct MemoryEvidence {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MemoryDocument {
+    pub collection_public_id: String,
     pub public_id: String,
     pub lock_version: i64,
     pub path: String,
@@ -135,4 +136,40 @@ pub struct MemoryMatches {
 pub struct ForkedConversation {
     pub conversation: Conversation,
     pub runner_effects: RunnerEffects,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MemoryCollection {
+    pub public_id: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub scope: String,
+    pub owner_public_id: String,
+    pub speaker_public_id: Option<String>,
+    pub is_default: bool,
+    pub archived_at: Option<String>,
+    pub lock_version: i64,
+    pub created_at: String,
+    pub updated_at: String,
+    pub writable: bool,
+    pub manageable: bool,
+    #[serde(flatten)]
+    pub extra: JsonObject,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ResolvedMemoryBinding {
+    pub name: String,
+    pub source: JsonObject,
+    pub scope: String,
+    pub access: String,
+    pub collection_public_id: Option<String>,
+    pub owner_public_id: String,
+    pub speaker_public_id: Option<String>,
+    pub state: String,
+    #[serde(flatten)]
+    pub extra: JsonObject,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MemoryBindings {
+    pub bindings: Vec<ResolvedMemoryBinding>,
 }

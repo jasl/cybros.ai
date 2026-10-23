@@ -49,7 +49,7 @@ module Conversations
         next Outcome.refused(:fork_too_large) if closure.any? { |edge| edge[:depth] > MAX_DEPTH }
 
         seed = overlay_seed_rows(target.position, closure)
-        next Outcome.refused(:fork_too_large) if seed.length > MAX_OVERLAY_SEED
+        next Outcome.refused(:fork_too_large) if seed.length + memory_copy_size > MAX_OVERLAY_SEED
 
         child = create_child(target, chosen)
         write_closure(child, closure)
@@ -79,7 +79,7 @@ module Conversations
         return Outcome.refused(:fork_too_large) if closure.any? { |e| e[:depth] > MAX_DEPTH }
 
         seed = overlay_seed_rows(edge + 1, closure)
-        return Outcome.refused(:fork_too_large) if seed.length > MAX_OVERLAY_SEED
+        return Outcome.refused(:fork_too_large) if seed.length + memory_copy_size > MAX_OVERLAY_SEED
 
         target = unsettled || latest_turn_at_or_before(edge)
         # During regeneration the displayed active variant can be the previous
@@ -168,16 +168,44 @@ module Conversations
       # Memory copies pointer rows rather than reading through the closure:
       # an inherited turn cannot change, a memory document can, so
       # read-through would let a parent's later edit rewrite the child's memory.
-      def copy_memory(child)
-        rows = MemoryDocument.for_conversation(@source.id)
-          .pluck(:name, :memory_document_version_id)
-          .map do |name, version_id|
-            { account_id: child.account_id, conversation_id: child.id,
-              name: name, memory_document_version_id: version_id }
-          end
-        return if rows.empty?
+      def memory_copy_size
+        # Match the partial state/id frontier; primary-key order can scan
+        # ordinary tombstones before reaching this owner's copiable rows.
+        collections = @source.memory_collections.where("deleted_at IS NULL OR is_default")
+          .order(:deleted_at, :id).limit(MAX_OVERLAY_SEED + 1).pluck(:id, :deleted_at)
+        ids = collections.filter_map { |id, deleted_at| id unless deleted_at }
+        default_size = @source.memory_collections.exists?(is_default: true) ? 0 : 1
+        # Count the bounded ordered window; relation.count drops this order
+        # and can materialize every matching pointer before applying its LIMIT.
+        documents = MemoryDocument.where(memory_collection_id: ids).order(:memory_collection_id, :id)
+          .limit(MAX_OVERLAY_SEED + 1).pluck(:id).length
+        collections.length + default_size + documents
+      end
 
-        MemoryDocument.insert_all!(rows)
+      def copy_memory(child)
+        mapping = {}
+        @source.memory_collections.where("deleted_at IS NULL OR is_default").order(:id).each do |source|
+          copy = child.memory_collections.create!(is_default: source.is_default, name: source.name,
+            description: source.description, archived_at: source.archived_at, deleted_at: source.deleted_at)
+          mapping[source.public_id] = copy.public_id
+          next if source.deleted?
+
+          rows = source.memory_documents.pluck(:name, :description, :memory_document_version_id).map do |name, description, version_id|
+            { account_id: child.account_id, memory_collection_id: copy.id, name: name,
+              description: description, memory_document_version_id: version_id }
+          end
+          MemoryDocument.insert_all!(rows) if rows.any?
+        end
+        MemoryCollection.default_for(child) unless child.memory_collections.exists?(is_default: true)
+        if child.memory_context
+          configuration = MemoryContext.from_h(child.memory_context)
+          bindings = configuration.bindings.map do |binding|
+            binding.with(collection_public_id: mapping.fetch(binding.collection_public_id, binding.collection_public_id),
+              conversation_public_id: binding.conversation_public_id == @source.public_id ? child.public_id : binding.conversation_public_id,
+              capture: nil)
+          end
+          child.update!(memory_context: configuration.with(bindings: bindings).to_h)
+        end
       end
 
       # Conversation-scope store entries are the CONVERSATION's client state

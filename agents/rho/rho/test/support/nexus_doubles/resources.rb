@@ -204,24 +204,35 @@ module NexusDoubles
         respond(422, { "error" => { "code" => "prompt_slot_unavailable", "message" => "This profile cannot hold #{slot}" } })
       end
 
-      # The three doors' stores: `profile`, `workspace`, and a conversation's
-      # by its id (the room's own door).
-      MEMORY_DOORS = %r{\A/agent_api/v1/(?:profile|workspaces/[^/]+(?:/conversations/(?<conversation>[^/]+))?)/memory(?<verb>/show|/delete)?\z}
+      MEMORY_DOORS = %r{\A/agent_api/v1/(?:workspaces/[^/]+/conversations/(?<conversation>[^/]+)/memory|memory_collections/(?<collection>[^/]+)/documents)(?<verb>/show|/delete)?\z}
 
-      # The three doors' four verbs over one store each, with the writer's
-      # words in the kernel's order.
       def memory_response(method, path, credential, body)
+        return nil unless credential == MEMBER_TOKEN
+        if method == :get && path.match?(%r{\A/agent_api/v1/(?:profile|workspaces/[^/]+)/memory_collections\z})
+          scope = path.include?("/profile/") ? "agent" : "workspace"
+          door = scope == "agent" ? "profile" : "workspace"
+          row = { "public_id" => "collection-#{door}", "name" => "Default", "description" => "", "scope" => scope,
+            "owner_public_id" => door, "speaker_public_id" => nil, "is_default" => true, "archived_at" => nil,
+            "lock_version" => 0, "created_at" => "2026-10-23T00:00:00Z", "updated_at" => "2026-10-23T00:00:00Z",
+            "writable" => true, "manageable" => true }
+          return respond(200, { "memory_collections" => [row], "pagination" => { "next_after" => nil } })
+        end
         match = MEMORY_DOORS.match(path)
-        return nil unless match && credential == MEMBER_TOKEN
+        return nil unless match
 
-        store = @memory[match[:conversation] || (path.include?("/workspaces/") ? "workspace" : "profile")]
+        collection = match[:collection]
+        store = @memory[match[:conversation] || collection.delete_prefix("collection-")]
         document = body && body.fetch("memory", {})
         case [method, match[:verb]]
-        when [:get, nil] then respond(200, { "memory" => store.values.sort_by { |row| row["path"] }.map { |row| row.except("content") } })
+        when [:get, nil]
+          bindings = %w[conversation group].map do |name|
+            { "name" => name, "source" => { "scope" => "conversation" }, "scope" => "conversation", "access" => "read_write",
+              "collection_public_id" => "collection-1", "owner_public_id" => match[:conversation], "speaker_public_id" => nil, "state" => "active" }
+          end
+          respond(200, { "memory" => store.values.sort_by { |row| row["path"] }.map { |row| row.except("content") }, "memory_context" => { "bindings" => bindings } })
         when [:post, "/show"] then memory_read_response(store, document.fetch("path"))
-        when [:post, "/delete"]
-          memory_delete_response(store, document)
-        when [:post, nil] then memory_write_response(store, document)
+        when [:post, "/delete"] then memory_delete_response(store, document)
+        when [:post, nil] then memory_write_response(store, document, collection_public_id: collection)
         else nil
         end
       end
@@ -231,13 +242,13 @@ module NexusDoubles
         row ? respond(200, { "memory" => row }) : memory_refusal("memory_not_found", 404)
       end
 
-      def memory_write_response(store, document)
+      def memory_write_response(store, document, collection_public_id: nil)
         @memory_writes << document
         path, description = document.values_at("path", "description")
         existing = store[path]
         return memory_refusal("stale_object", 409) unless memory_matches?(existing, document)
 
-        _scope, name = path.to_s.split("/", 2)
+        name = collection_public_id ? path : path.to_s.split("/", 2).last
         if name.to_s.start_with?("skills/")
           skill = name.delete_prefix("skills/")
           return memory_refusal("skill_name_invalid") unless skill.match?(/\A[a-z0-9](?:-?[a-z0-9])*\z/)
@@ -246,7 +257,7 @@ module NexusDoubles
         elsif !description.nil?
           return memory_refusal("memory_description_invalid")
         end
-        store[path] = memory_row(path, document.fetch("content"), description,
+        store[path] = memory_row(path, document.fetch("content"), description, collection_public_id: collection_public_id || "collection-1",
           public_id: existing ? existing.fetch("public_id") : SecureRandom.uuid_v7,
           lock_version: existing ? existing.fetch("lock_version") + 1 : 0)
         respond(201, { "memory" => store[path] })
@@ -265,8 +276,8 @@ module NexusDoubles
         expected == (row ? row.values_at("public_id", "lock_version") : [nil, nil])
       end
 
-      def memory_row(path, content, description, public_id: SecureRandom.uuid_v7, lock_version: 0)
-        { "path" => path, "public_id" => public_id, "lock_version" => lock_version,
+      def memory_row(path, content, description, collection_public_id: "collection-1", public_id: SecureRandom.uuid_v7, lock_version: 0)
+        { "path" => path, "collection_public_id" => collection_public_id, "public_id" => public_id, "lock_version" => lock_version,
           "bytesize" => content.bytesize, "description" => description, "content" => content,
           "written_at" => "2026-09-15T00:00:00Z" }
       end

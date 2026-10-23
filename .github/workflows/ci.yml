@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  RUBY_VERSION: "4.0.7"
+  RUBY_VERSION: "4.0.9"
   # Keep dependency installs reproducible and fail if a lockfile would change.
   BUNDLE_FROZEN: "true"
 
@@ -74,7 +74,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.4
 
       - name: Install packages
         run: bun install --frozen-lockfile
@@ -109,7 +109,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.4
 
       - name: Install packages
         run: bun install --frozen-lockfile
@@ -156,7 +156,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.4
 
       - name: Prepare Rails credentials
         run: EDITOR="cat" bin/rails credentials:edit
@@ -204,7 +204,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.4
 
       - name: Prepare Rails credentials
         run: EDITOR="cat" bin/rails credentials:edit
@@ -314,7 +314,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.98.1
+        uses: dtolnay/rust-toolchain@1.99.1
         with:
           components: rustfmt, clippy
 
@@ -336,10 +336,10 @@ jobs:
         run: cargo doc --locked --no-deps --all-features
 
       - name: Install the minimum supported Rust compiler
-        uses: dtolnay/rust-toolchain@1.85.0
+        uses: dtolnay/rust-toolchain@1.88.0
 
       - name: Check all features on the minimum Rust version
-        run: cargo +1.85.0 check --locked --all-features
+        run: cargo +1.88.0 check --locked --all-features
 
       - name: Build and verify the crate package
         run: cargo package --locked
@@ -444,7 +444,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.4
 
       - name: Run the default task
         run: bundle exec rake
@@ -563,7 +563,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.4
 
       - name: Run the default task
         run: bundle exec rake
@@ -590,7 +590,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.4
 
       - name: Run the default task
         run: bundle exec rake
@@ -703,7 +703,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.4
 
       - name: Install e2e dependencies
         uses: ruby/setup-ruby@v1

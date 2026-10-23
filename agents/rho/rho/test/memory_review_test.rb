@@ -65,8 +65,7 @@ class MemoryReviewTest < Minitest::Test
   # explicit enable after the root is bound still works.
   def test_a_conversation_without_a_writable_root_declines_the_default_once
     auto = Rho::MemoryReview::Defaults.new(auto_enable: true, path: PATH, model: nil)
-    @conversation.effective_memory_context = { "bindings" => [{ "name" => "speaker", "scope" => "speaker", "access" => "read",
-      "agent_public_id" => "agent-1", "speaker_public_id" => "speaker-1" }] }
+    change_effective_binding("speaker", "access" => "read")
     review(defaults: auto).settled(settlement(source(position: 1)))
     refute review.status.fetch("enabled")
     assert_empty @workspace.forks
@@ -139,7 +138,7 @@ class MemoryReviewTest < Minitest::Test
     assert_equal ["speaker-1"], @conversation.memory_selectors.compact.uniq
 
     other = { "bindings" => Fixtures.memory_context.fetch("bindings").map do |binding|
-      binding.fetch("scope") == "speaker" ? binding.merge("speaker_public_id" => "speaker-2") : binding
+      binding.fetch("source")["scope"] == "speaker" ? binding.merge("source" => binding.fetch("source").merge("speaker_public_id" => "speaker-2")) : binding
     end }
     reads = @memory.reads.length
     review.settled(settlement(source(position: 2, memory_context: other)))
@@ -151,7 +150,7 @@ class MemoryReviewTest < Minitest::Test
   def test_an_unbound_speaker_needs_an_explicit_subject_and_writable_source_before_enable
     use_unbound_speaker
     assert_raises(Rho::Error) { enable }
-    @conversation.memory_context.fetch("bindings").find { |binding| binding.fetch("scope") == "speaker" }["access"] = "read"
+    @conversation.memory_context.fetch("bindings").find { |binding| binding.fetch("source")["scope"] == "speaker" }["access"] = "read"
     assert_raises(Rho::Error) { review.enable(path: PATH, speaker_public_id: "speaker-1") }
     assert_empty @memory.writes
   end
@@ -159,7 +158,7 @@ class MemoryReviewTest < Minitest::Test
   def test_removing_an_unbound_speaker_before_selection_does_not_match_an_old_execution
     use_unbound_speaker
     enable(path: "conversation/review.md")
-    @conversation.memory_context.fetch("bindings").reject! { |binding| binding.fetch("scope") == "speaker" }
+    @conversation.memory_context.fetch("bindings").reject! { |binding| binding.fetch("source")["scope"] == "speaker" }
     review.settled(settlement(source(memory_context: Fixtures.memory_context)))
 
     assert_empty @workspace.forks
@@ -171,7 +170,7 @@ class MemoryReviewTest < Minitest::Test
     enable(path: "conversation/review.md")
     review.settled(settlement(source(memory_context: Fixtures.memory_context)))
     @conversation.memory_context = { "bindings" => @conversation.memory_context.fetch("bindings").reject do |binding|
-      binding.fetch("scope") == "speaker"
+      binding.fetch("source")["scope"] == "speaker"
     end }
     finish_review
 
@@ -202,16 +201,10 @@ class MemoryReviewTest < Minitest::Test
   end
 
   def test_external_review_uses_effective_writable_speaker_memory_without_adopting_raw_agent_or_workspace_access
-    @conversation.effective_memory_context = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write", "conversation_public_id" => "conversation-1" },
-      { "name" => "speaker", "scope" => "speaker", "access" => "read_write", "agent_public_id" => "agent-1", "speaker_public_id" => "speaker-1" },
-      { "name" => "workspace", "scope" => "workspace", "access" => "read", "workspace_public_id" => "workspace" },
-    ] }
-    captured = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-      { "name" => "speaker", "scope" => "speaker", "access" => "read_write", "speaker_public_id" => "speaker-1" },
-      { "name" => "workspace", "scope" => "workspace", "access" => "read" },
-    ] }
+    captured = { "bindings" => Fixtures.memory_context.fetch("bindings").reject { |binding| binding.fetch("name") == "agent" }.map do |binding|
+      binding.fetch("name") == "workspace" ? binding.merge("access" => "read") : binding
+    end }
+    @conversation.effective_memory_context = Fixtures.projection(captured)
     assert_raises(Rho::Error) { enable(path: "agent/review.md") }
     assert_raises(Rho::Error) { enable(path: "workspace/review.md") }
     assert_empty @memory.writes
@@ -248,7 +241,7 @@ class MemoryReviewTest < Minitest::Test
 
   def test_a_changed_resolved_owner_during_review_discards_the_proposal
     prepare_review
-    change_effective_binding("speaker", "agent_public_id" => "agent-2")
+    change_effective_binding("speaker", "owner_public_id" => "agent-2")
     finish_review
 
     assert_equal "skipped", review.status.fetch("outcome")
@@ -391,7 +384,7 @@ class MemoryReviewTest < Minitest::Test
   def test_recreated_same_path_does_not_satisfy_the_enabled_document_identity
     enable
     @memory.rows.delete(PATH)
-    @memory.write(PATH, "A new document", expected_public_id: nil, expected_lock_version: nil)
+    @memory.write(PATH, "A new document", expected_collection_public_id: review.state.collection_public_id, expected_public_id: nil, expected_lock_version: nil)
     review.settled(settlement(source))
 
     assert_empty @workspace.forks
@@ -431,6 +424,40 @@ class MemoryReviewTest < Minitest::Test
     assert_equal 1, side.inputs.creates.length
   end
 
+  def test_rebinding_between_the_final_read_and_write_cannot_write_the_new_collection
+    prepare_review
+    original = @memory.rows.fetch(PATH)
+    assert_equal original.collection_public_id, input.fetch("collection_public_id")
+    @memory.before_write = -> do
+      change_effective_binding("speaker", "collection_public_id" => "collection-rebound")
+      @memory.rows[PATH] = original.with(collection_public_id: "collection-rebound", public_id: "new-target-document", content: "New target")
+    end
+    finish_review
+
+    assert_equal "skipped", review.status.fetch("outcome")
+    assert_equal "New target", @memory.rows.fetch(PATH).content
+    assert_equal original.collection_public_id, review.state.collection_public_id
+    assert_equal 1, @memory.writes.length
+    assert_equal 1, side.inputs.creates.length
+  end
+
+  def test_deleted_collection_and_same_named_replacement_never_retarget_a_pending_review
+    prepare_review
+    original = @memory.rows.fetch(PATH)
+    change_effective_binding("speaker", "state" => "deleted")
+    @memory.rows.delete(PATH)
+    finish_review
+    assert_equal "skipped", review.status.fetch("outcome")
+    assert_empty @memory.rows
+
+    change_effective_binding("speaker", "state" => "active", "collection_public_id" => "replacement-collection")
+    @memory.rows[PATH] = original.with(collection_public_id: "replacement-collection", public_id: "replacement-document", content: "Replacement")
+    review.settled(settlement(source(position: 2)))
+    assert_equal 1, @workspace.forks.length
+    assert_equal "Replacement", @memory.rows.fetch(PATH).content
+    assert_equal original.collection_public_id, review.state.collection_public_id
+  end
+
   def test_forgetting_during_review_or_after_success_never_replays_old_source
     turn = prepare_review
     @memory.rows.delete(PATH)
@@ -448,18 +475,16 @@ class MemoryReviewTest < Minitest::Test
 
   def test_changed_memory_bindings_skip_the_old_source_and_keep_the_group_destination
     group = { "bindings" => [Fixtures.memory_context.fetch("bindings").first,
-      { "name" => "group", "scope" => "conversation", "access" => "read_write",
-      "conversation_public_id" => "shared-room" }] }
+      { "name" => "group", "source" => { "scope" => "conversation", "conversation_public_id" => "shared-room" }, "access" => "read_write" }] }
     @conversation.memory_context = group
-    @conversation.effective_memory_context = { "bindings" => [Fixtures.effective_memory_context.fetch("bindings").first,
-      group.fetch("bindings").last] }
+    @conversation.effective_memory_context = Fixtures.projection(group)
     enable(path: "group/review.md")
     review.settled(settlement(source(memory_context: group)))
     assert_equal "group/review.md", input.fetch("path")
     assert_equal @conversation.effective_memory_context, input.fetch("memory_context")
     assert_equal ["group/review.md"], @memory.reads.uniq
 
-    change_effective_binding("group", "conversation_public_id" => "other-room")
+    change_effective_binding("group", "owner_public_id" => "other-room")
     finish_review
     assert_equal "skipped", review.status.fetch("outcome")
     assert_equal 1, @memory.writes.length
@@ -611,10 +636,10 @@ class MemoryReviewTest < Minitest::Test
 
     def use_unbound_speaker
       @conversation.memory_context = { "bindings" => Fixtures.memory_context.fetch("bindings").map do |binding|
-        binding.except("speaker_public_id")
+        binding.merge("source" => binding.fetch("source").except("speaker_public_id"))
       end }
       @conversation.effective_memory_context = { "bindings" => Fixtures.effective_memory_context.fetch("bindings").reject do |binding|
-        binding.fetch("scope") == "speaker"
+        binding.fetch("source")["scope"] == "speaker"
       end }
     end
 
@@ -626,7 +651,7 @@ class MemoryReviewTest < Minitest::Test
 
     def source(position: 1, prompt: "Remember a useful preference", answer: "The verified answer", memory_context: @conversation.memory_context)
       model = CybrosAgent::Api::ConversationModel.new(provider_id: "test", model_ref: "model", reasoning_effort: nil)
-      variant = Fixtures::Variant.new(run_public_id: "source-#{position}", status: "completed", memory_context: memory_context,
+      variant = Fixtures::Variant.new(run_public_id: "source-#{position}", status: "completed", memory_context: Fixtures.capture(memory_context),
         prompt_text: prompt, content: answer, model: model)
       turn = Fixtures::Turn.new(public_id: "turn-#{position}", position: position, kind: "direct_reply", status: "completed",
         visibility: "visible", inherited: false, active_variant: variant, created_at: "2026-10-07T00:00:00Z")

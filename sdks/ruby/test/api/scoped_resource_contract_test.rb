@@ -33,9 +33,9 @@ class ApiScopedResourceContractTest < Minitest::Test
 
   def test_each_memory_owner_sends_conditional_edits_and_scoped_literal_search
     selectors = {
-      "/agent_api/v1/profile/memory" => ->(api) { api.profile.memory },
-      "/agent_api/v1/profile/agents/reviewer/memory" => ->(api) { api.profile.agents.memory(name: "reviewer") },
-      "/agent_api/v1/workspaces/workspace/memory" => ->(api) { api.workspace("workspace").memory },
+      "/agent_api/v1/memory_collections/profile-collection/documents" => ->(api) { api.profile.memory_collections.documents("profile-collection") },
+      "/agent_api/v1/memory_collections/agent-collection/documents" => ->(api) { api.profile.agents.memory_collections(name: "reviewer").documents("agent-collection") },
+      "/agent_api/v1/memory_collections/workspace-collection/documents" => ->(api) { api.workspace("workspace").memory_collections.documents("workspace-collection") },
     }
     selectors.each do |path, select|
       fixture = pack("memory_documents")

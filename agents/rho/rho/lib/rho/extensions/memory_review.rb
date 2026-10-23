@@ -32,19 +32,19 @@ module Rho
             ctx.member_plane(workspace_public_id: settlement.workspace_public_id) do |client, workspace_public_id, about|
               workspace = client.workspace(workspace_public_id)
               source = Rho::MemoryReview.source_for(workspace: workspace, conversation_public_id: settlement.conversation_public_id)
-              service(ctx, workspace, source, about).settled(settlement)
+              service(ctx, workspace, source, about, client: client).settled(settlement)
             end
           end
         end
 
-        def service(ctx, workspace, conversation_public_id, about)
+        def service(ctx, workspace, conversation_public_id, about, client: nil)
           follow = ->(side_id) { follow(ctx, workspace, conversation_public_id, about, side_id) }
           forget = ->(side_id) do
             unwatch(side_id)
             ctx.forget(Rho::Host::Conversation.new(public_id: side_id))
           end
           Rho::MemoryReview.new(workspace: workspace, conversation_public_id: conversation_public_id, follow: follow, forget: forget,
-            defaults: @defaults)
+            defaults: @defaults, client: client)
         end
 
         def close
@@ -62,7 +62,7 @@ module Rho
             host = Rho::Host::Conversation.new(public_id: side_id)
             hosted = workspace.conversation(side_id)
             HostPolicy.new(store: -> { hosted.store_entries }, owner_public_id: ctx.own_user_public_id,
-              host_public_id: side_id).replace(notes: { NAME => { "parent" => source_id } })
+              host_public_id: side_id).establish(notes: { NAME => { "parent" => source_id } })
             follower = ctx.adopt_follower(about, host, hosted, { "live" => false, "stream" => false }, runs: workspace.runs)
             return if follower.nil?
 

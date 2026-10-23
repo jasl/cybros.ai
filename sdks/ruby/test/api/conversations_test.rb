@@ -365,6 +365,7 @@ class ApiConversationsTest < Minitest::Test
   # --- durable memory -------------------------------------------------
 
   DOC = {
+    "collection_public_id" => "01995000-0000-7000-8000-000000000010",
     "public_id" => "019f0000-0000-7000-8000-000000000901", "lock_version" => 2,
     "path" => "workspace/notes.md", "bytesize" => 12,
     "written_at" => "2026-08-31T00:00:00Z",
@@ -379,7 +380,7 @@ class ApiConversationsTest < Minitest::Test
     fields = pack.fetch("valid_skill_write_request").fetch("memory")
 
     doc = chat([[201, {}, fixture]]).memory.write(fields.fetch("path"), fields.fetch("content"),
-      expected_public_id: fields.fetch("expected_public_id"), expected_lock_version: fields.fetch("expected_lock_version"),
+      expected_collection_public_id: DOC.fetch("collection_public_id"), expected_public_id: fields.fetch("expected_public_id"), expected_lock_version: fields.fetch("expected_lock_version"),
       description: fields.fetch("description"))
     assert_equal "#{PATH}/memory", request.fetch(:path)
     assert_equal({ "memory" => fields }, request.fetch(:body))
@@ -390,7 +391,7 @@ class ApiConversationsTest < Minitest::Test
     refusal = pack.fetch("valid_error_fixture")
     error = assert_raises(CybrosAgent::Api::InvalidRequest) do
       chat([[refusal.fetch("status"), refusal.fetch("headers"), refusal.fetch("body")]])
-        .memory.write("workspace/skills/commit-style", "x", expected_public_id: nil, expected_lock_version: nil)
+        .memory.write("workspace/skills/commit-style", "x", expected_collection_public_id: DOC.fetch("collection_public_id"), expected_public_id: nil, expected_lock_version: nil)
     end
     assert_equal "skill_description_required", error.code
   end
@@ -400,7 +401,7 @@ class ApiConversationsTest < Minitest::Test
 
     assert_equal "#{PATH}/memory", request.fetch(:path)
     assert_equal "workspace/notes.md", docs.first.path
-    assert_equal "workspace", docs.first.scope
+    assert_equal DOC.fetch("collection_public_id"), docs.first.collection_public_id
     assert_equal 12, docs.first.bytesize
     assert_equal DOC.fetch("public_id"), docs.first.public_id
     assert_equal 2, docs.first.lock_version
@@ -424,7 +425,7 @@ class ApiConversationsTest < Minitest::Test
   # The conditions belong to the read used to prepare the replacement.
   def test_a_write_replaces_the_whole_document_and_answers_it
     doc = chat([[201, {}, { "memory" => DOC.merge("content" => "new plan") }]])
-      .memory.write("workspace/notes.md", "new plan", expected_public_id: DOC.fetch("public_id"), expected_lock_version: 1)
+      .memory.write("workspace/notes.md", "new plan", expected_collection_public_id: DOC.fetch("collection_public_id"), expected_public_id: DOC.fetch("public_id"), expected_lock_version: 1)
 
     assert_equal :post, request.fetch(:method)
     assert_equal "#{PATH}/memory", request.fetch(:path)
@@ -438,17 +439,17 @@ class ApiConversationsTest < Minitest::Test
 
   def test_delete_is_a_post_with_the_path_and_answers_nothing
     assert_nil chat([[204, {}, nil]]).memory.delete("workspace/notes.md",
-      expected_public_id: DOC.fetch("public_id"), expected_lock_version: 2)
+      expected_collection_public_id: DOC.fetch("collection_public_id"), expected_public_id: DOC.fetch("public_id"), expected_lock_version: 2)
 
     assert_equal "#{PATH}/memory/delete", request.fetch(:path)
     assert_equal({ "memory" => { "path" => "workspace/notes.md",
-                                "expected_public_id" => DOC.fetch("public_id"), "expected_lock_version" => 2 } }, request.fetch(:body))
+                                "expected_collection_public_id" => DOC.fetch("collection_public_id"), "expected_public_id" => DOC.fetch("public_id"), "expected_lock_version" => 2 } }, request.fetch(:body))
   end
 
   def test_a_stale_memory_write_surfaces_the_conflict_without_reading_or_retrying
     door = chat([[409, {}, { "error" => { "code" => "stale_object", "message" => "Read the current document." } }]]).memory
     error = assert_raises(CybrosAgent::Api::Conflict) do
-      door.write("workspace/notes.md", "old calculation", expected_public_id: DOC.fetch("public_id"), expected_lock_version: 1)
+      door.write("workspace/notes.md", "old calculation", expected_collection_public_id: DOC.fetch("collection_public_id"), expected_public_id: DOC.fetch("public_id"), expected_lock_version: 1)
     end
 
     assert_equal "stale_object", error.code

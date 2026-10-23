@@ -174,29 +174,28 @@ impl InputExecution {
         let report = self.feed.finish_pass();
         if self.materialization.original.is_none()
             && (report.retention_gap || self.position().sequence > 0)
+            && let Some(input) = &self.input_public_id
         {
-            if let Some(input) = &self.input_public_id {
-                match self
-                    .conversation
-                    .inputs()
-                    .input(input)?
-                    .materialization(&MaterializationQuery {
-                        include_hidden: Some(true),
-                    })
-                    .await
-                {
-                    Ok(v) => {
-                        let m = v.body;
-                        self.materialization.original = Some(Execution {
-                            turn_public_id: m.turn_public_id,
-                            variant_public_id: Some(m.variant_public_id),
-                            run_public_id: m.run_public_id,
-                        });
-                        self.materialization.blocked_reason = None;
-                    }
-                    Err(e) if e.status() == Some(404) => {}
-                    Err(e) => return Err(e),
+            match self
+                .conversation
+                .inputs()
+                .input(input)?
+                .materialization(&MaterializationQuery {
+                    include_hidden: Some(true),
+                })
+                .await
+            {
+                Ok(v) => {
+                    let m = v.body;
+                    self.materialization.original = Some(Execution {
+                        turn_public_id: m.turn_public_id,
+                        variant_public_id: Some(m.variant_public_id),
+                        run_public_id: m.run_public_id,
+                    });
+                    self.materialization.blocked_reason = None;
                 }
+                Err(e) if e.status() == Some(404) => {}
+                Err(e) => return Err(e),
             }
         }
         Ok(())
@@ -329,10 +328,10 @@ impl InputExecution {
         }
         tokio::time::timeout(timeout, async {
             loop {
-                if let Some(snapshot) = self.recover().await? {
-                    if snapshot.terminal() {
-                        return Ok(snapshot.clone());
-                    }
+                if let Some(snapshot) = self.recover().await?
+                    && snapshot.terminal()
+                {
+                    return Ok(snapshot.clone());
                 }
                 tokio::time::sleep(poll_interval).await;
             }

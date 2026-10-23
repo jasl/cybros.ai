@@ -84,13 +84,18 @@ class DiagnosticDownloadsTest < ActionDispatch::IntegrationTest
   test "Workspace data exports opaque values and current documents within existing access" do
     @workspace.store_entries.create!(account: accounts(:cybros), namespace: "application.presets", key: "opaque", value: { "token" => "application data" })
     PromptDocuments::Write.call(anchor: { workspace: @workspace }, slot: "character", content: "Shared text", role: "system")
-    anchor = Scopes::Anchor.call(path: "workspace/notes", workspace: @workspace)
+    anchor = memory_anchor(path: "workspace/notes", workspace: @workspace)
     result = MemoryDocuments::Write.call(anchor: anchor, content: "Remember this", expected: nil)
     assert_predicate result, :written?
     get workspace_data_export_path(@workspace)
     records = decode
     assert_equal({ "token" => "application data" }, records.find { |row| row["type"] == "store_entry" }.dig("store_entry", "value"))
     assert_equal "Remember this", records.find { |row| row["type"] == "memory" }.dig("memory", "content")
+    assert_equal 2, records.first.fetch("version")
+    collection = records.find { |row| row["type"] == "memory_collection" }.fetch("memory_collection")
+    assert_equal @workspace.public_id, collection.fetch("owner_public_id")
+    assert_equal collection.fetch("public_id"), records.find { |row| row["type"] == "memory" }.dig("memory", "collection_public_id")
+    assert_equal "notes", records.find { |row| row["type"] == "memory" }.dig("memory", "path")
     assert_equal "Shared text", records.find { |row| row["type"] == "prompt_document" }.dig("prompt_document", "content")
     get workspace_data_export_path(workspaces(:personal))
     assert_response :not_found
@@ -98,7 +103,7 @@ class DiagnosticDownloadsTest < ActionDispatch::IntegrationTest
 
   test "memory override exports only the skill exception and marks the unavailable memory" do
     %w[notes skills/review].each do |name|
-      anchor = Scopes::Anchor.call(path: "workspace/#{name}", workspace: @workspace)
+      anchor = memory_anchor(path: "workspace/#{name}", workspace: @workspace)
       result = MemoryDocuments::Write.call(anchor: anchor, content: name, expected: nil,
         description: ("Review instructions" if name.start_with?("skills/")))
       assert_predicate result, :written?
@@ -108,7 +113,7 @@ class DiagnosticDownloadsTest < ActionDispatch::IntegrationTest
     get workspace_data_export_path(@workspace)
     records = decode
     assert_equal "memory_overridden", records.find { |row| row["type"] == "memory_unavailable" }.fetch("reason")
-    assert_equal ["workspace/skills/review"], records.select { |row| row["type"] == "memory" }.map { |row| row.dig("memory", "path") }
+    assert_equal ["skills/review"], records.select { |row| row["type"] == "memory" }.map { |row| row.dig("memory", "path") }
   end
 
   private

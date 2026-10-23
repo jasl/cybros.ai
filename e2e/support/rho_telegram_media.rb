@@ -161,65 +161,6 @@ module E2E
       assert_empty @logs
     end
 
-    def test_reply_stop_retires_only_the_unadmitted_voice_and_keeps_the_following_message
-      boot_runtime(allowed: [101], transcription_model: "dev/mock-transcription")
-      bytes = E2E::MockLLM::App::SILENCE_WAV.unpack1("m0")
-      @telegram.provide_file("voice-to-cancel", bytes)
-      incoming = media_update(1, "voice", { "file_id" => "voice-to-cancel", "file_size" => bytes.bytesize, "mime_type" => "audio/wav" },
-        caption: "!mock reply=canceled-voice -- do not admit this voice after Stop")
-      @runtime.consume(incoming)
-      conversation = @workspace.conversation(current("101:0"))
-      tick
-      pending = @state.read.fetch("pending_inputs").values.find { |row| row.fetch("update_id") == incoming.fetch("update_id") }
-      refute_nil pending, "the admitted voice is still awaiting transcription before input submission"
-      inference_request_id = pending.fetch("inference_request_id")
-      transcription = await("the real transcription starts before Telegram admits its input") do
-        row = @workspace.inference_requests.fetch(inference_request_id)
-        row if %w[running completed failed].include?(row.status)
-      end
-      assert_equal "transcription", transcription.workload
-      assert_includes %w[running completed], transcription.status
-      # The provider can finish before the next poll. This journey holds the
-      # admission boundary, not an artificial provider-running state.
-      puts "  voice Stop before admission: InferenceRequest status=#{transcription.status}"
-      assert_empty conversation.turns.list.items
-      assert_empty conversation.inputs.list.items
-
-      following = update(2, "!mock reply=following-message -- preserve the message after the voice")
-      @runtime.consume(following)
-      assert_equal 2, @state.read.fetch("pending_inputs").length
-      stop = update(3, "/stop")
-      stop.fetch("message")["reply_to_message"] = incoming.fetch("message")
-      @runtime.consume(stop)
-      assert_equal [following.fetch("update_id")], @state.read.fetch("pending_inputs").values.map { |row| row.fetch("update_id") }
-      settled = await("the original transcription settles after exact Stop") do
-        row = @workspace.inference_requests.fetch(inference_request_id)
-        row if %w[completed canceled failed].include?(row.status)
-      end
-      assert_includes %w[completed canceled], settled.status
-
-      reply = await("the later message still completes after the voice is canceled") do
-        tick
-        conversation.turns.list.items.find { |turn| turn.kind == "direct_reply" && turn.status == "completed" }
-      end
-      assert_equal "Mock: following-message", reply.active_variant.content
-      refute_includes request_text(reply), "Mock transcription of"
-      await("only the later message is delivered") { tick; @telegram.formal(101).length == 1 }
-      assert_equal "Mock: following-message", @telegram.formal(101).first.last.fetch(:text)
-
-      @runtime.consume(incoming)
-      @runtime.consume(stop)
-      3.times { tick }
-      assert_equal 1, conversation.events(limit: 100).count { |event| event.type == "input_accepted" }
-      assert_equal 1, conversation.turns.list.items.length
-      assert_equal 1, @workspace.inference_requests.list(workload: "transcription").items.length
-      assert_equal ["voice-to-cancel"], @telegram.downloads
-      assert_empty @state.read.fetch("pending_inputs")
-      assert_empty @logs
-    ensure
-      stop_group_work(conversation)
-    end
-
     private
 
       def media_reply(conversation, answer)

@@ -6,7 +6,7 @@ require "test_helper"
 # KILLED and reaped inside the runner's grace → the next call restarts, a server that never answers
 # `initialize` costing its own tools within `startup_timeout_ms`, the
 # token in a stderr tail redacted from the sentence. The four overridden
-# members are the coupling to `mcp ~> 1.6.0`: a rename fails here, loudly.
+# members are the coupling to `mcp ~> 1.8.0`: a rename fails here, loudly.
 class StdioTransportTest < Minitest::Test
   include McpTest::Helpers
 
@@ -183,6 +183,6 @@ class StdioTransportTest < Minitest::Test
     assert MCP::Client::Stdio.private_method_defined?(:ensure_running!), "mcp #{MCP::VERSION} lost #ensure_running!"
     assert_equal Rho::Mcp::StdioTransport, Rho::Mcp::StdioTransport.instance_method(:ensure_running!).owner
     assert_includes MCP::Client::Stdio.instance_method(:initialize).parameters, [:key, :read_timeout]
-    assert_match(/\A1\.6\./, MCP::VERSION)
+    assert_match(/\A1\.8\./, MCP::VERSION)
   end
 end

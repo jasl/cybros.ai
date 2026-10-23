@@ -40,10 +40,10 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rho-runner"
   # THE OFFICIAL CLIENT, never a hand-rolled JSON-RPC layer: `MCP::Client`
   # on `MCP::Client::Stdio` / `MCP::Client::HTTP`. Pinned to the minor
-  # because rho-mcp SUBCLASSES the stdio transport (four members, three public on 1.6 —
+  # because rho-mcp SUBCLASSES the stdio transport (four members, three public on 1.8 —
   # `start`, `close`, `ensure_running!`, `send_notification`) and a rename
   # must fail loudly at the pin, not silently at a call.
-  spec.add_dependency "mcp", "~> 1.6.0"
+  spec.add_dependency "mcp", "~> 1.8.0"
   # The gem's HTTP transport's two undeclared needs: its env-aware `on_data`
   # (the SSE path) wants Faraday >= 2.1, and its SSE parser is this gem. The
   # adapter is Faraday's DEFAULT (`net_http`) — the one the gem's streaming

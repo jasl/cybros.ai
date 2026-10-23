@@ -378,7 +378,9 @@ disclosure; expand it to read the original receipt while the answer and its file
 
 **Tools and activity** under an answer loads the recorded rounds; a call or
 **Read full round** opens the task's input, output and captures as a side-panel
-tab. When Nexus's retention policy has collected an old turn's execution
+tab. Model rounds offer **Read sealed model request** to inspect the captured
+input entries and request options, including rounds with no text output.
+When Nexus's retention policy has collected an old turn's execution
 details, the page keeps its conversation text and labels the removed details.
 
 Answers support basic Markdown: headings, paragraphs, lists, quotations,

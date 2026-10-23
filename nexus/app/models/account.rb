@@ -1,6 +1,5 @@
 class Account < ApplicationRecord
   NAME_MAX_LENGTH = 100
-  COST_UNIT_MAX_LENGTH = 64
 
   attr_readonly :public_id
 
@@ -28,6 +27,12 @@ class Account < ApplicationRecord
   # FK; a fork child always out-ids its ancestor, so descending id is the
   # topological order for free.
   has_many :conversation_command_receipts, dependent: :delete_all
+  # Account incineration is the whole-database teardown. Release memory
+  # pointers and collections before any of their Conversation/Workspace/User
+  # owners or Speaker subjects; ordinary owner collection is budgeted separately.
+  has_many :memory_documents, dependent: :delete_all
+  has_many :memory_collections, dependent: :delete_all
+  has_many :memory_document_versions, dependent: :delete_all
   has_many :conversations, -> { order(id: :desc) }, dependent: :destroy
   has_many :speakers, dependent: :destroy
   has_many :content_fragments, dependent: :destroy
@@ -62,12 +67,6 @@ class Account < ApplicationRecord
   has_many :model_usage_time_buckets, dependent: :delete_all
   has_many :billing_subjects, dependent: :delete_all
   has_many :usage_budgets, dependent: :destroy
-  # Memory pointers reference users (the `user/` rung) and their versions
-  # under RESTRICT, so documents fall first, then versions, both before
-  # `users`; `delete_all` because the reclaim sweep is the versions' only
-  # lifecycle and a teardown owes it nothing.
-  has_many :memory_documents, dependent: :delete_all
-  has_many :memory_document_versions, dependent: :delete_all
   # Store entries reference users (the profile host) — the conversation
   # and workspace hosts already took theirs above through their own
   # cascades; this line is the user host's.
@@ -82,7 +81,7 @@ class Account < ApplicationRecord
   # The opaque configure-once cost unit: nil is not-yet-configured and never
   # guessed; the one legal assignment is Accounts::ConfigureCostUnit's nil-only CAS.
   normalizes :cost_unit, with: ->(unit) { unit.strip }
-  validates :cost_unit, length: { maximum: COST_UNIT_MAX_LENGTH }, allow_nil: true
+  validates :cost_unit, length: { maximum: Constants::COST_UNIT_MAX_LENGTH }, allow_nil: true
   validates :cost_unit, presence: true, unless: -> { cost_unit.nil? }
 
   class << self
@@ -101,14 +100,14 @@ class Account < ApplicationRecord
 
       transaction do
         create!(**account).tap do |created|
-          created.users.create!(
+          MemoryCollection.default_for(created.users.create!(
             kind: :agent, role: :system, display_name: User::SYSTEM_DISPLAY_NAME
-          )
+          ))
           identity.account = created
           identity.save!
-          created.users.create!(
+          MemoryCollection.default_for(created.users.create!(
             kind: :human, role: :owner, identity: identity, display_name: owner.fetch(:display_name)
-          )
+          ))
         end
       end
     end
@@ -161,6 +160,7 @@ class Account < ApplicationRecord
     transaction do
       identity.save!
       member = users.create!(kind: :human, role: role, identity: identity, display_name: display_name)
+      MemoryCollection.default_for(member)
     end
     DirectMember.new(outcome: :created, member: member, errors: nil)
   rescue ActiveRecord::RecordInvalid => error

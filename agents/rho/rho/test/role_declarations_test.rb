@@ -33,7 +33,7 @@ class RoleDeclarationsTest < Minitest::Test
     assert_equal ["read"], result.fetch(:runner_tool_names)
     assert_equal "base/model", child.fetch("default_model")
     assert_equal ["base/backup"], child.fetch("fallback_models")
-    assert_equal [{ "name" => "conversation", "scope" => "conversation", "access" => "read_write" }],
+    assert_equal [{ "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" }],
       child.dig("memory_context_limit", "bindings")
     refute child.fetch("prompt_template").fetch("blocks").any? { |row| row["slot"] == "persona" }
     refute child.key?("delegation_catalog")

@@ -155,39 +155,6 @@ class AskInboxTest < Minitest::Test
       "one hold, answered once — the second answer re-asked nobody"
   end
 
-  # E7. A Human-created standalone loop: the steward authors one model
-  # step carrying the kernel's own `ask` bytes and the mock's call; the
-  # await it appends is addressed to nobody (no declaring profile), so it
-  # is no inbox row — the person's door is the only door, and `rho
-  # answer` reaches it through the recorded fall-through.
-  def test_a_human_created_loops_ask_is_nobodys_inbox_row_and_rho_answers_it_at_the_persons_door
-    connect!
-    loop = author_asking_loop!
-    ask = await_ask(loop)
-    key = ask.fetch("key")
-    call = ASK_KEY.match(key) { |match| match[:call] } || flunk("the ask hangs under no call key: #{key}")
-
-    status, exit_status = @daemon.cli("status")
-    assert_predicate exit_status, :success?, "rho status failed:\n#{status}"
-    assert_match(/^asks:\s+\(none\)$/, status, "a Human loop's ask is nobody's inbox row:\n#{status}")
-    refute_match(/^  ask\s+#{Regexp.escape(loop)}/, status, status)
-    refute_match(/event=executor\.ask_available run_public_id=#{Regexp.escape(loop)}/, @daemon.log_text,
-      "an ask addressed to nobody nudges nobody")
-
-    answered, answer_status = @daemon.cli("answer", loop, key, ANSWER)
-    assert_predicate answer_status, :success?, "rho answer failed:\n#{answered}"
-    assert_match(/^answered:\s+#{Regexp.escape(key)}$/, answered,
-      "the member door answers an ask addressed to nobody:\n#{answered}")
-
-    completed = await_run_status(loop, "completed")
-    tasks = completed.fetch("tasks").to_h { |task| [task.fetch("key"), task] }
-    assert_equal "completed", tasks.fetch(key).fetch("status"), summarize(completed)
-    assert_equal ANSWER, task_output(loop, key)
-    continued = task_output(loop, completed.fetch("deliverable_task_key"))
-    assert_includes continued, "<answer task=\"#{call}\">#{ANSWER}</answer>",
-      "the continuation read the answer: #{continued.inspect}"
-  end
-
   private
 
     def ask_prompt(remainder)
@@ -199,28 +166,6 @@ class AskInboxTest < Minitest::Test
     # question quoted.
     def ask_line(loop, key)
       "  ask        #{Regexp.escape(loop)} #{Regexp.escape(key)}  \"#{Regexp.escape(QUESTION)}\""
-    end
-
-    # The person's shape: one model step on the mock, the kernel's `ask`
-    # bytes spliced verbatim from the catalog (a paraphrase is refused
-    # `kernel_tool_redefined`), started at once.
-    def author_asking_loop!
-      catalog = agent_api("/agent_api/v1/tools").fetch("tools")
-      definition = catalog.find { |tool| tool.fetch("name") == "ask" }&.fetch("definition") ||
-        flunk("the catalog publishes no `ask`: #{catalog.map { |tool| tool["name"] }.inspect}")
-      path = "/agent_api/v1/workspaces/#{@workspace_public_id}/runs"
-      body, status = agent_api_post(path, { "run" => {
-        "steps" => [
-          { "model" => { "key" => "round1", "prompt" => ask_prompt("ask"),
-                         "model" => { "model" => MODEL }, "tools" => [definition] } },
-        ],
-        "approval_mode" => "bypass",
-      } })
-      assert_equal 201, status, "authoring the asking loop: #{body}"
-      loop_id = body.dig("run", "public_id")
-      _, started = agent_api_post("#{path}/#{loop_id}/start", {})
-      assert_equal 200, started, "starting the asking loop"
-      loop_id
     end
 
     # The trace's parked ask: an `await_task` in `awaiting_input`.

@@ -67,10 +67,11 @@ class Conversation < ApplicationRecord
   has_many :turns, dependent: :destroy
   has_many :variants, through: :turns
   has_many :turn_overrides, dependent: :destroy
-  # Pointer rows only. The versions they name are shared with whatever
-  # forked from here and are reclaimed by their own sweep, never by this
-  # cascade — deleting them here would take a sibling's content with it.
-  has_many :memory_documents, dependent: :destroy
+  # Collection pointers must drain before owner deletion. Shared immutable
+  # versions are reclaimed only when no document still references them.
+  # Physical teardown drains these first; the FK refuses an incomplete drain.
+  has_many :memory_collections
+  has_many :memory_documents, through: :memory_collections
   # The closure THIS conversation holds (its ancestors). The inverse —
   # closures pinning this row — blocks destroy through the RESTRICT FK, which
   # is the leaves-first reap guarantee.

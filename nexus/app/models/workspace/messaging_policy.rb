@@ -15,14 +15,14 @@ class Workspace::MessagingPolicy
     normalizes :agent_public_id, with: ->(value) { value.downcase }
     normalizes :allowed_sender_public_ids, with: ->(values) { values.map { |value| value.to_s.downcase }.uniq }
 
-    validates :agent_public_id, length: { is: 36 }, format: { with: User::Handle::PUBLIC_ID_FORMAT }
+    validates :agent_public_id, length: { is: 36 }, format: { with: Constants::PUBLIC_ID_FORMAT }
     validates :mode, inclusion: { in: MODES }
     validate :senders_are_public_ids
 
     private
 
       def senders_are_public_ids
-        unless allowed_sender_public_ids.all? { |public_id| public_id.length == 36 && public_id.match?(User::Handle::PUBLIC_ID_FORMAT) }
+        unless allowed_sender_public_ids.all? { |public_id| public_id.length == 36 && public_id.match?(Constants::PUBLIC_ID_FORMAT) }
           errors.add(:allowed_sender_public_ids, :invalid)
         end
       end

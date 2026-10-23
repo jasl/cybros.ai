@@ -606,7 +606,6 @@ task :live_prompt_cache do
   sh({ "RAILS_ENV" => "development" }, Gem.ruby, "-I.", "test/prompt_cache_probe_test.rb")
 end
 
-
 desc "The tools' lane, offline half (paid, local): gate 0, the background suite and the " \
      "over-reach control on both weak models, against the set a rho turn declares under each " \
      "task/ask spelling (E2E_BENCH_STYLES=nexus,claude,codex; the baseline by default)"

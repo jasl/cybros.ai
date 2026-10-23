@@ -18,7 +18,7 @@ export interface ModelStepInput extends StepOptions {
 }
 export type ModelDefaults = Pick<ModelStepInput, 'executor_contexts' | 'model' | 'workload' | 'configuration' | 'tools' | 'instructions' | 'compaction' | 'on_failure' | 'fan_on_failure' | 'kernel_tools' | 'runner_executor_public_ids' | 'runner_tool_names' | 'mcp_tools' | 'model_selection' | 'fallback_models'>;
 export interface AskField { name: string; label: string; type: 'string' | 'integer' | 'number' | 'boolean' | 'choice' | 'multichoice'; required?: boolean; options?: string[]; }
-export interface AskStepInput extends StepOptions { prompt: string; fields?: AskField[]; options?: string[]; multi?: boolean; timeout_ms?: number; }
+export interface AskStepInput extends StepOptions { prompt: string; fields?: AskField[]; options?: string[]; multi?: boolean; timeout_ms?: number; indefinite?: boolean; }
 export interface WaitStepInput extends StepOptions { task: string; run_public_id?: string; timeout_ms?: number; }
 export interface ParallelStep { parallel: Step[]; until?: 'all' | 'any' | number; losers?: 'cancel' | 'run_out'; key?: string; on_failure?: OnFailure; lifetime?: 'turn' | 'conversation'; wake?: 'auto' | 'passive'; }
 export type Step = { tool: ToolStepInput } | { model: ModelStepInput } | { ask: AskStepInput } | { wait: WaitStepInput } | ParallelStep | Step[];

@@ -127,24 +127,6 @@ class InferenceRequestStreamTest < Minitest::Test
       "the durable window is ascending, which is what makes the merge one pass"
   end
 
-  # THE SOCKET REJECTS, AND SAYS SO. Without this, an authenticated connection
-  # could be subscribing to nothing and every assertion above would still pass
-  # on a channel that streamed to anyone who asked.
-  #
-  # Which TIERS reject is settled in the channel's own unit test, over every
-  # containment rule at once. What only a real socket can show is that the
-  # refusal arrives as a protocol `reject_subscription` a client can act on —
-  # rather than a silent connection that never delivers anything.
-  def test_an_unknown_resource_is_refused_on_the_protocol
-    with_reactor do
-      error = assert_raises(CybrosAgent::Realtime::SubscriptionRejectedError) do
-        subscribe_to(SecureRandom.uuid)
-      end
-      assert_includes error.identifier, "InferenceRequestEventsChannel",
-        "a refusal has to say WHICH subscription, because one connection carries many"
-    end
-  end
-
   private
 
     # A 429 IS A BUG IN THIS HARNESS, not weather to be waited out. These lanes

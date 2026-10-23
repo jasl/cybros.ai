@@ -274,9 +274,9 @@ class AccountTest < ActiveSupport::TestCase
     # Memory: a `user/` row holds a users FK and a `workspace/` row a workspaces FK, both under the
     # RESTRICT of their version — an account that had ever written a note failed at the accounts
     # DELETE before the cascade named them, because this test wrote none.
-    user_note = memory_write!(Scopes::Anchor.call(path: "user/notes.md", user: creator))
+    user_note = memory_write!(memory_anchor(path: "user/notes.md", user: creator))
     workspace_note = memory_write!(
-      Scopes::Anchor.call(path: "workspace/notes.md", workspace: workspace)
+      memory_anchor(path: "workspace/notes.md", workspace: workspace)
     )
     # The store over three hosts: the user-anchored row is the one only the account's own line
     # reaches — the workspace and conversation hosts take theirs through their own cascades.

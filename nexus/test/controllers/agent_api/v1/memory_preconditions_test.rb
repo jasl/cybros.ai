@@ -9,9 +9,10 @@ class AgentAPI::V1::MemoryPreconditionsTest < ActionDispatch::IntegrationTest
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human)
     @headers = { "Authorization" => "Bearer #{create_access_token_fixture(user: @human, name: "Memory").secret}" }
     workspace_path = "/agent_api/v1/workspaces/#{@workspace.public_id}"
+    @collection = MemoryCollection.default_for(@conversation)
     @doors = {
-      "/agent_api/v1/profile/memory" => "user/notes.md",
-      "#{workspace_path}/memory" => "workspace/notes.md",
+      "/agent_api/v1/memory_collections/#{MemoryCollection.default_for(@human).public_id}/documents" => "notes.md",
+      "/agent_api/v1/memory_collections/#{MemoryCollection.default_for(@workspace).public_id}/documents" => "notes.md",
       "#{workspace_path}/conversations/#{@conversation.public_id}/memory" => "conversation/notes.md",
     }
   end
@@ -41,13 +42,13 @@ class AgentAPI::V1::MemoryPreconditionsTest < ActionDispatch::IntegrationTest
       assert_unchanged do
         write(door, path, content: "late extraction", **observed)
         assert_stale
-        post "#{door}/delete", headers: @headers, as: :json, params: { memory: { path: path, **observed } }
+        post "#{door}/delete", headers: @headers, as: :json, params: { memory: { path: path, expected_collection_public_id: @collection.public_id, **observed } }
         assert_stale
         write(door, path, content: "another creation", expected_public_id: nil, expected_lock_version: nil)
         assert_stale
       end
 
-      post "#{door}/delete", headers: @headers, as: :json, params: { memory: { path: path, **condition(current) } }
+      post "#{door}/delete", headers: @headers, as: :json, params: { memory: { path: path, expected_collection_public_id: @collection.public_id, **condition(current) } }
       assert_response :no_content
       assert_unchanged do
         write(door, path, content: "late recreation", **condition(current))
@@ -61,7 +62,7 @@ class AgentAPI::V1::MemoryPreconditionsTest < ActionDispatch::IntegrationTest
       assert_unchanged do
         write(door, path, content: "ABA overwrite", **observed)
         assert_stale
-        post "#{door}/delete", headers: @headers, as: :json, params: { memory: { path: path, **observed } }
+        post "#{door}/delete", headers: @headers, as: :json, params: { memory: { path: path, expected_collection_public_id: @collection.public_id, **observed } }
         assert_stale
       end
       post "#{door}/show", headers: @headers, as: :json, params: { memory: { path: path } }
@@ -94,7 +95,7 @@ class AgentAPI::V1::MemoryPreconditionsTest < ActionDispatch::IntegrationTest
       end
       assert_unchanged do
         post "#{door}/delete", headers: @headers, as: :json,
-          params: { memory: { path: path, expected_public_id: nil, expected_lock_version: nil } }
+          params: { memory: { path: path, expected_collection_public_id: @collection.public_id, expected_public_id: nil, expected_lock_version: nil } }
         assert_response :bad_request
         assert_equal "parameter_invalid", response.parsed_body.dig("error", "code")
       end
@@ -116,7 +117,7 @@ class AgentAPI::V1::MemoryPreconditionsTest < ActionDispatch::IntegrationTest
   private
 
     def write(door, path, **fields)
-      post door, headers: @headers, as: :json, params: { memory: { path: path, **fields } }
+      post door, headers: @headers, as: :json, params: { memory: { path: path, expected_collection_public_id: @collection.public_id, **fields } }
     end
 
     def condition(document)

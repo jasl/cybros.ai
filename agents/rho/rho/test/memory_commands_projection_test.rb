@@ -6,7 +6,7 @@ class MemoryCommandsProjectionTest < Minitest::Test
   def test_cli_write_reads_the_current_version_and_does_not_retry_a_conflict
     seen = []
     announce(endpoint: recording_routed_endpoint(seen, {
-      "POST /conversations/memory/read" => [[200, { "memory" => { "public_id" => "memory-1", "lock_version" => 4 } }]],
+      "POST /conversations/memory/read" => [[200, { "memory" => { "collection_public_id" => "collection-1", "public_id" => "memory-1", "lock_version" => 4 } }]],
       "POST /conversations/memory/write" => [[409, { "error" => { "code" => "stale_object", "message" => "A newer edit exists" } }]],
     }))
 
@@ -25,6 +25,7 @@ class MemoryCommandsProjectionTest < Minitest::Test
     seen = []
     announce(endpoint: recording_routed_endpoint(seen, {
       "POST /conversations/memory/read" => [[404, { "error" => { "code" => "memory_not_found", "message" => "No document" } }]],
+      "POST /conversations/memory/target" => [[200, { "memory_binding" => { "collection_public_id" => "collection-1" } }]],
       "POST /conversations/memory/write" => [[201, { "memory" => { "path" => "conversation/new.md" } }]],
     }))
     Rho::Extensions::Ops::Memory.command(cli, ["chat", "write", "conversation/new.md", "first note"], {})
@@ -40,9 +41,40 @@ class MemoryCommandsProjectionTest < Minitest::Test
     refute seen.any? { |request| request.match?(%r{\APOST /conversations/memory/(?:edit|delete)}) }
   end
 
+  def test_first_speaker_write_resolves_its_unallocated_target_but_other_operations_do_not
+    seen = []
+    announce(endpoint: recording_routed_endpoint(seen, {
+      "POST /conversations/memory/read" => [[422, { "error" => { "code" => "memory_scope_unavailable", "message" => "No collection" } }]],
+      "POST /conversations/memory/target" => [[200, { "memory_binding" => { "collection_public_id" => "speaker-collection" } }]],
+      "POST /conversations/memory/write" => [[201, { "memory" => { "path" => "speaker/notes.md" } }]],
+    }))
+    Rho::MemoryCommands.execute(core, "chat", Rho::MemoryCommands.parse("write speaker/notes.md first note"), speaker_public_id: "bob")
+    body = JSON.parse(seen.grep(%r{\APOST /conversations/memory/write}).first.partition("\r\n\r\n").last)
+    assert_equal ["speaker-collection", nil, nil, "bob"], body.values_at("expected_collection_public_id", "expected_public_id", "expected_lock_version", "speaker_public_id")
+
+    %w[read delete].each do |operation|
+      assert_raises(Rho::Core::Refused) do
+        Rho::MemoryCommands.execute(core, "chat", Rho::MemoryCommands.parse("#{operation} speaker/notes.md"), speaker_public_id: "bob")
+      end
+    end
+    assert_equal 1, seen.grep(%r{\APOST /conversations/memory/target}).length
+  end
+
+  def test_an_unavailable_target_refuses_without_submitting_a_document_write
+    seen = []
+    announce(endpoint: recording_routed_endpoint(seen, {
+      "POST /conversations/memory/read" => [[422, { "error" => { "code" => "memory_scope_unavailable", "message" => "Deleted collection" } }]],
+      "POST /conversations/memory/target" => [[422, { "error" => { "code" => "memory_scope_unavailable", "message" => "Deleted collection" } }]],
+    }))
+    assert_raises(Rho::Core::Refused) do
+      Rho::MemoryCommands.execute(core, "chat", Rho::MemoryCommands.parse("write speaker/notes.md old proposal"))
+    end
+    refute seen.any? { |request| request.match?(%r{\APOST /conversations/memory/write}) }
+  end
+
   def test_cli_edit_preserves_exact_text_and_delete_uses_the_observed_identity
     seen = []
-    row = { "public_id" => "memory-recreated", "lock_version" => 0, "path" => "group/notes.md", "content" => "" }
+    row = { "collection_public_id" => "collection-1", "public_id" => "memory-recreated", "lock_version" => 0, "path" => "group/notes.md", "content" => "" }
     announce(endpoint: recording_routed_endpoint(seen, {
       "POST /conversations/memory/read" => [[200, { "memory" => row }]],
       "POST /conversations/memory/edit" => [[200, { "memory" => row }]],

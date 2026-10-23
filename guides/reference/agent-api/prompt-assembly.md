@@ -101,10 +101,8 @@ sources, under the tool's "Skills available now." header.
 
 Each Runner callable contributes its named Runner's documents without
 merging same-named documents from other Runners. A non-Runner callable
-resolves its Agent's documents, then the answering agent's
-own `agent/skills/` rows, then `workspace/skills/`, the selected
-Agent-and-Speaker pair's `speaker/skills/`, and an explicitly selected
-Human's `user/skills/`. Database sources are limited to the execution's
+uses the [memory skill precedence](conversation-memory.md#skills), with
+collection and document identities fixed in its catalog. Database sources are limited to the execution's
 effective memory bindings; an excluded root contributes no catalog entry
 or loadable skill. The block is bounded by `skill_catalog_bound` (16
 KiB), including a count of omitted entries when needed.
@@ -118,8 +116,8 @@ and the body is loaded on demand.
 
 ## The order is the cache's
 
-The slots, memory and the skills catalog change only when someone writes
-them; history changes every reply. So they lead, the stable cache marker
+The slots, memory and the skills catalog change when their content, source
+selection or availability changes; history changes every reply. So they lead, the stable cache marker
 lands after them ([Runs](runs.md)), history rides behind them, and the
 per-turn text — the `inline` lead and tail, then the input — rides behind
 history.

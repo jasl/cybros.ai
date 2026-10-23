@@ -1,7 +1,7 @@
 # One slot of the default template: `system_prompt` on an agent profile User,
-# `character` on a Workspace, `persona` on a Human — memory's anchor SHAPE
-# (exactly one rung, the anchor row is the lock), not its path grammar. A slot
-# is a current text; the sealed request records what was compiled, so there is
+# `character` on a Workspace, `persona` on a Human. Each slot has exactly one
+# owner, whose row serializes its writes. A slot is current text; the sealed
+# request records what was compiled, so there is
 # no versions table and `version` counts writes. A fourth slot, `summarizer`,
 # is NOT placed: it is the agent profile's own text for the kernel-mode
 # compaction summarizer, read as the step's raw `instructions` — no macros

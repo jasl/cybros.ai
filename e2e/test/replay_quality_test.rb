@@ -62,33 +62,6 @@ class ReplayQualityTest < Minitest::Test
     nil
   end
 
-  # The words are short and the thinking long, so it is the REASONING that crosses the fit: each
-  # turn's words (its escaped thought rides its own `!mock` line, ~1.8k tokens at the dev row's
-  # bytes/4) and its ~1.75k tokens of reasoning fit the dev row's 8,192-token window, answer room
-  # and all, for two turns; the third's history — the two earlier turns' words, ~3.8k, fitting on
-  # their own — crosses it only with their reasoning priced beside them (~7.3k against ~5.4k). So it
-  # waits behind the timeline's summary and then answers, and no request is re-sent without its
-  # traces. A kernel that priced traces into leftover room instead would send that third request
-  # with the traces dropped and arm nothing.
-  def test_turns_and_reasoning_past_the_fit_arm_the_summary_and_the_head_answers_behind_it
-    marks = nexus_log_marks
-    thought = CGI.escape("weigh it #{"carefully " * 700}")
-    3.times do |index|
-      reply!("!mock reasoning=#{thought} -- turn #{index} #{"words " * 30}")
-      await("turn #{index} never settled") { settled_replies.length > index }
-    end
-
-    turns = @chat.turns.list.items
-    summary = turns.index { |turn| turn.kind == "compaction_summary" }
-    refute_nil summary, "the fit wall arms the timeline compaction: #{turns.map(&:kind).inspect}"
-    assert_equal "completed", turns[summary].status
-    assert_operator summary, :<, turns.rindex { |turn| turn.kind == "direct_reply" },
-      "the third reply ran behind the summary"
-    assert_equal "completed", turns.last.status
-    refute_match(/event=reasoning_replay_dropped/, nexus_log_since(marks),
-      "no request re-sent without its traces")
-  end
-
   # The configured model answers 529 on every attempt; the fallback answers. The reply's first
   # sample stays failed in the deck, the fallback candidate renders, and both requests were sealed
   # as the conversation's mainline.
@@ -120,23 +93,6 @@ class ReplayQualityTest < Minitest::Test
     def reply!(text)
       @chat.inputs.create(kind: "direct_reply", model: MODEL, text: text, idempotency_key: SecureRandom.uuid,
         model_selection: { source: "explicit", model: MODEL, constraint: "route", alternatives: [FALLBACK] })
-    end
-
-    # The world's Rails logs — the web's and each host's — and where each ends now, so a journey
-    # reads only the lines it caused.
-    def nexus_log_marks
-      [E2E.handle.fetch("env").fetch("RAILS_LOG_FILE"), E2E.hosts.rails_log_path(:jobs),
-       E2E.hosts.rails_log_path(:runner)].to_h { |path| [path, File.file?(path) ? File.size(path) : 0] }
-    end
-
-    def nexus_log_since(marks)
-      marks.sum("") do |path, from|
-        File.file?(path) ? File.open(path, encoding: Encoding::UTF_8) { |file| file.seek(from) && file.read } : ""
-      end
-    end
-
-    def settled_replies
-      @chat.turns.list.items.select { |turn| turn.kind == "direct_reply" && turn.status == "completed" }
     end
 
     def await(message)

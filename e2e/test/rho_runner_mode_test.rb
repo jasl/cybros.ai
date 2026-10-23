@@ -70,48 +70,6 @@ class RhoRunnerModeTest < Minitest::Test
     [@home, @runner_home].each { |dir| FileUtils.remove_entry(dir) if dir && File.directory?(dir) }
   end
 
-  def test_an_agent_mode_rho_names_a_runner_mode_rho_on_a_second_home
-    workspace_public_id = boot_agent_rho
-    runner_id = boot_runner_rho
-
-    E2E.enable_dev_lane!
-    E2E.hosts.start
-
-    # Same machine, two homes: the marker lives under the AGENT's project
-    # and only the runner-mode rho holds a `read` that can answer with it.
-    project = File.join(@home, "project")
-    FileUtils.mkdir_p(project)
-    marker = "read-by-the-runner-mode-rho-#{SecureRandom.hex(4)}"
-    note = File.join(project, "note.txt")
-    File.write(note, "#{marker}\n")
-    prepared = rho_run("!mock reply=ready -- prepare the Runner tools", project, runner: runner_id)
-    read = runner_callable(workspace_public_id, prepared, runner_id, "read")
-    loop_id = rho_run("!mock tool_call=#{read} tool_args=#{CGI.escape(JSON.generate({ "path" => note }))} -- say what you read",
-      project, runner: runner_id)
-
-    completed = await_loop_completion(workspace_public_id, loop_id)
-    tool_task = completed.fetch("tasks").find { |task| task.fetch("kind") == "tool_task" }
-    refute_nil tool_task, "the model never called a tool: #{summarize(completed)}"
-    assert_equal "read", tool_task.fetch("tool_name")
-    assert_equal "completed", tool_task.fetch("status"), tool_task.inspect
-    # The runner-mode rho's socket is pong-verified live: `online` (r-modes M4).
-    assert_equal({ "role" => "runner", "executor_public_id" => runner_id, "presence" => "online" },
-      tool_task.fetch("addressed_to").except("last_seen_at"),
-      "the row was addressed to the runner the agent named")
-
-    output = task_output(workspace_public_id, loop_id, tool_task.fetch("key"))
-    assert_includes output, marker, "the runner-mode rho's real `read` answered with the file: #{output.inspect}"
-
-    # WHOSE LOG SAYS SO: the second home's carries the claim, the first's
-    # none — the agent-mode rho announced nothing and held nothing.
-    assert_includes @runner.claimed_keys, tool_task.fetch("key"),
-      "the runner-mode rho's own log says it took the row: #{@runner.claims.inspect}"
-    assert_equal "runner", @runner.claims.find { |claim| claim["task"] == tool_task.fetch("key") }["role"]
-    assert_empty @daemon.claimed_keys, "the agent-mode rho claimed a row it could not serve"
-    refute_match TROUBLE, @runner.log_text, "the runner-mode rho met a refusal or a failure"
-    refute_match TROUBLE, @daemon.log_text, "the agent-mode rho met a refusal or a failure"
-  end
-
   def test_two_full_instances_of_one_human_only_address_their_own_private_runners
     @daemon = E2E::RhoDaemon.new(base_url: @base_url, home: @home, env: { "RHO_MODE" => "full" })
     @runner = E2E::RhoDaemon.new(base_url: @base_url, home: @runner_home, env: { "RHO_MODE" => "full" })

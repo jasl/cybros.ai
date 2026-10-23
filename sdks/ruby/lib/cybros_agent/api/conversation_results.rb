@@ -391,23 +391,11 @@ module CybrosAgent
       def to_h = super.compact
     end
 
-    # One durable memory document, whichever door served it — a
-    # conversation's or the profile's. `scope` is the path's first segment
-    # (`conversation`, `workspace`, `user`). `content` is present on a
-    # single read and absent from a listing — the listing selects on
-    # `bytesize` precisely so it never has to load what it is only
-    # counting.
-    #
-    # `written_at` IS THE CONTENT'S AGE, not the row's. A forked
-    # conversation shares its parent's stored text, so a timestamp taken
-    # from the pointer would tell you every inherited document was written
-    # at the moment of the fork.
-    #
-    # `description` is a SKILL row's (a `skills/` path): the line the model reads in its turn's skills block; present
-    # on both shapes there, nil on a plain document.
-    MemoryDocument = Data.define(:public_id, :lock_version, :path, :bytesize, :description, :content, :written_at) do
-      def scope = path.split("/", 2).first
-      def skill? = path.split("/", 2).last.to_s.start_with?("skills/")
+    # A document carries its collection identity at every door. Context paths
+    # use binding names; direct collection paths are relative. written_at is
+    # the content version's age, including when a Fork shares that version.
+    MemoryDocument = Data.define(:collection_public_id, :public_id, :lock_version, :path, :bytesize, :description, :content, :written_at) do
+      def skill? = !description.nil?
       def to_h = super.compact
     end
 

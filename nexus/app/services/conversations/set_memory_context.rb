@@ -15,7 +15,7 @@ module Conversations
         context = MemoryDocuments::Context.new(workspace: conversation.workspace,
           conversation: conversation, principal: acting_user, configuration: conversation.effective_memory_context,
           agent: conversation.answering_agent)
-        next Outcome.refused(:memory_scope_unavailable) unless context.sources_available?
+        next Outcome.refused(context.selection_refusal) if context.selection_refusal
 
         conversation.note_context_change
         Outcome.accepted(conversation)

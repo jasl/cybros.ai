@@ -175,9 +175,9 @@ module Rho
       def variant: (String public_id, String turn, String variant_id, concealed: bool, ?workspace_public_id: String?) -> untyped
       def skills: () -> untyped
       def push_skill: (name: String, description: String, content: String, scope: String,
-                      expected_public_id: String?, expected_lock_version: Integer?) -> untyped
+                      expected_collection_public_id: String, expected_public_id: String?, expected_lock_version: Integer?) -> untyped
       def show_skill: (String name, scope: String) -> untyped
-      def remove_skill: (String name, scope: String, expected_public_id: String, expected_lock_version: Integer) -> untyped
+      def remove_skill: (String name, scope: String, expected_collection_public_id: String, expected_public_id: String, expected_lock_version: Integer) -> untyped
       def upload_bytes: (String public_id, ?kind: String) -> String
     end
     include Records

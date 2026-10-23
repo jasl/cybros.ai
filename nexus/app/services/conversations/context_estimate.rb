@@ -72,6 +72,11 @@ module Conversations
         speaker = Speaker.find_by(account_id: @command.conversation.account_id, kind: "member", user_id: @command.acting_user.id)
       end
       memory_context = MemoryContext.capture(configuration: @command.conversation.effective_memory_context(execution_configuration: principals.execution_configuration), speaker: speaker)
+      memory = MemoryDocuments::Context.new(workspace: @command.conversation.workspace, conversation: @command.conversation,
+        principal: @command.acting_user, configuration: memory_context, agent: principals.execution_agent)
+      return Outcome.refused(memory.selection_refusal) if memory.selection_refusal
+
+      memory_context = memory.capture
       tools = Tools::Assemble.for_agent(agent: principals.execution_agent, declaration: declaration, runner: @command.conversation.default_runner)
       return Outcome.refused(tools.refusal) if tools.refused?
 

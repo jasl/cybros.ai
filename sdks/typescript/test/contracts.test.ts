@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { Steps } from '../src/steps.js';
 import { readFileSync } from 'node:fs';
 import { Client, ExecutorClient, PlatformClient, Sessions, DeviceFlow, ApplicationOAuth, AuthorizationLost, MalformedResponse } from '../src/index.js';
 function fixture(family: string, key: string): unknown { return (JSON.parse(readFileSync(new URL(`../../../contracts/nexus/v1/${family}.json`, import.meta.url), 'utf8')) as Record<string, unknown>)[key]; }
@@ -25,9 +26,11 @@ describe('Shared Nexus response contracts through public resources', () => {
     ['principals', () => member('workspaces', 'valid_principals_fixture').workspace('id').principals()],
     ['store', () => member('store_entries', 'valid_fixture').profile.storeEntries.fetch('id')],
     ['store page', () => member('store_entries', 'valid_list_fixture').profile.storeEntries.list()],
-    ['memory', () => member('memory_documents', 'valid_fixture').profile.memory.read('agent/file')],
-    ['memory page', () => member('memory_documents', 'valid_list_fixture').profile.memory.list()],
-    ['memory grep', () => member('memory_documents', 'valid_grep_fixture').profile.memory.grep({ pattern: 'x' })],
+    ['memory collection', () => member('memory_collections', 'valid_fixture').memoryCollections.fetch('collection')],
+    ['memory collections', () => member('memory_collections', 'valid_list_fixture').memoryCollections.list()],
+    ['memory', () => member('memory_documents', 'valid_fixture').memoryCollections.documents('collection').read('agent/file')],
+    ['memory page', () => member('memory_documents', 'valid_list_fixture').memoryCollections.documents('collection').list()],
+    ['memory grep', () => member('memory_documents', 'valid_grep_fixture').memoryCollections.documents('collection').grep({ pattern: 'x' })],
     ['prompt', () => member('prompt_documents', 'valid_fixture').profile.promptDocuments.read('system_prompt')],
     ['prompt page', () => member('prompt_documents', 'valid_list_fixture').profile.promptDocuments.list()],
     ['conversation', () => chat('conversations', 'valid_fixture').fetch()],
@@ -115,7 +118,7 @@ test('Executor commit projects the settled Task while preserving tool error cont
 });
 
 test('memory grep returns canonical text and line_number projections', async () => {
-  const result = await member('memory_documents', 'valid_grep_fixture').profile.memory.grep({ pattern: 'preferences' });
+  const result = await member('memory_documents', 'valid_grep_fixture').memoryCollections.documents('collection').grep({ pattern: 'preferences' });
   const expected = fixture('memory_documents', 'valid_grep_fixture') as { matches: { path: string; line_number: number; text: string }[] };
   expect(result.matches).toEqual(expected.matches); expect(typeof result.matches[0]!.text).toBe('string'); expect(Number.isSafeInteger(result.matches[0]!.line_number)).toBe(true);
 });
@@ -142,4 +145,10 @@ test('typed ask fields survive inbox decoding and resolutions preserve false and
   } });
   await client.workspace('workspace').run('run').task('question').resolve({ answer: { enabled: false, count: 0 } });
   expect(body).toEqual({ answer: { enabled: false, count: 0 } });
+});
+
+test('an authored coordination ask carries an explicit indefinite wait', () => {
+  expect(Steps.ask({ prompt: 'Wait for coordinator', indefinite: true })).toEqual({
+    ask: { prompt: 'Wait for coordinator', indefinite: true },
+  });
 });

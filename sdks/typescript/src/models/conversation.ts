@@ -495,6 +495,7 @@ export interface TranscriptItem {
 }
 
 export interface MemoryDocument {
+  collection_public_id: string;
   public_id: string;
   lock_version: number;
   path: string;
@@ -727,3 +728,30 @@ export interface ProgressFrame {
   at: string;
   payload: JsonObject;
 }
+
+export interface MemoryCollection {
+  public_id: string;
+  name: string | null;
+  description: string | null;
+  scope: string;
+  owner_public_id: string;
+  speaker_public_id: string | null;
+  is_default: boolean;
+  archived_at: string | null;
+  lock_version: number;
+  created_at: string;
+  updated_at: string;
+  writable: boolean;
+  manageable: boolean;
+}
+export interface ResolvedMemoryBinding {
+  name: string;
+  source: JsonObject;
+  scope: string;
+  access: string;
+  collection_public_id: string | null;
+  owner_public_id: string;
+  speaker_public_id: string | null;
+  state: string;
+}
+export interface MemoryBindings { bindings: ResolvedMemoryBinding[]; }

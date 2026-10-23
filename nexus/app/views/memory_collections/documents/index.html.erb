@@ -1,0 +1,32 @@
+<% actions = capture do %>
+  <% if @data_writable %><%= link_to t("data_console.memory.new"), new_memory_collection_document_path(@collection), class: "btn btn-primary btn-sm" %><% end %>
+<% end %>
+<%= render layout: "memory_collections/shell", locals: { error: @error, title: memory_collection_name(@collection), description: @collection.description, actions: actions, collection: @collection, current: :documents } do %>
+  <% unless @data_writable || @collection.archived? %><p role="status" class="alert alert-soft"><%= t("data_console.read_only") %></p><% end %>
+  <% if @entries.any? %>
+    <section class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-200">
+      <table class="table">
+        <thead><tr>
+          <th><%= t("data_console.memory.path") %></th>
+          <th><%= t("memory_collections.size") %></th>
+          <th><%= t("memory_collections.updated") %></th>
+        </tr></thead>
+        <tbody>
+          <% @entries.each do |entry| %>
+            <tr>
+              <td class="min-w-48">
+                <%= link_to entry.path, memory_collection_document_path(@collection, path: entry.path), class: "link link-hover font-mono text-sm wrap-anywhere" %>
+                <% if entry.description.present? %><p class="mt-1 max-w-md text-sm text-base-content/60 wrap-anywhere"><%= entry.description %></p><% end %>
+              </td>
+              <td class="whitespace-nowrap text-base-content/60"><%= number_to_human_size(entry.bytesize) %></td>
+              <td class="whitespace-nowrap text-base-content/60"><%= l(entry.written_at, format: :long) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </section>
+  <% else %>
+    <%= render "shared/empty_state", title: t("data_console.memory.empty"), description: t("memory_collections.documents_empty_help") %>
+  <% end %>
+  <p class="text-xs text-base-content/60"><%= t("memory_collections.documents_help") %></p>
+<% end %>

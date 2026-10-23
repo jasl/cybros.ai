@@ -144,6 +144,7 @@ module CybrosAgent
     end
 
     class WorkspaceContext
+      def memory_collections: () -> OwnedMemoryCollectionsContext
       include Fields
       include WorkspaceProjections
 

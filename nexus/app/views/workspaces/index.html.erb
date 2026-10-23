@@ -1,13 +1,9 @@
 <% content_for :title, t("workspaces.index.workspaces") %>
 
 <div class="space-y-8">
-  <header class="flex flex-wrap items-end justify-between gap-3">
-    <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight"><%= t("workspaces.index.workspaces") %></h1>
-      <p class="text-sm text-base-content/60"><%= t("workspaces.index.shared_homes_for_the_data_you_and_your_agents") %></p>
-    </div>
+  <%= render layout: "shared/page_header", locals: { title: t("workspaces.index.workspaces"), description: t("workspaces.index.shared_homes_for_the_data_you_and_your_agents") } do %>
     <%= link_to t("workspaces.index.new_workspace"), new_workspace_path, class: "btn btn-primary btn-sm" %>
-  </header>
+  <% end %>
 
   <nav class="tabs tabs-border tabs-sm" aria-label="<%= t("workspaces.index.workspace_lists") %>">
     <%= link_to t("workspaces.index.live"), workspaces_path,

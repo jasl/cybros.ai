@@ -145,10 +145,6 @@ class LiveHumanInTheLoopTest < Minitest::Test
         .dig("task", "prompt")
     end
 
-
-
-
-
     def report(row)
       puts "\n--- live human in the loop -----------------------------------"
       puts "model:  #{MODEL}"

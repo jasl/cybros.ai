@@ -10,10 +10,10 @@ module FirstBootModelSetupJourney
       fill_founder_details
       if cost_unit
         find("summary", text: "Advanced options").click
-        fill_in "Cost unit", with: "x" * (Account::COST_UNIT_MAX_LENGTH + 1)
+        fill_in "Cost unit", with: "x" * (Constants::COST_UNIT_MAX_LENGTH + 1)
         click_button "Create installation"
         assert_selector "[role=alert]", text: "Some fields need attention"
-        assert_field "Cost unit", with: "x" * (Account::COST_UNIT_MAX_LENGTH + 1)
+        assert_field "Cost unit", with: "x" * (Constants::COST_UNIT_MAX_LENGTH + 1)
         assert_equal 0, Account.count
         assert_first_boot_fits_viewport
         save_first_boot_screenshot("#{screenshot}-owner-advanced-error") if screenshot

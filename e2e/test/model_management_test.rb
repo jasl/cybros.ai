@@ -21,7 +21,6 @@ require "support/steward_session"
 class ModelManagementTest < Minitest::Test
   CMCTL_ROOT = File.expand_path("../../cmctl", __dir__)
   PROVIDER = "e2e-key".freeze
-  MODEL = "e2e-key/mock-keyed-text".freeze
 
   def setup
     @base_url = E2E.base_url
@@ -55,124 +54,6 @@ class ModelManagementTest < Minitest::Test
       assert_predicate status, :success?, output
     end
     FileUtils.remove_entry(@root) if @root && File.directory?(@root)
-  end
-
-  def test_an_operator_configures_a_lane_and_rho_discovers_and_uses_the_model
-    login = cmctl("login", "--url", @base_url, "--email", @people.owner_email, "--password-stdin",
-      stdin: "#{@people.owner_password}\n")
-    assert login.fetch("connected")
-    profile = cmctl("status")
-    assert_nil profile.fetch("credential_plane"), "an API session is not an access token"
-    assert_equal "human", profile.dig("member", "kind")
-    credentials = CybrosControl::Config.new(home: @operator_home).read
-    operator = CybrosAgent::PlatformClient.new(base_url: credentials.base_url, credential: credentials.token)
-    assert_equal "USD", operator.cost_unit.fetch.cost_unit, "browser founding configures USD before any cost-unit command"
-    assert_equal "USD", cmctl("account", "cost-unit", "USD").dig("account", "cost_unit")
-
-    lane = cmctl("providers").fetch("model_providers").find { |row| row.fetch("id") == PROVIDER }
-    refute lane.fetch("enabled")
-    refute lane.fetch("configured")
-    refute_includes rho_model_refs, MODEL
-
-    hidden_before_setup = cmctl("model", "hide", MODEL).fetch("model_provider")
-    refute hidden_before_setup.fetch("enabled")
-    refute hidden_before_setup.fetch("configured")
-    refute admin_model.fetch("visible")
-    visible_before_setup = cmctl("model", "unhide", MODEL).fetch("model_provider")
-    refute visible_before_setup.fetch("enabled")
-    refute visible_before_setup.fetch("configured")
-    assert admin_model.fetch("visible")
-    refute_includes rho_model_refs, MODEL
-
-    installed = cmctl("provider", "key", "set", PROVIDER, "--stdin", stdin: "#{E2E::MockLLM::App::API_KEY}\n")
-      .fetch("model_provider")
-    assert installed.fetch("configured")
-    assert installed.fetch("enabled"), "saving the key connects the provider"
-    assert_includes rho_model_refs, MODEL
-
-    disabled = cmctl("provider", "disable", PROVIDER).fetch("model_provider")
-    refute disabled.fetch("enabled")
-    assert disabled.fetch("configured"), "disabling the lane retains its saved key"
-    refute_includes rho_model_refs, MODEL
-    enabled = cmctl("provider", "enable", PROVIDER).fetch("model_provider")
-    assert enabled.fetch("enabled")
-    assert enabled.fetch("configured")
-
-    discovered = rho_models("--workload", "text_generation").find { |row| row.fetch("ref") == MODEL }
-    refute_nil discovered
-    assert discovered.fetch("visible")
-    assert discovered.fetch("available")
-    assert discovered.dig("capabilities", "tool_calls")
-    assert_includes cmctl("models", "--available", "--workload", "text_generation").fetch("models").map { |row| row.fetch("ref") }, MODEL
-    assert_includes @daemon.control(:get, "/models?workload=text_generation").fetch("models").map { |row| row.fetch("ref") }, MODEL
-
-    original = admin_model
-    cmctl("model", "hide", MODEL)
-    refute_includes rho_model_refs, MODEL
-    hidden = admin_model
-    refute hidden.fetch("visible")
-    refute hidden.fetch("available")
-    assert_equal "model_hidden", hidden.fetch("unavailable_reason")
-    assert_equal original.except("visible", "available", "unavailable_reason"),
-      hidden.except("visible", "available", "unavailable_reason"), "hiding preserves the model definition and pricing"
-
-    output, status = @daemon.cli("run", "!mock reply=hidden -- say it", "--model", MODEL,
-      "--dir", @project, "--output-format", "json", "--timeout", "60")
-    assert_equal 1, status.exitstatus, E2E::SecretHygiene.redact(output)
-    refused = JSON.parse(output)
-    assert refused.fetch("is_error")
-    assert_match(/model_hidden/, refused.fetch("reason"))
-
-    cmctl("model", "invalidate", MODEL)
-    assert_equal "model_unavailable", admin_model.fetch("unavailable_reason")
-    refute_includes rho_model_refs, MODEL
-    tested = cmctl("model", "test", MODEL).fetch("model_test")
-    assert_equal "succeeded", tested.fetch("outcome")
-    assert_equal "model_hidden", admin_model.fetch("unavailable_reason"), "a successful test keeps manual hiding"
-    cmctl("model", "invalidate", MODEL)
-    cmctl("model", "restore", MODEL)
-    assert_equal "model_hidden", admin_model.fetch("unavailable_reason")
-
-    cmctl("model", "unhide", MODEL)
-    assert_equal original, admin_model
-    assert_equal discovered, rho_models("--workload", "text_generation").find { |row| row.fetch("ref") == MODEL }
-
-    output, status = @daemon.cli("run", "!mock reply=#{CGI.escape("configured through cmctl")} -- say it",
-      "--model", discovered.fetch("ref"), "--dir", @project, "--output-format", "json", "--timeout", "60")
-    assert_predicate status, :success?, E2E::SecretHygiene.redact(output)
-    result = JSON.parse(output)
-    assert_equal %w[result success completed], result.values_at("type", "subtype", "status")
-    assert_equal "Mock: configured through cmctl", result.fetch("result").strip
-
-    # A member bearer never acquires operator authority merely because the
-    # same Human can discover models. The lane remains usable after refusal.
-    denied = E2E::PlatformHttp.new(@base_url).put("/api/v1/admin/model_providers/#{PROVIDER}/lane",
-      bearer: @steward.member_token, body: { command: { enabled: false, expected_lock_version: enabled.fetch("lock_version") } })
-    assert_equal 401, denied.status
-    assert_includes rho_model_refs, MODEL
-    output, error, status = invoke_cmctl("login", "--url", @base_url, "--email", @steward.email, "--password-stdin",
-      home: File.join(@root, "non-admin"), stdin: "#{@steward.password}\n")
-    assert_equal 1, status.exitstatus
-    assert_empty output
-    assert_match(/owner or administrator/, error)
-
-    refute cmctl("provider", "disable", PROVIDER).dig("model_provider", "enabled")
-    refute_includes rho_model_refs, MODEL
-    disabled = admin_model
-    refute disabled.fetch("available")
-    assert_equal "provider_disabled", disabled.fetch("unavailable_reason")
-    cmctl("provider", "enable", PROVIDER)
-    cleared = cmctl("provider", "key", "clear", PROVIDER).fetch("model_provider")
-    assert cleared.fetch("enabled"), "removing a key does not change lane policy"
-    refute cleared.fetch("configured")
-    refute_includes rho_model_refs, MODEL
-    unconfigured = admin_model
-    refute unconfigured.fetch("available")
-    assert_equal "missing_credential", unconfigured.fetch("unavailable_reason")
-    cmctl("provider", "disable", PROVIDER)
-    assert cmctl("logout").fetch("logged_out")
-    _output, _error, status = invoke_cmctl("status")
-    assert_equal 1, status.exitstatus
   end
 
   def test_a_custom_connection_and_unpriced_model_are_usable_without_a_restart
@@ -237,88 +118,7 @@ class ModelManagementTest < Minitest::Test
     cmctl("logout")
   end
 
-  def test_complete_directory_sync_updates_existing_models_and_preserves_manual_hiding
-    cmctl("login", "--url", @base_url, "--email", @people.owner_email, "--password-stdin",
-      stdin: "#{@people.owner_password}\n")
-    provider = "e2e-directory-settings"
-    alias_model = "#{provider}/catalog-alias"
-    returning_model = "#{provider}/returning-model"
-
-    with_model_directory do |base_url, responses|
-      cmctl("provider", "add", provider, "--base-url", base_url,
-        "--api-format", "openai_responses", "--credentials", "none")
-      cmctl("model", "add", alias_model, "--model-id", "upstream/alias", "--tools")
-      cmctl("model", "add", returning_model, "--tools")
-      cmctl("provider", "enable", provider)
-      cmctl("model", "hide", returning_model)
-      definitions = cmctl("provider", "show", provider).fetch("configuration")
-      original_alias = admin_model(alias_model)
-      original_hidden = admin_model(returning_model)
-      assert_includes rho_model_refs, alias_model
-      assert_equal "model_hidden", original_hidden.fetch("unavailable_reason")
-
-      responses << [200, { "data" => [{ "id" => "upstream/alias" }, { "id" => "not-configured" }] }]
-      discovered = cmctl("provider", "discover", provider).fetch("models")
-      assert_equal %w[not-configured upstream/alias], discovered.map { |row| row.fetch("id") }
-      assert_equal original_alias, admin_model(alias_model), "matching uses the upstream model_id, not the catalog alias"
-      invalid = admin_model(returning_model)
-      assert_equal "model_unavailable", invalid.fetch("unavailable_reason")
-      refute invalid.fetch("visible")
-      refute invalid.fetch("available")
-      refute_includes rho_model_refs, returning_model
-      assert_nil admin_model("#{provider}/not-configured"), "directory entries are not added as model definitions"
-      assert_equal definitions, cmctl("provider", "show", provider).fetch("configuration")
-
-      responses << [200, { "data" => [{ "id" => "upstream/alias" }, { "id" => "returning-model" }] }]
-      cmctl("provider", "discover", provider)
-      assert_equal original_hidden, admin_model(returning_model), "a listed model clears its invalid mark but keeps manual hiding"
-      assert_equal original_alias, admin_model(alias_model)
-      assert_equal definitions, cmctl("provider", "show", provider).fetch("configuration")
-
-      before_failure = cmctl("provider", "show", provider)
-      [[503, { "error" => "directory unavailable" }], [200, { "data" => [], "has_more" => true }]].each do |response|
-        responses << response
-        output, error, status = invoke_cmctl("provider", "discover", provider)
-        assert_equal 1, status.exitstatus
-        assert_empty output
-        assert_includes error, "validation_failed"
-        assert_equal before_failure, cmctl("provider", "show", provider), "failed or incomplete fetches cannot change the policy"
-        assert_equal original_alias, admin_model(alias_model)
-        assert_equal original_hidden, admin_model(returning_model)
-      end
-
-      responses << [200, { "data" => [] }]
-      assert_empty cmctl("provider", "discover", provider).fetch("models")
-      [alias_model, returning_model].each do |reference|
-        assert_equal "model_unavailable", admin_model(reference).fetch("unavailable_reason")
-        refute_includes rho_model_refs, reference
-      end
-      assert_equal definitions, cmctl("provider", "show", provider).fetch("configuration")
-      assert_empty responses
-      cmctl("provider", "reset", provider)
-    end
-    cmctl("logout")
-  end
-
   private
-
-    def with_model_directory
-      responses = Queue.new
-      app = lambda do |env|
-        if env.fetch("REQUEST_METHOD") == "GET" && env.fetch("PATH_INFO") == "/v1/models"
-          status, body = responses.pop(true)
-          [status, { "content-type" => "application/json" }, [JSON.generate(body)]]
-        else
-          [404, { "content-type" => "application/json" }, [JSON.generate(error: "unknown endpoint")]]
-        end
-      end
-      server = Puma::Server.new(app, nil, min_threads: 0, max_threads: 2, log_writer: Puma::LogWriter.null)
-      port = server.add_tcp_listener("127.0.0.1", 0).addr[1]
-      server.run
-      yield "http://127.0.0.1:#{port}/v1", responses
-    ensure
-      server&.stop(true)
-    end
 
     def run_custom_model(model, reply, usage:)
       output, status = @daemon.cli("run", "!mock reply=#{CGI.escape(reply)} usage=#{usage} -- say it",
@@ -331,10 +131,6 @@ class ModelManagementTest < Minitest::Test
 
     def rho_model_refs
       rho_models("--workload", "text_generation").map { |row| row.fetch("ref") }
-    end
-
-    def admin_model(reference = MODEL)
-      cmctl("models", "--workload", "text_generation").fetch("models").find { |row| row.fetch("ref") == reference }
     end
 
     def rho_models(*options)

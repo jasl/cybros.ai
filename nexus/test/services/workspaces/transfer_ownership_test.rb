@@ -215,8 +215,10 @@ class Workspaces::TransferOwnershipTest < ActiveSupport::TestCase
       stop_database_call(removal) if removal
       if workspace_id
         StoreEntry.where(workspace_id: workspace_id).delete_all
+        MemoryCollection.where(workspace_id: workspace_id).delete_all
         Workspace.where(id: workspace_id).delete_all
       end
+      MemoryCollection.where(user_id: [target_id, source_id].compact).delete_all
       User.where(id: target_id).delete_all if target_id
       User.where(id: source_id).delete_all if source_id
       Identity.where(id: target_identity_id).delete_all if target_identity_id

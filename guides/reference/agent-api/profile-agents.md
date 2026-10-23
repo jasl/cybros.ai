@@ -16,12 +16,6 @@ their own scope.
 GET    /agent_api/v1/profile/agents
 PUT    /agent_api/v1/profile/agents/{name}
 DELETE /agent_api/v1/profile/agents/{name}
-GET    /agent_api/v1/profile/agents/{name}/memory
-POST   /agent_api/v1/profile/agents/{name}/memory
-POST   /agent_api/v1/profile/agents/{name}/memory/show
-POST   /agent_api/v1/profile/agents/{name}/memory/grep
-POST   /agent_api/v1/profile/agents/{name}/memory/edit
-POST   /agent_api/v1/profile/agents/{name}/memory/delete
 ```
 
 A named Agent is a persistent member of kind `agent` declared under the
@@ -181,53 +175,26 @@ the named Agent retains its identity and its own Agent memory across Conversatio
 
 ## Memory
 
-### Endpoints
+A named Agent owns its Agent-private collections and its Agent/Speaker
+collections. Its authorized declaring application uses the
+[owner-scoped collection endpoints](memory-collections.md#routes) to discover and create them.
 
-```http
-GET  /agent_api/v1/profile/agents/{name}/memory
-POST /agent_api/v1/profile/agents/{name}/memory/show
-POST /agent_api/v1/profile/agents/{name}/memory
-POST /agent_api/v1/profile/agents/{name}/memory/grep
-POST /agent_api/v1/profile/agents/{name}/memory/edit
-POST /agent_api/v1/profile/agents/{name}/memory/delete
-```
+Supply `speaker_public_id` when creating a collection for one Speaker. The
+same Speaker under another Agent has separate collections. The Human steward
+and sibling Agents do not gain private content access from that relationship.
+An inactive, foreign or no-longer-managed named identity is unavailable here.
 
-A named Agent carries memory of its own: the `agent/` rung, the
-documents it reads and writes in every conversation it answers, in every
-workspace, which no sibling under the same steward reads and which never
-land in the steward's `user/` ([Conversation memory](conversation-memory.md)).
-This door is the declarer's management of that rung — the paired program
-that minted the row under `<its identifier>/<name>` — with the verbs,
-bodies, conditional writes and refusals of every memory door
-([Profile memory](profile-memory.md)). The one scope here is `agent/`; a
-path of another scope is `422 memory_scope_unavailable`. The named row's
-own turns reach the same rows through the memory tools.
+Subsequent operations use [collection UUIDs](memory-collections.md) and relative
+document paths. Lists are paginated; `default=true` selects the Agent's own
+default, with an optional Speaker UUID to select that pair's default. Reads
+never initialize it. An explicit Agent/Speaker default create cannot replace
+a deleted identity.
 
-The rung lives and goes with the row: a `steward`-scope named Agent's
-documents persist with it, an `instance` named Agent's go with its
-declarer's removal, and a remove-and-restore of the name keeps the same
-row and its documents. It is no workspace's, so no provider override
-reaches it and no conversation's `context_revision` moves; the next turn
-the row answers reads the documents live. `agent/skills/<name>` is a
-lawful skill row, resolved after the Agent's announced
-documents and before the room's.
-
-The named Agent's `memory_context_limit` applies to this door too.
-Excluding `agent` makes its paths unavailable; a read-only `agent` limit
-permits reads and refuses writes with `memory_read_only`. This door has no
-Speaker subject and does not manage `speaker/` documents.
-
-```json
-{ "memory": { "path": "agent/notes.md", "content": "customers prefer short answers", "expected_public_id": null, "expected_lock_version": null } }
-```
-
-| Status | Code | Description |
-| --- | --- | --- |
-| `200 OK`, `201 Created`, `204 No Content` | — | The listing or document, the written document, the deletion — as at every memory door. |
-| `403 Forbidden` | `not_agent` | The bearer is a Human: only the declarer manages a named Agent's rung. |
-| `404 Not Found` | `not_found` | No active row of that name minted by this caller; a sibling's published row is not this caller's. |
-| `422 Unprocessable Content` | `memory_scope_unavailable` | A path outside `agent/`, or an Agent root excluded by the named Agent's limit. |
-| everything else | | [Profile memory](profile-memory.md#http-response-status-codes)'s table, the conditions and bounds included. |
+These are owner-management resources. Execution and conversation context
+access remain constrained by the selected `memory_context_limit`. Collection
+ownership persists with the named Agent across conversations and Workspaces;
+remove/restore preserves its data. Workspace provider overrides do not govern
+this independent owner resource.
 
 ## HTTP response status codes
 

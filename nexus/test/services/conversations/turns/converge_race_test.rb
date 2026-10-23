@@ -23,7 +23,7 @@ class Conversations::Turns::ConvergeRaceTest < ActiveSupport::TestCase
   teardown do
     if @seam
       Runs::Reap.destroy_aggregate(Run.find(@seam.run.id))
-      @conversation.reload.destroy!
+      destroy_memory_owner!(@conversation.reload)
     end
   end
 

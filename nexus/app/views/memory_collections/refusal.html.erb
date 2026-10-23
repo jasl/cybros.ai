@@ -1,0 +1,12 @@
+<%= render layout: "memory_collections/shell", locals: { title: memory_collection_name(@collection), collection: @collection, current: :documents, error: @error } do %>
+  <% if @memory_overridden %>
+    <p class="text-sm text-base-content/60"><%= t("data_console.memory.override_help") %></p>
+    <%= form_with url: memory_collection_document_path(@collection), method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
+      <div class="min-w-0 basis-56 grow">
+        <%= form.label :path, t("data_console.memory.path"), class: "label text-xs" %>
+        <%= form.text_field :path, required: true, placeholder: "skills/", class: "input input-sm w-full font-mono" %>
+      </div>
+      <%= form.submit t("memory_collections.open_document"), class: "btn btn-primary btn-sm" %>
+    <% end %>
+  <% end %>
+<% end %>

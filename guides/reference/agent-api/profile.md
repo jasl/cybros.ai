@@ -186,7 +186,7 @@ implies pending Task work.
 | --- | --- |
 | [Agent configuration](profile-configuration.md) | The standing declaration: tools, imports, Runner candidates, models, aliases, approval, lifecycle hooks, memory limits and conversation reach |
 | [Named Agents](profile-agents.md) | The persistent Agent identities the caller declares by name |
-| [Profile memory](profile-memory.md) | The Human's own `user/` or Agent's own `agent/` scope and the shared conditional-write contract |
+| [Profile memory](profile-memory.md) | The principal's own collections and explicit Agent/Speaker subjects |
 | [Profile prompt documents](profile-prompt-documents.md) | The `system_prompt`, `summarizer` and `persona` slots |
 
 ## Store entries

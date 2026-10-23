@@ -5,7 +5,7 @@
 # a skill is the kernel's instruction row, never the provider's — the
 # prefix is the kernel's, the model never writes it, the load reads it
 # in-process — so a verb naming one passes under an override. The person's
-# own door (`profile/memory`) includes nothing of this: its `user/` rows
+# own collection resource includes nothing of this: its User-owned rows
 # are the kernel's in every workspace.
 module AgentAPI::MemoryOverrideGuard
   extend ActiveSupport::Concern

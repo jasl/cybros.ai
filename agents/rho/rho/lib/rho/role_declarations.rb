@@ -9,7 +9,7 @@ module Rho
   module RoleDeclarations
     SPAWN = "nexus.conversation.spawn".freeze
     CHILD_MEMORY = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
     ] }.freeze
 
     module_function

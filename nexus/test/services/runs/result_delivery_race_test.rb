@@ -31,7 +31,7 @@ class Runs::ResultDeliveryRaceTest < ActiveSupport::TestCase
       Event.where(host: @conversation).delete_all
       EventCursor.where(host: @conversation).delete_all
       Runs::Reap.destroy_aggregate(Run.find(@run.id))
-      @conversation.reload.destroy!
+      destroy_memory_owner!(@conversation.reload)
     end
   end
 

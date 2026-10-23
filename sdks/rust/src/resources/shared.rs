@@ -3,6 +3,13 @@ use types::member::*;
 handle!(Memory);
 impl Memory {
     query_get!(
+        bindings,
+        "",
+        MemoryListQuery,
+        MemoryBindings,
+        Some("memory_context")
+    );
+    query_get!(
         list,
         "",
         MemoryListQuery,
@@ -41,6 +48,122 @@ impl Memory {
         POST,
         "delete",
         MemoryDelete,
+        Some("memory"),
+        Empty,
+        None
+    );
+    write!(
+        grep,
+        POST,
+        "grep",
+        MemoryGrep,
+        Some("memory"),
+        MemoryMatches,
+        None
+    );
+}
+handle!(MemoryCollections);
+impl MemoryCollections {
+    list!(list, "", PageQuery, MemoryCollection, "memory_collections");
+    pub fn collection(&self, public_id: &str) -> Result<MemoryCollectionContext> {
+        Ok(MemoryCollectionContext(self.0.id(public_id)?))
+    }
+}
+handle!(OwnedMemoryCollections);
+impl OwnedMemoryCollections {
+    list!(
+        list,
+        "",
+        OwnedMemoryCollectionQuery,
+        MemoryCollection,
+        "memory_collections"
+    );
+    write!(
+        create,
+        POST,
+        "",
+        CreateMemoryCollection,
+        Some("memory_collection"),
+        MemoryCollection,
+        Some("memory_collection")
+    );
+}
+handle!(MemoryCollectionContext);
+impl MemoryCollectionContext {
+    get!(fetch, "", MemoryCollection, Some("memory_collection"));
+    write!(
+        update,
+        PATCH,
+        "",
+        UpdateMemoryCollection,
+        Some("memory_collection"),
+        MemoryCollection,
+        Some("memory_collection")
+    );
+    write!(
+        archive,
+        POST,
+        "archive",
+        MemoryCollectionVersion,
+        Some("memory_collection"),
+        MemoryCollection,
+        Some("memory_collection")
+    );
+    write!(
+        restore,
+        POST,
+        "restore",
+        MemoryCollectionVersion,
+        Some("memory_collection"),
+        MemoryCollection,
+        Some("memory_collection")
+    );
+    write!(
+        delete,
+        DELETE,
+        "",
+        MemoryCollectionVersion,
+        Some("memory_collection"),
+        Empty,
+        None
+    );
+    child!(documents, "documents", MemoryDocuments);
+}
+handle!(MemoryDocuments);
+impl MemoryDocuments {
+    get!(list, "", Vec<MemoryDocument>, Some("memory"));
+    write!(
+        read,
+        POST,
+        "show",
+        MemoryRead,
+        Some("memory"),
+        MemoryDocument,
+        Some("memory")
+    );
+    write!(
+        write,
+        POST,
+        "",
+        CollectionMemoryWrite,
+        Some("memory"),
+        MemoryDocument,
+        Some("memory")
+    );
+    write!(
+        edit,
+        POST,
+        "edit",
+        CollectionMemoryEdit,
+        Some("memory"),
+        MemoryDocument,
+        Some("memory")
+    );
+    write!(
+        delete,
+        POST,
+        "delete",
+        CollectionMemoryDelete,
         Some("memory"),
         Empty,
         None

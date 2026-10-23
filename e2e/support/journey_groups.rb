@@ -79,63 +79,46 @@ module E2E
     ].freeze
 
     GROUPS = {
-      # The persona writer shares a world only with journeys that own their homes and do not read
-      # shared_human state. Keep the per-test ceremony file separate from the other groups' ceremony
-      # files.
-      1 => %w[rho_conversation rho_conversation_tasks rho_conversation_environment compiled_bytes assembly_bytes skills named_agents rho_acp_client rho_acp_agent web_fetch],
-      # The user-memory writer stays with steward-owned journeys so its notes cannot affect another
-      # test's shared_human prompts.
-      2 => %w[workspace_dedication approval memory_scopes memory_conditional_writes history_search rho_runner_mode delegate_compaction side_conversation
-              mcp_tools local_mcp_selection rewind mcp_oauth],
-      # Shared_human readers stay away from both writer groups. Install journeys use prebuilt
-      # images; a missing prerequisite skips explicitly and never counts as a successful
-      # installation check.
-      3 => %w[provider_override until inference_request_hosts inference_request_stream multi_environment streaming conversation_acl
-              attachments rho_attachments run_timings
-              install_container install_compose install_host provider_floor scheduled_input schedules rho_acp_symmetry
-              rho_spawn result_delivery_fallback replay_quality],
-      # Independent readers and privately provisioned lifecycle journeys fill this world without
-      # introducing a shared_human writer.
-      4 => %w[
-        rho_daemon inference_request_workloads device_connection rho_core_only
-        inference_request_recovery inference_request_turn inference_request_feed workspace_lifecycle workspace_removal group_chat processes
-        progress rho_run codemode model_management rho_setup capture_upload expiry
-      ],
-      # Telegram suites share setup and helpers, never runnable tests. Their per-case daemon
-      # restarts and transport recovery need separate worlds to fit the ordinary group deadline.
-      # Every suite provisions its own rho homes and uses the steward, not shared_human memory.
-      5 => %w[rho_telegram_bots ask_inbox executor_relay],
-      6 => %w[rho_telegram_group],
-      # The conversation files reopen one test class and require its main file. Keep the whole
-      # class together so moving its cases does not rerun the main file in another world.
-      7 => %w[executor_plane turn conversation_regeneration conversation_background
-              conversation_result_dag conversation_lifecycle variants conversation_view_state],
-      8 => %w[rho_telegram rho_telegram_history],
-      9 => %w[rho_telegram_workspace],
-      10 => %w[rho_telegram_controls],
-      11 => %w[rho_telegram_media rho_telegram_delivery],
-      # Commands own fresh Bot state and can share this steward world with memory cases.
-      # Keep them apart from the longer queue/resume controls so both fit the group budget.
-      12 => %w[rho_telegram_memory rho_telegram_commands],
-      13 => %w[rho_telegram_permissions],
-      14 => %w[rho_telegram_participation],
-      # Browser setup and installed-package workflows are independent of the conversation class.
-      # Keep their browser interaction time outside the kernel conversation world's budget.
-      15 => %w[application_login api_key_connection rho_webui rho_structured_questions rho_settings rho_packages nexus_mcp offline_agent],
-      # Application workflows own their rho homes and exercise separate extension lifecycles.
-      16 => %w[rho_memory_review rho_household rho_t3],
-      # Each package owns a language driver; one world proves their public
-      # Member, Executor, Platform, OAuth and Cable protocols interoperate.
-      17 => %w[sdk_languages standalone_sdk_agent],
+      # Persona writer; its neighbours own their homes and do not read shared Human state.
+      1 => %w[rho_conversation rho_conversation_tasks rho_conversation_environment compiled_bytes
+        assembly_bytes skills named_agents rho_acp_agent web_fetch],
+      # User-memory writer; steward-owned journeys keep its notes away from shared readers.
+      2 => %w[workspace_dedication approval memory_scopes history_search rho_runner_mode delegate_compaction
+        side_conversation mcp_tools local_mcp_selection rewind mcp_oauth],
+      # Kernel/SDK contracts and installation. Installation prerequisites remain explicit.
+      3 => %w[provider_override until inference_request_hosts inference_request_stream multi_environment
+        streaming conversation_acl attachments rho_attachments install_container install_compose install_host
+        provider_floor schedules rho_acp_symmetry rho_spawn result_delivery_fallback replay_quality],
+      # Connection lifecycle and smoke journeys; no shared Human writer.
+      4 => %w[rho_daemon inference_request_workloads device_connection rho_core_only
+        inference_request_recovery inference_request_feed workspace_lifecycle workspace_removal group_chat
+        processes progress rho_run model_management rho_setup capture_upload expiry],
+      # Bot connection and exact-task controls, with operator relay workflows.
+      5 => %w[rho_telegram_bots ask_inbox executor_relay rho_telegram_controls],
+      # Group observation and external execution authority.
+      6 => %w[rho_telegram_group rho_telegram_permissions],
+      # Conversation files reopen TurnTest; keep the complete class in one world.
+      7 => %w[executor_plane turn conversation_regeneration conversation_background conversation_result_dag
+        conversation_lifecycle variants conversation_view_state codemode],
+      # Telegram ingress, history, memory and steering.
+      8 => %w[rho_telegram rho_telegram_history rho_telegram_memory rho_telegram_commands],
+      # Workspace/destination ownership and Nexus MCP. Both MCP suites need the fixture server.
+      9 => %w[rho_telegram_workspace nexus_mcp offline_agent],
+      # Media and external protocol adapters; language drivers keep their package toolchains.
+      10 => %w[rho_telegram_media rho_telegram_delivery sdk_languages standalone_sdk_agent rho_acp_client],
+      # Background application work, memory review and active participation.
+      11 => %w[rho_telegram_participation rho_memory_review rho_household rho_t3],
+      # Browser onboarding, configuration and installed packages.
+      12 => %w[application_login api_key_connection rho_webui rho_structured_questions rho_settings
+        rho_packages],
     }.freeze
 
     # Scheduling estimates include bootstrap and teardown, but exclude time waiting for a slot.
     # They order the longer worlds first; every world retains the same configured deadline.
     # Split groups start with estimates from their completed constituent cases;
     # only a completed world can replace an estimate with a measured runtime.
-    WEIGHTS = { 1 => 783, 2 => 719, 3 => 702, 4 => 728, 5 => 700, 6 => 800, 7 => 500,
-                8 => 800, 9 => 700, 10 => 760, 11 => 650, 12 => 880, 13 => 700, 14 => 700,
-                15 => 500, 16 => 450, 17 => 450 }.freeze
+    WEIGHTS = { 1 => 440, 2 => 560, 3 => 515, 4 => 470, 5 => 380, 6 => 415,
+                7 => 440, 8 => 445, 9 => 500, 10 => 410, 11 => 540, 12 => 450 }.freeze
 
     REALTIME = %w[realtime_signaling].freeze
 

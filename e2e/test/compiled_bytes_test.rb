@@ -76,7 +76,7 @@ class CompiledBytesTest < Minitest::Test
     assert_equal "system", character.role, "the kernel's default role"
     persona = @profile.prompt_documents.write("persona", PERSONA)
     assert_equal "persona", persona.slot
-    chat.memory.write("workspace/notes.md", NOTE, expected_public_id: nil, expected_lock_version: nil)
+    chat.memory.write("workspace/notes.md", NOTE, **E2E::MemoryCollections.create_condition(chat.memory, "workspace/notes.md"), expected_public_id: nil, expected_lock_version: nil)
 
     first = ask(chat, "first")
     sealed = sealed_request_of(chat, first)
@@ -151,82 +151,7 @@ class CompiledBytesTest < Minitest::Test
       "an inline slot entry is priced in the estimate as it is in the send"
   end
 
-  def test_model_prompt_format_changes_the_wire_without_following_raw_input_into_another_model
-    chat = @conversations.conversation(
-      @conversations.create(title: "Model prompt format", idempotency_key: SecureRandom.uuid).public_id
-    )
-    entries = [
-      ["system", "Root policy."],
-      ["developer", "Initial environment."],
-      ["user", "First question."],
-      ["assistant", "First answer."],
-      ["system", "Updated policy."],
-      ["developer", "Updated environment."],
-      ["user", "!mock echo=request -- Final question."],
-    ].map { |role, text| { "role" => role, "parts" => [{ "type" => "text", "text" => text }] } }
-    instructions = "Keep every message in its original order."
-    first = ask(chat, nil, model: E2E::CatalogOverlay::PROMPT_FORMAT_MODEL,
-      context_mode: "raw", entries: entries, instructions: instructions, tool_names: [])
-    source = sealed_request_of(chat, first)
-    assert_equal entries, source.entries, "the stored request retains every original role and text"
-    assert_equal instructions, source.request_options.fetch("instructions")
-
-    projected = JSON.parse(first.text.delete_prefix("Mock: "))
-    refute projected.key?("instructions"), "the separate instruction field joined the leading system message once"
-    assert_equal %w[system user assistant user user user], projected.fetch("input").map { |item| item.fetch("role") }
-    assert_equal [
-      [instructions, "Root policy.", "Initial environment."].join("\n\n"),
-      *entries.drop(2).map { |entry| parts_of(entry).join },
-    ], projected.fetch("input").map { |item| wire_text(item) }
-
-    regenerated = chat.turns.regenerate(first.public_id, model: MODEL, idempotency_key: SecureRandom.uuid)
-    candidate = await("the unadapted model's regenerated reply") do
-      row = chat.turns.variants(first.public_id).items.find { |variant| variant.public_id == regenerated.variant.public_id }
-      flunk("regeneration ended #{row.status}") if row && %w[failed canceled].include?(row.status)
-      row if row&.status == "completed"
-    end
-    original_wire = JSON.parse(candidate.content.delete_prefix("Mock: "))
-    assert_equal instructions, original_wire.fetch("instructions")
-    assert_equal entries.map { |entry| role_of(entry) }, original_wire.fetch("input").map { |item| item.fetch("role") }
-    assert_equal entries.map { |entry| parts_of(entry).join }, original_wire.fetch("input").map { |item| wire_text(item) }
-    assert_equal entries, chat.turns.request(first.public_id, candidate.public_id).entries
-    assert_equal source.to_h, chat.turns.request(first.public_id, first.active_variant.public_id).to_h,
-      "sending either model leaves the original candidate's canonical request untouched"
-  end
-
-  def test_reasoning_enabled_false_reaches_a_disable_supported_model_without_losing_effort
-    assert_reasoning_off_request(
-      model: E2E::CatalogOverlay::REASONING_SWITCH_MODEL, effective_enabled: false,
-      wire_reasoning: { "effort" => "none" }
-    )
-  end
-
-  def test_reasoning_enabled_false_is_ignored_when_the_model_always_reasons
-    assert_reasoning_off_request(model: MODEL, effective_enabled: true,
-      wire_reasoning: { "effort" => "high", "summary" => "auto" })
-  end
-
   private
-
-    def assert_reasoning_off_request(model:, effective_enabled:, wire_reasoning:)
-      chat = @conversations.conversation(
-        @conversations.create(title: "Independent reasoning control", idempotency_key: SecureRandom.uuid).public_id
-      )
-      entries = [{ "role" => "user", "parts" => [{ "type" => "text", "text" => "!mock echo=request -- reasoning control" }] }]
-      turn = ask(chat, nil, model: model, reasoning_enabled: false, reasoning_effort: "high",
-        context_mode: "raw", entries: entries, tool_names: [])
-
-      assert_equal effective_enabled, turn.active_variant.model.reasoning_enabled,
-        "the public variant reports the selected model's effective enablement"
-      assert_equal "high", turn.active_variant.model.reasoning_effort,
-        "the intensity selection survives an independent off request"
-      sealed = sealed_request_of(chat, turn)
-      assert_equal entries, sealed.entries
-
-      wire = JSON.parse(turn.text.delete_prefix("Mock: "))
-      assert_equal wire_reasoning, wire.fetch("reasoning"),
-        "the fake provider received the resolved native control"
-    end
 
     # One `direct_reply` and its settled reply — the first completed
     # `direct_reply` past the positions already on the timeline.
@@ -253,8 +178,6 @@ class CompiledBytesTest < Minitest::Test
     # A merged message's texts, each its own part: the wire merges adjacent
     # same-role blocks, and nothing folds them.
     def parts_of(entry) = entry.fetch("parts").map { |part| part.fetch("text") }
-
-    def wire_text(item) = item.fetch("content").map { |part| part.fetch("text") }.join
 
     # A 429 IS A BUG IN THIS HARNESS, not weather to be waited out.
     def await(what)

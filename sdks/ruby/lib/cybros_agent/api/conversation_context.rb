@@ -81,6 +81,8 @@ module CybrosAgent
       # input speaker from which to infer one.
       # See MemoryContext for why a conversation writes memory over HTTP
       # where an agent run calls a tool.
+      def memory_collections = OwnedMemoryCollectionsContext.new(dispatch: @dispatch, path: "#{path}/memory_collections")
+
       def memory(speaker_public_id: nil)
         MemoryContext.new(dispatch: @dispatch, path: "#{path}/memory", speaker_public_id: speaker_public_id)
       end

@@ -32,7 +32,10 @@ class Runs::SpawnArchiveTest < ActiveJob::TestCase
     if @root && (root = Conversation.find_by(id: @root.id))
       members = Conversations::SubagentTree.members(root)
       ConversationCommandReceipt.where(host_type: "Conversation", host_id: members.select(:id)).delete_all
-      members.order(id: :desc).each(&:destroy!)
+      members.order(id: :desc).each do |conversation|
+        conversation.memory_collections.delete_all
+        conversation.destroy!
+      end
     end
   end
 

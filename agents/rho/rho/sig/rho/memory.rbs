@@ -5,6 +5,10 @@ module Rho
     def change: () { (Hash[String, untyped]) -> untyped } -> Hash[String, untyped]
   end
 
+  module MemoryCollections
+    def self.target: (conversation: untyped, path: String, ?speaker_public_id: String?, ?client: untyped) -> Hash[String, untyped]
+  end
+
   module MemoryCommands
     USAGE: String
     class Action < ::Data
@@ -21,10 +25,11 @@ module Rho
   class Core
     module Memory
       def memory_list: (String public_id, ?path: String?, ?workspace_public_id: String?, ?speaker_public_id: String?) -> untyped
+      def memory_target: (String public_id, path: String, ?workspace_public_id: String?, ?speaker_public_id: String?) -> untyped
       def memory_read: (String public_id, path: String, ?workspace_public_id: String?, ?speaker_public_id: String?) -> untyped
-      def memory_write: (String public_id, path: String, content: String, expected_public_id: String?, expected_lock_version: Integer?, ?workspace_public_id: String?, ?speaker_public_id: String?) -> untyped
-      def memory_edit: (String public_id, path: String, old_text: String, new_text: String, expected_public_id: String, expected_lock_version: Integer, ?workspace_public_id: String?, ?speaker_public_id: String?) -> untyped
-      def memory_delete: (String public_id, path: String, expected_public_id: String, expected_lock_version: Integer, ?workspace_public_id: String?, ?speaker_public_id: String?) -> untyped
+      def memory_write: (String public_id, path: String, content: String, expected_collection_public_id: String, expected_public_id: String?, expected_lock_version: Integer?, ?workspace_public_id: String?, ?speaker_public_id: String?) -> untyped
+      def memory_edit: (String public_id, path: String, old_text: String, new_text: String, expected_collection_public_id: String, expected_public_id: String, expected_lock_version: Integer, ?workspace_public_id: String?, ?speaker_public_id: String?) -> untyped
+      def memory_delete: (String public_id, path: String, expected_collection_public_id: String, expected_public_id: String, expected_lock_version: Integer, ?workspace_public_id: String?, ?speaker_public_id: String?) -> untyped
       def memory_grep: (String public_id, pattern: String, ?path: String?, ?ignore_case: bool, ?limit: Integer?, ?workspace_public_id: String?, ?speaker_public_id: String?) -> untyped
       def bind_memory_context: (String public_id, memory_context: Hash[String, untyped]?, ?workspace_public_id: String?) -> untyped
     end
@@ -35,6 +40,7 @@ module Rho
     module Ops
       module Memory
         def self.register: (untyped api) -> untyped
+        def self.collections: (untyped request, untyped ctx) -> untyped
         def self.list: (untyped request, untyped ctx) -> untyped
         def self.operate: (untyped request, untyped ctx, String operation) -> untyped
         def self.bind: (untyped request, untyped ctx) -> untyped

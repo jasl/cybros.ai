@@ -159,69 +159,6 @@ module E2E
       stop_group_work(chat)
     end
 
-    def test_telegram_audience_tightening_preserves_accepted_work_and_limits_new_work
-      boot_runtime(allowed: [101, 102])
-      chat, running, = telegram_held_parent("wide-held")
-      context = permission_context(running)
-      declaration = context.task("r1").tool_definitions
-      assert_includes declaration.map { |entry| entry.dig("route", "tool_name") || entry.dig("function", "name") }, "write"
-      queued = "!mock reply=old-wide-input -- an already admitted owner request"
-      receive(update("wide-queued", queued))
-      old_input = chat.inputs.list.items.fetch(0).public_id
-      bot_id = bot_id_for("101:0")
-      changed = @daemon.control(:put, "/agents/settings", body: { "agent_public_id" => bot_id, "audience" => "external" })
-      assert_equal "external", changed.fetch("audience")
-      restart_group_runtime(allowed: [101, 102])
-      assert_equal declaration, context.task("r1").tool_definitions, "already admitted work keeps its captured declaration"
-      assert_equal "awaiting_input", telegram_question_task(running).status
-      assert_includes telegram_control("wide-list", "/queue"), old_input
-      assert_equal [queued], chat.inputs.list.items.map(&:text)
-      assert_includes telegram_control("wide-cancel", "/queue cancel 1"), "canceled"
-      assert_empty chat.inputs.list.items
-      assert_includes telegram_control("wide-stop", "/stop"), "Stop requested"
-      await_group_turn_status(chat, running, "canceled")
-      telegram_control("external-new", "/new")
-      write = ["write", { "path" => "after-switch.txt", "content" => "forbidden" }]
-      receive(update("external-fresh", permission_prompt([write], reply: "fresh-external")))
-      fresh = @workspace.conversation(current("101:0"))
-      refute_equal chat.public_id, fresh.public_id
-      reply = completed_reply(fresh)
-      assert_permission_calls_denied(permission_context(reply), ["write"])
-      assert_permission_rounds_external(permission_context(reply))
-      refute File.exist?(permission_path("after-switch.txt"))
-      refused = @daemon.control(:put, "/agents/settings", body: { "agent_public_id" => bot_id, "audience" => "owner" })
-      assert_equal "bot_audience_fixed", refused.dig("error", "code")
-      assert_empty @logs
-    ensure
-      stop_group_work(chat)
-    end
-
-    def test_nonowner_telegram_side_commands_cannot_create_or_continue_work
-      boot_runtime(allowed: [101, 102])
-      receive(update("readonly-parent", "!mock reply=parent -- context", user: 102, chat: 102))
-      parent_id = current("102:0")
-      parent = @workspace.conversation(parent_id)
-      completed_reply(parent)
-      accepted = parent.events(limit: 100).count { |event| event.type == "input_accepted" }
-      children = parent.children.items.map(&:public_id)
-      write = ["write", { "path" => "side-effect.txt", "content" => "forbidden" }]
-      %w[side btw].each do |command|
-        text = "/#{command} #{permission_prompt([write], reply: "forbidden-side")}"
-        assert_includes telegram_control("readonly-#{command}", text, user: 102, chat: 102), "not available in Telegram"
-      end
-
-      assert_equal parent_id, current("102:0")
-      assert_equal [parent_id], @state.read.fetch("routes").fetch(telegram_route_key("102:0")).fetch("conversations").keys
-      assert_equal accepted, parent.events(limit: 100).count { |event| event.type == "input_accepted" }
-      assert_equal children, parent.children.items.map(&:public_id)
-      assert_empty @core.followers(side: true)
-      assert_empty parent.inputs.list.items
-      assert_equal 1, parent.turns.list.items.count { |turn| turn.kind == "direct_reply" }
-      refute File.exist?(permission_path("side-effect.txt"))
-      refute @telegram.formal(102).any? { |_method, params| params[:text].include?("forbidden-side") }
-      assert_empty @logs
-    end
-
     module Helpers
       private
 

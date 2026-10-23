@@ -45,6 +45,11 @@ tries `db:prepare` first, which can fail against the old schema before it
 reaches the reset. Reset deletes the development data; it is not an upgrade
 procedure for an installation whose data must be retained.
 
+The memory collection schema is a destructive pre-release fold. It contains no old-anchor
+backfill or execution-state conversion. Rebuild a pre-fold development database before setup;
+an installed system needs an explicitly planned fresh installation with its old backup kept
+separately. Ordinary upgrade commands never perform that reset automatically.
+
 Normal database preparation, reset and seeding create no administrator and choose
 no Account cost unit. Open Nexus to create the first owner through `/setup`, then
 continue to the Dashboard and its remaining setup tasks. Browser setup uses USD

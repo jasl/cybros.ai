@@ -24,7 +24,10 @@ class InferenceRequests::CreateConcurrencyTest < ActiveSupport::TestCase
       InferenceRequestCreateReceipt.where(acting_user: @creator).delete_all
       InferenceRequest.where(creating_user: @creator).destroy_all
       Run.where(creating_user: @creator).find_each { |run| Runs::Reap.destroy_aggregate(run) }
-      @conversation&.reload&.destroy!
+      destroy_memory_owner!(@conversation&.reload)
+      @creator.with_lock do
+        MemoryCollections::Drain.call(owner: @creator, budget: 64)
+      end
       Speaker.where(user: @creator).destroy_all
       @creator.destroy!
       ContentFragment.where.missing(:content_body_entries).delete_all

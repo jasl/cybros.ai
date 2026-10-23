@@ -1036,15 +1036,27 @@
         "bindings": [
           {
             "name": "conversation",
-            "scope": "conversation",
+            "source": {
+              "scope": "conversation"
+            },
             "access": "read_write",
-            "conversation_public_id": "01900000-0000-7000-8000-000000000070"
+            "scope": "conversation",
+            "owner_public_id": "01900000-0000-7000-8000-000000000070",
+            "collection_public_id": "01995000-0000-7000-8000-000000000010",
+            "speaker_public_id": null,
+            "state": "active"
           },
           {
             "name": "workspace",
-            "scope": "workspace",
+            "source": {
+              "scope": "workspace"
+            },
             "access": "read_write",
-            "workspace_public_id": "01900000-0000-7000-8000-000000000001"
+            "scope": "workspace",
+            "owner_public_id": "01900000-0000-7000-8000-000000000001",
+            "collection_public_id": "01995000-0000-7000-8000-000000000011",
+            "speaker_public_id": null,
+            "state": "active"
           }
         ]
       },
@@ -1826,14 +1838,30 @@
         "bindings": [
           {
             "name": "conversation",
-            "scope": "conversation",
-            "access": "read_write"
+            "source": {
+              "scope": "conversation"
+            },
+            "access": "read_write",
+            "capture": {
+              "collection_public_id": "01995000-0000-7000-8000-000000000010",
+              "owner_public_id": "01900000-0000-7000-8000-000000000070",
+              "scope": "conversation",
+              "speaker_public_id": null
+            }
           },
           {
             "name": "group",
-            "scope": "conversation",
+            "source": {
+              "scope": "conversation",
+              "conversation_public_id": "01900000-0000-7000-8000-000000000072"
+            },
             "access": "read",
-            "conversation_public_id": "01900000-0000-7000-8000-000000000072"
+            "capture": {
+              "collection_public_id": "01995000-0000-7000-8000-000000000010",
+              "owner_public_id": "01900000-0000-7000-8000-000000000072",
+              "scope": "conversation",
+              "speaker_public_id": null
+            }
           }
         ]
       },
@@ -1888,14 +1916,30 @@
         "bindings": [
           {
             "name": "conversation",
-            "scope": "conversation",
-            "access": "read_write"
+            "source": {
+              "scope": "conversation"
+            },
+            "access": "read_write",
+            "capture": {
+              "collection_public_id": "01995000-0000-7000-8000-000000000010",
+              "owner_public_id": "01900000-0000-7000-8000-000000000070",
+              "scope": "conversation",
+              "speaker_public_id": null
+            }
           },
           {
             "name": "speaker",
-            "scope": "speaker",
+            "source": {
+              "scope": "speaker",
+              "speaker_public_id": "01900000-0000-7000-8000-0000000000a8"
+            },
             "access": "read_write",
-            "speaker_public_id": "01900000-0000-7000-8000-0000000000a8"
+            "capture": {
+              "collection_public_id": "01995000-0000-7000-8000-000000000014",
+              "owner_public_id": "01900000-0000-7000-8000-000000000070",
+              "scope": "speaker",
+              "speaker_public_id": "01900000-0000-7000-8000-0000000000a8"
+            }
           }
         ]
       },
@@ -1931,14 +1975,18 @@
         "bindings": [
           {
             "name": "conversation",
-            "scope": "conversation",
+            "source": {
+              "scope": "conversation"
+            },
             "access": "read_write"
           },
           {
             "name": "speaker",
-            "scope": "speaker",
-            "access": "read_write",
-            "speaker_public_id": "01900000-0000-7000-8000-0000000000a8"
+            "source": {
+              "scope": "speaker",
+              "speaker_public_id": "01900000-0000-7000-8000-0000000000a8"
+            },
+            "access": "read_write"
           }
         ]
       },
@@ -1946,16 +1994,28 @@
         "bindings": [
           {
             "name": "conversation",
-            "scope": "conversation",
+            "source": {
+              "scope": "conversation"
+            },
             "access": "read_write",
-            "conversation_public_id": "01900000-0000-7000-8000-000000000070"
+            "scope": "conversation",
+            "owner_public_id": "01900000-0000-7000-8000-000000000070",
+            "collection_public_id": "01995000-0000-7000-8000-000000000010",
+            "speaker_public_id": null,
+            "state": "active"
           },
           {
             "name": "speaker",
-            "scope": "speaker",
+            "source": {
+              "scope": "speaker",
+              "speaker_public_id": "01900000-0000-7000-8000-0000000000a8"
+            },
             "access": "read_write",
+            "scope": "speaker",
+            "owner_public_id": "01900000-0000-7000-8000-0000000000a2",
+            "collection_public_id": "01995000-0000-7000-8000-000000000014",
             "speaker_public_id": "01900000-0000-7000-8000-0000000000a8",
-            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+            "state": "active"
           }
         ]
       },
@@ -2010,14 +2070,18 @@
       "bindings": [
         {
           "name": "conversation",
-          "scope": "conversation",
+          "source": {
+            "scope": "conversation"
+          },
           "access": "read_write"
         },
         {
           "name": "group",
-          "scope": "conversation",
-          "access": "read",
-          "conversation_public_id": "01900000-0000-7000-8000-000000000072"
+          "source": {
+            "scope": "conversation",
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072"
+          },
+          "access": "read"
         }
       ]
     }
@@ -2035,14 +2099,18 @@
       "bindings": [
         {
           "name": "conversation",
-          "scope": "conversation",
+          "source": {
+            "scope": "conversation"
+          },
           "access": "read_write"
         },
         {
           "name": "speaker",
-          "scope": "speaker",
-          "access": "read_write",
-          "speaker_public_id": "01900000-0000-7000-8000-0000000000a8"
+          "source": {
+            "scope": "speaker",
+            "speaker_public_id": "01900000-0000-7000-8000-0000000000a8"
+          },
+          "access": "read_write"
         }
       ]
     }
@@ -2186,15 +2254,27 @@
         "bindings": [
           {
             "name": "conversation",
-            "scope": "conversation",
+            "source": {
+              "scope": "conversation"
+            },
             "access": "read_write",
-            "conversation_public_id": "01900000-0000-7000-8000-000000000070"
+            "scope": "conversation",
+            "owner_public_id": "01900000-0000-7000-8000-000000000070",
+            "collection_public_id": "01995000-0000-7000-8000-000000000010",
+            "speaker_public_id": null,
+            "state": "active"
           },
           {
             "name": "workspace",
-            "scope": "workspace",
+            "source": {
+              "scope": "workspace"
+            },
             "access": "read_write",
-            "workspace_public_id": "01900000-0000-7000-8000-000000000001"
+            "scope": "workspace",
+            "owner_public_id": "01900000-0000-7000-8000-000000000001",
+            "collection_public_id": "01995000-0000-7000-8000-000000000011",
+            "speaker_public_id": null,
+            "state": "active"
           }
         ]
       },

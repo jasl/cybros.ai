@@ -16,8 +16,8 @@ class API::V1::AgentsController < API::V1::Agents::BaseController
 
   def create
     fields = params.expect(agent: [:display_name])
-    @agent = Current.user.build_agent(display_name: fields[:display_name].to_s)
-    if @agent.save
+    @agent = Current.user.create_agent(display_name: fields[:display_name].to_s)
+    if @agent.persisted?
       render json: { agent: API::AgentPresenter.basic(@agent) }, status: :created
     else
       render_error(:validation_failed, @agent.errors.full_messages.to_sentence, status: :unprocessable_entity)

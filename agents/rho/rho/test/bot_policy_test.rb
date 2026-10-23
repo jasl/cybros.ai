@@ -77,9 +77,9 @@ class BotPolicyTest < Minitest::Test
       result.fetch(:approval_rules)
     assert_equal "subtree", result.fetch(:conversation_reach)
     assert_equal({ "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-      { "name" => "speaker", "scope" => "speaker", "access" => "read_write" },
-      { "name" => "workspace", "scope" => "workspace", "access" => "read" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+      { "name" => "speaker", "source" => { "scope" => "speaker" }, "access" => "read_write" },
+      { "name" => "workspace", "source" => { "scope" => "workspace" }, "access" => "read" },
     ] }, result.fetch(:memory_context_limit))
     refute result.fetch(:prompt_template).fetch("blocks").any? { |block| block["slot"] == "persona" }
     assert_equal "assembly", result.fetch(:prompt_mechanism)
@@ -194,7 +194,7 @@ class BotPolicyTest < Minitest::Test
   end
 
   def test_external_memory_ceiling_preserves_disabled_and_read_only_authored_roots
-    [[], [{ "name" => "conversation", "scope" => "conversation", "access" => "read" }]].each do |bindings|
+    [[], [{ "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read" }]].each do |bindings|
       authored = { "bindings" => bindings }
       result = Rho::BotPolicy.external(configuration.merge(memory_context_limit: authored),
         send_targets: [TARGET], spawn_roles: ROLES, wire_names: WIRES)

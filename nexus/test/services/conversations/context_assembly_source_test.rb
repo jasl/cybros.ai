@@ -16,6 +16,7 @@ class Conversations::ContextAssemblySourceTest < ActiveSupport::TestCase
     # A conversation in the same room: its own rows must never reach a
     # standalone source, its workspace's must.
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
+    MemoryCollection.default_for(@conversation)
   end
 
   def write_memory!(path, content, by: @human)

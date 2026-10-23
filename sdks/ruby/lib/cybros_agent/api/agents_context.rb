@@ -47,12 +47,7 @@ module CybrosAgent
         nil
       end
 
-      # A NAMED ROW'S OWN MEMORY — its `agent/` rung, the notes it carries
-      # into every conversation it answers — managed by the declarer that
-      # minted it, through the same verbs as every memory door. The one scope
-      # this door serves is `agent/`; the paired program's own `agent/` rung
-      # is `profile.memory`'s, under the same prefix.
-      def memory(name:) = MemoryContext.new(dispatch: @dispatch, path: "#{name_path(name)}/memory")
+      def memory_collections(name:) = OwnedMemoryCollectionsContext.new(dispatch: @dispatch, path: "#{name_path(name)}/memory_collections")
 
       SHAPES = {
         NamedAgent => {

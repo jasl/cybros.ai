@@ -40,7 +40,9 @@ class Conversations::ForkPrefixTest < ActiveJob::TestCase
 
     adopted = child.turns.sole
     assert_predicate edit(adopted, conversation: child), :accepted?, "the adopted boundary is independently editable"
-    child.destroy!
+    Conversations::Tombstone.call(conversation: child)
+    child.reload.update!(tombstoned_at: (Conversation::RETENTION_PERIOD + 1.day).ago)
+    assert_equal 1, Conversations::Reap.call(batch: 20).value[:reaped]
     assert_predicate edit(predecessor.reload), :accepted?, "reaping the last descendant releases its prefix"
   end
 

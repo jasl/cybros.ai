@@ -7,15 +7,15 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
     @secret = create_access_token_fixture(user: @human, name: "Memory context").secret
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human)
     @shared = Conversation.create!(workspace: @workspace, creating_user: users(:owner))
+    [@conversation, @shared].each { |conversation| MemoryCollection.default_for(conversation) }
   end
 
   def headers = { "Authorization" => "Bearer #{@secret}" }
   def conversations_path = "/agent_api/v1/workspaces/#{@workspace.public_id}/conversations"
   def base = "#{conversations_path}/#{@conversation.public_id}"
-  def own = { "name" => "conversation", "scope" => "conversation", "access" => "read_write" }
+  def own = { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" }
   def shared(access = "read_write")
-    { "name" => "group", "scope" => "conversation", "access" => access,
-      "conversation_public_id" => @shared.public_id }
+    { "name" => "group", "source" => { "scope" => "conversation", "conversation_public_id" => @shared.public_id }, "access" => access }
   end
   def configuration(access = "read_write") = { "bindings" => [own, shared(access)] }
 
@@ -25,7 +25,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
 
   def write(path, content)
     post "#{base}/memory", headers: headers, as: :json,
-      params: { memory: { path: path, content: content, expected_public_id: nil, expected_lock_version: nil } }
+      params: { memory: { path: path, content: content, **memory_collection_condition(conversation: @conversation, path: path, by: @human), expected_public_id: nil, expected_lock_version: nil } }
   end
 
   test "create and replace persist logical bindings and null restores defaults" do
@@ -56,8 +56,8 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
     assert_response :created
     document = response.parsed_body.fetch("memory")
     assert_equal "group/notes.md", document.fetch("path")
-    assert MemoryDocument.for_conversation(@shared.id).exists?(name: "notes.md")
-    refute MemoryDocument.for_conversation(@conversation.id).exists?(name: "notes.md")
+    assert @shared.memory_documents.exists?(name: "notes.md")
+    refute @conversation.memory_documents.exists?(name: "notes.md")
 
     write("conversation/notes.md", "own fact")
     assert_response :created
@@ -73,7 +73,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
     assert_equal %w[conversation/notes.md group/notes.md], response.parsed_body.fetch("matches").map { |entry| entry.fetch("path") }
     post "#{base}/memory/edit", headers: headers, as: :json, params: { memory: {
       path: "group/notes.md", old_text: "shared", new_text: "revised",
-      expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version"),
+      expected_collection_public_id: document.fetch("collection_public_id"), expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version"),
     } }
     assert_response :success
     assert_equal "group/notes.md", response.parsed_body.dig("memory", "path")
@@ -96,7 +96,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
     %w[edit delete].each do |verb|
       post "#{base}/memory/#{verb}", headers: headers, as: :json, params: { memory: {
         path: "group/notes.md", old_text: "shared", new_text: "changed",
-        expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version"),
+        expected_collection_public_id: document.fetch("collection_public_id"), expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version"),
       } }
       assert_response :forbidden
     end
@@ -106,7 +106,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
   end
 
   test "empty bindings disable every root without falling back to the steward" do
-    configure({ "bindings" => [own, { "name" => "user", "scope" => "user", "access" => "read_write" }] })
+    configure({ "bindings" => [own, { "name" => "user", "source" => { "scope" => "user" }, "access" => "read_write" }] })
     write("user/private.md", "must stay absent")
     assert_response :created
     configure({ "bindings" => [] })
@@ -126,10 +126,11 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
     declaration = AgentConfiguration.new(memory_context_limit: { "bindings" => [own] })
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: users(:agent),
       agent_configuration: declaration)
+    collection = MemoryCollection.default_for(@conversation)
     configure(configuration)
     assert_response :success
-    assert_equal({ "bindings" => [own.merge("conversation_public_id" => @conversation.public_id)] },
-      response.parsed_body.dig("conversation", "effective_memory_context"))
+    selected = response.parsed_body.dig("conversation", "effective_memory_context", "bindings")
+    assert_equal [["conversation", collection.public_id, "read_write"]], selected.map { |row| row.values_at("name", "collection_public_id", "access") }
     write("conversation/notes.md", "own fact")
     assert_response :created
     document = response.parsed_body.fetch("memory")
@@ -151,7 +152,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
     end
     post "#{base}/memory/edit", headers: headers, as: :json, params: { memory: {
       path: "conversation/notes.md", old_text: "own", new_text: "updated",
-      expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version"),
+      expected_collection_public_id: document.fetch("collection_public_id"), expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version"),
     } }
     assert_response :success
     assert_equal "updated fact", response.parsed_body.dig("memory", "content")
@@ -160,12 +161,12 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
 
   test "malformed reserved or duplicate paths refuse atomically" do
     [
-      { "bindings" => [shared] },
+      { "bindings" => [own.merge("source" => { "scope" => "unknown" })] },
       { "bindings" => [own, own] },
       { "bindings" => [own, shared.merge("name" => "group/nested")] },
       { "bindings" => [own, shared.merge("name" => "user")] },
       { "bindings" => [own.merge("access" => "write")] },
-      { "bindings" => [own, shared.merge("conversation_public_id" => "not-a-uuid")] },
+      { "bindings" => [own, shared.merge("source" => { "scope" => "conversation", "conversation_public_id" => "not-a-uuid" })] },
     ].each do |invalid|
       configure(invalid)
       assert_response :unprocessable_entity
@@ -175,7 +176,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
 
   test "shared sources require same workspace and current read or write standing" do
     private_source = Conversation.create!(workspace: workspaces(:personal), creating_user: users(:owner))
-    configure({ "bindings" => [own, shared.merge("conversation_public_id" => private_source.public_id)] })
+    configure({ "bindings" => [own, shared.merge("source" => { "scope" => "conversation", "conversation_public_id" => private_source.public_id })] })
     assert_response :unprocessable_entity
     @shared.update!(access_default: "read")
     configure(configuration)
@@ -205,8 +206,8 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryContextsTest < ActionDispat
     configure(configuration("read"))
     block = Conversations::ContextAssembly::MemoryBlock.call(conversation: @conversation.reload, principal: @human, agent: @conversation.answering_agent)
     assert_equal 0, block.included
-    assert_includes block.segments.sole.text, "group/ (read only)"
-    assert_includes block.segments.sole.text, "conversation/ (read and write)"
+    assert_includes block.segments.sole.text, "group/ (conversation; read only)"
+    assert_includes block.segments.sole.text, "conversation/ (conversation; read and write)"
     refute_includes block.segments.sole.text, "user/"
   end
 end

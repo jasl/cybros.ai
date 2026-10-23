@@ -7,48 +7,14 @@ require_relative "support/journey_groups"
 require_relative "support/group_run"
 require_relative "support/world_slots"
 
-# The deterministic overall run deadline reserves a fixed teardown budget, so boot, journey,
-# capture, and cleanup stay inside one wall-clock bound even when the journey times out. Sized for
-# the journey list as it stands: the expiry journey alone waits out two announced parks on the
-# kernel's clock, and the whole list runs in twenty-one to twenty-two minutes on this machine
-# (1033–1090 s measured after X4′; 1088 s with the handoff journey — X3 + E-collision — added; 1091
-# s with the memory-scopes journey, X5, whose four turns are ≈ 36 s; the until journey, X7, is one
-# boot and ≈ 25 s on its own; 1274 s with the provider-override journey, X6 — three device grants,
-# two extra browser sessions, seven mock loops, ≈ 2 min — which left the 1500 s bound ≈ 100 s of
-# margin, so it was raised to 1800 s; X-A, the approval journey — three boots, six mock turns — is ≈
-# 63 s on its own; X-C, the compiled-bytes journey — no boot, four SDK turns — 12 s measured, last
-# in the list because the persona it writes on the shared Human is taken back only in its teardown).
-#
-# 2026-09-09: serial 1219 s (60 journeys, `A=-v`) → 578 s wall for the DEFAULT
-# task (harness 112 runs + the journeys in four worlds, two at a time, + RuboCop)
-# — groups 3/1/2/4 took 259/276/256/286 s of their own, spawned heaviest-first
-# into two slots; per-group bound 900 s; the device-flow ledger slept 1.7/94.4/
-# 52.9/5.8 s and the sign-in ledger 34.6 s (group 4's owner sign-ins); 86
-# process-group stops took 7.6 s in all. One world holds ~27 Postgres
-# connections steady and ~42 at a spike (a host rebooting after a pin, one
-# world booting beside another's teardown): two worlds peaked at 94 of the
-# 97 a stock `max_connections` of 100 admits, and four worlds failed on
-# "too many clients" — E2E_WORLDS above 2 wants that ceiling raised.
-# The verifier's run on a quiet machine, same tree: 646 s wall; groups
-# 1/2/3/4 took 310/209/347/279 s of their own (the printed seconds are a
-# group's own since this run); device-flow ledger slept 0/89/58/0 s; the
-# connection peak was 92 of 97. Two slots pair 3+2 and 1+4, so the
-# makespan is a pair's sum, not the heaviest group. Merged onto main with
-# the streaming journey in group 3 (63 journeys: 10/13/15/25): 673 s wall,
-# groups 1/3/2/4 took 309/314/288/344 s of their own, RuboCop clean.
+# Each run reserves time for diagnostics and cleanup independently of product task deadlines.
+# Parallel worlds use isolated databases; keep the slot count within PostgreSQL capacity.
 OVERALL_DEADLINE_SECONDS = Integer(ENV.fetch("E2E_DEADLINE_SECONDS", "1800"))
 TEARDOWN_DEADLINE_SECONDS = Integer(ENV.fetch("E2E_TEARDOWN_DEADLINE_SECONDS", "120"))
 JOURNEY_DEADLINE_SECONDS = OVERALL_DEADLINE_SECONDS - TEARDOWN_DEADLINE_SECONDS
 raise ArgumentError, "E2E_DEADLINE_SECONDS must exceed E2E_TEARDOWN_DEADLINE_SECONDS" unless JOURNEY_DEADLINE_SECONDS.positive?
-# The bound of ONE GROUP'S WORLD under `rake e2e` (E2E::JourneyGroups): a
-# child evaluates the three numbers above from this on its own.
-#
-# Multi-Runner checkpoint restoration and real connection cleanup are part of
-# the product journeys. The restoration journey alone takes about 318 seconds;
-# the former 880-second journey budget cut two groups during their final cases.
-# Allow eighteen minutes of journey work and retain two minutes for diagnostics
-# and isolated-state cleanup. This is the harness budget, independent of task
-# execution deadlines.
+# A group has its own boot, journey and teardown budget. Scheduling weights only select order;
+# they never change this deadline or the kernel's task deadlines.
 GROUP_DEADLINE_SECONDS = Integer(ENV.fetch("E2E_GROUP_DEADLINE_SECONDS", "1200"))
 E2E::JourneyGroups.validate!
 
@@ -98,7 +64,6 @@ Minitest::TestTask.create(:realtime_test) do |t|
   t.verbose = true
   t.extra_args << "-v"
 end
-
 
 RuboCop::RakeTask.new
 
@@ -208,7 +173,7 @@ task :e2e do
   abort "e2e: a group failed (its log is named above)" unless passed
 end
 
-desc "The product journeys in ONE world, as before 2026-09-09 (N= filters)"
+desc "The ordinary product journeys in one isolated world (N= filters)"
 task :e2e_serial do
   run_e2e_tests("journey_test", mcp_fixture: true)
 end
@@ -223,7 +188,6 @@ desc "Optional WebRTC signaling and PTY journeys (Go; some cases use Docker; N= 
 task :realtime do
   run_e2e_tests("realtime_test")
 end
-
 
 desc "Product smoke: device credentials, rho CLI conversations and a runner tool in one world"
 task :smoke do

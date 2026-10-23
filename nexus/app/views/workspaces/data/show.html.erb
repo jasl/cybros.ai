@@ -2,7 +2,7 @@
   <p class="text-sm text-base-content/70"><%= t("data_console.description") %></p>
   <%= link_to t("usage_reports.data_download"), workspace_data_export_path(@workspace), class: "btn btn-outline btn-sm", data: { turbo: false } %>
   <div class="grid gap-4 md:grid-cols-2">
-    <% [[:memory, workspace_memory_documents_path(@workspace)], [:character, workspace_character_path(@workspace)], [:store, workspace_store_entries_path(@workspace)]].each do |kind, path| %>
+    <% [[:memory, memory_collections_path(workspace_public_id: @workspace.public_id)], [:character, workspace_character_path(@workspace)], [:store, workspace_store_entries_path(@workspace)]].each do |kind, path| %>
       <section class="rounded-box border border-base-300 p-4 space-y-3">
         <h2 class="font-medium"><%= link_to t("data_console.#{kind}.title"), path, class: "link link-hover" %></h2>
         <p class="text-sm text-base-content/70"><%= t("data_console.#{kind}.description") %></p>

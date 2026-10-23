@@ -1,6 +1,7 @@
 require "test_helper"
 require "fileutils"
 require "securerandom"
+require "timeout"
 require "support/actor_provisioning"
 require "support/runner_grant"
 require "support/steward_session"
@@ -80,12 +81,18 @@ class AgentAPILoadTest < Minitest::Test
             context = member.workspace(@workspace.public_id).runs.start_tool_call(
               runner_executor_public_id: @executor_id, tool: "read", input: { "value" => iteration },
               idempotency_key: SecureRandom.uuid)
-            task = executor.inbox_task(run_public_id: context.run_public_id, task_key: "relay")
+            task_key = CybrosAgent::Api::RunContext::TOOL_CALL_TASK_KEY
+            Timeout.timeout(10, Timeout::Error, "Tool task was never dispatched") do
+              until context.task(task_key).task.status == "dispatched"
+                sleep 0.02
+              end
+            end
+            task = executor.inbox_task(run_public_id: context.run_public_id, task_key: task_key)
             claimed = task.claim
             raise "claim not active" unless task.claim_status(claim_token: claimed.claim_token).active?
 
             executor.report_progress("run_public_id" => context.run_public_id,
-              "task_key" => "relay", "claim_token" => claimed.claim_token, "text_tail" => "ready")
+              "task_key" => task_key, "claim_token" => claimed.claim_token, "text_tail" => "ready")
             task.commit(claim_token: claimed.claim_token, content: "ok")
             raise "loop did not complete" unless context.fetch.status == "completed"
 

@@ -17,7 +17,7 @@
           <%= validated_field form, :text_field, :display_name, @user.errors.full_messages_for(:display_name), size: :sm, value: @user.display_name, required: true, maxlength: User::DISPLAY_NAME_MAX_LENGTH %>
         <% end %>
         <%= render layout: "shared/form_row", locals: { form:, attribute: :handle, label: t("settings.profiles.show.handle"), description: t("settings.profiles.show.how_others_address_you_handle_lowercase_letters_digits_and") } do %>
-          <%= validated_field form, :text_field, :handle, @user.errors.full_messages_for(:handle), size: :sm, value: @user.handle, required: true, maxlength: User::Handle::MAX_LENGTH %>
+          <%= validated_field form, :text_field, :handle, @user.errors.full_messages_for(:handle), size: :sm, value: @user.handle, required: true, maxlength: Constants::HANDLE_MAX_LENGTH %>
         <% end %>
       </div>
       <div class="mt-3 flex justify-end">

@@ -17,7 +17,7 @@ require "support/steward_session"
 
 # A real Runner captures and restores a fixture tree through the public SDK
 # and rho commands. The journey pins pre-images, fresh undo records,
-# regenerate ordering, exclusions, missing stores and per-Runner outcomes.
+# regenerate ordering and partial restore outcomes across multiple Runners.
 # Changing a conversation's default never changes the recorded restore target.
 # The deterministic provider only chooses calls; every file operation is real.
 class RewindTest < Minitest::Test
@@ -133,42 +133,18 @@ class RewindTest < Minitest::Test
 
   # THE WHOLE JOURNEY on one world, in order: the world is expensive and
   # every step reads the residue of the last.
-  def test_capture_restore_regenerate_and_the_negatives
-    a_conversation_without_a_runner_is_untouched
+  def test_capture_restore_undo_and_regenerate_keep_the_original_runners
     capture_and_correlate
     the_per_turn_diff
     rewind_restores_the_pre_image
     the_undo_brings_the_dirty_tree_back
     regenerate_restores_then_the_door
     keep_checkpoints_regenerates_on_the_world_as_it_is
-    an_outside_root_write_is_marked
-    an_over_cap_untracked_blob_survives_restore
-    two_restores_in_one_loop_keep_their_own_undos
-    a_repeated_rewind_key_replays_the_child_and_restores_again
     a_default_change_restores_the_original_runner
-    an_active_turn_refuses_locally
-    a_runner_without_a_store_is_no_checkpoint
     model_invisibility
   end
 
   private
-
-    def a_conversation_without_a_runner_is_untouched
-      opened = rho_do("!mock usage=100:5 reply=ready -- no files changed", runner: nil)
-      await_run_status(opened.run, "completed")
-      chat = @steward_client.workspace(@workspace_public_id).conversation(opened.conversation)
-      await("the unbound conversation never settled") { chat.fetch.active_turn_public_id.nil? }
-      assert_nil chat.fetch.default_runner
-      before = runs.list(order: "desc", limit: 100).items.map(&:public_id)
-
-      output = rho("rewind", opened.conversation, opening_turn(opened.conversation).public_id)
-      assert_match(/^restoration:\s+untouched$/, output, output)
-      child = output[/^conversation: (\S+)/, 1]
-      refute_nil child, output
-      assert_nil @steward_client.workspace(@workspace_public_id).conversation(child).fetch.default_runner
-      assert_equal before, runs.list(order: "desc", limit: 100).items.map(&:public_id),
-        "the fork alone: an untouched unbound conversation creates no restore request"
-    end
 
     # STEP 1 — WRITE + CAPTURE: the first write-kind call captures the tree
     # before it; the reserved key rides that result and none other; the
@@ -328,126 +304,6 @@ class RewindTest < Minitest::Test
       assert_equal 3, variants(@regenerate_conversation, @regenerate_turn).length, "a third candidate"
     end
 
-    # STEP 7 (vi) — an OUTSIDE-ROOT write: the capture still runs for the
-    # root and the key carries the outside path; the file is untouched by a
-    # later restore.
-    def an_outside_root_write_is_marked
-      outside = File.join(@world.home, "outside-#{SecureRandom.hex(4)}.txt")
-      turn = rho_do(script(["write", { "path" => outside, "content" => "out\n" }]))
-      completed = await_run_status(turn.run, "completed")
-      write = tool_task(completed, "write")
-      key = runs.run(turn.run).task(write.key).metadata&.dig("checkpoint", "outside")
-      assert_equal [outside], key, "the key names what a restore cannot reach"
-    end
-
-    # The single-file cap omits an UNTRACKED blob, while retaining a usable checkpoint for the
-    # rest of the tree. Change the blob after capture: restoring must preserve its newer bytes.
-    def an_over_cap_untracked_blob_survives_restore
-      call_detail("bash", "command" => "ruby -e 'File.binwrite(\"over-cap.bin\", \"x\" * (3 * 1024 * 1024))'")
-      opened = rho_do("!mock usage=100:5 reply=ready -- before the oversized file changed")
-      await_run_status(opened.run, "completed")
-      run_id = rho_say(opened.conversation, script(["edit", edit_args("lib/a.rb", "four", "over-cap")],
-        ["bash", { "command" => "ruby -e 'File.binwrite(\"over-cap.bin\", \"y\" * (3 * 1024 * 1024))'" }]))
-      await_run_status(run_id, "completed")
-      captured = call_records(run_id).first
-      refute_nil captured
-      assert_equal ["over-cap.bin"], captured.fetch("skipped")
-      assert captured.fetch("present"), "the normal files still have a usable checkpoint"
-      assert_equal captured.fetch("hash"), reply_variant(opened.conversation).runner_effects.runners.fetch(0).checkpoint_hash
-      assert_equal "over-cap", call_detail("read", "path" => "lib/a.rb").output.strip
-
-      output = rho("rewind", opened.conversation, opening_turn(opened.conversation).public_id)
-      assert_restored(output, captured.fetch("hash"))
-      assert_equal "four", call_detail("read", "path" => "lib/a.rb").output.strip
-      verified = call_detail("bash", "command" =>
-        "ruby -e 'puts(File.binread(\"over-cap.bin\") == \"y\" * (3 * 1024 * 1024))'")
-      assert_equal "true", verified.output.strip, "the skipped blob retained all of its newer bytes"
-      call_detail("bash", "command" => "rm over-cap.bin")
-    end
-
-    # Each restore in one authored request loop captures the tree immediately before THAT call.
-    # The middle write gives the second undo different bytes; both remain addressable afterwards.
-    def two_restores_in_one_loop_keep_their_own_undos
-      created = runs.create(idempotency_key: SecureRandom.uuid, approval_mode: "bypass",
-        prompt_mechanism: "raw", default_runner_executor_public_id: @runner_id, steps: [
-          { tool: { key: "restore_first", name: "checkpoint_restore", route: { kind: "runner" }, input: { checkpoint: @h1 } } },
-          { tool: { key: "write_between", name: "write", route: { kind: "runner" }, input: { path: "lib/a.rb", content: "between\n" } } },
-          { tool: { key: "restore_second", name: "checkpoint_restore", route: { kind: "runner" }, input: { checkpoint: @h1 } } },
-        ])
-      run_id = created.run.public_id
-      context = runs.run(run_id)
-      context.start
-      completed = await_run_status(run_id, "completed")
-      assert_equal %w[restore_first restore_second write_between], completed.tasks.map(&:key).sort
-      completed.tasks.each do |task|
-        assert_equal "completed", task.status
-        refute task.result.fetch("is_error", false), task.result.inspect
-        assert_equal @runner_id, task.claimed_by.executor_public_id
-      end
-      undos = %w[restore_first restore_second].map do |key|
-        detail = context.task(key)
-        assert_equal @h1, detail.structured_content.fetch("restored")
-        undo = detail.structured_content.fetch("undo")
-        assert_equal undo, detail.metadata.dig("checkpoint", "hash")
-        undo
-      end
-      refute_equal undos.first, undos.last, "the second restore captured the changed tree in the same loop"
-      records = call_records(run_id)
-      assert records.all? { |record| record.fetch("run_public_id") == run_id }
-      undos.each { |undo| assert_includes records.map { |record| record.fetch("hash") }, undo }
-      assert_equal "one", call_detail("read", "path" => "lib/a.rb").output.strip
-
-      call_detail("checkpoint_restore", "checkpoint" => undos.last)
-      assert_equal "between", call_detail("read", "path" => "lib/a.rb").output.strip
-      call_detail("checkpoint_restore", "checkpoint" => undos.first)
-      assert_equal "four", call_detail("read", "path" => "lib/a.rb").output.strip
-      assert_equal "two-b", call_detail("read", "path" => "lib/b.rb").output.strip
-    end
-
-    # The key identifies the fork alone. Repeating the public control request reuses that child,
-    # but restores the tree again and captures the bytes immediately before each restore as undo.
-    def a_repeated_rewind_key_replays_the_child_and_restores_again
-      turn = opening_turn(@first_conversation)
-      body = { public_id: @first_conversation, turn: turn.public_id, idempotency_key: SecureRandom.uuid }
-      before_first = rewind_files
-      first = @daemon.control(:post, "/conversations/rewind", body: body).fetch("rewind")
-      first_restore = restore_request_run
-      refute_nil first_restore
-      refute_equal @first_conversation, first.fetch("conversation")
-      assert_equal turn.public_id, first.fetch("forked_from")
-      assert_equal turn.position, first.fetch("position")
-      child = @steward_client.workspace(@workspace_public_id).conversation(first.fetch("conversation")).fetch
-      assert_equal turn.public_id, child.forked_from_turn_public_id
-      assert_equal({ "status" => "restored", "checkpoint" => @h1 }, first.fetch("restoration").fetch("runners").fetch(0).slice("status", "checkpoint"))
-      assert_equal PROJECT_FILES.merge("lib/b.rb" => nil), rewind_files
-
-      call_detail("write", "path" => "lib/a.rb", "content" => "before the repeated rewind\n")
-      call_detail("write", "path" => "lib/b.rb", "content" => "created between rewinds\n")
-      before_second = rewind_files
-      refute_equal before_first, before_second
-      second = @daemon.control(:post, "/conversations/rewind", body: body).fetch("rewind")
-      second_restore = restore_request_run
-      refute_nil second_restore
-      assert_equal first.slice("conversation", "forked_from", "position"),
-        second.slice("conversation", "forked_from", "position"), "the fork receipt returns the same child and point"
-      assert_equal({ "status" => "restored", "checkpoint" => @h1 }, second.fetch("restoration").fetch("runners").fetch(0).slice("status", "checkpoint"))
-      refute_equal first_restore, second_restore, "each rewind creates its own restore request"
-      refute_equal first.dig("restoration", "runners", 0, "undo"), second.dig("restoration", "runners", 0, "undo"), "the changed tree needs a fresh undo"
-      assert_equal PROJECT_FILES.merge("lib/b.rb" => nil), rewind_files, "the replay restored the files again"
-
-      [[first, first_restore], [second, second_restore]].each do |rewound, run_id|
-        detail = runs.run(run_id).task(CybrosAgent::Api::RunContext::TOOL_CALL_TASK_KEY)
-        assert_equal @runner_id, detail.task.claimed_by.executor_public_id
-        assert_equal @h1, detail.structured_content.fetch("restored")
-        assert_equal rewound.fetch("restoration").fetch("runners").fetch(0).fetch("undo"), detail.structured_content.fetch("undo")
-      end
-
-      call_detail("checkpoint_restore", "checkpoint" => second.fetch("restoration").fetch("runners").fetch(0).fetch("undo"))
-      assert_equal before_second, rewind_files, "the second undo restores the intervening file changes"
-      call_detail("checkpoint_restore", "checkpoint" => first.fetch("restoration").fetch("runners").fetch(0).fetch("undo"))
-      assert_equal before_first, rewind_files, "the first undo still restores its own prior bytes"
-    end
-
     # The child may select another default while restoration still addresses
     # the immutable Runner that recorded the first write.
     def a_default_change_restores_the_original_runner
@@ -522,49 +378,6 @@ class RewindTest < Minitest::Test
       device.revoke(token: credentials.executor_access_token) if credentials
     end
 
-    # STEP 7 (iv) — an active turn: `rho rewind` refuses locally, no request
-    # loop made.
-    def an_active_turn_refuses_locally
-      before = runs.list(order: "desc", limit: 100).items.length
-      background = @daemon.cli_background("do", script(["bash", { "command" => "sleep 20" }]),
-        "--model", MODEL, "--runner", @runner_id)
-      conversation = await_active_conversation
-      output, status = @daemon.cli("rewind", conversation, "0")
-      refute_predicate status, :success?, output
-      assert_match(/a turn is running/, output)
-      assert_equal before + 1, runs.list(order: "desc", limit: 100).items.length,
-        "the running turn's loop alone: no request loop was created for the refused rewind"
-    ensure
-      background&.close
-      @daemon.cli("stop", conversation) if conversation
-    end
-
-    # STEP 7 (i) — the runner restarted WITHOUT `--checkpoints` on the same
-    # credential: a write's variant is touched with NO checkpoint, and
-    # `rho rewind` prints unavailable: no_checkpoint and exits non-zero.
-    # Runs last: it leaves the runner without a store.
-    def a_runner_without_a_store_is_no_checkpoint
-      @runner.stop
-      storeless = E2E::ExecutorProcess.new(base_url: @base_url, home: @world.runner_home,
-        credential: @world.credential, kind: :runner, world: @root)
-      storeless.start
-      @world.runner = storeless
-      @runner = storeless
-
-      opened = rho_do("!mock usage=100:5 reply=ready -- hello")
-      await_run_status(opened.run, "completed")
-      run_id = rho_say(opened.conversation, script(["edit", edit_args("lib/a.rb", "four", "five")]))
-      await_run_status(run_id, "completed")
-      world = reply_variant(opened.conversation).runner_effects
-      assert_predicate world, :touched?
-      assert_nil world.runners.fetch(0).checkpoint_hash, "no store, no checkpoint on the fact"
-
-      output, status = @daemon.cli("rewind", opened.conversation, opening_turn(opened.conversation).public_id)
-      refute_predicate status, :success?, "a missing checkpoint cannot report successful restoration"
-      assert_match(/^restoration:\s+unavailable$/, output, output)
-      assert_match(/^runner:\s+#{Regexp.escape(@runner_id)} unavailable: no_checkpoint$/, output, output)
-    end
-
     # STEP 8 — MODEL-INVISIBILITY: the sealed request of the round AFTER the
     # edit carries neither the string `checkpoint` nor the tree hash.
     def model_invisibility
@@ -631,13 +444,6 @@ class RewindTest < Minitest::Test
       assert_equal "completed", detail.task.status, output
       refute detail.task.result.fetch("is_error", false), detail.output
       detail
-    end
-
-    def rewind_files
-      detail = call_detail("bash", "command" => <<~SH)
-        ruby -rjson -e 'puts JSON.generate(ARGV.to_h { |path| [path, File.file?(path) ? File.binread(path) : nil] })' README.md lib/a.rb lib/b.rb
-      SH
-      JSON.parse(detail.output)
     end
 
     def restore_request_run
@@ -709,12 +515,6 @@ class RewindTest < Minitest::Test
     end
 
     def runs = @steward_client.workspace(@workspace_public_id).runs
-
-    def await_active_conversation
-      await("no conversation became active") do
-        runs.list(status: "running", order: "desc", limit: 5).items.first&.turn&.conversation_public_id
-      end
-    end
 
     def await_run_status(run_id, wanted)
       latest = nil

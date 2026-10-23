@@ -66,6 +66,12 @@ can also hold a priced task while the application is offline. An authorized
 member adjusts the limit and explicitly retries that task. Rejoin the original
 execution; completed tools are not repeated.
 
+An application-owned coordination point may use an explicitly
+[indefinite authored ask](../reference/agent-api/run-steps.md). rho uses this for
+Until: completed checks stay recorded while its continuation observer is offline.
+Recovery advances the original wait without rerunning those checks. Stop remains
+effective, and later tool work still needs its ordinary authorization and approvals.
+
 Read final content and attachments from the retained result. Image generation
 produces upload links without an application download-and-reupload step.
 Schedules dispatch their own child executions and return the original answers

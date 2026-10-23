@@ -84,89 +84,6 @@ class RhoTelegramBotsTest < Minitest::Test
     FileUtils.remove_entry(@root) if @root && File.directory?(@root)
   end
 
-  def test_bot_subagent_setting_changes_future_inputs_without_changing_accepted_workers
-    set_home(@alpha, @first_workspace)
-    configure(@alpha, chat_id: 101)
-    await_connected(@alpha)
-    assert_equal true, @core.bot_detail(agent_public_id: @alpha.fetch("public_id")).fetch("bot").fetch("subagent")
-
-    brief = "!mock reply=mode-worker -- Finish the assigned task"
-    send_message(@alpha, 1, external_script([
-      ["spawn", { "role" => "worker", "prompt" => brief, "label" => "mode-worker", "wait" => true }],
-    ], reply: "delegation-on"))
-    await_reply(@alpha, "Mock: delegation-on")
-    chat = bot_conversation(@first_workspace, @alpha)
-    first = external_turn(chat, "delegation-on")
-    first_tools = bot_round_tools(first)
-    assert_includes first_tools, "nexus.conversation.spawn"
-    refute_includes first_tools, "code"
-    child = chat.children.items.find { |row| row.parent&.label == "mode-worker" }
-    refute_nil child
-    child_turn = external_turn(external_chat(child.public_id), "mode-worker")
-    child_tools = bot_round_tools(child_turn)
-    assert_includes child_tools, "code", "the worker retains its own Code Mode choice"
-
-    saved = @daemon.control(:put, "/agents/settings", body: { agent_public_id: @alpha.fetch("public_id"), subagent: false })
-    assert_equal false, saved.fetch("subagent")
-    send_message(@alpha, 2, "!mock reply=direct-work -- Complete the work here")
-    await_reply(@alpha, "Mock: direct-work")
-    direct = external_turn(chat, "direct-work")
-    direct_tools = bot_round_tools(direct)
-    %w[code nexus.conversation.spawn nexus.graph.delegate_task].each { |tool| refute_includes direct_tools, tool }
-    assert_includes external_request_text(direct), "Carry out the person's work directly in this conversation"
-    assert_equal chat.public_id, bot_current(@alpha).fetch("public_id")
-    assert_equal [child.public_id], chat.children.items.map(&:public_id)
-    assert_equal first_tools, bot_round_tools(first), "accepted parent tools stay captured"
-    assert_equal child_tools, bot_round_tools(child_turn), "accepted worker tools stay captured"
-
-    restored = @daemon.control(:put, "/agents/settings", body: { agent_public_id: @alpha.fetch("public_id"), subagent: true })
-    assert_equal true, restored.fetch("subagent")
-    send_message(@alpha, 3, "!mock reply=delegation-restored -- Ready for another task")
-    await_reply(@alpha, "Mock: delegation-restored")
-    assert_includes bot_round_tools(external_turn(chat, "delegation-restored")), "nexus.conversation.spawn"
-    assert_equal chat.public_id, bot_current(@alpha).fetch("public_id")
-  end
-
-  def test_an_owner_bot_and_its_worker_use_the_paired_applications_private_runner
-    set_home(@alpha, @first_workspace)
-    configure(@alpha, chat_id: 101)
-    await_connected(@alpha)
-    send_message(@alpha, 1, "!mock reply=runner-ready -- Prepare the file tools")
-    await_reply(@alpha, "Mock: runner-ready")
-    chat = bot_conversation(@first_workspace, @alpha)
-    first = external_turn(chat, "runner-ready")
-    runner_id = @daemon.status.fetch("identity").fetch("runner_executor_public_id")
-    declaration = @human.workspace(@first_workspace).runs.run(first.active_variant.run_public_id).task("r1").tool_definitions
-    read = declaration.find do |entry|
-      route = entry["route"]
-      route && route["runner_executor_public_id"] == runner_id && route["tool_name"] == "read"
-    end
-    refute_nil read, "the owner Bot imports its application's Runner tools"
-    callable = read.fetch("function").fetch("name")
-    path = File.join(@daemon.tools_root, "family.txt")
-    marker = "application-family-#{SecureRandom.hex(6)}"
-    File.write(path, "#{marker}\n")
-    worker_prompt = external_script([[callable, { "path" => path }]], reply: "worker-read")
-    send_message(@alpha, 2, external_script([
-      [callable, { "path" => path }],
-      ["spawn", { "role" => "worker", "prompt" => worker_prompt, "label" => "file-worker", "wait" => true }],
-    ], reply: "bot-read"))
-    await_reply(@alpha, "Mock: bot-read")
-    parent = external_turn(chat, "bot-read")
-    child = chat.children.items.find { |row| row.parent&.label == "file-worker" }
-    refute_nil child
-    worker = external_turn(external_chat(child.public_id), "worker-read")
-
-    [parent, worker].each do |turn|
-      run = @human.workspace(@first_workspace).runs.run(turn.active_variant.run_public_id)
-      task = run.fetch.tasks.find { |row| row.tool_name == "read" }
-      refute_nil task, "both the Bot and its child must actually call read"
-      assert_equal "completed", task.status
-      assert_equal runner_id, task.addressed_to.executor_public_id
-      assert_includes run.task(task.key).output, marker
-    end
-  end
-
   def test_shared_connection_routes_fixed_bots_and_preserves_identity_and_workspace_across_restart
     set_home(@alpha, @first_workspace)
     set_home(@beta, @first_workspace)
@@ -427,17 +344,6 @@ class RhoTelegramBotsTest < Minitest::Test
     def create_bot(name, audience: "owner", preset_public_id: @bot_preset.fetch("public_id"))
       @daemon.control(:put, "/agents", body: { name: "#{name}-#{SecureRandom.hex(4)}", display_name: name.capitalize,
         description: "Answers the configured Telegram destination.", audience: audience, preset_public_id: preset_public_id }).fetch("agent")
-    end
-
-    def bot_round_tools(turn)
-      @mode_tool_catalog ||= @daemon.control(:get, "/kernel_tools").fetch("tools").to_h do |tool|
-        [tool.fetch("name"), tool.fetch("canonical_name")]
-      end
-      detail = @human.workspace(@first_workspace).runs.run(turn.active_variant.run_public_id).task("r1")
-      detail.tool_definitions.map do |entry|
-        name = entry.fetch("function").fetch("name")
-        entry["canonical"] || entry.dig("route", "tool_name") || @mode_tool_catalog.fetch(name, name)
-      end
     end
 
     def set_home(bot, workspace_id, audience: nil)

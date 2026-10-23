@@ -5,13 +5,14 @@ class AgentAPI::V1::Workspaces::RunsController <
       AgentAPI::V1::Workspaces::BaseController
   include AgentAPI::V1::WorkspaceScoped
   include AgentAPI::SpeakerParameters
+  include AgentAPI::MemoryContextParameters
   include RunListing
 
   # `approval_rules` is opaque JSON read from the parsed body, like the
   # steps; the create refuses its grammar by name.
   SHELL_FIELDS = %w[
     steps billing_subject prompt_mechanism approval_mode approval_rules default_runner_executor_public_id speaker_public_id
-    model_selection fallback_models
+    model_selection fallback_models memory_context
   ].freeze
   # A client naming an edge, the answer or a step's own surface on the
   # shell is told so by name, never silently ignored.
@@ -47,6 +48,7 @@ class AgentAPI::V1::Workspaces::RunsController <
       speaker_public_id: envelope["speaker_public_id"],
       model_selection: envelope["model_selection"],
       fallback_models: envelope["fallback_models"],
+      memory_context: envelope["memory_context"],
       idempotency_key: optional_idempotency_key(
         max_bytes: RunAppendReceipt::IDEMPOTENCY_KEY_MAX_BYTES
       )
@@ -115,6 +117,7 @@ class AgentAPI::V1::Workspaces::RunsController <
         return {}
       end
       envelope.slice(*SHELL_FIELDS).merge(
+        "memory_context" => memory_context_parameter(params.fetch(:run)),
         "speaker_public_id" => speaker_public_id_parameter(envelope["speaker_public_id"]))
     end
 

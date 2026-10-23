@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_21_120000) do
+ActiveRecord::Schema[8.2].define(version: 2026_10_23_060000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -606,6 +606,35 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_21_120000) do
     t.index ["user_id"], name: "index_member_recovery_authorizations_on_user_id"
   end
 
+  create_table "memory_collections", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "user_id"
+    t.bigint "workspace_id"
+    t.bigint "conversation_id"
+    t.bigint "speaker_id"
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
+    t.boolean "is_default", default: false, null: false
+    t.string "name", limit: 128
+    t.string "description", limit: 1024
+    t.datetime "archived_at"
+    t.datetime "deleted_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "id"], name: "index_memory_collections_on_account_id_and_id"
+    t.index ["conversation_id", "deleted_at", "id"], name: "memory_collections_fork_frontier", where: "((conversation_id IS NOT NULL) AND ((deleted_at IS NULL) OR is_default))"
+    t.index ["conversation_id", "id"], name: "index_memory_collections_on_conversation_id_and_id"
+    t.index ["conversation_id"], name: "memory_collections_default_conversation_id", unique: true, where: "(is_default AND (conversation_id IS NOT NULL))"
+    t.index ["deleted_at", "id"], name: "memory_collections_purge_frontier", where: "(deleted_at IS NOT NULL)"
+    t.index ["public_id"], name: "index_memory_collections_on_public_id", unique: true
+    t.index ["speaker_id"], name: "index_memory_collections_on_speaker_id"
+    t.index ["user_id", "id"], name: "index_memory_collections_on_user_id_and_id"
+    t.index ["user_id", "speaker_id"], name: "memory_collections_default_speaker", unique: true, where: "(is_default AND (speaker_id IS NOT NULL))"
+    t.index ["user_id"], name: "memory_collections_default_user", unique: true, where: "(is_default AND (speaker_id IS NULL) AND (user_id IS NOT NULL))"
+    t.index ["workspace_id", "id"], name: "index_memory_collections_on_workspace_id_and_id"
+    t.index ["workspace_id"], name: "memory_collections_default_workspace_id", unique: true, where: "(is_default AND (workspace_id IS NOT NULL))"
+  end
+
   create_table "memory_document_versions", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.text "content", null: false
@@ -616,9 +645,6 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_21_120000) do
 
   create_table "memory_documents", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.bigint "conversation_id"
-    t.bigint "workspace_id"
-    t.bigint "user_id"
     t.string "name", limit: 128, null: false
     t.bigint "memory_document_version_id", null: false
     t.integer "lock_version", default: 0, null: false
@@ -626,15 +652,12 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_21_120000) do
     t.datetime "updated_at", null: false
     t.string "description"
     t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
-    t.bigint "speaker_id"
+    t.bigint "memory_collection_id", null: false
     t.index ["account_id"], name: "index_memory_documents_on_account_id"
-    t.index ["conversation_id", "name"], name: "index_memory_documents_conversation_identity", unique: true, where: "(conversation_id IS NOT NULL)"
+    t.index ["memory_collection_id", "id"], name: "index_memory_documents_on_memory_collection_id_and_id"
+    t.index ["memory_collection_id", "name"], name: "index_memory_documents_on_memory_collection_id_and_name", unique: true
     t.index ["memory_document_version_id"], name: "index_memory_documents_on_memory_document_version_id"
     t.index ["public_id"], name: "index_memory_documents_on_public_id", unique: true
-    t.index ["speaker_id"], name: "index_memory_documents_on_speaker_id"
-    t.index ["user_id", "name"], name: "index_memory_documents_user_identity", unique: true, where: "((user_id IS NOT NULL) AND (speaker_id IS NULL))"
-    t.index ["user_id", "speaker_id", "name"], name: "index_memory_documents_speaker_identity", unique: true, where: "(speaker_id IS NOT NULL)"
-    t.index ["workspace_id", "name"], name: "index_memory_documents_workspace_identity", unique: true, where: "(workspace_id IS NOT NULL)"
   end
 
   create_table "model_invocation_attempts", force: :cascade do |t|
@@ -1621,13 +1644,15 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_21_120000) do
   add_foreign_key "member_recovery_authorizations", "accounts"
   add_foreign_key "member_recovery_authorizations", "identities"
   add_foreign_key "member_recovery_authorizations", "users"
+  add_foreign_key "memory_collections", "accounts"
+  add_foreign_key "memory_collections", "conversations"
+  add_foreign_key "memory_collections", "speakers"
+  add_foreign_key "memory_collections", "users"
+  add_foreign_key "memory_collections", "workspaces"
   add_foreign_key "memory_document_versions", "accounts"
   add_foreign_key "memory_documents", "accounts"
-  add_foreign_key "memory_documents", "conversations"
+  add_foreign_key "memory_documents", "memory_collections"
   add_foreign_key "memory_documents", "memory_document_versions", on_delete: :restrict
-  add_foreign_key "memory_documents", "speakers"
-  add_foreign_key "memory_documents", "users"
-  add_foreign_key "memory_documents", "workspaces"
   add_foreign_key "model_invocation_attempts", "accounts"
   add_foreign_key "model_invocation_attempts", "model_invocations", on_delete: :restrict
   add_foreign_key "model_invocations", "accounts"

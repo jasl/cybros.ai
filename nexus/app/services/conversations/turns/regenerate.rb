@@ -59,9 +59,15 @@ module Conversations
 
         result = nil
         @conversation = @command.conversation
-        @conversation.with_lock(requires_new: true) do
-          result = locked_regenerate
-          raise ActiveRecord::Rollback unless result.accepted?
+        2.times do
+          @memory_preparation = nil
+          @conversation.with_lock(requires_new: true) do
+            result = locked_regenerate
+            raise ActiveRecord::Rollback unless result.accepted?
+          end
+          break unless @memory_preparation
+
+          @memory_preparation.prepare_defaults
         end
         return result unless result.accepted?
 
@@ -179,7 +185,19 @@ module Conversations
             MemoryContext.capture(configuration: @conversation.effective_memory_context(execution_configuration: @agent_configuration),
               speaker: @turn.speaker)
           else
-            origin.memory_context
+            origin.memory_context || { "bindings" => [] }
+          end
+          if @command.agent_configuration
+            context = MemoryDocuments::Context.new(workspace: @conversation.workspace, conversation: @conversation,
+              principal: @command.acting_user, configuration: @memory_context, agent: @turn.execution_agent, execution: true)
+            if context.defaults_missing?
+              @memory_preparation = context
+              return :stale_context_revision
+            end
+            refusal = context.selection_refusal
+            return refusal if refusal
+
+            @memory_context = context.capture
           end
           @compile_declaration = @command.agent_configuration || (@origin_loop.nil? && @agent_configuration)
           if @compile_declaration

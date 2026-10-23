@@ -72,9 +72,8 @@ module Nexus
           estimate_fixture = conversation_estimate_fixture
           rendered_estimate_fixture = conversation_rendered_estimate_fixture
           speaker_memory_context = { "bindings" => [
-            { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-            { "name" => "speaker", "scope" => "speaker", "access" => "read_write",
-              "speaker_public_id" => contract_ingress_speaker.public_id },
+            { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+            { "name" => "speaker", "source" => { "scope" => "speaker", "speaker_public_id" => contract_ingress_speaker.public_id }, "access" => "read_write" },
           ] }
           delta = conversation_transcript_delta_fixture
           settled = { "type" => "turn", "turn_public_id" => turn.fetch("public_id"), "turn" => turn }
@@ -264,24 +263,24 @@ module Nexus
             },
             "valid_variant_fixture" => { "variant" => variant },
             "bound_memory_variant_fixture" => { "variant" => stringify_keys(AgentAPI::ConversationPresenter.variant(
-              variant_row.with(memory_context: { "bindings" => [
-                { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-                { "name" => "group", "scope" => "conversation", "access" => "read",
-                  "conversation_public_id" => "01900000-0000-7000-8000-000000000072" },
-              ] }), body: nil, active: true
+              variant_row.with(memory_context: captured_memory_fixture({ "bindings" => [
+                { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+                { "name" => "group", "source" => { "scope" => "conversation",
+                  "conversation_public_id" => "01900000-0000-7000-8000-000000000072" }, "access" => "read" },
+              ] })), body: nil, active: true
             )) },
             "disabled_memory_variant_fixture" => { "variant" => stringify_keys(AgentAPI::ConversationPresenter.variant(
               variant_row.with(memory_context: { "bindings" => [] }), body: nil, active: true
             )) },
             "speaker_memory_variant_fixture" => { "variant" => stringify_keys(AgentAPI::ConversationPresenter.variant(
-              variant_row.with(memory_context: speaker_memory_context), body: nil, active: true
+              variant_row.with(memory_context: captured_memory_fixture(speaker_memory_context)), body: nil, active: true
             )) },
             "speaker_memory_conversation_fixture" => { "conversation" => full.merge(
               "answering_user_public_id" => contract_agent.public_id,
               "memory_context" => speaker_memory_context,
               "effective_memory_context" => { "bindings" => [
-                speaker_memory_context.fetch("bindings").first.merge("conversation_public_id" => full.fetch("public_id")),
-                speaker_memory_context.fetch("bindings").last.merge("agent_public_id" => contract_agent.public_id),
+                memory_management_fixture(speaker_memory_context.fetch("bindings").first, owner_public_id: full.fetch("public_id")),
+                memory_management_fixture(speaker_memory_context.fetch("bindings").last, owner_public_id: contract_agent.public_id),
               ] }
             ) },
             # THE ACCESS CARRIER'S WRITE SHAPE: the create envelope's `access` and the body of `PUT
@@ -289,9 +288,9 @@ module Nexus
             # `{user_public_id, level}`; the levels are the default's words.
             "memory_context_request" => {
               "memory_context" => { "bindings" => [
-                { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-                { "name" => "group", "scope" => "conversation", "access" => "read",
-                  "conversation_public_id" => "01900000-0000-7000-8000-000000000072" },
+                { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+                { "name" => "group", "source" => { "scope" => "conversation",
+                  "conversation_public_id" => "01900000-0000-7000-8000-000000000072" }, "access" => "read" },
               ] },
             },
             "memory_context_disabled_request" => { "memory_context" => { "bindings" => [] } },

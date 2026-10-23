@@ -6,6 +6,11 @@ require "test_helper"
 class StepsTest < Minitest::Test
   Steps = CybrosAgent::Steps
 
+  def test_explicit_indefinite_coordination_ask_is_serialized
+    wire = { "ask" => { "prompt" => "Wait for coordinator", "indefinite" => true } }
+    assert_equal wire, Steps::Ask.new(prompt: "Wait for coordinator", indefinite: true).to_h
+  end
+
   def test_image_workload_is_explicit_and_keeps_its_own_configuration
     reference = "019f0000-0000-7000-8000-000000000601"
     step = Steps::Model.new(prompt: "A bird", model: { "model" => "dev/mock-image" },

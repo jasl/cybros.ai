@@ -44,7 +44,7 @@ class MemoryAndStoresLockOrderTest < ActiveSupport::TestCase
 
     seen = sequences.flatten
     assert_operator seen.index("users"), :<, seen.index("conversations")
-    assert MemoryDocument.for_user(users(:member).id).exists?(name: "notes.md")
+    assert users(:member).memory_documents.exists?(name: "notes.md")
   end
 
   test "memory_write workspace/ from a loop-backed turn descends workspaces then the conversation" do
@@ -133,7 +133,7 @@ class MemoryAndStoresLockOrderTest < ActiveSupport::TestCase
 
     def human_memory_context
       { "bindings" => %w[conversation workspace user].map do |scope|
-        { "name" => scope, "scope" => scope, "access" => "read_write" }
+        { "name" => scope, "source" => { "scope" => scope }, "access" => "read_write" }
       end }
     end
 end

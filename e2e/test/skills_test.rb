@@ -203,7 +203,7 @@ class SkillsTest < Minitest::Test
       rows = @daemon.control(:get, "/skills").fetch("skills").fetch("agent")
       rows.each do |row|
         answer = @daemon.control(:post, "/skills/rm", body: {
-          "scope" => "agent", "name" => row.fetch("name"), "expected_public_id" => row.fetch("public_id"),
+          "scope" => "agent", "name" => row.fetch("name"), "expected_collection_public_id" => row.fetch("collection_public_id"), "expected_public_id" => row.fetch("public_id"),
           "expected_lock_version" => row.fetch("lock_version"),
         })
         raise "Could not delete #{row.fetch("path")}: #{answer.fetch("error")}" if answer.key?("error")
@@ -215,18 +215,18 @@ class SkillsTest < Minitest::Test
     # ---- 1. ROWS: the door's five words ----
 
     def the_doors_refuse_by_word_and_write_the_workspace_row
-      written = @memory.write("workspace/skills/commit-style", COMMIT_BODY, description: COMMIT_DESCRIPTION, expected_public_id: nil, expected_lock_version: nil)
+      written = @memory.write("workspace/skills/commit-style", COMMIT_BODY, description: COMMIT_DESCRIPTION, **E2E::MemoryCollections.create_condition(@memory, "workspace/skills/commit-style"), expected_public_id: nil, expected_lock_version: nil)
       assert_equal "workspace/skills/commit-style", written.path
       assert_equal COMMIT_DESCRIPTION, written.description, "the description is a row fact the door reads back"
 
-      assert_refused("skill_description_required") { @memory.write("workspace/skills/no-description", "body", expected_public_id: nil, expected_lock_version: nil) }
+      assert_refused("skill_description_required") { @memory.write("workspace/skills/no-description", "body", **E2E::MemoryCollections.create_condition(@memory, "workspace/skills/no-description"), expected_public_id: nil, expected_lock_version: nil) }
       assert_refused("skill_scope_unavailable") do
-        @memory.write("conversation/skills/x", "body", description: "A conversation is never a skill's scope.", expected_public_id: nil, expected_lock_version: nil)
+        @memory.write("conversation/skills/x", "body", description: "A conversation is never a skill's scope.", **E2E::MemoryCollections.create_condition(@memory, "conversation/skills/x"), expected_public_id: nil, expected_lock_version: nil)
       end
       assert_refused("memory_description_invalid") do
-        @memory.write("workspace/notes.md", "a plain note", description: "A plain document has no description.", expected_public_id: nil, expected_lock_version: nil)
+        @memory.write("workspace/notes.md", "a plain note", description: "A plain document has no description.", **E2E::MemoryCollections.create_condition(@memory, "workspace/notes.md"), expected_public_id: nil, expected_lock_version: nil)
       end
-      assert_refused("skill_name_invalid") { @memory.write("workspace/skills/PDF", "body", description: "Upper case.", expected_public_id: nil, expected_lock_version: nil) }
+      assert_refused("skill_name_invalid") { @memory.write("workspace/skills/PDF", "body", description: "Upper case.", **E2E::MemoryCollections.create_condition(@memory, "workspace/skills/PDF"), expected_public_id: nil, expected_lock_version: nil) }
       assert_equal ["workspace/skills/commit-style"], @memory.list.map(&:path).grep(%r{\Aworkspace/}),
         "the four refusals wrote nothing; the room's rung holds the one skill"
     end
@@ -235,7 +235,7 @@ class SkillsTest < Minitest::Test
 
     def the_cli_pushes_a_real_skill_file_and_lists_three_sections
       pushed = rho("skills", "push", File.join(FIXTURE_SKILLS, "review-checklist"))
-      assert_match(%r{^pushed:\s+agent/skills/review-checklist \(\d+ bytes\)$}, pushed)
+      assert_match(%r{^pushed:\s+skills/review-checklist \(\d+ bytes\)$}, pushed)
       row = @daemon.control(:get, "/skills/show?scope=agent&name=review-checklist").fetch("memory")
       assert_equal REVIEW_DESCRIPTION, row.fetch("description"), "the quoted colon survived the split"
       refute_includes row.fetch("content"), "---", "the body carries no frontmatter"
@@ -273,7 +273,7 @@ class SkillsTest < Minitest::Test
 
     # Kernel memory and a Runner load different documents with the same name.
     def one_loop_loads_a_kernel_row_in_process_and_an_announced_name_through_the_runner
-      @memory.write("workspace/skills/deploy-notes", "stale body", description: DEPLOY_WORKSPACE_DESCRIPTION, expected_public_id: nil, expected_lock_version: nil)
+      @memory.write("workspace/skills/deploy-notes", "stale body", description: DEPLOY_WORKSPACE_DESCRIPTION, **E2E::MemoryCollections.create_condition(@memory, "workspace/skills/deploy-notes"), expected_public_id: nil, expected_lock_version: nil)
       calls = [
         *catalog_search_calls, skill_call("commit-style"), skill_call("deploy-notes", callable: @rho_skill),
         "memory_ls:#{arguments({})}",
@@ -364,7 +364,7 @@ class SkillsTest < Minitest::Test
 
       observed = @memory.read("workspace/skills/commit-style")
       @memory.write(observed.path, COMMIT_BODY, description: COMMIT_DESCRIPTION_REWRITTEN,
-        expected_public_id: observed.public_id, expected_lock_version: observed.lock_version)
+        expected_collection_public_id: observed.collection_public_id, expected_public_id: observed.public_id, expected_lock_version: observed.lock_version)
       moved = rho_do("!mock tool_call=#{calls.join(",")} -- once more", @world.project)
       await_completed(moved)
       expected = JSON.parse(JSON.generate(first.fetch(:catalog)))
@@ -540,8 +540,10 @@ class SkillsTest < Minitest::Test
     end
 
     def skill_metadata(name, description, callable, source, executor_public_id = nil)
+      document = @daemon.control(:get, "/skills/show?scope=#{source}&name=#{name}").fetch("memory") unless executor_public_id
       { "name" => name, "description" => description, "callable" => callable,
-        "source" => source, "executor_public_id" => executor_public_id }
+        "source" => source, "executor_public_id" => executor_public_id,
+        "collection_public_id" => document&.fetch("collection_public_id"), "document_public_id" => document&.fetch("public_id") }
     end
 
     def sorted_skills(entries) = entries.sort_by { |entry| [entry.fetch("callable"), entry.fetch("name")] }

@@ -12,7 +12,8 @@ class Runs::IndependentResultDeliveryBatchTest < ActiveJob::TestCase
     @agent = users(:agent)
     DevModelLane.ensure_enabled!(@account)
     declare_tools!(@agent)
-    @conversation = Conversation.create!(workspace: workspaces(:shared), creating_user: @human, answering_user: @agent)
+    @conversation = Conversation.create!(workspace: workspaces(:shared), creating_user: @human, answering_user: @agent,
+      memory_context: { "bindings" => [{ "name" => "workspace", "access" => "read_write", "source" => { "scope" => "workspace" } }] })
   end
 
   test "independent scheduled results retain exact worker identity and open one detached summary" do
@@ -129,6 +130,28 @@ class Runs::IndependentResultDeliveryBatchTest < ActiveJob::TestCase
     reply = @conversation.reload.active_turn
     assert_equal [first.callback_source], reply.callback_sources
     assert_equal "subtree", reply.active_variant.run.conversation_reach
+  end
+
+  test "independent default collections do not share a summary or redirect captured sources" do
+    @conversation.update!(memory_context: nil)
+    first, first_worker = completed_callback("First result")
+    second, second_worker = completed_callback("Second result")
+    contexts = [first, second].map(&:execution_memory_context)
+    collections = [first_worker, second_worker].map do |worker|
+      worker.conversation.memory_collections.find_by!(is_default: true).public_id
+    end
+    assert_equal 2, collections.uniq.length
+    contexts.zip(collections).each do |context, public_id|
+      assert_includes context.to_json, public_id
+    end
+    assert_not_equal(*contexts)
+
+    assert_predicate Conversations::Inputs::ApplyNext.call(conversation_id: @conversation.id), :accepted?
+    assert_equal [second.public_id], @conversation.inputs.pluck(:public_id)
+    reply = @conversation.reload.active_turn
+    assert_equal [first.callback_source], reply.callback_sources
+    assert_equal contexts.first, reply.active_variant.run.memory_context
+    assert_equal contexts.last, second.reload.execution_memory_context
   end
 
   test "truncated history rolls back the entire independent batch before consuming only its head" do

@@ -12,13 +12,28 @@ Agent business data persists through Nexus wherever possible. Local working file
 
 ## Memory
 
-Memory is a set of logical documents addressed by path. `conversation/` belongs to one dialogue, `workspace/` contains shared knowledge, and `agent/` belongs to the answering Agent. `speaker/` contains that Agent's notes about the current Speaker, separate for every Agent/Speaker pair across conversations and workspaces. A private Agent's owner uses the same Speaker mechanism as an outside visitor. The default prompt mechanism injects relevant memory; the kernel's `memory_*` tools (`memory_ls`, `memory_read`, `memory_grep`, `memory_write`, `memory_edit`, `memory_delete`) read and write it during a run with conditional writes against a document's version.
+Memory documents belong to collections, each with a stable UUID and one owner.
+A conversation binds selected collections under logical names such as
+`conversation/`, `workspace/`, `agent/` and `speaker/`. A path is not a runner
+file. Agent/Speaker notes remain separate for every answerer and person across
+conversations and Workspaces.
 
-- `GET …/conversations/{id}/memory`, `POST …/memory`, `…/memory/show`, `…/memory/delete` address a conversation's bound scopes.
-- `/agent_api/v1/profile/memory` is the person's own door to the same store and a paired agent's door to its own `agent/` scope; `/agent_api/v1/profile/agents/{name}/memory` is the declarer's door to a named Agent's; the workspace has its own scope.
-- Scopes follow access: a read-only binding refuses writes with a named refusal, and an unavailable binding reports `memory_scope_unavailable`. A profile's `memory_context_limit` caps inherited bindings. rho's external Bots permit writable conversation and Speaker memory plus read-only workspace memory, and exclude Agent-private and Human-owned notes.
-- Bind `speaker_public_id` explicitly for management before a first input. Inputs otherwise capture their Speaker when they materialize. Delegation preserves the Speaker; a different answering Agent reads its own notes about that person. Human-owned `user/` documents remain an explicit Human scope and are not an Agent's default personal memory.
-- Skills are documents too. The effective memory context limits their database sources; a declared runner can separately serve documents the `skill` tool loads.
+- Use the [collection API](../reference/agent-api/memory-collections.md) for
+  owner-scoped discovery/creation, UUID-addressed lifecycle and relative document
+  paths. A User, Workspace or Conversation can own multiple collections.
+- Use the [conversation memory API](../reference/agent-api/conversation-memory.md)
+  for selected binding paths. HTTP mutations pin the collection UUID and the
+  document UUID/version; model-facing memory tools do not take those CAS conditions.
+- Bindings grant no authority. Profile limits narrow execution sources and
+  access. rho external Bots permit writable Conversation and Speaker memory
+  and read-only Workspace memory, excluding Agent-private and Human-owned notes.
+- Relative Speaker sources use the input's subject at materialization.
+  Management may select a subject explicitly; reads do not allocate defaults.
+  Delegation retains that subject but uses the receiving Agent's own notes.
+- Archive makes a collection read-only; Delete makes it unavailable without
+  stopping consumers. Old captures cannot adopt a replacement collection.
+- Skills are documents too. Effective bindings constrain their database
+  sources; declared Runners can separately serve skill documents.
 
 The kernel owns the mechanism and the application owns extraction and ranking. Nexus does not automatically extract memory from conversations; rho offers an optional [background memory review](../use/files-images-memory.md#background-memory-review). A model saying it remembered something should be backed by a successful memory operation.
 

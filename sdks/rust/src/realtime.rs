@@ -261,24 +261,24 @@ impl CableClient {
                 .map_err(|_| Error::Realtime {
                     kind: RealtimeFailure::Disconnected,
                 })?;
-            if let Message::Text(text) = frame {
-                if let Ok(v) = serde_json::from_str::<Value>(&text) {
-                    if v.get("identifier").and_then(Value::as_str) == Some(&identifier) {
-                        match v.get("type").and_then(Value::as_str) {
-                            Some("confirm_subscription") => break,
-                            Some("reject_subscription") => {
-                                return Err(Error::Realtime {
-                                    kind: RealtimeFailure::Rejected,
-                                });
-                            }
-                            _ => {}
+            if let Message::Text(text) = frame
+                && let Ok(v) = serde_json::from_str::<Value>(&text)
+            {
+                if v.get("identifier").and_then(Value::as_str) == Some(&identifier) {
+                    match v.get("type").and_then(Value::as_str) {
+                        Some("confirm_subscription") => break,
+                        Some("reject_subscription") => {
+                            return Err(Error::Realtime {
+                                kind: RealtimeFailure::Rejected,
+                            });
                         }
+                        _ => {}
                     }
-                    if v.get("type").and_then(Value::as_str) == Some("disconnect") {
-                        return Err(Error::Realtime {
-                            kind: RealtimeFailure::Disconnected,
-                        });
-                    }
+                }
+                if v.get("type").and_then(Value::as_str) == Some("disconnect") {
+                    return Err(Error::Realtime {
+                        kind: RealtimeFailure::Disconnected,
+                    });
                 }
             }
         }
@@ -296,7 +296,7 @@ impl CableClient {
                   match message{
                    Message::Text(text)=>{let Ok(v)=serde_json::from_str::<Value>(&text)else{continue;};match v.get("type").and_then(Value::as_str){Some("disconnect")=>{actor_lost.store(true,Ordering::Release);break;},Some("ping")=>{if matches!(channel,Channel::ExecutorInbox){let pong=json!({"command":"message","identifier":identifier,"data":json!({"action":"pong"}).to_string()});if !matches!(tokio::time::timeout(heartbeat,socket.send(Message::Text(pong.to_string().into()))).await,Ok(Ok(()))){actor_lost.store(true,Ordering::Release);break;}}},_=>{}}
                     if v.get("identifier").and_then(Value::as_str)!=Some(&identifier){continue;}
-                    if let Some(message)=v.get("message"){if let Some(frame)=decode_frame(&channel,message.clone()){if sender.try_send(frame).is_err(){actor_lost.store(true,Ordering::Release);break;}}}
+                    if let Some(message)=v.get("message")&& let Some(frame)=decode_frame(&channel,message.clone())&& sender.try_send(frame).is_err(){actor_lost.store(true,Ordering::Release);break;}
                    },Message::Close(_)=>{actor_lost.store(true,Ordering::Release);break;},Message::Ping(bytes)=>{if !matches!(tokio::time::timeout(heartbeat,socket.send(Message::Pong(bytes))).await,Ok(Ok(()))){actor_lost.store(true,Ordering::Release);break;}},_=>{}
                   }
                  }

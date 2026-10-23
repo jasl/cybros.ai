@@ -178,12 +178,14 @@ class CeremonyResumeTest < Minitest::Test
     # hold the whole transport to a baseline: a fresh observation must keep
     # status reads free — no probe, and no workspace relist either.
     await_workspace_state(restarted, "error", token: bearer(restarted))
-    # Placement also spawns the initial declaration; its executor discovery
-    # runs on the reactor after maintenance has returned. A rejected catalogue
-    # read ends that declaration, independently of any status request.
+    # Placement also spawns declaration and recovery reads on the reactor.
+    # Wait for both refused reads before measuring status; neither belongs to
+    # the status request and maintenance can return before they run.
     wait_for do
       !restarted.maintenance.running? &&
-        refusing.calls.any? { |path, _| path == "/agent_api/v1/executors" }
+        %w[/agent_api/v1/executors /agent_api/v1/profile/agents].all? do |expected|
+          refusing.calls.any? { |path, _| path == expected }
+        end
     end
     baseline = refusing.calls.length
     3.times { request(restarted, :get, "/status", token: bearer(restarted)) }

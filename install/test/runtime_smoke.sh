@@ -43,10 +43,10 @@ test ! -d "$(rustc --print sysroot)/share/doc/rust/html"
 test "$(command -v python3)" = /opt/cowork/bin/python3
 test -z "${VIRTUAL_ENV:-}${PYTHONPATH:-}"
 uv python list --only-installed --managed-python --output-format json |
-  jq -e 'length > 0 and all(.[]; .version_parts.major == 3 and .version_parts.minor == 14)' >/dev/null
+  jq -e 'length > 0 and all(.[]; .version_parts.major == 3 and .version_parts.minor == 15)' >/dev/null
 uv_tools=$(uv tool dir)
 for python in /opt/cowork/bin/python "$uv_tools"/ruff/bin/python "$uv_tools"/pyright/bin/python "$uv_tools"/mypy/bin/python; do
-  "$python" -c 'import sys; assert sys.version_info[:2] == (3, 14), (sys.executable, sys.version)'
+  "$python" -c 'import sys; assert sys.version_info[:2] == (3, 15), (sys.executable, sys.version)'
 done
 work=${1:-$(mktemp -d)}
 if [ "$#" = 0 ]; then trap 'rm -rf "$work"' EXIT; fi

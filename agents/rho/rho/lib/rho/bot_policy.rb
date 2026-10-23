@@ -18,9 +18,9 @@ module Rho
     SUBAGENT_TOOLS = %w[nexus.conversation.spawn nexus.graph.delegate_task].freeze
     DELEGATION_TOOLS = %w[nexus.conversation.spawn nexus.conversation.send].freeze
     MEMORY_CONTEXT_LIMIT = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-      { "name" => "speaker", "scope" => "speaker", "access" => "read_write" },
-      { "name" => "workspace", "scope" => "workspace", "access" => "read" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+      { "name" => "speaker", "source" => { "scope" => "speaker" }, "access" => "read_write" },
+      { "name" => "workspace", "source" => { "scope" => "workspace" }, "access" => "read" },
     ] }.freeze
 
     class << self

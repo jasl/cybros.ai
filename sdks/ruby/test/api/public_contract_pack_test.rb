@@ -541,14 +541,14 @@ class ApiPublicContractPackTest < Minitest::Test
       CybrosAgent::Api::MemoryDocument.members.map(&:to_s).sort,
       "the typed document carries exactly the presenter's projection"
 
-    loaded = api_client(skill).profile.memory.read(skill.dig("memory", "path"))
+    loaded = api_client(skill).memory_collections.documents("collection").read(skill.dig("memory", "path"))
     assert_equal skill.dig("memory", "description"), loaded.description
     assert_predicate loaded, :skill?
     assert_includes pack.fetch("skill_anchors"), "workspace"
     assert_match Regexp.new(pack.fetch("skill_name_format")), "commit-style"
     refute_match Regexp.new(pack.fetch("skill_name_format")), "Commit"
 
-    listed = api_client(pack.fetch("valid_list_fixture")).profile.memory.list
+    listed = api_client(pack.fetch("valid_list_fixture")).memory_collections.documents("collection").list
     assert_equal 2, listed.length
     assert listed.all? { |row| row.content.nil? }
 

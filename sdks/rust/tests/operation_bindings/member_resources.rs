@@ -97,24 +97,8 @@
         "/agent_api/v1/profile/agents",
         member.profile().agents().list()
     );
-    operation!(
-        "GET /agent_api/v1/profile/agents/{agent_name}/memory",
-        "GET",
-        "/agent_api/v1/profile/agents/fixture/memory",
-        member
-            .profile()
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .memory()
-            .list(&Default::default())
-    );
-    operation!(
-        "GET /agent_api/v1/profile/memory",
-        "GET",
-        "/agent_api/v1/profile/memory",
-        member.profile().memory().list(&Default::default())
-    );
+
+
     operation!(
         "GET /agent_api/v1/profile/prompt_documents",
         "GET",
@@ -204,16 +188,7 @@
             .unwrap()
             .search_conversations(&Default::default())
     );
-    operation!(
-        "GET /agent_api/v1/workspaces/{workspace_public_id}/memory",
-        "GET",
-        "/agent_api/v1/workspaces/fixture/memory",
-        member
-            .workspace("fixture")
-            .unwrap()
-            .memory()
-            .list(&Default::default())
-    );
+
     operation!(
         "GET /agent_api/v1/workspaces/{workspace_public_id}/messaging",
         "GET",
@@ -311,66 +286,11 @@
             .unwrap()
             .update(&Default::default())
     );
-    operation!(
-        "POST /agent_api/v1/profile/agents/{agent_name}/memory",
-        "POST",
-        "/agent_api/v1/profile/agents/fixture/memory",
-        member
-            .profile()
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .memory()
-            .write(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/profile/agents/{agent_name}/memory/delete",
-        "POST",
-        "/agent_api/v1/profile/agents/fixture/memory/delete",
-        member
-            .profile()
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .memory()
-            .delete(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/profile/agents/{agent_name}/memory/edit",
-        "POST",
-        "/agent_api/v1/profile/agents/fixture/memory/edit",
-        member
-            .profile()
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .memory()
-            .edit(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/profile/agents/{agent_name}/memory/grep",
-        "POST",
-        "/agent_api/v1/profile/agents/fixture/memory/grep",
-        member
-            .profile()
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .memory()
-            .grep(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/profile/agents/{agent_name}/memory/show",
-        "POST",
-        "/agent_api/v1/profile/agents/fixture/memory/show",
-        member
-            .profile()
-            .agents()
-            .agent("fixture")
-            .unwrap()
-            .memory()
-            .read(&Default::default())
-    );
+
+
+
+
+
     operation!(
         "POST /agent_api/v1/profile/ingress_speakers",
         "POST",
@@ -379,36 +299,11 @@
             .profile()
             .resolve_ingress_speaker(&Default::default())
     );
-    operation!(
-        "POST /agent_api/v1/profile/memory",
-        "POST",
-        "/agent_api/v1/profile/memory",
-        member.profile().memory().write(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/profile/memory/delete",
-        "POST",
-        "/agent_api/v1/profile/memory/delete",
-        member.profile().memory().delete(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/profile/memory/edit",
-        "POST",
-        "/agent_api/v1/profile/memory/edit",
-        member.profile().memory().edit(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/profile/memory/grep",
-        "POST",
-        "/agent_api/v1/profile/memory/grep",
-        member.profile().memory().grep(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/profile/memory/show",
-        "POST",
-        "/agent_api/v1/profile/memory/show",
-        member.profile().memory().read(&Default::default())
-    );
+
+
+
+
+
     operation!(
         "POST /agent_api/v1/profile/store_entries",
         "POST",
@@ -446,56 +341,11 @@
         "/agent_api/v1/workspaces/fixture/archival",
         member.workspace("fixture").unwrap().archive(1)
     );
-    operation!(
-        "POST /agent_api/v1/workspaces/{workspace_public_id}/memory",
-        "POST",
-        "/agent_api/v1/workspaces/fixture/memory",
-        member
-            .workspace("fixture")
-            .unwrap()
-            .memory()
-            .write(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/delete",
-        "POST",
-        "/agent_api/v1/workspaces/fixture/memory/delete",
-        member
-            .workspace("fixture")
-            .unwrap()
-            .memory()
-            .delete(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/edit",
-        "POST",
-        "/agent_api/v1/workspaces/fixture/memory/edit",
-        member
-            .workspace("fixture")
-            .unwrap()
-            .memory()
-            .edit(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/grep",
-        "POST",
-        "/agent_api/v1/workspaces/fixture/memory/grep",
-        member
-            .workspace("fixture")
-            .unwrap()
-            .memory()
-            .grep(&Default::default())
-    );
-    operation!(
-        "POST /agent_api/v1/workspaces/{workspace_public_id}/memory/show",
-        "POST",
-        "/agent_api/v1/workspaces/fixture/memory/show",
-        member
-            .workspace("fixture")
-            .unwrap()
-            .memory()
-            .read(&Default::default())
-    );
+
+
+
+
+
     operation!(
         "POST /agent_api/v1/workspaces/{workspace_public_id}/ownership_transfer",
         "POST",

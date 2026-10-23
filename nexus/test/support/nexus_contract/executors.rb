@@ -100,7 +100,11 @@ module Nexus
           executor_public_id = "01900000-0000-7000-8000-000000000030"
           executor = Data.define(:public_id, :display_name).new(public_id: executor_public_id, display_name: "Fixture runner")
           # Every row names its workspace, including a standalone loop with no conversation.
-          workspace = Data.define(:public_id).new(public_id: "01900000-0000-7000-8000-000000000001")
+          workspace = Data.define(:public_id) do
+            def non_tombstoned? = true
+            def data_accessible_by?(_principal) = true
+            def memory_collections = MemoryCollection.none
+          end.new(public_id: "01900000-0000-7000-8000-000000000001")
           run = Data.define(:public_id, :workspace, :conversation)
             .new(public_id: "01900000-0000-7000-8000-000000000031", workspace: workspace, conversation: nil)
           # A standalone Human-created loop resolves only the default workspace memory

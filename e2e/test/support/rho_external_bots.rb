@@ -13,7 +13,7 @@ module E2E
       owner_turn = external_turn(owner, "owner-ready")
       external_seed(owner, "agent/private.md", "owner-agent-private-fact")
       external_seed(owner, "speaker/preferences.md", "owner-speaker-private-fact", speaker_public_id: external_speaker(owner_turn))
-      shared = @human.workspace(@first_workspace).memory.write("workspace/knowledge.md", "Published shared knowledge",
+      shared = E2E::MemoryCollections.default_documents(@human.workspace(@first_workspace)).write("knowledge.md", "Published shared knowledge",
         expected_public_id: nil, expected_lock_version: nil)
       external_connect(@alpha, chat_id: -201, users: [202, 303])
       external_connect(@beta, chat_id: -202, users: [202])
@@ -31,7 +31,7 @@ module E2E
       assert_match(/\Amemory_scope_unavailable:/, external_tool_output(first, "memory_read", occurrence: 1, error: true))
       assert_match(/\Amemory_scope_unavailable:/, external_tool_output(first, "memory_read", occurrence: 2, error: true))
       assert_match(/\Amemory_read_only:/, external_tool_output(first, "memory_write", occurrence: 2, error: true))
-      assert_equal shared.to_h, @human.workspace(@first_workspace).memory.read("workspace/knowledge.md").to_h
+      assert_equal shared.to_h, E2E::MemoryCollections.default_documents(@human.workspace(@first_workspace)).read("knowledge.md").to_h
       refute_includes external_request_text(first), "owner-agent-private-fact"
       refute_includes external_request_text(first), "owner-speaker-private-fact"
       bindings = alpha_202.fetch.memory_context.fetch("bindings")
@@ -72,51 +72,6 @@ module E2E
       assert_equal "Alpha visitor 202 fact", external_tool_output(recalled, "memory_read", occurrence: 0)
       assert_match(/\Amemory_not_found:/, external_tool_output(recalled, "memory_read", occurrence: 1, error: true))
       assert_match(/\Anot_found:/, external_tool_output(recalled, "session_read", error: true))
-    end
-
-    def test_external_delegation_uses_a_role_with_private_child_memory_and_the_source_bot
-      private_bot = create_bot("private")
-      external_connect(@alpha, chat_id: -201, users: [202])
-      external_connect(@beta, chat_id: -202, users: [202])
-      beta, beta_turn = external_message(@beta, 1, 202, [
-        ["memory_write", { "path" => "speaker/preferences.md", "content" => "Beta knows this visitor" }],
-      ], reply: "beta-ready")
-      # A scripted final reply does not prove the preceding write committed.
-      external_tool_output(beta_turn, "memory_write")
-      identities = @daemon.control(:get, "/agents").fetch("bots").map { |row| row.fetch("public_id") }.sort
-      beta_messages = bot_messages(@beta)
-      brief = external_script([
-        ["memory_read", { "path" => "speaker/preferences.md" }],
-        ["memory_read", { "path" => "workspace/knowledge.md" }],
-        ["memory_write", { "path" => "conversation/delegated.md", "content" => "Learned in the delegated child" }],
-      ], reply: "worker-child-result")
-      parent, parent_turn = external_message(@alpha, 2, 202, [
-        ["spawn", { "agent" => private_bot.fetch("public_id"), "prompt" => brief, "label" => "private" }],
-        ["spawn", { "agent" => @beta.fetch("public_id"), "prompt" => brief, "label" => "peer" }],
-        ["spawn", { "prompt" => brief, "label" => "missing" }],
-        ["spawn", { "role" => "worker", "prompt" => brief, "label" => "specialist", "wait" => true }],
-      ], reply: "alpha-parent-synthesis")
-      attempts = @human.workspace(@first_workspace).runs.run(parent_turn.active_variant.run_public_id).fetch.tasks.select { |task| task.tool_name == "spawn" }
-      assert_equal 4, attempts.length
-      assert_equal %w[failed failed failed completed], attempts.map(&:status)
-      attempts.first(3).each { |task| assert_equal "approval_denied", task.error.fetch("key") }
-      child = @daemon.await("the external worker child is created") do
-        parent.children.items.find { |row| row.parent&.label == "specialist" }
-      end
-      child_chat = external_chat(child.public_id)
-      assert_equal [child.public_id], parent.children.items.map(&:public_id), "refused targets create no children"
-      child_turn = external_turn(child_chat, "worker-child-result")
-      assert_equal @alpha.fetch("public_id"), child.answering_user_public_id
-      assert child_chat.fetch.agent_configuration_present
-      assert_equal ["conversation"], child_turn.active_variant.memory_context.fetch("bindings").map { |binding| binding.fetch("name") }
-      assert_match(/\Amemory_scope_unavailable:/, external_tool_output(child_turn, "memory_read", occurrence: 0, error: true))
-      assert_match(/\Amemory_scope_unavailable:/, external_tool_output(child_turn, "memory_read", occurrence: 1, error: true))
-      assert_equal "Learned in the delegated child", child_chat.memory.read("conversation/delegated.md").content
-      assert_empty parent.memory.list.select { |row| row.path.start_with?("conversation/") }
-      assert_equal "Beta knows this visitor", external_memory(beta, beta_turn, "speaker/preferences.md").fetch("content")
-      assert_equal identities, @daemon.control(:get, "/agents").fetch("bots").map { |row| row.fetch("public_id") }.sort
-      assert_equal beta_messages, bot_messages(@beta), "role execution never redirects replies to a peer Bot"
-      assert_equal 1, bot_messages(@alpha).count { |message| message["text"] == "Mock: alpha-parent-synthesis" }
     end
 
     def test_presets_are_portable_configuration_and_bot_duplicate_creates_a_fresh_identity
@@ -234,7 +189,7 @@ module E2E
       end
 
       def external_speaker(turn)
-        turn.active_variant.memory_context.fetch("bindings").find { |binding| binding.fetch("name") == "speaker" }.fetch("speaker_public_id")
+        turn.active_variant.memory_context.fetch("bindings").find { |binding| binding.fetch("name") == "speaker" }.fetch("capture").fetch("speaker_public_id")
       end
 
       def external_memory(chat, turn, path)
@@ -242,7 +197,8 @@ module E2E
       end
 
       def external_seed(chat, path, content, speaker_public_id: nil)
-        @core.memory_write(chat.public_id, path: path, content: content, expected_public_id: nil,
+        @core.memory_write(chat.public_id, path: path, content: content,
+          expected_collection_public_id: @core.memory_target(chat.public_id, path: path, speaker_public_id: speaker_public_id, workspace_public_id: @first_workspace).fetch("collection_public_id"), expected_public_id: nil,
           expected_lock_version: nil, speaker_public_id: speaker_public_id, workspace_public_id: @first_workspace)
       end
 

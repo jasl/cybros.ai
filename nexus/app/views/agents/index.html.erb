@@ -1,13 +1,9 @@
 <% content_for :title, t("agents.index.my_agents") %>
 
 <div class="space-y-8">
-  <header class="flex flex-wrap items-end justify-between gap-3">
-    <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight"><%= t("agents.index.my_agents") %></h1>
-      <p class="text-sm text-base-content/60"><%= t("agent_resources.index_description") %></p>
-    </div>
+  <%= render layout: "shared/page_header", locals: { title: t("agents.index.my_agents"), description: t("agent_resources.index_description") } do %>
     <%= link_to t("agents.index.connect_agent"), agent_connection_path, class: "btn btn-primary btn-sm" %>
-  </header>
+  <% end %>
 
   <%= render "agents/filters", path: agents_path, query_max_length: AgentsController::SEARCH_QUERY_MAX_LENGTH %>
 

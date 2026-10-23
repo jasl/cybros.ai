@@ -411,10 +411,8 @@ class OpsReadsTest < Minitest::Test
     assert_equal "401", request(daemon, :get, "/runs/graph?public_id=al-9").code
   end
 
-  # `rho skills`' ROW HALF: the two rungs through the
-  # two memory doors that own them — the Agent's `agent/` at the profile
-  # door, the workspace rung at the adopted workspace's OWN door (no conversation picked, none followed) — the
-  # kernel's skill words relayed as the 422s they are.
+  # Skills discover the two default collections, then use UUID-addressed
+  # documents with relative paths and the caller's document conditions.
   def test_the_skill_routes_reach_the_two_rungs_through_their_doors
     api = NexusDoubles::FakeAgentApi.new
     api.stock_memory("profile", "agent/notes.md", "n")
@@ -425,11 +423,11 @@ class OpsReadsTest < Minitest::Test
 
     response = request(daemon, :post, "/skills/push", token: bearer(daemon),
       body: { scope: "workspace", name: "commit-style", description: "How commits are written.", content: "# Commits\n",
-              expected_public_id: nil, expected_lock_version: nil })
+              expected_collection_public_id: "collection-workspace", expected_public_id: nil, expected_lock_version: nil })
     assert_equal "201", response.code, response.body
     written = JSON.parse(response.body).fetch("memory")
-    assert_equal ["workspace/skills/commit-style", "How commits are written."], written.values_at("path", "description")
-    assert_equal({ "path" => "workspace/skills/commit-style", "content" => "# Commits\n",
+    assert_equal ["skills/commit-style", "How commits are written."], written.values_at("path", "description")
+    assert_equal({ "path" => "skills/commit-style", "content" => "# Commits\n",
                    "description" => "How commits are written.", "expected_public_id" => nil,
                    "expected_lock_version" => nil }, api.memory_writes.fetch(0),
       "the description rides the door's write beside the path and the content")
@@ -441,7 +439,7 @@ class OpsReadsTest < Minitest::Test
     assert_equal "Review: how I do it.", skills.fetch("agent").first.fetch("description")
     assert_equal ["commit-style"], skills.fetch("workspace").map { |row| row.fetch("name") }, "workspace/skills/ only"
     refute skills.key?("conversation"), "the workspace rung is the room's own door: no conversation names it"
-    assert api.requests.any? { |path, _, _| path.match?(%r{/workspaces/[^/]+/memory\z}) },
+    assert api.requests.any? { |path, _, _| path == "/agent_api/v1/memory_collections/collection-workspace/documents" },
       "the workspace door, not a conversation's"
     assert_equal [], skills.fetch("project"), "agent mode loads no runner tool: its runner address announces no document"
 
@@ -450,15 +448,15 @@ class OpsReadsTest < Minitest::Test
     assert_equal "# Commits\n", JSON.parse(response.body).dig("memory", "content")
 
     response = request(daemon, :post, "/skills/push", token: bearer(daemon),
-      body: { scope: "agent", name: "nope", content: "x", expected_public_id: nil, expected_lock_version: nil })
+      body: { scope: "agent", name: "nope", content: "x", expected_collection_public_id: "collection-profile", expected_public_id: nil, expected_lock_version: nil })
     assert_equal "422", response.code, response.body
     assert_equal "skill_description_required", JSON.parse(response.body).dig("error", "code")
 
     response = request(daemon, :post, "/skills/rm", token: bearer(daemon),
-      body: { scope: "workspace", name: "commit-style", expected_public_id: written.fetch("public_id"),
+      body: { scope: "workspace", name: "commit-style", expected_collection_public_id: "collection-workspace", expected_public_id: written.fetch("public_id"),
               expected_lock_version: written.fetch("lock_version") })
     assert_equal "200", response.code, response.body
-    assert_equal "workspace/skills/commit-style", JSON.parse(response.body).dig("deleted", "path")
+    assert_equal "skills/commit-style", JSON.parse(response.body).dig("deleted", "path")
     response = request(daemon, :get, "/skills/show?scope=workspace&name=commit-style", token: bearer(daemon))
     assert_equal "404", response.code, response.body
 
@@ -472,18 +470,18 @@ class OpsReadsTest < Minitest::Test
     daemon = member_ready(boot, api)
     read = request(daemon, :get, "/skills/show?scope=workspace&name=review", token: bearer(daemon))
     observed = JSON.parse(read.body).fetch("memory")
-    condition = { expected_public_id: observed.fetch("public_id"), expected_lock_version: observed.fetch("lock_version") }
+    condition = { expected_collection_public_id: observed.fetch("collection_public_id"), expected_public_id: observed.fetch("public_id"), expected_lock_version: observed.fetch("lock_version") }
     body = { scope: "workspace", name: "review", description: "Review a change.", content: "new", **condition }
     response = request(daemon, :post, "/skills/push", token: bearer(daemon), body: body)
     assert_equal "201", response.code, response.body
-    assert_equal condition.values, api.memory_writes.last.values_at("expected_public_id", "expected_lock_version")
+    assert_equal condition.values_at(:expected_public_id, :expected_lock_version), api.memory_writes.last.values_at("expected_public_id", "expected_lock_version")
 
     ["/skills/push", "/skills/rm"].each do |path|
       response = request(daemon, :post, path, token: bearer(daemon), body: body)
       assert_equal "409", response.code, response.body
       assert_equal "stale_object", JSON.parse(response.body).dig("error", "code")
     end
-    assert_equal 1, api.requests.count { |path, _, _| path.end_with?("/memory/show") },
+    assert_equal 1, api.requests.count { |path, _, _| path.end_with?("/documents/show") },
       "mutations must not fetch a newer version behind the caller's back"
     read = request(daemon, :get, "/skills/show?scope=workspace&name=review", token: bearer(daemon))
     assert_equal "new", JSON.parse(read.body).dig("memory", "content")

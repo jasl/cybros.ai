@@ -4,7 +4,7 @@ import { Profile, Models, Tools, ModelProviders, Executors, McpConnections } fro
 import { Workspaces, WorkspaceScope } from './resources/workspaces.js';
 import { AllConversations } from './resources/conversations.js';
 import { WorkQueries } from './resources/work.js';
-import { Uploads, UploadStaging, WorkspaceSchedules } from './resources/data.js';
+import { MemoryCollections, Uploads, UploadStaging, WorkspaceSchedules } from './resources/data.js';
 import { ExecutorInbox, ExecutorTask } from './resources/executor.js';
 import { Budgets, CostUnit, ModelUsage, Persona, PlatformAgents, PlatformRunners, PlatformMcpConnections, PlatformModels, PlatformProfile, Retention, Session } from './resources/platform.js';
 import { PlatformModelProviders } from './resources/providers.js';
@@ -19,6 +19,7 @@ export class Client {
   get profile() { return new Profile(this.#transport, '/agent_api/v1/profile'); }
   get workspaces() { return new Workspaces(this.#transport, '/agent_api/v1/workspaces'); }
   workspace(id: string) { return new WorkspaceScope(this.#transport, `/agent_api/v1/workspaces/${segment(id)}`); }
+  get memoryCollections() { return new MemoryCollections(this.#transport, '/agent_api/v1/memory_collections'); }
   get conversations() { return new AllConversations(this.#transport, '/agent_api/v1/conversations'); }
   get schedules() { return new WorkspaceSchedules(this.#transport, '/agent_api/v1/schedules'); }
   get work() { return new WorkQueries(this.#transport, '/agent_api/v1'); }

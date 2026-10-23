@@ -11,7 +11,7 @@ class Nexus::AgentHandlesTest < ActiveSupport::TestCase
     assert_operator words.length, :>=, 200
     assert_equal words.length, words.uniq.length, "no repeats"
     words.each do |word|
-      assert_match User::Handle::FORMAT, word
+      assert_match Constants::HANDLE_FORMAT, word
       assert_operator word.length, :<=, 12, "short words leave room for a suffix"
     end
   end

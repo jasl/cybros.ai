@@ -76,6 +76,7 @@ module Workspaces
         workspace.access_mode = access_mode if access_mode
 
         if workspace.save
+          MemoryCollection.default_for(workspace)
           Mutation::Result.done(:created, workspace)
         else
           Mutation::Result.invalid(workspace)

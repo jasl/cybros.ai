@@ -50,7 +50,10 @@ class Runs::DelegationReapTest < ActiveJob::TestCase
       host: child, input_public_id: input.public_id, acting_user: @agent))
     assert result.accepted?, result.outcome.inspect
     assert_equal "failed", call.spawn_delegation.reload.status
-    assert child.with_lock { Conversations::Reap.destroy_aggregate(child) }
+    assert child.with_lock {
+      MemoryCollections::Drain.call(owner: child, budget: 20)
+      Conversations::Reap.destroy_aggregate(child)
+    }
     assert_not Conversation.exists?(child.id)
   end
 
@@ -103,7 +106,10 @@ class Runs::DelegationReapTest < ActiveJob::TestCase
     assert_equal "Mock: original report", call.spawn_delegation.output_body.effective_text
     assert_equal 1, Runs::Reap.call(batch: 1)[:reaped]
     assert_not Run.exists?(original.id)
-    assert child.with_lock { Conversations::Reap.destroy_aggregate(child) }
+    assert child.with_lock {
+      MemoryCollections::Drain.call(owner: child, budget: 20)
+      Conversations::Reap.destroy_aggregate(child)
+    }
     assert_equal "Mock: original report", call.spawn_delegation.reload.output_body.effective_text
     assert Run.exists?(parent.id)
   end
@@ -130,12 +136,18 @@ class Runs::DelegationReapTest < ActiveJob::TestCase
   test "a retained child does not hide the next conversation in a bounded sweep" do
     _parent, _call, child = spawn_scoped
     complete_child(child)
+    collection = child.memory_collections.sole
+    anchor = Scopes::Anchor::Result.new(collection: collection, scope: "conversation", name: "retained.md", refusal: nil)
+    written = collection.with_mutation { MemoryDocuments::Write.call(anchor: anchor, content: "owned report", expected: nil) }
+    assert_predicate written, :written?
     at = (Conversation::RETENTION_PERIOD + 2.days).ago
     child.reload.update!(tombstoned_at: at)
     independent = Conversation.create!(workspace: @workspace, creating_user: @human,
       tombstoned_at: at + 1.minute)
 
     first = Conversations::Reap.call(batch: 1).value
+    assert_equal 0, first[:memory_processed]
+    assert_equal "owned report", written.document.reload.content
     assert_equal 0, first[:reaped]
     assert first.more?
     second = Conversations::Reap.call(batch: 1,
@@ -156,6 +168,8 @@ class Runs::DelegationReapTest < ActiveJob::TestCase
     # execution is also the newest loop, so both shared teardown routes
     # must preserve the report even though the workspace is deleted. The
     # independent replay receipt can still consume the one unit of work.
+    assert_equal 1, Workspaces::Collect.call(budget: 1)[:processed]
+    assert_empty @workspace.memory_collections
     pass = nil
     assert_difference -> { ConversationCommandReceipt.where(workspace: @workspace).count }, -1 do
       pass = Workspaces::Collect.call(budget: 1)
@@ -169,7 +183,7 @@ class Runs::DelegationReapTest < ActiveJob::TestCase
 
     Runs::Spawn::Relay.call(conversation_id: child.id)
     assert_equal "completed", call.spawn_delegation.reload.status
-    assert_equal 1, Workspaces::Collect.call(budget: 1)[:processed]
+    2.times { assert_equal 1, Workspaces::Collect.call(budget: 1)[:processed] }
     assert_not Conversation.exists?(child.id)
     assert_equal "Mock: original report", call.spawn_delegation.reload.output_body.effective_text
   end
@@ -192,7 +206,7 @@ class Runs::DelegationReapTest < ActiveJob::TestCase
     end
     @workspace.update_columns(deleted_at: 31.days.ago)
 
-    6.times do
+    8.times do
       Runs::ScheduleSweep.call
       Runs::Spawn::Relay.call
       Workspaces::Collect.call(budget: 1)
@@ -213,6 +227,8 @@ class Runs::DelegationReapTest < ActiveJob::TestCase
     # The collector wins before the authority sweep has canceled this loop.
     # No child invocation exists yet, but its accepted request still needs
     # the source task to survive until exact cleanup removes the Input.
+    assert_equal 1, Workspaces::Collect.call(budget: 1)[:processed]
+    assert_empty @workspace.memory_collections
     pass = nil
     assert_difference -> { ConversationCommandReceipt.where(workspace: @workspace).count }, -1 do
       pass = Workspaces::Collect.call(budget: 1)
@@ -226,7 +242,7 @@ class Runs::DelegationReapTest < ActiveJob::TestCase
 
     Runs::Spawn::Relay.call
     assert_not child.inputs.exists?(public_id: input_id)
-    4.times { Workspaces::Collect.call(budget: 1) }
+    5.times { Workspaces::Collect.call(budget: 1) }
     assert_not Run.exists?(parent.id)
     assert_not Conversation.exists?(child.id)
   end

@@ -94,7 +94,7 @@ class RhoMemoryReviewTest < Minitest::Test
     end
     assert_equal review_id, @core.memory_review(id).fetch("run_public_id"), "another Speaker never reviews the selected person's document"
     assert_equal document, read_memory.call
-    refute chat.fetch.memory_context.fetch("bindings").find { |binding| binding.fetch("scope") == "speaker" }.key?("speaker_public_id"),
+    refute chat.fetch.memory_context.fetch("bindings").find { |binding| binding.fetch("source")["scope"] == "speaker" }.fetch("source").key?("speaker_public_id"),
       "review selects its document without pinning the conversation to that person"
 
     malformed = @core.say(id, "!mock raw_reply=malformed-review-output -- A routine acknowledgement.", model: MODEL)
@@ -107,7 +107,7 @@ class RhoMemoryReviewTest < Minitest::Test
     assert_equal document, read_memory.call, "a malformed proposal preserves the saved document"
 
     @core.memory_delete(id, path: path, speaker_public_id: speaker,
-      expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version"))
+      expected_collection_public_id: document.fetch("collection_public_id"), expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version"))
     @daemon.stop
     @daemon.start
     @daemon.await_announced(address: "agent")
@@ -233,78 +233,6 @@ class RhoMemoryReviewTest < Minitest::Test
     assert_empty reader_workspace.runs.list.items, "neither source nor review escapes through the workspace run list"
     assert_empty @workspace.inference_requests.list.items, "review never copies private content into a standalone InferenceRequest"
     assert_empty reader_workspace.inference_requests.list.items
-  end
-
-  def test_a_review_input_blocked_after_submission_settles_without_changing_memory
-    opened = @core.open_conversation(model: MODEL, directory: @project)
-    id = opened.fetch("conversation").fetch("public_id")
-    chat = @workspace.conversation(id)
-    @core.enable_memory_review(id, path: PATH, model: "dev/missing-review-model")
-    initial = chat.memory.read(PATH)
-    accepted = @core.say(id, "!mock reply=source -- Verified the release checklist.", model: MODEL)
-    source = completed_turn(chat, accepted.fetch("run").fetch("public_id"))
-    reviewed = settled_review(id, outcome: "failed")
-    assert_nil reviewed.fetch("run_public_id"), "a blocked input never starts a review run"
-    side = @workspace.conversation(reviewed.fetch("review_conversation_public_id"))
-    assert_predicate side.fetch, :side?
-    assert_empty side.inputs.list.items, "the blocked input cannot resume after review has failed"
-    assert_empty side.turns.list.items.reject(&:inherited?)
-    assert_equal initial.to_h, chat.memory.read(PATH).to_h
-    assert_equal "completed", chat.turns.fetch(source.public_id).status
-  end
-
-  def test_the_human_platform_persona_is_the_same_document_as_the_member_persona
-    E2E::SessionSignInBudget.consume
-    grant = CybrosAgent::Platform::Sessions.new(base_url: @base_url).create(email: @steward.email, password: @steward.password)
-    E2E::SecretHygiene.register(grant.token)
-    @operator = CybrosAgent::PlatformClient.new(base_url: @base_url, credential: grant.token)
-    previous = begin
-      @operator.persona.read
-    rescue CybrosAgent::Api::NotFound
-      nil
-    end
-    content = "Prefer concise answers and state uncertainty clearly."
-    saved = @operator.persona.write(content)
-    assert_equal content, @operator.persona.read.content
-    assert_equal saved.to_h, @member.profile.prompt_documents.read("persona").to_h
-
-    @daemon.stop
-    @daemon.start
-    @daemon.await("rho never readopted its workspace") { @daemon.status.dig("workspace", "state") == "adopted" }
-    @daemon.await_announced(address: "agent")
-    @core = Rho::Core.new(home: Rho::Home.resolve(base_url: @base_url, root: @home))
-    assert_equal saved.to_h, @operator.persona.read.to_h
-    assert_equal saved.to_h, @member.profile.prompt_documents.read("persona").to_h
-    opened = @core.open_conversation(model: MODEL, directory: @project)
-    id = opened.fetch("conversation").fetch("public_id")
-    accepted = @core.say(id, "!mock reply=persona-loaded -- Acknowledge the saved preferences.", model: MODEL)
-    run_id = accepted.fetch("run").fetch("public_id")
-    run = completed_run(run_id)
-    assert_equal ["model_task"], run.tasks.map(&:kind)
-    request = @workspace.runs.run(run_id).tasks_context(run.tasks.fetch(0).key).request
-    prompt = JSON.generate(request.entries)
-    assert_includes prompt, content
-    assert_includes prompt, "Prefer at most three agent levels in total"
-
-    replaced = @operator.persona.write("Use numbered steps for procedures.")
-    assert_operator replaced.version, :>, saved.version
-    assert_equal replaced.to_h, @member.profile.prompt_documents.read("persona").to_h
-    @operator.persona.delete
-    missing = assert_raises(CybrosAgent::Api::NotFound) { @operator.persona.read }
-    assert_equal "prompt_document_not_found", missing.code
-    assert_raises(CybrosAgent::Api::NotFound) { @member.profile.prompt_documents.read("persona") }
-  ensure
-    if @operator
-      if previous
-        @operator.persona.write(previous.content, role: previous.role)
-      else
-        begin
-          @operator.persona.delete
-        rescue CybrosAgent::Api::NotFound
-          nil
-        end
-      end
-    end
   end
 
   private

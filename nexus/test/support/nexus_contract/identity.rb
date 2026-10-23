@@ -176,10 +176,10 @@ module Nexus
               "runner_tool_names" => nil,
               "mcp_tools" => [],
               "memory_context_limit" => { "bindings" => [
-                { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-                { "name" => "workspace", "scope" => "workspace", "access" => "read" },
-                { "name" => "agent", "scope" => "agent", "access" => "read_write" },
-                { "name" => "speaker", "scope" => "speaker", "access" => "read_write" },
+                { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+                { "name" => "workspace", "source" => { "scope" => "workspace" }, "access" => "read" },
+                { "name" => "agent", "source" => { "scope" => "agent" }, "access" => "read_write" },
+                { "name" => "speaker", "source" => { "scope" => "speaker" }, "access" => "read_write" },
               ] },
               "conversation_reach" => "subtree",
               "approval_mode" => "bypass",
@@ -292,8 +292,8 @@ module Nexus
             compaction_policy: { "mode" => "kernel" }, default_model: "dev/mock-text", image_model: "dev/mock-image", lifecycle_hooks: nil,
             fallback_models: ["dev/mock-unmetered"],
             memory_context_limit: { "bindings" => [
-              { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-              { "name" => "agent", "scope" => "agent", "access" => "read" },
+              { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+              { "name" => "agent", "source" => { "scope" => "agent" }, "access" => "read" },
             ] }, conversation_reach: "subtree", delegation_catalog: nil
           )
           docs = row_type.new(

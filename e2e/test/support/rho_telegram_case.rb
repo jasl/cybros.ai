@@ -71,7 +71,7 @@ module E2E
     def teardown
       [[@human, @memory], [@client, @agent_memory]].each do |client, documents|
         documents&.each do |document|
-          client.profile.memory.delete(document.path, expected_public_id: document.public_id,
+          client.memory_collections.documents(document.collection_public_id).delete(document.path, expected_public_id: document.public_id,
             expected_lock_version: document.lock_version)
         end
       end

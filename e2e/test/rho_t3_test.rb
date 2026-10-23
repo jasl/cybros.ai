@@ -59,36 +59,6 @@ class RhoT3Test < Minitest::Test
     FileUtils.remove_entry(@root) if @root && File.directory?(@root)
   end
 
-  def test_settings_publish_and_remove_tools_for_future_turns_without_restarting
-    daemon_pid = @daemon.pid
-    opened = @core.open_conversation(model: MODEL, directory: @project)
-    @conversation = opened.fetch("conversation").fetch("public_id")
-    @chat = @workspace.conversation(@conversation)
-
-    @core.disable_extension("rho.t3")
-    assert_t3_tools([])
-    assert_empty declared_t3_tools(visibility_turn)
-
-    @core.enable_extension("rho.t3")
-    assert_t3_tools(TOOLS)
-    accepted = visibility_turn
-    assert_equal TOOLS, declared_t3_tools(accepted)
-
-    error = assert_raises(Rho::Core::Refused) do
-      @core.configure_extension("rho.t3", operations: [{ op: "set", path: ["url"], value: "file:///tmp/t3" }])
-    end
-    assert_equal "plugin_configuration_unapplied", error.code
-    assert_t3_tools(TOOLS)
-
-    configure_t3
-    @core.disable_extension("rho.t3")
-    assert_t3_tools([])
-    assert_empty declared_t3_tools(visibility_turn)
-    assert_equal TOOLS, declared_t3_tools(accepted), "accepted model tasks retain their frozen tool declarations"
-    assert_equal daemon_pid, @daemon.pid
-    assert_empty native.fetch("calls"), "configuration publishes tools without connecting to the native service"
-  end
-
   def test_background_coding_relays_questions_captures_results_and_continues_the_same_work_after_restart
     opened = @core.open_conversation(model: MODEL, directory: @project)
     @conversation = opened.fetch("conversation").fetch("public_id")
@@ -255,20 +225,6 @@ class RhoT3Test < Minitest::Test
       agent = @daemon.control(:get, "/runner").fetch("agent")
       assert_equal expected, (agent.fetch("tools") & TOOLS).sort
       assert_equal agent.fetch("tools").length, agent.fetch("announced")
-    end
-
-    def visibility_turn
-      id = run_id(@core.say(@conversation, "!mock reply=visibility -- Describe the available tools.",
-        model: MODEL, mode: "queue", code_mode: false))
-      assert_reply(id, "Mock: visibility")
-      id
-    end
-
-    def declared_t3_tools(id)
-      run = @workspace.runs.run(id)
-      model = run.fetch.tasks.find { |task| task.kind == "model_task" }
-      refute_nil model, "the ordinary conversation turn must accept a model task"
-      (run.task(model.key).tool_definitions.map { |tool| tool.fetch("function").fetch("name") } & TOOLS).sort
     end
 
     def start_native

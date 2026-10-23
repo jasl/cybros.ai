@@ -59,6 +59,7 @@ module LockOrderTestHelper
     model_provider_credentials
     inference_requests
     conversations
+    memory_collections
     runs
     content_uploads
     inputs

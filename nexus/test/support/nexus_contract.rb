@@ -48,6 +48,7 @@ module Nexus
           "store_entries.json" => store_entries,
           "prompt_documents.json" => prompt_documents,
           "memory_documents.json" => memory_documents,
+          "memory_collections.json" => memory_collections,
           "inference_requests.json" => inference_requests,
           "conversations.json" => conversations,
           "schedules.json" => schedules,

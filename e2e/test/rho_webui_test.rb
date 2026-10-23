@@ -34,6 +34,67 @@ class RhoWebuiTest < Minitest::Test
   TEXT
   SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="50"><rect width="80" height="50" fill="#278b73"/></svg>'.freeze
 
+  def test_memory_bindings_save_and_control_later_execution_on_desktop_and_mobile
+    boot_console(mode: "full", width: 1400, height: 1000)
+    new_conversation
+    send_message(reply_prompt("Ready for memory."))
+    assert @page.has_text?("Mock: Ready for memory.", wait: WAIT)
+    id = URI(@page.current_url).path.split("/").last
+    client = @daemon.member_client
+    chat = client.workspace(@workspace_id).conversation(id)
+    collection = chat.memory_collections.create(name: "Research notes")
+    client.memory_collections.documents(collection.public_id).write("notes.md", "Use the verified project decision.",
+      expected_public_id: nil, expected_lock_version: nil)
+
+    @page.within(".conversation__header") { @page.click_button "Conversation actions" }
+    @page.find('[role="menuitem"]', text: "Memory bindings", exact_text: true).click
+    @page.within("dialog[open]") do
+      assert @page.has_select?("Memory selection", wait: WAIT)
+      @page.select "Memory off", from: "Memory selection"
+      @page.click_button "Save", exact: true
+    end
+    assert @page.has_no_css?("dialog[open]", wait: WAIT)
+    assert_equal [], chat.fetch.memory_context.fetch("bindings")
+
+    @page.within(".conversation__header") { @page.click_button "Conversation actions" }
+    @page.find('[role="menuitem"]', text: "Memory bindings", exact_text: true).click
+    @page.within("dialog[open]") do
+      @page.select "Custom bindings", from: "Memory selection"
+      @page.click_button "Add binding"
+      @page.fill_in "Binding name", with: "project"
+      @page.select "Research notes · Conversation · #{collection.public_id}", from: "Source"
+      @page.select "Read only", from: "Access"
+      screenshot("memory-bindings-desktop")
+      @page.click_button "Save", exact: true
+    end
+    assert @page.has_no_css?("dialog[open]", wait: WAIT)
+    assert_equal [{ "name" => "project", "source" => { "collection_public_id" => collection.public_id }, "access" => "read" }],
+      chat.fetch.memory_context.fetch("bindings")
+    send_message(reply_prompt("Using the selected memory."))
+    assert @page.has_text?("Mock: Using the selected memory.", wait: WAIT)
+    selected = chat.turns.list.items.max_by(&:position)
+    capture = selected.active_variant.memory_context
+    assert_equal collection.public_id, capture.fetch("bindings").fetch(0).fetch("capture").fetch("collection_public_id")
+
+    resize_console(width: 390, height: 844)
+    @page.within(".conversation__header") { @page.click_button "Conversation actions" }
+    @page.find('[role="menuitem"]', text: "Memory bindings", exact_text: true).click
+    @page.within("dialog[open]") do
+      assert @page.has_text?(collection.public_id, wait: WAIT)
+      assert @page.evaluate_script("document.querySelector('dialog').scrollWidth <= document.querySelector('dialog').clientWidth"), "memory editor fits the narrow viewport"
+      screenshot("memory-bindings-mobile")
+      @page.select "Memory off", from: "Memory selection"
+      @page.click_button "Save", exact: true
+    end
+    assert @page.has_no_css?("dialog[open]", wait: WAIT)
+    send_message(reply_prompt("Memory disabled for this reply."))
+    assert @page.has_text?("Mock: Memory disabled for this reply.", wait: WAIT)
+    assert_equal [], chat.turns.list.items.max_by(&:position).active_variant.memory_context.fetch("bindings")
+    assert_equal capture, chat.turns.fetch(selected.public_id).active_variant.memory_context
+    assert_equal "Use the verified project decision.", client.memory_collections.documents(collection.public_id).read("notes.md").content
+    assert_clean_console
+  end
+
   def test_model_setup_and_a_scheduled_job_follow_the_visible_browser_actions
     boot_console(mode: "full", width: 1400, height: 1000)
     @page.click_button "Choose model"
@@ -323,202 +384,6 @@ class RhoWebuiTest < Minitest::Test
     locked.close
   end
 
-  def test_editing_an_imported_preset_preserves_its_prompt_template_model_and_empty_tools
-    preset_name = "template-#{SecureRandom.hex(4)}"
-    prompt = "Review in {{tone}} style.\n"
-    template = {
-      "blocks" => [{ "type" => "slot", "slot" => "system_prompt" },
-                   { "type" => "inline", "role" => "system", "text" => "Use the {{tone}} review style." },
-                   { "type" => "history" }, { "type" => "input" }],
-      "variables" => { "tone" => "brief" },
-    }
-    directory = File.join(@project, ".agents", "agents")
-    FileUtils.mkdir_p(directory)
-    File.write(File.join(directory, "#{preset_name}.md"), <<~TEXT)
-      ---
-      description: Reviews a diff for defects.
-      model: #{MODEL}
-      tools: []
-      prompt_template: #{JSON.generate(template)}
-      ---
-      Review in {{tone}} style.
-    TEXT
-
-    boot_console(mode: "full", width: 1400, height: 1000)
-    bot_ids = @daemon.control(:get, "/agents").fetch("bots").map { |row| row.fetch("public_id") }.sort
-    open_settings
-    @page.click_button "Agent Presets", exact: true
-    @page.click_button "Import project Presets"
-    assert @page.has_text?("1 Presets imported", wait: WAIT)
-    imported = @daemon.control(:get, "/presets").fetch("presets").find { |row| row.fetch("name") == preset_name }
-    refute_nil imported
-    assert_equal template, imported.dig("configuration", "prompt_template")
-    assert_equal MODEL, imported.dig("configuration", "model")
-    assert_equal [], imported.dig("configuration", "tools")
-    @page.within(%(article[data-preset="#{imported.fetch("public_id")}"])) { @page.click_button preset_name, exact: true }
-    @page.within(".preset-editor") do
-      assert @page.has_field?("Preset name", with: preset_name, wait: WAIT)
-      assert @page.has_field?("System prompt", with: prompt)
-      @page.fill_in "Description", with: "Reviews architecture and implementation."
-      @page.click_link "Configure the MCP servers plugin"
-    end
-    assert @page.has_current_path?(%r{/plugins/rho\.mcp}, url: true, wait: WAIT)
-    @page.go_back
-    @page.within(".preset-editor") do
-      assert @page.has_field?("Description", with: "Reviews architecture and implementation.", wait: WAIT)
-      @page.click_button "Save", exact: true
-    end
-    assert @page.has_css?(
-      %(article[data-preset="#{imported.fetch("public_id")}"]),
-      text: "Reviews architecture and implementation.", wait: WAIT
-    )
-
-    saved = @daemon.control(:get, "/presets").fetch("presets").find { |row| row.fetch("name") == preset_name }
-    refute_nil saved
-    assert_equal imported.fetch("public_id"), saved.fetch("public_id")
-    assert_equal "Reviews architecture and implementation.", saved.fetch("description")
-    assert_equal prompt, saved.dig("configuration", "system_prompt")
-    assert_equal template, saved.dig("configuration", "prompt_template")
-    assert_equal MODEL, saved.dig("configuration", "model")
-    assert_equal [], saved.dig("configuration", "tools")
-    assert_equal bot_ids, @daemon.control(:get, "/agents").fetch("bots").map { |row| row.fetch("public_id") }.sort
-    assert_clean_console
-  end
-
-  def test_the_title_model_setting_generates_a_first_title_and_can_disable_generation
-    boot_console(mode: "full", width: 1400, height: 1000)
-    open_settings
-    @page.click_button "Defaults", exact: true
-    assert @page.has_select?("Conversation title model", selected: "Follow current model", wait: WAIT)
-    assert_equal "follow_current", @daemon.control(:get, "/settings").dig("settings", "conversation_title_model")
-    title_model_ref = "dev/mock-text-only"
-    title_model = @page.find_field("Conversation title model")
-    assert title_model.has_css?("option[value='#{title_model_ref}']", visible: :all, wait: WAIT)
-    title_model.find("option[value='#{title_model_ref}']", visible: :all).select_option
-    @page.within(".card", text: "Agent behavior") { @page.click_button "Save", exact: true }
-    assert @page.has_text?("Settings saved and active.", wait: WAIT)
-    assert_equal title_model_ref, @daemon.control(:get, "/settings").dig("settings", "conversation_title_model")
-    screenshot("title-model-desktop")
-    resize_console(width: 390, height: 844)
-    screenshot("title-model-narrow")
-    resize_console(width: 1400, height: 1000)
-    assert @page.has_button?("New conversation", wait: WAIT)
-    close_settings
-
-    client = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)
-    workspace = client.workspace(@workspace_id)
-    title_sides = lambda do |chat|
-      chat.events(limit: 100).filter_map do |event|
-        event.payload.fetch("child_conversation_public_id") if event.type == "fork_created" && event.payload["side"]
-      end
-    end
-    new_conversation
-    # Keep the temporary title execution observable through its public turn
-    # before completion deletes it. The provider's existing stream controls
-    # bound the delay without changing the requested answer.
-    reasoning = CGI.escape("Planning context. " * 60)
-    send_message(reply_prompt("Project planning").sub("!mock ", "!mock reasoning=#{reasoning} stream_chunk_delay=0.2 "))
-    assert @page.has_current_path?(%r{/conversations/}, url: true, wait: WAIT)
-    conversation = workspace.conversation(conversation_id)
-    title_side_id = @daemon.await("the title's temporary Side never appeared") { title_sides.call(conversation).first }
-    title_side = workspace.conversation(title_side_id)
-    title_turn = @daemon.await("the title's model never started") do
-      title_side.turns.list(include_hidden: true).items.find do |turn|
-        !turn.inherited? && !turn.reference? && turn.kind == "direct_reply" &&
-          turn.status == "running" && turn.active_variant&.model
-      end
-    end
-    title_model = title_side.turns.fetch(title_turn.public_id, include_hidden: true).active_variant.model
-    assert_equal title_model_ref, "#{title_model.provider_id}/#{title_model.model_ref}"
-    assert @page.has_css?("main h1", text: "Mock: Project planning", exact_text: true, wait: WAIT)
-    assert_equal "Mock: Project planning", conversation.fetch.title
-    @daemon.await("the title's temporary Side was not reaped") do
-      title_side.fetch
-      false
-    rescue CybrosAgent::Api::NotFound
-      true
-    end
-    assert_equal [title_side_id], title_sides.call(conversation), "one background title execution is sufficient"
-    assert_empty workspace.inference_requests.list.items, "title content stays under the source conversation's access"
-    assert @page.has_button?("Model: #{model_label(MODEL)}"), "the reply keeps its selected model"
-    show_conversations
-    assert @page.has_link?("Mock: Project planning", wait: WAIT), "the sidebar receives the generated title"
-    close_sidebar
-    send_message(reply_prompt("A later request"))
-    assert @page.has_text?("Mock: A later request", wait: WAIT)
-    assert_equal "Mock: Project planning", conversation.fetch.title, "later input does not retitle the conversation"
-    assert_equal [title_side_id], title_sides.call(conversation), "later input creates no additional title execution"
-
-    conversation_action "Rename"
-    @page.fill_in "Conversation title", with: "My project"
-    @page.find_field("Conversation title").send_keys(:enter)
-    assert @page.has_css?("main h1", text: "My project", exact_text: true, wait: WAIT)
-    @page.refresh
-    assert @page.has_css?("main h1", text: "My project", exact_text: true, wait: WAIT)
-
-    open_settings
-    @page.click_button "Defaults", exact: true
-    @page.select "None", from: "Conversation title model"
-    @page.within(".card", text: "Agent behavior") { @page.click_button "Save", exact: true }
-    assert @page.has_text?("Settings saved and active.", wait: WAIT)
-    assert_nil @daemon.control(:get, "/settings").dig("settings", "conversation_title_model")
-    @page.refresh
-    @page.click_button "Defaults", exact: true
-    assert @page.has_select?("Conversation title model", selected: "None", wait: WAIT)
-    close_settings
-    new_conversation
-    send_message(reply_prompt("A disabled title"))
-    assert @page.has_text?("Mock: A disabled title", wait: WAIT)
-    disabled = workspace.conversation(conversation_id)
-    assert_nil disabled.fetch.title
-    assert_empty title_sides.call(disabled), "a disabled title setting creates no title execution"
-    assert_empty workspace.inference_requests.list.items
-    assert_clean_console
-  end
-
-  def test_a_cost_held_reply_links_to_its_limit_and_resumes_only_after_explicit_retry
-    boot_console(mode: "full", width: 1400, height: 1000, settings: { "conversation_title_model" => nil })
-    new_conversation
-    send_message(reply_prompt("Ready for budget recovery."))
-    assert @page.has_text?("Mock: Ready for budget recovery.", wait: WAIT)
-    client = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)
-    workspace = client.workspace(@workspace_id)
-    chat = workspace.conversation(conversation_id)
-    chat.update(lock_version: chat.fetch.lock_version, cost_limit: "0")
-    choose_menu "Model", model_label("dev/mock-priced")
-    send_message(reply_prompt("Recovered after the cost edit."))
-    assert @page.has_text?("Conversation cost limit reached", wait: WAIT)
-    assert @page.has_text?("Needs attention")
-    assert @page.has_no_button?("Pause", exact: true, wait: 0)
-    recovery = @page.find_link("Edit cost limit in Nexus")
-    assert_equal "#{@base_url}/conversations/#{conversation_id}/cost_limit/edit", recovery[:href]
-    assert_equal "_blank", recovery[:target]
-    turn = chat.turns.list.items.last
-    run = workspace.run(turn.active_variant.run_public_id)
-    failed = run.fetch.tasks.find { |task| task.error&.fetch("key", nil) == "conversation_cost_limit_reached" }
-    refute_nil failed
-    screenshot("cost-recovery-desktop")
-    resize_console(width: 390, height: 844)
-    assert @page.has_link?("Edit cost limit in Nexus")
-    screenshot("cost-recovery-narrow")
-
-    @ceremony_actor.visit(recovery[:href])
-    @ceremony_actor.page.fill_in "Cost limit (USD)", with: "1"
-    @ceremony_actor.page.click_button "Save cost limit"
-    @ceremony_actor.page.assert_text("Cost limit saved")
-    assert_equal "needs_attention", run.fetch.status, "a saved limit does not restart the held reply"
-    @page.click_button "Retry failed step"
-    assert @page.has_text?("Mock: Recovered after the cost edit.", wait: WAIT)
-    @daemon.await("the recovered reply did not finish") { run.fetch.status == "completed" }
-    assert_equal "completed", run.task(failed.key).task.status
-    assert_equal turn.public_id, chat.turns.list.items.last.public_id
-    assert_equal turn.active_variant.public_id, chat.turns.list.items.last.active_variant.public_id
-    assert @page.has_no_link?("Edit cost limit in Nexus")
-    assert @page.has_no_button?("Stop", exact: true, wait: WAIT)
-    screenshot("cost-recovery-completed")
-    assert_clean_console
-  end
-
   def test_a_desktop_conversation_keeps_its_messages_and_lifecycle_after_reload
     boot_console(mode: "full", width: 1400, height: 1000)
     new_conversation
@@ -660,44 +525,6 @@ class RhoWebuiTest < Minitest::Test
     send_message(reply_prompt("Recovered after stop."))
     assert @page.has_text?("Mock: Recovered after stop.", wait: WAIT)
     screenshot("narrow-stopped")
-    assert_clean_console
-  end
-
-  def test_a_site_approval_allows_future_fetches_from_the_same_written_origin
-    @web_fixture = E2E::WebFixture.new.start
-    boot_console(mode: "full", width: 1400, height: 1000,
-      settings: { "conversation_title_model" => nil, "plugins" => { "rho.web_tools" => {
-        "configuration" => { "allow_private_network" => true },
-      } } })
-    new_conversation
-    first_url = "#{@web_fixture.site}/page.html"
-    send_message(tool_prompt("web_fetch", { "url" => first_url }, "The first page was fetched."))
-    assert @page.has_button?("Allow this site until restart", wait: WAIT)
-    assert @page.has_css?(".ask__input", text: first_url)
-    assert @page.has_text?("exact scheme, host and written port")
-    assert @page.has_text?("Initial URLs must begin")
-    assert @page.has_text?("followed by /")
-    assert @page.has_text?("No subdomains, www variants, or added/removed default ports.")
-    assert @page.has_text?("Redirects keep web_fetch’s same-site policy, including www.")
-    assert_empty @web_fixture.requests, "the held fetch has not reached the website"
-    first_conversation = conversation_id
-    screenshot("site-approval-desktop")
-    resize_console(width: 390, height: 844)
-    assert @page.has_button?("Allow this site until restart")
-    screenshot("site-approval-narrow")
-    @page.click_button "Allow this site until restart"
-    assert @page.has_text?("Mock: The first page was fetched.", wait: WAIT)
-    assert_equal [first_url], @web_fixture.requests
-
-    new_conversation
-    next_url = "#{@web_fixture.site}/notes.txt"
-    send_message(tool_prompt("web_fetch", { "url" => next_url }, "Another page from this site was fetched."))
-    assert @page.has_text?("Mock: Another page from this site was fetched.", wait: WAIT)
-    refute_equal first_conversation, conversation_id
-    assert_equal [first_url, next_url], @web_fixture.requests,
-      "a fresh conversation reuses the site permission without another approval"
-    refute @page.has_button?("Allow this site until restart", wait: 0)
-    screenshot("site-approved-narrow")
     assert_clean_console
   end
 

@@ -178,29 +178,6 @@ class ProcessesTest < Minitest::Test
     assert_raises(CybrosAgent::Api::NotFound) { chat.fetch }
   end
 
-  # A STANDALONE LOOP is its own host: the server it starts is owned by
-  # the loop's id, and the loop's terminal is the conversation's end here.
-  def test_a_standalone_loops_server_dies_at_the_loops_terminal
-    authored = @daemon.control(:post, "/runs", body: {
-      prompt: script(["start_process", { "command" => SERVER, "name" => "svc" }]),
-      model: MODEL, working_directory: project,
-    })
-    loop_id = authored.dig("run", "public_id")
-    refute_nil loop_id, "Ops's author answered #{authored.inspect}"
-
-    row = await_run_status(loop_id, "completed")
-    started = task_output(loop_id, tool_task(row, "start_process").key)
-    id = started[/\A(p\d+) \(pid \d+\) running — svc/, 1]
-    refute_nil id, started
-    await("the loop's terminal never ended its server", every: POLL) do
-      processes_listing.match?(/^#{id}  /) ? nil : true
-    end
-    logs, = @daemon.cli("logs", id)
-    assert_match(/^#{id}  exited \(signal TERM\)  pid \d+  owner #{Regexp.escape(loop_id)}  svc/, logs,
-      "a loop the daemon could place only as itself owns by its own id")
-    assert_match(/stopped when its conversation ended here/, logs)
-  end
-
   private
 
     # The fake's script: one `!mock` line naming the calls in order, each

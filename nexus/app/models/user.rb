@@ -27,9 +27,11 @@ class User < ApplicationRecord
   # Budget ownership: the FK is required, and budgets leave only with the
   # Account's own cascade, which is declared ahead of `has_many :users`.
   has_many :usage_budgets
-  # The `user/` memory scope: reversible member removal keeps these rows.
-  # Physical destruction cascades to them; there is no public erase API.
-  has_many :memory_documents, dependent: :delete_all
+  # Reversible member removal keeps collections. Physical destruction waits
+  # for the owning cleanup to drain their documents and identity rows.
+  # The FK refuses an incomplete drain.
+  has_many :memory_collections
+  has_many :memory_documents, through: :memory_collections
   has_many :prompt_documents, dependent: :delete_all
   # The profile store rides the same cascade for the same reason: a removed
   # User keeps its rows, erase takes them when it lands. `StoreHost`
@@ -111,11 +113,10 @@ class User < ApplicationRecord
 
   # ── StoreHost: the principal's own answers ────
 
-  # The profile store is the ACTING user's own row — an agent's is the
-  # agent's, not its steward's (memory's `user/` is the other rule). Another
-  # principal's store is invisible like absence: unreachable through the
-  # route, honest in the service. Standing is the same `data_accessible_by?`
-  # reads, taken from the LOCKED writer (the host row itself, re-read).
+  # The profile store belongs to the acting User; an Agent never reaches its
+  # steward's store through this scope. Another principal's store is concealed
+  # by the route and refused by the writer, which rechecks identity and liveness
+  # under the host row's lock.
   def store_write_refusal(user)
     if user.id != id
       :not_found
@@ -135,10 +136,9 @@ class User < ApplicationRecord
   # `key_taken`, never doubled and never replayed.
   def store_create_receipts(acting_user:, idempotency_key:, request_digest:) = nil
 
-  # The Human this principal's work answers to: its steward for an agent,
-  # itself for a Human — the twin of Executor's private
-  # `controlling_human_id_of`. Nil for the system user, which has no steward;
-  # memory's `user/` rung refuses on that nil rather than dereferencing it.
+  # The Human this principal's work answers to: its steward for an Agent,
+  # itself for a Human, nil for the system User. This relation selects a payer
+  # or persona owner; it grants no access to that Human's memory collections.
   def controlling_human = agent? ? steward : self
 
   # THE UPLOAD ANCHOR: the one write that names this member as an upload's

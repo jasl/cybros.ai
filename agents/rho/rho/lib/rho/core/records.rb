@@ -216,9 +216,9 @@ module Rho
 
       # One skill onto a rung, as the runner's own parser split it; the
       # `memory` row written (201).
-      def push_skill(name:, description:, content:, scope:, expected_public_id:, expected_lock_version:)
+      def push_skill(name:, description:, content:, scope:, expected_collection_public_id:, expected_public_id:, expected_lock_version:)
         body = { "scope" => scope, "name" => name, "description" => description, "content" => content,
-                 "expected_public_id" => expected_public_id, "expected_lock_version" => expected_lock_version }
+                 "expected_collection_public_id" => expected_collection_public_id, "expected_public_id" => expected_public_id, "expected_lock_version" => expected_lock_version }
         response = post(require_daemon, "/skills/push", body, budget: Budget::KERNEL_ROUND_TRIP)
         document = parse(response)
         refuse(response, document, "the daemon refused to push the skill") unless response.code.to_i == 201
@@ -237,9 +237,9 @@ module Rho
 
       # Delete only the observed document; a changed or recreated row
       # returns the kernel's stale_object conflict. No read or retry here.
-      def remove_skill(name, scope:, expected_public_id:, expected_lock_version:)
+      def remove_skill(name, scope:, expected_collection_public_id:, expected_public_id:, expected_lock_version:)
         body = { "scope" => scope, "name" => name,
-                 "expected_public_id" => expected_public_id, "expected_lock_version" => expected_lock_version }
+                 "expected_collection_public_id" => expected_collection_public_id, "expected_public_id" => expected_public_id, "expected_lock_version" => expected_lock_version }
         response = post(require_daemon, "/skills/rm", body,
           budget: Budget::KERNEL_ROUND_TRIP)
         document = parse(response)

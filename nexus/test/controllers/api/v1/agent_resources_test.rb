@@ -36,7 +36,7 @@ class API::V1::AgentResourcesTest < ActionDispatch::IntegrationTest
   test "configuration reads the named Agent's own declaration and documents even when its model is unavailable" do
     @agent.update!(default_model: "dev/mock-text")
     @named.update!(default_model: "retired/unavailable", memory_context_limit: { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read" },
     ] })
     write_document(@agent, "system_prompt", "Parent prompt")
     write_document(@named, "system_prompt", "Own prompt")

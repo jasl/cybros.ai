@@ -29,7 +29,7 @@ module Runs
       INVALID_TOOL_INPUT = "invalid_tool_input".freeze
       # The node column that keeps a tool's name is string(128).
       MAX_TOOL_NAME_LENGTH = 128
-      MAX_TIMEOUT_MS = 7.days.in_milliseconds
+      include Timeouts
 
       # The two marks, with one writer: `round` for a model step placed on the
       # loop's own path, `branch` for every other model step.
@@ -232,7 +232,7 @@ module Runs
         def place_ask(step, cursor, path, mirror)
           key = claim_key(step.key, "ask", path) or return nil
           node = base_attributes(step, key, "await_task", cursor, path) or return nil
-          timeout = compile_timeout(step.timeout_ms, path)
+          timeout = compile_ask_timeout(step, path, member_authored: !@kernel)
           return nil if timeout == :error
 
           prompt = compile_prompt(step.prompt, path)
@@ -265,7 +265,7 @@ module Runs
           timeout = compile_timeout(step.timeout_ms, path)
           return nil if timeout == :error
 
-          node.merge!("await_timeout_ms" => timeout, "awaited_task_key" => task,
+          node.merge!("await_timeout_ms" => timeout || ::Tasks::AwaitTask::DEFAULT_TIMEOUT_MS, "awaited_task_key" => task,
             "awaited_run_public_id" => step.run_public_id&.to_s)
           accumulate(step, cursor, node, mirror)
         end
@@ -777,18 +777,6 @@ module Runs
             prompt
           else refuse("invalid_prompt", "#{path}.prompt") || :error
           end
-        end
-
-        def compile_timeout(value, path)
-          return nil if value.nil?
-
-          case value
-          when Integer
-            return value if value.positive? && value <= MAX_TIMEOUT_MS
-          else nil
-          end
-          refuse("invalid_timeout_ms", "#{path}.timeout_ms")
-          :error
         end
 
         # A kernel step's pairing key is the provider's, normalized to a

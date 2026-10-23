@@ -2186,7 +2186,7 @@ scope, Docker-command, repository, path or recovery selector on this surface.
 bash install/install.sh
 ```
 
-One readable file that runs from the checkout it sits in, no sudo: Homebrew's portable Ruby 4.0.7
+One readable file that runs from the checkout it sits in, no sudo: Homebrew's portable Ruby 4.0.9
 (sha256-pinned) and the rho gems into a prefix you own (`~/.local/share/rho`), rg and fd beside them (jq
 and uv in the default `full` profile; Node, playwright-core and the Chromium shell in `dev`), a launcher
 at `~/.local/bin/rho`. `--profile dev` for browsing. Then `rho doctor`; `rho update` = `git pull

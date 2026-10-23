@@ -33,6 +33,7 @@ async fn every_supported_operation_reaches_its_public_route() {
     include!("operation_bindings/executor.rs");
     include!("operation_bindings/inference.rs");
     include!("operation_bindings/member_resources.rs");
+    include!("operation_bindings/memory_collections.rs");
     include!("operation_bindings/platform.rs");
     include!("operation_bindings/runs.rs");
     include!("operation_bindings/turns.rs");

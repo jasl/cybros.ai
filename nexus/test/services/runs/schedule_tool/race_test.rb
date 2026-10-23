@@ -33,7 +33,7 @@ class Runs::ScheduleTool::RaceTest < ActiveJob::TestCase
     if @run && (run = Run.find_by(id: @run.id))
       run.with_lock { Runs::Reap.destroy_aggregate(run) }
     end
-    @parent&.destroy!
+    destroy_memory_owner!(@parent)
   end
 
   test "two jobs waiting on the host create and publish one schedule" do

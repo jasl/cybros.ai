@@ -135,9 +135,11 @@ identifying the original candidate throughout.
 Every variant carries `memory_context`, the bindings frozen for that
 execution, on the timeline, the variant deck and content-verb responses
 alike. It is independent of the conversation's current `memory_context`.
-The key is always present: `null` selects the default roots, while
-`{"bindings": []}` explicitly disables memory. Regeneration retains the
-source variant's value.
+The key is always present. Captured bindings retain their original `source`
+and a `capture` containing collection UUID, owner, scope and Speaker subject.
+`{"bindings": []}` disables memory; an absent historical capture does not
+select today's defaults. Ordinary regeneration retains the source capture.
+See [captures and lifecycle](conversation-memory.md#captures-and-lifecycle).
 
 ## Read one candidate
 

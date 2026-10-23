@@ -65,7 +65,7 @@ class CliCommandTest < Minitest::Test
   def test_memory_speaker_option_reaches_the_precondition_read_and_write
     seen = []
     announce(endpoint: recording_routed_endpoint(seen, {
-      "POST /conversations/memory/read" => [[200, { "memory" => { "public_id" => "memory-1", "lock_version" => 4 } }]],
+      "POST /conversations/memory/read" => [[200, { "memory" => { "public_id" => "memory-1", "collection_public_id" => "collection-1", "lock_version" => 4 } }]],
       "POST /conversations/memory/write" => [[201, { "memory" => { "path" => "speaker/notes.md" } }]],
     }))
 
@@ -74,7 +74,7 @@ class CliCommandTest < Minitest::Test
     assert_equal 0, status, out
     bodies = seen.grep(/\APOST /).map { |request| JSON.parse(request.partition("\r\n\r\n").last) }
     assert_equal ["speaker-selected"] * 2, bodies.map { |body| body.fetch("speaker_public_id") }
-    assert_equal ["memory-1", 4], bodies.last.values_at("expected_public_id", "expected_lock_version")
+    assert_equal ["collection-1", "memory-1", 4], bodies.last.values_at("expected_collection_public_id", "expected_public_id", "expected_lock_version")
     assert_includes out, "Write completed: speaker/notes.md"
   end
 

@@ -18,9 +18,9 @@ class Workspaces::CollectTest < ActiveSupport::TestCase
     result = Workspaces::Collect.call(budget: 10)
 
     assert_kind_of Sweeps::Pass, result
-    # Three store rows, one conversation (its entry rides its cascade), the
-    # workspace row.
-    assert_equal 5, result[:processed]
+    # Three store rows, the default collection, one conversation (its entry
+    # rides its cascade), and the workspace row.
+    assert_equal 6, result[:processed]
     assert_not result.more?
     assert_nil Workspace.find_by(id: @workspace.id)
     assert_equal 0, StoreEntry.where(workspace_id: @workspace.id).count
@@ -35,7 +35,7 @@ class Workspaces::CollectTest < ActiveSupport::TestCase
 
     result = Workspaces::Collect.call(budget: 10)
 
-    assert_equal 1, result[:processed]
+    assert_equal 2, result[:processed]
     assert_nil Workspace.find_by(id: @workspace.id)
     assert_equal 1, StoreEntry.for_user(users(:curator).id).count
   end
@@ -106,7 +106,7 @@ class Workspaces::CollectTest < ActiveSupport::TestCase
     assert Workspace.exists?(@workspace.id), "leaves drain before the row"
 
     second = Workspaces::Collect.call(budget: 10)
-    assert_equal 2, second[:processed]
+    assert_equal 3, second[:processed]
     assert_not second.more?
     assert_nil Workspace.find_by(id: @workspace.id)
   end
@@ -121,19 +121,20 @@ class Workspaces::CollectTest < ActiveSupport::TestCase
     assert first.more?
     assert Workspace.exists?(@workspace.id)
     assert_equal 0, StoreEntry.where(workspace_id: @workspace.id).count
-    assert_equal 2, WorkspaceCommandReceipt.where(workspace_id: @workspace.id).count
+    assert_equal 3, WorkspaceCommandReceipt.where(workspace_id: @workspace.id).count
 
     second = Workspaces::Collect.call(budget: 3)
 
     assert_equal 3, second[:processed]
     assert second.more?,
       "a fully consumed work budget schedules one conservative continuation"
-    assert_nil Workspace.find_by(id: @workspace.id)
+    assert Workspace.exists?(@workspace.id), "the default collection costs a separate unit before receipts"
     assert_equal 0, WorkspaceCommandReceipt.where(workspace_id: @workspace.id).count
 
     third = Workspaces::Collect.call(budget: 3)
-    assert_equal 0, third[:processed]
+    assert_equal 1, third[:processed]
     assert_not third.more?
+    assert_nil Workspace.find_by(id: @workspace.id)
   end
 
   test "conversation receipts with collected hosts drain before their workspace" do
@@ -193,17 +194,16 @@ class Workspaces::CollectTest < ActiveSupport::TestCase
     other = workspaces(:dedicated)
     tombstone(other, at: 32.days.ago)
 
-    # 3 entries + 2 rows = 5 total; a budget of 4 drains every leaf and one
-    # Workspace row.
+    # Three entries, two default collections and two Workspace rows.
     result = Workspaces::Collect.call(budget: 4)
 
     assert_equal 4, result[:processed]
     assert result.more?
     remaining = [@workspace, other].count { |workspace| Workspace.exists?(workspace.id) }
-    assert_equal 1, remaining
+    assert_equal 2, remaining
 
     rest = Workspaces::Collect.call(budget: 4)
-    assert_equal 1, rest[:processed]
+    assert_equal 3, rest[:processed]
     assert_not rest.more?
     assert_equal 0, Workspace.where(id: [@workspace.id, other.id]).count
   end

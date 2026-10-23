@@ -36,8 +36,8 @@ class AgentsController < Agents::BaseController
 
   def create
     fields = params.expect(agent: [:display_name])
-    @agent = Current.user.build_agent(display_name: fields[:display_name].to_s)
-    if @agent.save
+    @agent = Current.user.create_agent(display_name: fields[:display_name].to_s)
+    if @agent.persisted?
       redirect_to agent_path(@agent), notice: t("agents.created")
     else
       render :new, status: :unprocessable_entity

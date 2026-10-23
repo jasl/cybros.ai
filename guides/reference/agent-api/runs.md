@@ -130,7 +130,10 @@ frozen pair rides every step's usage receipt.
 ### The shell
 
 A standalone run is created
-with the configuration a conversation's turn would have frozen.
+with the configuration a conversation's turn would have frozen. Optional
+`memory_context` uses the [same source grammar](conversation-memory.md#named-bindings)
+for relative scopes or exact collection UUIDs, without a Conversation source.
+Identity is captured at create; later reads do not reselect a default.
 `prompt_mechanism` is one of the three words. `raw` (the default when
 unnamed): the seed task's own `prompt`, `instructions` and `tools` are
 the request. `default` and `assembly`: the seed is compiled once at create
@@ -143,8 +146,9 @@ Human's `user/` memory. The creator's `memory_context_limit` narrows those
 roots; the template separately selects prompt slots, including `persona`.
 No model is resolved at create (no window sizes
 it; the exact window gate is the scheduler's) and sealed in place of the
-first step's authored body, so every round replays it as the prefix and
-memory is frozen at create for the run's life. The template is the
+first step's authored body, so every round replays that sealed prefix.
+The memory text already assembled into the seed stays fixed; later memory
+tools read current content from the captured collection identities. The template is the
 creator's under the shell's word (the shell is the run's declaration):
 `assembly` reads the creator's stored `prompt_template` whatever its
 standing word — a creator with none (a Human, or an agent that stored
@@ -531,9 +535,8 @@ answers are kept, and parked
 awaits keep waiting for their answer or deadline — the drain settles
 only when the last of them does; stopping again with force ends the
 wait. The drain itself is bounded: `canceling` clocks keep
-running (a park nobody answers still expires), and a drain older than
-24 hours — the longest any await may park — is escalated by the drain
-sweep, since nothing legitimate can outlive it. The first Stop also permanently
+running for finite parks, and a drain older than 24 hours — including
+an indefinite coordination hold — is escalated by the drain sweep. The first Stop also permanently
 invalidates results and derived requests owned by a completed run, without
 rewriting its published answer or completed status. Once a terminal run
 has already been stopped, repetition answers 409 `already_terminal`.
@@ -788,7 +791,8 @@ pair is 422 `invalid_outcome`; a body over 1 MB is 422
 `result_too_large` and leaves the park standing. THE DEADLINE WINS: an
 answer arriving after the park expired settles the task `timed_out`
 (`error.key: await_timeout`) and its content is discarded — it never
-quietly succeeds late.
+quietly succeeds late. An explicitly indefinite authored coordination ask has
+no expiry; its token, current write standing and cancellation fences still apply.
 
 ### Where a runner answers
 

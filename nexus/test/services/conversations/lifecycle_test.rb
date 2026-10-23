@@ -222,6 +222,7 @@ class Conversations::LifecycleTest < ActiveSupport::TestCase
 
   test "nonterminal invocation work fences reclamation" do
     lone = create_conversation
+    collection = MemoryCollection.default_for(lone)
     turn = build_turn(conversation: lone)
     variant = Variant.create!(
       account: @account, turn: turn,
@@ -243,6 +244,7 @@ class Conversations::LifecycleTest < ActiveSupport::TestCase
 
     assert_equal 0, Conversations::Reap.call(batch: 10).value[:reaped]
     assert Conversation.exists?(lone.id), "a running result-writer must never find its aggregate gone"
+    assert MemoryCollection.exists?(collection.id), "the fence applies before draining memory"
 
     ModelInvocation.where(id: invocation.id).update_all(status: "completed")
     assert_equal 1, Conversations::Reap.call(batch: 10).value[:reaped]
@@ -321,6 +323,7 @@ class Conversations::LifecycleTest < ActiveSupport::TestCase
     build_settled_reply!(lone)
     side = fork!(lone, side: true)
     invocation, attempt = run_reply!(side)
+    collection = MemoryCollection.default_for(side)
 
     result = Conversations::Tombstone.call(conversation: side)
 
@@ -330,12 +333,14 @@ class Conversations::LifecycleTest < ActiveSupport::TestCase
     assert Conversation.exists?(side.id), "a pending settlement fences the physical reap"
 
     assert_equal 0, Conversations::Reap.call(batch: 10).value[:reaped]
+    assert MemoryCollection.exists?(collection.id), "pending settlement retains the collection until owner eligibility"
     attempt.update!(settlement_state: "settled", status: "canceled", terminal_at: Time.current)
     ModelInvocation.where(id: invocation.id).update_all(status: "canceled")
 
     sweep = Conversations::Reap.call(batch: 10)
     assert_equal 1, sweep.value[:reaped], "the sweep's candidates carry a tombstoned side at any age"
     assert_not Conversation.exists?(side.id)
+    assert_not MemoryCollection.exists?(collection.id)
   end
 
   test "the parent's archive and tombstone reap their sides first; a side never pins the parent's reap" do
@@ -358,7 +363,11 @@ class Conversations::LifecycleTest < ActiveSupport::TestCase
     Conversation.where(id: lone.id).update_all(tombstoned_at: (Conversation::RETENTION_PERIOD + 1.day).ago)
     assert_equal 0, Conversations::Reap.call(batch: 10).value[:reaped]
     assert Conversation.exists?(lone.id), "the plain child still pins, as before"
-    plain_child.reload.destroy!
+    assert_predicate Conversations::Tombstone.call(conversation: plain_child), :accepted?
+    plain_child.reload.update!(tombstoned_at: (Conversation::RETENTION_PERIOD + 1.day).ago)
+    # The first pass releases the independent child's own collection and
+    # aggregate; the older source remains pinned until that deletion commits.
+    assert_equal 1, Conversations::Reap.call(batch: 10).value[:reaped]
     assert_equal 1, Conversations::Reap.call(batch: 10).value[:reaped]
   end
 

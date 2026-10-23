@@ -755,13 +755,13 @@ class CoreTest < Minitest::Test
       body_of(seen.grep(%r{\APOST /conversations/variant }).last))
     assert_equal({ "agent" => [], "workspace" => [] }, core.skills)
     assert_equal 8, core.push_skill(name: "review", description: "d", content: "# review", scope: "agent",
-      expected_public_id: nil, expected_lock_version: nil).fetch("bytesize")
+      expected_collection_public_id: "collection-agent", expected_public_id: nil, expected_lock_version: nil).fetch("bytesize")
     assert_equal({ "scope" => "agent", "name" => "review", "description" => "d", "content" => "# review",
-                   "expected_public_id" => nil, "expected_lock_version" => nil },
+                   "expected_collection_public_id" => "collection-agent", "expected_public_id" => nil, "expected_lock_version" => nil },
       body_of(seen.grep(%r{\APOST /skills/push }).last))
     assert_equal "# review", core.show_skill("review", scope: "agent").fetch("content")
     assert_equal "agent/skills/review", core.remove_skill("review", scope: "agent",
-      expected_public_id: "019a0000-0000-7000-8000-000000000001", expected_lock_version: 4).fetch("path")
+      expected_collection_public_id: "collection-agent", expected_public_id: "019a0000-0000-7000-8000-000000000001", expected_lock_version: 4).fetch("path")
     bytes = core.upload_bytes("u-1", kind: "thumbnail")
     assert_equal Encoding::BINARY, bytes.encoding
     assert_equal JSON.generate("png" => true), bytes

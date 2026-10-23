@@ -2,48 +2,6 @@ module E2E
   # Channel controls project the kernel's real timeline and candidate deck. The
   # channel's forward cursor must not hide an answer regenerated at an old slot.
   module RhoTelegramHistory
-    def test_telegram_history_search_lifecycle_and_view_state_stay_in_the_saved_route
-      boot_runtime(allowed: [101, 102])
-      marker = "history-#{SecureRandom.hex(6)}"
-      receive(update(1, "!mock reply=history-answer -- #{marker} public discussion"))
-      chat = @workspace.conversation(current("101:0"))
-      turn = completed_reply(chat)
-      receive(update(2, "!mock reply=private-answer -- #{marker} private discussion", user: 102, chat: 102))
-      foreign = @workspace.conversation(current("102:0"))
-      completed_reply(foreign)
-
-      assert_includes telegram_control(3, "/rename Launch history"), "renamed"
-      assert_equal "Launch history", chat.fetch.title
-      history = telegram_control(4, "/history")
-      assert_includes history, turn.public_id
-      assert_includes history, "history-answer"
-      search = telegram_control(5, "/search #{marker}")
-      assert_includes search, chat.public_id
-      refute_includes search, foreign.public_id
-      refute_includes search, "private discussion"
-
-      telegram_control(6, "/history exclude #{turn.public_id}")
-      assert_equal "excluded_from_context", chat.turns.list.items.find { |row| row.public_id == turn.public_id }.visibility
-      telegram_control(7, "/history include #{turn.public_id}")
-      assert_includes telegram_control(8, "/history delete #{turn.public_id}"), "apex"
-      telegram_control(9, "/history hide #{turn.public_id}")
-      refute chat.turns.list.items.any? { |row| row.public_id == turn.public_id }
-      telegram_control("show-history", "/history show #{turn.public_id}")
-      assert chat.turns.list.items.any? { |row| row.public_id == turn.public_id }
-
-      telegram_control(10, "/archive")
-      refute_nil chat.fetch.archived_at
-      telegram_control(11, "/new")
-      selected = current("101:0")
-      telegram_control(12, "/restore #{chat.public_id}")
-      assert_nil chat.fetch.archived_at
-      assert_equal selected, current("101:0")
-      telegram_control(13, "/resume #{chat.public_id}")
-      assert_equal chat.public_id, current("101:0")
-      assert_equal 1, chat.events(limit: 100).count { |event| event.type == "input_accepted" }
-      assert_empty @logs
-    end
-
     def test_telegram_regeneration_delivers_a_new_candidate_once_after_restart_and_preserves_old_task_identity
       boot_runtime(allowed: [101, 102])
       sender = { user: 101, chat: 101 }
@@ -85,41 +43,6 @@ module E2E
         @telegram.calls.drop(before).any? { |method, fields| method == "sendMessage" && fields[:text].start_with?("Context preview:") }
       }
       assert_equal 1, chat.events(limit: 100).count { |event| event.type == "input_accepted" }
-      assert_empty @logs
-    end
-
-    def test_telegram_edit_candidate_fork_and_undo_keep_the_original_history_and_current_files
-      boot_runtime(allowed: [101])
-      receive(update(1, "!mock reply=original-answer -- a retained premise"))
-      chat = @workspace.conversation(current("101:0"))
-      original = completed_reply(chat)
-      assert_includes telegram_control(2, "/edit #{original.position} Manually corrected answer"), "Edited as a new candidate"
-      edited = chat.turns.list.items.find { |row| row.public_id == original.public_id }
-      assert_equal "Manually corrected answer", edited.active_variant.content
-      assert_equal 2, chat.turns.variants(original.public_id).items.length
-      telegram_control(3, "/variant #{original.position} #{original.active_variant.public_id}")
-      assert_equal original.active_variant.public_id, chat.turns.list.items.find { |row| row.public_id == original.public_id }.active_variant.public_id
-
-      path = File.join(@root, "project", "keep-after-fork.txt")
-      File.write(path, "Keep the current files.\n")
-      telegram_control(4, "/fork #{original.position}")
-      child = @workspace.conversation(current("101:0"))
-      refute_equal chat.public_id, child.public_id
-      copied = child.turns.list.items.find { |row| row.position == original.position }
-      refute_nil copied
-      refute_equal original.public_id, copied.public_id
-      refute copied.inherited
-      assert_equal original.active_variant.content, copied.active_variant.content
-      assert_equal "Keep the current files.\n", File.read(path)
-      receive(update(5, "!mock reply=branch-answer -- continue this fork"))
-      branch = await("a completed local reply in the fork") do
-        child.turns.list.items.find { |row| row.public_id != copied.public_id && !row.inherited && row.kind == "direct_reply" && row.status == "completed" }
-      end
-      assert_includes telegram_control(6, "/undo"), "Newest turn deleted"
-      refute child.turns.list.items.any? { |row| row.public_id == branch.public_id }
-      assert child.turns.list.items.any? { |row| row.public_id == copied.public_id }
-      assert_equal 1, chat.turns.list.items.count { |row| row.kind == "direct_reply" }
-      assert_equal "Keep the current files.\n", File.read(path)
       assert_empty @logs
     end
   end

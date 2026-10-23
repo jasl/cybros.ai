@@ -162,7 +162,6 @@ class EvalsCorpusTest < Minitest::Test
     end
   end
 
-
   # The exit ladder's fixtures are the corpus's, and the three live lanes
   # read them here (decision 13): exit-long's generator mints the vectors,
   # the server, the gate and the brief over the seed and writes the token

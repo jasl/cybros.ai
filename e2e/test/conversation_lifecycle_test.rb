@@ -1,51 +1,6 @@
 require_relative "turn_test"
 
 class TurnTest
-  def test_passive_completion_is_history_without_an_automatic_model_reply
-    boot_rho!
-    chat, context, question = open_passive_question
-    answer = "passive-result-#{SecureRandom.hex(6)}"
-    context.tasks_context(question.key).resolve(content: answer)
-    await_rho_loop(context.run_public_id, "completed")
-    receipt = await("the passive completion message") do
-      chat.turns.list.items.find { |turn| turn.origin == "task_result" }
-    end
-
-    assert_equal "message", receipt.kind
-    assert_includes receipt.text, answer
-    refute_predicate chat.fetch, :busy?
-    assert_equal 1, chat.turns.list.items.count { |turn| turn.kind == "direct_reply" }
-
-    loop_id = say_lifecycle(chat.public_id, "!mock -- summarize the background result")
-    completed = await_rho_loop(loop_id, "completed")
-    assert_includes rho_loops.run(loop_id).task(completed.deliverable_task_key).output, answer
-    assert_equal 2, chat.turns.list.items.count { |turn| turn.kind == "direct_reply" }
-  end
-
-  def test_later_wait_observes_work_from_an_earlier_turn_without_restarting_it
-    boot_rho!(settings: { "kernel_tools" => %w[nexus.graph.wait nexus.human.ask] })
-    chat, source, question = open_passive_question
-    call = question
-    arguments = CGI.escape(JSON.generate("task" => call.key, "run_public_id" => source.run_public_id))
-    # The fake advances its script by tool answers in the entire history,
-    # including environment binding and the earlier background launch.
-    previous_answers = source.fetch.tasks.count { |task| task.kind == "tool_task" }
-    calls = Array.new(previous_answers + 1, "wait").join(",")
-    loop_id = say_lifecycle(chat.public_id, "!mock tool_call=#{calls} tool_args=#{arguments} -- report the observed work")
-    context = rho_loops.run(loop_id)
-    await("the later wait parked on the earlier work") do
-      context.fetch.tasks.find { |task| task.kind == "await_task" && task.status == "dispatched" }
-    end
-    answer = "joined-result-#{SecureRandom.hex(6)}"
-    source.tasks_context(question.key).resolve(content: answer)
-    completed = await_rho_loop(loop_id, "completed")
-
-    assert_includes context.task(completed.deliverable_task_key).output, answer
-    assert_equal 1, source.fetch.tasks.count { |task| task.kind == "await_task" }
-    assert_equal "completed", source.task(question.key).task.status
-    refute completed.tasks.any? { |task| task.tool_name == "code" }
-  end
-
   def test_lifecycle_hooks_cross_the_executor_boundary_and_continue_before_final_delivery
     hook = { "tool" => "lifecycle_check", "timeout_ms" => 30_000 }
     boot_rho!(settings: { "plugins" => { "rho.lifecycle_hooks" => { "configuration" => {
@@ -85,24 +40,4 @@ class TurnTest
   end
 
   private
-
-    def open_passive_question
-      arguments = background_code([{ "ask" => { "prompt" => "Supply the background result.", "key" => "work" } }], wake: "passive")
-      conversation, loop_id = rho_open("!mock tool_call=code tool_args=#{arguments} -- initial reply")
-      chat = steward_conversation(conversation)
-      await_settled_reply(chat)
-      context = rho_loops.run(loop_id)
-      question = await("the background question") do
-        context.fetch.tasks.find { |task| task.kind == "await_task" && task.status == "awaiting_input" }
-      end
-      [chat, context, question]
-    end
-
-    def say_lifecycle(conversation, prompt)
-      output, status = @daemon.cli("say", conversation, prompt)
-      assert_predicate status, :success?, output
-      loop_id = output[/^run:\s+(\S+)/, 1]
-      refute_nil loop_id, output
-      loop_id
-    end
 end

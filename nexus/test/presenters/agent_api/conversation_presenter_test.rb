@@ -238,10 +238,14 @@ class AgentAPI::ConversationPresenterTest < ActiveSupport::TestCase
     conversation = Conversation.create!(workspace: @workspace, creating_user: @human,
       memory_context: { "bindings" => [] })
     actor = Speakers::Resolve.member(account: conversation.account, user: @human)
+    collection = MemoryCollection.default_for(conversation)
+    capture = { "collection_public_id" => collection.public_id, "owner_public_id" => conversation.public_id,
+      "scope" => "conversation", "speaker_public_id" => nil }
     bound = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-      { "name" => "group", "scope" => "conversation", "access" => "read",
-        "conversation_public_id" => conversation.public_id },
+      { "name" => "conversation", "source" => { "scope" => "conversation" },
+        "access" => "read_write", "capture" => capture },
+      { "name" => "group", "source" => { "scope" => "conversation", "conversation_public_id" => conversation.public_id },
+        "access" => "read", "capture" => capture },
     ] }
 
     [nil, bound, { "bindings" => [] }].each_with_index do |memory_context, position|

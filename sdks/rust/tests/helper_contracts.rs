@@ -317,3 +317,18 @@ async fn checkpoint_restore_uses_original_runner_key_and_compact_undo() {
     assert_eq!(server.next().await.method, "GET");
     assert!(server.try_next().is_none());
 }
+
+#[test]
+fn authored_coordination_ask_carries_explicit_indefinite_wait() {
+    let step = Step::Ask {
+        ask: AskStep {
+            prompt: "Wait for coordinator".into(),
+            indefinite: Some(true),
+            ..Default::default()
+        },
+    };
+    assert_eq!(
+        serde_json::to_value(step).unwrap(),
+        json!({"ask": {"prompt": "Wait for coordinator", "indefinite": true}})
+    );
+}

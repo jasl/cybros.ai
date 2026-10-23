@@ -119,7 +119,7 @@ pub enum FanOnFailure {
 }
 leaf!(ToolStep {name:String,input:JsonObject} {executor_context:JsonObject,timeout_ms:u64,model_defaults:Box<ModelDefaults>,route:ToolRoute});
 leaf!(ModelStep {prompt:String} {executor_contexts:JsonObject,model:AuthoringModel,workload:Workload,tools:Vec<ToolDeclaration>,instructions:String,configuration:JsonObject,compaction:JsonObject,fan_on_failure:FanOnFailure,results:Vec<String>,attachments:Vec<String>,kernel_tools:Vec<String>,runner_executor_public_ids:Vec<String>,runner_tool_names:Vec<String>,mcp_tools:Vec<McpToolImport>,model_selection:ModelSelection,fallback_models:Vec<String>});
-leaf!(AskStep {prompt:String} {options:Vec<String>,multi:bool,fields:Vec<serde_json::Value>,timeout_ms:u64});
+leaf!(AskStep {prompt:String} {options:Vec<String>,multi:bool,fields:Vec<serde_json::Value>,timeout_ms:u64,indefinite:bool});
 leaf!(WaitStep {task:String} {run_public_id:String,timeout_ms:u64});
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ParallelStep {

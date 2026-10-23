@@ -1,0 +1,73 @@
+zh-CN:
+  activerecord:
+    errors:
+      models:
+        memory_collection:
+          exactly_one_anchor: 集合必须且只能有一个拥有者。
+          owner_unavailable: 集合拥有者不可用。
+  pagination:
+    nouns:
+      memory_collections: 集合
+  memory_collections:
+    title: 记忆集合
+    description: 浏览和管理个人、工作区与会话的持久记忆。
+    new: 新建集合
+    edit: 编辑集合
+    name: 名称
+    description_label: 说明
+    save: 保存集合
+    saved: 集合已保存。
+    empty: 没有可读的集合。
+    default_name: 默认集合
+    unnamed: 未命名集合
+    archived: 已归档
+    read_only: 你可以读取此集合，但当前不能写入其中的文档。
+    archived_help: 此集合只读。恢复后可在原权限范围内写入。
+    documents: 文档
+    documents_help: 这些文档属于此集合。会话绑定决定后续回复使用哪些集合。
+    archive_action: 归档集合
+    restore_action: 恢复集合
+    archive: 集合已归档。
+    restore: 集合已恢复。
+    tombstone: 集合已删除。
+    lifecycle_help: 归档保留可读内容。删除会立即关闭内容访问，但不会取消正在执行的工作，也不会抹去此前已读取的内容。这些操作仅影响内核保存的资料。
+    delete_confirmation: 永久删除此集合？其内容将不可用。已删除的默认集合不会自动重建。
+    search: 搜索集合
+    search_placeholder: 搜索名称或完整 ID
+    scope: 归属类型
+    all_scopes: 所有类型
+    owner: 拥有者
+    status: 状态
+    statuses:
+      active: 活跃
+      archived: 已归档
+      all: 所有状态
+    created: 创建时间
+    updated: 最近更新
+    size: 大小
+    identifier: 集合 ID
+    filter: 筛选
+    clear: 清除筛选
+    default_badge: 默认
+    navigation: 集合页面
+    overview: 概览
+    details: 集合详情
+    cancel: 取消
+    more_actions: 更多操作
+    lifecycle_title: 归档或删除
+    usage_title: 如何使用此集合
+    default_help: 这是拥有者的默认集合。当会话的记忆配置包含此归属类型时，Agent 才能在权限范围内使用它。默认集合不会自动向所有 Agent 开放。
+    binding_help: Agent 应用决定会话使用哪些集合。仅创建此集合不会让后续回复自动使用其中的内容。
+    open_document: 打开文档
+    owned_by: "%{owner} 拥有的集合"
+    create_for: "创建归属于 %{owner} 的集合。"
+    create_help: 集合创建后不能更改归属。要创建工作区或会话记忆，请从对应工作区或会话进入记忆集合。
+    empty_help: 请尝试其他名称、归属类型或状态，或新建集合以保存后续工作需要的笔记。
+    documents_empty_help: 添加文档以保存笔记。已归档集合仍可读取，恢复后才能编辑。
+    inventory_help: 此处展示你可管理或读取的集合，并非 Agent 使用的全部记忆。Agent 和 Speaker 记忆仍由对应 Agent 私有。
+    scopes:
+      user: 个人
+      agent: Agent
+      speaker: Speaker
+      workspace: 工作区
+      conversation: 会话

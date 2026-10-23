@@ -204,7 +204,7 @@ class Runs::MemoryExecutionTest < ActiveJob::TestCase
   test "a queued delete removes the current document even after recreation" do
     original = write_memory("original")
     node = dispatched_call("memory_delete", {})
-    anchor = Scopes::Anchor.call(path: "workspace/notes.md", workspace: @workspace)
+    anchor = memory_anchor(path: "workspace/notes.md", workspace: @workspace)
     @workspace.with_lock { MemoryDocuments::Delete.call(anchor: anchor, expected: memory_expectation(original)) }
     recreated = write_memory("original")
     assert_equal original.lock_version, recreated.lock_version
@@ -237,7 +237,7 @@ class Runs::MemoryExecutionTest < ActiveJob::TestCase
         UsageRecord.where(model_invocation_public_id: run.model_invocations.select(:public_id)).delete_all
         Runs::Reap.destroy_aggregate(run.reload)
       end
-      anchor = Scopes::Anchor.call(path: "workspace/notes.md", workspace: @workspace)
+      anchor = memory_anchor(path: "workspace/notes.md", workspace: @workspace)
       @workspace.with_lock { MemoryDocuments::Delete.call(anchor: anchor, expected: memory_expectation_at(anchor)) }
     end
 
@@ -282,11 +282,11 @@ class Runs::MemoryExecutionTest < ActiveJob::TestCase
     end
 
     def write_memory(content)
-      anchor = Scopes::Anchor.call(path: "workspace/notes.md", workspace: @workspace)
+      anchor = memory_anchor(path: "workspace/notes.md", workspace: @workspace)
       result = @workspace.with_lock { MemoryDocuments::Write.call(anchor: anchor, expected: memory_expectation_at(anchor), content: content) }
       assert_predicate result, :written?, result.outcome.to_s
       result.document
     end
 
-    def memory_document = MemoryDocument.for_workspace(@workspace.id).find_by(name: "notes.md")
+    def memory_document = @workspace.memory_documents.find_by(name: "notes.md")
 end

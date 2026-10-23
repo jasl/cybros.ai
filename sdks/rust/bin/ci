@@ -6,6 +6,6 @@ cargo clippy --locked --all-targets --all-features -- -D warnings
 cargo test --locked
 cargo test --locked --all-features
 RUSTDOCFLAGS='-D warnings' cargo doc --locked --no-deps --all-features
-cargo +1.85.0 check --locked --all-features
+cargo +1.88.0 check --locked --all-features
 cargo package --locked --allow-dirty
 bin/package-smoke

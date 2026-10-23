@@ -1,5 +1,5 @@
 import { Resource } from './base.js';
-import { Memory, PromptDocuments, StoreEntries, WorkspaceSchedules } from './data.js';
+import { OwnedMemoryCollections, PromptDocuments, StoreEntries, WorkspaceSchedules } from './data.js';
 import { Conversations, ConversationScope } from './conversations.js';
 import { Runs, RunScope, TaskScope } from './runs.js';
 import { InferenceRequests } from './inference.js';
@@ -24,7 +24,7 @@ export class WorkspaceScope extends Resource {
   restore(input: Version, options: RequestOptions = {}) { return this.one('Workspace', '/restoration', 'workspace', { ...options, method: 'POST', body: { command: input } }); }
   delete(query: Version, options: RequestOptions = {}) { return this.one('Workspace', '', 'workspace', { ...options, method: 'DELETE', query }); }
   principals(options: RequestOptions = {}) { return this.many('Principal', 'principals', options, '/principals'); }
-  get memory() { return new Memory(this.transport, this.path + '/memory'); }
+  get memoryCollections() { return new OwnedMemoryCollections(this.transport, this.path + '/memory_collections'); }
   get storeEntries() { return new StoreEntries(this.transport, this.path + '/store_entries'); }
   get promptDocuments() { return new PromptDocuments(this.transport, this.path + '/prompt_documents'); }
   get conversations() { return new Conversations(this.transport, this.path + '/conversations'); }

@@ -28,22 +28,15 @@ class User
   module Handle
     extend ActiveSupport::Concern
 
-    MAX_LENGTH = 32
-    # The word's shape, unanchored: the route segment a named definition's
-    # door constrains (routing forbids anchors); FORMAT anchors it.
-    SEGMENT = /[a-z0-9][a-z0-9_-]{1,31}/
-    FORMAT = /\A#{SEGMENT}\z/
     FALLBACK_BASE = "user".freeze
     ADDRESS_PREFIX = "@".freeze
-    # The column is `uuid`: a word that is not one must never reach it.
-    PUBLIC_ID_FORMAT = /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/
     COOLDOWN = 14.days
 
     included do
       normalizes :handle, with: ->(value) { value.to_s.strip.downcase.presence }
 
       validates :handle, presence: true
-      validates :handle, format: { with: FORMAT }, allow_blank: true
+      validates :handle, format: { with: Constants::HANDLE_FORMAT }, allow_blank: true
       validates :handle, uniqueness: { scope: :account_id }, if: :will_save_change_to_handle?
       validate :handle_is_not_reserved, if: :will_save_change_to_handle?
 
@@ -57,9 +50,9 @@ class User
       # chain it on `members`, so the system user is never addressed.
       scope :addressed_by, ->(account_id, address) do
         word = address.to_s.strip.downcase.delete_prefix(ADDRESS_PREFIX)
-        if word.match?(FORMAT)
+        if word.match?(Constants::HANDLE_FORMAT)
           where(account_id: account_id, handle: word)
-        elsif word.match?(PUBLIC_ID_FORMAT)
+        elsif word.match?(Constants::PUBLIC_ID_FORMAT)
           where(account_id: account_id, public_id: word)
         else
           none
@@ -78,11 +71,11 @@ class User
     class << self
       # The Human's default is `String#parameterize`'s word: transliterated,
       # lowercased, every run outside `[a-z0-9_-]` one dash, trimmed (an
-      # underscore survives, as the FORMAT admits it), then capped; nil when
+      # underscore survives the handle grammar), then capped; nil when
       # nothing addressable survives (a name entirely outside Latin script).
       def derive(display_name)
-        base = display_name.to_s.parameterize[0, MAX_LENGTH].gsub(/-+\z/, "")
-        base if base.match?(FORMAT)
+        base = display_name.to_s.parameterize[0, Constants::HANDLE_MAX_LENGTH].gsub(/-+\z/, "")
+        base if base.match?(Constants::HANDLE_FORMAT)
       end
 
       # The base, else `base-2`, `base-3` … — the first not in `taken`,
@@ -92,7 +85,7 @@ class User
 
         (2..).each do |n|
           suffix = "-#{n}"
-          candidate = "#{base[0, MAX_LENGTH - suffix.length].gsub(/-+\z/, "")}#{suffix}"
+          candidate = "#{base[0, Constants::HANDLE_MAX_LENGTH - suffix.length].gsub(/-+\z/, "")}#{suffix}"
           return candidate unless taken.include?(candidate)
         end
       end

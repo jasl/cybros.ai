@@ -43,8 +43,10 @@ module Rho
         state = MemoryReview.new(workspace: @workspace,
           conversation_public_id: @input.fetch("conversation_public_id")).state
         return false unless state.enabled && state.path == @input.fetch("path") &&
-          state.document_public_id == @input.fetch("document_public_id") && state.speaker_public_id == @input.fetch("speaker_public_id")
-        return false unless MemoryReview.context_snapshot(@conversation.fetch).all? { |key, value| value == @input.fetch(key) }
+          state.collection_public_id == @input.fetch("collection_public_id") && state.document_public_id == @input.fetch("document_public_id") && state.speaker_public_id == @input.fetch("speaker_public_id")
+        memory = @conversation.memory(speaker_public_id: @input.fetch("speaker_public_id"))
+        snapshot = MemoryReview.context_snapshot(@conversation.fetch, memory_context: memory.bindings)
+        return false unless snapshot.all? { |key, value| value == @input.fetch(key) }
 
         turn = @conversation.turns.fetch(@input.fetch("turn_public_id"))
         return false unless turn.status == "completed" && turn.kind == "direct_reply" &&
@@ -52,7 +54,11 @@ module Rho
           turn.active_variant&.run_public_id == @input.fetch("run_public_id")
 
         document = @conversation.memory(speaker_public_id: @input.fetch("speaker_public_id")).read(@input.fetch("path"))
-        document.public_id == @input.fetch("document_public_id") && document.lock_version == @input.fetch("lock_version")
+        document.collection_public_id == @input.fetch("collection_public_id") && document.public_id == @input.fetch("document_public_id") && document.lock_version == @input.fetch("lock_version")
+      rescue CybrosAgent::Api::Conflict => error
+        raise unless %w[memory_overridden conversation_archived].include?(error.code)
+
+        false
       rescue CybrosAgent::Api::NotFound, CybrosAgent::Api::Forbidden, CybrosAgent::Api::InvalidRequest
         false
       end
@@ -64,13 +70,13 @@ module Rho
         return "unchanged" if content == @input.fetch("content")
 
         @conversation.memory(speaker_public_id: @input.fetch("speaker_public_id")).write(@input.fetch("path"), content,
-          expected_public_id: @input.fetch("document_public_id"), expected_lock_version: @input.fetch("lock_version"))
+          expected_collection_public_id: @input.fetch("collection_public_id"), expected_public_id: @input.fetch("document_public_id"), expected_lock_version: @input.fetch("lock_version"))
         "updated"
       rescue CybrosAgent::Api::Conflict => error
-        raise unless error.code == "stale_object"
+        raise unless %w[stale_object memory_overridden conversation_archived].include?(error.code)
 
         "skipped"
-      rescue CybrosAgent::Api::Forbidden, CybrosAgent::Api::InvalidRequest
+      rescue CybrosAgent::Api::NotFound, CybrosAgent::Api::Forbidden, CybrosAgent::Api::InvalidRequest
         "skipped"
       end
 

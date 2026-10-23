@@ -8,6 +8,15 @@ require "stringio"
 class AcpExeTest < Minitest::Test
   Cli = Rho::Acp::Agent::Cli
 
+  def setup
+    @root = Dir.mktmpdir("rho-acp-connect")
+    @env = { "RHO_NEXUS_URL" => "https://nexus.example", "RHO_HOME" => @root }
+  end
+
+  def teardown
+    FileUtils.remove_entry(@root)
+  end
+
   def test_the_flags_parse_in_both_spellings_with_their_defaults
     options = Cli.parse(%w[--mode ask --model=openrouter/m --runner exr_1])
     assert_equal ["ask", "openrouter/m", "exr_1", nil], [options.mode, options.model, options.runner, options.word]
@@ -72,14 +81,14 @@ class AcpExeTest < Minitest::Test
     connected = terminal
     err = StringIO.new
     with_terminal(connected) do |homes|
-      assert_equal 0, Cli.run(%w[connect], env: { "RHO_NEXUS_URL" => "https://nexus.example", "RHO_HOME" => Dir.mktmpdir("rho-acp-connect") }, err: err)
-      assert_kind_of Rho::Home, homes.first
+      assert_equal 0, Cli.run(%w[connect], env: @env, err: err), err.string
+      assert_equal @root, homes.first.root
     end
     assert connected.ran?
 
     refusing = terminal { raise(Rho::ConnectionError, "the connection is no longer in flight") }
     with_terminal(refusing) do
-      assert_equal 1, Cli.run(%w[connect], env: { "RHO_NEXUS_URL" => "https://nexus.example" }, err: err)
+      assert_equal 1, Cli.run(%w[connect], env: @env, err: err)
     end
     assert_includes err.string, "rho-acp: the connection is no longer in flight"
   end
@@ -90,7 +99,7 @@ class AcpExeTest < Minitest::Test
     already = terminal(daemon: { "endpoint" => "http://127.0.0.1:1" }, connected: true)
     err = StringIO.new
     with_terminal(already) do
-      assert_equal 0, Cli.run(%w[connect], env: { "RHO_NEXUS_URL" => "https://nexus.example" }, err: err)
+      assert_equal 0, Cli.run(%w[connect], env: @env, err: err), err.string
     end
     refute already.ran?, "no ceremony on a connected home"
     assert_includes err.string, "rho-acp: #{Cli::ALREADY_CONNECTED}"
@@ -98,8 +107,21 @@ class AcpExeTest < Minitest::Test
     # A daemon that runs DISCONNECTED (no pointer) is the ceremony as before.
     disconnected = terminal(daemon: { "endpoint" => "http://127.0.0.1:1" }, connected: false)
     with_terminal(disconnected) do
-      assert_equal 0, Cli.run(%w[connect], env: { "RHO_NEXUS_URL" => "https://nexus.example" }, err: err)
+      assert_equal 0, Cli.run(%w[connect], env: @env, err: err), err.string
     end
     assert disconnected.ran?
+  end
+
+  def test_connect_uses_the_injected_homes_binding_and_work_directory
+    Rho::Home.resolve(base_url: "https://bound.example", root: @root).prepare
+    work = File.join(@root, "custom-work")
+    env = @env.except("RHO_NEXUS_URL").merge("RHO_WORK_DIR" => work)
+    err = StringIO.new
+
+    with_terminal(terminal) do |homes|
+      assert_equal 0, Cli.run(%w[connect], env: env, err: err), err.string
+      assert_equal "https://bound.example", homes.first.base_url
+      assert_equal work, homes.first.work_root
+    end
   end
 end

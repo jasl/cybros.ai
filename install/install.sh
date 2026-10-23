@@ -7,7 +7,7 @@
 # Checks the prerequisites it never installs
 # (git, bash, curl, tar, a C compiler), then, into a prefix YOU own
 # (default ~/.local/share/rho, never sudo), unpacks Homebrew's portable
-# Ruby 4.0.7 bottle (sha256-pinned, the sha IS the download address),
+# Ruby 4.0.9 bottle (sha256-pinned, the sha IS the download address),
 # installs the lock's bundler into it, copies rho's packaged gem trees out of
 # the checkout this script sits in and runs `bundle install --deployment`
 # there, adds the tool rows of the chosen profile (rg, fd; jq, uv; Node +
@@ -99,36 +99,36 @@ run() {
 # >>> rho manifest (rendered from install/manifest.json by `rake install:render`; do not edit by hand)
 # shellcheck disable=SC2034
 RHO_MANIFEST_VERSION="1"
-RHO_MANIFEST_GENERATED="2026-09-18"
+RHO_MANIFEST_GENERATED="2026-10-23"
 RHO_PLATFORMS="darwin-arm64 darwin-x64 linux-x64 linux-arm64"
 RHO_PROFILES="runner full dev"
 RHO_APP_TREES="sdks/ruby cmctl agents/rho/rho-runner agents/rho/rho-browser agents/rho/rho-mcp agents/rho/rho-web-tools agents/rho/rho-codemode agents/rho/rho-webui agents/rho/rho-ingress-telegram agents/rho/rho-acp agents/rho/rho-acp-client agents/rho/rho-t3 agents/rho/rho"
 RHO_APP_ENTRY="agents/rho/rho/exe/rho"
 RHO_APP_GEMFILE="agents/rho/rho/Gemfile"
 RHO_APP_BUNDLE_WITHOUT="development:test"
-RHO_RUBY_VERSION="4.0.7"
-RHO_RUBY_BUNDLER="4.0.22"
+RHO_RUBY_VERSION="4.0.9"
+RHO_RUBY_BUNDLER="4.0.23"
 RHO_RUBY_HEADER="Authorization: Bearer QQ=="
 RHO_RUBY_darwin_arm64_TAG="arm64_big_sur"
-RHO_RUBY_darwin_arm64_FILENAME="portable-ruby-4.0.7.arm64_big_sur.bottle.tar.gz"
-RHO_RUBY_darwin_arm64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:e0088dff5614b39387300136ec7a5f95bf1e07589547245c919524fc9e8b4197"
-RHO_RUBY_darwin_arm64_SHA256="e0088dff5614b39387300136ec7a5f95bf1e07589547245c919524fc9e8b4197"
-RHO_RUBY_darwin_arm64_BYTES="12686106"
+RHO_RUBY_darwin_arm64_FILENAME="portable-ruby-4.0.9.arm64_big_sur.bottle.tar.gz"
+RHO_RUBY_darwin_arm64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:43ff285a82f48c84a06d0676a3800815a19d290d32e44182ddd7a6e95478e18e"
+RHO_RUBY_darwin_arm64_SHA256="43ff285a82f48c84a06d0676a3800815a19d290d32e44182ddd7a6e95478e18e"
+RHO_RUBY_darwin_arm64_BYTES="12703398"
 RHO_RUBY_darwin_x64_TAG="big_sur"
-RHO_RUBY_darwin_x64_FILENAME="portable-ruby-4.0.7.big_sur.bottle.tar.gz"
-RHO_RUBY_darwin_x64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:57bebadc864405cbd39743e32eef741f4b75c0ba121f5cd9296ab84994b9f83b"
-RHO_RUBY_darwin_x64_SHA256="57bebadc864405cbd39743e32eef741f4b75c0ba121f5cd9296ab84994b9f83b"
-RHO_RUBY_darwin_x64_BYTES="12241978"
+RHO_RUBY_darwin_x64_FILENAME="portable-ruby-4.0.9.big_sur.bottle.tar.gz"
+RHO_RUBY_darwin_x64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:c90d3891dc3805de531cd262bc8f17382f499db0eb9185d76b8785ec93753fac"
+RHO_RUBY_darwin_x64_SHA256="c90d3891dc3805de531cd262bc8f17382f499db0eb9185d76b8785ec93753fac"
+RHO_RUBY_darwin_x64_BYTES="12256106"
 RHO_RUBY_linux_x64_TAG="x86_64_linux"
-RHO_RUBY_linux_x64_FILENAME="portable-ruby-4.0.7.x86_64_linux.bottle.tar.gz"
-RHO_RUBY_linux_x64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:bf2a9bf102694d40084ed436b06a1566dded60a519f4d1879c90c81046e11081"
-RHO_RUBY_linux_x64_SHA256="bf2a9bf102694d40084ed436b06a1566dded60a519f4d1879c90c81046e11081"
-RHO_RUBY_linux_x64_BYTES="14350857"
+RHO_RUBY_linux_x64_FILENAME="portable-ruby-4.0.9.x86_64_linux.bottle.tar.gz"
+RHO_RUBY_linux_x64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:20d7b22eba004e0518932ce7f8a271c16b1a9da91b81f696c735d14d817a2c07"
+RHO_RUBY_linux_x64_SHA256="20d7b22eba004e0518932ce7f8a271c16b1a9da91b81f696c735d14d817a2c07"
+RHO_RUBY_linux_x64_BYTES="14391304"
 RHO_RUBY_linux_arm64_TAG="arm64_linux"
-RHO_RUBY_linux_arm64_FILENAME="portable-ruby-4.0.7.arm64_linux.bottle.tar.gz"
-RHO_RUBY_linux_arm64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:c9b75dd6bd9578921f3ce739dacae8866698c3399c0f83574a5d5fadda2aab2d"
-RHO_RUBY_linux_arm64_SHA256="c9b75dd6bd9578921f3ce739dacae8866698c3399c0f83574a5d5fadda2aab2d"
-RHO_RUBY_linux_arm64_BYTES="14660663"
+RHO_RUBY_linux_arm64_FILENAME="portable-ruby-4.0.9.arm64_linux.bottle.tar.gz"
+RHO_RUBY_linux_arm64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:346f2c71db33cdf4c64c68954f4e1134fbf63cc0d1a5885cfdf94b881f5ec53b"
+RHO_RUBY_linux_arm64_SHA256="346f2c71db33cdf4c64c68954f4e1134fbf63cc0d1a5885cfdf94b881f5ec53b"
+RHO_RUBY_linux_arm64_BYTES="14704793"
 RHO_TOOLS="rg fd jq uv node playwright_core chromium"
 RHO_TOOL_rg_NAME="rg"
 RHO_TOOL_rg_VERSION="15.2.0"
@@ -182,46 +182,46 @@ RHO_TOOL_jq_linux_arm64_URL="https://github.com/jqlang/jq/releases/download/jq-1
 RHO_TOOL_jq_linux_arm64_SHA256="8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309"
 RHO_TOOL_jq_linux_arm64_MEMBERS="jq"
 RHO_TOOL_uv_NAME="uv"
-RHO_TOOL_uv_VERSION="0.12.13"
+RHO_TOOL_uv_VERSION="0.13.5"
 RHO_TOOL_uv_PROFILES="full dev"
 RHO_TOOL_uv_INTO="bin"
 RHO_TOOL_uv_UNPACK="members"
-RHO_TOOL_uv_darwin_arm64_URL="https://github.com/astral-sh/uv/releases/download/0.12.13/uv-aarch64-apple-darwin.tar.gz"
-RHO_TOOL_uv_darwin_arm64_SHA256="7e6ddb9316acc00f2296c82ff4d99977870ee34b2f0ddcae9444d714db9364ed"
+RHO_TOOL_uv_darwin_arm64_URL="https://github.com/astral-sh/uv/releases/download/0.13.5/uv-aarch64-apple-darwin.tar.gz"
+RHO_TOOL_uv_darwin_arm64_SHA256="743f85035a1996ecb350659e01cd9faea9709829be09b1b4b03c73eaf3c9cd73"
 RHO_TOOL_uv_darwin_arm64_MEMBERS="uv-aarch64-apple-darwin/uv uv-aarch64-apple-darwin/uvx"
-RHO_TOOL_uv_darwin_x64_URL="https://github.com/astral-sh/uv/releases/download/0.12.13/uv-x86_64-apple-darwin.tar.gz"
-RHO_TOOL_uv_darwin_x64_SHA256="5e287ef61cb6a9b61b3a83fef124fd143e400468a7dac794230147a810e17119"
+RHO_TOOL_uv_darwin_x64_URL="https://github.com/astral-sh/uv/releases/download/0.13.5/uv-x86_64-apple-darwin.tar.gz"
+RHO_TOOL_uv_darwin_x64_SHA256="b0f52b0e3945b4107d89024ea38e625683011fbfc05a0d98f9fa2d6dcee28c66"
 RHO_TOOL_uv_darwin_x64_MEMBERS="uv-x86_64-apple-darwin/uv uv-x86_64-apple-darwin/uvx"
-RHO_TOOL_uv_linux_x64_URL="https://github.com/astral-sh/uv/releases/download/0.12.13/uv-x86_64-unknown-linux-gnu.tar.gz"
-RHO_TOOL_uv_linux_x64_SHA256="745765a3b6e360ad76743599ae5c42e9278c7edf8bbff9fc76d05bf2623a04dd"
+RHO_TOOL_uv_linux_x64_URL="https://github.com/astral-sh/uv/releases/download/0.13.5/uv-x86_64-unknown-linux-gnu.tar.gz"
+RHO_TOOL_uv_linux_x64_SHA256="f68d291c75783122dad58ab77def0e13f3233f358731db5d6d7e8715603b928f"
 RHO_TOOL_uv_linux_x64_MEMBERS="uv-x86_64-unknown-linux-gnu/uv uv-x86_64-unknown-linux-gnu/uvx"
-RHO_TOOL_uv_linux_arm64_URL="https://github.com/astral-sh/uv/releases/download/0.12.13/uv-aarch64-unknown-linux-gnu.tar.gz"
-RHO_TOOL_uv_linux_arm64_SHA256="2eaa5d94f5db7b3a1a092156b9420459e42ab0217d917fe74a876309cef9b5e9"
+RHO_TOOL_uv_linux_arm64_URL="https://github.com/astral-sh/uv/releases/download/0.13.5/uv-aarch64-unknown-linux-gnu.tar.gz"
+RHO_TOOL_uv_linux_arm64_SHA256="4bb69cf95ed13f23713bb7bc09f241896ea0c75b7c557e615a20604b82f9c403"
 RHO_TOOL_uv_linux_arm64_MEMBERS="uv-aarch64-unknown-linux-gnu/uv uv-aarch64-unknown-linux-gnu/uvx"
 RHO_TOOL_node_NAME="node"
-RHO_TOOL_node_VERSION="24.21.0"
+RHO_TOOL_node_VERSION="24.22.1"
 RHO_TOOL_node_PROFILES="dev"
 RHO_TOOL_node_INTO="lib/playwright/node"
 RHO_TOOL_node_UNPACK="tree"
-RHO_TOOL_node_darwin_arm64_URL="https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz"
-RHO_TOOL_node_darwin_arm64_SHA256="bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057"
+RHO_TOOL_node_darwin_arm64_URL="https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-arm64.tar.gz"
+RHO_TOOL_node_darwin_arm64_SHA256="89c682593d76cd44233fa53b1563264e7de9cbb189cad169135c5b4fadfbc0a7"
 RHO_TOOL_node_darwin_arm64_MEMBERS=""
-RHO_TOOL_node_darwin_x64_URL="https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-x64.tar.gz"
-RHO_TOOL_node_darwin_x64_SHA256="1462cb3b3046b815cf8ea436d3da450ec1a9f11dac7e5a46b0ada5305d7e8097"
+RHO_TOOL_node_darwin_x64_URL="https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-x64.tar.gz"
+RHO_TOOL_node_darwin_x64_SHA256="d132557e7ee2b85af08b0c8c34338e65c6430f2238d01f727728ef42dc83b035"
 RHO_TOOL_node_darwin_x64_MEMBERS=""
-RHO_TOOL_node_linux_x64_URL="https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz"
-RHO_TOOL_node_linux_x64_SHA256="fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6"
+RHO_TOOL_node_linux_x64_URL="https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-x64.tar.xz"
+RHO_TOOL_node_linux_x64_SHA256="6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6"
 RHO_TOOL_node_linux_x64_MEMBERS=""
-RHO_TOOL_node_linux_arm64_URL="https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-arm64.tar.xz"
-RHO_TOOL_node_linux_arm64_SHA256="6ad1325edbdb5649c379b75a237147a666c95d4f9ae8d340fef2d1575d289ad2"
+RHO_TOOL_node_linux_arm64_URL="https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-arm64.tar.xz"
+RHO_TOOL_node_linux_arm64_SHA256="dbabf7a1cbf947e6059ffad2c27b80041db97dea1e553b62afdee7f13fca336e"
 RHO_TOOL_node_linux_arm64_MEMBERS=""
 RHO_TOOL_playwright_core_NAME="playwright-core"
-RHO_TOOL_playwright_core_VERSION="1.62.1"
+RHO_TOOL_playwright_core_VERSION="1.64.0"
 RHO_TOOL_playwright_core_PROFILES="dev"
 RHO_TOOL_playwright_core_INTO="lib/playwright/package"
 RHO_TOOL_playwright_core_UNPACK="tree"
-RHO_TOOL_playwright_core_all_URL="https://registry.npmjs.org/playwright-core/-/playwright-core-1.62.1.tgz"
-RHO_TOOL_playwright_core_all_SHA256="954be1e183d0ddb9748fe0d2d08b0b66a9210c74dd75c397aeb70303b9f08a00"
+RHO_TOOL_playwright_core_all_URL="https://registry.npmjs.org/playwright-core/-/playwright-core-1.64.0.tgz"
+RHO_TOOL_playwright_core_all_SHA256="90c8b6b19da0a1b1e9a004cd6ff3e49e82668a0856e01efcc0e2d9c2b4466bb6"
 RHO_TOOL_playwright_core_all_MEMBERS=""
 RHO_TOOL_chromium_NAME="chromium"
 RHO_TOOL_chromium_VERSION="headless-shell"
@@ -239,38 +239,39 @@ RHO_APT_CHROMIUM_debian12="libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0
 RHO_APT_IMAGE="bash tini ca-certificates curl git git-lfs build-essential pkg-config unzip zip xz-utils rsync openssh-client sqlite3 procps less libssl-dev libyaml-dev libffi-dev zlib1g-dev libreadline-dev libsqlite3-dev libpq-dev clang clang-format clang-tidy cmake ninja-build ccache dnsutils iputils-ping netcat-openbsd tzdata moreutils gnupg poppler-utils ffmpeg"
 RHO_APT_COWORK="libreoffice-writer libreoffice-calc libreoffice-impress fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-cjk"
 RHO_IMAGE_BASE="ubuntu:26.04"
-RHO_COWORK_PYTHON="3.14"
-RHO_TOOLCHAIN_MISE_VERSION="2026.9.5"
+RHO_COWORK_PYTHON="3.15"
+RHO_TOOLCHAIN_MISE_VERSION="2026.10.18"
 RHO_TOOLCHAIN_MISE_RUBY_COMPILE="false"
 RHO_TOOLCHAIN_MISE_INTO="/usr/local/bin"
-RHO_TOOLCHAIN_MISE_TOOLS="node@24.21.0 go@1.27.1 rust@1.98.1"
+RHO_TOOLCHAIN_MISE_TOOLS="node@24.22.1 go@1.27.3 rust@1.99.1"
 RHO_TOOLCHAIN_RUST_PROFILE="minimal"
 RHO_TOOLCHAIN_RUST_COMPONENTS="[\"rustfmt\",\"clippy\"]"
 RHO_TOOLCHAIN_NPM_DEFAULT_PACKAGES="pnpm prettier eslint typescript"
-RHO_NATIVE_CODING_PACKAGES="t3@0.0.46-nightly.20261006.2752 @openai/codex@0.160.1 @anthropic-ai/claude-code@2.1.292"
-RHO_TOOLCHAIN_UV_PYTHON="3.14"
+RHO_NATIVE_CODING_PACKAGES="t3@0.1.2 @openai/codex@0.164.0 @anthropic-ai/claude-code@2.1.309"
+RHO_NATIVE_CODING_ALLOW_SCRIPTS="@anthropic-ai/claude-code"
+RHO_TOOLCHAIN_UV_PYTHON="3.15"
 RHO_TOOLCHAIN_UV_TOOLS="ruff pyright mypy"
-RHO_TOOLCHAIN_GH_VERSION="2.100.0"
+RHO_TOOLCHAIN_GH_VERSION="2.103.1"
 RHO_TOOLCHAIN_GH_INTO="/usr/local/bin"
 RHO_TOOLCHAIN_TINI_VERSION="0.19.0"
-RHO_TOOLCHAIN_MISE_linux_x64_URL="https://github.com/jdx/mise/releases/download/v2026.9.5/mise-v2026.9.5-linux-x64.tar.gz"
-RHO_TOOLCHAIN_MISE_linux_x64_SHA256="d71e94e1ed59d4d0ca4ac847fa321d6d6615a8e613e9b468c9fb39f0dddd06d5"
+RHO_TOOLCHAIN_MISE_linux_x64_URL="https://github.com/jdx/mise/releases/download/v2026.10.18/mise-v2026.10.18-linux-x64.tar.gz"
+RHO_TOOLCHAIN_MISE_linux_x64_SHA256="0d41b60745a6273a80089c86f80d8729042d2f57f87fda70aecc7d1c3ffbd3be"
 RHO_TOOLCHAIN_MISE_linux_x64_MEMBERS="mise/bin/mise"
-RHO_TOOLCHAIN_MISE_linux_arm64_URL="https://github.com/jdx/mise/releases/download/v2026.9.5/mise-v2026.9.5-linux-arm64.tar.gz"
-RHO_TOOLCHAIN_MISE_linux_arm64_SHA256="3a52c7c7c58d21a0791516950ebf4bc915f403277b49c93d657fc585259625ec"
+RHO_TOOLCHAIN_MISE_linux_arm64_URL="https://github.com/jdx/mise/releases/download/v2026.10.18/mise-v2026.10.18-linux-arm64.tar.gz"
+RHO_TOOLCHAIN_MISE_linux_arm64_SHA256="c5a49a47f8184f5649f3d8685b408bd72325a823f41cf618c60f3ffc303090a1"
 RHO_TOOLCHAIN_MISE_linux_arm64_MEMBERS="mise/bin/mise"
-RHO_TOOLCHAIN_GH_linux_x64_URL="https://github.com/cli/cli/releases/download/v2.100.0/gh_2.100.0_linux_amd64.tar.gz"
-RHO_TOOLCHAIN_GH_linux_x64_SHA256="e4d4bb4498e8d007abe545b6568926793ace1b6447da598294a610018cb164be"
-RHO_TOOLCHAIN_GH_linux_x64_MEMBERS="gh_2.100.0_linux_amd64/bin/gh"
-RHO_TOOLCHAIN_GH_linux_arm64_URL="https://github.com/cli/cli/releases/download/v2.100.0/gh_2.100.0_linux_arm64.tar.gz"
-RHO_TOOLCHAIN_GH_linux_arm64_SHA256="ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961"
-RHO_TOOLCHAIN_GH_linux_arm64_MEMBERS="gh_2.100.0_linux_arm64/bin/gh"
+RHO_TOOLCHAIN_GH_linux_x64_URL="https://github.com/cli/cli/releases/download/v2.103.1/gh_2.103.1_linux_amd64.tar.gz"
+RHO_TOOLCHAIN_GH_linux_x64_SHA256="57500f347b5e84efb6578c9b644eeb3b4e54046762635a939dd0ee2cca1c1add"
+RHO_TOOLCHAIN_GH_linux_x64_MEMBERS="gh_2.103.1_linux_amd64/bin/gh"
+RHO_TOOLCHAIN_GH_linux_arm64_URL="https://github.com/cli/cli/releases/download/v2.103.1/gh_2.103.1_linux_arm64.tar.gz"
+RHO_TOOLCHAIN_GH_linux_arm64_SHA256="25b1287471a73a3cca32e5d2d2798ae26abea0243db1b9e4a8c1be506fad1bfe"
+RHO_TOOLCHAIN_GH_linux_arm64_MEMBERS="gh_2.103.1_linux_arm64/bin/gh"
 # <<< rho manifest
 # >>> rho manifest.json (the same document, verbatim, for the prefix's copy and `rho doctor`)
 RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
 {
   "manifest_version": 1,
-  "generated": "2026-09-18",
+  "generated": "2026-10-23",
   "platforms": [
     "darwin-arm64",
     "darwin-x64",
@@ -305,10 +306,10 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
   },
   "runtime": {
     "kind": "ruby",
-    "version": "4.0.7",
-    "ruby": "4.0.7",
+    "version": "4.0.9",
+    "ruby": "4.0.9",
     "provenance": "Homebrew portable-ruby: Homebrew/brew Library/Homebrew/vendor/portable-ruby-version and the four vendor/portable-ruby-<arch>-<os> files; homebrew-core Formula/p/portable-ruby.rb bottle block",
-    "bundler": "4.0.22",
+    "bundler": "4.0.23",
     "bundler_provenance": "agents/rho/rho/Gemfile.lock BUNDLED WITH (the lock's version is installed into the portable Ruby always)",
     "headers": {
       "Authorization": "Bearer QQ=="
@@ -317,31 +318,31 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
     "artifacts": {
       "darwin-arm64": {
         "tag": "arm64_big_sur",
-        "filename": "portable-ruby-4.0.7.arm64_big_sur.bottle.tar.gz",
-        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:e0088dff5614b39387300136ec7a5f95bf1e07589547245c919524fc9e8b4197",
-        "sha256": "e0088dff5614b39387300136ec7a5f95bf1e07589547245c919524fc9e8b4197",
-        "bytes": 12686106
+        "filename": "portable-ruby-4.0.9.arm64_big_sur.bottle.tar.gz",
+        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:43ff285a82f48c84a06d0676a3800815a19d290d32e44182ddd7a6e95478e18e",
+        "sha256": "43ff285a82f48c84a06d0676a3800815a19d290d32e44182ddd7a6e95478e18e",
+        "bytes": 12703398
       },
       "darwin-x64": {
         "tag": "big_sur",
-        "filename": "portable-ruby-4.0.7.big_sur.bottle.tar.gz",
-        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:57bebadc864405cbd39743e32eef741f4b75c0ba121f5cd9296ab84994b9f83b",
-        "sha256": "57bebadc864405cbd39743e32eef741f4b75c0ba121f5cd9296ab84994b9f83b",
-        "bytes": 12241978
+        "filename": "portable-ruby-4.0.9.big_sur.bottle.tar.gz",
+        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:c90d3891dc3805de531cd262bc8f17382f499db0eb9185d76b8785ec93753fac",
+        "sha256": "c90d3891dc3805de531cd262bc8f17382f499db0eb9185d76b8785ec93753fac",
+        "bytes": 12256106
       },
       "linux-x64": {
         "tag": "x86_64_linux",
-        "filename": "portable-ruby-4.0.7.x86_64_linux.bottle.tar.gz",
-        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:bf2a9bf102694d40084ed436b06a1566dded60a519f4d1879c90c81046e11081",
-        "sha256": "bf2a9bf102694d40084ed436b06a1566dded60a519f4d1879c90c81046e11081",
-        "bytes": 14350857
+        "filename": "portable-ruby-4.0.9.x86_64_linux.bottle.tar.gz",
+        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:20d7b22eba004e0518932ce7f8a271c16b1a9da91b81f696c735d14d817a2c07",
+        "sha256": "20d7b22eba004e0518932ce7f8a271c16b1a9da91b81f696c735d14d817a2c07",
+        "bytes": 14391304
       },
       "linux-arm64": {
         "tag": "arm64_linux",
-        "filename": "portable-ruby-4.0.7.arm64_linux.bottle.tar.gz",
-        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:c9b75dd6bd9578921f3ce739dacae8866698c3399c0f83574a5d5fadda2aab2d",
-        "sha256": "c9b75dd6bd9578921f3ce739dacae8866698c3399c0f83574a5d5fadda2aab2d",
-        "bytes": 14660663
+        "filename": "portable-ruby-4.0.9.arm64_linux.bottle.tar.gz",
+        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:346f2c71db33cdf4c64c68954f4e1134fbf63cc0d1a5885cfdf94b881f5ec53b",
+        "sha256": "346f2c71db33cdf4c64c68954f4e1134fbf63cc0d1a5885cfdf94b881f5ec53b",
+        "bytes": 14704793
       }
     },
     "floors": {
@@ -475,7 +476,7 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
       }
     },
     "uv": {
-      "version": "0.12.13",
+      "version": "0.13.5",
       "profiles": [
         "full",
         "dev"
@@ -486,32 +487,32 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
       "note": "uv and uvx into bin/; no UV_* variable is exported anywhere — Pythons land where uv puts them by default, shared with the person's own uv",
       "artifacts": {
         "darwin-arm64": {
-          "url": "https://github.com/astral-sh/uv/releases/download/0.12.13/uv-aarch64-apple-darwin.tar.gz",
-          "sha256": "7e6ddb9316acc00f2296c82ff4d99977870ee34b2f0ddcae9444d714db9364ed",
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.5/uv-aarch64-apple-darwin.tar.gz",
+          "sha256": "743f85035a1996ecb350659e01cd9faea9709829be09b1b4b03c73eaf3c9cd73",
           "members": [
             "uv-aarch64-apple-darwin/uv",
             "uv-aarch64-apple-darwin/uvx"
           ]
         },
         "darwin-x64": {
-          "url": "https://github.com/astral-sh/uv/releases/download/0.12.13/uv-x86_64-apple-darwin.tar.gz",
-          "sha256": "5e287ef61cb6a9b61b3a83fef124fd143e400468a7dac794230147a810e17119",
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.5/uv-x86_64-apple-darwin.tar.gz",
+          "sha256": "b0f52b0e3945b4107d89024ea38e625683011fbfc05a0d98f9fa2d6dcee28c66",
           "members": [
             "uv-x86_64-apple-darwin/uv",
             "uv-x86_64-apple-darwin/uvx"
           ]
         },
         "linux-x64": {
-          "url": "https://github.com/astral-sh/uv/releases/download/0.12.13/uv-x86_64-unknown-linux-gnu.tar.gz",
-          "sha256": "745765a3b6e360ad76743599ae5c42e9278c7edf8bbff9fc76d05bf2623a04dd",
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.5/uv-x86_64-unknown-linux-gnu.tar.gz",
+          "sha256": "f68d291c75783122dad58ab77def0e13f3233f358731db5d6d7e8715603b928f",
           "members": [
             "uv-x86_64-unknown-linux-gnu/uv",
             "uv-x86_64-unknown-linux-gnu/uvx"
           ]
         },
         "linux-arm64": {
-          "url": "https://github.com/astral-sh/uv/releases/download/0.12.13/uv-aarch64-unknown-linux-gnu.tar.gz",
-          "sha256": "2eaa5d94f5db7b3a1a092156b9420459e42ab0217d917fe74a876309cef9b5e9",
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.5/uv-aarch64-unknown-linux-gnu.tar.gz",
+          "sha256": "4bb69cf95ed13f23713bb7bc09f241896ea0c75b7c557e615a20604b82f9c403",
           "members": [
             "uv-aarch64-unknown-linux-gnu/uv",
             "uv-aarch64-unknown-linux-gnu/uvx"
@@ -520,53 +521,53 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
       }
     },
     "node": {
-      "version": "24.21.0",
+      "version": "24.22.1",
       "profiles": [
         "dev"
       ],
       "into": "lib/playwright/node",
       "unpack": "tree",
-      "verification": "publisher-sha256 (nodejs.org/dist/v24.21.0/SHASUMS256.txt, copied at bump; its GPG signature is the ceremony skipped)",
+      "verification": "publisher-sha256 (nodejs.org/dist/v24.22.1/SHASUMS256.txt, copied at bump; its GPG signature is the ceremony skipped)",
       "note": "the Playwright driver's Node, inside the prefix and never in bin/: a project's Node is untouched; glibc >= 2.28 on Linux",
       "artifacts": {
         "darwin-arm64": {
-          "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz",
-          "sha256": "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057",
+          "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-arm64.tar.gz",
+          "sha256": "89c682593d76cd44233fa53b1563264e7de9cbb189cad169135c5b4fadfbc0a7",
           "members": []
         },
         "darwin-x64": {
-          "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-x64.tar.gz",
-          "sha256": "1462cb3b3046b815cf8ea436d3da450ec1a9f11dac7e5a46b0ada5305d7e8097",
+          "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-x64.tar.gz",
+          "sha256": "d132557e7ee2b85af08b0c8c34338e65c6430f2238d01f727728ef42dc83b035",
           "members": []
         },
         "linux-x64": {
-          "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz",
-          "sha256": "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6",
+          "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-x64.tar.xz",
+          "sha256": "6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6",
           "members": []
         },
         "linux-arm64": {
-          "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-arm64.tar.xz",
-          "sha256": "6ad1325edbdb5649c379b75a237147a666c95d4f9ae8d340fef2d1575d289ad2",
+          "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-arm64.tar.xz",
+          "sha256": "dbabf7a1cbf947e6059ffad2c27b80041db97dea1e553b62afdee7f13fca336e",
           "members": []
         }
       }
     },
     "playwright-core": {
-      "version": "1.62.1",
+      "version": "1.64.0",
       "profiles": [
         "dev"
       ],
       "into": "lib/playwright/package",
       "unpack": "tree",
       "derived_from": {
-        "value": "1.62.1",
-        "provenance": "playwright-ruby-client 1.62.x Playwright::COMPATIBLE_PLAYWRIGHT_VERSION (agents/rho/rho-browser); the gem and the driver move in lock-step, upstream latest is not followed"
+        "value": "1.64.0",
+        "provenance": "playwright-ruby-client 1.64.x Playwright::COMPATIBLE_PLAYWRIGHT_VERSION (agents/rho/rho-browser); the gem and the driver move in lock-step, upstream latest is not followed"
       },
       "verification": "computed-sha256 (the registry document carries only a sha1 shasum and a sha512 integrity; `rake install:bump` hashes the tarball)",
       "artifacts": {
         "all": {
-          "url": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.62.1.tgz",
-          "sha256": "954be1e183d0ddb9748fe0d2d08b0b66a9210c74dd75c397aeb70303b9f08a00",
+          "url": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.64.0.tgz",
+          "sha256": "90c8b6b19da0a1b1e9a004cd6ff3e49e82668a0856e01efcc0e2d9c2b4466bb6",
           "members": []
         }
       }
@@ -672,7 +673,7 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
       ]
     },
     "chromium": {
-      "provenance": "playwright-core 1.62.1 lib/coreBundle.js native dependency table, the `chromium` list per distro, read at bump",
+      "provenance": "playwright-core 1.64.0 lib/coreBundle.js native dependency table, the `chromium` list per distro, read at bump",
       "ubuntu26.04": [
         "libasound2t64",
         "libatk-bridge2.0-0t64",
@@ -790,13 +791,13 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
     "note": "the image's project-toolchain layer, walked by install/docker/Dockerfile and never by the host installer; mise and gh are manifest-pinned tarballs (their apt repos pin nothing by version), what mise installs is manager-verified",
     "base": "ubuntu:26.04",
     "mise": {
-      "version": "2026.9.5",
+      "version": "2026.10.18",
       "ruby_compile": false,
       "into": "/usr/local/bin",
       "tools": [
-        "node@24.21.0",
-        "go@1.27.1",
-        "rust@1.98.1"
+        "node@24.22.1",
+        "go@1.27.3",
+        "rust@1.99.1"
       ],
       "rust_profile": "minimal",
       "rust_components": [
@@ -812,15 +813,15 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
       "verification": "publisher-sha256 (the release's SHASUMS256.txt, copied at bump)",
       "artifacts": {
         "linux-x64": {
-          "url": "https://github.com/jdx/mise/releases/download/v2026.9.5/mise-v2026.9.5-linux-x64.tar.gz",
-          "sha256": "d71e94e1ed59d4d0ca4ac847fa321d6d6615a8e613e9b468c9fb39f0dddd06d5",
+          "url": "https://github.com/jdx/mise/releases/download/v2026.10.18/mise-v2026.10.18-linux-x64.tar.gz",
+          "sha256": "0d41b60745a6273a80089c86f80d8729042d2f57f87fda70aecc7d1c3ffbd3be",
           "members": [
             "mise/bin/mise"
           ]
         },
         "linux-arm64": {
-          "url": "https://github.com/jdx/mise/releases/download/v2026.9.5/mise-v2026.9.5-linux-arm64.tar.gz",
-          "sha256": "3a52c7c7c58d21a0791516950ebf4bc915f403277b49c93d657fc585259625ec",
+          "url": "https://github.com/jdx/mise/releases/download/v2026.10.18/mise-v2026.10.18-linux-arm64.tar.gz",
+          "sha256": "c5a49a47f8184f5649f3d8685b408bd72325a823f41cf618c60f3ffc303090a1",
           "members": [
             "mise/bin/mise"
           ]
@@ -828,7 +829,7 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
       }
     },
     "uv_python": [
-      "3.14"
+      "3.15"
     ],
     "uv_tools": [
       "ruff",
@@ -836,22 +837,22 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
       "mypy"
     ],
     "gh": {
-      "version": "2.100.0",
+      "version": "2.103.1",
       "into": "/usr/local/bin",
       "verification": "publisher-sha256 (the release's gh_<v>_checksums.txt, copied at bump)",
       "artifacts": {
         "linux-x64": {
-          "url": "https://github.com/cli/cli/releases/download/v2.100.0/gh_2.100.0_linux_amd64.tar.gz",
-          "sha256": "e4d4bb4498e8d007abe545b6568926793ace1b6447da598294a610018cb164be",
+          "url": "https://github.com/cli/cli/releases/download/v2.103.1/gh_2.103.1_linux_amd64.tar.gz",
+          "sha256": "57500f347b5e84efb6578c9b644eeb3b4e54046762635a939dd0ee2cca1c1add",
           "members": [
-            "gh_2.100.0_linux_amd64/bin/gh"
+            "gh_2.103.1_linux_amd64/bin/gh"
           ]
         },
         "linux-arm64": {
-          "url": "https://github.com/cli/cli/releases/download/v2.100.0/gh_2.100.0_linux_arm64.tar.gz",
-          "sha256": "ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961",
+          "url": "https://github.com/cli/cli/releases/download/v2.103.1/gh_2.103.1_linux_arm64.tar.gz",
+          "sha256": "25b1287471a73a3cca32e5d2d2798ae26abea0243db1b9e4a8c1be506fad1bfe",
           "members": [
-            "gh_2.100.0_linux_arm64/bin/gh"
+            "gh_2.103.1_linux_arm64/bin/gh"
           ]
         }
       }
@@ -860,15 +861,18 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
       "version": "0.19.0",
       "provenance": "ubuntu:26.04's apt (tini 0.19.0-6); upstream has not moved since 2020"
     },
-    "cowork_python": "3.14",
+    "cowork_python": "3.15",
     "native_coding": {
       "packages": [
-        "t3@0.0.46-nightly.20261006.2752",
-        "@openai/codex@0.160.1",
-        "@anthropic-ai/claude-code@2.1.292"
+        "t3@0.1.2",
+        "@openai/codex@0.164.0",
+        "@anthropic-ai/claude-code@2.1.309"
+      ],
+      "allow_scripts": [
+        "@anthropic-ai/claude-code"
       ],
       "verification": "npm registry integrity, exact package versions; native platform packages are selected by npm",
-      "note": "T3 is deliberately pinned to orchestration protocol 2. Stable 0.0.45 speaks protocol 1. Update this group only after rho-t3 protocol validation."
+      "note": "T3 0.1.2 uses orchestration protocol 2. Update this group only after rho-t3 protocol validation."
     }
   }
 }

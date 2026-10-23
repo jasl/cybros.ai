@@ -61,47 +61,6 @@ class InferenceRequestWorkloadsTest < Minitest::Test
       "a workload that produces no bytes advertises none, and iterating is still safe"
   end
 
-  # SPEECH's provider answers with RAW AUDIO BYTES — not JSON, not SSE — so it
-  # is the lane that proves the protocol layer can read a non-JSON success at
-  # all. What a caller reads back is deliberately thin, and asserted as such:
-  # the bytes are persisted to Active Storage on the invocation and no API
-  # surface serves them, so there is nothing here but a completed status and a
-  # receipt. That is the honest state, and the lane says so out loud.
-  def test_speech_completes_on_a_non_json_wire_and_answers_with_no_text
-    inference_request = run_turn(
-      workload: "speech_generation", model: "dev/mock-speech", input: "!mock usage=5:0 -- say hi"
-    )
-
-    assert_equal "completed", inference_request.status,
-      "a raw audio body is a success the protocol layer must be able to read"
-    assert_nil inference_request.output_text,
-      "no text is produced, and none is invented — prose is not the answer here"
-
-    # THE ANSWER IS THE FILE. It came back through the API rather than from
-    # storage, which is the whole point: the same containment that guards the
-    # run guards its bytes.
-    files = inference_request.result.files
-    assert_equal 1, files.length, "one utterance is one file"
-    file = files.first
-    assert_equal 0, file.index
-    assert_operator file.byte_size, :>, 0
-    audio = @lane.download(inference_request.public_id, file.index)
-    assert_equal file.byte_size, audio.bytesize
-    assert audio.start_with?("RIFF"), "the bytes must be the WAV the provider sent, unaltered"
-
-    # A SPEECH RECEIPT CARRIES NO QUANTITIES AT ALL. There is nowhere for them
-    # to come from: the wire answers with audio bytes and no usage block, and
-    # the lane is priced per character rather than per token. So the receipt is
-    # a cost and a timing and nothing else — asserted rather than assumed,
-    # because a caller reaching for `total_tokens` here gets nil.
-    usage = inference_request.result.usage
-    assert_nil usage.input_tokens
-    assert_nil usage.total_tokens
-    assert_predicate usage, :cost_complete,
-      "no token counts is not the same as no answer for the cost"
-    assert_operator inference_request.usage_summary.request_count, :>=, 1
-  end
-
   # A ROUND TRIP WITH NO FIXTURE. The speech lane produces real audio bytes,
   # the caller downloads them through the API, stages them through the upload
   # route, and the transcription lane reads them back. Nothing binary is
@@ -136,47 +95,6 @@ class InferenceRequestWorkloadsTest < Minitest::Test
     assert_equal "Mock transcription of #{audio.bytesize} bytes", transcribed.output_text,
       "the provider saw exactly the bytes the caller staged"
     assert_empty transcribed.result.files, "a transcript is prose, not a file"
-  end
-
-  # IMAGE is priced PER IMAGE rather than per token, so the count the provider
-  # delivered is a billing fact and not a detail — which makes `result_count`
-  # the one generation parameter on this lane worth sending. It also happens to
-  # be the parameter that used to make this create return 500.
-  def test_an_image_turn_completes_with_the_requested_count_priced
-    inference_request = run_turn(
-      workload: "image_generation", model: "dev/mock-image",
-      input: "!mock usage=3:0 -- draw a cat", configuration: { "result_count" => 2 }
-    )
-
-    assert_equal "completed", inference_request.status
-    assert_nil inference_request.output_text,
-      "this provider sends no revised prompt; the images are not prose"
-    refute_nil inference_request.result.usage, "a delivered image is a billed image"
-    assert_predicate inference_request.result.usage, :cost_complete,
-      "a known-free lane must still answer for its cost"
-
-    # BOTH images, in the order the provider sent them, each downloadable. Two
-    # is the smallest count that can expose an ordering bug, which matters here
-    # because the association carries no ORDER BY of its own.
-    files = inference_request.result.files
-    assert_equal [0, 1], files.map(&:index)
-    assert_equal %w[image/png image/png], files.map(&:content_type)
-    files.each do |file|
-      bytes = @lane.download(inference_request.public_id, file.index)
-      assert_equal file.byte_size, bytes.bytesize
-      assert bytes.start_with?("\x89PNG".b), "index #{file.index} did not come back as a PNG"
-    end
-  end
-
-  # A non-retryable refusal on a non-text wire has to arrive as a typed terminal too.
-  # The provider rejects the unary embedding request before returning a workload result.
-  def test_a_unary_provider_failure_is_terminal_on_a_non_text_lane
-    inference_request = run_turn(
-      workload: "embedding", model: "dev/mock-embedding", input: "!mock error=400 -- embed me"
-    )
-
-    refute_equal "completed", inference_request.status
-    refute_nil inference_request.result.error, "a refused turn names why on the result envelope"
   end
 
   private

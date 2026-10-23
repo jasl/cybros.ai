@@ -23,6 +23,7 @@ class MemoryDocuments::AgentRungTest < ActiveJob::TestCase
       description: "Reviews.", configuration: CONFIGURATION).user
     @here = Conversation.create!(workspace: workspaces(:shared), creating_user: @owner, answering_user: @reviewer)
     @there = Conversation.create!(workspace: workspaces(:dedicated), creating_user: @owner, answering_user: @reviewer)
+    [@here, @there].each { |owner| MemoryCollection.default_for(owner) }
   end
 
   def write!(conversation, path, content, by: @owner)
@@ -42,9 +43,9 @@ class MemoryDocuments::AgentRungTest < ActiveJob::TestCase
   test "a named row's notes follow it across workspaces and belong to no sibling" do
     document = write!(@here, "agent/notes.md", "short answers")
 
-    assert_equal @reviewer.id, document.user_id, "anchored on the named row, in the users column"
-    assert_nil document.workspace_id
-    assert_nil document.conversation_id
+    assert_equal @reviewer.id, document.memory_collection.user_id, "anchored on the named row, in the users column"
+    assert_nil document.memory_collection.workspace_id
+    assert_nil document.memory_collection.conversation_id
     assert_includes paths(@there), "agent/notes.md", "the same row answers there, so it reads its own notes"
     assert_equal "short answers", context(@there).resolve("agent/notes.md").documents.sole.content
 
@@ -55,7 +56,7 @@ class MemoryDocuments::AgentRungTest < ActiveJob::TestCase
 
   test "an explicit user binding is the Human principal's while agent memory remains the answerer's" do
     @here.update!(memory_context: { "bindings" => %w[conversation user agent].map do |scope|
-      { "name" => scope, "scope" => scope, "access" => "read_write" }
+      { "name" => scope, "source" => { "scope" => scope }, "access" => "read_write" }
     end })
     write!(@here, "agent/mine.md", "the reviewer's")
     write!(@here, "user/plan.md", "the owner's", by: @owner)
@@ -76,15 +77,16 @@ class MemoryDocuments::AgentRungTest < ActiveJob::TestCase
 
   test "speaker memory follows the same answering Agent and Speaker pair across workspaces" do
     speaker = Speakers::Resolve.member(account: @account, user: @owner)
+    MemoryCollection.default_for(@reviewer, speaker: speaker)
     configuration = MemoryContext.capture(configuration: nil, speaker: speaker)
     @here.update!(memory_context: configuration)
     @there.update!(memory_context: configuration)
     document = write!(@here, "speaker/preferences.md", "concise reviews")
 
-    assert_equal @reviewer.id, document.user_id
-    assert_equal speaker.id, document.speaker_id
-    assert_nil document.workspace_id
-    assert_nil document.conversation_id
+    assert_equal @reviewer.id, document.memory_collection.user_id
+    assert_equal speaker.id, document.memory_collection.speaker_id
+    assert_nil document.memory_collection.workspace_id
+    assert_nil document.memory_collection.conversation_id
     assert_includes paths(@there), "speaker/preferences.md"
     assert_equal "concise reviews", context(@there).resolve("speaker/preferences.md").documents.sole.content
 
@@ -99,11 +101,12 @@ class MemoryDocuments::AgentRungTest < ActiveJob::TestCase
   test "a Human-answered conversation has no agent rung, and an explicit binding naming it is unavailable" do
     plain = Conversation.create!(workspace: workspaces(:shared), creating_user: @owner, answering_user: @owner)
 
+    MemoryCollection.default_for(plain)
     assert_equal :memory_scope_unavailable, context(plain).resolve("agent/notes.md").refusal
     outcome = Conversations::SetMemoryContext.call(conversation: plain, acting_user: @owner,
       memory_context: { "bindings" => [
-        { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-        { "name" => "agent", "scope" => "agent", "access" => "read_write" },
+        { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+        { "name" => "agent", "source" => { "scope" => "agent" }, "access" => "read_write" },
       ] })
     assert_equal :memory_scope_unavailable, outcome.outcome
   end
@@ -118,8 +121,8 @@ class MemoryDocuments::AgentRungTest < ActiveJob::TestCase
 
     narrowed = Conversations::SetMemoryContext.call(conversation: @here, acting_user: @owner,
       memory_context: { "bindings" => [
-        { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-        { "name" => "agent", "scope" => "agent", "access" => "read" },
+        { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+        { "name" => "agent", "source" => { "scope" => "agent" }, "access" => "read" },
       ] })
     assert_predicate narrowed, :accepted?
     reread = context(@here.reload)
@@ -147,8 +150,8 @@ class MemoryDocuments::AgentRungTest < ActiveJob::TestCase
       acting_user: @owner, title: nil
     )).value
 
-    assert_equal 1, MemoryDocument.for_conversation(fork.id).count, "the conversation rung is copied by pointer"
-    assert_equal 1, MemoryDocument.for_user(@reviewer.id).count, "the agent rung is one row, the answerer's"
+    assert_equal 1, fork.memory_documents.count, "the conversation rung is copied by pointer"
+    assert_equal 1, @reviewer.memory_documents.count, "the agent rung is one row, the answerer's"
     assert_includes paths(fork), "agent/notes.md", "and the fork answers as its source does, so it reads it live"
   end
 

@@ -12,7 +12,7 @@ module Accounts
     class << self
       def call(account:, cost_unit:)
         value = Account.normalize_value_for(:cost_unit, cost_unit.to_s)
-        if value.blank? || value.length > Account::COST_UNIT_MAX_LENGTH
+        if value.blank? || value.length > Constants::COST_UNIT_MAX_LENGTH
           return Result.new(outcome: :invalid)
         end
 

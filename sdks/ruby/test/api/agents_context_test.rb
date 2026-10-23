@@ -135,8 +135,8 @@ class ApiAgentsContextTest < Minitest::Test
 
   def test_named_agents_preserve_memory_limits_and_conversation_reach
     limit = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read" },
-      { "name" => "speaker", "scope" => "speaker", "access" => "read" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read" },
+      { "name" => "speaker", "source" => { "scope" => "speaker" }, "access" => "read" },
     ] }
     configuration = reviewer.fetch("configuration").merge(
       "memory_context_limit" => limit, "conversation_reach" => "subtree"

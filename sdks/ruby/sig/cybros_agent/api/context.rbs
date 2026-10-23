@@ -122,6 +122,7 @@ module CybrosAgent
     end
 
     class MemoryDocument < Data
+      attr_reader collection_public_id: String
       attr_reader public_id: String
       attr_reader lock_version: Integer
       attr_reader path: String
@@ -130,22 +131,65 @@ module CybrosAgent
       attr_reader content: String?
       attr_reader written_at: String
 
-      def scope: () -> String
       def skill?: () -> bool
     end
 
-    class MemoryContext
+    module MemoryDocumentOperations
       include ConversationProjections
-
       attr_reader path: String
-
       def initialize: (dispatch: _Dispatch, path: String, ?speaker_public_id: String?) -> void
       def list: () -> Array[MemoryDocument]
       def read: (String document_path) -> MemoryDocument
       def grep: (pattern: String, ?path: String?, ?ignore_case: bool, ?limit: Integer?) -> Hash[String, untyped]
+    end
+
+    class MemoryDocumentsContext
+      include MemoryDocumentOperations
       def write: (String document_path, String content, expected_public_id: String?, expected_lock_version: Integer?, ?description: String?) -> MemoryDocument
       def edit: (path: String, old_text: String, new_text: String, expected_public_id: String, expected_lock_version: Integer) -> MemoryDocument
       def delete: (String document_path, expected_public_id: String, expected_lock_version: Integer) -> nil
+    end
+
+    class MemoryContext
+      include MemoryDocumentOperations
+      def bindings: () -> Hash[String, untyped]
+      def write: (String document_path, String content, expected_collection_public_id: String, expected_public_id: String?, expected_lock_version: Integer?, ?description: String?) -> MemoryDocument
+      def edit: (path: String, old_text: String, new_text: String, expected_collection_public_id: String, expected_public_id: String, expected_lock_version: Integer) -> MemoryDocument
+      def delete: (String document_path, expected_collection_public_id: String, expected_public_id: String, expected_lock_version: Integer) -> nil
+    end
+
+    class MemoryCollection < Data
+      attr_reader public_id: String
+      attr_reader name: String?
+      attr_reader description: String?
+      attr_reader scope: String
+      attr_reader owner_public_id: String
+      attr_reader speaker_public_id: String?
+      attr_reader is_default: bool
+      attr_reader archived_at: String?
+      attr_reader lock_version: Integer
+      attr_reader created_at: String
+      attr_reader updated_at: String
+      attr_reader writable: bool
+      attr_reader manageable: bool
+    end
+
+    class MemoryCollectionsContext
+      include WorkspaceProjections
+      include Fields
+      def initialize: (dispatch: _Dispatch, ?path: String) -> void
+      def list: (?after: String?, ?limit: Integer?) -> Page[MemoryCollection]
+      def fetch: (String public_id) -> MemoryCollection
+      def update: (String public_id, lock_version: Integer, ?name: String?, ?description: String?) -> MemoryCollection
+      def archive: (String public_id, lock_version: Integer) -> MemoryCollection
+      def restore: (String public_id, lock_version: Integer) -> MemoryCollection
+      def delete: (String public_id, lock_version: Integer) -> nil
+      def documents: (String public_id) -> MemoryDocumentsContext
+    end
+
+    class OwnedMemoryCollectionsContext < MemoryCollectionsContext
+      def list: (?after: String?, ?limit: Integer?, ?default: bool?, ?speaker_public_id: String?) -> Page[MemoryCollection]
+      def create: (?name: String?, ?description: String?, ?speaker_public_id: String?, ?default: bool) -> MemoryCollection
     end
 
     class PromptDocument < Data

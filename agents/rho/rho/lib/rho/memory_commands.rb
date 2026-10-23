@@ -36,7 +36,13 @@ module Rho
         fields[:speaker_public_id] = speaker_public_id if speaker_public_id
         if action.writing?
           current = existing(core, public_id, fields.fetch(:path), workspace_public_id, speaker_public_id, create: action.verb == "write")
-          fields.merge!(expected_public_id: current&.fetch("public_id"), expected_lock_version: current&.fetch("lock_version"))
+          collection_public_id = if current
+            current.fetch("collection_public_id")
+          else
+            core.memory_target(public_id, path: fields.fetch(:path), workspace_public_id: workspace_public_id,
+              **({ speaker_public_id: speaker_public_id } if speaker_public_id)).fetch("collection_public_id")
+          end
+          fields.merge!(expected_collection_public_id: collection_public_id, expected_public_id: current&.fetch("public_id"), expected_lock_version: current&.fetch("lock_version"))
         end
         method = action.verb == "ls" ? :memory_list : "memory_#{action.verb}"
         core.public_send(method, public_id, **fields)
@@ -68,7 +74,7 @@ module Rho
           core.memory_read(public_id, path: path, workspace_public_id: workspace_public_id,
             **({ speaker_public_id: speaker_public_id } if speaker_public_id))
         rescue Core::Refused => error
-          raise unless create && error.status == 404
+          raise unless create && %w[memory_not_found memory_scope_unavailable].include?(error.code)
 
           nil
         end

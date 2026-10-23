@@ -428,7 +428,11 @@ class Nexus::ContractProducerTest < ActionDispatch::IntegrationTest
     assert_response :created
     speaker_id = response.parsed_body.fetch("ingress_speaker").fetch("public_id")
     configuration = pack.fetch("speaker_memory_context_request").fetch("memory_context").deep_dup
-    configuration.fetch("bindings").last["speaker_public_id"] = speaker_id
+    configuration.fetch("bindings").last.fetch("source")["speaker_public_id"] = speaker_id
+    post "/agent_api/v1/profile/memory_collections", headers: headers, as: :json,
+      params: { memory_collection: { default: true, speaker_public_id: speaker_id } }
+    assert_response :created
+    speaker_collection_id = response.parsed_body.dig("memory_collection", "public_id")
     base = "/agent_api/v1/workspaces/#{workspaces(:shared).public_id}/conversations"
     post base, headers: headers.merge("Idempotency-Key" => "contract-speaker-conversation"), as: :json,
       params: { conversation: { memory_context: configuration } }
@@ -437,12 +441,15 @@ class Nexus::ContractProducerTest < ActionDispatch::IntegrationTest
     base = "#{base}/#{conversation.fetch("public_id") }"
     assert_equal configuration, conversation.fetch("memory_context")
     expected = pack.dig("speaker_memory_conversation_fixture", "conversation", "effective_memory_context").deep_dup
-    expected.fetch("bindings").first["conversation_public_id"] = conversation.fetch("public_id")
-    expected.fetch("bindings").last.merge!("agent_public_id" => users(:agent).public_id, "speaker_public_id" => speaker_id)
+    expected.fetch("bindings").first.merge!("owner_public_id" => conversation.fetch("public_id"),
+      "collection_public_id" => MemoryCollection.find_by!(conversation_id: Conversation.find_by!(public_id: conversation.fetch("public_id")).id, is_default: true).public_id)
+    expected.fetch("bindings").last.merge!("owner_public_id" => users(:agent).public_id, "speaker_public_id" => speaker_id,
+      "collection_public_id" => speaker_collection_id, "source" => configuration.fetch("bindings").last.fetch("source"))
     assert_equal expected, conversation.fetch("effective_memory_context")
 
     write = contract("memory_documents.json").fetch("valid_write_request").deep_dup
     write.fetch("memory")["path"] = "speaker/notes.md"
+    write.fetch("memory")["expected_collection_public_id"] = speaker_collection_id
     post "#{base}/memory", headers: headers, as: :json, params: write
     assert_response :created
     assert_equal "speaker/notes.md", response.parsed_body.fetch("memory").fetch("path")
@@ -498,7 +505,7 @@ class Nexus::ContractProducerTest < ActionDispatch::IntegrationTest
     assert_equal conversation_fixture.fetch("effective_memory_context").fetch("bindings").map { |row| row.fetch("scope") },
       live.fetch("effective_memory_context").fetch("bindings").map { |row| row.fetch("scope") }
     assert_equal [live.fetch("public_id"), workspace.fetch("public_id")],
-      live.fetch("effective_memory_context").fetch("bindings").map { |row| row.fetch("#{row.fetch("scope")}_public_id") }
+      live.fetch("effective_memory_context").fetch("bindings").map { |row| row.fetch("owner_public_id") }
     assert_nil live.fetch("default_runner"), "the binding is always rendered, nil when unbound"
     assert_nil live.fetch("context"), "provider truth is rendered null until a turn settled"
     usage = live.fetch("usage_summary")

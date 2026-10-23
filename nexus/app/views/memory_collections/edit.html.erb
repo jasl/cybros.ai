@@ -1,0 +1,4 @@
+<%= render layout: "shell", locals: { title: t("memory_collections.edit"), error: @error, back_path: memory_collection_path(@collection), back_label: memory_collection_name(@collection) } do %>
+  <% if @conflict %><%= link_to t("data_console.read_saved"), memory_collection_path(@collection), class: "link", target: "_blank", rel: "noopener" %><% end %>
+  <%= render "form", url: memory_collection_path(@collection), creating: false, draft: @draft, cancel_path: memory_collection_path(@collection) %>
+<% end %>

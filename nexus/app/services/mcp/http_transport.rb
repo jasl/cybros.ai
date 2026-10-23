@@ -56,7 +56,7 @@ module Mcp
       end
       request_headers = headers.merge(session_headers).merge(request_metadata_headers(method, request[:params]))
       response, body = exchange("POST", request, request_headers, method: method)
-      capture_session_info(method, response, body)
+      capture_session_info(method, response.headers, body)
       capture_mcp_param_declarations(method, request[:params], body)
       # Only absence of discovery permits the gem's automatic legacy fallback.
       # Authentication, malformed responses and ordinary server errors never do.

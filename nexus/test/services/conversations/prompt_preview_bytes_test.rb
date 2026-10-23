@@ -271,11 +271,12 @@ class Conversations::PromptPreviewBytesTest < ActiveSupport::TestCase
   test "an ingress Speaker preview uses the same subject and envelope as the accepted input" do
     conversation = conversation_answered_by(@agent)
     speaker = Speaker.register_ingress(user: @agent, channel_key: "test-ingress", external_id: "visitor-a", display_name: "Visitor")
-    anchor = Scopes::Anchor.call(path: "speaker/preferences.md", agent: @agent, speaker: speaker)
+    MemoryCollection.default_for(@agent, speaker: speaker)
+    anchor = memory_anchor(path: "speaker/preferences.md", agent: @agent, speaker: speaker)
     written = MemoryDocuments::Write.call(anchor: anchor, content: "visitor memory", expected: nil)
     assert_predicate written, :written?
     @agent.update!(memory_context_limit: { "bindings" => %w[conversation workspace speaker].map do |scope|
-      { "name" => scope, "scope" => scope, "access" => (scope == "workspace" ? "read" : "read_write") }
+      { "name" => scope, "source" => { "scope" => scope }, "access" => (scope == "workspace" ? "read" : "read_write") }
     end })
     preview = nil
     assert_no_difference ["Speaker.count", "Turn.count", "Input.count", "MemoryDocument.count"] do
@@ -287,6 +288,6 @@ class Conversations::PromptPreviewBytesTest < ActiveSupport::TestCase
     sealed = send!(conversation, acting_user: @agent, speaker_public_id: speaker.public_id)
     assert_same_bytes(preview, sealed)
     assert_equal speaker.public_id, conversation.turns.last.active_variant.memory_context
-      .fetch("bindings").find { |binding| binding["scope"] == "speaker" }.fetch("speaker_public_id")
+      .fetch("bindings").find { |binding| binding.dig("capture", "scope") == "speaker" }.fetch("capture").fetch("speaker_public_id")
   end
 end

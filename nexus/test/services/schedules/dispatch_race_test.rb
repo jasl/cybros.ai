@@ -25,7 +25,10 @@ class Schedules::DispatchRaceTest < ActiveSupport::TestCase
   teardown do
     release_row_lock(@held) if @held
     @calls.each { |call| stop_database_call(call) }
-    @job.execution_conversations.each(&:destroy!)
+    @job.execution_conversations.each do |conversation|
+      conversation.memory_collections.delete_all
+      conversation.destroy!
+    end
     @parent.destroy!
   end
 

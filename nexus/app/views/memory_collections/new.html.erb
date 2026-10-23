@@ -1,0 +1,4 @@
+<%= render layout: "shell", locals: { title: t("memory_collections.new"), error: @error, description: t("memory_collections.create_for", owner: memory_owner_name(@owner, scope: @owner_scope)), back_path: memory_collections_path(@owner_scope == :user ? {} : { "#{@owner_scope}_public_id" => @owner.public_id }) } do %>
+  <p class="text-sm text-base-content/60"><%= t("memory_collections.create_help") %></p>
+  <%= render "form", url: @create_path, creating: true, draft: @draft, cancel_path: memory_collections_path(@owner_scope == :user ? {} : { "#{@owner_scope}_public_id" => @owner.public_id }) %>
+<% end %>

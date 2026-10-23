@@ -453,7 +453,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
     assert_includes call.error_detail, "nexus.memory"
     assert_nil call.addressed_executor_id
     assert_equal "running", node(run, "r1").status, "the model reads it on the next round"
-    assert_empty MemoryDocument.where(workspace_id: @workspace.id), "the kernel ran nothing"
+    assert_empty @workspace.memory_documents, "the kernel ran nothing"
   end
 
   # Level-triggered drift: a re-announcement that drops one verb fails THAT verb's calls; the others
@@ -743,7 +743,7 @@ class Runs::AddressingTest < ActiveJob::TestCase
     conversation = Conversation.create!(workspace: @workspace, creating_user: users(:member))
     seam = create_run_backed_turn(conversation: conversation, acting_user: users(:member))
     seam.variant.update!(memory_context: { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read" },
     ] })
     grow!(seam.run, memory_model("round1"))
     schedule!(seam.run)

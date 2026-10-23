@@ -11,6 +11,8 @@ module MemoryDocuments
 
     def self.call(anchor:, expected:, revises: nil)
       MemoryDocument.transaction do
+        next Result.new(outcome: anchor.write_refusal) if anchor.write_refusal
+
         document = anchor.documents.find_by(name: anchor.name)
         next Result.new(outcome: :stale_object) if expected && !expected.matches?(document)
         next Result.new(outcome: :memory_not_found) if document.nil?

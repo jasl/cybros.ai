@@ -1,0 +1,2 @@
+<%# locals: (collection:) %>
+<span class="<%= badge_classes(!collection.archived?, tone: :success, extra: "whitespace-nowrap") %>"><%= t("memory_collections.statuses.#{collection.archived? ? 'archived' : 'active'}") %></span>

@@ -19,13 +19,19 @@ const add = (...operations: (() => Promise<unknown>)[]) => calls.push(...operati
 add(() => client.work.runs(), () => client.work.runCandidates(), () => client.work.attention(), () => client.work.report(), () => client.work.analysis(), () => client.schedules.list());
 add(() => client.profile.fetch(), () => client.profile.declareConfiguration({ configuration: {} }), () => client.profile.registerIngressSpeaker({ channel_key: 'chat', external_id: 'speaker', display_name: 'Person' }));
 add(() => client.profile.agents.list(), () => client.profile.agents.declare('id', { scope: 'instance', description: 'Review', configuration: {} }), () => client.profile.agents.remove('id'));
-for (const memory of [client.profile.memory, client.profile.agents.memory('id'), workspace.memory, chat.memory()]) {
-  add(() => memory.list(), () => memory.read('agent/file'), () => memory.grep({ pattern: 'word' }), () => memory.write({ path: 'agent/file', content: 'text', expected_public_id: null, expected_lock_version: null }), () => memory.edit({ path: 'agent/file', old_text: 'old', new_text: 'new', expected_public_id: 'id', expected_lock_version: 0 }), () => memory.delete('agent/file', { expected_public_id: 'id', expected_lock_version: 0 }));
+for (const collections of [client.profile.memoryCollections, client.profile.agents.memoryCollections('id'), workspace.memoryCollections, chat.memoryCollections]) {
+  add(() => collections.list(), () => collections.create({ name: 'Notes' }));
+}
+const collections = client.memoryCollections;
+add(() => collections.list(), () => collections.fetch('id'), () => collections.update('id', { name: 'Notes', ...version }), () => collections.archive('id', version), () => collections.restore('id', version), () => collections.delete('id', version));
+for (const memory of [collections.documents('id'), chat.memory()]) {
+  const condition = { expected_collection_public_id: 'id' };
+  add(() => memory.list(), () => memory.read('file'), () => memory.grep({ pattern: 'word' }), () => memory.write({ path: 'file', content: 'text', expected_public_id: null, expected_lock_version: null, ...condition }), () => memory.edit({ path: 'file', old_text: 'old', new_text: 'new', expected_public_id: 'id', expected_lock_version: 0, ...condition }), () => memory.delete('file', { expected_public_id: 'id', expected_lock_version: 0, ...condition }));
 }
 for (const documents of [client.profile.promptDocuments, workspace.promptDocuments]) add(() => documents.list(), () => documents.read('id'), () => documents.write('id', { content: 'text' }), () => documents.delete('id'));
 for (const entries of [client.profile.storeEntries, workspace.storeEntries, chat.storeEntries]) add(() => entries.list(), () => entries.fetch('id'), () => entries.create({ namespace: 'app', key: 'value', value: null }, mutation), () => entries.update('id', { ...version, value: null }), () => entries.delete('id', version));
 add(() => client.workspaces.list(), () => client.workspaces.fetch('id'), () => client.workspaces.create({ name: 'Workspace' }, mutation), () => workspace.update({ ...version, name: 'Renamed' }), () => workspace.updateAccessMode({ ...version, access_mode: 'private' }), () => workspace.messaging(), () => workspace.setMessaging({ ...version, agents: [] }), () => workspace.setToolProviderOverrides({ ...version, overrides: {} }), () => workspace.transferOwnership({ ...version, target_user_public_id: 'id' }), () => workspace.archive(version), () => workspace.restore(version), () => workspace.delete(version), () => workspace.principals(), () => workspace.schedules.list());
-add(() => client.conversations.list(), () => workspace.conversations.list(), () => workspace.conversations.archived(), () => workspace.conversations.search({ query: 'word' }), () => workspace.conversations.create({}, mutation), () => chat.fetch(), () => chat.update({ ...version, title: 'New' }), () => chat.archive(), () => chat.unarchive(), () => chat.delete(), () => chat.cancel(), () => chat.children(), () => chat.history(), () => chat.setMemoryContext({}), () => chat.setDefaultRunner(null), () => chat.setAccess({ default: 'full' }), () => chat.fork({ side: true }, mutation), () => chat.estimateInput({}), () => chat.compact(), () => chat.events());
+add(() => client.conversations.list(), () => workspace.conversations.list(), () => workspace.conversations.archived(), () => workspace.conversations.search({ query: 'word' }), () => workspace.conversations.create({}, mutation), () => chat.fetch(), () => chat.update({ ...version, title: 'New' }), () => chat.archive(), () => chat.unarchive(), () => chat.delete(), () => chat.cancel(), () => chat.children(), () => chat.history(), () => chat.setMemoryContext({ bindings: [] }), () => chat.setDefaultRunner(null), () => chat.setAccess({ default: 'full' }), () => chat.fork({ side: true }, mutation), () => chat.estimateInput({}), () => chat.compact(), () => chat.events());
 for (const inputs of [chat.inputs, run.inputs]) add(() => inputs.list(), () => inputs.create({ kind: 'message', text: 'Hello' }, mutation), () => inputs.update('id', { text: 'Hello', expected_lock_version: 0 }), () => inputs.delete('id'), () => inputs.reorder(['id']));
 add(() => chat.inputs.materialization('id'), () => chat.export());
 const turns = chat.turns;
@@ -74,6 +80,6 @@ test('every supported operation is issued by an actual public SDK method', async
   }
   const expected = inventory.operations.filter(operation => operation.sdk_supported).map(operation => operation.method + ' ' + operation.path.replace(/\{([^}]+)\}/g, (_, name: string) => name === 'index' ? '0' : name === 'field' ? 'steers' : 'id'));
   expect([...observed].sort()).toEqual([...new Set(expected)].sort());
-  expect(observed.size).toBe(269);
+  expect(observed.size).toBe(271);
   expect(inventory.operations.filter(operation => !operation.sdk_supported).map(operation => operation.id)).toEqual(['POST /api/v1/admin/users/{user_public_id}/removal']);
 });

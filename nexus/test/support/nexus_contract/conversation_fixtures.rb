@@ -3,6 +3,25 @@ module Nexus
     class << self
       private
 
+        def memory_management_fixture(binding, owner_public_id:)
+          scope = binding.fetch("source").fetch("scope")
+          binding.merge("scope" => scope, "owner_public_id" => owner_public_id,
+            "collection_public_id" => "01995000-0000-7000-8000-00000000001#{MemoryContext::SCOPES.index(scope.to_sym)}",
+            "speaker_public_id" => binding.fetch("source")["speaker_public_id"], "state" => "active")
+        end
+
+        def captured_memory_fixture(selection)
+          { "bindings" => selection.fetch("bindings").map do |binding|
+            source = binding.fetch("source")
+            scope = source.fetch("scope")
+            binding.merge("capture" => {
+              "collection_public_id" => "01995000-0000-7000-8000-00000000001#{MemoryContext::SCOPES.index(scope.to_sym)}",
+              "owner_public_id" => source["conversation_public_id"] || "01900000-0000-7000-8000-000000000070",
+              "scope" => scope, "speaker_public_id" => source["speaker_public_id"],
+            })
+          end }
+        end
+
         # Rendered through the REAL presenter with duck-typed stand-ins, so
         # a presenter change lands here rather than in a consumer.
         def conversation_presenter_fixtures
@@ -68,10 +87,10 @@ module Nexus
             "agent_configuration_present" => false,
             "memory_context" => nil,
             "effective_memory_context" => { "bindings" => [
-              { "name" => "conversation", "scope" => "conversation", "access" => "read_write",
-                "conversation_public_id" => conversation.public_id },
-              { "name" => "workspace", "scope" => "workspace", "access" => "read_write",
-                "workspace_public_id" => "01900000-0000-7000-8000-000000000001" },
+              memory_management_fixture({ "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+                owner_public_id: conversation.public_id),
+              memory_management_fixture({ "name" => "workspace", "source" => { "scope" => "workspace" }, "access" => "read_write" },
+                owner_public_id: "01900000-0000-7000-8000-000000000001"),
             ] },
             "input_queue" => { "limit" => 32, "held" => 1 },
             "latest_event_cursor" => "Y3ZlaS03",

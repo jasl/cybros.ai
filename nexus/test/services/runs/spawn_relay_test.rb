@@ -575,7 +575,7 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
         Runs::Reap.destroy_aggregate(run)
       end
       ModelUsageSummary.where(subject_kind: "conversation", subject_id: conversation.id).delete_all
-      conversation.reload.destroy!
+      destroy_memory_owner!(conversation.reload)
     end
   end
 

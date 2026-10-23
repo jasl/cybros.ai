@@ -304,15 +304,16 @@ async fn observe(v: &Value, base: &str, action: &str) -> Result<Value> {
         // State recovery below is explicit; retained cursors always refer to actual events.
         let _retention_gap = report.retention_gap;
         if let Some(snapshot) = observer.recover().await?.cloned() {
-            if action == "member_cancel" && !canceled {
-                if let Some(run) = &snapshot.execution.run_public_id {
-                    c.workspace(&workspace)?
-                        .run(run)?
-                        .stop(&RunControl { force: true })
-                        .await?;
-                    canceled = true;
-                    continue;
-                }
+            if action == "member_cancel"
+                && !canceled
+                && let Some(run) = &snapshot.execution.run_public_id
+            {
+                c.workspace(&workspace)?
+                    .run(run)?
+                    .stop(&RunControl { force: true })
+                    .await?;
+                canceled = true;
+                continue;
             }
             if (snapshot.terminal() || action == "member_cancel")
                 && matches!(

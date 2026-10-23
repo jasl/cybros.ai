@@ -1,0 +1,39 @@
+<% actions = capture do %>
+  <% if @manageable %><%= link_to t("data_console.edit"), edit_memory_collection_path(@collection), class: "btn btn-primary btn-sm" %><% end %>
+<% end %>
+<%= render layout: "shell", locals: { title: memory_collection_name(@collection), error: @error, description: @collection.description, actions: actions, collection: @collection, current: :overview } do %>
+  <section class="rounded-box border border-base-300 bg-base-200 p-4 sm:p-6">
+    <h2 class="text-sm font-medium"><%= t("memory_collections.details") %></h2>
+    <dl class="mt-4 grid gap-5 text-sm sm:grid-cols-2">
+      <div><dt class="text-base-content/60"><%= t("memory_collections.owner") %></dt><dd class="mt-1 wrap-anywhere"><%= memory_collection_owner(@collection) %></dd></div>
+      <div><dt class="text-base-content/60"><%= t("memory_collections.scope") %></dt><dd class="mt-1"><%= t("memory_collections.scopes.#{@collection.natural_scope}") %></dd></div>
+      <div><dt class="text-base-content/60"><%= t("memory_collections.status") %></dt><dd class="mt-1"><%= render "status", collection: @collection %></dd></div>
+      <div><dt class="text-base-content/60"><%= t("memory_collections.created") %></dt><dd class="mt-1"><%= l(@collection.created_at, format: :long) %></dd></div>
+      <div class="sm:col-span-2"><dt class="text-base-content/60"><%= t("memory_collections.identifier") %></dt><dd class="mt-1 font-mono text-xs wrap-anywhere"><%= @collection.public_id %></dd></div>
+    </dl>
+  </section>
+  <section class="space-y-2">
+    <h2 class="text-sm font-medium"><%= t("memory_collections.usage_title") %></h2>
+    <p class="text-sm text-base-content/60"><%= t(@collection.is_default ? "memory_collections.default_help" : "memory_collections.binding_help") %></p>
+    <% unless @data_writable %><p class="text-sm text-base-content/60"><%= t("memory_collections.read_only") %></p><% end %>
+  </section>
+  <% if @manageable %>
+    <section class="space-y-4 border-t border-base-300 pt-6">
+      <h2 class="text-sm font-medium"><%= t("memory_collections.lifecycle_title") %></h2>
+      <p class="max-w-3xl text-sm text-base-content/60"><%= t("memory_collections.lifecycle_help") %></p>
+      <div class="flex flex-wrap items-center gap-3">
+        <% if @collection.archived? %>
+          <%= button_to t("memory_collections.restore_action"), restore_memory_collection_path(@collection), params: { memory_collection: { lock_version: @collection.lock_version } }, class: "btn btn-outline btn-sm" %>
+        <% else %>
+          <%= button_to t("memory_collections.archive_action"), archive_memory_collection_path(@collection), params: { memory_collection: { lock_version: @collection.lock_version } }, class: "btn btn-outline btn-sm" %>
+        <% end %>
+        <details class="dropdown" data-controller="dropdown" data-action="click@document->dropdown#close keydown.esc@document->dropdown#close">
+          <summary class="btn btn-ghost btn-sm"><%= t("memory_collections.more_actions") %></summary>
+          <div class="dropdown-content z-10 w-56 rounded-box border border-base-300 bg-base-100 p-2 shadow-lg">
+            <%= button_to t("data_console.delete"), memory_collection_path(@collection), method: :delete, params: { memory_collection: { lock_version: @collection.lock_version } }, class: "btn btn-ghost btn-sm w-full justify-start text-error", data: { turbo_confirm: t("memory_collections.delete_confirmation") } %>
+          </div>
+        </details>
+      </div>
+    </section>
+  <% end %>
+<% end %>

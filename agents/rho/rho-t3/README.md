@@ -20,9 +20,10 @@ whose server package reports `0.0.45`. The T3 contracts package is private, so t
 Ruby bridge adopts provider discovery, five work request shapes and the finite unary Effect RPC wire
 format. It requires **orchestration protocol 2**, checks that version on each
 connection before any business request, and refuses incompatible servers. The
-published stable `0.0.45` uses protocol 1 despite the matching package version.
-The official `0.0.46-nightly.20261006.2752` build uses protocol 2 and the same
-adopted contracts as the inspected revision. No reference checkout or JavaScript
+distribution pins stable [T3 0.1.2](https://github.com/pingdotgg/t3code/releases/tag/v0.1.2),
+which retains protocol 2. Authenticated RPC, provider discovery and project creation/listing
+are checked against that release; paid native agent execution is a separate diagnostic.
+No reference checkout or JavaScript
 dependency is loaded at runtime. Later protocol changes may require an update.
 
 ## Installation and configuration
@@ -33,7 +34,7 @@ Claude Code. The smaller `rho` target and bare-metal installation need the nativ
 programs installed separately. For example, with Node 24:
 
 ```sh
-npm install --global t3@0.0.46-nightly.20261006.2752 @openai/codex@0.160.1 @anthropic-ai/claude-code@2.1.292
+npm install --global t3@0.1.2 @openai/codex@0.164.0 @anthropic-ai/claude-code@2.1.309
 ```
 
 The plugin is disabled by default and its descriptor is visible in rho Settings

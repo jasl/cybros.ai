@@ -54,10 +54,10 @@ class LiveMemoryScopesTest < Minitest::Test
 
     # WHERE IT LANDED, read as the person through their own door.
     steward_client = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)
-    paths = steward_client.profile.memory.list.map(&:path)
-    assert_includes paths, "user/token.md",
+    paths = E2E::MemoryCollections.default_documents(steward_client.profile).list.map(&:path)
+    assert_includes paths, "token.md",
       "the model did not save the note under user/ (the person's door lists #{paths.inspect}): #{summarize(row)}"
-    saved = steward_client.profile.memory.read("user/token.md")
+    saved = E2E::MemoryCollections.default_documents(steward_client.profile).read("token.md")
     assert_includes saved.content, REMEMBERED, "the note's content is not the word: #{saved.content.inspect}"
 
     # TURN 2, on the member plane in a SECOND workspace of the same person:

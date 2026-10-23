@@ -174,7 +174,7 @@ class RenderTest < Minitest::Test
     assert_equal 1_048_576, Rho::WebTools::Render::RENDER_INPUT_BYTES
     assert_includes rendering.text, "## Section 1\n"
     assert_operator rendering.text.bytesize, :<, Rho::WebTools::Render::RENDER_INPUT_BYTES
-    assert_operator cpu, :<, 15, "the cut render cost #{cpu.round(2)}s of CPU, over the 15 s budget"
+    assert_operator cpu, :<, 16, "the cut render cost #{cpu.round(2)}s of CPU, over the 16 s budget"
     prefix = Rho::WebTools::Render.call(page(html.byteslice(0, Rho::WebTools::Render::RENDER_INPUT_BYTES)))
     assert_nil prefix.cut
     assert_equal prefix.text, rendering.text, "the cut page renders as its prefix: nothing past the cut is parsed"

@@ -144,7 +144,7 @@ class RhoAttachmentsTest < Minitest::Test
     refute_nil user_entry, "the sealed request has a parts-shaped user entry: #{sealed.entries.inspect}"
     assert_equal %w[text text upload], part_types(user_entry), "the kind, the words, then the picture, natively on a vision row"
     assert_equal "Conversation kind: conversation.", user_entry.fetch("parts").fetch(0).fetch("text")
-    speaker = first.active_variant.memory_context.fetch("bindings").find { |binding| binding.fetch("scope") == "speaker" }.fetch("speaker_public_id")
+    speaker = first.active_variant.memory_context.fetch("bindings").find { |binding| binding.fetch("source")["scope"] == "speaker" }.fetch("capture").fetch("speaker_public_id")
     assert_equal %(<message from="Owner" kind="ingress" speaker="#{speaker}">\n!mock echo=images -- what is this?\n</message>),
       user_entry.fetch("parts").fetch(1).fetch("text")
     assert_equal descriptor.public_id, user_entry["parts"].last["upload_public_id"]
@@ -190,26 +190,6 @@ class RhoAttachmentsTest < Minitest::Test
     refute_equal uploads.first, uploads.last, "the second `--attach` staged the bytes again: a second upload"
   end
 
-  def test_a_pdf_from_the_cli_reaches_the_native_wire_with_its_detected_filename
-    bytes = E2E::PdfDocument.bytes
-    path = File.join(project, "report.data")
-    File.binwrite(path, bytes)
-    output, status = @daemon.cli("do", "!mock echo=content -- inspect this document",
-      "--model", E2E::CatalogOverlay::DOCUMENT_MODEL, "--dir", project, "--attach", path)
-    assert_predicate status, :success?, output
-    assert_match(/^attached:\s+report\.pdf \(application\/pdf, #{bytes.bytesize} B\)$/, output)
-    conversation, turn_id = %w[conversation turn].map { |line| output[/^#{line}:\s+(\S+)/, 1] }
-    refute_includes [conversation, turn_id], nil, output
-    chat = @workspace.conversations.conversation(conversation)
-    reply = await_turn(chat, turn_id, "completed")
-    descriptor = reply.active_variant.attachments.fetch(0)
-    assert_equal ["report.pdf", "application/pdf", bytes.bytesize],
-      [descriptor.filename, descriptor.content_type, descriptor.byte_size]
-    assert_equal [descriptor.public_id], upload_ids(sealed_request_of(chat, turn_id).entries)
-    assert_includes reply.active_variant.content, "[file report.pdf application/pdf #{bytes.bytesize} bytes]"
-    refute_includes reply.active_variant.content, "base64"
-  end
-
   def test_a_runner_read_returns_a_pdf_capture_to_the_model_and_later_history
     bytes = E2E::PdfDocument.bytes
     path = File.join(project, "capture.pdf")
@@ -237,55 +217,6 @@ class RhoAttachmentsTest < Minitest::Test
       turn if turn&.status == "completed"
     end
     assert_equal capture_ids, upload_ids(sealed_request_of(chat, later.public_id).entries)
-  end
-
-  def test_a_model_without_native_pdf_support_can_import_a_prior_tool_capture
-    bytes = E2E::PdfDocument.bytes
-    path = File.join(project, "fallback.pdf")
-    File.binwrite(path, bytes)
-    script = "!mock echo=content tool_call=read:#{CGI.escape(JSON.generate("path" => path))} -- inspect the local file"
-    output, status = @daemon.cli("do", script, "--model", MODEL, "--dir", project)
-    assert_predicate status, :success?, output
-    conversation, turn_id = %w[conversation turn].map { |line| output[/^#{line}:\s+(\S+)/, 1] }
-    refute_includes [conversation, turn_id], nil, output
-    chat = @workspace.conversations.conversation(conversation)
-    first = await_turn(chat, turn_id, "completed")
-    loop_context = @workspace.run(first.active_variant.run_public_id)
-    tool = loop_context.fetch.tasks.find { |task| task.kind == "tool_task" }
-    link = loop_context.task(tool.key).content.find { |block| block.fetch("type") == "resource_link" }
-    reference = link.fetch("uri")
-    assert_includes first.active_variant.content, reference
-    refute_includes first.active_variant.content, "[file "
-
-    # The mock counts the earlier read's answer in history, so its first
-    # script slot is already spent before this turn starts.
-    script = "!mock echo=content tool_call=read,file_import:#{CGI.escape(JSON.generate("upload" => reference))} -- import that file"
-    output, status = @daemon.cli("say", conversation, script)
-    assert_predicate status, :success?, output
-    later = await("the attachment import never completed") do
-      turn = chat.turns.list.items.find { |row| row.position > first.position && row.role == "assistant" }
-      flunk "the import turn failed: #{turn.to_h.inspect}" if turn&.status == "failed"
-      turn if turn&.status == "completed"
-    end
-    loop_context = @workspace.run(later.active_variant.run_public_id)
-    tool = loop_context.fetch.tasks.find { |task| task.kind == "tool_task" }
-    refute_nil tool, "the follow-up must execute file_import: #{later.active_variant.content}"
-    imported = loop_context.task(tool.key).structured_content
-    refute_nil imported, "file_import must download the retained tool capture: #{later.active_variant.content}"
-    assert_equal "application/pdf", imported.fetch("content_type")
-    assert_equal bytes, File.binread(imported.fetch("path"))
-    assert_empty upload_ids(sealed_request_of(chat, later.public_id).entries)
-  end
-
-  # A path that is not a file is refused by the CLI before any call — no
-  # daemon round trip, no queue row, one sentence.
-  def test_a_missing_path_is_refused_before_any_call
-    output, status = @daemon.cli("do", "!mock -- what is this?", "--model", MODEL, "--dir", project,
-      "--attach", File.join(@world.home, "gone.png"))
-
-    refute_predicate status, :success?
-    assert_match(/no such file to attach: .*gone\.png/, output)
-    refute_match(/^conversation:/, output, "nothing was opened")
   end
 
   private

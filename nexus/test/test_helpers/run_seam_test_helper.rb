@@ -17,11 +17,18 @@ module RunSeamTestHelper
       speaker: actor, control_owner_user: acting_user,
       answering_user: answering_user || conversation.answering_user
     )
+    # This seam builds accepted execution directly; reproduce the production
+    # birth defaults and capture instead of leaving relative selectors live.
+    MemoryCollection.default_for(conversation)
+    configuration = MemoryContext.capture(configuration: conversation.effective_memory_context(execution_configuration: turn.execution_agent), speaker: actor)
+    context = MemoryDocuments::Context.new(workspace: conversation.workspace, conversation: conversation,
+      principal: acting_user, configuration: configuration, agent: turn.execution_agent)
+    context.prepare_defaults
     variant = Variant.create!(
       account: conversation.account, turn: turn,
       position: 0, status: variant_status, source: "run",
       agent_configuration: agent_configuration,
-      memory_context: MemoryContext.capture(configuration: conversation.effective_memory_context(execution_configuration: turn.execution_agent), speaker: actor)
+      memory_context: context.capture
     )
     turn.update!(active_variant: variant)
     conversation.update!(active_turn: turn, timeline_position_head: position + 1)

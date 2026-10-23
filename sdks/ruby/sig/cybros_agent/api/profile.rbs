@@ -115,7 +115,7 @@ module CybrosAgent
         ?display_name: String?, ?system_prompt: String?, ?summarizer: String?, ?create_only: bool
       ) -> NamedAgent
       def remove: (name: String) -> nil
-      def memory: (name: String) -> MemoryContext
+      def memory_collections: (name: String) -> OwnedMemoryCollectionsContext
 
       private
 
@@ -156,7 +156,7 @@ module CybrosAgent
         ?runner_executor_public_ids: Array[String], ?runner_tool_names: Array[String]?, ?mcp_tools: Array[Hash[String, untyped]],
         ?memory_context_limit: Hash[String, untyped]?, ?conversation_reach: String?, ?delegation_catalog: Array[Hash[String, untyped]]?
       ) -> Profile
-      def memory: () -> MemoryContext
+      def memory_collections: () -> OwnedMemoryCollectionsContext
       def store_entries: () -> StoreEntriesContext
       def prompt_documents: () -> PromptDocumentsContext
       def agents: () -> AgentsContext

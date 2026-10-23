@@ -7,14 +7,14 @@ module AgentAPI
     class << self
       def listing(entries)
         entries.map do |entry|
-          { path: entry.path, public_id: entry.public_id, lock_version: entry.lock_version,
+          { path: entry.path, collection_public_id: entry.collection_public_id, public_id: entry.public_id, lock_version: entry.lock_version,
             bytesize: entry.bytesize, description: entry.description,
             written_at: entry.written_at }
         end
       end
 
       def full(document, path: document.path)
-        { path: path, public_id: document.public_id, lock_version: document.lock_version,
+        { path: path, collection_public_id: document.memory_collection.public_id, public_id: document.public_id, lock_version: document.lock_version,
           bytesize: document.bytesize, description: document.description,
           content: document.content,
           written_at: document.memory_document_version.created_at }

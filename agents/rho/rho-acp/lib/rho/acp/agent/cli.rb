@@ -112,14 +112,18 @@ module Rho
           end
 
           def home
-            @home ||= Rho::Home.resolve(base_url: nexus_url)
+            @home ||= Rho::Home.resolve(base_url: nexus_url, root: home_root, work_root: @env["RHO_WORK_DIR"])
+          end
+
+          def home_root
+            Rho::Home.configured(@env["RHO_HOME"]) || Rho::Home::DEFAULT_ROOT
           end
 
           def nexus_url
             configured = @env["RHO_NEXUS_URL"]
             return configured if configured && !configured.empty?
 
-            Rho::Home.bound_address || Rho::Home::DEFAULT_NEXUS_URL
+            Rho::Home.bound_address(root: home_root) || Rho::Home::DEFAULT_NEXUS_URL
           end
       end
     end

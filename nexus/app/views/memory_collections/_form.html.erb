@@ -1,0 +1,16 @@
+<%# locals: (url:, creating:, draft:, cancel_path:) %>
+<%= form_with url: url, method: creating ? :post : :patch, scope: :memory_collection, class: "max-w-2xl space-y-6 rounded-box border border-base-300 bg-base-200 p-4 sm:p-6" do |form| %>
+  <% unless creating %><%= form.hidden_field :lock_version, value: draft["lock_version"] %><% end %>
+  <div>
+    <%= form.label :name, t("memory_collections.name"), class: "mb-1 block text-sm font-medium" %>
+    <%= form.text_field :name, value: draft["name"], maxlength: 128, class: "input w-full" %>
+  </div>
+  <div>
+    <%= form.label :description, t("memory_collections.description_label"), class: "mb-1 block text-sm font-medium" %>
+    <%= form.text_area :description, value: draft["description"], maxlength: 1024, rows: 3, class: "textarea w-full" %>
+  </div>
+  <div class="flex flex-wrap gap-3">
+    <%= form.submit t("memory_collections.save"), class: "btn btn-primary btn-sm" %>
+    <%= link_to t("memory_collections.cancel"), cancel_path, class: "btn btn-ghost btn-sm" %>
+  </div>
+<% end %>

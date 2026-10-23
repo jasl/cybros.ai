@@ -11,7 +11,7 @@ class DiagnosticExportConnectionTest < ActiveSupport::TestCase
 
   teardown do
     @run&.destroy!
-    Conversation.find_by(id: @conversation&.id)&.destroy!
+    destroy_memory_owner!(Conversation.find_by(id: @conversation&.id))
   end
 
   test "Run diagnostics release read connections before every compressed chunk" do

@@ -1,0 +1,3 @@
+<%= render layout: "memory_collections/shell", locals: { back_path: memory_collection_documents_path(@collection), back_label: memory_collection_name(@collection), error: @error, title: t("data_console.memory.edit") } do %>
+  <%= render "form", collection: @collection, draft: @draft, data_writable: @data_writable, error: @error, conflict: @conflict, memory_overridden: @memory_overridden, creating: false %>
+<% end %>

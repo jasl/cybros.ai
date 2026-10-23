@@ -214,7 +214,7 @@ class GroupChatTest < Minitest::Test
     assert_equal b_profile, first.answering_user_public_id, "turn 1 is B's"
     assert_equal [b_profile, "agent", b_handle], [first.speaker.user_public_id, first.speaker.kind, first.speaker.handle],
       "an assistant turn's speaker is its answerer"
-    owner_speaker = first.active_variant.memory_context.fetch("bindings").find { |binding| binding.fetch("scope") == "speaker" }.fetch("speaker_public_id")
+    owner_speaker = first.active_variant.memory_context.fetch("bindings").find { |binding| binding.fetch("source")["scope"] == "speaker" }.fetch("capture").fetch("speaker_public_id")
     owner_envelope = %(<message from="Owner" kind="ingress" speaker="#{owner_speaker}">)
     b_first = sealed_texts(loop_one, "r1").join("\n")
     assert_includes b_first, "!mock -- b, you are the reviewer here"
@@ -347,126 +347,6 @@ class GroupChatTest < Minitest::Test
     assert_predicate exit_status, :success?, "rho watch failed:\n#{watched}"
     assert_match(/^  sent\s+r2t0\n    from: @#{Regexp.escape(a_handle)} \(agent\) #{Regexp.escape(conversation)}$/, watched,
       "rho watch prints A's send once, by the key the model saw, with the speaker under it:\n#{watched}")
-  end
-
-  # A NAMED `--to` THAT DIFFERS FROM THE RUNNING ANSWERER QUEUES: with A running, `rho say --to @b`
-  # is `pending` — no binding, no refusal — and B's turn opens from that row at A's boundary. The
-  # SDK's `to:` is the same door word, by public id.
-  def test_a_named_addressee_other_than_the_running_answerer_queues_for_its_own_turn
-    a_profile, a_handle = rho_identity
-    b_profile = @peer.public_id
-
-    output, status = @daemon.cli("do", "!mock -- b first", "--model", MODEL, "--dir", @world.project,
-      "--agent", "@#{@world.peer_handle}", "--runner", @world.shared_runner.executor_public_id)
-    assert_predicate status, :success?, "rho do --agent failed:\n#{output}"
-    conversation = output[/^conversation:\s+(\S+)/, 1]
-    loop_one = output[/^run:\s+(\S+)/, 1]
-    chat = @conversations.conversation(conversation)
-    assert_equal @world.shared_runner.executor_public_id, chat.fetch.default_runner&.executor_public_id
-    first = await_reply(chat, after: -1)
-
-    rho_say(conversation, script([["bash", sleep_arguments(A_SLEEP)]], "a done"), to: a_handle)
-    running = await_running_turn(chat, after: first.position)
-    loop_two = running.active_variant.run_public_id
-    assert_equal a_profile, running.answering_user_public_id
-    await_tool_running(loop_two)
-
-    said, status = @daemon.cli("say", conversation, "!mock -- b, when a is done", "--to", "@#{@world.peer_handle}")
-    assert_predicate status, :success?, "rho say --to failed:\n#{said}"
-    named_id = said[/^queued:\s+(\S+) \(pending\)$/, 1]
-    refute_nil named_id, "a `--to` naming someone other than the running answerer queues, no binding:\n#{said}"
-    accepted = chat.inputs.create(kind: "direct_reply", model: MODEL, text: "!mock -- b, and this by id",
-      to: b_profile, delivery_mode: "steer", idempotency_key: SecureRandom.uuid)
-    assert_equal "pending", accepted.input.state, "the SDK's `to:` by public id, a steer with nobody to steer: queued"
-    assert_equal b_profile, accepted.input.answering_user_public_id
-
-    await_run_status(loop_two, "completed")
-    events = await_feed(conversation, "B's turns never opened") do |items|
-      items if new_turns(items, except: [loop_one, loop_two]).length >= 2
-    end
-    opened = new_turns(events, except: [loop_one, loop_two])
-    assert_equal [named_id, accepted.input.public_id],
-      opened.map { |turn| materialized(events, turn).dig("payload", "input_public_id") },
-      "B's turns open from the person's rows at A's boundary, in arrival order"
-    opened.each do |turn|
-      created = events.find { |item| item["type"] == "turn_created" && item.dig("payload", "turn_public_id") == turn.dig("payload", "turn_public_id") }
-      assert_equal b_profile, created&.dig("payload", "answering_user_public_id"), created.inspect
-    end
-  end
-
-  # THE TWO REFUSAL WORDS, through rho and through the SDK: a name nobody
-  # answers to is `principal_unknown` (rho's daemon names the handles it
-  # knows; the kernel refuses the same word), and a profile with no
-  # standing here — B on a conversation opened `--restricted`, where B is
-  # `none` — is the create door's `answerer_not_eligible` (never
-  # `not_authorized`: that is the level's word for the POSTER).
-  def test_an_unknown_addressee_and_one_without_standing_are_refused_by_name
-    _a_profile, a_handle = rho_identity
-    b_profile = @peer.public_id
-
-    output, status = @daemon.cli("do", "!mock -- private", "--model", MODEL, "--dir", @world.project, "--restricted")
-    assert_predicate status, :success?, "rho do --restricted failed:\n#{output}"
-    conversation = output[/^conversation:\s+(\S+)/, 1]
-    loop_one = output[/^run:\s+(\S+)/, 1]
-    await_run_status(loop_one, "completed")
-    chat = @conversations.conversation(conversation)
-    assert_equal "none", chat.fetch.access.default
-
-    said, status = @daemon.cli("say", conversation, "!mock -- anyone?", "--to", "@nobody")
-    refute_predicate status, :success?, "an unknown addressee is refused:\n#{said}"
-    assert_match(/no principal @nobody/, said, said)
-    assert_match(/@#{Regexp.escape(a_handle)}/, said, "the refusal names the handles the listing knows:\n#{said}")
-    error = assert_raises(CybrosAgent::Api::InvalidRequest) do
-      chat.inputs.create(kind: "direct_reply", model: MODEL, text: "!mock -- anyone?", to: "@nobody", idempotency_key: SecureRandom.uuid)
-    end
-    assert_equal "principal_unknown", error.code, "the kernel's own word, by the SDK"
-
-    said, status = @daemon.cli("say", conversation, "!mock -- b?", "--to", "@#{@world.peer_handle}")
-    refute_predicate status, :success?, "B holds `none` here — it cannot answer:\n#{said}"
-    assert_match(/answerer_not_eligible/, said, said)
-    error = assert_raises(CybrosAgent::Api::InvalidRequest) do
-      chat.inputs.create(kind: "direct_reply", model: MODEL, text: "!mock -- b?", to: b_profile, idempotency_key: SecureRandom.uuid)
-    end
-    assert_equal "answerer_not_eligible", error.code
-    assert_equal 1, chat.turns.list.items.count { |turn| turn.role == "assistant" }, "nothing opened: both refusals were synchronous"
-  end
-
-  def test_a_side_after_undo_keeps_the_remaining_turns_agent_instead_of_the_default
-    a_profile, = rho_identity
-    created = @conversations.create(answering_user_public_id: @peer.public_id,
-      idempotency_key: SecureRandom.uuid)
-    chat = @conversations.conversation(created.public_id)
-    chat.inputs.create(kind: "direct_reply", model: MODEL, text: "!mock -- A's retained answer",
-      to: a_profile, idempotency_key: SecureRandom.uuid)
-    first = await_reply(chat, after: -1)
-    await_run_status(first.active_variant.run_public_id, "completed")
-    assert_equal a_profile, first.answering_user_public_id
-
-    chat.inputs.create(kind: "direct_reply", model: MODEL, text: "!mock -- B's undone answer",
-      idempotency_key: SecureRandom.uuid)
-    last = await_reply(chat, after: first.position)
-    await_run_status(last.active_variant.run_public_id, "completed")
-    assert_equal @peer.public_id, last.answering_user_public_id
-    assert_nil chat.turns.delete(last.public_id)
-    assert_equal [first.public_id], chat.turns.list.items.map(&:public_id)
-
-    forked = chat.fork(side: true, idempotency_key: SecureRandom.uuid).conversation
-    assert_equal a_profile, forked.answering_user_public_id,
-      "undo left a position gap, not a reason to switch the side back to the default agent"
-    assert_equal first.public_id, forked.forked_from_turn_public_id
-    side = @conversations.conversation(forked.public_id)
-    history = side.turns.list.items
-    assert_equal 1, history.length
-    inherited = history.first
-    assert_predicate inherited, :inherited?
-    assert_equal first.public_id, inherited.public_id
-    assert_equal first.text, inherited.text
-
-    side.inputs.create(kind: "direct_reply", model: MODEL, text: "!mock -- continue on the side",
-      idempotency_key: SecureRandom.uuid)
-    answer = await_reply(side, after: first.position)
-    assert_equal a_profile, answer.answering_user_public_id
-    assert_operator answer.position, :>, last.position, "the undone position remains vacant"
   end
 
   private

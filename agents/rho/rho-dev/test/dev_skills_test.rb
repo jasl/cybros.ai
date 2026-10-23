@@ -31,10 +31,11 @@ class DevSkillsTest < Minitest::Test
 
   def test_skills_push_splits_the_skill_md_here_and_posts_the_row_to_the_named_rung
     seen = []
-    row = { "path" => "agent/skills/review-checklist", "bytesize" => 28, "description" => "Review: how I do it.",
+    row = { "path" => "skills/review-checklist", "bytesize" => 28, "description" => "Review: how I do it.",
             "written_at" => "2026-09-15T00:00:00Z", "content" => "# review-checklist\n\n- first\n" }
     announce(endpoint: recording_routed_endpoint(seen,
       "GET /skills/show" => [[404, { "error" => { "code" => "memory_not_found", "message" => "Missing" } }]],
+      "GET /skills" => [[200, { "skills" => { "collections" => { "agent" => { "public_id" => "collection-agent" } } } }]],
       "POST /skills/push" => [[201, { "memory" => row }]]))
 
     Dir.mktmpdir do |root|
@@ -45,10 +46,10 @@ class DevSkillsTest < Minitest::Test
 
     body = JSON.parse(seen.grep(%r{\APOST /skills/push}).fetch(0).partition("\r\n\r\n").last)
     assert_equal({ "scope" => "agent", "name" => "review-checklist", "description" => "Review: how I do it.",
-                   "content" => "# review-checklist\n\n- first\n", "expected_public_id" => nil,
+                   "content" => "# review-checklist\n\n- first\n", "expected_collection_public_id" => "collection-agent", "expected_public_id" => nil,
                    "expected_lock_version" => nil }, body,
       "the frontmatter is split off here: name, description, and the body without it")
-    assert_equal "pushed:    agent/skills/review-checklist (28 bytes)\n", @out.string
+    assert_equal "pushed:    skills/review-checklist (28 bytes)\n", @out.string
   end
 
   # The workspace rung is the adopted workspace's own door: the body names the rung, never a conversation.
@@ -56,13 +57,13 @@ class DevSkillsTest < Minitest::Test
     seen = []
     announce(endpoint: recording_routed_endpoint(seen,
       "GET /skills/show" => [[200, { "memory" => { "public_id" => "019a0000-0000-7000-8000-000000000001",
-                                                 "lock_version" => 4, "content" => "previous" } }]],
-      "POST /skills/push" => [[201, { "memory" => { "path" => "workspace/skills/commit-style", "bytesize" => 3 } }]]))
+                                                 "collection_public_id" => "collection-agent", "lock_version" => 4, "content" => "previous" } }]],
+      "POST /skills/push" => [[201, { "memory" => { "path" => "skills/commit-style", "bytesize" => 3 } }]]))
     Dir.mktmpdir do |root|
       dir = skill_dir(root, "commit-style", "How commits are written.")
       skills("push", dir, scope: "workspace")
       body = JSON.parse(seen.grep(%r{\APOST /skills/push}).fetch(0).partition("\r\n\r\n").last)
-      assert_equal %w[scope name description content expected_public_id expected_lock_version], body.keys
+      assert_equal %w[scope name description content expected_collection_public_id expected_public_id expected_lock_version], body.keys
       assert_equal "019a0000-0000-7000-8000-000000000001", body.fetch("expected_public_id")
       assert_equal 4, body.fetch("expected_lock_version")
       assert_equal "workspace", body.fetch("scope")
@@ -88,6 +89,7 @@ class DevSkillsTest < Minitest::Test
   def test_skills_push_relays_the_kernels_refusal_word
     announce(endpoint: routed_endpoint(
       "GET /skills/show" => [[404, { "error" => { "code" => "memory_not_found", "message" => "Missing" } }]],
+      "GET /skills" => [[200, { "skills" => { "collections" => { "agent" => { "public_id" => "collection-agent" } } } }]],
       "POST /skills/push" => [[422, { "error" => { "code" => "skill_description_required", "message" => "Refused: skill_description_required" } }]]))
     Dir.mktmpdir do |root|
       dir = skill_dir(root, "commit-style", "d")
@@ -99,11 +101,11 @@ class DevSkillsTest < Minitest::Test
   def test_skills_show_prints_the_body_and_rm_prints_nothing
     seen = []
     announce(endpoint: recording_routed_endpoint(seen,
-      "GET /skills/show" => [[200, { "memory" => { "path" => "workspace/skills/commit-style",
+      "GET /skills/show" => [[200, { "memory" => { "path" => "skills/commit-style",
                                                     "content" => "# Commits\n\nOne line.\n",
                                                     "public_id" => "019a0000-0000-7000-8000-000000000001",
-                                                    "lock_version" => 4 } }]],
-      "POST /skills/rm" => [[200, { "deleted" => { "path" => "workspace/skills/commit-style" } }]]))
+                                                    "collection_public_id" => "collection-agent", "lock_version" => 4 } }]],
+      "POST /skills/rm" => [[200, { "deleted" => { "path" => "skills/commit-style" } }]]))
 
     skills("show", "commit-style", scope: "workspace")
     assert_equal "# Commits\n\nOne line.\n", @out.string
@@ -113,11 +115,11 @@ class DevSkillsTest < Minitest::Test
     @out.truncate(0)
     @out.rewind
     deleted = skills("rm", "commit-style", scope: "workspace")
-    assert_equal({ "path" => "workspace/skills/commit-style" }, deleted)
+    assert_equal({ "path" => "skills/commit-style" }, deleted)
     assert_equal "", @out.string
     body = JSON.parse(seen.grep(%r{\APOST /skills/rm}).fetch(0).partition("\r\n\r\n").last)
     assert_equal({ "scope" => "workspace", "name" => "commit-style",
-                   "expected_public_id" => "019a0000-0000-7000-8000-000000000001",
+                   "expected_collection_public_id" => "collection-agent", "expected_public_id" => "019a0000-0000-7000-8000-000000000001",
                    "expected_lock_version" => 4 }, body)
 
     assert_raises(Rho::Error) { skills("show", nil, scope: "agent") }
@@ -127,7 +129,7 @@ class DevSkillsTest < Minitest::Test
 
   def test_skills_lists_the_three_sections_and_says_when_no_root_is_set
     listing = { "skills" => {
-      "agent" => [{ "name" => "review-checklist", "path" => "agent/skills/review-checklist",
+      "agent" => [{ "name" => "review-checklist", "path" => "skills/review-checklist",
                    "description" => "Review: how I do it.", "bytesize" => 28, "written_at" => "2026-09-15T00:00:00Z" }],
       "workspace" => [],
       "project" => [{ "name" => "deploy-notes", "description" => "How this project is deployed." }],
@@ -153,7 +155,7 @@ class DevSkillsTest < Minitest::Test
       seen = []
       announce(endpoint: recording_routed_endpoint(seen,
         "GET /skills/show" => [[200, { "memory" => { "public_id" => "019a0000-0000-7000-8000-000000000001",
-                                                   "lock_version" => 4, "content" => "previous" } }]],
+                                                   "collection_public_id" => "collection-agent", "lock_version" => 4, "content" => "previous" } }]],
         "POST /skills/#{verb}" => [[409, { "error" => { "code" => "stale_object", "message" => "Changed" } }]]))
       Dir.mktmpdir do |root|
         target = verb == "push" ? skill_dir(root, "commit-style", "d") : "commit-style"

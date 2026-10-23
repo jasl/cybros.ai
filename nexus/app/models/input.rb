@@ -196,9 +196,13 @@ class Input < ApplicationRecord
 
   # Completion mail continues the execution that requested it. A reaped source
   # omits memory rather than restoring the receiver's newer configuration.
+  attr_writer :selected_memory_context
+
   def execution_memory_context
-    if kernel_origin? && sender_run_public_id
-      source = Run.find_by(public_id: sender_run_public_id)
+    return @selected_memory_context if defined?(@selected_memory_context)
+
+    if kernel_origin?
+      source = Run.find_by(public_id: sender_run_public_id) if sender_run_public_id
       source ? host.effective_memory_context(execution_configuration: execution_configuration, configuration: source.memory_context) : { "bindings" => [] }
     else
       configuration = host.effective_memory_context(execution_configuration: execution_configuration)

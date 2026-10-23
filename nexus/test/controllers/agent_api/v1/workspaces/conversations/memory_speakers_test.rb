@@ -10,10 +10,13 @@ class AgentAPI::V1::Workspaces::Conversations::MemorySpeakersTest < ActionDispat
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @agent, answering_user: @agent)
     @speaker = Speaker.register_ingress(user: @agent, channel_key: "telegram", external_id: "alice", display_name: "Alice")
     @other = Speaker.register_ingress(user: @agent, channel_key: "telegram", external_id: "bob", display_name: "Bob")
+    [@speaker, @other].each { |speaker| MemoryCollection.default_for(@agent, speaker: speaker) }
+    MemoryCollection.default_for(@conversation)
   end
 
   def base = "/agent_api/v1/workspaces/#{@workspace.public_id}/conversations/#{@conversation.public_id}/memory"
-  def selection(speaker = @speaker) = { speaker_public_id: speaker.public_id }
+  def selection(speaker = @speaker) = { speaker_public_id: speaker.public_id,
+    **memory_collection_condition(conversation: @conversation, path: "speaker/preferences.md", by: @agent, speaker: speaker) }
 
   test "all management verbs select one request subject without changing shared bindings" do
     post base, headers: @headers, as: :json, params: { memory: {
@@ -22,7 +25,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemorySpeakersTest < ActionDispat
     assert_response :created
     document = response.parsed_body.fetch("memory")
     row = MemoryDocument.find_by!(public_id: document.fetch("public_id"))
-    assert_equal [@agent.id, @speaker.id], [row.user_id, row.speaker_id]
+    assert_equal [@agent.id, @speaker.id], [row.memory_collection.user_id, row.memory_collection.speaker_id]
 
     get base, headers: @headers, params: { memory: selection }
     assert_response :success
@@ -58,19 +61,19 @@ class AgentAPI::V1::Workspaces::Conversations::MemorySpeakersTest < ActionDispat
 
   test "subject selection preserves explicit bindings and the conversation execution limit" do
     @conversation.update!(memory_context: { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-      { "name" => "speaker", "scope" => "speaker", "access" => "read_write", "speaker_public_id" => @other.public_id },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+      { "name" => "speaker", "source" => { "scope" => "speaker", "speaker_public_id" => @other.public_id }, "access" => "read_write" },
     ] })
     post base, headers: @headers, as: :json, params: { memory: {
       **selection, path: "speaker/preferences.md", content: "Bob's fixed subject", expected_public_id: nil, expected_lock_version: nil,
     } }
     assert_response :created
-    assert_equal @other.id, MemoryDocument.sole.speaker_id
+    assert_equal @other.id, MemoryDocument.sole.memory_collection.speaker_id
 
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @agent, answering_user: @agent,
       memory_context: @conversation.memory_context,
       agent_configuration: { memory_context_limit: { "bindings" => [
-        { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
+        { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
       ] } })
     post "#{base}/show", headers: @headers, as: :json, params: { memory: { **selection, path: "speaker/preferences.md" } }
     assert_response :unprocessable_content

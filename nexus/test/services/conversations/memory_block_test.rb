@@ -15,11 +15,12 @@ class Conversations::MemoryBlockTest < ActiveJob::TestCase
     DevModelLane.ensure_enabled!(@account)
     # Answered by the agent: the engine of every reply head here is the agent's.
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
+    MemoryCollection.default_for(@conversation)
   end
 
   def select_human_documents
     @conversation.update!(memory_context: { "bindings" => %w[conversation workspace user].map do |scope|
-      { "name" => scope, "scope" => scope, "access" => "read_write" }
+      { "name" => scope, "source" => { "scope" => scope }, "access" => "read_write" }
     end })
   end
 
@@ -144,12 +145,12 @@ class Conversations::MemoryBlockTest < ActiveJob::TestCase
     assert_includes as_member, "the member's private note", "the explicit user scope remains the Human principal's"
   end
 
-  test "a principal with no controlling Human renders no user rung, and no error" do
+  test "a principal without workspace access renders no memory sources and no error" do
     write!("user/mine.md", "user fact")
     write!("workspace/shared.md", "workspace fact")
 
     text = assemble(principal: users(:system)).messages.flat_map { |m| m.parts.map(&:text) }.join("\n")
-    assert_includes text, "workspace fact"
+    refute_includes text, "workspace fact"
     refute_includes text, "user fact"
   end
 

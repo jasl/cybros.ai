@@ -106,6 +106,9 @@ production: &schedules
   reclaim_memory_document_versions:
     class: MemoryDocuments::ReclaimVersionsJob
     schedule: every hour
+  purge_memory_collections:
+    class: MemoryCollections::PurgeJob
+    schedule: every minute
   prune_conversation_execution_details:
     class: Conversations::PruneExecutionDetailsJob
     schedule: every day at 4:20am

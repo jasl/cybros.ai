@@ -43,7 +43,6 @@ module ModelCatalog
     TRANSCRIPTION_RATE_KEYS = %w[per_minute].freeze
     EMBEDDING_RATE_KEYS = %w[input_per_mtok].freeze
     DECIMAL_PATTERN = /\A\d+(?:\.\d{1,12})?\z/
-    ACCOUNT_UNIT_MAX_LENGTH = Account::COST_UNIT_MAX_LENGTH
 
     class << self
       def validate(model_ref, pricing, profiles)
@@ -94,13 +93,13 @@ module ModelCatalog
 
         valid_unit = case unit
         when String
-          !unit.empty? && unit == unit.strip && unit.length <= ACCOUNT_UNIT_MAX_LENGTH
+          !unit.empty? && unit == unit.strip && unit.length <= Constants::COST_UNIT_MAX_LENGTH
         else false
         end
         unless valid_unit
           raise CompileError,
             "model #{model_ref}: pricing account_unit must be an already-trimmed nonblank String of at " \
-            "most #{ACCOUNT_UNIT_MAX_LENGTH} characters"
+            "most #{Constants::COST_UNIT_MAX_LENGTH} characters"
         end
       end
 

@@ -1,6 +1,7 @@
 use super::*;
 use types::member::*;
 impl Client {
+    child!(memory_collections, "memory_collections", MemoryCollections);
     child!(schedules, "schedules", GlobalSchedules);
     child!(profile, "profile", ProfileContext);
     child!(workspaces, "workspaces", Workspaces);
@@ -29,7 +30,11 @@ impl ProfileContext {
         "configuration", DeclareConfiguration, None, Profile, None
     );
     child!(agents, "agents", NamedAgents);
-    child!(memory, "memory", Memory);
+    child!(
+        memory_collections,
+        "memory_collections",
+        OwnedMemoryCollections
+    );
     child!(store_entries, "store_entries", StoreEntries);
     child!(prompt_documents, "prompt_documents", PromptDocuments);
     write!(
@@ -61,7 +66,11 @@ impl NamedAgentContext {
         Some("agent")
     );
     command!(delete, DELETE, "", Empty, None);
-    child!(memory, "memory", Memory);
+    child!(
+        memory_collections,
+        "memory_collections",
+        OwnedMemoryCollections
+    );
 }
 handle!(Workspaces);
 impl Workspaces {
@@ -166,7 +175,11 @@ impl WorkspaceContext {
             .await
     }
     child!(store_entries, "store_entries", StoreEntries);
-    child!(memory, "memory", Memory);
+    child!(
+        memory_collections,
+        "memory_collections",
+        OwnedMemoryCollections
+    );
     child!(prompt_documents, "prompt_documents", PromptDocuments);
     child!(conversations, "conversations", Conversations);
     child_id!(conversation, "conversations", ConversationContext);

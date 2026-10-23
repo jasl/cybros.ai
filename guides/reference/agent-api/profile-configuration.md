@@ -222,17 +222,17 @@ Runner. Delegate tasks and child operations inherit their accepted tool surface.
 `memory_context_limit` is an optional ceiling over the memory bindings a
 conversation selects. `null` adds no ceiling; `{"bindings": []}` admits no
 memory. A nonempty limit uses the [memory binding grammar](conversation-memory.md#named-bindings),
-with natural root names only: each `name` equals its `scope`, and neither
-`conversation_public_id` nor `speaker_public_id` is allowed. It includes
-the required `conversation` root. For example:
+with natural root names only: each `name` equals `source.scope`. Exact collection
+UUIDs, explicit Conversation/Speaker identities and captures are forbidden.
+A nonempty kernel limit need not include `conversation`. For example:
 
 ```json
 {
   "memory_context_limit": {
     "bindings": [
-      { "name": "conversation", "scope": "conversation", "access": "read_write" },
-      { "name": "workspace", "scope": "workspace", "access": "read" },
-      { "name": "speaker", "scope": "speaker", "access": "read_write" }
+      { "name": "conversation", "source": { "scope": "conversation" }, "access": "read_write" },
+      { "name": "workspace", "source": { "scope": "workspace" }, "access": "read" },
+      { "name": "speaker", "source": { "scope": "speaker" }, "access": "read_write" }
     ]
   },
   "conversation_reach": "subtree"
@@ -243,8 +243,8 @@ The effective context is the intersection of the selected bindings and this
 limit. A limit never adds a missing root, and `read` wins over `read_write`.
 A limited profile cannot retain a conversation alias pointing outside the
 current conversation. Injection, skills, memory tools, preview and memory
-management use this effective context. The Agent's profile-memory door also
-applies its limit. Prompt slots follow the authored template independently
+context management use this effective context. Collection resources separately
+use their owner-management authority. Prompt slots follow the authored template independently
 of memory bindings.
 
 `conversation_reach` accepts `workspace`, `subtree` or `null`; omission and

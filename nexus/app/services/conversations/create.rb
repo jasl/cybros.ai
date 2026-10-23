@@ -65,7 +65,7 @@ module Conversations
         title: normalized_title,
         cost_limit: @command.cost_limit,
         metadata: @command.metadata || {},
-        memory_context: @command.spawn_node ? @command.spawn_node.run.memory_context : @command.memory_context,
+        memory_context: selected_memory_context,
         conversation_reach: @command.conversation_reach,
         agent_configuration: @command.agent_configuration,
         model_selection: @command.model_selection,
@@ -80,10 +80,11 @@ module Conversations
       context = MemoryDocuments::Context.new(workspace: conversation.workspace, conversation: conversation,
         principal: @command.creating_user, configuration: conversation.effective_memory_context,
         agent: conversation.answering_agent, execution: @command.spawn_node.present?)
-      return Outcome.refused(:memory_scope_unavailable) unless context.sources_available?
+      return Outcome.refused(context.selection_refusal) if context.selection_refusal
 
       Conversation.transaction do
         if conversation.save
+          MemoryCollection.default_for(conversation)
           # The host is born with its event cursor, so no two first
           # appenders ever race to create it.
           conversation.create_event_cursor!(account: conversation.account)
@@ -95,6 +96,12 @@ module Conversations
     end
 
     private
+
+      def selected_memory_context
+        return @command.memory_context unless @command.spawn_node
+
+        MemoryDocuments::Context.inherit_from(@command.spawn_node.run)
+      end
 
       # The named answerer: `Workspace#answerer_eligible?` — an agent
       # profile of the account that may write in this workspace. Anything

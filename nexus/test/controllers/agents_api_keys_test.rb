@@ -7,13 +7,18 @@ class AgentsAPIKeysTest < ActionDispatch::IntegrationTest
   end
 
   test "a steward creates an Agent and manages separate one-time member and executor keys" do
-    get new_agent_path
+    assert_no_difference -> { MemoryCollection.count } do
+      get new_agent_path
+    end
     assert_response :success
     assert_select "input[name='agent[display_name]']"
     assert_select "input[name='agent[agent_identifier]']", count: 0
     post agents_path, params: { agent: { display_name: "Console application" } }
     agent = @owner.stewarded_agents.find_by!(display_name: "Console application")
     assert_redirected_to agent_path(agent)
+    collection = agent.memory_collections.where(is_default: true, speaker: nil).sole
+    assert_equal :agent, collection.natural_scope
+    assert_equal agent.account, collection.account
     follow_redirect!
     assert_select "a[href=?]", agent_api_keys_path(agent)
     assert_select "a[href=?]", agent_executor_api_keys_path(agent)
@@ -46,7 +51,9 @@ class AgentsAPIKeysTest < ActionDispatch::IntegrationTest
 
 
   test "invalid names render their owning forms and removed Agents refuse issuance" do
-    post agents_path, params: { agent: { display_name: "" } }
+    assert_no_difference [-> { User.count }, -> { MemoryCollection.count }] do
+      post agents_path, params: { agent: { display_name: "" } }
+    end
     assert_response :unprocessable_entity
     assert_select "p.field-error", text: /blank/
     agent = @owner.build_agent(display_name: "Application")

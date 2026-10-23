@@ -26,6 +26,9 @@ class AgentPresetMemoryTest < Minitest::Test
       { "bindings" => [binding("conversation").merge("conversation_public_id" => "other-room")] },
       { "bindings" => [binding("conversation"), binding("speaker").merge("speaker_public_id" => "person")] },
       { "bindings" => [binding("conversation"), binding("other")] },
+      { "bindings" => [binding("conversation").merge("source" => { "collection_public_id" => "private-collection" })] },
+      { "bindings" => [binding("conversation"), binding("speaker").merge("source" => { "scope" => "speaker", "speaker_public_id" => "private-subject" })] },
+      { "bindings" => [binding("conversation").merge("capture" => { "collection_public_id" => "private-collection" })] },
     ]
     invalid.each do |limit|
       error = assert_raises(Rho::AgentPresets::Error) { create(limit) }
@@ -64,5 +67,5 @@ class AgentPresetMemoryTest < Minitest::Test
       @catalog.create(name: "Limited", description: "Authored memory limit", configuration: { "memory_context_limit" => limit })
     end
 
-    def binding(scope, access = "read") = { "name" => scope, "scope" => scope, "access" => access }
+    def binding(scope, access = "read") = { "name" => scope, "source" => { "scope" => scope }, "access" => access }
 end

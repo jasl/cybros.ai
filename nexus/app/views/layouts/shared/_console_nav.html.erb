@@ -6,6 +6,7 @@
     [t("layouts.application.workspaces"), workspaces_path, "lucide--folders", controller_path == "workspaces" || controller_path.start_with?("workspaces/", "conversations", "runs")],
   ]],
   [t("work_console.resources"), [
+    [t("memory_collections.title"), memory_collections_path, "lucide--notebook", controller_path.start_with?("memory_collections")],
     [t("layouts.application.runners"), runners_path, "lucide--server", ["runners", "runner_connections"].include?(controller_path) || controller_path.start_with?("runners/")],
     [t("work_console.attention"), attention_path, "lucide--circle-help", controller_path == "attention" || controller_path.start_with?("attention/")],
     [t("usage_reports.title"), usage_path, "lucide--chart-no-axes-combined", controller_path == "usage_reports"],

@@ -2,9 +2,79 @@
 
 Run the ordinary deterministic gate with `bundle exec rake` from this directory.
 WebRTC (`rake realtime`) and real model calls are explicit opt-ins.
-The journey manifest groups suites into isolated worlds, with two or three running at once
-according to PostgreSQL's connection ceiling. Splitting suites adds worlds without
-increasing concurrent worlds or the default 1,080-second journey deadline.
+The journey manifest groups suites into 12 isolated worlds, with two or three running at once
+according to PostgreSQL's connection ceiling. Each group has a 1,200-second outer deadline;
+scheduling weights change launch order, not product timeouts.
+
+## Journey coverage review
+
+The 2026-10-24 review reduced ordinary native journeys from **358 to 179 cases (50%)**.
+The [case-by-case audit](journey_review.csv) records every ordinary and realtime case,
+its original group and source location, measured baseline time when available, decision,
+replacement coverage for each removal, and its current group and name when retained.
+Original source locations describe the pre-reduction tree at `7ea3391ff`; deleted cases no
+longer have a current location. An empty timing means unmeasured, not zero seconds.
+
+| Coverage category | Before | Retained |
+|---|---:|---:|
+| Browser and configuration | 21 | 12 |
+| Connection lifecycle | 11 | 8 |
+| Conversation execution | 64 | 33 |
+| Delegation and scheduled work | 26 | 14 |
+| Identity and access | 19 | 5 |
+| Inference and media | 42 | 18 |
+| Memory and history | 12 | 4 |
+| SDK and external agent protocols | 38 | 19 |
+| Telegram ingress and delivery | 48 | 25 |
+| Tools and runner lifecycle | 77 | 41 |
+| **Ordinary native total** | **358** | **179** |
+
+The retained journeys exercise real process, browser, principal, persistence and background
+lifecycle boundaries. Removed cases repeat an existing journey or test owner-level behavior
+already covered by package, request, service or browser component tests: CRUD and field
+matrices, formatting, policy variants, parser cases and local state transitions. Rewind and
+web-fetch journeys also shed repeated local edge-case matrices while retaining the real
+Runner restore/undo and approval/spill flows. Assertions in the other retained cases stay intact.
+
+The three installation cases and 13 opt-in realtime cases are unchanged. Including those,
+the audited inventory is 374 → 195 cases; ordinary journeys including installation are
+361 → 182. Offline harness tests, paid/manual diagnostics, the separately supplied stack
+installation and API-load measurement are outside this reduction. Keep their distinct
+verification purpose; a smaller journey count does not replace those checks.
+
+The execution groups decreased from 17 to 12 to avoid paying for mostly empty Nexus worlds.
+They combine compatible categories while separating shared-Human writers and suites with
+per-test sign-in/device-grant ceremony. The authoritative file membership is in
+[`support/journey_groups.rb`](support/journey_groups.rb):
+
+| Group | Main journeys |
+|---|---|
+| 1 | Prompt assembly, conversation configuration, named agents, ACP agent, web fetch |
+| 2 | Approval, memory, history, Runner selection, rewind and external MCP |
+| 3 | Kernel/SDK contracts, media, schedules, spawn, installation |
+| 4 | Device/daemon lifecycle, CLI smoke, inference recovery, workspace lifecycle |
+| 5 | Telegram bot connection and controls, ask inbox, executor relay |
+| 6 | Telegram group observation and execution permissions |
+| 7 | Turn execution, regeneration, background work, result DAG, code mode |
+| 8 | Telegram ingress, history, memory and commands |
+| 9 | Telegram workspace ownership, Nexus MCP and offline Agent execution |
+| 10 | Telegram media/delivery, language SDKs, standalone Agent and ACP client |
+| 11 | Active participation, memory review, household and T3 |
+| 12 | Browser onboarding, settings, questions and installed packages |
+
+For native macOS acceptance, with PostgreSQL and the documented package/browser toolchains
+installed, run from this directory:
+
+```sh
+env -u E2E_LIVE -u E2E_INSTALL_HOST E2E_WORLDS=2 \
+  X='/(?:InstallContainerTest|InstallComposeTest|InstallHostTest)#/' \
+  bundle exec rake
+```
+
+This runs the offline harness, all 179 ordinary native journeys and RuboCop. Installation,
+realtime and manual measurements retain their explicit prerequisites and separate commands.
+For a scoped change, select the affected case with `N=` in `e2e_serial` or `e2e_group[k]`;
+the full suite is for broad acceptance, not every implementation slice.
 
 ## Offline Agent execution
 
@@ -14,7 +84,7 @@ client. They use `ExecutorProcess` for an independent Runner and the existing MC
 fixture; no Rho application daemon advances those runs.
 
 - `offline_agent_test.rb` covers multiple Runner/MCP rounds, durable human approval
-  and questions, a declared kernel summarizer, image generation and result recovery.
+  and questions, attachment downloads, image generation and restart recovery.
   Its Conversation cost-limit journey completes one counted MCP write, holds a
   priced model task and its dependent, raises the cap through the public API, and
   retries the original task without repeating the write or replacing the execution.
@@ -100,11 +170,12 @@ grammar, fake-provider wire behavior, process deadlines/cleanup, isolated boot
 configuration, failure capture and the test-world manifest. Benchmark, evaluation
 and reporting harness tests remain in the complete local `harness_test` task.
 
-The full `bundle exec rake` remains the local acceptance gate. Run it before
-integrating cross-project behavior changes, with the installation image built
-locally when validating the container and Compose journeys:
+The full `bundle exec rake` remains available for broad local acceptance. Cross-project
+changes normally need the affected integration cases, selected under the repository's
+[verification scope rules](../.ai/ci.md). Container and Compose acceptance additionally
+requires the installation image built locally.
 
-Group 17 exercises the TypeScript and Rust SDKs in separate processes. It needs
+Group 10 exercises the TypeScript and Rust SDKs in separate processes. It needs
 Node 22.13+ or Node 24, pnpm as declared in the TypeScript SDK's `package.json`,
 and a Rust toolchain with Cargo; the Rust SDK's minimum supported version is
 1.85. Nexus asset preparation still uses Bun. Install the TypeScript
@@ -116,7 +187,7 @@ full gate:
 cd sdks/typescript
 pnpm install --frozen-lockfile
 cd ../../e2e
-bundle exec rake 'e2e_group[17]'
+bundle exec rake 'e2e_group[10]' N='/SDKLanguagesTest#/'
 ```
 
 The harness builds both SDK drivers once per group process, using the installed

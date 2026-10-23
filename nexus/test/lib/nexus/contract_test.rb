@@ -141,11 +141,11 @@ class Nexus::ContractTest < ActiveSupport::TestCase
   test "the operation inventory covers every public SDK plane and its one exclusion" do
     rows = Nexus::Contract.pack.fetch("operations.json").fetch("operations")
     assert_equal rows.size, rows.map { |row| row.fetch("id") }.uniq.size
-    assert_equal({ "member" => 177, "executor" => 16, "platform" => 77 },
+    assert_equal({ "member" => 179, "executor" => 16, "platform" => 77 },
       rows.group_by { |row| row.fetch("plane") }.transform_values(&:size))
     excluded = rows.reject { |row| row.fetch("sdk_supported") }
     assert_equal ["POST /api/v1/admin/users/{user_public_id}/removal"], excluded.map { |row| row.fetch("id") }
-    assert_equal 269, rows.count { |row| row.fetch("sdk_supported") }
+    assert_equal 271, rows.count { |row| row.fetch("sdk_supported") }
   end
 
   private

@@ -1,0 +1,42 @@
+<%# locals: (bindings:, collections:, title:, description:) %>
+<section class="space-y-3" aria-label="<%= title %>">
+  <div>
+    <h3 class="text-sm font-medium"><%= title %></h3>
+    <p class="mt-1 text-sm text-base-content/60"><%= description %></p>
+  </div>
+  <% if bindings.empty? %>
+    <p class="text-sm text-base-content/60"><%= t("conversation_memory.empty") %></p>
+  <% else %>
+    <div class="overflow-x-auto rounded-box border border-base-300">
+      <table class="table table-sm">
+        <thead><tr>
+          <th><%= t("conversation_memory.binding") %></th>
+          <th><%= t("conversation_memory.source") %></th>
+          <th><%= t("conversation_memory.access") %></th>
+          <th><%= t("conversation_memory.state") %></th>
+        </tr></thead>
+        <tbody>
+          <% bindings.each do |binding| %>
+            <tr data-memory-binding="<%= binding.fetch(:name) %>">
+              <td class="font-mono"><%= binding.fetch(:name) %>/</td>
+              <td>
+                <div><%= t("conversation_memory.scopes.#{binding.fetch(:scope)}") %></div>
+                <% collection_id = binding.fetch(:collection_public_id) %>
+                <% if collection = collections[collection_id] %>
+                  <%= link_to memory_collection_name(collection), memory_collection_path(collection), class: "link link-hover" %>
+                <% end %>
+                <% if collection_id %><div class="font-mono text-xs text-base-content/60 wrap-anywhere"><%= collection_id %></div><% end %>
+                <div class="text-xs text-base-content/60"><%= t(binding.fetch(:source).key?("collection_public_id") ? "conversation_memory.exact_source" : "conversation_memory.default_source") %></div>
+                <% if binding.fetch(:speaker_public_id) %>
+                  <div class="text-xs text-base-content/60 wrap-anywhere"><%= t("conversation_memory.speaker", id: binding.fetch(:speaker_public_id)) %></div>
+                <% end %>
+              </td>
+              <td><%= t("conversation_memory.accesses.#{binding.fetch(:access)}") %></td>
+              <td><span class="badge badge-sm badge-outline"><%= t("conversation_memory.states.#{binding.fetch(:state)}") %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</section>

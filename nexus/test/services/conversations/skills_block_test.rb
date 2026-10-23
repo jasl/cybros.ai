@@ -24,7 +24,7 @@ class Conversations::SkillsBlockTest < ActiveJob::TestCase
   end
 
   def row!(path, description, user: nil, content: "body")
-    anchor = Scopes::Anchor.call(path: path, workspace: @workspace, user: user)
+    anchor = memory_anchor(path: path, workspace: @workspace, user: user)
     MemoryDocument.transaction do
       anchor.lockable.lock!
       result = MemoryDocuments::Write.call(anchor: anchor, expected: memory_expectation_at(anchor), content: content, description: description)
@@ -64,7 +64,7 @@ class Conversations::SkillsBlockTest < ActiveJob::TestCase
 
   def bind_user_memory
     @conversation.update!(memory_context: { "bindings" => %w[conversation workspace user].map do |scope|
-      { "name" => scope, "scope" => scope, "access" => "read_write" }
+      { "name" => scope, "source" => { "scope" => scope }, "access" => "read_write" }
     end })
   end
 

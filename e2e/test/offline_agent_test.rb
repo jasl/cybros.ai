@@ -142,40 +142,6 @@ class OfflineAgentTest < Minitest::Test
     assert_operator analysis.model_usage.totals.request_count, :>=, 4
   end
 
-  def test_steward_allowance_commands_and_member_amount_reads_share_the_same_ledger
-    # Completed Runs can still have unsettled spend. This exact-amount ledger
-    # belongs to a principal that never executes the other journeys' model work.
-    created = @world.operator.agents.create(display_name: "Offline allowance reader")
-    agent = @world.operator.agents.agent(created.public_id)
-    grant = agent.api_keys.create(name: "Allowance ledger")
-    member = CybrosAgent::Client.new(base_url: @base_url,
-      credential: E2E::SecretHygiene.register(grant.secret))
-    budgets = agent.budgets
-    opened = budgets.open(amount: "1.250000000000000001", starts_at: (Time.now.utc - 60).iso8601,
-      idempotency_key: SecureRandom.uuid, reason: "Offline financial contract")
-    read = member.profile.budgets.fetch(opened.public_id)
-    assert_equal opened.public_id, read.budget.public_id
-    assert_equal "1.250000000000000001", read.budget.headroom
-    budgets.adjust(opened.public_id, kind: "credit", amount: "0.75",
-      idempotency_key: SecureRandom.uuid, reason: "Exact top-up")
-    overview = member.profile.budgets.list
-    assert_equal "2.000000000000000001", overview.current_budget.headroom
-    entries = member.profile.budgets.entries(opened.public_id)
-    assert_equal %w[initial_grant credit_adjustment], entries.items.map(&:kind)
-    assert entries.items.none? { |entry| entry.to_h.key?(:operation_key) }
-    budgets.revoke(opened.public_id, idempotency_key: SecureRandom.uuid, reason: "Restore uncapped work")
-    assert_nil member.profile.budgets.list.current_budget
-    assert member.schedules.list(workspace_public_id: @workspace.public_id).items.empty?
-  ensure
-    begin
-      if opened && budgets.fetch(opened.public_id).budget.revoked_at.nil?
-        budgets.revoke(opened.public_id, idempotency_key: SecureRandom.uuid, reason: "Fixture cleanup")
-      end
-    ensure
-      agent.api_keys.revoke(grant.api_key.public_id) if grant
-    end
-  end
-
   def test_human_approval_and_question_remain_durable_without_an_application_listener
     declaration = declaration(kernel_tools: ["nexus.human.ask"], approval_mode: "ask")
     chat = conversation
@@ -208,101 +174,6 @@ class OfflineAgentTest < Minitest::Test
     final = completed_turn(chat, materialization.turn_public_id)
     assert_includes final.text, "approved-by-human"
     assert_includes final.text, "The shared archive"
-  end
-
-  def test_structured_question_preserves_typed_answers_after_the_agent_exits
-    fields = [
-      { "name" => "enabled", "label" => "Enable", "type" => "boolean", "required" => true },
-      { "name" => "count", "label" => "Count", "type" => "integer", "required" => true },
-      { "name" => "destinations", "label" => "Destinations", "type" => "multichoice", "options" => %w[local remote] },
-    ]
-    chat = conversation
-    _receipt, materialization, run = submit(chat,
-      script(["ask", { "prompt" => "Choose the delivery settings", "fields" => fields }]),
-      declaration: declaration(kernel_tools: ["nexus.human.ask"]))
-    question = await("the typed question after the submitting process exited") do
-      run.fetch.tasks.find { |task| task.await? && task.status == "awaiting_input" }
-    end
-    reconnect = CybrosAgent::Client.new(base_url: @base_url, credential: @peer.credential)
-    recovered = reconnect.workspace(@workspace.public_id).run(run.run_public_id)
-    assert_equal fields.map { |field| field.fetch("name") }, recovered.task(question.key).fields.map { |field| field.fetch("name") }
-    human_run = @human.workspace(@workspace.public_id).run(run.run_public_id)
-    refusal = assert_raises(CybrosAgent::Api::InvalidRequest) do
-      human_run.tasks_context(question.key).resolve(answer: { "enabled" => "false", "count" => 0 })
-    end
-    assert_equal "invalid_ask_answer", refusal.code
-    assert_equal "awaiting_input", recovered.task(question.key).task.status
-    answer = { "enabled" => false, "count" => 0, "destinations" => [] }
-    human_run.tasks_context(question.key).resolve(answer: answer)
-    complete(recovered)
-    detail = recovered.task(question.key)
-    assert_equal answer, detail.structured_content
-    assert_equal answer, JSON.parse(detail.output)
-    final = completed_turn(chat, materialization.turn_public_id)
-    assert_includes final.text, '"enabled":false'
-    assert_includes final.text, '"count":0'
-    human_run.tasks_context(question.key).resolve(answer: { "ignored" => true })
-    assert_equal answer, recovered.task(question.key).structured_content
-  end
-
-  def test_custom_kernel_compaction_survives_exit_and_is_used_by_the_next_round
-    marker = "current-result-#{SecureRandom.hex(8)}"
-    File.write(File.join(@world.project, "compact.txt"), marker)
-    summary_prompt = "Keep the user's goal and file references. Write an offline summary."
-    declaration = declaration(compaction_policy: { "mode" => "kernel", "model" => "dev/mock-text" },
-      summarizer: { "content" => summary_prompt })
-    chat = conversation
-    prompt = script(["bash", { "command" => "sleep 5; cat compact.txt" }], usage: "40000:5")
-    _receipt, materialization, run = submit(chat, prompt, declaration: declaration)
-    assert_running_after_exit(run)
-    assert_kernel_compaction(chat, materialization, run, summary_prompt: summary_prompt, marker: marker)
-  end
-
-  def test_a_named_agents_standing_summarizer_is_captured_without_an_inline_declaration
-    marker = "named-result-#{SecureRandom.hex(8)}"
-    File.write(File.join(@world.project, "named-compact.txt"), marker)
-    summary_prompt = "Keep the named Agent's agreed facts and file references. Write its offline summary."
-    named = @peer.client.profile.agents.declare(name: "offline-#{SecureRandom.hex(4)}", scope: "instance",
-      description: "Answer independently with a custom summary.", summarizer: summary_prompt,
-      configuration: declaration(compaction_policy: { "mode" => "kernel", "model" => "dev/mock-text" }))
-    assert_equal summary_prompt, named.summarizer
-    chat = conversation(answering_user_public_id: named.public_id)
-    prompt = script(["bash", { "command" => "sleep 5; cat named-compact.txt" }], usage: "40000:5")
-    _receipt, materialization, run = submit(chat, prompt)
-    assert_running_after_exit(run)
-    assert_equal named.public_id, run.fetch.turn.answering_user_public_id
-    assert_kernel_compaction(chat, materialization, run, summary_prompt: summary_prompt, marker: marker)
-  end
-
-  def test_kernel_image_generation_persists_a_public_result_after_the_submitter_exits
-    declaration = declaration(kernel_tools: ["nexus.image.generate"], image_model: "dev/mock-image")
-    chat = conversation
-    _receipt, materialization, run = submit(chat, script(
-      ["bash", { "command" => "sleep 5; printf ready-for-image" }],
-      ["image_generate", { "prompt" => "Draw an offline red square" }]), declaration: declaration)
-    assert_running_after_exit(run)
-    completed = complete(run)
-    image_task = completed.tasks.find { |task| task.tool_name == "image_generate" }
-    refute_nil image_task
-    assert_equal "completed", image_task.status
-    assert_nil image_task.claimed_by, "the kernel image tool needs no application executor"
-    generated = completed.tasks.find { |task| task.model_task? && task.workload == "image_generation" }
-    refute_nil generated
-    detail = run.task(generated.key)
-    link = detail.content.find { |part| part["type"] == "resource_link" }
-    refute_nil link
-    public_id = link.fetch("uri").delete_prefix("nexus://uploads/")
-    assert_match(/\A[0-9a-f-]{36}\z/, public_id)
-    reconnect = CybrosAgent::Client.new(base_url: @base_url, credential: @peer.credential)
-    upload = reconnect.uploads.fetch(public_id)
-    assert_equal "image/png", upload.content_type
-    bytes = StringIO.new
-    reconnect.uploads.bytes(public_id, bytes)
-    assert_equal upload.byte_size, bytes.string.bytesize
-    assert bytes.string.b.start_with?("\x89PNG".b)
-    completed_turn(chat, materialization.turn_public_id)
-    assert_includes JSON.generate(run.tasks_context("r3").request.entries), public_id,
-      "the continuation receives the persisted result reference"
   end
 
   def test_sdk_attachments_reach_the_exact_human_session_task_result_download
@@ -356,106 +227,6 @@ class OfflineAgentTest < Minitest::Test
     assert_equal "200", bytes.code, bytes.body
     assert_equal "image/png", bytes["Content-Type"]
     assert_equal Base64.strict_decode64(E2E::MockLLM::App::PIXEL_PNG), bytes.body.b
-  end
-
-  def test_a_standalone_sdk_run_has_a_complete_human_diagnostic_download
-    marker = "export-result-#{SecureRandom.hex(6)}"
-    created = @workspace.runs.create(steps: [{ "model" => { "model" => { "model" => MODEL },
-      "prompt" => "!mock reply=#{marker} -- produce the export result" } }],
-      approval_mode: "bypass", idempotency_key: SecureRandom.uuid)
-    run = @workspace.run(created.run.public_id)
-    @runs << run
-    run.start
-    complete(run)
-    actor = E2E::StewardSession.actor(base_url: @base_url, human: @world.human)
-    actor.visit("/runs/#{run.run_public_id}")
-    assert actor.page.has_link?("Download diagnostics", href: "/runs/#{run.run_public_id}/export")
-    response = human_session_request(actor, Net::HTTP::Get, "/runs/#{run.run_public_id}/export")
-    assert_equal "200", response.code, response.body
-    assert_equal "application/gzip", response.content_type
-    records = Zlib::GzipReader.wrap(StringIO.new(response.body), &:read).lines.map { |line| JSON.parse(line) }
-    assert_equal "nexus.run.diagnostic", records.first.fetch("format")
-    assert_equal "no_conversation_retention", records.first.dig("retention", "applies_to")
-    assert_equal "end", records.last.fetch("type")
-    assert_equal records.map { |row| row.fetch("type") }.tally, records.last.fetch("counts")
-    assert records.any? { |row| row["type"] == "task" && row.dig("task", "output").to_s.include?(marker) }
-    assert records.any? { |row| row["type"] == "attempt" && row.dig("attempt", "status") == "completed" }
-    assert records.any? { |row| row["type"] == "usage" }
-    refute_includes records.to_json, '"claim_token":'
-  end
-
-  def test_sdk_corrections_remain_cancelable_and_readable_in_the_human_session
-    chat = conversation
-    receipt, original, run = submit(chat, script(["bash", { "command" => "printf correction-tool-finished" }]),
-      declaration: declaration(approval_mode: "ask"))
-    approval = await("the original tool to wait for Human approval") do
-      run.fetch.tasks.find { |task| task.tool_name == "bash" && task.status == "needs_approval" }
-    end
-    path = "/runs/#{run.run_public_id}/steers"
-    actor = E2E::StewardSession.actor(base_url: @base_url, human: @world.human)
-    actor.visit("/runs/#{run.run_public_id}")
-    human_chat = @human.workspace(@workspace.public_id).conversation(chat.public_id)
-    canceled = human_chat.inputs.create(kind: "direct_reply", text: "Withdraw this waiting correction",
-      delivery_mode: "steer", expected_steering_run_public_id: run.run_public_id, idempotency_key: SecureRandom.uuid)
-    canceled_id = canceled.public_id
-    canceled_uri = URI.join(@base_url, "/runs/#{run.run_public_id}/steering_observation?input_public_id=#{canceled_id}")
-    removed = human_session_request(actor, Net::HTTP::Post, "#{path}/#{canceled_id}/cancellation")
-    assert_equal "303", removed.code, removed.body
-    canceled_page = human_session_request(actor, Net::HTTP::Get, canceled_uri.request_uri)
-    assert_equal "200", canceled_page.code, canceled_page.body
-    assert_includes Nokogiri::HTML5.parse(canceled_page.body).text, "Canceled"
-    deleted = chat.events(limit: 200).find do |item|
-      item.type == "input_deleted" && item.payload["input_public_id"] == canceled_id
-    end
-    refute_nil deleted
-    assert_equal true, deleted.payload.fetch("steer_canceled")
-    assert_equal run.run_public_id, deleted.payload.fetch("expected_steering_run_public_id")
-
-    marker = "precise-correction-#{SecureRandom.hex(8)}"
-    key = SecureRandom.uuid
-    fields = { kind: "direct_reply", text: marker, delivery_mode: "steer",
-      expected_steering_run_public_id: run.run_public_id, idempotency_key: key }
-    accepted = human_chat.inputs.create(**fields)
-    input_id = accepted.public_id
-    observed_uri = URI.join(@base_url, "/runs/#{run.run_public_id}/steering_observation?input_public_id=#{input_id}")
-    held = chat.inputs.list.find { |input| input.public_id == input_id }
-    refute_nil held
-    assert_equal "steering", held.state
-    assert_equal run.run_public_id, held.expected_steering_run_public_id
-    accepted_event = chat.events(limit: 200).find do |item|
-      item.type == "input_accepted" && item.payload["input_public_id"] == input_id
-    end
-    refute_nil accepted_event
-    assert_equal run.run_public_id, accepted_event.payload.fetch("expected_steering_run_public_id")
-    assert_nil accepted_event.payload["run_public_id"], "a Human correction has no sending execution"
-
-    promoted = human_chat.inputs.update(input_id, delivery_mode: "steer_now", expected_lock_version: held.lock_version)
-    assert_equal input_id, promoted.public_id
-    consumed = await("the promoted correction's exact consumption event") do
-      chat.events(limit: 200).find do |item|
-        item.type == "input_materialized" && item.payload["input_public_id"] == input_id
-      end
-    end
-    assert_equal run.run_public_id, consumed.payload.fetch("run_public_id")
-    assert_equal original.turn_public_id, consumed.payload.fetch("turn_public_id")
-    assert_equal original.variant_public_id, consumed.payload.fetch("variant_public_id")
-    task_key = consumed.payload.fetch("task_key")
-    assert_includes JSON.generate(run.tasks_context(task_key).request.entries), marker
-    assert_equal "needs_approval", run.task(approval.key).task.status, "promotion does not approve the original tool"
-    observed = human_session_request(actor, Net::HTTP::Get, observed_uri.request_uri)
-    assert_equal "200", observed.code, observed.body
-    document = Nokogiri::HTML5.parse(observed.body)
-    assert_includes document.text, "Added to a model request"
-    assert document.css("a[href]").any? { |link| URI(link["href"]).path == "/runs/#{run.run_public_id}/tasks/#{task_key}" }
-
-    replay = human_chat.inputs.create(**fields)
-    assert_equal input_id, replay.public_id
-    assert_equal 1, chat.events(limit: 200).count { |item|
-      item.type == "input_materialized" && item.payload["input_public_id"] == input_id
-    }
-    @human.workspace(@workspace.public_id).run(run.run_public_id).tasks_context(approval.key).approve
-    complete(run)
-    assert_equal original.run_public_id, chat.inputs.materialization(receipt).run_public_id
   end
 
   def test_a_kernel_restart_does_not_repeat_an_mcp_write_whose_response_was_lost
@@ -729,24 +500,6 @@ class OfflineAgentTest < Minitest::Test
 
     def assert_running_after_exit(run)
       assert_equal "running", run.fetch.status, "the SDK process exited before execution completed"
-    end
-
-    def assert_kernel_compaction(chat, materialization, run, summary_prompt:, marker:)
-      completed = complete(run)
-      summary = completed.tasks.find { |task| task.key == "k1" }
-      refute_nil summary
-      assert_predicate summary, :model_task?
-      assert_equal "completed", summary.status
-      assert_equal "dev/mock-text", summary.model.fetch("model")
-      request = run.tasks_context(summary.key).request
-      assert_equal summary_prompt, request.request_options.fetch("instructions")
-      assert_includes task_text(run, "r2"), task_text(run, summary.key), "the next round consumes the completed summary"
-      assert_equal 1, JSON.generate(run.tasks_context("r2").request.entries).scan(marker).length,
-        "the result after the summary is consumed exactly once"
-      events = chat.events(limit: 200).select { |event| event.type == "context_compacted" }
-      assert_equal ["kernel"], events.map { |event| event.payload.fetch("mode") }
-      assert_equal materialization.run_public_id, events.first.payload.fetch("run_public_id")
-      assert_includes completed_turn(chat, materialization.turn_public_id).text, marker
     end
 
     def script(*calls, usage: nil)

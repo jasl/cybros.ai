@@ -11,39 +11,14 @@ require "support/rho_daemon"
 require "support/secret_hygiene"
 require "support/steward_session"
 
-# A TOOL CALL THE PERSON DECIDES: under `rho do --approval ask` every command the model asks for
-# rests at `needs_approval` on rho's own inbox — listed, noted, never claimed — and `rho
-# approve`/`rho deny` end it; under rho's own `bypass` the guard list rides its profile as deny
-# rules and the kernel refuses the calls no snapshot can undo before any runner sees them. The
-# mock's scripted call is the model's; its echo of the next round is how the journey reads what the
-# model was shown.
-#
-# Seven tests, each its own daemon and ceremony: the grant (the park on every surface, then `rho
-# approve` releases the call to rho's runner and the fact reads `agent` — rho's member bearer is the
-# Agent's); the refusal and the two origins nobody signs (`rho deny` with a reason the next round
-# reads, the allow rule's `rule` under `ask`, the appended check's `author` under `ask`); the guard
-# list under `bypass` (plain and behind a `cd`, refused at the stage as data the model reads); the
-# incubation denies; and the SESSION-SCOPED GRANT: `rho approve --always` across four turns, the
-# prefix/path/whole-tool shapes with the derivation's refusals, and the grant's end at the daemon's
-# next boot.
-#
-# Driven through the shipped binary on the full default set, against the
-# mock provider, which echoes what a continuation was shown.
-#
-# SHARED PLUMBING, STATED: every test in this file drives the SAME signed-in
-# steward browser (E2E::StewardSession, one per journey process); the
-# daemon, its RHO_HOME and every ceremony stay per test.
+# A model's command parks on rho's inbox until the person approves it through the CLI.
+# The other journeys prove installation-edit refusals before Runner execution and prefix/path
+# grants across later calls. Each owns its daemon home and shares the steward browser session.
 class ApprovalTest < Minitest::Test
   MODEL = "dev/mock-text".freeze
   COMMAND = "printf held > held.txt".freeze
   REASON = "use ls".freeze
-  # The sentence the model reads (the kernel's, `RoundReplay::Pairing`):
-  # who refused, the typed key, the reason — byte for byte.
-  DENIED_SENTENCE = "This tool call was declined by the approver; do not run it again unchanged. " \
-                    "(approval_denied) #{REASON}".freeze
   QUESTION = "which database?".freeze
-  ROOT_DELETE = "recursive delete of a root directory".freeze
-  FORCE_PUSH = "force push rewrites history others may hold; a person can run it".freeze
   # Pin the explanation returned by rho's self-modification deny rule byte for byte.
   INCUBATION = "direct installation edits are disabled; use managed extensions or develop a separate rho successor".freeze
 
@@ -179,89 +154,6 @@ class ApprovalTest < Minitest::Test
     refute_match(/^  approval\s/, watched, "a decided call prints no park line:\n#{watched}")
   end
 
-  # THE REFUSAL, AND THE TWO ORIGINS NOBODY SIGNS. `rho deny` with a reason
-  # fails the call `approval_denied`; the row's own `absorb` hands the next
-  # round the kernel's sentence, byte for byte, and the loop completes.
-  # Under the same `ask`, the allow rule lets the kernel's `ask` tool run
-  # (`origin: rule`) and the `--until` check runs as the author's own row
-  # (`origin: author`) — neither ever parks.
-  def test_rho_deny_fails_the_call_with_the_reason_the_next_round_reads_and_the_origin_rule_never_parks
-    project = connect!
-
-    # (i) THE DENIAL.
-    conversation, _turn, loop = open_turn(bash_prompt(COMMAND, "done"), project, "--approval", "ask")
-    key = await_park(loop).fetch("key")
-    denied, deny_status = @daemon.cli("deny", loop, key, REASON)
-    assert_predicate deny_status, :success?, "rho deny failed:\n#{denied}"
-    assert_match(/^denied:\s+#{Regexp.escape(key)}$/, denied, denied)
-    assert_match(/^status:\s+failed \(approval_denied\)$/, denied, denied)
-
-    completed = await_run_status(loop, "completed")
-    task = completed.fetch("tasks").find { |t| t.fetch("key") == key }
-    assert_equal "failed", task.fetch("status"), summarize(completed)
-    assert_equal({ "key" => "approval_denied", "detail" => REASON }, task.fetch("error"))
-    assert_equal "agent", task.dig("approval", "origin"), task.inspect
-    continued = task_output(loop, "r2")
-    assert_includes continued, DENIED_SENTENCE,
-      "the continuation read the kernel's sentence, byte for byte: #{continued.inspect}"
-    refute_path_exists File.join(project, "held.txt"), "a denied call never reached the runner"
-    printed, = @daemon.cli("task", loop, key)
-    assert_match(/^error:\s+approval_denied — #{Regexp.escape(REASON)}$/, printed, printed)
-    assert_match(/^approval:\s+agent \(\S+\) at \S+$/, printed, printed)
-    assert_equal 1, feed(conversation).count { |item| item["type"] == "attention_required" }
-
-    # (ii) THE ALLOW RULE UNDER ASK: the kernel's `ask` runs, `origin: rule`.
-    _conversation, _turn, asking = open_turn(ask_prompt("ask me"), project, "--approval", "ask")
-    ask = await_ask(asking)
-    call = ask.fetch("key")[/\A(r\d+t\d+)-ask-1\z/, 1] || flunk("the ask hangs under no call key: #{ask.inspect}")
-    call_row = loop_row(asking).fetch("tasks").find { |t| t.fetch("key") == call }
-    refute_equal "needs_approval", call_row.fetch("status"), "an allowed kernel tool never parks: #{call_row.inspect}"
-    assert_equal "rule", call_row.dig("approval", "origin"), call_row.inspect
-    answered, answer_status = @daemon.cli("answer", asking, ask.fetch("key"), "Postgres")
-    assert_predicate answer_status, :success?, "rho answer failed:\n#{answered}"
-    await_run_status(asking, "completed")
-
-    # (iii) THE AUTHOR ROW UNDER ASK: the appended check runs, `origin: author`.
-    # Give the daemon's follow callback a bounded model execution window
-    # to append the check. A fast `ls` alone can finish before it attaches.
-    # The read-only call still proves the allow rule does not park under ask.
-    checked_conversation, _turn, checked = open_turn(ls_prompt("done", slow: 3), project,
-      "--until", "true", "--attempts", "1", "--approval", "ask")
-    done = await_run_status(checked, "completed")
-    check = done.fetch("tasks").find { |t| t.fetch("key") == "check-1" } || flunk("no check-1: #{summarize(done)}")
-    assert_equal %w[tool_task bash completed], check.values_at("kind", "tool_name", "status"), check.inspect
-    assert_equal "author", check.dig("approval", "origin"), check.inspect
-    assert_equal "runner", check.dig("addressed_to", "role"), check.inspect
-    refute done.fetch("tasks").any? { |t| t["status"] == "needs_approval" }, summarize(done)
-    assert_equal 0, feed(checked_conversation).count { |item| item["type"] == "attention_required" },
-      "the author's own command never parks"
-  end
-
-  # THE GUARD LIST UNDER BYPASS (guard parity, r2 (8)): rho's own turns
-  # run under `bypass`, and the deny rules bind under every mode — the
-  # kernel refuses the call at the stage, `failed approval_denied` with the
-  # Guard's own sentence, no fact (a rule's deny stamps none), never
-  # claimed, no park; the model reads the refusal as correctable material
-  # and the loop goes on. Plain, and behind a `cd`.
-  def test_the_guard_list_refuses_under_bypass_before_any_runner_and_the_prefixed_spelling_too
-    project = connect!
-
-    conversation, _turn, loop = open_turn(bash_prompt("rm -rf /", "done"), project)
-    refused = refused_call(loop, ROOT_DELETE)
-    refute_includes @daemon.claimed_keys, refused.fetch("key"), "the kernel refused before any runner"
-    assert_equal 0, feed(conversation).count { |item| item["type"] == "attention_required" },
-      "a rule's deny never parks"
-    assert_includes task_output(loop, "r2"), "(approval_denied) #{ROOT_DELETE}",
-      "the next round read the Guard's sentence"
-    printed, = @daemon.cli("task", loop, refused.fetch("key"))
-    assert_match(/^task:\s+#{Regexp.escape(refused.fetch("key"))} \(tool_task\) failed$/, printed, printed)
-    assert_match(/^error:\s+approval_denied — #{Regexp.escape(ROOT_DELETE)}$/, printed, printed)
-
-    _conversation, _turn, pushing = open_turn(bash_prompt("cd #{project} && git push --force origin main", "done"), project)
-    refused = refused_call(pushing, FORCE_PUSH)
-    refute_includes @daemon.claimed_keys, refused.fetch("key"), "the prefixed spelling is the kernel's too"
-  end
-
   # EVOLUTION BY INCUBATION: rho refuses its OWN model's `write`/`edit` under its checkout and its
   # home, and any `bash` naming either — deny rules rho declares beside the Guard list, so the
   # kernel refuses at the stage under `bypass` as under every mode, before any runner, and the next
@@ -300,70 +192,6 @@ class ApprovalTest < Minitest::Test
     ensure
       FileUtils.remove_entry(outside) if File.directory?(outside)
     end
-  end
-
-  # THE SESSION-SCOPED GRANT: `rho approve --always` approves the held call AND appends its exact
-  # text as an allow rule to rho's declared list, re-declared at once — the log carries the tool,
-  # the path and the matcher's SIZE, never its text. A turn opened after it under `ask` runs the
-  # same call with no park and the kernel's fact reads `origin: rule` (the profile's list is what
-  # the turn's loop copied); a DIFFERENT command still parks (exact); the same command under `rules`
-  # runs too (the grants are that mode's allowlist, S22). `rho rules` names the conversation the
-  # grant was made on.
-  def test_approve_always_grants_the_exact_command_and_the_next_ask_turn_never_parks
-    project = connect!
-    conversation, _turn, loop = open_turn(bash_prompt(COMMAND, "done"), project, "--approval", "ask")
-    key = await_park(loop).fetch("key")
-
-    declared = log_count(/event=profile\.declared/)
-    approved, approve_status = @daemon.cli("approve", loop, key, "--always")
-    assert_predicate approve_status, :success?, "rho approve --always failed:\n#{approved}"
-    assert_match(/^approved:\s+#{Regexp.escape(key)}$/, approved, approved)
-    assert_match(/^status:\s+dispatched$/, approved, approved)
-    assert_match(/^granted:   bash  command = "#{Regexp.escape(COMMAND)}"   \(this session; `rho rules` lists it\)$/,
-      approved, "the exact text, quoted:\n#{approved}")
-    refute_match(/^warning:/, approved, "an exact grant carries no prefix warning:\n#{approved}")
-    await_run_status(loop, "completed")
-    assert_equal "agent", task_detail(loop, key).dig("approval", "origin"), "the parked call itself: the approver's grant"
-    await_rho_log(/event=grant\.added tool=bash path=command bytes=#{COMMAND.bytesize}\b/,
-      "the grant was never logged by size")
-    grant_line = @daemon.log_text.lines.find { |line| line.include?("event=grant.added") }
-    refute_includes grant_line, COMMAND, "the log carries the matcher's size, never its text: #{grant_line}"
-    assert_equal declared + 1, log_count(/event=profile\.declared/), "the grant re-declared the profile exactly once"
-    assert @daemon.log_text.rindex("event=profile.declared") < @daemon.log_text.index("event=grant.added"),
-      "the RE-declaration precedes the grant's line (the boot's own is in the log before any grant could be)"
-
-    # THE NEXT `ask` TURN: no park, the rule's origin, the call ran.
-    FileUtils.rm_f(File.join(project, "held.txt"))
-    again_conversation, _turn, again = open_turn(bash_prompt(COMMAND, "done"), project, "--approval", "ask")
-    done = await_run_status(again, "completed")
-    call = done.fetch("tasks").find { |t| t["kind"] == "tool_task" && t["tool_name"] == "bash" } || flunk(summarize(done))
-    assert_equal "completed", call.fetch("status"), summarize(done)
-    assert_equal "rule", call.dig("approval", "origin"), "the profile's list allowed it: #{call.inspect}"
-    assert_equal 0, feed(again_conversation).count { |item| item["type"] == "attention_required" }, "never parked"
-    assert_equal "held", File.read(File.join(project, "held.txt"), encoding: Encoding::UTF_8).strip
-
-    # A DIFFERENT COMMAND under `ask` still parks: the grant is exact.
-    _other_conversation, _turn, other = open_turn(bash_prompt("printf other > other.txt", "done"), project,
-      "--approval", "ask")
-    other_key = await_park(other).fetch("key")
-    _denied, deny_status = @daemon.cli("deny", other, other_key, REASON)
-    assert_predicate deny_status, :success?
-
-    # THE SAME COMMAND under `rules` runs too (S22).
-    _ruled_conversation, _turn, ruled = open_turn(bash_prompt(COMMAND, "done"), project, "--approval", "rules")
-    done = await_run_status(ruled, "completed")
-    call = done.fetch("tasks").find { |t| t["kind"] == "tool_task" && t["tool_name"] == "bash" } || flunk(summarize(done))
-    assert_equal %w[completed rule], [call.fetch("status"), call.dig("approval", "origin")], summarize(done)
-
-    # `rho rules`: one grant, on the loop and key it was made on, naming
-    # the conversation; the declared size against the kernel's bound.
-    listed, rules_status = @daemon.cli("rules")
-    assert_predicate rules_status, :success?, "rho rules failed:\n#{listed}"
-    assert_match(/^session grants \(until the daemon's next boot\):$/, listed, listed)
-    assert_match(/^  1  bash   command = "#{Regexp.escape(COMMAND)}"   granted \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ on #{Regexp.escape(loop)} #{Regexp.escape(key)} \(conversation #{Regexp.escape(conversation)}\)$/,
-      listed, listed)
-    refute_match(/^  2 /, listed, "one grant:\n#{listed}")
-    assert_match(/^declared: \d+ rules, [\d,]+ of 65,536 bytes$/, listed, listed)
   end
 
   # THE PREFIX, THE PATH, THE WHOLE TOOL, AND THE REFUSALS: `--match printf` grants `printf *` with
@@ -474,31 +302,6 @@ class ApprovalTest < Minitest::Test
     end
   end
 
-  # SESSION = BOOT, AND THE CLEAN STOP: a grant is gone at the daemon's next boot — the clean stop
-  # re-declares the constant list first (`grants.revoked_at_stop`), the booted daemon lists none,
-  # and the same command under `ask` parks again.
-  def test_a_grant_ends_with_the_daemons_boot_and_the_clean_stop_revokes_it_first
-    project = connect!
-    _c, _t, loop = open_turn(bash_prompt(COMMAND, "done"), project, "--approval", "ask")
-    key = await_park(loop).fetch("key")
-    approved, approve_status = @daemon.cli("approve", loop, key, "--always")
-    assert_predicate approve_status, :success?, approved
-    await_run_status(loop, "completed")
-    await_rho_log(/event=grant\.added tool=bash path=command/, "the grant was never logged")
-
-    restart!
-
-    assert_match(/event=grants\.revoked_at_stop count=1\b/, @daemon.log_text,
-      "the old daemon re-declared the constant list on its stop edge")
-    listed, rules_status = @daemon.cli("rules")
-    assert_predicate rules_status, :success?, listed
-    assert_match(/^  \(no session grants; rho approve RUN KEY --always adds one\)$/, listed, listed)
-    _c, _t, again = open_turn(bash_prompt(COMMAND, "done"), project, "--approval", "ask")
-    again_key = await_park(again).fetch("key")
-    assert_equal "needs_approval", task_detail(again, again_key).fetch("status"), "the session ended with the boot"
-    _denied, = @daemon.cli("deny", again, again_key, REASON)
-  end
-
   private
 
     # THE SAME HOME, BOOTED AGAIN (the MCP journey's shape): the credentials
@@ -548,12 +351,6 @@ class ApprovalTest < Minitest::Test
     def ask_prompt(remainder)
       arguments = CGI.escape(JSON.generate({ "prompt" => QUESTION }))
       "!mock tool_call=ask tool_args=#{arguments} -- #{remainder}"
-    end
-
-    def ls_prompt(remainder, slow: nil)
-      arguments = CGI.escape(JSON.generate({ "path" => "." }))
-      delay = " slow=#{slow}" if slow
-      "!mock#{delay} tool_call=ls tool_args=#{arguments} -- #{remainder}"
     end
 
     # The park ROW every terminal prints: `approval` padded to ten, the

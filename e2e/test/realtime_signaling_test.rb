@@ -553,6 +553,8 @@ class RealtimeSignalingTest < Minitest::Test
             assert_equal root, @run.task(key).executor_context.dig("rho.environment", "root")
             replay = page.evaluate_async_script("const done=arguments[0]; window.terminalCall('/terminals',{method:'POST',body:window.terminalRequest}).then(done);")
             assert_equal target, replay.fetch("terminal")
+            # Creation accepts work before dispatch; this fixture attempts the claim only once.
+            await(message: "The browser-created terminal was never dispatched") { @run.task(key).task.status == "dispatched" }
             Async do |reactor|
               reactor.with_timeout(90) do
                 running = reactor.async { task_run.call(run_public_id: @run.run_public_id, task_key: key, tool_name: "terminal") }

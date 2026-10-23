@@ -23,7 +23,7 @@ module Rho
   # never by position. Nothing is copied into a prompt or spilled to a
   # local file. Nothing runs in this process.
   #
-  # THE HOLD IS THE ASK behind the check — `hold-N`, a tokenless await the
+  # THE HOLD IS THE ASK behind the check — `hold-N`, a tokened authored await the
   # daemon itself resolves. An authored ask is a DISPATCHED node with a
   # resolution token minted by the kernel — the run cannot complete past it, and it
   # announces no attention (the token-holding kind never does), so a run
@@ -35,9 +35,9 @@ module Rho
   # node's own token in the authoring trust domain), so nothing secret
   # has to be kept anywhere. `absorb` on the check means a could-not-run
   # or an expired park still satisfies the hold's dependency, so the hold
-  # parks in every arm and the gate reads the row. If the daemon dies
-  # mid-attempt, the hold times out and the run surfaces that the
-  # ordinary way, instead of standing open forever.
+  # parks in every arm and the gate reads the row. The hold has no deadline:
+  # an offline daemon leaves coordination pending until recovery or Stop.
+  # The check and every business tool retain their ordinary execution clocks.
   #
   # LEVEL-TRIGGERED FROM THE TRACE. The follower's events are a nudge;
   # one `fetch` of the trace is the predicate: the current hold is parked,
@@ -58,10 +58,6 @@ module Rho
     REPORT_KEY = "report".freeze
     DEFAULT_ATTEMPTS = 5
     MAX_ATTEMPTS = 20
-    # The hold parks from its check's settle until the mainline ends, so it
-    # must outlast the whole task. Twelve hours, under the kernel's
-    # 24-hour per-park clamp.
-    HOLD_TIMEOUT_MS = 12 * 60 * 60 * 1000
     # THE CHECK'S OWN PARK, explicit on the step: bash's ceiling plus a
     # minute of claim latency, so the park never follows an announced
     # profile a runner might change.
@@ -173,7 +169,7 @@ module Rho
           timeout_ms: CHECK_PARK_MS, on_failure: "absorb"
         ),
         CybrosAgent::Steps::Ask.new(
-          key: hold_key(attempt), prompt: "verdict of acceptance check #{attempt}", timeout_ms: HOLD_TIMEOUT_MS
+          key: hold_key(attempt), prompt: "Waiting for rho to advance acceptance check #{attempt}", indefinite: true
         ),
       ]
     end
@@ -283,9 +279,8 @@ module Rho
 
       # THE VERDICT IS ON THE ROW; ONLY THE RECORDING IS RETRIED. A moved
       # trace (a steer landed) is left for the next nudge; anything else
-      # is retried briefly and then the run is given back — a run that
-      # stood behind its hold for twelve hours because one append failed
-      # would be the wedge this design exists to avoid.
+      # is retried briefly and then left for durable recovery. Retrying the
+      # same append cannot rerun the completed check or duplicate its successor.
       def recording(context, run, attempt)
         tries = 0
         begin
@@ -307,8 +302,8 @@ module Rho
 
       # GIVE THE RUN BACK: resolve the hold and plant the report round
       # with the reason, so the run completes and the person reads why.
-      # Best effort — if this append fails too, the hold's own timeout
-      # is the last resort, and the log says so.
+      # Best effort — if this append fails, durable recovery revisits the
+      # same check and hold. Stop remains available throughout the wait.
       def release(context, reason, run: nil, attempt: nil)
         run ||= context.fetch
         attempt ||= ready?(run)

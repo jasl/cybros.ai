@@ -25,7 +25,7 @@ require "time"
 # Paid, local, opt-in: E2E_LIVE=1, plus a Node Playwright driver.
 class LiveTwoLoopsBrowserTest < Minitest::Test
   MODEL = ENV.fetch("E2E_LIVE_MODEL") { E2E::LiveJourney.default_model }.freeze
-  DRIVER = ENV.fetch("RHO_BROWSER_PLAYWRIGHT_CLI", "npx -y playwright-core@1.62.1").freeze
+  DRIVER = ENV.fetch("RHO_BROWSER_PLAYWRIGHT_CLI", "npx -y playwright-core@1.64.0").freeze
 
   include E2E::LiveJourney
 

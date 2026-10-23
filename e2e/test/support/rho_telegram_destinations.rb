@@ -12,6 +12,7 @@ module E2E
       end
       task_id = materialized.payload.fetch("input_public_id")
       note = @core.memory_write(source_id, path: "conversation/source.md", content: "The source task keeps this note.",
+        expected_collection_public_id: @core.memory_target(source_id, path: "conversation/source.md", workspace_public_id: @workspace.public_id).fetch("collection_public_id"),
         expected_public_id: nil, expected_lock_version: nil, workspace_public_id: @workspace.public_id)
       before = @core.conversation(source_id, workspace_public_id: @workspace.public_id)
       destination = telegram_route_key("101:0")

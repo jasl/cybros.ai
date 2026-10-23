@@ -459,6 +459,7 @@ module CybrosAgent
       def unarchive: () -> Conversation
       def delete: () -> nil
       def children: (?after: String?, ?limit: Integer?, ?order: String?, ?order_by: String?) -> Page[ConversationSummary]
+      def memory_collections: () -> OwnedMemoryCollectionsContext
       def memory: (?speaker_public_id: String?) -> MemoryContext
       def set_memory_context: (memory_context: Hash[untyped, untyped]?) -> Conversation
       def store_entries: () -> StoreEntriesContext

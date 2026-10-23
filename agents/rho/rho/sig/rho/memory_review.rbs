@@ -55,6 +55,7 @@ module Rho
       attr_reader conversation_public_id: String
       attr_reader enabled: bool
       attr_reader path: String?
+      attr_reader collection_public_id: String?
       attr_reader document_public_id: String?
       attr_reader speaker_public_id: String?
       attr_reader model: String?
@@ -63,7 +64,7 @@ module Rho
       attr_reader last_run_public_id: String?
       attr_reader last_review_conversation_public_id: String?
       attr_reader outcome: String?
-      def self.new: (conversation_public_id: String, enabled: bool, path: String?, document_public_id: String?, speaker_public_id: String?,
+      def self.new: (conversation_public_id: String, enabled: bool, path: String?, collection_public_id: String?, document_public_id: String?, speaker_public_id: String?,
         model: String?, after_position: Integer, pending: Submission?, last_run_public_id: String?,
         last_review_conversation_public_id: String?, outcome: String?) -> instance
       def self.empty: (String conversation_public_id) -> instance
@@ -72,10 +73,10 @@ module Rho
     end
 
     def self.source_for: (workspace: untyped, conversation_public_id: String) -> String
-    def self.context_snapshot: (untyped conversation) -> Hash[String, untyped]
+    def self.context_snapshot: (untyped conversation, ?memory_context: Hash[String, untyped]) -> Hash[String, untyped]
     def self.unbound_speakers: (untyped conversation) -> Array[Hash[String, untyped]]
     def initialize: (workspace: untyped, conversation_public_id: String, ?clock: ^() -> Time,
-      ?follow: (^(String) -> untyped)?, ?forget: (^(String) -> untyped)?, ?defaults: Defaults) -> void
+      ?follow: (^(String) -> untyped)?, ?forget: (^(String) -> untyped)?, ?defaults: Defaults, ?client: untyped) -> void
     def status: () -> Hash[String, untyped]
     def enable: (path: String, ?model: String?, ?after_position: Integer?, ?speaker_public_id: String?) -> Hash[String, untyped]
     def disable: () -> Hash[String, untyped]
@@ -120,7 +121,7 @@ module Rho
       class Observer
         def initialize: (resources: Runner::Extensions::Resources, log: untyped, ?defaults: Rho::MemoryReview::Defaults) -> void
         def settled: (TurnSettlement settlement, untyped ctx) -> untyped
-        def service: (untyped ctx, untyped workspace, String conversation_public_id, untyped about) -> Rho::MemoryReview
+        def service: (untyped ctx, untyped workspace, String conversation_public_id, untyped about, ?client: untyped) -> Rho::MemoryReview
         def close: () -> void
       end
 

@@ -61,8 +61,8 @@ class AssemblyBytesTest < Minitest::Test
   # The explicit bindings render their catalog even before any note exists.
   MEMORY_HEADER = "Durable database memory through the selected logical paths. " \
                   "It persists across replies and machines.\n" \
-                  "Available roots: conversation/ (read and write), speaker/ (read and write), " \
-                  "agent/ (read and write), workspace/ (read and write).".freeze
+                  "Available roots: conversation/ (conversation; read and write), speaker/ (speaker; read and write), " \
+                  "agent/ (agent; read and write), workspace/ (workspace; read and write).".freeze
   # The standalone seed uses the kernel's default roots and their ordinary header.
   STANDALONE_MEMORY_HEADER = "Durable memory for this workspace and the person this work answers\n" \
                              "to. It persists across runs and machines. You cannot edit it from here.".freeze
@@ -227,7 +227,7 @@ class AssemblyBytesTest < Minitest::Test
     assert_equal @peer.public_id, first.answering_user_public_id
     # The conversation's Speaker root is relative; this execution captured
     # the actual Owner whose words rho submitted.
-    speaker = first.active_variant.memory_context.fetch("bindings").find { |binding| binding.fetch("name") == "speaker" }.fetch("speaker_public_id")
+    speaker = first.active_variant.memory_context.fetch("bindings").find { |binding| binding.fetch("name") == "speaker" }.fetch("capture").fetch("speaker_public_id")
     opening_words = owner_words(speaker, OPENING)
     follow_up_words = owner_words(speaker, FOLLOW_UP)
 
@@ -243,7 +243,7 @@ class AssemblyBytesTest < Minitest::Test
     assert_echoed_in_order(first.text, SYSTEM_PROMPT, "Scene: #{DEFAULT_SCENE}", OPENING)
 
     # ---- the note, then THE PREVIEW through exe/rho, --to the peer ----
-    chat.memory.write("workspace/notes.md", NOTE, expected_public_id: nil, expected_lock_version: nil)
+    chat.memory.write("workspace/notes.md", NOTE, **E2E::MemoryCollections.create_condition(chat.memory, "workspace/notes.md"), expected_public_id: nil, expected_lock_version: nil)
     documents = chat.memory.list
     assert_equal ["workspace/notes.md"], documents.map(&:path),
       "this room's memory is the note alone — another lane's residue would change the pinned bytes"

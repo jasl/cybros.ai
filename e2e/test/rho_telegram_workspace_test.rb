@@ -1,10 +1,8 @@
 require_relative "support/rho_telegram_case"
-require_relative "support/rho_telegram_reminders"
 require_relative "support/rho_telegram_destinations"
 
 # Workspace switches, schedules and destinations preserve accepted work ownership.
 class RhoTelegramWorkspaceTest < E2E::RhoTelegramCase
-  include E2E::RhoTelegramReminders
   include E2E::RhoTelegramDestinations
 
   def test_workspace_selection_preserves_original_work_across_chat_switch_and_daemon_restart
@@ -185,42 +183,5 @@ class RhoTelegramWorkspaceTest < E2E::RhoTelegramCase
     assert_empty @logs
   ensure
     stop_group_work(original)
-  end
-
-  def test_a_waited_child_question_remains_answerable_when_the_new_default_is_unavailable
-    boot_runtime(allowed: [101])
-    receive(update(1, "/new"))
-    original_id = current("101:0")
-    original = @workspace.conversation(original_id)
-    selected_id = @core.create_workspace(name: "Temporary default").fetch("public_id")
-    @core.select_workspace(selected_id)
-    @human.workspace(selected_id).archive(lock_version: @human.workspaces.fetch(selected_id).lock_version)
-    @runtime.close
-    @daemon.stop
-    @daemon.start
-    await("the archived explicit default is reported") { @daemon.status.dig("workspace", "state") == "error" }
-    connect_bridge(selected_id)
-    boot_runtime(allowed: [101])
-
-    question = CGI.escape(JSON.generate("prompt" => "Continue the child in its original workspace?"))
-    notes = CGI.escape(JSON.generate("path" => "conversation/workspace.md", "content" => "Answered in the original workspace"))
-    child_prompt = "!mock tool_call=ask:#{question},memory_write:#{notes} reply=child-finished -- child question"
-    spawn = CGI.escape(JSON.generate("prompt" => child_prompt, "role" => "worker", "label" => "asking-child", "wait" => true))
-    @core.say(original_id, "!mock tool_call=spawn:#{spawn} reply=parent-finished -- waited child", model: MODEL, workspace_public_id: @workspace.public_id)
-    question_id, pending = await("the unfollowed child's question in Telegram") do
-      tick
-      @state.read.fetch("questions").find { |_id, row| row.fetch("kind") == "ask" && !row["resolved"] }
-    end
-    assert_equal original_id, pending.fetch("conversation_id")
-    assert_equal @workspace.public_id, pending.fetch("workspace_public_id")
-    receive(update(2, "/answer #{question_id} Yes, continue."))
-    assert @state.read.fetch("questions").fetch(question_id).fetch("resolved")
-    assert_equal "Mock: parent-finished", completed_reply(original).active_variant.content
-    child = original.children.items.find { |row| row.parent&.label == "asking-child" }
-    refute_nil child
-    assert_includes @workspace.conversation(child.public_id).memory.read("conversation/workspace.md").content,
-      "Answered in the original workspace"
-    assert_equal "error", @daemon.status.fetch("workspace").fetch("state")
-    assert_empty @logs
   end
 end

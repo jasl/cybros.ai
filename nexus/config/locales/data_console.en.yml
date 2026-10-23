@@ -15,17 +15,17 @@ en:
     clear: Clear
     read_saved: Read the saved value
     memory:
-      title: Workspace Memory
-      description: Text documents under workspace/. Each new turn can read their current contents.
+      title: Memory collections
+      description: Named collections owned by this workspace. Conversation bindings select the collections read by future turns.
       new: New memory document
       open: Open document
       edit: Edit memory document
-      back: Back to Workspace Memory
-      empty: No memory documents in this workspace.
+      back: Back to collection documents
+      empty: No documents in this collection.
       path: Document path
-      path_help: Use workspace/ followed by a document name, such as workspace/notes.md. The path cannot be renamed after creation.
+      path_help: Use a relative document name, such as notes.md. The collection is fixed by this page. The name cannot be changed after creation.
       skill_description: Skill description
-      description_help: Required only for workspace/skills/<name>. Leave it empty for ordinary memory documents.
+      description_help: Required only for skills/<name>. Leave it empty for ordinary memory documents.
       content: Memory content
       metadata: "Version %{version} · %{bytes} bytes · Written %{time}"
       save: Save memory document
@@ -33,7 +33,7 @@ en:
       deleted: Memory document deleted.
       retention: Saving replaces the current content. There is no version history or recycle bin.
       delete_confirmation: Delete this memory document? There is no recycle bin.
-      override_help: Ordinary kernel memory management is unavailable while a tool provider serves this workspace's memory. An exact workspace/skills/ path keeps its existing kernel access.
+      override_help: Ordinary kernel memory management is unavailable while a tool provider serves this workspace's memory. An exact skills/ path keeps its existing kernel access.
     character:
       title: Workspace character
       description: The workspace prompt document used by prompt templates that include the character slot.
@@ -78,14 +78,15 @@ en:
       stale_object: The saved value changed or was deleted. Your draft and its original version are kept. Read the saved value before starting a fresh edit; this submission cannot overwrite it.
       invalid_precondition: The saved document identity or version is missing or invalid. Read the document again before starting a fresh edit.
       memory_overridden: "Memory is served by %{detail}. Ordinary kernel memory management is unavailable."
-      memory_path_invalid: Use a valid workspace/ document path.
-      memory_scope_unavailable: This page manages only this workspace's workspace/ scope.
+      memory_path_invalid: Use a valid relative document name.
+      memory_scope_unavailable: This collection or its owner is no longer available.
+      memory_read_only: This collection is read only.
       memory_not_found: The memory document no longer exists.
       memory_content_invalid: Enter text for the memory document.
       memory_description_invalid: Ordinary documents cannot have a description. Skill descriptions must be text within 1,024 bytes.
-      memory_full: This workspace has reached its 64-document memory limit.
+      memory_full: This collection has reached its 64-document limit.
       memory_document_too_large: The memory document exceeds the 64 KiB content limit.
-      skill_name_invalid: Use a valid skill name after workspace/skills/.
+      skill_name_invalid: Use a valid skill name after skills/.
       skill_scope_unavailable: Skills cannot be stored in this scope.
       skill_description_required: Enter a description for this skill document.
       prompt_document_invalid: The character could not be saved. Check its text and role.

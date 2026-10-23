@@ -6,11 +6,12 @@ class OpsMemoryProjectionTest < Minitest::Test
 
   class MemoryApi < NexusDoubles::FakeAgentApi
     attr_accessor :refusal
-    attr_reader :memory_calls, :memory_speakers, :owner_registrations
+    attr_reader :inventory_queries, :memory_calls, :memory_speakers, :owner_registrations
 
     def initialize(answerer: "user-1")
       super(user_public_id: "user-1", workspaces: [{ public_id: "ws-original", name: "Original workspace" }])
       @answerers["chat"] = answerer
+      @inventory_queries = []
       @memory_calls = []
       @memory_speakers = []
       @owner_registrations = []
@@ -19,6 +20,10 @@ class OpsMemoryProjectionTest < Minitest::Test
     end
 
     def call(path, **fields)
+      if path == "/agent_api/v1/memory_collections"
+        @inventory_queries << fields[:params]
+        return memory_response(:get, "/agent_api/v1/profile/memory_collections", NexusDoubles::MEMBER_TOKEN, nil)
+      end
       if path.include?("/memory")
         @memory_calls << [path, fields.fetch(:method), fields[:body]]
         @memory_speakers << (fields.dig(:params, "memory[speaker_public_id]") || fields.dig(:body, "memory", "speaker_public_id"))
@@ -49,7 +54,8 @@ class OpsMemoryProjectionTest < Minitest::Test
 
   def test_memory_routes_require_bearer_and_a_connected_member_plane
     daemon = boot
-    routes = [[:get, "/conversations/memory?public_id=chat"],
+    routes = [[:get, "/memory_collections"],
+      [:get, "/conversations/memory?public_id=chat"],
       *%w[read write edit delete grep].map { |verb| [:post, "/conversations/memory/#{verb}"] },
       [:post, "/conversations/memory_context"]]
     routes.each do |method, path|
@@ -60,11 +66,21 @@ class OpsMemoryProjectionTest < Minitest::Test
     end
   end
 
+  def test_binding_editor_reads_paginated_authorized_inventory
+    api = MemoryApi.new
+    daemon = member_ready(boot, api)
+    response = request(daemon, :get, "/memory_collections?after=opaque-cursor", token: bearer(daemon))
+    assert_equal "200", response.code, response.body
+    assert_equal "collection-profile", JSON.parse(response.body).fetch("memory_collections").first.fetch("public_id")
+    assert_nil JSON.parse(response.body).dig("pagination", "next_after")
+    assert_equal [{ "after" => "opaque-cursor", "limit" => 50 }], api.inventory_queries
+  end
+
   def test_edit_and_grep_cross_the_real_sdk_with_named_paths_and_explicit_workspace
     api = MemoryApi.new
     daemon = member_ready(boot, api)
     body = { public_id: "chat", workspace_public_id: "ws-original", path: "group/notes.md",
-      old_text: "old fact", new_text: "new fact", expected_public_id: "memory-1", expected_lock_version: 2 }
+      old_text: "old fact", new_text: "new fact", expected_collection_public_id: "collection-1", expected_public_id: "memory-1", expected_lock_version: 2 }
     response = request(daemon, :post, "/conversations/memory/edit", token: bearer(daemon), body: body)
     assert_equal "200", response.code, response.body
     assert_equal ["group/notes.md", "new fact", 3], JSON.parse(response.body).fetch("memory").values_at("path", "content", "lock_version")
@@ -76,7 +92,7 @@ class OpsMemoryProjectionTest < Minitest::Test
       JSON.parse(response.body).fetch("result"))
     assert_equal [
       ["/agent_api/v1/workspaces/ws-original/conversations/chat/memory/edit", :post,
-        { "memory" => { "path" => "group/notes.md", "old_text" => "old fact", "new_text" => "new fact", "expected_public_id" => "memory-1", "expected_lock_version" => 2, "speaker_public_id" => "speaker-owner" } }],
+        { "memory" => { "path" => "group/notes.md", "old_text" => "old fact", "new_text" => "new fact", "expected_collection_public_id" => "collection-1", "expected_public_id" => "memory-1", "expected_lock_version" => 2, "speaker_public_id" => "speaker-owner" } }],
       ["/agent_api/v1/workspaces/ws-original/conversations/chat/memory/grep", :post,
         { "memory" => { "pattern" => "fact", "path" => "group/", "ignore_case" => true, "limit" => 1, "speaker_public_id" => "speaker-owner" } }],
     ], api.memory_calls
@@ -93,11 +109,11 @@ class OpsMemoryProjectionTest < Minitest::Test
     assert_equal "old fact", JSON.parse(response.body).dig("memory", "content")
 
     response = request(daemon, :post, "/conversations/memory/write", token: bearer(daemon),
-      body: { public_id: "chat", path: "conversation/new.md", content: "new note", expected_public_id: nil, expected_lock_version: nil })
+      body: { public_id: "chat", path: "conversation/new.md", content: "new note", expected_collection_public_id: "collection-1", expected_public_id: nil, expected_lock_version: nil })
     assert_equal "201", response.code, response.body
     row = JSON.parse(response.body).fetch("memory")
     response = request(daemon, :post, "/conversations/memory/delete", token: bearer(daemon),
-      body: { public_id: "chat", path: row.fetch("path"), expected_public_id: row.fetch("public_id"), expected_lock_version: row.fetch("lock_version") })
+      body: { public_id: "chat", path: row.fetch("path"), expected_collection_public_id: "collection-1", expected_public_id: row.fetch("public_id"), expected_lock_version: row.fetch("lock_version") })
     assert_equal "200", response.code, response.body
     assert_equal({ "path" => "conversation/new.md" }, JSON.parse(response.body).fetch("deleted"))
     response = request(daemon, :post, "/conversations/memory/read", token: bearer(daemon), body: { public_id: "chat", path: row.fetch("path") })
@@ -156,7 +172,7 @@ class OpsMemoryProjectionTest < Minitest::Test
     [[403, "memory_read_only"], [409, "stale_object"]].each do |status, code|
       api.refusal = CybrosAgent::Response.new(status: status, headers: {}, body: { "error" => { "code" => code, "message" => code } })
       response = request(daemon, :post, "/conversations/memory/edit", token: bearer(daemon), body: {
-        public_id: "chat", path: "group/notes.md", old_text: "old", new_text: "new", expected_public_id: "memory-1", expected_lock_version: 0,
+        public_id: "chat", path: "group/notes.md", old_text: "old", new_text: "new", expected_collection_public_id: "collection-1", expected_public_id: "memory-1", expected_lock_version: 0,
       })
       assert_equal status.to_s, response.code, response.body
       assert_equal code, JSON.parse(response.body).dig("error", "code")

@@ -380,6 +380,7 @@ module DeviceAuthorizations
         member.restore if member.removed?
         member.display_name = authorization.agent_display_name
         member.save!
+        MemoryCollection.default_for(member)
         member
       end
 

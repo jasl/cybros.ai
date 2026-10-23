@@ -26,7 +26,7 @@ class Runs::SkillsCatalogTest < ActiveJob::TestCase
   def document(name, description = "About #{name}.") = { "name" => name, "description" => description }
 
   def row!(path, description, user: nil)
-    anchor = Scopes::Anchor.call(path: path, workspace: @workspace, user: user)
+    anchor = memory_anchor(path: path, workspace: @workspace, user: user)
     MemoryDocument.transaction do
       anchor.lockable.lock!
       result = MemoryDocuments::Write.call(anchor: anchor, expected: memory_expectation_at(anchor), content: "body", description: description)
@@ -39,7 +39,7 @@ class Runs::SkillsCatalogTest < ActiveJob::TestCase
 
   def memory_context(principal: @agent, include_user: false)
     scopes = include_user ? %w[conversation workspace user] : %w[conversation workspace]
-    configuration = { "bindings" => scopes.map { |scope| { "name" => scope, "scope" => scope, "access" => "read" } } }
+    configuration = { "bindings" => scopes.map { |scope| { "name" => scope, "source" => { "scope" => scope }, "access" => "read" } } }
     MemoryDocuments::Context.new(workspace: @workspace, conversation: nil, principal: principal,
       configuration: configuration, agent: nil)
   end

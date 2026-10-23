@@ -19,7 +19,42 @@ pub enum AccessEntry {
     },
 }
 request!(SetAccess {default:AccessLevel,entries:Vec<AccessEntry>} {});
-request!(MemoryBinding {name:String,scope:MemoryScope,access:MemoryAccess} {speaker_public_id:String,conversation_public_id:String});
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum MemorySource {
+    Collection {
+        collection_public_id: String,
+    },
+    Scope {
+        scope: MemoryScope,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        conversation_public_id: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        speaker_public_id: Option<String>,
+    },
+}
+impl Default for MemorySource {
+    fn default() -> Self {
+        Self::Scope {
+            scope: MemoryScope::Conversation,
+            conversation_public_id: None,
+            speaker_public_id: None,
+        }
+    }
+}
+request!(MemoryBinding {name:String,source:MemorySource,access:MemoryAccess} {});
+request!(MemoryRootSource {scope:MemoryScope} {});
+request!(MemoryRootLimit {name:MemoryScope,source:MemoryRootSource,access:MemoryAccess} {});
+request!(MemoryContextLimit {bindings:Vec<MemoryRootLimit>} {});
+query!(OwnedMemoryCollectionQuery {
+    after: String,
+    limit: u32,
+    default: bool,
+    speaker_public_id: String
+});
+request!(CreateMemoryCollection {} {name:String,description:String,speaker_public_id:String,default:bool});
+request!(UpdateMemoryCollection {lock_version:i64} {name:String,description:String});
+request!(MemoryCollectionVersion {lock_version:i64} {});
 request!(MemoryContext {bindings:Vec<MemoryBinding>} {});
 request!(CreateConversation {} {title:String,metadata:JsonObject,billing_subject:String,cost_limit:String,default_runner_executor_public_id:String,answering_user_public_id:String,access:SetAccess,memory_context:MemoryContext});
 request!(UpdateConversation {lock_version:i64} {title:String,metadata:JsonObject,cost_limit:String});
@@ -27,9 +62,12 @@ request!(SetMemoryContext {memory_context:Option<MemoryContext>} {});
 request!(SetDefaultRunner {executor_public_id:Option<String>} {});
 request!(ForkConversation {} {turn_public_id:String,variant_public_id:String,title:String,side:bool});
 request!(MemoryRead {path:String} {speaker_public_id:String});
-request!(MemoryWrite {path:String,content:String,expected_public_id:Option<String>,expected_lock_version:Option<i64>} {description:String,speaker_public_id:String});
-request!(MemoryEdit {path:String,old_text:String,new_text:String,expected_public_id:String,expected_lock_version:i64} {speaker_public_id:String});
-request!(MemoryDelete {path:String,expected_public_id:String,expected_lock_version:i64} {speaker_public_id:String});
+request!(CollectionMemoryWrite {path:String,content:String,expected_public_id:Option<String>,expected_lock_version:Option<i64>} {description:String});
+request!(MemoryWrite {expected_collection_public_id:String,path:String,content:String,expected_public_id:Option<String>,expected_lock_version:Option<i64>} {description:String,speaker_public_id:String});
+request!(CollectionMemoryEdit {path:String,old_text:String,new_text:String,expected_public_id:String,expected_lock_version:i64} {});
+request!(MemoryEdit {expected_collection_public_id:String,path:String,old_text:String,new_text:String,expected_public_id:String,expected_lock_version:i64} {speaker_public_id:String});
+request!(CollectionMemoryDelete {path:String,expected_public_id:String,expected_lock_version:i64} {});
+request!(MemoryDelete {expected_collection_public_id:String,path:String,expected_public_id:String,expected_lock_version:i64} {speaker_public_id:String});
 request!(MemoryGrep {pattern:String} {path:String,ignore_case:bool,limit:u32,speaker_public_id:String});
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct MemoryListQuery {
@@ -51,7 +89,7 @@ request!(AgentConfigurationRequest {} {
     runner_tool_names:Vec<String>,mcp_tools:Vec<McpToolImport>,
     approval_mode:ApprovalMode,approval_rules:Vec<ApprovalRule>,prompt_mechanism:PromptMechanism,
     prompt_template:JsonObject,compaction_policy:JsonObject,lifecycle_hooks:JsonObject,
-    default_model:String,image_model:String,fallback_models:Vec<String>,memory_context_limit:MemoryContext,
+    default_model:String,image_model:String,fallback_models:Vec<String>,memory_context_limit:MemoryContextLimit,
     conversation_reach:ConversationReach,delegation_catalog:Vec<JsonObject>
 });
 request!(PromptDocumentsRequest {} {system_prompt:WritePromptDocument,summarizer:WritePromptDocument});

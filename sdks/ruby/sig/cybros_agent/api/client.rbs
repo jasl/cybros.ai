@@ -27,6 +27,7 @@ module CybrosAgent
   end
 
   class Client < Api::BaseClient
+    def memory_collections: () -> Api::MemoryCollectionsContext
     def profile: () -> Api::ProfileContext
     def workspaces: () -> Api::Workspaces
     def conversations: () -> Api::Conversations

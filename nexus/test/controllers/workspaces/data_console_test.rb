@@ -3,6 +3,7 @@ require "test_helper"
 class Workspaces::DataConsoleTest < ActionDispatch::IntegrationTest
   setup do
     @workspace = workspaces(:shared)
+    @collection = MemoryCollection.default_for(@workspace)
     @human = users(:member)
     sign_in_as @human
   end
@@ -10,7 +11,7 @@ class Workspaces::DataConsoleTest < ActionDispatch::IntegrationTest
   test "the data landing page names distinct owners and links to scoped retained content" do
     get workspace_data_path(@workspace)
     assert_response :success
-    assert_select "a[href=?]", workspace_memory_documents_path(@workspace), text: "Workspace Memory"
+    assert_select "a[href=?]", memory_collections_path(workspace_public_id: @workspace.public_id), text: "Memory collections"
     assert_select "a[href=?]", workspace_character_path(@workspace), text: "Workspace character"
     assert_select "a[href=?]", workspace_store_entries_path(@workspace), text: "Workspace Store"
     assert_select "a[href=?]", workspace_conversations_path(@workspace), text: "Browse Conversations"
@@ -22,47 +23,47 @@ class Workspaces::DataConsoleTest < ActionDispatch::IntegrationTest
   test "an ordinary member creates reads edits and deletes only workspace memory" do
     create_memory(content: "<script>saved</script>")
     document = memory_document
-    assert_redirected_to workspace_memory_document_path(@workspace, path: document.path)
-    assert_nil document.user_id
-    assert_nil document.conversation_id
+    assert_redirected_to memory_collection_document_path(@collection, path: document.name)
+    assert_nil document.memory_collection.user_id
+    assert_nil document.memory_collection.conversation_id
 
-    get workspace_memory_documents_path(@workspace)
+    get memory_collection_documents_path(@collection)
     assert_response :success
-    assert_select "a[href=?]", workspace_memory_document_path(@workspace, path: document.path), text: document.path
+    assert_select "a[href=?]", memory_collection_document_path(@collection, path: document.name), text: document.name
     assert_not_includes response.body, "&lt;script&gt;saved"
 
-    get workspace_memory_document_path(@workspace, path: document.path)
+    get memory_collection_document_path(@collection, path: document.name)
     assert_response :success
     assert_select "pre", text: "<script>saved</script>"
     assert_select "script", text: "saved", count: 0
-    get edit_workspace_memory_document_path(@workspace, path: document.path)
+    get edit_memory_collection_document_path(@collection, path: document.name)
     assert_select "input[name='memory[expected_public_id]'][value=?]", document.public_id
     assert_select "input[name='memory[expected_lock_version]'][value='0']"
 
-    patch workspace_memory_document_path(@workspace), params: { memory: memory_fields(document).merge(content: "Changed") }
+    patch memory_collection_document_path(@collection), params: { memory: memory_fields(document).merge(content: "Changed") }
     assert_response :see_other
     assert_equal "Changed", document.reload.content
-    delete workspace_memory_document_path(@workspace), params: { memory: memory_fields(document) }
-    assert_redirected_to workspace_memory_documents_path(@workspace)
+    delete memory_collection_document_path(@collection), params: { memory: memory_fields(document) }
+    assert_redirected_to memory_collection_documents_path(@collection)
     assert_not MemoryDocument.exists?(id: document.id)
   end
 
-  test "memory refuses other scopes and preserves failed text without granting an unconditional write" do
-    %w[user agent speaker conversation].each do |scope|
-      post workspace_memory_documents_path(@workspace), params: {
-        memory: { path: "#{scope}/notes.md", content: "draft", expected_public_id: "", expected_lock_version: "" },
+  test "memory refuses malformed names and preserves failed text without granting an unconditional write" do
+    ["../notes.md", "/notes.md", "UPPER.md", ""].each do |path|
+      post memory_collection_documents_path(@collection), params: {
+        memory: { path: path, content: "draft", expected_public_id: "", expected_lock_version: "" },
       }
       assert_response :unprocessable_entity
       assert_select "textarea[name='memory[content]']", text: "draft"
-      assert_empty MemoryDocument.for_workspace(@workspace.id)
+      assert_empty @workspace.memory_documents
     end
     create_memory
     original = memory_document.content
-    patch workspace_memory_document_path(@workspace), params: { memory: { path: "workspace/notes.md", content: "No precondition" } }
+    patch memory_collection_document_path(@collection), params: { memory: { path: "notes.md", content: "No precondition" } }
     assert_response :unprocessable_entity
     assert_select "textarea[name='memory[content]']", text: "No precondition"
     assert_equal original, memory_document.content
-    patch workspace_memory_document_path(@workspace), params: {
+    patch memory_collection_document_path(@collection), params: {
       memory: memory_fields(memory_document).merge(content: "Invalid", expected_lock_version: "0junk"),
     }
     assert_response :unprocessable_entity
@@ -73,22 +74,22 @@ class Workspaces::DataConsoleTest < ActionDispatch::IntegrationTest
     create_memory(content: "Original")
     document = memory_document
     stale = memory_fields(document)
-    patch workspace_memory_document_path(@workspace), params: { memory: stale.merge(content: "Newer") }
+    patch memory_collection_document_path(@collection), params: { memory: stale.merge(content: "Newer") }
     assert_response :see_other
-    patch workspace_memory_document_path(@workspace), params: { memory: stale.merge(content: "My draft") }
+    patch memory_collection_document_path(@collection), params: { memory: stale.merge(content: "My draft") }
     assert_response :conflict
     assert_select "textarea[name='memory[content]']", text: "My draft"
     assert_select "input[name='memory[expected_public_id]'][value=?]", stale.fetch(:expected_public_id)
     assert_select "input[name='memory[expected_lock_version]'][value='0']"
-    assert_select "a[target='_blank'][href=?]", workspace_memory_document_path(@workspace, path: document.path)
+    assert_select "a[target='_blank'][href=?]", memory_collection_document_path(@collection, path: document.name)
     assert_equal "Newer", document.reload.content
 
-    delete workspace_memory_document_path(@workspace), params: { memory: stale }
+    delete memory_collection_document_path(@collection), params: { memory: stale }
     assert_response :conflict
-    delete workspace_memory_document_path(@workspace), params: { memory: memory_fields(document) }
+    delete memory_collection_document_path(@collection), params: { memory: memory_fields(document) }
     assert_response :see_other
     create_memory(content: "Recreated")
-    patch workspace_memory_document_path(@workspace), params: { memory: stale.merge(content: "Old identity") }
+    patch memory_collection_document_path(@collection), params: { memory: stale.merge(content: "Old identity") }
     assert_response :conflict
     assert_equal "Recreated", memory_document.content
     assert_not_equal stale.fetch(:expected_public_id), memory_document.public_id
@@ -96,13 +97,13 @@ class Workspaces::DataConsoleTest < ActionDispatch::IntegrationTest
 
   test "create only memory conditions do not replace an occupied path and a failed skill keeps its draft" do
     create_memory(content: "Original")
-    post workspace_memory_documents_path(@workspace), params: {
-      memory: { path: "workspace/notes.md", content: "Collision", expected_public_id: "", expected_lock_version: "" },
+    post memory_collection_documents_path(@collection), params: {
+      memory: { path: "notes.md", content: "Collision", expected_public_id: "", expected_lock_version: "" },
     }
     assert_response :conflict
     assert_equal "Original", memory_document.content
-    post workspace_memory_documents_path(@workspace), params: {
-      memory: { path: "workspace/skills/commits", content: "# Draft", expected_public_id: "", expected_lock_version: "" },
+    post memory_collection_documents_path(@collection), params: {
+      memory: { path: "skills/commits", content: "# Draft", expected_public_id: "", expected_lock_version: "" },
     }
     assert_response :unprocessable_entity
     assert_select "textarea[name='memory[content]']", text: "# Draft"
@@ -116,29 +117,32 @@ class Workspaces::DataConsoleTest < ActionDispatch::IntegrationTest
       workspace: @workspace, by: users(:owner), lock_version: @workspace.reload.lock_version,
       overrides: { "nexus.memory" => provider.public_id }
     ).outcome
-    get workspace_memory_documents_path(@workspace)
+    get memory_collection_documents_path(@collection)
     assert_response :conflict
     assert_includes response.body, provider.display_name
     assert_not_includes response.body, I18n.t("data_console.memory.empty")
-    get workspace_memory_document_path(@workspace, path: "workspace/notes.md")
+    assert_select "form[action=?][method=get]", memory_collection_document_path(@collection) do
+      assert_select "input[name=path]"
+    end
+    get memory_collection_document_path(@collection, path: "notes.md")
     assert_response :conflict
-    patch workspace_memory_document_path(@workspace), params: { memory: memory_fields(memory_document).merge(content: "Override draft") }
+    patch memory_collection_document_path(@collection), params: { memory: memory_fields(memory_document).merge(content: "Override draft") }
     assert_response :conflict
     assert_select "textarea[name='memory[content]']", text: "Override draft"
     assert_select "input[type=submit]", count: 0
 
-    path = "workspace/skills/commits"
-    get new_workspace_memory_document_path(@workspace, path: path)
+    path = "skills/commits"
+    get new_memory_collection_document_path(@collection, path: path)
     assert_response :success
-    post workspace_memory_documents_path(@workspace), params: {
+    post memory_collection_documents_path(@collection), params: {
       memory: { path: path, content: "# Commits", description: "Commit instructions", expected_public_id: "", expected_lock_version: "" },
     }
     assert_response :see_other
-    get workspace_memory_document_path(@workspace, path: path)
+    get memory_collection_document_path(@collection, path: path)
     assert_response :success
     assert_select "pre", text: "# Commits"
-    skill = MemoryDocument.for_workspace(@workspace.id).find_by!(name: "skills/commits")
-    delete workspace_memory_document_path(@workspace), params: { memory: memory_fields(skill) }
+    skill = @workspace.memory_documents.find_by!(name: "skills/commits")
+    delete memory_collection_document_path(@collection), params: { memory: memory_fields(skill) }
     assert_response :see_other
   end
 
@@ -257,22 +261,22 @@ class Workspaces::DataConsoleTest < ActionDispatch::IntegrationTest
     create_memory
     entry = create_store(value: false)
     @workspace.update!(state: "archived", archived_at: Time.current)
-    [workspace_data_path(@workspace), workspace_memory_documents_path(@workspace),
-      workspace_memory_document_path(@workspace, path: "workspace/notes.md"), workspace_character_path(@workspace),
+    [workspace_data_path(@workspace), memory_collection_documents_path(@collection),
+      memory_collection_document_path(@collection, path: "notes.md"), workspace_character_path(@workspace),
       workspace_store_entries_path(@workspace), workspace_store_entry_path(@workspace, entry.public_id)].each do |path|
       get path
       assert_response :success
-      [new_workspace_memory_document_path(@workspace), edit_workspace_memory_document_path(@workspace, path: "workspace/notes.md"),
+      [new_memory_collection_document_path(@collection), edit_memory_collection_document_path(@collection, path: "notes.md"),
         edit_workspace_character_path(@workspace), new_workspace_store_entry_path(@workspace),
         edit_workspace_store_entry_path(@workspace, entry.public_id)].each do |write_path|
         assert_select "a[href=?]", write_path, count: 0
       end
-      [workspace_memory_document_path(@workspace), workspace_character_path(@workspace),
+      [memory_collection_document_path(@collection), workspace_character_path(@workspace),
         workspace_store_entry_path(@workspace, entry.public_id)].each do |write_path|
         assert_select "form[action=?]", write_path, count: 0
       end
     end
-    patch workspace_memory_document_path(@workspace), params: { memory: memory_fields(memory_document).merge(content: "Archived draft") }
+    patch memory_collection_document_path(@collection), params: { memory: memory_fields(memory_document).merge(content: "Archived draft") }
     assert_response :forbidden
     assert_select "textarea[name='memory[content]'][readonly]", text: "Archived draft"
     assert_select "input[type=submit]", count: 0
@@ -283,7 +287,7 @@ class Workspaces::DataConsoleTest < ActionDispatch::IntegrationTest
     assert_equal false, entry.reload.value
 
     @workspace.update!(state: "restoring")
-    patch workspace_memory_document_path(@workspace), params: { memory: memory_fields(memory_document).merge(content: "Restoring memory") }
+    patch memory_collection_document_path(@collection), params: { memory: memory_fields(memory_document).merge(content: "Restoring memory") }
     assert_response :see_other
     put workspace_character_path(@workspace), params: { prompt_document: { content: "Restoring character" } }
     assert_response :see_other
@@ -313,18 +317,18 @@ class Workspaces::DataConsoleTest < ActionDispatch::IntegrationTest
   private
 
     def create_memory(content: "Saved")
-      post workspace_memory_documents_path(@workspace), params: {
-        memory: { path: "workspace/notes.md", content: content, expected_public_id: "", expected_lock_version: "" },
+      post memory_collection_documents_path(@collection), params: {
+        memory: { path: "notes.md", content: content, expected_public_id: "", expected_lock_version: "" },
       }
       assert_response :see_other
     end
 
     def memory_document
-      MemoryDocument.for_workspace(@workspace.id).find_by!(name: "notes.md")
+      @workspace.memory_documents.find_by!(name: "notes.md")
     end
 
     def memory_fields(document)
-      { path: document.path, expected_public_id: document.public_id, expected_lock_version: document.lock_version }
+      { path: document.name, expected_public_id: document.public_id, expected_lock_version: document.lock_version }
     end
 
     def create_store(value:)

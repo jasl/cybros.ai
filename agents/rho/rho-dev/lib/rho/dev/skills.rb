@@ -77,8 +77,11 @@ module Rho
             # The command explicitly replaces the remote document with this
             # local file. Capture once before sending; a conflict is not retried.
             snapshot = skill_for_push(cli, skill.name, scope: scope)
+            collection_public_id = snapshot&.fetch("collection_public_id") || cli.core.skills.fetch("collections").fetch(scope)&.fetch("public_id")
+            raise Rho::Error, "the default memory collection is unavailable" unless collection_public_id
+
             row = cli.core.push_skill(name: skill.name, description: skill.description, content: skill.body,
-              scope: scope, expected_public_id: snapshot&.fetch("public_id"),
+              scope: scope, expected_collection_public_id: collection_public_id, expected_public_id: snapshot&.fetch("public_id"),
               expected_lock_version: snapshot&.fetch("lock_version"))
             cli.out.puts "pushed:    #{row.fetch("path")} (#{row.fetch("bytesize")} bytes)"
             row
@@ -106,7 +109,7 @@ module Rho
 
             scope = skill_scope(options)
             snapshot = cli.core.show_skill(name, scope: scope)
-            cli.core.remove_skill(name, scope: scope, expected_public_id: snapshot.fetch("public_id"),
+            cli.core.remove_skill(name, scope: scope, expected_collection_public_id: snapshot.fetch("collection_public_id"), expected_public_id: snapshot.fetch("public_id"),
               expected_lock_version: snapshot.fetch("lock_version"))
           end
 

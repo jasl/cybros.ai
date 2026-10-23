@@ -333,7 +333,7 @@ module CybrosAgent
         steps: Array[untyped], idempotency_key: String, approval_mode: String,
         ?billing_subject: untyped, ?prompt_mechanism: untyped, ?approval_rules: untyped,
         ?default_runner_executor_public_id: String?, ?speaker_public_id: String?,
-        ?model_selection: Hash[untyped, untyped],
+        ?memory_context: Hash[String, untyped]?, ?model_selection: Hash[untyped, untyped],
         ?fallback_models: Array[String]
       ) -> CreatedRun
       def start_tool_call: (

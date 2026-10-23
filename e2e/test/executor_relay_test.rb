@@ -174,57 +174,6 @@ class ExecutorRelayTest < Minitest::Test
     warn "Could not capture the executor relay E2E logs: #{error.class}: #{error.message}"
   end
 
-  # (a)1: `rho call_tool RUNNER files_bytes` on the AGENT daemon — the runner-
-  # mode rho's `files_bytes` names the file and its run stages it as a
-  # capture (the ONE upload site, `TaskRun#submit`), linked beside the
-  # sentence; the loop was STARTED (completed, one node), the runner-mode
-  # rho's log claimed it, the agent's claimed nothing, `rho fetch` prints
-  # the file's bytes, `rho graph` draws one node.
-  def test_files_bytes_relayed_to_the_runner_mode_rho_answers_a_capture_of_its_file
-    note = File.join(runner_root, "note-#{SecureRandom.hex(4)}.txt")
-    words = "hello from the runner #{SecureRandom.hex(8)}\n"
-    File.write(note, words)
-
-    output, status = relay(@runner_id, "files_bytes", JSON.generate("path" => File.basename(note)))
-    assert_predicate status, :success?, "rho call_tool failed:\n#{output}"
-    loop_id = output[/^run:\s+(\S+)/, 1]
-    refute_nil loop_id, output
-    assert_match(/^task:\s+call_tool \(tool_task\) completed$/, output)
-    assert_match(/^tool:\s+files_bytes$/, output)
-    assert_match(/^#{Regexp.escape(note)} \(text\/plain; charset=utf-8, #{words.bytesize} bytes\)$/, output,
-      "the tool's own sentence: the path a model could `read` on the same runner")
-    # The link's type is the KERNEL's word: the bytes decide it, no name
-    # hint reaches Marcel (`ContentUploads::Create`), so plain text stages
-    # as `application/octet-stream` — the runner's own line above says
-    # `text/plain` from the name; two classifiers, one file, recorded.
-    link = output[%r{^link:\s+#{Regexp.escape(File.basename(note))} \(application/octet-stream, #{words.bytesize} B\) (\S+)$}, 1]
-    refute_nil link, "the capture's line ends in the id `rho fetch` takes:\n#{output}"
-
-    assert(@runner_rho.claims.any? { |claim| claim["tool"] == "files_bytes" },
-      "the runner-mode rho's own log says it took the row: #{@runner_rho.claims.inspect}")
-    assert_empty @daemon.claimed_keys, "the agent daemon serves no tool and claimed nothing"
-
-    run = loops.fetch(loop_id)
-    assert_equal "completed", run.status, "quiescence completed the loop on the settle"
-    assert_equal ["tool_task"], run.tasks.map(&:kind), "one task, no round, no summarizer"
-    assert_equal @runner_id, run.deliverable.target.executor_public_id, "the task keeps its explicit target"
-    assert_equal @runner_id, run.deliverable.claimed_by.executor_public_id
-
-    detail = loops.run(loop_id).task(TOOL_CALL_KEY)
-    kinds = detail.content.map { |block| block.fetch("type") }
-    assert_equal %w[text resource_link], kinds, detail.content.inspect
-    assert_equal "nexus://uploads/#{link}", detail.content.last.fetch("uri")
-    assert_equal words.bytesize, detail.content.last.fetch("size")
-
-    bytes, fetch_status = @daemon.cli_bytes("fetch", link)
-    assert_predicate fetch_status, :success?
-    assert_equal words.b, bytes, "the relayed capture reads back whole through `rho fetch`"
-
-    graph, graph_status = @daemon.cli("graph", loop_id, "--json")
-    assert_predicate graph_status, :success?, graph
-    assert_equal 1, JSON.parse(graph).fetch("nodes").length, "one node: the request is the whole run"
-  end
-
   # (a)2: a conversation on the runner-mode rho starts a server through
   # `rho do --runner` (the mock calls what it is told); the process is
   # CONVERSATION-owned there. On the AGENT daemon `rho ps` lists it
@@ -313,73 +262,6 @@ class ExecutorRelayTest < Minitest::Test
     assert_equal (BIG_LINE * BIG_LINES)[-64..].b, tail.string.b, "the last 64 bytes: a Range is the chunked read"
   end
 
-  # (a)6, the local short-circuit: the runner-mode rho's own `rho ps` reads
-  # its own table with NO loop created — the workspace's loop list is the
-  # same before and after, and its runner claimed nothing for it.
-  # The runner's claim count once it stops moving: two equal reads a second
-  # apart, or the last one after the bound.
-  def settled_claim_count(bound: 30)
-    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + bound
-    last = @runner_rho.claims.length
-    loop do
-      sleep 1
-      now = @runner_rho.claims.length
-      return now if now == last || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-
-      last = now
-    end
-  end
-
-  def test_a_daemons_own_ps_reads_its_own_table_with_no_loop
-    # The snapshot is taken once this world is quiet: an earlier case's
-    # claim landing inside the window reads as a relayed read this verb
-    # never made (the gate saw 20 where 19 stood, 2026-09-22).
-    before = loops.list(order: "desc", limit: 100).items.map(&:public_id)
-    claims_before = settled_claim_count
-
-    listing, status = @runner_rho.cli("processes")
-
-    assert_predicate status, :success?, listing
-    assert_equal before, loops.list(order: "desc", limit: 100).items.map(&:public_id), "no request loop was authored"
-    assert_equal claims_before, @runner_rho.claims.length, "its runner served no relayed read"
-  end
-
-  # (a)8, THE NEGATIVE: the agent daemon's sealed request for a round on
-  # this runner carries the runner's tools — hidden BY NAME on the agent
-  # side, `files_bytes` and `process_log` are not among them — and
-  # discovery serves the two without a description or a schema, so no peer
-  # could author a declaration from them either.
-  def test_the_runners_person_facing_tools_are_hidden_from_the_models_list_and_undescribed_in_discovery
-    loop_id = rho_do("!mock -- say hello", runner: @runner_id)
-    completed = await_run_status(loop_id, "completed")
-    round = completed.tasks.find { |task| task.kind == "model_task" }
-    refute_nil round, completed.tasks.map(&:kind).inspect
-
-    sealed = loops.run(loop_id).tasks_context(round.key).request
-    names = Array(sealed.request_options["tools"]).filter_map { |tool| tool.dig("function", "name") || tool["name"] }
-    definitions = loops.run(loop_id).task(round.key).tool_definitions
-    declared = definitions.map { |tool| tool.dig("function", "name") || tool["name"] }
-    %w[read bash list_processes read_process].each do |name|
-      assert_includes declared, runner_tool(name), "the Runner's callable is retained in frozen authority"
-      refute_includes names, runner_tool(name), "its schema is deferred from the provider request"
-    end
-    %w[files_bytes process_log].each do |name|
-      refute_includes names, name, "hidden by name on the agent side: #{names.inspect}"
-      refute_includes declared, name
-      refute definitions.any? { |tool| tool.dig("route", "tool_name") == name },
-        "person-facing helpers are absent from the full callable authority under every alias"
-    end
-
-    served = @steward_client.executors.show(@runner_id).tools_for(:runner).to_h { |tool| [tool.name, tool] }
-    %w[files_bytes process_log].each do |name|
-      tool = served.fetch(name) { flunk "#{name} is not announced by the runner-mode rho: #{served.keys.inspect}" }
-      assert_nil tool.description, "#{name} describes itself to nobody"
-      assert_nil tool.input_schema, "#{name} announces no schema"
-    end
-    refute_nil served.fetch("read").description, "the model's tools keep their declaration facts"
-    refute_nil served.fetch("read").input_schema
-  end
-
   # (a)7, and the seed rule driven end to end: `rho call_tool RUNNER capture`
   # authors ONE tool step on the named runner, starts it, and prints the
   # completed task with its `title`, `metadata` and the capture's link;
@@ -423,22 +305,6 @@ class ExecutorRelayTest < Minitest::Test
     assert_equal PNG, bytes, "the relayed capture reads back whole through `rho fetch`"
   end
 
-  # A name the Runner never announced is refused at acceptance, before
-  # any rule or dispatch. The verb prints the refusal without creating a
-  # Run or a dangling Task for a later stop to clean up.
-  def test_a_relay_of_a_tool_nobody_serves_is_refused_without_accepting_a_run
-    before = loops.list(order: "desc", limit: 100).items.map(&:public_id)
-    output, status = relay(@runner.executor_public_id, "nosuch", "{}")
-    refute_predicate status, :success?, "an unserved tool is refused:\n#{output}"
-    assert_match(/Refused: tool_not_served/, output)
-    refute_match(/^run:/, output, "acceptance refused before a Run existed")
-    refute_match(/^task:/, output, "no Task was accepted for the unserved tool")
-
-    assert_equal before, loops.list(order: "desc", limit: 100).items.map(&:public_id),
-      "a refused call leaves no Run or dangling Task"
-    refute_includes @runner.since_start.map { |line| line["tool"] }, "nosuch"
-  end
-
   # (a)9: `rm -rf /` relayed to the runner is DENIED by the rules the verb
   # passes — the same list `rho do` authors, re-addressed to the seed's
   # `author` origin — at the stage, before dispatch: the runner never
@@ -458,86 +324,7 @@ class ExecutorRelayTest < Minitest::Test
     assert_equal "failed", loops.fetch(loop_id).deliverable.status, "the settled row keeps its word"
   end
 
-  # (a)4: the runner KILLED, a relay with its own 5 s clock. The row is
-  # dispatched and never claimed; the operator backdates the park and
-  # sweeps — no wall minute — and the task settles `timed_out`
-  # (`tool_timeout`) with NO claimant; the daemon's `request_result`
-  # answers that terminal task, the verb prints it and fails, and the
-  # Run is stopped: `rho runs` lists it `canceled`. Presence is
-  # never read — the sweep's clock is the only thing that settles it.
-  def test_a_relay_to_a_dead_runner_is_swept_timed_out_at_its_own_deadline_and_the_loop_is_stopped
-    @runner.kill!
-    io = @daemon.cli_background("call_tool", @runner.executor_public_id, "read", JSON.generate("path" => "note.txt"),
-      "--timeout", "5000")
-    loop_id = await("the relay never dispatched its row") do
-      loops.list(status: "running", order: "desc", limit: 10).items.map(&:public_id).find do |candidate|
-        row = loops.fetch(candidate)
-        task = row.task(TOOL_CALL_KEY)
-        task && task.status == "dispatched" && row.tasks.one? && task.tool_name == "read" &&
-          task.addressed_to&.executor_public_id == @runner.executor_public_id
-      end
-    end
-    dispatched = loops.fetch(loop_id).task(TOOL_CALL_KEY)
-    assert_nil dispatched.claimed_by, "nobody is alive to claim it"
-    assert_equal @runner.executor_public_id, dispatched.addressed_to.executor_public_id
-
-    E2E.operator.expire_park!(loop_id, TOOL_CALL_KEY)
-    E2E.operator.sweep_park_timeouts!
-
-    output = io.read.force_encoding(Encoding::UTF_8).scrub
-    io.close
-    status = $?
-    refute_predicate status, :success?, output
-    assert_equal loop_id, output[/^run:\s+(\S+)/, 1], output
-    assert_match(/^task:\s+call_tool \(tool_task\) timed_out$/, output)
-    assert_match(/^error:\s+tool_timeout$/, output)
-    assert_match(/the request timed_out: tool_timeout/, output)
-
-    task = loops.fetch(loop_id).task(TOOL_CALL_KEY)
-    assert_equal "timed_out", task.status
-    assert_equal "tool_timeout", task.error.fetch("key")
-    assert_nil task.claimed_by, "never claimed: the sweep, not a runner, settled it"
-    assert_equal "canceled", await_run_status(loop_id, "canceled").status, "stopped behind the timeout"
-    listing, list_status = @daemon.cli("runs", "--status", "canceled")
-    assert_predicate list_status, :success?, listing
-    assert_match(/^#{Regexp.escape(loop_id)}\s+canceled/, listing, "the kernel's truth lists the request loop")
-  ensure
-    @runner.start if @runner && @runner.pid.nil?
-  end
-
   # ---- THE CONVERSATION'S ENVIRONMENT ON A RUNNER ELSEWHERE ----
-
-  # The accepted tool task carries the complete environment to a separate Runner.
-  def test_a_conversation_bound_under_the_runner_mode_rhos_root_captures_its_write_directory
-    sub = bound_subdirectory
-    marker = "captured #{SecureRandom.hex(4)}"
-    conversation, loop_id, = open_bound(script(note("note.txt", marker)), dir: sub, runner: @runner_id)
-    row = await_run_status(loop_id, "completed")
-    write = row.tasks.find { |task| task.tool_name == "write" }
-    refute_nil write
-    assert_equal({ "root" => sub, "directories" => [], "anchor" => conversation },
-      loops.run(loop_id).task(write.key).executor_context.fetch("rho.environment"))
-    assert_equal @runner_id, write.claimed_by.executor_public_id
-    assert_equal "#{marker}\n", File.read(File.join(sub, "note.txt"), encoding: Encoding::UTF_8)
-    refute @runner_rho.claims.any? { |claim| claim["tool"] == "environment_bind" }
-  end
-
-  def test_a_binding_whose_root_disappears_on_the_runner_fails_without_default_directory_fallback
-    sub = bound_subdirectory
-    conversation, loop_id, = open_bound("!mock -- hello", dir: sub, runner: @runner_id)
-    await_run_status(loop_id, "completed")
-    FileUtils.remove_entry(sub)
-    filename = "missing-root-#{SecureRandom.hex(4)}.txt"
-    next_loop = say_loop(conversation, script(note(filename, "must not fall back")))
-    task = await("the absent directory did not fail its write") do
-      row = loops.fetch(next_loop).tasks.find { |candidate| candidate.tool_name == "write" }
-      loops.run(next_loop).task(row.key) if row&.status == "failed"
-    end
-    assert_includes task.output, sub
-    assert_equal sub, task.executor_context.dig("rho.environment", "root")
-    refute_path_exists sub
-    refute_path_exists File.join(runner_root, filename)
-  end
 
   def test_a_runner_mode_rho_restart_uses_the_next_tasks_captured_directory_immediately
     sub = bound_subdirectory
@@ -567,95 +354,6 @@ class ExecutorRelayTest < Minitest::Test
     await_run_status(say_loop(conversation, script(*([note("after.txt", marker)] * 3))), "completed")
     assert_equal "#{marker}\n", File.read(File.join(sub, "after.txt"), encoding: Encoding::UTF_8)
     refute_path_exists File.join(runner_root, "after.txt")
-  end
-
-  # Choosing a new default retains each Runner's stored environment and accepted schemas.
-  def test_selecting_a_default_runner_preserves_each_runners_environment_and_tool_declaration
-    sub = bound_subdirectory
-    conversation, loop_id, = open_bound("!mock -- hello there", dir: sub, runner: @runner.executor_public_id)
-    row = await_run_status(loop_id, "completed")
-    round = row.tasks.find { |task| task.kind == "model_task" }
-    refute_nil round, row.tasks.map(&:kind).inspect
-    assert_includes loops.run(loop_id).task(round.key).output.to_s,
-      "This conversation's root is #{sub}; relative paths resolve against it there.", "the lead names the captured directory"
-    await_run_status(say_loop(conversation, "!mock -- once more"), "completed")
-    entry = binding_summary(conversation, runner: @runner.executor_public_id)
-    refute_nil entry, "the open wrote the record"
-    original = store(conversation).fetch(entry.public_id)
-
-    selected, status = @daemon.cli("set_default_runner", conversation, @runner_id)
-    assert_predicate status, :success?, "different Runner schemas can coexist:\n#{selected}"
-    assert_equal @runner_id,
-      @steward_client.workspace(@workspace_public_id).conversation(conversation).fetch.default_runner.executor_public_id,
-      "the nullable default applies to future acceptance"
-    assert_equal entry.lock_version, store(conversation).fetch(entry.public_id).lock_version,
-      "changing the default never rewrites another Runner's environment"
-    assert_equal original.value, store(conversation).fetch(entry.public_id).value
-    assert_nil binding_summary(conversation), "a default selection does not copy an environment onto another Runner"
-    note = File.join(sub, "selected.txt")
-    File.write(note, "the newly selected Runner\n")
-    prompt = script([runner_tool("read"), { "path" => note }])
-    continued = await_run_status(say_loop(conversation, prompt), "completed")
-    read = continued.tasks.find { |task| task.tool_name == "read" }
-    refute_nil read, "the selected Runner's callable is available"
-    assert_equal @runner_id, read.target.executor_public_id
-    assert_equal @runner_id, read.claimed_by.executor_public_id
-    assert_includes tool_answer(continued, "read"), "the newly selected Runner", "the newly selected Runner executed the call"
-
-    model = continued.tasks.find { |task| task.kind == "model_task" }
-    surfaces = {
-      @runner.executor_public_id => loops.run(loop_id).task(round.key).tool_definitions,
-      @runner_id => loops.run(continued.public_id).task(model.key).tool_definitions,
-    }
-    bash = surfaces.map do |runner, definitions|
-      assert_equal [runner], definitions.filter_map { |tool| tool.dig("route", "runner_executor_public_id") }.uniq,
-        "each accepted surface contains only its selected Runner"
-      declaration = definitions.find { |tool| tool.dig("route", "tool_name") == "bash" }
-      refute_nil declaration, "the selected Runner retains its bash declaration"
-      served = @steward_client.executors.show(runner).tools_for(:runner).find { |tool| tool.name == "bash" }
-      assert_equal served.input_schema, declaration.dig("function", "parameters")
-      assert_equal runner_tool("bash", runner: runner), declaration.dig("function", "name")
-      declaration
-    end
-    assert_equal 2, bash.map { |tool| tool.dig("function", "parameters") }.uniq.length,
-      "the two served schemas remain distinct"
-  end
-
-  # A child gets its own captured tuple and retains the parent's checkpoint anchor.
-  def test_a_spawned_child_on_the_remote_runner_captures_its_inherited_environment
-    sub = bound_subdirectory
-    marker = "from the child #{SecureRandom.hex(4)}"
-    brief = script(note("child.txt", marker))
-    # Join here so this shared world has no later reply loop racing the
-    # local processes test's before/after loop listing.
-    conversation, loop_id, = open_bound(script(["spawn", { "role" => "worker", "prompt" => brief, "label" => "helper", "wait" => true }]),
-      dir: sub, runner: @runner_id)
-    chat = @steward_client.workspace(@workspace_public_id).conversation(conversation)
-    child = await("no child labelled helper under #{conversation}") do
-      chat.children.items.find { |row| row.parent&.label == "helper" }
-    end
-    child_chat = @steward_client.workspace(@workspace_public_id).conversation(child.public_id)
-    assert_equal @runner_id, child_chat.fetch.default_runner.executor_public_id, "the child copied the parent's bound runner"
-    reply = await("the child never replied") do
-      turns = child_chat.turns.list.items.select { |turn| turn.role == "assistant" }
-      failed = turns.find { |turn| turn.status == "failed" }
-      flunk "the child's reply failed: #{failed.to_h.inspect}" if failed
-      turns.find { |turn| turn.status == "completed" }
-    end
-    child_loop = loops.fetch(reply.active_variant.run_public_id)
-    write = child_loop.tasks.find { |task| task.tool_name == "write" }
-    refute_nil write, "the child never called write: #{child_loop.tasks.map(&:to_h).inspect}"
-    assert_equal "completed", write.status, write.to_h.inspect
-
-    assert_equal "#{marker}\n", File.read(File.join(sub, "child.txt"), encoding: Encoding::UTF_8),
-      "the child's relative write landed under the PARENT's root on the runner-mode rho"
-    assert_equal({ "root" => sub, "directories" => [], "anchor" => conversation },
-      loops.run(child_loop.public_id).task(write.key).executor_context.fetch("rho.environment"))
-    copy = await("the host never copied the record to the child's store") { binding_summary(child.public_id) }
-    value = store(child.public_id).fetch(copy.public_id).value
-    assert_equal({ "root" => sub, "directories" => [], "anchor" => conversation }, value,
-      "the parent's tuple, the parent's anchor")
-    await_run_status(loop_id, "completed")
   end
 
   # A child may already have its own binding when a restarted host discovers

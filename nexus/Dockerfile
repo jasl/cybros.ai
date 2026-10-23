@@ -9,8 +9,8 @@
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
-# Make sure RUBY_VERSION matches the Ruby version in .ruby-version
-ARG RUBY_VERSION=4.0.7
+# Docker's latest published Ruby image; 4.0.9 is not published yet (2026-10-24).
+ARG RUBY_VERSION=4.0.8
 
 # JavaScript and CSS are architecture-independent output. Build them natively:
 # Bun's JavaScriptCore allocator cannot reliably run through QEMU during cross-builds.
@@ -21,7 +21,7 @@ RUN apt-get update -qq && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 ENV BUN_INSTALL=/usr/local/bun
 ENV PATH=/usr/local/bun/bin:$PATH
-ARG BUN_VERSION=1.4.2
+ARG BUN_VERSION=1.4.4
 RUN curl -fsSL https://bun.sh/install | bash -s -- "bun-v${BUN_VERSION}"
 COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile

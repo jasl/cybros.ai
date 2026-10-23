@@ -170,7 +170,7 @@ class Executors::NamedAgentTest < ActiveJob::TestCase
       "name" => "skill", "effect_profile" => Nexus::ToolRegistry::READ_ONLY_CLOSED,
     }], "documents" => [{ "name" => "private-handbook", "description" => "Publisher-only documents." }] } }), :accepted?
 
-    [nil, { "bindings" => [{ "name" => "conversation", "scope" => "conversation", "access" => "read_write" }] }].each do |limit|
+    [nil, { "bindings" => [{ "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" }] }].each do |limit|
       @definition.update!(memory_context_limit: limit)
       run = start_run
       round = run.tasks.sole

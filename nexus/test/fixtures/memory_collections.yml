@@ -1,0 +1,13 @@
+<% %w[system owner member agent curator].each do |user| %>
+<%= user %>:
+  account: cybros
+  user: <%= user %>
+  is_default: true
+<% end %>
+
+<% %w[shared personal dedicated].each do |workspace| %>
+<%= workspace %>:
+  account: cybros
+  workspace: <%= workspace %>
+  is_default: true
+<% end %>

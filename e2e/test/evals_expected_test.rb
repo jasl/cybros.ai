@@ -113,7 +113,6 @@ class EvalsExpectedTest < Minitest::Test
 
   D4 = %w[task-mail task-background-suite task-detached-receipt].freeze
 
-
   # D4 RIGHT IS THE DISPATCH ROUND'S DOOR: a waited task, two tasks, a task that does not name the
   # suite, a `start_process` beside it or in a round before it, each misses; no dispatch is no door.
   def test_d4_right_reads_the_dispatch_round
@@ -359,7 +358,6 @@ class EvalsExpectedTest < Minitest::Test
     unmarked = E2E::Evals::Trace.draw(E2E::Evals::Trace::EMPTY_GRAPH, [D.round("r1"), D.round("r2")], [])
     assert_equal 2, unmarked.mainline_rounds.size
   end
-
 
   def test_a_leaked_call_is_the_element_written_as_a_call_never_a_quote
     line = "#{E2E::PrintedEnvelope::CALL}bash {\"command\":\"bin/probe bravo\"}#{E2E::PrintedEnvelope::CALL_END}"

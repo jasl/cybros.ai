@@ -116,7 +116,7 @@
         )])
         .await;
         let m = Client::new(&server.url, "member").unwrap();
-        if let Err(error) = m.profile().memory().read(&Default::default()).await {
+        if let Err(error) = m.memory_collections().collection("collection").unwrap().documents().read(&Default::default()).await {
             errors.push(format!("memory_documents.valid_fixture: {error}"));
         }
     }
@@ -127,7 +127,7 @@
         )])
         .await;
         let m = Client::new(&server.url, "member").unwrap();
-        if let Err(error) = m.profile().memory().list(&Default::default()).await {
+        if let Err(error) = m.memory_collections().collection("collection").unwrap().documents().list().await {
             errors.push(format!("memory_documents.valid_list_fixture: {error}"));
         }
     }
@@ -138,7 +138,7 @@
         )])
         .await;
         let m = Client::new(&server.url, "member").unwrap();
-        if let Err(error) = m.profile().memory().grep(&Default::default()).await {
+        if let Err(error) = m.memory_collections().collection("collection").unwrap().documents().grep(&Default::default()).await {
             errors.push(format!("memory_documents.valid_grep_fixture: {error}"));
         }
     }

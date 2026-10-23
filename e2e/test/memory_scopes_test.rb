@@ -89,10 +89,10 @@ class MemoryScopesTest < Minitest::Test
     assert_includes task_output(@workspace_public_id, loop, written.fetch("key")), "Wrote speaker/notes.md"
     source_chat = steward_client.workspace(@workspace_public_id).conversation(conversation)
     bindings = source_chat.turns.fetch(turn).active_variant.memory_context.fetch("bindings")
-    speaker = bindings.find { |binding| binding.fetch("name") == "speaker" }.fetch("speaker_public_id")
+    speaker = bindings.find { |binding| binding.fetch("name") == "speaker" }.fetch("capture").fetch("speaker_public_id")
     core = Rho::Core.new(home: Rho::Home.resolve(base_url: @base_url, root: @home))
     source = core.memory_read(conversation, path: "speaker/notes.md", speaker_public_id: speaker)
-    assert_empty steward_client.profile.memory.list
+    assert_empty E2E::MemoryCollections.default_documents(steward_client.profile).list
 
     other = steward_client.workspaces.create(
       name: "Memory scopes #{SecureRandom.hex(4)}", idempotency_key: SecureRandom.uuid
@@ -110,9 +110,9 @@ class MemoryScopesTest < Minitest::Test
     assert_includes recalled.text, "note-#{token_a}"
 
     # Human-owned documents are still available when the Human selects user/.
-    steward_client.profile.memory.write("user/notes.md", "note-#{token_a}",
+    E2E::MemoryCollections.default_documents(steward_client.profile).write("notes.md", "note-#{token_a}",
       expected_public_id: nil, expected_lock_version: nil)
-    @written_notes += [[@steward.member_token, "user/notes.md"]]
+    @written_notes += [[@steward.member_token, "notes.md"]]
     chat = open_chat(steward_client, other.public_id)
     remembered = ask(chat, "what do you remember #{SecureRandom.hex(4)}")
     assert_equal @steward.public_id, remembered.answering_user_public_id
@@ -120,9 +120,9 @@ class MemoryScopesTest < Minitest::Test
     refute_predicate remembered.active_variant, :run_backed?, "the Human's reply reads memory without an agent loop or ask tool"
     assert_includes remembered.text, "## user/notes.md", "the block rendered the person's note in another workspace"
     assert_includes remembered.text, "note-#{token_a}"
-    assert_includes steward_client.profile.memory.list.map(&:path), "user/notes.md",
+    assert_includes E2E::MemoryCollections.default_documents(steward_client.profile).list.map(&:path), "notes.md",
       "the Human door lists only the explicitly authored Human document"
-    assert_equal "note-#{token_a}", steward_client.profile.memory.read("user/notes.md").content
+    assert_equal "note-#{token_a}", E2E::MemoryCollections.default_documents(steward_client.profile).read("notes.md").content
 
     # Another Agent's standalone work receives its own Speaker root, and
     # cannot read this Bot's notes even in a shared workspace.
@@ -172,9 +172,9 @@ class MemoryScopesTest < Minitest::Test
 
     # (iii) B writes `user/from-b.md` through the CONVERSATION door — it
     # lands under B's controlling Human, never under the conversation's.
-    from_b = chat_b.memory.write("user/from-b.md", "note-#{token_b}", expected_public_id: nil, expected_lock_version: nil)
+    from_b = chat_b.memory.write("user/from-b.md", "note-#{token_b}", **E2E::MemoryCollections.create_condition(chat_b.memory, "user/from-b.md"), expected_public_id: nil, expected_lock_version: nil)
     assert_equal "user/from-b.md", from_b.path
-    @written_notes += [[@human_b.member_token, "user/from-b.md"]]
+    @written_notes += [[@human_b.member_token, "from-b.md"]]
 
     # (iv) A's next turn: A's note, and NOT B's.
     a_second = ask(chat_a, "a-second-#{SecureRandom.hex(4)}")
@@ -192,8 +192,8 @@ class MemoryScopesTest < Minitest::Test
     refute_includes b_second_block, token_a, "A's note was rendered for B's turn: #{b_second_block.inspect}"
 
     # Each person's own door holds exactly their own note.
-    assert_equal ["user/notes.md"], steward_client.profile.memory.list.map(&:path)
-    assert_equal ["user/from-b.md"], client_for(@human_b.member_token).profile.memory.list.map(&:path)
+    assert_equal ["notes.md"], E2E::MemoryCollections.default_documents(steward_client.profile).list.map(&:path)
+    assert_equal ["from-b.md"], E2E::MemoryCollections.default_documents(client_for(@human_b.member_token).profile).list.map(&:path)
   end
 
   private
@@ -230,7 +230,7 @@ class MemoryScopesTest < Minitest::Test
     # have made only some of these, and a miss is reported, never raised.
     def restore_world
       (@written_notes || []).each do |token, path|
-        memory = client_for(token).profile.memory
+        memory = E2E::MemoryCollections.default_documents(client_for(token).profile)
         document = memory.read(path)
         memory.delete(path, expected_public_id: document.public_id, expected_lock_version: document.lock_version)
       rescue StandardError => error
@@ -248,7 +248,7 @@ class MemoryScopesTest < Minitest::Test
       conversations = client.workspace(workspace_public_id).conversations
       created = conversations.create(title: "Memory scopes", idempotency_key: SecureRandom.uuid,
         memory_context: { "bindings" => %w[conversation workspace user].map do |scope|
-          { "name" => scope, "scope" => scope, "access" => "read_write" }
+          { "name" => scope, "source" => { "scope" => scope }, "access" => "read_write" }
         end })
       conversations.conversation(created.public_id)
     end

@@ -98,6 +98,7 @@ class WorkspaceCommandReceiptTest < ActiveSupport::TestCase
     )
 
     @workspace.store_entries.delete_all
+    @workspace.with_lock { MemoryCollections::Drain.call(owner: @workspace, budget: 64) }
     Workspace.where(id: @workspace.id).delete_all
 
     assert_nil WorkspaceCommandReceipt.find_by(id: receipt.id)

@@ -121,19 +121,12 @@ class LiveRunTest < Minitest::Test
 
   private
 
-
-
-
-
-
     # rho's execution root for the connected identity.
     def work_root
       user = @daemon.status.dig("identity", "user_public_id")
       refute_nil user, "the daemon reports no identity"
       File.join(@home, "work", "users", user)
     end
-
-
 
     def report(row)
       puts "\n--- live agent loop -------------------------------------------"

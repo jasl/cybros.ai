@@ -1,0 +1,139 @@
+{
+  "projection": [
+    "public_id",
+    "name",
+    "description",
+    "scope",
+    "owner_public_id",
+    "speaker_public_id",
+    "is_default",
+    "archived_at",
+    "lock_version",
+    "created_at",
+    "updated_at",
+    "writable",
+    "manageable"
+  ],
+  "valid_fixture": {
+    "memory_collection": {
+      "public_id": "01995000-0000-7000-8000-000000000010",
+      "name": "Team notes",
+      "description": "Shared references",
+      "scope": "workspace",
+      "owner_public_id": "01900000-0000-7000-8000-000000000001",
+      "speaker_public_id": null,
+      "is_default": false,
+      "archived_at": null,
+      "lock_version": 2,
+      "created_at": "2026-10-23T00:00:00Z",
+      "updated_at": "2026-10-23T00:00:00Z",
+      "writable": true,
+      "manageable": true
+    }
+  },
+  "valid_default_fixture": {
+    "memory_collection": {
+      "public_id": "01995000-0000-7000-8000-000000000010",
+      "name": null,
+      "description": null,
+      "scope": "workspace",
+      "owner_public_id": "01900000-0000-7000-8000-000000000001",
+      "speaker_public_id": null,
+      "is_default": true,
+      "archived_at": null,
+      "lock_version": 2,
+      "created_at": "2026-10-23T00:00:00Z",
+      "updated_at": "2026-10-23T00:00:00Z",
+      "writable": true,
+      "manageable": true
+    }
+  },
+  "valid_list_fixture": {
+    "memory_collections": [
+      {
+        "public_id": "01995000-0000-7000-8000-000000000010",
+        "name": "Team notes",
+        "description": "Shared references",
+        "scope": "workspace",
+        "owner_public_id": "01900000-0000-7000-8000-000000000001",
+        "speaker_public_id": null,
+        "is_default": false,
+        "archived_at": null,
+        "lock_version": 2,
+        "created_at": "2026-10-23T00:00:00Z",
+        "updated_at": "2026-10-23T00:00:00Z",
+        "writable": true,
+        "manageable": true
+      }
+    ],
+    "pagination": {
+      "next_after": null
+    }
+  },
+  "valid_create_request": {
+    "memory_collection": {
+      "name": "Team notes",
+      "description": "Shared references"
+    }
+  },
+  "valid_update_request": {
+    "memory_collection": {
+      "name": "Revised notes",
+      "lock_version": 2
+    }
+  },
+  "valid_lifecycle_request": {
+    "memory_collection": {
+      "lock_version": 2
+    }
+  },
+  "valid_document_fixture": {
+    "memory": {
+      "path": "notes.md",
+      "collection_public_id": "01995000-0000-7000-8000-000000000010",
+      "public_id": "01995000-0000-7000-8000-000000000001",
+      "lock_version": 2,
+      "bytesize": 8,
+      "description": null,
+      "content": "the plan",
+      "written_at": "2026-09-15T00:00:00Z"
+    }
+  },
+  "valid_skill_fixture": {
+    "memory": {
+      "path": "skills/commit-style",
+      "collection_public_id": "01995000-0000-7000-8000-000000000010",
+      "public_id": "01995000-0000-7000-8000-000000000002",
+      "lock_version": 0,
+      "bytesize": 33,
+      "description": "How this team writes commit messages. Use before every commit.",
+      "content": "# Commits\n\nOne line, imperative.\n",
+      "written_at": "2026-09-15T00:00:00Z"
+    }
+  },
+  "valid_documents_fixture": {
+    "memory": [
+      {
+        "path": "notes.md",
+        "collection_public_id": "01995000-0000-7000-8000-000000000010",
+        "public_id": "01995000-0000-7000-8000-000000000001",
+        "lock_version": 2,
+        "bytesize": 8,
+        "description": null,
+        "written_at": "2026-09-15T00:00:00Z"
+      }
+    ]
+  },
+  "valid_write_request": {
+    "memory": {
+      "path": "notes.md",
+      "content": "the plan",
+      "expected_public_id": null,
+      "expected_lock_version": null
+    }
+  },
+  "valid_delete_fixture": {
+    "status": 204,
+    "body": null
+  }
+}

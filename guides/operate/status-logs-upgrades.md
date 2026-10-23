@@ -30,7 +30,10 @@ Commands run from the stack's installation directory.
 A failed pull leaves the running application alone. A failed database export prevents migration and keeps the application stopped for explicit recovery. A failed or uncertain migration leaves services stopped and records recovery guidance; the updater never resets a database, retries an uncertain migration or silently rolls back. `upgrade-resume` can repeat preparation before migration began, and can continue activation afterward only when the migration is proven successful; otherwise inspect the retained migration container and restore a matching backup.
 
 ::: warning Pre-release databases
-This pre-release assumes a freshly initialized database when the schema changes incompatibly. Stable releases will keep incremental migrations. An older image never reverses a migration.
+This pre-release assumes a freshly initialized database when the schema changes incompatibly.
+The memory collection schema requires that rebuild and has no conversion for the previous data
+model. Follow the [compatibility policy](../overview/release-and-compatibility.md) before choosing
+an upgrade path. Stable releases will keep incremental migrations. An older image never reverses a migration.
 :::
 
 ### Nexus-only upgrade from the browser

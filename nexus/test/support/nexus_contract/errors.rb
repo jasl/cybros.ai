@@ -90,6 +90,7 @@ module Nexus
       "memory_pattern_invalid" => 422,
       "memory_pattern_too_costly" => 422,
       "memory_scope_unavailable" => 422,
+      "memory_collection_provider_unsupported" => 422,
       **WRITE_FENCE,
       "skill_description_required" => 422,
       "skill_name_invalid" => 422,

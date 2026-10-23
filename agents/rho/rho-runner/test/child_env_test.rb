@@ -7,7 +7,7 @@ class ChildEnvTest < Minitest::Test
   def test_strips_bundlers_trail_and_keeps_the_rest
     env = Rho::Runner::ChildEnv.call
 
-    assert_empty env.keys.grep(/\ABUNDLE_|\ABUNDLER_/),
+    assert_empty env.keys.grep(/\ABUNDLE_|\ABUNDLER_(ORIG_|SETUP\z|VERSION\z)/),
       "a child would load rho's Gemfile: #{env.keys.grep(/BUNDLE/).inspect}"
     # A RUBYLIB or RUBYOPT that predates Bundler is the person's own and
     # stays; Bundler's additions to them must not.
@@ -15,6 +15,13 @@ class ChildEnvTest < Minitest::Test
     refute_match(/bundler/, env.fetch("RUBYLIB", ""))
     assert_equal ENV.fetch("HOME"), env["HOME"]
     assert_equal "1", env["PYTHONUNBUFFERED"]
+  end
+
+  def test_the_persons_bundler_editor_is_preserved_for_tools_but_scrubbed_for_third_parties
+    with_bundler_snapshot({ "BUNDLER_EDITOR" => "vim" }) do
+      assert_equal "vim", Rho::Runner::ChildEnv.call.fetch("BUNDLER_EDITOR")
+      refute Rho::Runner::ChildEnv.scrubbed.key?("BUNDLER_EDITOR")
+    end
   end
 
   def test_without_bundler_the_same_keys_are_dropped_by_name

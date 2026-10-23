@@ -27,6 +27,20 @@ class Runs::CompileTest < ActiveSupport::TestCase
   def reads(result, key) = nodes(result).fetch(key)["input_from_node_keys"]
   def tip_keys(tip) = [tip.mainline&.key, tip.waits.map(&:key), tip.reads.map(&:key)]
 
+  test "only explicit member-authored asks opt into indefinite coordination" do
+    result = compile([ask("held", "indefinite" => true), ask("ordinary"),
+      ask("finite", "indefinite" => false), { "wait" => { "task" => "held", "key" => "observer" } }])
+    assert_predicate result, :valid?, result.errors.inspect
+    assert_nil nodes(result).fetch("held").fetch("await_timeout_ms")
+    %w[ordinary finite observer].each do |key|
+      assert_equal Tasks::AwaitTask::DEFAULT_TIMEOUT_MS, nodes(result).fetch(key).fetch("await_timeout_ms")
+    end
+    [ask("bad", "indefinite" => true, "timeout_ms" => 1000), ask("bad", "indefinite" => "yes")].each do |step|
+      assert_equal "invalid_indefinite", compile([step]).errors.sole.fetch("code")
+    end
+    assert_equal "invalid_indefinite", compile([Step::Ask.new(prompt: "wait", indefinite: true)], kernel: true).errors.sole.fetch("code")
+  end
+
   test "image work is a finite prompt branch and never reads text history" do
     image = model("picture", "workload" => "image_generation", "model" => { "model" => "dev/mock-image" })
     result = compile([image], after_round)

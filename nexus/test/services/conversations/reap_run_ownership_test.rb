@@ -13,6 +13,7 @@ class Conversations::ReapRunOwnershipTest < ActiveJob::TestCase
     declare_tools!(@agent)
     @conversation = Conversation.create!(workspace: @workspace,
       creating_user: @human, answering_user: @agent, access_default: "none")
+    MemoryCollection.default_for(@conversation)
   end
 
   test "reaping a completed conversation never publishes its loop as a standalone host" do
@@ -90,8 +91,15 @@ class Conversations::ReapRunOwnershipTest < ActiveJob::TestCase
     end
     @workspace.update_columns(deleted_at: 31.days.ago)
 
-    # A single aggregate budget stops after the conversation stage. Its
-    # former engine cannot become readable between collector passes.
+    # Workspace and Conversation birth defaults each cost a leaf unit.
+    # Every committed pass keeps the engine hidden, including the later
+    # aggregate deletion that detaches its former host.
+    2.times do
+      assert_equal 1, Workspaces::Collect.call(budget: 1)[:processed]
+      assert Conversation.exists?(@conversation.id)
+      assert_not Run.visible_to(@human).exists?(run.id)
+      assert_not run.reload.standalone?
+    end
     assert_equal 1, Workspaces::Collect.call(budget: 1)[:processed]
     assert_not Conversation.exists?(@conversation.id)
     assert_not Run.listable.exists?(run.id)

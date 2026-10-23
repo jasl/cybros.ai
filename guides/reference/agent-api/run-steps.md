@@ -311,6 +311,13 @@ background.
   beside `prompt`, the executor inbox's ask row — and are absent when the
   asker gave none. The answer is the person's text (`<answer>` carries it
   as it always did; none of the references echoes the option list).
+  Member-authored asks may instead set `indefinite: true` for coordination
+  owned by the submitting application. Omit `timeout_ms` in that case;
+  combining them, passing a non-boolean `indefinite`, or requesting it from
+  model/executor-authored work refuses `invalid_indefinite`. Omitted, null
+  or false keeps the ordinary finite default. The hold has no deadline and
+  stays `dispatched` without requesting human attention until resolved or
+  canceled. It grants no permission to execute later tools.
 
 - `wait` — `task` names existing work by task key; optional `run_public_id` is
   the source execution's public UUID, defaulting to the current run. A
@@ -455,14 +462,17 @@ engine — and its answer arrives through the executor plane's commit
 ### An await task
 
 Shared by human questions, finite waits for existing work,
-and a waited spawn's original reply. Human questions carry `prompt?`
+a waited spawn's original reply, and explicitly indefinite application coordination. Human questions carry `prompt?`
 (the question: an await that cannot say what
 it is waiting for hands a human a task key), `timeout_ms?` (≤7 days;
 default 1 hour). The park's effective deadline is
 `min(timeout_ms, 24 hours)` — a clamp each park carries on its own,
 never a budget the run's parks share: a run may park as many times
 as its work needs (there is no cumulative park-time ceiling). The authored timeout is never rewritten — what
-moves is the derived deadline. An attention hold is not a park and has
+moves is the derived deadline. An explicitly indefinite member-authored ask
+has no deadline; its resolution token and Run still own settlement and cancellation.
+Finite asks, task observations, spawned-reply waits, approval windows and tool
+execution deadlines retain their limits. An attention hold is not a park and has
 no clock at all.
 
 **Who may answer depends on who asked.** An authored ask — appended

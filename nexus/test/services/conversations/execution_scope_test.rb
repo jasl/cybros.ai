@@ -15,8 +15,10 @@ class Conversations::ExecutionScopeTest < ActiveJob::TestCase
     declare_tools!(@agent, tools: Nexus::ToolRegistry.wire_names_in("nexus.memory").map do |name|
       Nexus::ToolRegistry.function_definition(name)
     end)
+    MemoryCollection.default_for(@conversation)
+    MemoryCollection.default_for(@agent, speaker: @speaker)
     @limit = { "bindings" => %w[conversation workspace speaker].map do |scope|
-      { "name" => scope, "scope" => scope, "access" => (scope == "workspace" ? "read" : "read_write") }
+      { "name" => scope, "source" => { "scope" => scope }, "access" => (scope == "workspace" ? "read" : "read_write") }
     end }
     @agent.update!(memory_context_limit: @limit, conversation_reach: "subtree")
   end
@@ -27,7 +29,8 @@ class Conversations::ExecutionScopeTest < ActiveJob::TestCase
   end
 
   def document(path, content, agent: @agent, speaker: @speaker)
-    anchor = Scopes::Anchor.call(path: path, conversation: @conversation, workspace: @workspace,
+    MemoryCollection.default_for(agent, speaker: speaker) if path.start_with?("speaker/")
+    anchor = memory_anchor(path: path, conversation: @conversation, workspace: @workspace,
       user: @human, agent: agent, speaker: speaker)
     result = MemoryDocuments::Write.call(anchor: anchor, content: content, expected: nil)
     assert_predicate result, :written?, result.outcome.to_s
@@ -59,7 +62,7 @@ class Conversations::ExecutionScopeTest < ActiveJob::TestCase
     assert_equal "subtree", run.conversation_reach
     @agent.update!(memory_context_limit: nil, conversation_reach: nil)
     @conversation.reload.update!(memory_context: nil)
-    assert_equal @speaker.public_id, run.memory_context.fetch("bindings").last.fetch("speaker_public_id")
+    assert_equal @speaker.public_id, run.memory_context.fetch("bindings").last.fetch("source").fetch("speaker_public_id")
     assert_equal "subtree", run.reload.conversation_reach
 
     schedule_loop!(run)
@@ -74,8 +77,8 @@ class Conversations::ExecutionScopeTest < ActiveJob::TestCase
     end
     assert_includes run.tasks.find_by!(tool_call_id: "write_shared").output_body.effective_text, "memory_read_only"
     assert_includes run.tasks.find_by!(tool_call_id: "read_private").output_body.effective_text, "memory_scope_unavailable"
-    assert_equal "updated Speaker fact", MemoryDocument.for_speaker(@agent.id, @speaker.id).sole.content
-    assert_equal "shared Workspace fact", MemoryDocument.for_workspace(@workspace.id).sole.content
+    assert_equal "updated Speaker fact", MemoryCollection.default_for(@agent, speaker: @speaker).memory_documents.sole.content
+    assert_equal "shared Workspace fact", @workspace.memory_documents.sole.content
     assert_equal turn.active_variant.memory_context, run.memory_context
   end
 
@@ -85,7 +88,7 @@ class Conversations::ExecutionScopeTest < ActiveJob::TestCase
     document("speaker/preferences.md", "another Speaker", speaker: other)
     document("speaker/preferences.md", "this Speaker")
     _turn, run = materialize_loop_reply!(@conversation, agent: @human, text: "remember")
-    assert_equal @speaker.public_id, run.memory_context.fetch("bindings").last.fetch("speaker_public_id")
+    assert_equal @speaker.public_id, run.memory_context.fetch("bindings").last.fetch("source").fetch("speaker_public_id")
     assert_includes seed_text(run), "this Speaker"
     refute_includes seed_text(run), "another Speaker"
     assert_equal :memory_scope_unavailable, context.resolve("speaker/preferences.md").refusal
@@ -114,12 +117,12 @@ class Conversations::ExecutionScopeTest < ActiveJob::TestCase
   test "limits do not restore omitted roots and discard foreign conversation aliases" do
     other = Conversation.create!(workspace: @workspace, creating_user: @human)
     selected = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read" },
-      { "name" => "foreign", "scope" => "conversation", "access" => "read_write", "conversation_public_id" => other.public_id },
-      { "name" => "agent", "scope" => "agent", "access" => "read_write" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read" },
+      { "name" => "foreign", "source" => { "scope" => "conversation", "conversation_public_id" => other.public_id }, "access" => "read_write" },
+      { "name" => "agent", "source" => { "scope" => "agent" }, "access" => "read_write" },
     ] }
     @conversation.update!(memory_context: selected)
-    assert_equal [{ "name" => "conversation", "scope" => "conversation", "access" => "read" }],
+    assert_equal [{ "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read" }],
       @conversation.effective_memory_context.fetch("bindings")
   end
 
@@ -132,6 +135,9 @@ class Conversations::ExecutionScopeTest < ActiveJob::TestCase
       memory_context: MemoryContext.capture(configuration: nil, speaker: receiver_speaker))
     input = Input.new(host: target, authoring_user: @agent, answering_user: receiver,
       account: @account, origin: "agent", sender_run_public_id: source.public_id, speaker: @speaker)
+    MemoryCollection.default_for(target)
+    MemoryCollection.default_for(receiver)
+    MemoryCollection.default_for(receiver, speaker: @speaker)
     received = context(target, configuration: input.execution_memory_context, agent: receiver)
     assert_equal %w[conversation workspace speaker], received.bindings.map(&:name)
     anchor = received.resolve("speaker/preferences.md", authoring: true)
@@ -158,7 +164,7 @@ class Conversations::ExecutionScopeTest < ActiveJob::TestCase
     standalone = seed(ask("question", "prompt" => "Continue?"), creating_user: @agent, prompt_mechanism: "raw")
     assert_nil standalone.tasks.first.operation_context
     assert_equal "subtree", standalone.conversation_reach
-    assert_equal %w[conversation workspace speaker], standalone.memory_context.fetch("bindings").map { |entry| entry.fetch("scope") }
+    assert_equal %w[workspace speaker], standalone.memory_context.fetch("bindings").map { |entry| entry.fetch("source").fetch("scope") }
     @agent.update!(memory_context_limit: nil, conversation_reach: nil)
     grow!(standalone, model("later", "prompt" => "history", "tools" => [Nexus::ToolRegistry.function_definition("session_search")]))
     assert_equal "subtree", standalone.reload.conversation_reach
@@ -167,11 +173,11 @@ class Conversations::ExecutionScopeTest < ActiveJob::TestCase
 
   test "Speaker documents and Agent documents have independent capacity" do
     @agent.update!(memory_context_limit: nil)
-    MemoryDocument::MAX_DOCUMENTS_PER_ANCHOR.times { |index| document("agent/note-#{index}.md", "private") }
-    MemoryDocument::MAX_DOCUMENTS_PER_ANCHOR.times { |index| document("speaker/note-#{index}.md", "about this speaker") }
-    assert_equal 64, MemoryDocument.for_user(@agent.id).count
-    assert_equal 64, MemoryDocument.for_speaker(@agent.id, @speaker.id).count
-    anchor = Scopes::Anchor.call(path: "speaker/overflow.md", agent: @agent, speaker: @speaker)
+    MemoryDocument::MAX_DOCUMENTS_PER_COLLECTION.times { |index| document("agent/note-#{index}.md", "private") }
+    MemoryDocument::MAX_DOCUMENTS_PER_COLLECTION.times { |index| document("speaker/note-#{index}.md", "about this speaker") }
+    assert_equal 64, MemoryCollection.default_for(@agent).memory_documents.count
+    assert_equal 64, MemoryCollection.default_for(@agent, speaker: @speaker).memory_documents.count
+    anchor = memory_anchor(path: "speaker/overflow.md", agent: @agent, speaker: @speaker)
     assert_equal :memory_full, MemoryDocuments::Write.call(anchor: anchor, content: "full", expected: nil).outcome
     another = Speakers::Resolve.member(account: @account, user: users(:owner))
     assert_predicate document("speaker/notes.md", "new speaker", speaker: another), :persisted?
@@ -188,7 +194,7 @@ class Conversations::ExecutionScopeTest < ActiveJob::TestCase
   test "skill catalogs use the same limited roots as document reads" do
     configuration = MemoryContext.capture(configuration: @conversation.effective_memory_context, speaker: @speaker)
     %w[agent user workspace speaker].each do |scope|
-      anchor = Scopes::Anchor.call(path: "#{scope}/skills/#{scope}-skill", user: @human,
+      anchor = memory_anchor(path: "#{scope}/skills/#{scope}-skill", user: @human,
         workspace: @workspace, agent: @agent, speaker: @speaker)
       written = MemoryDocuments::Write.call(anchor: anchor, content: "#{scope} instructions", description: "A #{scope} skill", expected: nil)
       assert_predicate written, :written?

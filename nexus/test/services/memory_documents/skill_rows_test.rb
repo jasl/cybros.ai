@@ -8,16 +8,16 @@ class MemoryDocuments::SkillRowsTest < ActiveSupport::TestCase
     @human = users(:member)
     @workspace = workspaces(:shared)
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human)
+    MemoryCollection.default_for(@conversation)
   end
 
   def anchor(path)
-    Scopes::Anchor.call(path: path, workspace: @workspace, conversation: @conversation, user: @human)
+    memory_anchor(path: path, workspace: @workspace, conversation: @conversation, user: @human)
   end
 
   def write(path, content = "body", description: nil)
     resolved = anchor(path)
-    MemoryDocument.transaction do
-      resolved.lockable.lock!
+    resolved.collection.with_mutation do
       MemoryDocuments::Write.call(anchor: resolved, expected: memory_expectation_at(resolved), content: content, description: description)
     end
   end
@@ -55,7 +55,7 @@ class MemoryDocuments::SkillRowsTest < ActiveSupport::TestCase
     # Bytes, not characters: the line a model reads is bounded in bytes.
     assert_equal :memory_description_invalid, write("workspace/skills/y", description: "é" * 600).outcome
     assert_equal :memory_description_invalid, write("workspace/notes.md", description: "a plain note").outcome
-    assert_not MemoryDocument.for_workspace(@workspace.id).exists?(name: "notes.md")
+    assert_not @workspace.memory_documents.exists?(name: "notes.md")
   end
 
   test "skill_name_invalid: the remainder must be a skill name — no nesting, no case, no bare prefix" do
@@ -67,7 +67,7 @@ class MemoryDocuments::SkillRowsTest < ActiveSupport::TestCase
 
   test "skill_scope_unavailable: a skill is never per conversation" do
     assert_equal :skill_scope_unavailable, write("conversation/skills/plan", description: "d").outcome
-    assert_not MemoryDocument.for_conversation(@conversation.id).exists?
+    assert_not @conversation.memory_documents.exists?
   end
 
   test "the refusals come in the design's order: name, then scope, then description" do
@@ -84,7 +84,7 @@ class MemoryDocuments::SkillRowsTest < ActiveSupport::TestCase
   test "the listing carries the description beside the path" do
     write("workspace/skills/commit-style", description: "How this team writes commits.")
     write("workspace/notes.md", "n")
-    entries = MemoryDocuments::Listing.call(documents: MemoryDocument.for_workspace(@workspace.id))
+    entries = MemoryDocuments::Listing.call(documents: @workspace.memory_documents)
     assert_equal [["workspace/notes.md", nil], ["workspace/skills/commit-style", "How this team writes commits."]],
       entries.map { |entry| [entry.path, entry.description] }
   end

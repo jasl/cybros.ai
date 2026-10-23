@@ -1,4 +1,5 @@
 require_relative "../../memory_commands"
+require_relative "../../memory_collections"
 require_relative "../../speakers"
 
 module Rho
@@ -9,8 +10,9 @@ module Rho
       module Memory
         class << self
           def register(api)
+            api.register_route("GET", "/memory_collections") { |request, ctx| collections(request, ctx) }
             api.register_route("GET", "/conversations/memory") { |request, ctx| list(request, ctx) }
-            %w[read write edit delete grep].each do |operation|
+            %w[target read write edit delete grep].each do |operation|
               api.register_route("POST", "/conversations/memory/#{operation}") do |request, ctx|
                 operate(request, ctx, operation)
               end
@@ -20,6 +22,14 @@ module Rho
               description: "Manage database memory with logical file paths",
               options: { json: { type: :boolean, default: false, desc: "Print JSON" },
                 speaker: { type: :string, desc: "Speaker public UUID for memory" } }, &method(:command))
+          end
+
+          def collections(request, ctx)
+            query = ControlServer.query(request)
+            ctx.member_plane(request, require_workspace: false) do |client|
+              page = client.memory_collections.list(after: query["after"], limit: 50)
+              [200, { memory_collections: page.items.map(&:to_h), pagination: { next_after: page.next_after } }]
+            end
           end
 
           def list(request, ctx)
@@ -37,8 +47,13 @@ module Rho
 
           def operate(request, ctx, operation)
             with_conversation(request, ctx) do |conversation, body, client|
-              memory = memory_door(client, conversation, ctx, speaker_public_id: body["speaker_public_id"])
+              speaker = memory_speaker(client, conversation, ctx, body["speaker_public_id"])
+              memory = conversation.memory(speaker_public_id: speaker)
               case operation
+              when "target"
+                binding = Rho::MemoryCollections.target(conversation: conversation, path: body.fetch("path"),
+                  speaker_public_id: speaker, client: client)
+                [200, { memory_binding: binding }]
               when "read"
                 [200, { memory: memory.read(body.fetch("path")).to_h }]
               when "write"
@@ -62,7 +77,8 @@ module Rho
 
           def bind(request, ctx)
             with_conversation(request, ctx) do |conversation, body|
-              [200, { conversation: conversation.set_memory_context(memory_context: body.fetch("memory_context")).to_h }]
+              row = conversation.set_memory_context(memory_context: body.fetch("memory_context"))
+              [200, { conversation: Conversations.document(row, ctx) }]
             end
           end
 
@@ -79,12 +95,15 @@ module Rho
           private
 
             def memory_door(client, conversation, ctx, speaker_public_id:)
+              conversation.memory(speaker_public_id: memory_speaker(client, conversation, ctx, speaker_public_id))
+            end
+
+            def memory_speaker(client, conversation, ctx, speaker_public_id)
               if speaker_public_id.nil? && conversation.fetch.answering_user_public_id == ctx.own_user_public_id
-                # Main conversations address the owner. A Bot's management call
-                # has no current participant, so it must select one explicitly.
-                speaker_public_id = Speakers.owner(client: client, agent_public_id: ctx.own_user_public_id).public_id
+                Speakers.owner(client: client, agent_public_id: ctx.own_user_public_id).public_id
+              else
+                speaker_public_id
               end
-              conversation.memory(speaker_public_id: speaker_public_id)
             end
 
             def with_conversation(request, ctx)
@@ -99,7 +118,7 @@ module Rho
             end
 
             def expected(body)
-              { expected_public_id: body.fetch("expected_public_id"), expected_lock_version: body.fetch("expected_lock_version") }
+              { expected_collection_public_id: body.fetch("expected_collection_public_id"), expected_public_id: body.fetch("expected_public_id"), expected_lock_version: body.fetch("expected_lock_version") }
             end
         end
       end

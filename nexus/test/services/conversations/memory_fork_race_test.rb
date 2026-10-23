@@ -33,14 +33,24 @@ class Conversations::MemoryForkRaceTest < ActiveJob::TestCase
       release_row_lock(@held) if @held
     ensure
       stop_database_call(@call) if @call
-      @child&.with_lock { Conversations::Reap.destroy_aggregate(@child) }
-      if @run
-        UsageRecord.where(model_invocation_public_id: @run.model_invocations.select(:public_id)).delete_all
-        Runs::Reap.destroy_aggregate(@run.reload)
+      [@child, @conversation].compact.each do |conversation|
+        next unless Conversation.exists?(conversation.id)
+
+        run_ids = conversation.hosted_runs.pluck(:id)
+        Conversations::Turns::Cancel.stop_now(conversation.reload)
+        Conversations::Turns::Converge.call(conversation_id: conversation.id)
+        Conversations::Tombstone.call(conversation: conversation.reload)
+        if Conversation.exists?(conversation.id)
+          conversation.reload.update!(tombstoned_at: (Conversation::RETENTION_PERIOD + 1.day).ago)
+          Conversations::Reap.call(batch: 20)
+        end
+        Run.where(id: run_ids).each { |run| run.with_lock { Runs::Reap.destroy_aggregate(run) } }
       end
-      @conversation&.with_lock { Conversations::Reap.destroy_aggregate(@conversation) }
+      # Production reclamation retains audit rows; this committed fixture
+      # removes its own receipts even after their invocations have been reaped.
+      UsageRecord.where(conversation_public_id: [@child, @conversation].compact.map(&:public_id)).delete_all
       if @name
-        MemoryDocument.where(user_id: @agent.id, name: @name).find_each do |document|
+        @agent.memory_documents.where(name: @name).find_each do |document|
           version_id = document.memory_document_version_id
           document.destroy!
           MemoryDocumentVersion.reclaim(version_id)
@@ -71,6 +81,6 @@ class Conversations::MemoryForkRaceTest < ActiveJob::TestCase
     assert_predicate @child, :persisted?
     assert_equal "completed", @node.reload.status
     refute @node.output_summary["is_error"], @node.output_body.effective_text
-    assert_equal "remembered during the fork", MemoryDocument.find_by!(user_id: @agent.id, name: @name).content
+    assert_equal "remembered during the fork", @agent.memory_documents.find_by!(name: @name).content
   end
 end

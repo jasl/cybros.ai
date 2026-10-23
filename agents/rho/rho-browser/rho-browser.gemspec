@@ -42,5 +42,5 @@ Gem::Specification.new do |spec|
   # PINNED TO THE MINOR, because the Ruby client tracks the Node driver's
   # protocol release for release (`Playwright::COMPATIBLE_PLAYWRIGHT_VERSION`)
   # and a driver a minor ahead or behind is not a supported pair.
-  spec.add_dependency "playwright-ruby-client", "~> 1.62.0"
+  spec.add_dependency "playwright-ruby-client", "~> 1.64.0"
 end

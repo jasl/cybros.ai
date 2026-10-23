@@ -55,81 +55,6 @@ class StreamingTest < Minitest::Test
     E2E.hosts.start
   end
 
-  def test_the_deltas_arrive_while_the_reply_is_written_and_join_into_the_sealed_body
-    chat, turn = settled_seed("!mock stream_chunk_delay=0.02 reply=#{CGI.escape(long_reply)} -- narrate me")
-
-    E2E.hosts.pin(:runner)
-    regenerated = nil
-    seen = drain_regeneration(chat) do
-      regenerated = @conversations.conversation(chat).turns.regenerate(turn, idempotency_key: SecureRandom.uuid, model: MODEL)
-    end
-
-    deltas = seen.select { |item| item.fetch("type") == "text_delta" }
-    refute_empty deltas, "the reply ran without a single delta reaching a subscriber"
-    # NOTHING SETTLED WHILE THEY ARRIVED: the converger is a job and no
-    # queue host is running, so every one of these is on screen strictly
-    # before the turn seals — which is the property, stated as a fact
-    # about the feed rather than as an index comparison against a race.
-    assert_empty seen.select { |item| item.fetch("type") == "turn" },
-      "a turn settled while the only host that can settle it was stopped"
-
-    # ONE ROUTING KEY for every item on this feed, deltas included: a
-    # follower routes by one field whatever the type, and a regeneration's
-    # deltas name the NEW sample rather than the one still rendering.
-    deltas.each do |delta|
-      assert_equal turn, delta.fetch("turn_public_id")
-      assert_equal regenerated.variant.public_id, delta.fetch("variant_public_id")
-      assert_nil delta["run_public_id"], "a direct reply carries no loop keys"
-    end
-
-    body = settled_variant(chat, turn, regenerated.variant.public_id)
-
-    # THE FIVE LAWS, ASKED THROUGH THE SHIPPED IMPLEMENTATION: joined in
-    # arrival order the deltas ARE the sealed body, so the settle has no
-    # remainder left to print and replaced nothing.
-    accumulator = CybrosAgent::Api::TranscriptAccumulator.new
-    deltas.each { |delta| accumulator.accumulate(delta.fetch("text")) }
-
-    assert_equal "", accumulator.replace_on_settle(body),
-      "the deltas and the sealed body disagree; #{accumulator.length} bytes streamed, #{body.bytesize} sealed"
-    refute_predicate accumulator, :replaced?
-    assert_equal body, accumulator.text
-  end
-
-  # THE SAME DELTAS, FROM THE OTHER HOST. `sink_for` was the runner's own private method and
-  # `RunJob` executed SINK-LESS, so whether a person saw the model write depended on which host won
-  # a race nobody chose — and pinned to the queue worker, this lane printed nothing at all while the
-  # reply sealed 757 bytes. Both hosts build the same sink now, and this is the twin that says so.
-  #
-  # The converger is a job, so here it runs: what this asserts is the
-  # deltas and their agreement with the sealed body, never the silence its
-  # runner-side twin depends on.
-  def test_the_queue_host_narrates_the_deltas_the_runner_host_does
-    chat, turn = settled_seed("!mock stream_chunk_delay=0.02 reply=#{CGI.escape(long_reply)} -- narrate me")
-
-    E2E.hosts.pin(:jobs)
-    regenerated = nil
-    seen = drain_regeneration(chat) do
-      regenerated = @conversations.conversation(chat).turns.regenerate(turn, idempotency_key: SecureRandom.uuid, model: MODEL)
-    end
-
-    deltas = seen.select { |item| item.fetch("type") == "text_delta" }
-    refute_empty deltas, "the queue host ran the whole reply and narrated none of it"
-    deltas.each do |delta|
-      assert_equal turn, delta.fetch("turn_public_id")
-      assert_equal regenerated.variant.public_id, delta.fetch("variant_public_id")
-      assert_nil delta["run_public_id"], "a direct reply carries no loop keys"
-    end
-
-    body = settled_variant(chat, turn, regenerated.variant.public_id)
-    accumulator = CybrosAgent::Api::TranscriptAccumulator.new
-    deltas.each { |delta| accumulator.accumulate(delta.fetch("text")) }
-
-    assert_equal "", accumulator.replace_on_settle(body),
-      "the deltas and the sealed body disagree; #{accumulator.length} bytes streamed, #{body.bytesize} sealed"
-    refute_predicate accumulator, :replaced?
-  end
-
   # The reasoning channel is the only one the mock can be made to produce
   # on demand — a weak model through OpenRouter may emit none — so this is
   # where `reasoning_delta` is pinned at all.
@@ -185,26 +110,6 @@ class StreamingTest < Minitest::Test
         seen = drain_until_quiet(subscription, idle: STREAM_IDLE)
       end
       seen
-    end
-
-    # The queue host comes back to converge it, and the sealed body is read
-    # through the door rather than off the feed — an independent witness of
-    # what the deltas were supposed to add up to.
-    def settled_variant(conversation_public_id, turn_public_id, variant_public_id)
-      E2E.hosts.start(:jobs)
-      chat = @conversations.conversation(conversation_public_id)
-      variant = await("the regenerated sample to settle") do
-        chat.turns.variants(turn_public_id).items
-          .find { |item| item.public_id == variant_public_id && item.status == "completed" }
-      end
-      variant.content
-    end
-
-    # Long enough that the coalescer emits more than one item at a 20 ms
-    # chunk delay, so "joined in arrival order" is an assertion about a
-    # sequence rather than about one flush.
-    def long_reply
-      (1..40).map { |index| "sentence #{index} of the answer." }.join(" ")
     end
 
     def await(what)

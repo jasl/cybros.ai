@@ -1,7 +1,7 @@
 # cybros-agent
 
 Asynchronous Rust clients for Cybros Nexus. The crate uses Tokio and reqwest;
-`realtime` adds a native Action Cable client. Minimum supported Rust: **1.85**.
+`realtime` adds a native Action Cable client. Minimum supported Rust: **1.88**.
 Repository development uses the pinned `rust-toolchain.toml`.
 
 ```toml
@@ -48,6 +48,23 @@ above the limit refuses the next positively priced request with
 `conversation_cost_limit_reached`; unknown pricing remains eligible. Raising or
 clearing it does not restart work: use the existing Run task retry operation to
 retain completed graph work.
+
+## Memory collections
+
+`client.memory_collections()` lists authorized collections and
+`.collection(id)` opens metadata and lifecycle operations. Owner-scoped
+`.memory_collections()` handles support creation and paginated discovery.
+`collection.documents()` uses relative paths and `CollectionMemoryWrite`,
+`CollectionMemoryEdit` and `CollectionMemoryDelete` document conditions.
+
+Conversation `.memory()` retains binding paths. Its `MemoryWrite`, `MemoryEdit`
+and `MemoryDelete` require `expected_collection_public_id` plus the original
+document UUID/version. Read `.bindings(&MemoryListQuery)` to select the collection
+for an absent path; null document conditions mean create only. `MemorySource`
+distinguishes scope and collection selection, while `MemoryContextLimit` permits
+only natural sources without private identities. Metadata/lifecycle use
+`MemoryCollectionVersion`; stale writes are returned without automatic retry.
+See [Memory collections](../../guides/reference/agent-api/memory-collections.md).
 
 ## Credentials and request boundaries
 
@@ -116,7 +133,7 @@ bin/ci
 ```
 
 This checks formatting, Clippy, default/all-feature tests, documentation, actual
-Rust 1.85 compilation, package verification and an external package consumer.
+Rust 1.88 compilation, package verification and an external package consumer.
 Tests use shared producer-owned fixtures under `../../contracts/nexus/v1` and native
 local HTTP/WebSocket servers. The operation inventory test invokes every supported
 operation through its real public method; fixtures are not copied into the crate.

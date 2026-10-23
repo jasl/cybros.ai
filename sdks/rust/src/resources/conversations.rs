@@ -71,6 +71,11 @@ impl ConversationContext {
     child!(inputs, "inputs", ConversationInputs);
     child!(schedules, "schedules", Schedules);
     child!(memory, "memory", Memory);
+    child!(
+        memory_collections,
+        "memory_collections",
+        OwnedMemoryCollections
+    );
     child!(store_entries, "store_entries", StoreEntries);
     child!(turns, "turns", Turns);
     query_get!(

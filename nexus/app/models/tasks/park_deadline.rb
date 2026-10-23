@@ -13,10 +13,9 @@ module Tasks
             (tasks.effect_profile->>'timeout_ms')::bigint,
             CAST(? AS bigint)
           )
-        ELSE LEAST(
-          COALESCE(tasks.await_timeout_ms, CAST(? AS bigint)),
-          CAST(? AS bigint)
-        )
+        WHEN tasks.await_timeout_ms IS NOT NULL
+          THEN LEAST(tasks.await_timeout_ms, CAST(? AS bigint))
+        ELSE NULL
         END * interval '1 millisecond'
       )
     SQL
@@ -25,7 +24,6 @@ module Tasks
       [
         ::Tasks::AwaitTask::MAX_HOLD_MS,
         ::Tasks::ToolTask::DEFAULT_TIMEOUT_MS,
-        ::Tasks::AwaitTask::DEFAULT_TIMEOUT_MS,
         ::Tasks::AwaitTask::MAX_HOLD_MS,
       ]
     end

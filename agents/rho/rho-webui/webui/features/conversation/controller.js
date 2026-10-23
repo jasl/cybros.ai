@@ -416,6 +416,36 @@ export function createConversations({ call, follow, artifactBytes, signal, toast
     refresh, loadOlder, setDraft,
     send: actions.send, sendNow: actions.sendNow, promote: actions.promote, stop: actions.stop,
     respond: actions.respond, execute: actions.execute, setMemoryReview: actions.setMemoryReview,
+    memoryEditor() {
+      const v = view;
+      const fields = target();
+      const check = () => {
+        if (!current(v)) throw new DOMException("Conversation changed", "AbortError");
+      };
+      return {
+        async read() {
+          check();
+          const detail = await call(query("/conversations/detail", fields), { signal: v.signal });
+          check();
+          return detail.conversation;
+        },
+        async collections(after) {
+          check();
+          const result = await call(query("/memory_collections", { ...fields, ...(after ? { after } : {}) }), { signal: v.signal });
+          check();
+          return result;
+        },
+        async save(memory_context) {
+          check();
+          if (!conversationControls(get().detail, get().access).send) throw new Error(t("memory_bindings.read_only"));
+          const result = await call("/conversations/memory_context", {
+            method: "POST", body: { ...fields, memory_context }, conversation: fields.public_id,
+          });
+          if (current(v)) patch({ detail: { ...get().detail, ...result.conversation } });
+          return result.conversation;
+        },
+      };
+    },
     setModel: (ref) => patch({ model: ref, modelEdited: true }),
     setApproval: (mode) => patch({ approval: mode }),
     setDelivery: (mode) => patch({ delivery: mode }),

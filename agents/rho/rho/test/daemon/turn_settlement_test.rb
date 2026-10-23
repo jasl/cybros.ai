@@ -179,7 +179,7 @@ class TurnSettlementTest < Minitest::Test
     conversation = workspace.conversation_row
     review = -> { Rho::MemoryReview.new(workspace: workspace, conversation_public_id: "conversation-1") }
     review.call.enable(path: "conversation/review.md")
-    conversation.turns.rows["turn"] = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.memory_context))
+    conversation.turns.rows["turn"] = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.capture(Fixtures.memory_context)))
     workspace.lose_fork = true
     context = Context.new(workspace)
 
@@ -209,10 +209,10 @@ class TurnSettlementTest < Minitest::Test
       conversation = workspace.conversation_row
       review = Rho::MemoryReview.new(workspace: workspace, conversation_public_id: "conversation-1")
       review.enable(path: "conversation/review.md")
-      source = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.memory_context))
+      source = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.capture(Fixtures.memory_context)))
       conversation.turns.rows["turn"] = source
       review.settled(Rho::TurnSettlement.new(workspace_public_id: "workspace", conversation_public_id: "conversation-1",
-        turn_public_id: source.public_id, run_public_id: "source", status: "completed", model: "test/model", memory_context: Fixtures.memory_context))
+        turn_public_id: source.public_id, run_public_id: "source", status: "completed", model: "test/model", memory_context: Fixtures.capture(Fixtures.memory_context)))
       side = workspace.conversation("side-1")
       turn = side.settle(content: "", status: status)
       context = Context.new(workspace)
@@ -241,7 +241,7 @@ class TurnSettlementTest < Minitest::Test
     conversation = workspace.conversation_row
     review = -> { Rho::MemoryReview.new(workspace: workspace, conversation_public_id: "conversation-1") }
     review.call.enable(path: "conversation/review.md")
-    conversation.turns.rows["turn"] = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.memory_context))
+    conversation.turns.rows["turn"] = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.capture(Fixtures.memory_context)))
     context = AsyncContext.new(workspace)
     loaded = Rho::Extensions.load(host: RhoTest.host, extensions: [Rho::Extensions::MemoryReview])
     owner = Host.new(loaded.daemon_hooks, @log, context)
@@ -268,10 +268,10 @@ class TurnSettlementTest < Minitest::Test
     conversation = workspace.conversation_row
     review = Rho::MemoryReview.new(workspace: workspace, conversation_public_id: "conversation-1")
     review.enable(path: "conversation/review.md")
-    source = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.memory_context))
+    source = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.capture(Fixtures.memory_context)))
     conversation.turns.rows["turn"] = source
     review.settled(Rho::TurnSettlement.new(workspace_public_id: "workspace", conversation_public_id: "conversation-1",
-      turn_public_id: "turn", run_public_id: "source", status: "completed", model: "test/model", memory_context: Fixtures.memory_context))
+      turn_public_id: "turn", run_public_id: "source", status: "completed", model: "test/model", memory_context: Fixtures.capture(Fixtures.memory_context)))
     side = workspace.conversation("side-1")
     turn = side.settle(content: "", status: "failed")
     context = Context.new(workspace)
@@ -305,7 +305,7 @@ class TurnSettlementTest < Minitest::Test
       conversation = workspace.conversation_row
       review = -> { Rho::MemoryReview.new(workspace: workspace, conversation_public_id: "conversation-1") }
       review.call.enable(path: "conversation/review.md")
-      conversation.turns.rows["turn"] = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.memory_context))
+      conversation.turns.rows["turn"] = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.capture(Fixtures.memory_context)))
       context = QueuedContext.new(workspace)
       block_input = ->(side, follower) do
         id, input = side.inputs.records.first
@@ -338,7 +338,7 @@ class TurnSettlementTest < Minitest::Test
     workspace = Fixtures::Workspace.new
     conversation = workspace.conversation_row
     Rho::MemoryReview.new(workspace: workspace, conversation_public_id: "conversation-1").enable(path: "conversation/review.md")
-    conversation.turns.rows["turn"] = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.memory_context))
+    conversation.turns.rows["turn"] = @source.with(active_variant: @source.active_variant.with(memory_context: Fixtures.capture(Fixtures.memory_context)))
     context = QueuedContext.new(workspace)
     loaded = Rho::Extensions.load(host: RhoTest.host, extensions: [Rho::Extensions::MemoryReview])
     Host.new(loaded.daemon_hooks, @log, context).complete(@run, conversation)
@@ -359,13 +359,13 @@ class TurnSettlementTest < Minitest::Test
     review.call.enable(path: "conversation/review.md")
     turns = [1, 2].map do |position|
       @source.with(public_id: "turn-#{position}", position: position,
-        active_variant: @source.active_variant.with(run_public_id: "source-#{position}", memory_context: Fixtures.memory_context))
+        active_variant: @source.active_variant.with(run_public_id: "source-#{position}", memory_context: Fixtures.capture(Fixtures.memory_context)))
     end
     turns.each { |turn| conversation.turns.rows[turn.public_id] = turn }
     settlements = turns.map do |turn|
       Rho::TurnSettlement.new(workspace_public_id: "workspace", conversation_public_id: "conversation-1",
         turn_public_id: turn.public_id, run_public_id: turn.active_variant.run_public_id,
-        status: "completed", model: "test/model", memory_context: Fixtures.memory_context)
+        status: "completed", model: "test/model", memory_context: Fixtures.capture(Fixtures.memory_context))
     end
     resources = Rho::Runner::Extensions::Resources.new(extension: "memory-review")
     observer = Rho::Extensions::MemoryReview::Observer.new(resources: resources, log: nil)

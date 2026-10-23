@@ -238,3 +238,13 @@
 .question-form__field .control { width: 100%; margin: 0; }
 .question-form__field .field__label, .question-form__field .check { overflow-wrap: anywhere; }
 .question-form__choices { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+
+/* Memory uses the same dialog, field and card primitives as settings. */
+.memory-bindings, .memory-bindings__fields, .memory-bindings__custom, .memory-bindings__rows {
+  display: flex; flex-direction: column; gap: 16px; min-width: 0;
+}
+.memory-bindings__fields { border: 0; padding: 0; margin: 0; }
+.memory-binding { display: flex; flex-direction: column; gap: 12px; min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--line-2); border-radius: var(--radius-lg); }
+.memory-binding .control { min-width: 0; max-width: 100%; }
+.memory-bindings__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.memory-bindings .rows__detail { overflow-wrap: anywhere; }

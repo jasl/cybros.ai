@@ -380,8 +380,14 @@ accepts the same tool, model, ask, step and observation operations from any runt
 
 ### Asks And Approval
 
+- A member-authored ask may explicitly select `indefinite: true` for application
+  coordination. Its existing resolution token and Run own settlement and Stop;
+  it has no deadline, announces no human attention and grants no execution authority.
+  Omission stays finite. Model questions, task observations, spawned-reply waits,
+  approval parks and tool claims keep their existing finite clocks. Later business
+  execution retains ordinary admission and approval; recovery never replays work.
 - `ask` is a first-class addressed wait, directly or through a task operation, listed and answered by a
-  console. Its per-park deadline is clamped to 24 hours, not shared across the run's parks;
+  console. A finite ask's per-park deadline is clamped to 24 hours, not shared across the run's parks;
   expiry holds for a human without another clock. Resolution narration records
   `resolved_by` with kind, public id, and handle so the deciding principal is visible.
 - Approval is the stage every tool row crosses between ready and running, including bypass mode.
@@ -683,7 +689,8 @@ accepts the same tool, model, ask, step and observation operations from any runt
 - Level-triggered, idempotent reconcilers and per-state sweeps own liveness. Jobs and socket
   wakes only reduce latency; models never require a job to have run. Unclosed work has a named
   holder and clock: invocation attempt, tool park, or await. Delegation completion observes its
-  original execution without adding a deadline. A human halt and an idle conversation have no clock.
+  original execution without adding a deadline. Explicit application coordination,
+  a human halt and an idle conversation have no clock.
 - A re-readable fact needs its row and persisted event. Archive/delete narrate
   `conversation_ended` with reason and member public id in the mutation transaction. A
   tombstone's final feed item precedes REST concealment and later collection. Runner processes
@@ -1026,59 +1033,96 @@ execution.
   mirrored blob facts, reference counts, release stamps, copy lineage, or another public
   attachment identity without a reachable writer. Fragment/unattached-blob reapers cover real
   orphan windows; staged-upload collection queries join existence, never a second truth.
-- Memory is one family of neutral immutable text versions at User, Workspace and Conversation
-  anchors. Default paths are `conversation/`, `workspace/`, `agent/` and `speaker/`. `agent/`
-  belongs to the answering Agent's User row. `speaker/` uses that same answering Agent plus
-  the current Speaker as its composite owner: one Bot's notes about one person, across
-  Workspaces and conversations. Neither another Bot nor another Speaker selects those notes.
-  A private Agent's fixed owner is the same Speaker case, not a separate memory system.
-  Human-owned `user/` remains available explicitly to that Human; an Agent never resolves it
-  implicitly through its controlling Human. Scope-specific doors never reach unrelated hosts.
-  Support bounded literal lookup, per-anchor clear, and fork copy-on-write restricted to the
-  inherited conversation prefix. Extraction, consolidation, semantic retrieval, ranking,
-  vector stores, and provider dependence remain outside this kernel family.
-- `memory_context.bindings` maps logical paths to database anchors: null keeps defaults, an
-  empty list disables memory, explicit roots declare read/read-write, and aliases may select
-  visible conversations in the same Workspace. `speaker_public_id` selects a Speaker subject
-  under the answering Agent and must name an existing same-Account Speaker. Input, preview and
-  standalone Run creation use a separate attribution selector that must name an ingress Speaker
-  controlled by the submitting Agent; omission keeps the member Speaker. Unbound inputs capture
-  their Speaker on materialization. Management never guesses a subject
-  from the most recent input. Spawn, send, callback, regeneration and schedules keep the
-  captured subject; another answerer uses its own notes about that same Speaker. Content stays
-  in the database, with one MemoryDocument/MemoryDocumentVersion implementation.
-- An Agent configuration's nullable `memory_context_limit` only narrows selected bindings by
-  natural scope and access. It cannot add a missing root or expose another Conversation alias.
-  The same effective context governs injection, all memory verbs, skills, previews and member
-  management; `effective_memory_context` exposes the current result. Accepted work retains its
-  frozen limits. Prompt slots are separate documents selected by the authored template; an
-  application excludes the Human persona by omitting that slot.
+- `MemoryCollection` owns MemoryDocument pointers; each document references one immutable
+  MemoryDocumentVersion. A collection belongs to exactly one User, Workspace or Conversation;
+  a Speaker collection adds one subject to an Agent User owner. Scope is derived, owner/subject
+  are immutable, labels need not be unique, and all external identities are UUIDv7.
+  Owners may have multiple collections. Bounds are 64 documents per collection, 64 KiB per
+  document, 16 bindings and the existing injection/copy budgets, never a combined owner quota.
+- User/Workspace/Conversation defaults are allocated in the owning creation transaction.
+  Agent/Speaker defaults are prepared on an accepting write path before Conversation/Run locks,
+  or by an explicit authorized Agent/Speaker default-create command. GET, list, preview and
+  estimate never allocate. The default uniqueness constraint includes tombstones; deletion
+  never creates a replacement. Captured null identity stays null even if a default appears later.
+- `memory_context.bindings` contains unique `name`, `access` and one `source`: a relative
+  `{scope, conversation_public_id?, speaker_public_id?}` or exact `{collection_public_id}`.
+  Null author selection uses applicable defaults; an empty list disables memory. Nonempty
+  selections need not contain `conversation`. Natural reserved names retain their owner
+  meanings; aliases and UUIDs grant no additional authority. Explicit Workspace/Conversation
+  sources remain in the current Workspace. Agent sources belong to the answerer, Speaker
+  sources also match the selected subject, and Human sources never resolve through a steward.
+- New selection captures the original source plus collection UUID, real owner, scope, subject
+  and access ceiling on the Run/Variant. Continuation, ordinary regeneration, sealed retries
+  and kernel completion mail reuse the capture even when creating a new Run; missing capture
+  disables memory instead of selecting defaults. Explicit new declaration selects again.
+  New send/spawn rebind relative roles and retain exact UUIDs under both sides' authority/limits.
+  Schedule Dispatch copies the current parent selection into the child; first materialization
+  captures identity. Compaction uses its existing execution/input/sample capture, never fresh defaults.
+- Capture fixes identity, not content or permanent authority. Current source permissions,
+  Workspace/owner state and collection state still apply. Deleted automatic defaults contribute
+  nothing; invalid explicit new selections refuse. Unavailable captured sources are omitted
+  from aggregate reads/new injection, and explicit paths fail `memory_scope_unavailable`.
+  No alias, same-named document or new default substitutes for a captured identity. Sealed
+  bytes, historical answers and independent copies are not retracted by deletion.
+- Collection Archive is read-only for every content path, including accepted execution;
+  Restore retains UUID and cannot widen the original binding/limit. Delete is terminal and
+  closes content access immediately without scanning consumers, adding occupancy/ref-count
+  records, stopping Runs or refusing completion mail. Bounded purge discovers durable deleted
+  rows; commit wakes only accelerate it. Tombstones retain minimal identity through owner cleanup.
+- Collection writes/lifecycle and Fork share the existing owner then collection mutation
+  boundary, including implicit FK lock effects. Fork copies owned live/archived collections and
+  document pointers with new UUIDs, preserves deleted-default tombstones, omits other deleted
+  collections, remaps self-owned selectors and retains external references. Shared immutable
+  versions are reclaimed only when no real pointers refer to them. Owner cleanup drains in
+  bounded batches after existing Reap/Collect ancestry, delegation, settlement and lifecycle
+  gates pass. Collection references do not keep an external owner alive.
+- Conversation Archive retains accepted execution's existing completion rules, but cannot
+  bypass collection Archive/Delete. Tombstone still checks active Turns across the subagent
+  tree; Side and Workspace/identity shutdown keep their own existing semantics. Do not turn
+  independent collection deletion into a new Stop or retention protocol.
+- Agent configuration `memory_context_limit` only narrows by natural source scope and access;
+  it contains no collection UUID, explicit Conversation/Speaker identity or capture. A
+  conversation-only ceiling is checked against actual ownership, including exact selectors.
+  Injection, skills, tools, preview and conversation context management share this result.
+  Prompt slots remain selected independently by the authored template.
+- Member `/memory_collections` and the Human console use existing owner authority. Owner-nested
+  endpoints create; UUID routes manage metadata/lifecycle/documents. A Workspace's writable
+  members can edit content, while only its active Human owner manages collections. A full
+  Conversation member with writable Workspace standing can manage that owner's collections
+  even if the Conversation is archived. Agent/Speaker management belongs to the Agent or its
+  authorized named-definition declarer, never a steward/admin merely by role. Owner-management
+  resources do not borrow execution declarations as ACLs or gain rights from a consuming binding.
+- Collection documents use relative paths and document UUID/version conditions. Metadata
+  and lifecycle use the collection's own `lock_version`. Conversation-path mutations also
+  require `expected_collection_public_id`, including absent creates; re-resolve under the
+  mutation locks and refuse a changed target with `stale_object`. Conversation binding
+  replacement retains its existing host lock/revision behavior; it has no client CAS condition.
+  Context writes advance only their host revision, never every consumer of a shared collection.
+  Model memory tools keep their current parameter/overwrite semantics; do not claim HTTP CAS.
+- The member binding projection exposes authored source, effective access, scope, owner/subject,
+  collection UUID and availability state. Explicit-root injection labels actual scope so an
+  alias cannot suggest a wider audience. Provider executor projection remains the existing
+  owner/subject scope protocol, without kernel collection identities.
+- A Workspace `nexus.memory` override serves the six model verbs for relative scope sources.
+  Exact collection sources cannot be translated: new selection or explicit captured access
+  refuses `memory_collection_provider_unsupported` with no provider dispatch. Continuation
+  and mail still keep captures. Ordinary Workspace/Conversation content is blocked on both
+  context and collection UUID doors with `memory_overridden`; metadata/lifecycle still manage
+  kernel collections. User/Agent/Speaker owner management and specifically named kernel skill
+  paths keep their existing exceptions. Clearing an override never reallocates a kernel default.
+- Skills use collection ownership, effective bindings and document identity. Precedence is
+  announced Agent documents, Agent, Workspace, Speaker, then explicit Human collections;
+  within a scope binding order wins. De-duplicate document identities and retain the catalog's
+  exact collection/document selection at load, never adopt a same-named replacement.
+  Conversation-owned skills remain invalid. Extraction, consolidation, semantic retrieval,
+  ranking and vector stores remain application/provider policy.
 - `conversation_reach` is `workspace` or `subtree`: subtree conversation tools and history only
   address the execution's Conversation and descendants. Run is execution's authority;
-  a spawned Conversation persists the inherited reach so later inputs cannot expand it after
+  a spawned Conversation persists inherited reach so later inputs cannot expand it after
   the spawning node is reaped. Forks and schedules preserve that restriction.
-- A Workspace may override the memory tool family through `tool_provider_overrides`, one provider
-  per family, never a reserved namespace. Its six verbs then go to that provider with kernel
-  scope stamps; kernel memory injection/member doors are silent for that Workspace and provider
-  results are ordinary tool output. Memory is text the model reads.
-- Stores are opaque namespaced KV at User, Workspace, and Conversation scopes, using the shared
-  write-size and idempotency contracts. The model does not read stores as memory text. User
-  store scope belongs to the acting principal itself.
-- The `agent/` rung anchors on the ANSWERING Agent; `speaker/` adds the current Speaker.
-  The 64-document bound applies independently to Agent-private notes and each Agent/Speaker
-  pair; Speaker documents cannot appear in a plain Agent or Human profile listing.
-  `MemoryContext::DEFAULT` carries it; an explicit configuration may omit it or make it read-only,
-  and an `agent` binding where no agent answers is `memory_scope_unavailable`. Durability follows
-  the row: a `steward`-scope named Agent's documents persist with it, an `instance` row's go
-  with its declarer's cascade, and a remove/restore status flip keeps the same row and documents.
-  A fork copies none of it; a write bumps no other conversation's `context_revision`; the
-  tool-provider override silences it with the other rungs and its scope stamp carries
-  `agent_public_id`; the 64-document cap is per anchor row; `agent/skills/<name>` is a lawful
-  skill row resolving after an announced document and before the Workspace's. Management doors:
-  a paired bearer's own rung through `profile/memory` under the `agent/` prefix, a named
-  Agent's through `profile/agents/{name}/memory` for its declarer. Stores have no agent
-  scope: the model never reads a store, so an application namespaces its own profile store per
-  definition.
+- Stores remain opaque namespaced KV at User, Workspace and Conversation scopes with their
+  existing write-size/idempotency contracts. Memory collections add no Store scope. The model
+  does not read stores as memory text; User Store belongs to the acting principal itself.
 
 ## Compaction
 

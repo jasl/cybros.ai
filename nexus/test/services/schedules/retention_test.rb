@@ -39,6 +39,9 @@ class Schedules::RetentionTest < ActiveJob::TestCase
     assert_not Runs::Delegations.owed_result?(turn.reload)
     assert_not Runs::Delegations.retained_conversation?(child.reload)
     assert_equal 1, Workspaces::Collect.call(budget: 1)[:processed]
+    assert Conversation.exists?(child.id), "the child's default collection consumes its own budget unit"
+    assert_empty child.memory_collections
+    assert_equal 1, Workspaces::Collect.call(budget: 1)[:processed]
     assert_not Conversation.exists?(child.id), "the newest child cannot retain the older job owner forever"
     assert Conversation.exists?(@parent.id)
     assert_equal 1, Workspaces::Collect.call(budget: 1)[:processed]

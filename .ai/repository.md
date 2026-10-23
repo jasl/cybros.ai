@@ -285,7 +285,9 @@ rho consists of these independently packaged surfaces:
 ### Agent Presets, Main Agent, Bots And Subagents
 
 Preset ownership, persistent identity and captured execution configuration are separate.
-Role execution uses captured declarations and conversation-only child memory. Shared ingress
+Role execution uses captured declarations and conversation-only child memory. Portable memory limits
+contain only natural `source.scope` roots and access, never collection UUIDs, explicit Speaker/Conversation
+selectors or execution captures. Shared ingress
 Connections own transport, and target-bound Bots own their current Conversation and history.
 These product distinctions belong to rho; Nexus supplies generic identity, conversation,
 execution, memory and permission mechanisms.

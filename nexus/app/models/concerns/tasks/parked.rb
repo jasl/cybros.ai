@@ -5,7 +5,7 @@ module Tasks
   module Parked
     extend ActiveSupport::Concern
 
-    # Approval and external awaits share the per-park hold ceiling.
+    # Approval and finite external awaits share the per-park hold ceiling.
     MAX_HOLD = 24.hours
     MAX_HOLD_MS = MAX_HOLD.in_milliseconds
 
@@ -22,7 +22,7 @@ module Tasks
     end
 
     def deadline_at
-      return if await_started_at.blank?
+      return if await_started_at.blank? || effective_timeout_ms.nil?
 
       await_started_at + (effective_timeout_ms / 1000.0)
     end

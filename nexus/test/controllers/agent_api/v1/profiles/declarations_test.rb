@@ -58,8 +58,8 @@ class AgentAPI::V1::Profiles::DeclarationsTest < ActionDispatch::IntegrationTest
 
   test "execution scope declarations retain the memory access ceiling and conversation reach" do
     limit = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-      { "name" => "workspace", "scope" => "workspace", "access" => "read" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+      { "name" => "workspace", "source" => { "scope" => "workspace" }, "access" => "read" },
     ] }
     put agent_api_v1_profile_configuration_path, params: { configuration: {
       prompt_mechanism: "default", memory_context_limit: limit, conversation_reach: "subtree",

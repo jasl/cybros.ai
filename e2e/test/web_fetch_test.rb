@@ -17,48 +17,24 @@ require "support/web_fixture"
 # the class carries nothing but constants until it is called.
 require_relative "../../agents/rho/rho-web-tools/lib/rho/web-tools/tools/fetch"
 
-# `web_fetch` ON RHO: a read of the open world as an extension gem in the runner's shape — one tool,
-# `web_fetch {url}`, that GETs a public http(s) URL through httpx with its SSRF filter and same-site
-# redirects under one deadline, renders HTML to markdown, answers the head under the runner's own
-# truncation caps with bash's spill footer and pages the rest through `read`; announced `read_only`
-# on the OPEN world, parked under `ask` by the mode's own word, refused under `rules` until a rule
-# allows it, refused for private hosts unless one setting lifts loopback and RFC 1918. The kernel
-# changes nothing: the closed vocabulary already carries `read_only` + `open`, and the rule grammar
-# already walks `url`. Driven through the shipped binary: `rho runner`, `rho do`, `rho status`, `rho
-# approve`, `rho web fetch`, and a restart of the same home.
+# The installed web-tools extension fetches a real local page, spills the long rendering,
+# exposes the uploaded bytes and lets a later Runner read continue them. The model-facing
+# call parks under ask and runs after human approval; site grants last until daemon restart.
+# The CLI reads the same page and spill. Protocol/status/configuration matrices live in
+# rho-web-tools/test; these journeys retain extension discovery and actual execution.
 #
-# THE STEPS, in order on one daemon: BOOT + LIST (the extension loads;
-# discovery carries the declaration byte for byte on the runner row); THE
-# PAGE (the status line, the markdown, nothing of the script or style, no
-# zero-width byte; the log names the host, never the URL); THE BOUND, THE
-# SPILL, THE PAGING (bash's footer byte for byte, the spill linked, `read
-# {offset}` on it); REDIRECTS (a same-site chain rendered byte-equal to
-# the page, the 302's body never kept; cross-site REPORTED; the loop
-# bound; a 3xx with no Location as data); TEXT, JSON, BYTES, 404, TOO BIG;
-# THE REFUSALS THE MODEL READS (six sentences, one fan); THE PARK (`ask`
-# parks, `rho approve` releases, the spill's `read` never parks; `rules`
-# refuses as data); THE PRIVATE DEFAULT and THE CONFIG FAULT (the same
-# home booted again through the harness); THE CLI (`--raw` byte-equal to
-# the spill; a refusal is the sentence, exit 1).
-#
-# ONE CEREMONY PER JOURNEY: the full-mode daemon on its own home,
-# whose settings name `rho/web-tools` with `"web": {"allow_private_network":
-# true}` — the fixture is loopback. The fixture's two puma listeners run
-# IN this process, booted before the daemon and halted by the journey.
-# No paid lane: whether a MODEL reaches for `web_fetch` is `live_web_fetch`'s.
+# Each journey owns its daemon home and explicitly allows the loopback fixture.
+# The two fixture listeners start before the daemon and stop during teardown.
 class WebFetchTest < Minitest::Test
   MODEL = E2E::CatalogOverlay::WEB_FETCH_MODEL
   AWAIT_SECONDS = 120
   LOOP_POLL = 1
-  RHO_ROOT = E2E::RhoDaemon::RHO_ROOT
   Fetch = Rho::WebTools::Tools::Fetch
   Truncation = Rho::Runner::Truncation
   PROFILE = { "kind" => "read_only", "destructive" => false, "effect_scope" => "open", "idempotency" => "intrinsic",
               "reconciliation" => "none" }.freeze
-  # The two settings the journey writes: the fixture's lift, and rho's
-  # Config admitting a table the EXTENSION refuses.
+  # Allow the local fixture through the extension's private-network setting.
   LIFT = { "allow_private_network" => true }.freeze
-  BAD_TABLE = { "allow_private_network" => "yes" }.freeze
   REDIRECT_SENTENCE = "web_fetch follows redirects on the same site only — call web_fetch with the new url to follow it".freeze
   RULES_SENTENCE = "no approval rule allows web_fetch".freeze
   ZERO_WIDTH_SPACE = "​".freeze
@@ -98,18 +74,14 @@ class WebFetchTest < Minitest::Test
     FileUtils.remove_entry(@home) if @home && File.directory?(@home)
   end
 
-  def test_web_fetch_is_announced_reads_pages_spills_reports_redirects_parks_and_refuses
+  def test_web_fetch_is_announced_reads_spills_and_requires_approval
     project = connect!
     @client = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)
 
     boot_and_list
-    page_body = the_page(project)
+    the_page(project)
     spill = the_bound_the_spill_and_the_paging(project)
-    redirects(project, page_body)
-    text_json_bytes_404_and_too_big(project)
-    the_refusals_the_model_reads(project)
     the_park_and_the_rules(project, spill)
-    the_private_default_and_the_config_fault(project)
     the_cli(spill)
   end
 
@@ -267,161 +239,7 @@ class WebFetchTest < Minitest::Test
       spill
     end
 
-    # ---- 4. REDIRECTS ----
-
-    def redirects(project, page_body)
-      # Each followed hop is counted in the tool's status and log. The
-      # actual fixture requests pin the count independently of HTTPX's state.
-      [
-        %w[/same /page.html],
-        %w[/twice /same /page.html],
-        %w[/three /twice /same /page.html],
-      ].each do |paths|
-        redirects = paths.length - 1
-        start = @fixture.requests.length
-        _c, _t, loop = open_turn(prompt(url(paths.first)), project)
-        row, output, detail = completed_call(loop)
-        refute row.dig("result", "is_error"), row.inspect
-        status_line, body = split_status_line(output)
-        suffix = redirects == 1 ? "redirect" : "redirects"
-        assert_match(/\A#{Regexp.escape(url("/page.html"))} — 200 text\/html; .* \(#{redirects} #{suffix}\); title: Fixture Page\z/,
-          status_line, output)
-        assert_equal page_body, body, "the final page is byte-equal; no redirect body reaches the model"
-        refute_includes output, "Redirecting"
-        assert_equal paths.map { |path| url(path) }, @fixture.requests.drop(start)
-        assert_equal url(paths.first), detail.fetch("structured_content").fetch("url")
-        assert_equal url("/page.html"), detail.fetch("structured_content").fetch("final_url")
-        await_rho_log(/event=web\.fetch host=127\.0\.0\.1 status=200 content_type=text\/html bytes=\d+ rendered_bytes=\d+ redirects=#{redirects} ms=\d+/,
-          "the #{redirects} followed hops were never logged")
-      end
-
-      # Cross-site: REPORTED, never followed.
-      _c, _t, loop = open_turn(prompt(url("/away")), project)
-      row, output, detail = completed_call(loop)
-      assert_equal true, row.dig("result", "is_error"), "a cross-site redirect is an error result: #{row.inspect}"
-      assert_equal "redirect: #{url("/away")} → #{other_url("/page.html")} (302); #{REDIRECT_SENTENCE}", output
-      assert_equal other_url("/page.html"), detail.fetch("structured_content").fetch("final_url")
-      assert_equal 302, detail.fetch("structured_content").fetch("status")
-      refute_includes @fixture.requests, other_url("/page.html"), "the other site was asked: #{@fixture.requests.inspect}"
-
-      # The bound: three hops without an answer.
-      _c, _t, loop = open_turn(prompt(url("/loop")), project)
-      row, output, _detail = completed_call(loop)
-      assert_equal true, row.dig("result", "is_error"), row.inspect
-      assert_equal "#{url("/loop")} redirected 3 times without answering; web_fetch follows at most 3 redirects", output
-
-      # A 3xx that names no Location is DATA the model reads.
-      _c, _t, loop = open_turn(prompt(url("/gone")), project)
-      row, output, detail = completed_call(loop)
-      assert_equal true, row.dig("result", "is_error"), row.inspect
-      assert_equal "#{url("/gone")} answered 300 Multiple Choices\n\n#{E2E::WebFixture::GONE}", output
-      assert_equal 300, detail.fetch("structured_content").fetch("status")
-    end
-
-    # ---- 5. TEXT, JSON, BYTES, 404, TOO BIG ----
-
-    def text_json_bytes_404_and_too_big(project)
-      _c, _t, loop = open_turn(prompt(url("/notes.txt")), project)
-      row, output, _detail = completed_call(loop)
-      refute row.dig("result", "is_error"), row.inspect
-      # Verbatim under the runner's own line convention (`truncate_head`
-      # keeps whole lines joined by newlines): the file's trailing newline
-      # opens no line, so it is not one the model reads.
-      assert_equal "#{url("/notes.txt")} — 200 text/plain; #{size(E2E::WebFixture::NOTES)} fetched\n\n#{E2E::WebFixture::NOTES.chomp}", output,
-        "text is the body verbatim under the status line"
-
-      _c, _t, loop = open_turn(prompt(url("/data.json")), project)
-      row, output, _detail = completed_call(loop)
-      refute row.dig("result", "is_error"), row.inspect
-      assert_equal "#{url("/data.json")} — 200 application/json; #{size(E2E::WebFixture::DATA)} fetched\n\n#{E2E::WebFixture::DATA}", output
-
-      # BYTES: saved always, named by the path's extension, linked; `read`
-      # on the file answers read's own "image attached".
-      png = E2E::RedSquarePng.bytes
-      _c, _t, loop = open_turn(prompt(url("/pixel.png")), project)
-      row, output, detail = completed_call(loop)
-      refute row.dig("result", "is_error"), row.inspect
-      match = output.match(/\A#{Regexp.escape(url("/pixel.png"))} — 200 image\/png; #{Regexp.escape(size(png))} saved to (\S+)\z/)
-      refute_nil match, "the bytes line:\n#{output}"
-      path = match[1]
-      assert_match(/\Aweb-\h{16}\.png\z/, File.basename(path))
-      assert_equal captures_dir(project), File.dirname(path), "saved under the work dir, keyed by the root — never in the project"
-      assert_equal png, File.binread(path), "the saved bytes are the fixture's"
-      links = Array(detail["content"]).select { |block| block["type"] == "resource_link" }
-      assert_equal 1, links.length, detail["content"].inspect
-      assert_equal File.basename(path), links.first.fetch("name")
-      assert_equal "image/png", detail.fetch("structured_content").fetch("content_type")
-      _c, _t, read_loop = open_turn("!mock tool_call=read:#{CGI.escape(JSON.generate("path" => path))} -- done", project)
-      done = await_run_status(read_loop, "completed")
-      read = done.fetch("tasks").find { |task| task["tool_name"] == "read" }
-      assert_equal "completed", read.fetch("status"), summarize(done)
-      assert_equal "#{File.basename(path)}: image attached", task_output(read_loop, read.fetch("key")).strip
-
-      # 404: data, with the body's first bytes.
-      _c, _t, loop = open_turn(prompt(url("/missing")), project)
-      row, output, detail = completed_call(loop)
-      assert_equal true, row.dig("result", "is_error"), row.inspect
-      assert_match(/\A#{Regexp.escape(url("/missing"))} answered 404 Not Found\n\nno such page\n/, output)
-      assert_equal 404, detail.fetch("structured_content").fetch("status")
-
-      # TOO BIG: the Content-Length refuses it at the first chunk, nothing
-      # counted — the sentence and the zero are the witnesses that no body
-      # was read (the wall-clock claim is rho-web-tools's own `client_test`).
-      _c, _t, loop = open_turn(prompt(url("/big")), project)
-      row, output, detail = completed_call(loop)
-      assert_equal true, row.dig("result", "is_error"), row.inspect
-      assert_equal "127.0.0.1 answered Content-Length 6.0MB; web_fetch reads at most 5.0MB", output
-      assert_equal 0, detail.fetch("structured_content").fetch("bytes")
-      await_rho_log(/event=web\.refused host=127\.0\.0\.1 reason=too_large/, "the refusal was never logged")
-    end
-
-    # ---- 6. THE REFUSALS THE MODEL READS ----
-
-    # Six calls in ONE round (a parallel fan): each answered with its
-    # sentence as an error result, the loop completing; the three judged
-    # before a socket leave the fixture's request count where it was.
-    def the_refusals_the_model_reads(project)
-      requests_before = @fixture.requests.length
-      calls = {
-        "scheme" => { "url" => "ftp://x" },
-        "credentials" => { "url" => "http://u:p@127.0.0.1:#{site_port}/" },
-        "canonical" => { "url" => "http://LOCALHOST:#{site_port}/page.html" },
-        "encoding" => { "url" => url("/Köln") },
-        "metadata" => { "url" => "http://169.254.169.254/latest/meta-data/" },
-        "schema" => {},
-      }
-      fan = calls.values.map { |arguments| "web_fetch:#{CGI.escape(JSON.generate(arguments))}" }.join("&")
-      _c, _t, loop = open_turn("!mock tool_call=#{fan} -- done", project)
-      done = await_run_status(loop, "completed")
-      rows = done.fetch("tasks").select { |task| task["tool_name"] == "web_fetch" }
-      assert_equal calls.length, rows.length, summarize(done)
-      by_input = rows.to_h do |row|
-        detail = task_detail(loop, row.fetch("key"))
-        assert_equal "completed", row.fetch("status"), row.inspect
-        assert_equal true, row.dig("result", "is_error"), "a refusal is an error result: #{row.inspect}"
-        [detail.fetch("tool_input"), detail.fetch("output").to_s]
-      end
-      sentence = ->(name) { by_input.fetch(calls.fetch(name)) }
-
-      assert_equal "url must be http:// or https://", sentence.call("scheme")
-      credentials = sentence.call("credentials")
-      assert_equal "url carries credentials before the host; web_fetch sends none — remove them and call again", credentials
-      refute_includes credentials, "u:"
-      refute_includes credentials, "p@"
-      assert_equal "url host \"LOCALHOST\" is not canonical; write it in lowercase ASCII without a trailing dot, " \
-                   "an IPv4 address as four dotted decimals", sentence.call("canonical")
-      assert_equal "url is not a valid URL; percent-encode non-ASCII characters in the path and query, " \
-                   "and write the host in lowercase ASCII", sentence.call("encoding")
-      # The lift is loopback and RFC 1918 ONLY: the metadata endpoint stays
-      # refused under it, by name, before any socket.
-      assert_equal "169.254.169.254 resolves to a private or reserved address; web_fetch reaches public hosts only " \
-                   "(settings.json \"plugins.rho.web_tools.configuration\": {\"allow_private_network\": true} lifts loopback and RFC 1918)",
-        sentence.call("metadata")
-      assert_match(/missing required properties: url/, sentence.call("schema"), "the schema's own refusal")
-      assert_equal requests_before, @fixture.requests.length, "a refusal opened a socket: #{@fixture.requests.drop(requests_before).inspect}"
-    end
-
-    # ---- 7. THE PARK, AND THE RULES ----
+    # ---- 4. THE PARK, AND THE RULES ----
 
     def the_park_and_the_rules(project, spill)
       # `ask` parks the open-world read; the spill's `read` behind it, in the
@@ -467,44 +285,7 @@ class WebFetchTest < Minitest::Test
       refute refused.key?("approval"), "a rule's deny stamps no fact: #{refused.inspect}"
     end
 
-    # ---- 8. THE PRIVATE DEFAULT, THE CONFIG FAULT ----
-
-    def the_private_default_and_the_config_fault(project)
-      # Without `web`: loopback is refused by default, as the sentence says.
-      @daemon.stop
-      write_settings(web: nil)
-      restart!
-      _c, _t, loop = open_turn(prompt(url("/page.html")), project)
-      row, output, _detail = completed_call(loop)
-      assert_equal true, row.dig("result", "is_error"), row.inspect
-      assert_equal "127.0.0.1 resolves to a private or reserved address; web_fetch reaches public hosts only " \
-                   "(settings.json \"plugins.rho.web_tools.configuration\": {\"allow_private_network\": true} lifts loopback and RFC 1918)", output
-      await_rho_log(/event=web\.refused host=127\.0\.0\.1 reason=private_address/, "the private refusal was never logged")
-
-      # An invalid current value falls back to the schema default; the plugin
-      # remains available and management reports the invalid field.
-      @daemon.stop
-      write_settings(web: BAD_TABLE)
-      restart!
-      plugin = @daemon.control(:get, "/extensions").fetch("plugins").find { |item| item.fetch("id") == "rho.web_tools" }
-      assert plugin.fetch("active")
-      refute plugin.dig("configuration", "value", "allow_private_network")
-      assert_includes plugin.dig("configuration", "diagnostics"),
-        { "path" => ["allow_private_network"], "reason" => "type", "fallback" => "default" }
-      assert_includes @daemon.member_client.executors.show(rho_runner_id).tools_for(:runner).map(&:name), "web_fetch"
-      note = File.join(project, "note.txt")
-      File.write(note, "still served\n")
-      _c, _t, loop = open_turn("!mock tool_call=read tool_args=#{CGI.escape(JSON.generate("path" => note))} -- done", project)
-      done = await_run_status(loop, "completed")
-      read = done.fetch("tasks").find { |task| task["tool_name"] == "read" }
-      assert_equal "completed", read.fetch("status"), summarize(done)
-      assert_includes task_output(loop, read.fetch("key")), "still served"
-
-      # Restored for the CLI: the verb reads the settings file itself.
-      write_settings(web: LIFT)
-    end
-
-    # ---- 9. THE CLI ----
+    # ---- 5. THE CLI ----
 
     def the_cli(spill)
       # `--raw`: the WHOLE rendering to stdout, byte-equal to the spill the
@@ -709,7 +490,6 @@ class WebFetchTest < Minitest::Test
       tail = File.read(path, encoding: Encoding::UTF_8).scrub.lines.last(LOG_TAIL_LINES).join
       warn "#{label} (last #{LOG_TAIL_LINES} lines):\n#{E2E::SecretHygiene.redact(tail)}"
     end
-
 
   # Where the runner places a root's captures: under the world's RHO_WORK_DIR (the fixture leaves
   # the default, RHO_HOME/work), keyed by the root's digest — the same placement `Daemon.boot`

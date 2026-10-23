@@ -1,0 +1,8 @@
+<%# locals: (title:, description: nil) %>
+<header class="flex flex-wrap items-end justify-between gap-3">
+  <div class="min-w-0 space-y-1">
+    <h1 class="text-xl font-medium tracking-tight wrap-anywhere"><%= title %></h1>
+    <% if description.present? %><p class="text-sm text-base-content/60"><%= description %></p><% end %>
+  </div>
+  <%= yield %>
+</header>

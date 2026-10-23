@@ -162,6 +162,8 @@ module Runs
         def revising(anchor, &block)
           conversation = @loop.conversation
           memory_context.with_locks(anchor) { executing { block.call(conversation) } }
+        rescue ActiveRecord::RecordNotFound
+          refuse(:memory_scope_unavailable, anchor.name)
         end
 
         def memory_context
@@ -232,7 +234,10 @@ module Runs
           return nil unless document && document["executor_public_id"].nil?
 
           anchor = memory_context.resolve("#{document.fetch("source")}/#{Nexus::Skills::PREFIX}#{name}")
-          anchor if anchor.resolved?
+          if anchor.resolved? && anchor.collection.public_id == document["collection_public_id"] &&
+              anchor.documents.exists?(name: anchor.name, public_id: document["document_public_id"])
+            anchor
+          end
         end
 
         def refuse(code, detail = nil, title: "memory refused")

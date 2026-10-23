@@ -60,7 +60,7 @@ module AgentAPI
           agent_configuration_present: !conversation.agent_configuration.nil?,
           memory_context: conversation.memory_context,
           effective_memory_context: MemoryDocuments::Context.new(workspace: conversation.workspace, conversation: conversation,
-            principal: acting_user, configuration: conversation.effective_memory_context, agent: conversation.answering_agent).projection,
+            principal: acting_user, configuration: conversation.effective_memory_context, agent: conversation.answering_agent).management_projection,
           input_queue: {
             limit: conversation.input_queue_limit,
             held: conversation.inputs.caller_authored.count,

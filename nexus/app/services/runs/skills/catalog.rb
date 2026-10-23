@@ -4,7 +4,9 @@ module Runs
     # explicitly declared callable; ordinary skills retain source precedence.
     module Catalog
       CANONICAL = "nexus.skill.load".freeze
-      Entry = Data.define(:name, :description, :callable, :source, :executor_public_id)
+      Entry = Data.define(:name, :description, :callable, :source, :executor_public_id, :collection_public_id, :document_public_id) do
+        def initialize(collection_public_id: nil, document_public_id: nil, **) = super
+      end
 
       module_function
 
@@ -24,10 +26,10 @@ module Runs
           else
             merged = {}
             announced(address, callable: callable, source: "agent").each { |entry| merged[entry.name] ||= entry }
-            context.bindings.sort_by { |binding| %i[agent workspace speaker user conversation].index(binding.scope) }.each do |binding|
+            context.bindings.each_with_index.sort_by { |binding, index| [%i[agent workspace speaker user conversation].index(binding.scope), index] }.each do |binding, _index|
               next if binding.scope == :conversation
 
-              rows(binding.anchor("x").documents.skills, callable: callable, source: binding.name)
+              rows(binding.collection, callable: callable, source: binding.name)
                 .each { |entry| merged[entry.name] ||= entry }
             end
             merged.values
@@ -80,10 +82,11 @@ module Runs
         announced(executor, source: role).any? { |entry| entry.name == name }
       end
 
-      def rows(scope, callable:, source:)
-        scope.order(:name).pluck(:name, :description).map do |name, description|
+      def rows(collection, callable:, source:)
+        collection.memory_documents.skills.order(:name).pluck(:name, :description, :public_id).map do |name, description, public_id|
           Entry.new(name: Nexus::Skills.name_of(name), description: description.to_s,
-            callable: callable, source: source, executor_public_id: nil)
+            callable: callable, source: source, executor_public_id: nil,
+            collection_public_id: collection.public_id, document_public_id: public_id)
         end
       end
     end

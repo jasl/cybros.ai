@@ -309,3 +309,22 @@ test("header utilities are bound to one conversation: a new id remounts them, th
   p.element.querySelector(".conversation__corner").click();
   expect(p.toggles).toEqual([1]);
 });
+
+test("memory editing remains bound to its original conversation while navigation ignores a late save", async () => {
+  const p = page({ address: { conversation: "c-1", workspace: "w-1" } });
+  await settle();
+  const editor = p.conversations.memoryEditor();
+  let finish;
+  p.handlers["POST /conversations/memory_context"] = () => new Promise((resolve) => { finish = resolve; });
+  const saved = editor.save({ bindings: [] });
+  await p.conversations.select("c-2", { workspace: "w-2" });
+  finish({ conversation: { public_id: "c-1", title: "Old response", memory_context: { bindings: [] } } });
+  await saved;
+  const write = p.requests.find((request) => request.route === "/conversations/memory_context");
+  expect(write.body).toEqual({ public_id: "c-1", workspace_public_id: "w-1", memory_context: { bindings: [] } });
+  expect(p.conversations.state.get().id).toBe("c-2");
+  expect(p.conversations.state.get().detail.public_id).toBe("c-2");
+  await expect(editor.save(null)).rejects.toMatchObject({ name: "AbortError" });
+  expect(p.requests.filter((request) => request.route === "/conversations/memory_context")).toHaveLength(1);
+  p.conversations.dispose(); p.panel.dispose();
+});

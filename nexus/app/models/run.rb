@@ -341,7 +341,8 @@ class Run < ApplicationRecord
 
   # Hosted runs share their variant's frozen bindings; standalone runs
   # retain their creation-time capture on the run itself.
-  def memory_context = standalone? ? self[:memory_context] : variant.memory_context
+  # Missing historical capture grants no current default sources.
+  def memory_context = (standalone? ? self[:memory_context] : variant.memory_context) || { "bindings" => [] }
   def agent_configuration = standalone? ? self[:agent_configuration] : variant.agent_configuration
   def model_selection = standalone? ? self[:model_selection] : variant.model_selection
   def fallback_models = standalone? ? self[:fallback_models] : variant.fallback_models

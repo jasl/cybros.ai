@@ -1,0 +1,17 @@
+<%# locals: (title:, error: nil, description: nil, back_path: memory_collections_path, back_label: t("memory_collections.title"), actions: nil, collection: nil, current: nil) %>
+<% content_for :title, title %>
+<div class="space-y-8">
+  <%= render "shared/back_navigation", path: back_path, label: back_label %>
+  <%= render layout: "shared/page_header", locals: { title: title, description: description } do %>
+    <%= actions %>
+  <% end %>
+  <% if collection %>
+    <nav class="tabs tabs-border tabs-sm" aria-label="<%= t("memory_collections.navigation") %>">
+      <%= link_to t("memory_collections.overview"), memory_collection_path(collection), class: class_names("tab", "tab-active": current == :overview), aria: { current: ("page" if current == :overview) } %>
+      <%= link_to t("memory_collections.documents"), memory_collection_documents_path(collection), class: class_names("tab", "tab-active": current == :documents), aria: { current: ("page" if current == :documents) } %>
+    </nav>
+    <% if collection.archived? %><p role="status" class="alert alert-soft"><%= t("memory_collections.archived_help") %></p><% end %>
+  <% end %>
+  <% if error %><p role="alert" class="alert alert-error alert-soft"><%= error %></p><% end %>
+  <%= yield %>
+</div>

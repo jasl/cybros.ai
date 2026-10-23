@@ -77,7 +77,6 @@ class EvalsPredicatesTest < Minitest::Test
     assert_equal ["plain", 1, nil, false], door_at(mainline([bash("sleep 1 && rm x")]))
   end
 
-
   def test_the_door_is_unchanged_beside_the_door_kind
     assert_equal "task_fan", P.door(D.trace(W::FIVE_GRAPH, W::FIVE_TASKS, []))
     assert_nil P.door(D.trace(W::MAIL_GRAPH, W::MAIL_TASKS, W::MAIL_EVENTS))
@@ -166,7 +165,6 @@ class EvalsPredicatesTest < Minitest::Test
     assert_predicate verdict, :green?, verdict.reason
     assert_equal ["woken-2", false, 5], verdict.facts.values_at("merge_turn", "waited", "orphans_named")
   end
-
 
   # THE FAN THAT CAME BACK WHOLE: a fan-and-merge on the task door owes no receipt — a judge called
   # with `wait: true` returns inline and the kernel mails nothing; a detached judge comes back as
@@ -402,7 +400,6 @@ class EvalsPredicatesTest < Minitest::Test
     assert_nil W.staged_arms([W::RACE_JOIN]).structure_facts.fetch("kernel_check"), "no request read"
   end
 
-
   def test_a_node_a_stage_placed_counts_toward_the_branch
     failed = "01a0cb72-9bb9-7c33-bcbb-fcb72aed97ff"
     graph = D.graph(
@@ -416,8 +413,6 @@ class EvalsPredicatesTest < Minitest::Test
     assert_equal "#{failed}(failed) did not complete under r1t0", P.branch_completed(trace, "r1t0")
     assert_equal ["r1t0-script-1", failed], trace.under("r1t0").map { |node| node["key"] }
   end
-
-
 
   def test_delegated_nothing_names_the_graph_verbs_it_saw
     assert_equal true, P.delegated_nothing(D.trace(W::LINEAR_GRAPH, W::LINEAR_TASKS, []))

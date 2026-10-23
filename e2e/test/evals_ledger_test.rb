@@ -87,7 +87,6 @@ class EvalsLedgerTest < Minitest::Test
     end
   end
 
-
   # THE FALLBACK'S WORK, APART: a record the answerer's declared fallback served counts toward the
   # model under test only in the `+M` term of `s` — `s<N> (+<M> by fallback)/<reached>` — and the cell
   # marks the steps it served, ` fb<n>` (`facts.refusals_served`, summed); a cell nothing was served

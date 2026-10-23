@@ -133,6 +133,7 @@ module RhoInstall
           assign("RHO_TOOLCHAIN_RUST_COMPONENTS", JSON.generate(mise.fetch("rust_components"))),
           assign("RHO_TOOLCHAIN_NPM_DEFAULT_PACKAGES", mise.fetch("npm_default_packages")),
           assign("RHO_NATIVE_CODING_PACKAGES", toolchains.fetch("native_coding").fetch("packages")),
+          assign("RHO_NATIVE_CODING_ALLOW_SCRIPTS", toolchains.fetch("native_coding").fetch("allow_scripts").join(",")),
           assign("RHO_TOOLCHAIN_UV_PYTHON", toolchains.fetch("uv_python")),
           assign("RHO_TOOLCHAIN_UV_TOOLS", toolchains.fetch("uv_tools")),
           assign("RHO_TOOLCHAIN_GH_VERSION", gh.fetch("version")),

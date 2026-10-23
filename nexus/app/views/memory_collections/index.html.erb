@@ -1,0 +1,59 @@
+<% content_for :title, t("memory_collections.title") %>
+<div class="space-y-8">
+  <% if @owner %><%= render "shared/back_navigation", path: memory_owner_path(@owner, scope: @owner_scope), label: memory_owner_name(@owner, scope: @owner_scope) %><% end %>
+  <%= render layout: "shared/page_header", locals: { title: t("memory_collections.title"), description: t("memory_collections.description") } do %>
+    <% if @new_path %><%= link_to t("memory_collections.new"), @new_path, class: "btn btn-primary btn-sm" %><% end %>
+  <% end %>
+
+  <% if @owner %>
+    <p class="text-sm text-base-content/70"><%= t("memory_collections.owned_by", owner: memory_owner_name(@owner, scope: @owner_scope)) %></p>
+  <% end %>
+  <%= form_with url: memory_collections_path, method: :get, class: "flex flex-wrap items-end gap-3", role: "search" do |form| %>
+    <% @owner_parameters.each do |key, value| %><%= hidden_field_tag key, value %><% end %>
+    <div class="min-w-0 basis-56 grow">
+      <%= form.label :query, t("memory_collections.search"), class: "label text-xs" %>
+      <%= form.search_field :query, value: @query, maxlength: MemoryCollectionsController::SEARCH_QUERY_MAX_LENGTH, placeholder: t("memory_collections.search_placeholder"), class: "input input-sm w-full" %>
+    </div>
+    <div>
+      <%= form.label :scope, t("memory_collections.scope"), class: "label text-xs" %>
+      <%= form.select :scope, [[t("memory_collections.all_scopes"), ""], *%w[user workspace conversation].map { |scope| [t("memory_collections.scopes.#{scope}"), scope] }], { selected: @scope }, class: "select select-sm" %>
+    </div>
+    <div>
+      <%= form.label :status, t("memory_collections.status"), class: "label text-xs" %>
+      <%= form.select :status, %w[active archived all].map { |status| [t("memory_collections.statuses.#{status}"), status] }, { selected: @status }, class: "select select-sm" %>
+    </div>
+    <%= form.submit t("memory_collections.filter"), class: "btn btn-ghost btn-sm" %>
+    <% if @query.present? || @scope || @status != "active" %>
+      <%= link_to t("memory_collections.clear"), memory_collections_path(@owner_parameters), class: "btn btn-ghost btn-sm" %>
+    <% end %>
+  <% end %>
+
+  <% if @collections.any? %>
+    <section class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-200">
+      <table class="table">
+        <thead><tr>
+          <% %w[name scope owner status created].each do |column| %><th><%= t("memory_collections.#{column}") %></th><% end %>
+        </tr></thead>
+        <tbody>
+          <% @collections.each do |collection| %>
+            <tr>
+              <td class="min-w-48">
+                <%= link_to memory_collection_name(collection), memory_collection_path(collection), class: "link link-hover font-medium wrap-anywhere" %>
+                <% if collection.is_default %><span class="badge badge-ghost badge-sm ml-1"><%= t("memory_collections.default_badge") %></span><% end %>
+                <% if collection.description.present? %><p class="mt-1 max-w-md text-sm text-base-content/60 wrap-anywhere"><%= collection.description %></p><% end %>
+              </td>
+              <td class="whitespace-nowrap"><%= t("memory_collections.scopes.#{collection.natural_scope}") %></td>
+              <td class="text-base-content/70 wrap-anywhere"><%= memory_collection_owner(collection) %></td>
+              <td><%= render "memory_collections/status", collection: collection %></td>
+              <td class="text-base-content/60 whitespace-nowrap"><%= l(collection.created_at.to_date, format: :long) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </section>
+    <%= render "shared/pagination_footer", pagy: @pagy, noun: "memory_collections", aria_label: t("memory_collections.title") %>
+  <% else %>
+    <%= render "shared/empty_state", title: t("memory_collections.empty"), description: t("memory_collections.empty_help") %>
+  <% end %>
+  <p class="text-xs text-base-content/60"><%= t("memory_collections.inventory_help") %></p>
+</div>

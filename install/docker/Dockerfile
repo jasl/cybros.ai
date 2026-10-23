@@ -185,6 +185,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Other project runtimes can be installed with mise or uv. What mise and uv
 # fetch is verified by them (the manager-verified class), not by the
 # manifest. The tool lists split on purpose.
+# Native binaries may require a package's install script; the manifest names those approvals.
 # hadolint ignore=SC2086
 RUN --mount=type=bind,source=install/manifest.sh,target=/tmp/rho-manifest.sh \
     --mount=type=cache,id=mise-cache-${TARGETARCH},target=/opt/mise/cache,uid=1000,gid=1000 \
@@ -201,7 +202,7 @@ RUN --mount=type=bind,source=install/manifest.sh,target=/tmp/rho-manifest.sh \
     done; \
     mise reshim; \
     mise ls; \
-    npm install --global --prefix /opt/rho $RHO_NATIVE_CODING_PACKAGES; \
+    npm install --global --prefix /opt/rho --allow-scripts="$RHO_NATIVE_CODING_ALLOW_SCRIPTS" $RHO_NATIVE_CODING_PACKAGES; \
     t3 --version; codex --version; claude --version; \
     node --version; pnpm --version; go version; rustc --version; cargo fmt --version; cargo clippy --version; \
     rm -rf "$HOME/.npm" /tmp/node-compile-cache; \

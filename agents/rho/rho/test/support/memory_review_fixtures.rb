@@ -3,26 +3,36 @@ require_relative "environment_fixtures"
 module RhoTest
   module MemoryReviewFixtures
     def self.memory_context
-      { "bindings" => [
-        { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-        { "name" => "workspace", "scope" => "workspace", "access" => "read_write" },
-        { "name" => "agent", "scope" => "agent", "access" => "read_write" },
-        { "name" => "speaker", "scope" => "speaker", "access" => "read_write", "speaker_public_id" => "speaker-1" },
-      ] }
+      { "bindings" => %w[conversation workspace agent speaker].map do |scope|
+        source = { "scope" => scope }
+        source["speaker_public_id"] = "speaker-1" if scope == "speaker"
+        { "name" => scope, "source" => source, "access" => "read_write" }
+      end }
     end
 
-    # The conversation read resolves anchor UUIDs; a variant's frozen selection
-    # carries only its explicit target and Speaker selectors.
-    def self.effective_memory_context
-      { "bindings" => [
-        { "name" => "conversation", "scope" => "conversation", "access" => "read_write", "conversation_public_id" => "conversation-1" },
-        { "name" => "workspace", "scope" => "workspace", "access" => "read_write", "workspace_public_id" => "workspace" },
-        { "name" => "agent", "scope" => "agent", "access" => "read_write", "agent_public_id" => "agent-1" },
-        { "name" => "speaker", "scope" => "speaker", "access" => "read_write", "agent_public_id" => "agent-1", "speaker_public_id" => "speaker-1" },
-      ] }
+    def self.resolve(binding)
+      source = binding.fetch("source")
+      scope = source.fetch("scope")
+      owner = { "conversation" => source.fetch("conversation_public_id", "conversation-1"), "workspace" => "workspace",
+        "agent" => "agent-1", "speaker" => "agent-1" }.fetch(scope)
+      speaker = source["speaker_public_id"]
+      binding.merge("scope" => scope, "collection_public_id" => "collection-#{scope}-#{owner}-#{speaker}",
+        "owner_public_id" => owner, "speaker_public_id" => speaker, "state" => "active")
     end
 
-    Row = Data.define(:public_id, :path, :lock_version, :content)
+    def self.projection(selection)
+      { "bindings" => selection.fetch("bindings").map { |binding| resolve(binding) } }
+    end
+
+    def self.capture(selection)
+      { "bindings" => selection.fetch("bindings").map do |binding|
+        binding.merge("capture" => resolve(binding).slice("collection_public_id", "owner_public_id", "scope", "speaker_public_id"))
+      end }
+    end
+
+    def self.effective_memory_context = projection(memory_context)
+
+    Row = Data.define(:collection_public_id, :public_id, :path, :lock_version, :content)
     Page = Data.define(:items)
     Variant = Data.define(:public_id, :run_public_id, :status, :memory_context, :prompt_text, :content, :model) do
       def initialize(public_id: "variant", **) = super
@@ -34,30 +44,34 @@ module RhoTest
     end
 
     class Memory
-      attr_accessor :before_write
+      attr_accessor :before_write, :speaker_public_id
       attr_reader :rows, :writes, :reads
 
-      def initialize
+      def initialize(conversation)
+        @conversation = conversation
         @rows, @writes, @reads = {}, [], []
         @serial = 0
       end
+
+      def bindings = @conversation.memory_bindings(speaker_public_id: speaker_public_id)
 
       def read(path)
         @reads << path
         @rows.fetch(path) { raise CybrosAgent::Api::NotFound.new("missing", code: "memory_not_found") }
       end
 
-      def write(path, content, expected_public_id:, expected_lock_version:)
+      def write(path, content, expected_collection_public_id:, expected_public_id:, expected_lock_version:)
         callback, @before_write = @before_write, nil
         callback&.call
         current = @rows[path]
-        unless current&.public_id == expected_public_id && current&.lock_version == expected_lock_version
+        selected = bindings.fetch("bindings").find { |binding| binding.fetch("name") == path.split("/", 2).first }
+        unless selected&.fetch("collection_public_id") == expected_collection_public_id && current&.public_id == expected_public_id && current&.lock_version == expected_lock_version
           raise CybrosAgent::Api::Conflict.new("changed", code: "stale_object")
         end
 
         @serial += 1
         @writes << [path, content, expected_public_id, expected_lock_version]
-        @rows[path] = Row.new(public_id: current&.public_id || "document-#{@serial}", path: path,
+        @rows[path] = Row.new(collection_public_id: expected_collection_public_id, public_id: current&.public_id || "document-#{@serial}", path: path,
           lock_version: current ? current.lock_version + 1 : 0, content: content)
       end
 
@@ -121,7 +135,7 @@ module RhoTest
         @effective_memory_context = MemoryReviewFixtures.effective_memory_context
         @answering_user_public_id = "agent-1"
         @store_entries = EnvironmentFixtures::FakeStore.new(rows)
-        @memory, @turns, @inputs = Memory.new, Turns.new, Inputs.new
+        @memory, @turns, @inputs = Memory.new(self), Turns.new, Inputs.new
         @memory_selectors = []
         @cancellations = 0
         @fetches = 0
@@ -137,7 +151,21 @@ module RhoTest
 
       def memory(speaker_public_id: nil)
         @memory_selectors << speaker_public_id
+        @memory.speaker_public_id = speaker_public_id
         @memory
+      end
+
+      def memory_bindings(speaker_public_id:)
+        bindings = effective_memory_context.fetch("bindings").dup
+        if speaker_public_id
+          memory_context.fetch("bindings").each do |binding|
+            source = binding.fetch("source")
+            if source["scope"] == "speaker" && source["speaker_public_id"].nil? && !bindings.any? { |row| row.fetch("name") == binding.fetch("name") }
+              bindings << MemoryReviewFixtures.resolve(binding.merge("source" => source.merge("speaker_public_id" => speaker_public_id)))
+            end
+          end
+        end
+        { "bindings" => bindings }
       end
 
       def settle(content:, status: "completed")

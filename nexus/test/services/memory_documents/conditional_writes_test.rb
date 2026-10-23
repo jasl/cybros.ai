@@ -55,23 +55,23 @@ class MemoryDocuments::ConditionalWritesTest < ActiveSupport::TestCase
     def assert_one_winner(results)
       assert_equal [:stale_object, :written], results.map(&:outcome).sort
       assert_includes %w[first second], document.content
-      assert_equal 1, MemoryDocument.for_workspace(@workspace.id).where(name: "conditional-race.md").count
+      assert_equal 1, @workspace.memory_documents.where(name: "conditional-race.md").count
     end
 
     def write(content, expected)
-      anchor = Scopes::Anchor.call(path: @path, workspace: Workspace.find(@workspace.id))
-      anchor.lockable.with_lock do
+      anchor = memory_anchor(path: @path, workspace: Workspace.find(@workspace.id))
+      anchor.collection.with_mutation do
         MemoryDocuments::Write.call(anchor: anchor, content: content, expected: expected)
       end
     end
 
-    def document = MemoryDocument.for_workspace(@workspace.id).find_by!(name: "conditional-race.md")
+    def document = @workspace.memory_documents.find_by!(name: "conditional-race.md")
 
     # Worker connections commit independently of this connection's cache.
     def version_count = MemoryDocumentVersion.uncached { MemoryDocumentVersion.count }
 
     def delete_document
-      anchor = Scopes::Anchor.call(path: @path, workspace: @workspace)
-      @workspace.with_lock { MemoryDocuments::Delete.call(anchor: anchor, expected: nil) }
+      anchor = memory_anchor(path: @path, workspace: @workspace)
+      anchor.collection.with_mutation { MemoryDocuments::Delete.call(anchor: anchor, expected: nil) }
     end
 end

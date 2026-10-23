@@ -88,17 +88,22 @@ its original tools.
 
 `rho run --until` (also `rho do --until` when rho-dev is enabled) uses rho's
 observer to evaluate the stopping condition,
-resolve its continuation hold and submit another attempt when needed. Keep that
-process online. Work already accepted by Nexus can finish while it is absent,
-but the next until attempt does not start until rho resumes the continuation.
+resolve its continuation hold and submit another attempt when needed. Work
+already accepted by Nexus can finish while rho is absent. The continuation hold
+waits without a deadline until rho returns or you stop the work. The next Until
+attempt does not start until rho resumes that original continuation.
 
 Until recovery reads unfinished work and its saved policy from Nexus after rho
 restarts, even when the local follower cache is missing or the conversation is
 archived. It checks the original Run and consumes already committed check results
-without rerunning those checks. Paused work stays paused; stopped work and expired
-holds are not revived. Recovery requires rho's member connection and a still-valid
-hold deadline. It does not restore a lost Code Mode VM or replay an uncertain tool
-execution.
+without rerunning those checks, even after more than 24 hours offline. The waiting
+state remains running, with no human attention needed solely because rho is offline.
+Paused work stays paused; stopped, canceled or abandoned work is not revived.
+Recovery requires rho's currently authorized member connection. The check and
+business tools keep their execution deadlines, claims and uncertain-result handling.
+New business execution still passes the ordinary permission and approval checks;
+an indefinite hold does not extend an authorization window. Recovery does not
+restore a lost Code Mode VM or replay an uncertain tool execution.
 
 Retry an uncertain creation with the same request identity and the same initial
 choices. Changing the prompt, Until command or attempt limit, model, modes, or

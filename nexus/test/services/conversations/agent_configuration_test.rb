@@ -55,7 +55,7 @@ class Conversations::AgentConfigurationTest < ActiveJob::TestCase
     written = Conversations::Memory::Apply.write(conversation: other, path: "agent/note.md", content: "Keep this identity",
       by: @human, expected: memory_expectation)
     assert_predicate written, :accepted?, written.outcome.inspect
-    assert_equal @agent.id, written.value.user_id
+    assert_equal @agent.id, written.value.memory_collection.user_id
     context = MemoryDocuments::Context.new(workspace: @workspace, conversation: other, principal: @human,
       configuration: right.memory_context, agent: right.execution_agent)
     assert_equal "Keep this identity", context.resolve("agent/note.md").documents.sole.content
@@ -214,7 +214,7 @@ class Conversations::AgentConfigurationTest < ActiveJob::TestCase
         "default_model" => "dev/mock-text", "fallback_models" => [],
         "system_prompt" => { "content" => text, "role" => "system" },
         "memory_context_limit" => { "bindings" => scopes.map { |scope|
-          { "name" => scope, "scope" => scope, "access" => "read_write" }
+          { "name" => scope, "source" => { "scope" => scope }, "access" => "read_write" }
         } } }
     end
 

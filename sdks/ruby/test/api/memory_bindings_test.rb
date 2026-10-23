@@ -56,9 +56,8 @@ class ApiMemoryBindingsTest < Minitest::Test
 
   def test_speaker_bindings_preserve_the_explicit_subject_on_create_and_management
     configuration = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-      { "name" => "speaker", "scope" => "speaker", "access" => "read_write",
-        "speaker_public_id" => "019f0000-0000-7000-8000-000000000702" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+      { "name" => "speaker", "source" => { "scope" => "speaker", "speaker_public_id" => "019f0000-0000-7000-8000-000000000702" }, "access" => "read_write" },
     ] }
     body = conversation_body(configuration)
     created = conversations([[201, {}, body]]).create(idempotency_key: "speaker-memory", memory_context: configuration)
@@ -73,11 +72,12 @@ class ApiMemoryBindingsTest < Minitest::Test
 
   def test_effective_memory_context_preserves_resolved_bindings_separately_from_the_selection
     effective = { "bindings" => [
-      { "name" => "conversation", "scope" => "conversation", "access" => "read_write",
-        "conversation_public_id" => CONVERSATION_ID },
-      { "name" => "speaker", "scope" => "speaker", "access" => "read",
-        "agent_public_id" => "019f0000-0000-7000-8000-000000000703",
-        "speaker_public_id" => "019f0000-0000-7000-8000-000000000702" },
+      { "name" => "conversation", "source" => { "scope" => "conversation" }, "scope" => "conversation", "access" => "read_write",
+        "collection_public_id" => "01995000-0000-7000-8000-000000000010", "owner_public_id" => CONVERSATION_ID,
+        "speaker_public_id" => nil, "state" => "active" },
+      { "name" => "speaker", "source" => { "scope" => "speaker" }, "scope" => "speaker", "access" => "read",
+        "collection_public_id" => "01995000-0000-7000-8000-000000000011", "owner_public_id" => "019f0000-0000-7000-8000-000000000703",
+        "speaker_public_id" => "019f0000-0000-7000-8000-000000000702", "state" => "archived" },
     ] }
     body = conversation_body(nil)
     body.fetch("conversation")["effective_memory_context"] = effective
@@ -136,12 +136,12 @@ class ApiMemoryBindingsTest < Minitest::Test
     document = CybrosAgentTest::ContractFixtures.pack("memory_documents.json").fetch("valid_fixture").fetch("memory")
     result = chat([[200, {}, { "memory" => document.merge("path" => "group/notes.md", "content" => "new plan") }]])
       .memory.edit(path: "group/notes.md", old_text: "old plan", new_text: "new plan",
-        expected_public_id: document.fetch("public_id"), expected_lock_version: 1)
+        expected_collection_public_id: "01995000-0000-7000-8000-000000000010", expected_public_id: document.fetch("public_id"), expected_lock_version: 1)
 
     assert_equal :post, request.fetch(:method)
     assert_equal "#{PATH}/memory/edit", request.fetch(:path)
     assert_equal({ "memory" => { "path" => "group/notes.md", "old_text" => "old plan", "new_text" => "new plan",
-                                "expected_public_id" => document.fetch("public_id"), "expected_lock_version" => 1 } },
+                                "expected_collection_public_id" => document.fetch("collection_public_id"), "expected_public_id" => document.fetch("public_id"), "expected_lock_version" => 1 } },
       request.fetch(:body))
     assert_equal 1, @transport.requests.length
     assert_equal "group/notes.md", result.path
@@ -152,7 +152,7 @@ class ApiMemoryBindingsTest < Minitest::Test
     error = assert_raises(CybrosAgent::Api::Conflict) do
       chat([[409, {}, { "error" => { "code" => "stale_object", "message" => "Read the current document." } }]])
         .memory.edit(path: "group/notes.md", old_text: "old", new_text: "new",
-          expected_public_id: "019f0000-0000-7000-8000-000000000700", expected_lock_version: 1)
+          expected_collection_public_id: "01995000-0000-7000-8000-000000000010", expected_public_id: "019f0000-0000-7000-8000-000000000700", expected_lock_version: 1)
     end
     assert_equal "stale_object", error.code
     assert_equal 1, @transport.requests.length
@@ -169,7 +169,7 @@ class ApiMemoryBindingsTest < Minitest::Test
       [200, {}, { "matches" => [], "truncated" => false }],
       [204, {}, nil],
     ]).memory(speaker_public_id: speaker)
-    version = { expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version") }
+    version = { expected_collection_public_id: "01995000-0000-7000-8000-000000000010", expected_public_id: document.fetch("public_id"), expected_lock_version: document.fetch("lock_version") }
 
     memory.list
     memory.read("speaker/notes.md")
@@ -188,9 +188,8 @@ class ApiMemoryBindingsTest < Minitest::Test
 
     def bindings
       { "bindings" => [
-        { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-        { "name" => "group", "scope" => "conversation", "access" => "read",
-          "conversation_public_id" => "019f0000-0000-7000-8000-000000000701" },
+        { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+        { "name" => "group", "source" => { "scope" => "conversation", "conversation_public_id" => "019f0000-0000-7000-8000-000000000701" }, "access" => "read" },
       ] }
     end
 

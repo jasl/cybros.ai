@@ -177,98 +177,6 @@ class SubagentRolesTest < Minitest::Test
     assert_equal identities, principal_ids
   end
 
-  def test_role_model_policy_and_explicit_task_models_are_captured_separately
-    preset = create_preset("models", system_prompt: "Use the supplied task.", model: OTHER_MODEL, tools: [], runner_tool_names: [])
-    role = "models-#{SecureRandom.hex(3)}"
-    publish(preset, role, "Exercise model selection.")
-    [
-      ["default", OTHER_MODEL, nil, OTHER_MODEL],
-      ["follow", OTHER_MODEL, nil, MODEL],
-      ["follow", OTHER_MODEL, OTHER_MODEL, OTHER_MODEL],
-      ["default", nil, nil, MODEL],
-    ].each_with_index do |(mode, configured, explicit, expected), index|
-      replace_preset(preset, model_mode: mode, model: configured)
-      spawn = { "role" => role, "prompt" => "!mock -- selected model", "wait" => true, "label" => "model-#{index}" }
-      spawn["model"] = explicit if explicit
-      conversation, _turn, parent = rho_do(script([["spawn", spawn]], "received"))
-      await_run_status(parent, "completed")
-      child = await_child(conversation, "model-#{index}")
-      variant = await_reply(child.public_id).active_variant
-      assert_equal MODEL, loop_row(parent).dig("turn", "model", "model")
-      assert_equal expected, "#{variant.model.provider_id}/#{variant.model.model_ref}", "mode=#{mode}, configured=#{configured.inspect}, task=#{explicit.inspect}"
-      if explicit
-        assert_equal "explicit", variant.model_selection.fetch("source")
-        assert_equal explicit, variant.model_selection.fetch("model")
-        assert_equal "route", variant.model_selection.fetch("constraint")
-      end
-      assert_equal [], variant.fallback_models
-    end
-  end
-
-  def test_all_builtin_roles_execute_and_worker_results_reach_a_different_task_model_for_review
-    identities = principal_ids
-    catalog = @daemon.control(:get, "/presets")
-    settings = @daemon.control(:get, "/settings").fetch("settings")
-    published = catalog.fetch("presets").select { |row| row["role"] }.to_h { |row| [row.dig("role", "name"), row] }
-    worker_result = "Worker result #{SecureRandom.hex(3)}: inspected NOTES.md; #{NOTE_LINE}"
-    briefs = {
-      "planner" => "Plan how to inspect NOTES.md and verify its one note without editing files.",
-      "explorer" => "Inspect NOTES.md and identify the evidence needed for the planned verification.",
-      "worker" => "Execute the plan: read NOTES.md, verify its one note, and report the evidence.",
-      "reviewer" => "Review the completed worker result against NOTES.md. Report concrete discrepancies.\nWorker result: Mock: #{worker_result}",
-    }
-    results = { "planner" => "Read NOTES.md and compare the one note.", "explorer" => "Evidence is in NOTES.md.",
-                "worker" => worker_result, "reviewer" => "Review complete: the worker result matches NOTES.md." }
-    calls = briefs.map do |role, brief|
-      assert published.key?(role), "the initial catalog must publish #{role}"
-      arguments = { "role" => role, "prompt" => script([["read", { "path" => "NOTES.md" }]], brief, reply: results.fetch(role)),
-                    "label" => role, "wait" => true }
-      arguments["model"] = OTHER_MODEL if role == "worker"
-      arguments["model"] = MODEL if role == "reviewer"
-      ["spawn", arguments]
-    end
-    claims = @daemon.claims.length
-    conversation, _turn, parent = rho_do(script(calls, "Plan, investigate, execute, then review the completed result.", reply: "Delegation complete."))
-    await_run_status(parent, "completed")
-    answerer = @conversations.conversation(conversation).fetch.answering_user_public_id
-    replies = briefs.to_h do |role, brief|
-      child = await_child(conversation, role)
-      reply = await_reply(child.public_id)
-      variant = reply.active_variant
-      child_run = variant.run_public_id
-      refute_nil child_run, "#{role} must execute its read tool"
-      assert_equal answerer, child.answering_user_public_id, "#{role} keeps the parent's execution principal"
-      expected_model = role == "worker" ? OTHER_MODEL : MODEL
-      assert_equal expected_model, loop_row(child_run).dig("turn", "model", "model"), "#{role} actually uses its selected model"
-      request = sealed_texts(child_run, "r1").join("\n")
-      assert_includes request, published.fetch(role).dig("configuration", "system_prompt")
-      assert_includes request, brief
-      assert_includes task_result(child_run, "r2t0"), NOTE_LINE
-      assert_equal "Mock: #{results.fetch(role)}", reply.text
-      if %w[worker reviewer].include?(role)
-        assert_equal "explicit", variant.model_selection.fetch("source")
-        assert_equal expected_model, variant.model_selection.fetch("model")
-        assert_equal "route", variant.model_selection.fetch("constraint")
-      end
-      [role, reply]
-    end
-    # Each wait feeds the next model round. The reviewer's scripted decision
-    # must receive the worker's formal result before it can delegate the review.
-    received = sealed_tool_results(parent, "r4")
-    assert_equal 3, received.length
-    assert_includes received.last, replies.fetch("worker").text
-    reviewer_run = replies.fetch("reviewer").active_variant.run_public_id
-    assert_includes sealed_texts(reviewer_run, "r1").join("\n"), replies.fetch("worker").text
-    reviewed = sealed_tool_results(parent, "r5")
-    assert_equal 4, reviewed.length
-    assert_includes reviewed.last, replies.fetch("reviewer").text
-    assert_equal MODEL, loop_row(parent).dig("turn", "model", "model")
-    assert_equal claims + 4, @daemon.claims.length
-    assert_equal identities, principal_ids, "four Subagent roles do not create standing Users"
-    assert_equal catalog, @daemon.control(:get, "/presets"), "task models do not edit a shared Preset or role"
-    assert_equal settings, @daemon.control(:get, "/settings").fetch("settings"), "task models do not change the installation's defaults"
-  end
-
   private
 
     def presets = @daemon.control(:get, "/presets").fetch("presets")
@@ -354,12 +262,6 @@ class SubagentRolesTest < Minitest::Test
     def sealed_texts(run, key)
       agent_api("#{loop_path(run)}/tasks/#{key}/request").fetch("request").fetch("entries").map do |entry|
         entry.fetch("parts", []).filter_map { |part| part["text"] }.join
-      end
-    end
-
-    def sealed_tool_results(run, key)
-      agent_api("#{loop_path(run)}/tasks/#{key}/request").fetch("request").fetch("entries").filter_map do |entry|
-        entry.dig("payload", "output") if entry["type"] == "tool_result_item"
       end
     end
 

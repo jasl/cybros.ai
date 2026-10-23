@@ -1,0 +1,32 @@
+en:
+  conversation_memory:
+    title: Memory bindings
+    next_title: Current selection
+    next_description: "Available bindings for future turns, subject to the selected Agent's limits. An individual input may select a different context."
+    execution_title: Active execution
+    execution_description: "This execution keeps its captured collection identities. Later binding changes apply to future work; current collection permissions and lifecycle still apply."
+    visibility: "Only bindings available to your current access are shown. Collection links require separate owner access; a binding does not grant access to private documents. Unbound Speaker sources resolve per input."
+    overridden: "A tool provider serves memory in this Workspace. Kernel collection state does not describe the provider's stored content."
+    empty: No available memory bindings.
+    binding: Path root
+    source: Source collection
+    access: Effective access
+    state: Collection state
+    exact_source: Specific collection
+    default_source: Scope default
+    speaker: "Speaker: %{id}"
+    collections: Manage conversation collections
+    scopes:
+      conversation: Conversation
+      workspace: Workspace
+      user: Personal
+      agent: Agent
+      speaker: Speaker
+    accesses:
+      read: Read only
+      read_write: Read and write
+    states:
+      active: Active
+      archived: Archived
+      deleted: Deleted
+      unallocated: Not yet allocated

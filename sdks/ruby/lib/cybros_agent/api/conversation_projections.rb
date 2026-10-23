@@ -292,6 +292,7 @@ module CybrosAgent
           payload: ->(hash) { json_snapshot(hash.except(*TRANSCRIPT_ENVELOPE)) },
         },
         MemoryDocument => {
+          collection_public_id: :string,
           public_id: :string,
           lock_version: :integer,
           path: :string,

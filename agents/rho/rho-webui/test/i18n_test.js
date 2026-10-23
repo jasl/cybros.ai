@@ -11,7 +11,7 @@ import english from "../webui/locales/en.js";
 const WEBUI = join(import.meta.dir, "../webui");
 // Keys looked up with a computed suffix: their prefix is the contract.
 const DYNAMIC_PREFIXES = ["status.", "roles.", "plugins.", "kernel_tools.", "nexus.workload_", "nexus.protocol_", "nexus.rate_", "nexus.limit_", "nexus.capability_", "nexus.fact_", "nexus.media_",
-  "terminal.", "deployment.check_", "deployment.status_", "deployment.phase_"];
+  "memory_bindings.", "terminal.", "deployment.check_", "deployment.status_", "deployment.phase_"];
 
 function files(directory) {
   return readdirSync(directory).flatMap((name) => {

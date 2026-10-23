@@ -63,6 +63,12 @@ match. Each such receipt carries `callback_result`, the exact worker
 result pointer ([Conversation turns](conversation-turns.md)). Unknown
 result provenance cannot qualify.
 
+Matching memory contexts include the captured collection UUIDs, subjects,
+paths and access limits. Independent children using their own default
+collections therefore receive separate replies. To share a summary, their
+configuration must select the same shared collections and satisfy the other
+batching conditions; the kernel never combines or redirects their sources.
+
 There is no batching delay or reordering across an incompatible receipt.
 The batch commits only when the actual assembled request includes uncut
 history and opens a reply: a history cap, raw profile, unavailable model

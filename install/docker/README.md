@@ -88,7 +88,7 @@ CYBROS_UPDATER_IMAGE_REPOSITORY=ghcr.io/jasl/cybros-updater \
 sh install/docker/publish.sh
 ```
 
-Nexus builds its JavaScript and CSS in a separate `BUILDPLATFORM` stage with Bun 1.4.2
+Nexus builds its JavaScript and CSS in a separate `BUILDPLATFORM` stage with Bun 1.4.4
 and the frozen lockfile. The target-architecture Rails stage copies those outputs and
 runs Propshaft with the JS/CSS rebuild tasks disabled. The runtime image needs no Bun.
 
@@ -110,7 +110,7 @@ trees and `install/`). Four targets:
 |---|---|---|
 | `base` | the manifest's apt core (`apt.image`), tini, uid 1000 `rho`, mise and gh (manifest-pinned tarballs, sha256) | build stage only |
 | `rho` | `install.sh --from-checkout`, profile `full`: the portable Ruby, the lock's bundler, the gems built here, rg, fd, jq, uv; `libexec/docker-entrypoint`; the bootsnap cache prewarmed on the layer; `rho doctor --strict`; the standalone stack installer | custom smaller builds |
-| `toolchains` | mise's `node@24.21.0 go@1.27.1 rust@1.98.1`, npm/pnpm and JavaScript tools; pinned T3, Codex and Claude Code; Rust uses rustup's minimal profile plus rustfmt/clippy; uv's Python 3.14 and ruff/pyright/mypy | operator-selected tag |
+| `toolchains` | mise's `node@24.22.1 go@1.27.3 rust@1.99.1`, npm/pnpm and JavaScript tools; pinned T3, Codex and Claude Code; Rust uses rustup's minimal profile plus rustfmt/clippy; uv's Python 3.15 and ruff/pyright/mypy | operator-selected tag |
 | `browser` | Chromium libraries and the existing `dev` driver/headless shell; LibreOffice Writer/Calc/Impress, fonts, and the Cowork Python environment | `docker.io/jasl123/cybros-rho:latest`, `:<yyMMddHHmm UTC>` |
 
 `rho-webui` and its static resources are included from the `rho` target onward. The Ruby daemon
@@ -120,7 +120,7 @@ tools; Node and Chromium in `browser` belong to the model's Playwright tools. Ne
 needed to serve the WebUI. `RHO_API_ONLY=1` keeps the control API and disables the page.
 
 The default project runtimes are one Node LTS, Go, one Rust Stable, and one uv-managed
-Python 3.14. LTS and Stable are release-selection rules; image builds install the concrete
+Python 3.15. LTS and Stable are release-selection rules; image builds install the concrete
 versions recorded in the manifest. Rust includes cargo, rustc, rustfmt and clippy without
 the rust-docs component. Java, project Ruby and Bun are installed on demand through mise,
 which also reads the project's runtime version files. rho's own portable Ruby stays in
@@ -130,7 +130,7 @@ for installation commands.
 The default rho user's `~/.gemrc` sets RubyGems to `--no-document`, including for project
 Rubies installed later. Builds omit Rust documentation and remove bundled Ruby documentation
 and downloaded package caches in their installation layer. This keeps those bytes out of the
-image. The Cowork environment and uv tools use the same Python 3.14 installation as project Python.
+image. The Cowork environment and uv tools use the same Python 3.15 installation as project Python.
 
 No version number and no package name lives in the Dockerfile: every RUN that needs one sources
 `install/manifest.sh` through a bind mount (rendered from `install/manifest.json` by `rake
@@ -162,7 +162,7 @@ docker buildx build -f install/docker/Dockerfile --target toolchains \
 
 The image includes LibreOffice Writer, Calc and Impress for headless DOCX/XLSX/PPTX conversion;
 Poppler and FFmpeg already belong to the apt core. Noto core/CJK, DejaVu and Liberation fonts
-cover Latin and Chinese documents. Python 3.14 under `/opt/cowork` includes python-docx,
+cover Latin and Chinese documents. Python 3.15 under `/opt/cowork` includes python-docx,
 openpyxl, python-pptx, pypdf, reportlab, Pillow, pandas and matplotlib. `python` / `python3`
 select that environment by default; an explicitly activated project virtualenv takes precedence.
 There is no global `VIRTUAL_ENV` or `PYTHONPATH`, and `uv run` still owns project dependencies.
@@ -178,11 +178,11 @@ does not advertise it. Nothing writes a default home, credentials or extension s
 
 `apt.cowork` uses Ubuntu's package versions, matching `apt.image`. Python direct dependencies
 live in `cowork-requirements.in`; every transitive dependency is pinned in
-`cowork-requirements.txt`, resolved for Python 3.14 across platforms. Refresh deliberately from
+`cowork-requirements.txt`, resolved for Python 3.15 across platforms. Refresh deliberately from
 the repository root, then run both platform resolution checks and the native image smoke:
 
 ```sh
-uv pip compile --upgrade --universal --python-version 3.14 --only-binary :all: \
+uv pip compile --upgrade --universal --python-version 3.15 --only-binary :all: \
   install/docker/cowork-requirements.in --output-file install/docker/cowork-requirements.txt
 ```
 

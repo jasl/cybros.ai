@@ -106,7 +106,7 @@ class Schedules::DispatchTest < ActiveSupport::TestCase
   test "a declared parent keeps its captured configuration and memory cap on a scheduled child" do
     declaration = AgentConfiguration.capture(@agent, tool_definitions: [READ_TOOL], approval_mode: "bypass",
       default_model: "dev/mock-text", fallback_models: ["dev/mock-unmetered"],
-      memory_context_limit: { "bindings" => [{ "name" => "conversation", "scope" => "conversation", "access" => "read_write" }] },
+      memory_context_limit: { "bindings" => [{ "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" }] },
       system_prompt: { "content" => "Keep the captured instructions." })
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @user, answering_user: @agent,
       agent_configuration: declaration, model_selection: ModelSelectionIntent.inherited("dev/mock-text"),
@@ -121,13 +121,13 @@ class Schedules::DispatchTest < ActiveSupport::TestCase
     assert_equal declaration.as_json, child.agent_configuration&.as_json
     assert_equal @conversation.model_selection, child.model_selection
     assert_equal ["dev/mock-unmetered"], child.fallback_models
-    assert_equal ["conversation"], child.effective_memory_context.fetch("bindings").map { |binding| binding.fetch("scope") }
+    assert_equal ["conversation"], child.effective_memory_context.fetch("bindings").map { |binding| binding.fetch("source").fetch("scope") }
     input = child.inputs.sole
     assert_equal declaration.as_json, input.agent_configuration.as_json
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
     run = child.reload.active_turn.active_variant.run
     assert_equal [READ_TOOL], run.tasks.sole.tool_definitions
-    assert_equal ["conversation"], run.memory_context.fetch("bindings").map { |binding| binding.fetch("scope") }
+    assert_equal ["conversation"], run.memory_context.fetch("bindings").map { |binding| binding.fetch("source").fetch("scope") }
     assert_includes run.tasks.sole.input_body.effective_text, "Keep the captured instructions."
     assert_not_includes run.tasks.sole.input_body.effective_text, "Later live instructions."
   end

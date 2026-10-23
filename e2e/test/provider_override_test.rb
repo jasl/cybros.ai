@@ -143,7 +143,7 @@ class ProviderOverrideTest < Minitest::Test
     overridden = assert_raises(CybrosAgent::Api::Conflict) { chat.memory.list }
     assert_equal "memory_overridden", overridden.code
     assert_includes overridden.message, PROVIDER_DISPLAY_NAME, "the refusal names the provider"
-    steward.profile.memory.list # the person's own door is not a workspace's
+    E2E::MemoryCollections.default_documents(steward.profile).list # the person's own door is not a workspace's
 
     # TURN 2: the same write rides the inbox to the provider — the row
     # names it as addressee and claimant, its answer is the kernel's
@@ -320,7 +320,7 @@ class ProviderOverrideTest < Minitest::Test
       (@written_notes || []).each do |workspace, conversation, path|
         memory = steward.workspace(workspace).conversation(conversation).memory
         document = memory.read(path)
-        memory.delete(path, expected_public_id: document.public_id, expected_lock_version: document.lock_version)
+        memory.delete(path, expected_collection_public_id: document.collection_public_id, expected_public_id: document.public_id, expected_lock_version: document.lock_version)
       rescue StandardError => error
         warn "Could not delete #{path} after the override lane: #{error.class}: #{error.message}"
       end

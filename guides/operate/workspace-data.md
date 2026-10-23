@@ -9,38 +9,60 @@ Open a Workspace and choose **Data** to maintain its Memory, character and Store
 These resources belong to that Workspace. Personal, Agent, Speaker and Conversation
 data keep their own scopes.
 
-Any Human with data access can edit these resources while the Workspace is live
+Any Human with data access can edit document content and Store while the Workspace is live
 (`active` or `restoring`). You do not need to own the Workspace. An archived or
 archiving Workspace remains readable and has no write controls. Account admin
-status does not grant access to a private Workspace's data.
+status does not grant access to a private Workspace's data. Creating collections and
+changing their metadata or lifecycle requires the active Human Workspace owner.
 
 ## Edit Memory
 
-1. Choose **Workspace Memory** to list document paths, sizes and current versions.
-2. Open a document to read it, then choose **Edit**. To create one, choose
-   **New memory document** and enter a path such as `workspace/notes.md`.
-3. Enter the text and choose **Save memory document**.
+1. Choose **Memory collections** from Workspace Data, or use the sidebar to
+   browse all collections your own authority can access.
+2. Search by name or exact collection ID and filter by scope or status. The
+   list starts with active collections; select **Archived** to find collections
+   you can restore. Open a collection and choose **Documents** to read its contents.
+   The Workspace owner can create
+   additional collections and edit their names and descriptions.
+3. Open a document and choose **Edit**, or choose **New memory document** with
+   a relative path such as `notes.md`. Save the text and optional skill description.
 
-Only `workspace/` paths are available here. The page cannot read or write another
-scope. Each Workspace holds up to 64 Memory documents, including its skills;
-each document's content is limited to 64 KiB. A `workspace/skills/<name>` document
-also needs a skill description. Ordinary documents leave that field empty.
+Each collection holds up to 64 documents of at most 64 KiB each. A
+`skills/<name>` document requires a skill description; ordinary documents
+leave that field empty. Collection and document UUIDs identify the resources;
+renaming a collection does not move its documents or change conversation paths.
 
-The editor submits the document identity and version it originally read. If
-someone changes, deletes or recreates the document, saving refuses the stale
-edit and keeps your draft. **Read the saved value** opens the current document
-in a new tab. Compare it with your draft and start a fresh edit to apply your
-chosen changes. The page does not refresh the version and retry your old text.
+The editor submits the original document UUID and version. A concurrent edit,
+deletion or recreation refuses a stale save and keeps your draft. **Read the
+saved value** opens the current document in a new tab. Compare it with your
+draft before starting a fresh edit; the page does not refresh conditions and
+retry old text. Collection metadata changes use their own version condition.
 
-Saving replaces the current document. **Delete** removes it after confirmation.
-There is no document version browser, restore action or recycle bin. Content
-already included in retained execution requests keeps that execution's own
-retention rules.
+**Archive** makes the collection read-only. **Restore** reopens the same
+collection. **Delete** permanently closes content access and starts cleanup;
+it does not stop conversations using it. Deleting a default collection does
+not create a replacement. Document deletion has no restore action or recycle
+bin. Copies and content already retained in execution requests remain separate.
 
-When a Tool provider serves the Workspace's Memory, the ordinary kernel list
-and document editor report that provider and are unavailable. The refusal page
-lets you open or create an exact `workspace/skills/` path, which retains its
-kernel management rule. It does not reveal a list of ordinary Memory documents.
+Creating a collection does not attach it to a Conversation. Applications select
+collections through the [memory binding API](../reference/agent-api/conversation-memory.md).
+The Conversation page's **Memory bindings** section shows the current effective
+selection and, while a reply is running, its separately captured binding identities.
+It displays source scope, collection UUID, effective access and collection state.
+Only sources visible under your current access appear; a collection link requires
+independent owner access. Agent/Speaker bindings do not grant private-document access.
+The owner-scoped collection inventory remains separate from these binding views. **New collection** from the global
+inventory creates personal memory; use a Workspace's Data page or a Conversation's
+Memory collections link to create memory owned by that resource.
+
+A provider override blocks ordinary kernel content even when opened by
+collection UUID. Collection metadata remains manageable. The refusal page
+allows an exact `skills/` path, which retains kernel handling, without
+revealing an ordinary document list.
+
+The sidebar also shows your own Human collections and readable Conversation
+collections. It does not grant access to an Agent's or Speaker's private
+collections because you are its steward or an administrator.
 
 ## Edit character
 

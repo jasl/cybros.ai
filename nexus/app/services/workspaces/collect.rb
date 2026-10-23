@@ -26,7 +26,7 @@ module Workspaces
       # stranding fragments for their own reaper.
       processed = drain_model_work(@budget)
       processed += drain_store_entries(@budget - processed)
-      processed += drain_documents(MemoryDocument, @budget - processed)
+      processed += drain_memory(@budget - processed)
       processed += drain_documents(PromptDocument, @budget - processed)
       processed += drain_conversations(@budget - processed)
       processed += drain_runs(@budget - processed)
@@ -103,6 +103,29 @@ module Workspaces
         StoreEntry.where(id: leaf_ids).delete_all
       end
 
+      def drain_memory(remaining)
+        return 0 unless remaining.positive?
+
+        processed = 0
+        rows = MemoryCollection.where(workspace_id: candidate_ids)
+          .order(:workspace_id, :id).limit(remaining).pluck(:id, :workspace_id)
+        rows.group_by(&:last).each do |workspace_id, collections|
+          break if processed == remaining
+
+          Workspace.transaction(requires_new: true) do
+            workspace = Workspace.lock.find_by(id: workspace_id)
+            next unless workspace&.deleted? && workspace.deleted_at <= @cutoff
+
+            collections.each do |id, _workspace_id|
+              break if processed == remaining
+
+              processed += MemoryCollections::Drain.collection(id: id, budget: remaining - processed)
+            end
+          end
+        end
+        processed
+      end
+
       # The final bulk delete does not run Workspace's association callbacks.
       # Charge workspace document pointers/slots as leaves; immutable memory
       # versions remain with their other readers or the orphan-version sweep.
@@ -131,22 +154,32 @@ module Workspaces
           .order(id: :desc)
           .limit(remaining)
           .pluck(:id)
-        ids.count { |id| drain_conversation(id) }
+        processed = 0
+        ids.each do |id|
+          break if processed == remaining
+
+          processed += drain_conversation(id, budget: remaining - processed)
+        end
+        processed
       end
 
-      def drain_conversation(id)
+      def drain_conversation(id, budget:)
         Conversation.transaction(requires_new: true) do
           locked = Conversation.lock.find_by(id: id)
-          next false if locked.nil?
+          next 0 if locked.nil? || !Conversations::Reap.destroyable?(locked)
 
-          Conversations::Reap.destroy_aggregate(locked)
+          processed = MemoryCollections::Drain.call(owner: locked, budget: budget)
+          if processed < budget && Conversations::Reap.destroy_aggregate(locked)
+            processed += 1
+          end
+          processed
         end
       rescue ActiveRecord::StatementInvalid => error
         raise unless Nexus::ForeignKeyViolation.matches?(error, constraint: "fk_rails_fba0031b24")
 
         # A descendant pinned this row between the pluck and the lock;
         # level-triggered — rediscovered when the pin dies.
-        false
+        0
       end
 
       def descendant_conversation_pins
@@ -246,7 +279,7 @@ module Workspaces
         workspace_ids = eligible
           .where(id: candidate_ids)
           .where.missing(:store_entries)
-          .where.missing(:memory_documents)
+          .where.missing(:memory_collections)
           .where.missing(:prompt_documents)
           .where(<<~SQL.squish)
             NOT EXISTS (

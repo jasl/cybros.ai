@@ -10,10 +10,10 @@ module Conversations
     # pending input lends its author to the wall, a person has a session,
     # a loop has its creator. `overshoot` is the number the site had, the
     # prune arm's whole evidence; nil when it had none.
-    class Trigger < Data.define(:kind, :authoring_user, :origin, :input_public_id, :overshoot, :agent_configuration)
+    class Trigger < Data.define(:kind, :authoring_user, :origin, :input_public_id, :overshoot, :agent_configuration, :memory_context)
       KINDS = %w[wall manual overflow usage fallback].freeze
 
-      def initialize(kind:, overshoot: nil, agent_configuration: nil, **)
+      def initialize(kind:, overshoot: nil, agent_configuration: nil, memory_context: nil, **)
         raise ArgumentError, "unknown compaction trigger #{kind.inspect}" unless KINDS.include?(kind)
 
         super
@@ -35,9 +35,9 @@ module Conversations
         def fallback(delegate) = of("fallback", delegate, nil)
 
         # A person asked to shrink: no number, so the repair summarizes.
-        def manual(user:, agent_configuration: nil)
+        def manual(user:, agent_configuration: nil, memory_context: nil)
           new(kind: "manual", authoring_user: user, origin: nil, input_public_id: nil,
-            agent_configuration: agent_configuration)
+            agent_configuration: agent_configuration, memory_context: memory_context)
         end
 
         private
@@ -57,17 +57,20 @@ module Conversations
           # the poster of the input it answered, as the wall's input is.
           def on_reply(kind, variant, overshoot)
             new(kind: kind, authoring_user: variant.model_invocation.creating_user, origin: nil,
-              input_public_id: nil, overshoot: overshoot, agent_configuration: variant.agent_configuration)
+              input_public_id: nil, overshoot: overshoot, agent_configuration: variant.agent_configuration,
+              memory_context: variant.memory_context)
           end
 
           def on_input(kind, input, overshoot)
             new(kind: kind, authoring_user: input.authoring_user, origin: input.origin,
-              input_public_id: input.public_id, overshoot: overshoot, agent_configuration: input.agent_configuration)
+              input_public_id: input.public_id, overshoot: overshoot, agent_configuration: input.agent_configuration,
+              memory_context: input.execution_memory_context)
           end
 
           def on_round(kind, node, overshoot)
             new(kind: kind, authoring_user: node.run.creating_user, origin: nil,
-              input_public_id: nil, overshoot: overshoot, agent_configuration: node.run.agent_configuration)
+              input_public_id: nil, overshoot: overshoot, agent_configuration: node.run.agent_configuration,
+              memory_context: node.run.memory_context)
           end
       end
     end

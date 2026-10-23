@@ -3,7 +3,7 @@ import type { CheckpointRestoreOptions } from '../checkpoints.js';
 import type { RunnerEffects } from '../models.js';
 import { Resource } from './base.js';
 import { ConversationInputs } from './inputs.js';
-import { Memory, Schedules, StoreEntries } from './data.js';
+import { OwnedMemoryCollections, Memory, Schedules, StoreEntries } from './data.js';
 import { RunScope, Runs } from './runs.js';
 import { Turns } from './turns.js';
 import { InputExecution } from '../input-execution.js';
@@ -36,11 +36,12 @@ export class ConversationScope extends Resource {
   children(query: ConversationChildrenList = {}, options: RequestOptions = {}) { return this.paged('ConversationSummary', 'conversations', { ...options, query }, '/children'); }
   get inputs() { return new ConversationInputs(this.transport, this.path + '/inputs'); }
   get schedules() { return new Schedules(this.transport, this.path + '/schedules'); }
+  get memoryCollections() { return new OwnedMemoryCollections(this.transport, this.path + '/memory_collections'); }
   memory(speakerPublicId?: string) { return new Memory(this.transport, this.path + '/memory', speakerPublicId); }
   get storeEntries() { return new StoreEntries(this.transport, this.path + '/store_entries'); }
   get turns() { return new Turns(this.transport, this.path + '/turns'); }
   history(query: HistoryOptions = {}, options: RequestOptions = {}) { return this.one('ConversationHistoryPage', '/history', undefined, { ...options, query }); }
-  setMemoryContext(memory_context: JsonObject | null, options: RequestOptions = {}) { return this.one('Conversation', '/memory_context', 'conversation', { ...options, method: 'POST', body: { memory_context } }); }
+  setMemoryContext(memory_context: import('../requests.js').MemorySelection | null, options: RequestOptions = {}) { return this.one('Conversation', '/memory_context', 'conversation', { ...options, method: 'POST', body: { memory_context } }); }
   setDefaultRunner(executor_public_id: string | null, options: RequestOptions = {}) { return this.one('Conversation', '/default_runner', 'conversation', { ...options, method: 'PUT', body: { default_runner: { executor_public_id } } }); }
   setAccess(access: ConversationAccessInput, options: RequestOptions = {}) { return this.one('Conversation', '/access', 'conversation', { ...options, method: 'PUT', body: { access } }); }
   async fork(input: ForkConversation, options: MutationOptions) {

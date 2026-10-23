@@ -118,14 +118,16 @@ fn access_memory_and_messaging_name_their_own_subjects() {
     );
     let binding = MemoryBinding {
         name: "group".into(),
-        scope: MemoryScope::Conversation,
+        source: MemorySource::Scope {
+            scope: MemoryScope::Conversation,
+            conversation_public_id: Some("conversation-id".into()),
+            speaker_public_id: None,
+        },
         access: MemoryAccess::Read,
-        conversation_public_id: "conversation-id".to_owned().into(),
-        ..Default::default()
     };
     assert_eq!(
         to_value(binding).unwrap(),
-        json!({"name":"group", "scope":"conversation", "access":"read", "conversation_public_id":"conversation-id"})
+        json!({"name":"group", "source":{"scope":"conversation", "conversation_public_id":"conversation-id"}, "access":"read"})
     );
     let messaging = MessagingAgent {
         agent_public_id: "recipient-id".into(),

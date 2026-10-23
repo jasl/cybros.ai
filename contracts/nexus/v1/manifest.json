@@ -15,6 +15,7 @@
     "history.json",
     "inference_requests.json",
     "mcp_connections.json",
+    "memory_collections.json",
     "memory_documents.json",
     "meta.json",
     "models.json",

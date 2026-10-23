@@ -146,7 +146,7 @@ class StoreEntries::CreateTest < ActiveSupport::TestCase
       stop_database_call(archive) if archive
       if workspace_id
         StoreEntry.where(workspace_id: workspace_id).delete_all
-        Workspace.where(id: workspace_id).delete_all
+        destroy_memory_owner!(Workspace.find(workspace_id))
       end
     end
   end
@@ -236,7 +236,7 @@ class StoreEntries::CreateTest < ActiveSupport::TestCase
       stop_database_call(second) if second
       if workspace_id
         StoreEntry.where(workspace_id: workspace_id).delete_all
-        Workspace.where(id: workspace_id).delete_all
+        destroy_memory_owner!(Workspace.find(workspace_id))
       end
     end
   end
@@ -278,6 +278,9 @@ class StoreEntries::CreateTest < ActiveSupport::TestCase
     ))
     assert_predicate accepted, :accepted?, accepted.outcome.inspect
 
+    # The real drain enters without a host lock so first-use defaults can
+    # prepare above it. This barrier models only the materialization phase.
+    MemoryCollection.default_for(writer, speaker: accepted.value.speaker)
     # Drain owns the conversation before Store Create owns its writer.
     # Materializing the turn must still acquire the User FK's KEY SHARE.
     materialized = nil
@@ -306,7 +309,7 @@ class StoreEntries::CreateTest < ActiveSupport::TestCase
       release_row_lock(held) if held&.thread&.alive?
     ensure
       stop_database_call(creating) if creating
-      conversation&.reload&.destroy!
+      destroy_memory_owner!(conversation&.reload)
     end
   end
 

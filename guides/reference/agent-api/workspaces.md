@@ -28,12 +28,6 @@ GET    /agent_api/v1/workspaces/{workspace_id}/prompt_documents
 GET    /agent_api/v1/workspaces/{workspace_id}/prompt_documents/{slot}
 PUT    /agent_api/v1/workspaces/{workspace_id}/prompt_documents/{slot}
 DELETE /agent_api/v1/workspaces/{workspace_id}/prompt_documents/{slot}
-GET    /agent_api/v1/workspaces/{workspace_id}/memory
-POST   /agent_api/v1/workspaces/{workspace_id}/memory/show
-POST   /agent_api/v1/workspaces/{workspace_id}/memory
-POST   /agent_api/v1/workspaces/{workspace_id}/memory/grep
-POST   /agent_api/v1/workspaces/{workspace_id}/memory/edit
-POST   /agent_api/v1/workspaces/{workspace_id}/memory/delete
 POST   /agent_api/v1/workspaces/{workspace_id}/ownership_transfer
 POST   /agent_api/v1/workspaces/{workspace_id}/archival
 POST   /agent_api/v1/workspaces/{workspace_id}/restoration
@@ -341,7 +335,7 @@ memory for this workspace's conversations; the conversation memory routes
 (`…/conversations/{id}/memory`, [Conversation memory](conversation-memory.md)) refuse
 `409 memory_overridden` naming the provider for reads and writes; the
 kernel's rows persist untouched, so clearing the override restores them.
-The person's own door (`profile/memory`) is not a workspace's and keeps
+The principal's own collection resource is independent of a Workspace and keeps
 serving `user/`. In an overridden Workspace, a turn with no memory tools
 cannot read that provider's memory: the kernel's injected block is absent,
 and the provider's memory is reachable only through its tool verbs. A
@@ -421,75 +415,22 @@ next turn of every conversation reads the slot live. Bound: 64 KiB.
 
 ## Memory
 
-The workspace's own door to `workspace/` memory: rows available to
-conversations whose effective bindings include this root, written and read
-here without selecting a conversation. It uses the profile door's shape on
-the workspace's anchor. `user/`, `agent/`, `speaker/` and `conversation/`
-are managed through their owning doors
-([Profile memory](profile-memory.md),
-[Conversations](conversation-memory.md))
-and are refused here with `memory_scope_unavailable`. **The path rides the
-body on every verb that names one**, the reads included.
+A Workspace can own several [memory collections](memory-collections.md).
+Discover or create them through the
+[owner-scoped collection endpoints](memory-collections.md#routes).
 
-```http
-GET    /agent_api/v1/workspaces/{workspace_id}/memory
-POST   /agent_api/v1/workspaces/{workspace_id}/memory/show
-POST   /agent_api/v1/workspaces/{workspace_id}/memory
-POST   /agent_api/v1/workspaces/{workspace_id}/memory/delete
-```
+Use the collection UUID for metadata, archive, restore, delete and document
+operations. A document path is relative (`notes.md`, `skills/review-checklist`).
+Collection creation and lifecycle require the active Human owner. Content
+writes retain existing Workspace write standing and dedication rules; reads
+retain data access. Each collection has its own 64-document bound.
 
-- `GET …/memory` — every `workspace/` document of this room, as
-  `{path, public_id, lock_version, bytesize, description, written_at}` (no content: `show` is what
-  loads text). Only this workspace's rows are listed.
-- `POST …/memory/show` — `{memory: {path}}` answers one document with its
-  `content`.
-- `POST …/memory` — `{memory: {path, content, description?, expected_public_id, expected_lock_version}}` writes one
-  document whole. 201. `description` is a skill row's
-  (`workspace/skills/<name>`, [Conversation memory](conversation-memory.md#skills)).
-- `POST …/memory/grep` — `{memory: {pattern, path?, ignore_case?, limit?}}`;
-  200 `{matches: [{path, line_number, text}], truncated}`. Only this workspace's
-  documents are searched, with the bounded regex semantics described in
-  [conversation memory](conversation-memory.md#search-documents).
-- `POST …/memory/edit` — `{memory: {path, old_text, new_text, expected_public_id,
-  expected_lock_version}}`; 200 `{memory: ...}`. The expected version must
-  match and the exact passage must occur once; a refusal changes nothing.
-- `POST …/memory/delete` — `{memory: {path, expected_public_id, expected_lock_version}}`. 204, and it is gone.
-
-Both expected fields are required: `null`/`null` creates only an absent path;
-a UUID/version pair from read or list replaces or deletes only the observed row.
-Missing or malformed conditions return `400 parameter_missing` /
-`parameter_invalid`; stale, missing, or recreated rows return `409 stale_object`
-without changes. See [conditional writes](profile-memory.md#conditional-writes) for the
-shared create, delete, fork, and conflict contract. Never automatically retry an
-old calculation with a newly fetched pair.
-
-WHO may write: WRITE standing on the workspace — data access under the
-dedication fence, in the live states (`active` or `restoring`); a browsable-but-not-writable caller (an
-archived room's reader, a fenced agent) reads and never writes (`403
-not_authorized`). The workspaces row is the lock. A write bumps no
-conversation's `context_revision`: the next turn of every conversation in
-the room reads the rows live. Bounds and the 64-document cap are memory's.
-
-WHILE THE WORKSPACE IS OVERRIDDEN (`tool_provider_overrides` above) every
-plain verb here is `409 memory_overridden` naming the provider — the ONE
-guard the conversation door runs (`MemoryOverrideGuard`); a `skills/` path
-passes it, a skill being the kernel's row and never the provider's. The
-person's own door keeps serving `user/` meanwhile.
-
-| Status | Code | Description |
-| --- | --- | --- |
-| `200 OK` | — | The listing or the document. |
-| `201 Created` | — | The written document. |
-| `204 No Content` | — | Deleted. |
-| `400 Bad Request` | `parameter_missing`, `parameter_invalid` | A required condition is missing or malformed. |
-| `409 Conflict` | `stale_object` | The selected row/version no longer matches, or an absent path was created. |
-| `403 Forbidden` | `not_authorized` | A write without write standing on the workspace. |
-| `404 Not Found` | `not_found` | The workspace is not visible to the caller. |
-| `404 Not Found` | `memory_not_found` | A read found no document at that path in this room. |
-| `409 Conflict` | `memory_overridden` | The workspace's memory is a provider's; the message names it. |
-| `422 Unprocessable Content` | `memory_scope_unavailable` | A `user/`, `agent/`, `speaker/` or `conversation/` path — those scopes have their own doors. |
-| `422 Unprocessable Content` | `memory_path_invalid` | A bare name, or a scope word outside `conversation \| workspace \| user \| agent \| speaker`. |
-| `422 Unprocessable Content` | `memory_full`, `memory_document_too_large`, `memory_content_invalid`, `memory_description_invalid`, `skill_description_required`, `skill_name_invalid` | Memory's own refusals, as on every door. |
+A collection can serve several conversations. Writing through its resource
+does not broadcast changes to those conversations' `context_revision`.
+Document UUID/version conditions protect edits; collection metadata uses its
+separate `lock_version`. A provider override blocks ordinary content through
+collection UUID routes too, while specifically named skills retain kernel
+handling. See [collection authorization and conditions](memory-collections.md).
 
 ## Projections
 

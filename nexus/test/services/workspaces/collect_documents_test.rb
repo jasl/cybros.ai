@@ -15,7 +15,7 @@ class Workspaces::CollectDocumentsTest < ActiveSupport::TestCase
 
     result = Workspaces::Collect.call(budget: 10)
 
-    assert_equal 2, result[:processed]
+    assert_equal 3, result[:processed]
     assert_not Workspace.exists?(@workspace.id)
     assert_not MemoryDocument.exists?(document.id)
     assert_equal "personal memory", personal.reload.content
@@ -36,7 +36,7 @@ class Workspaces::CollectDocumentsTest < ActiveSupport::TestCase
 
     result = Workspaces::Collect.call(budget: 10)
 
-    assert_equal 2, result[:processed]
+    assert_equal 3, result[:processed]
     assert_not Workspace.exists?(@workspace.id)
     assert_not PromptDocument.exists?(document.id)
     assert_equal "personal persona", personal.reload.content
@@ -48,7 +48,7 @@ class Workspaces::CollectDocumentsTest < ActiveSupport::TestCase
     prompt = write_prompt(@workspace, "character", "room character")
     delete_workspace
 
-    2.times do
+    3.times do
       result = Workspaces::Collect.call(budget: 1)
       assert_equal 1, result[:processed]
       assert result.more?
@@ -75,8 +75,9 @@ class Workspaces::CollectDocumentsTest < ActiveSupport::TestCase
   private
 
     def write_memory(host, name, content)
+      MemoryCollection.default_for(host)
       scope = host == @user ? "user" : "workspace"
-      anchor = Scopes::Anchor.call(path: "#{scope}/#{name}", workspace: host,
+      anchor = memory_anchor(path: "#{scope}/#{name}", workspace: host,
         conversation: nil, user: @user)
       host.with_lock do
         result = MemoryDocuments::Write.call(anchor: anchor, expected: memory_expectation_at(anchor), content: content)

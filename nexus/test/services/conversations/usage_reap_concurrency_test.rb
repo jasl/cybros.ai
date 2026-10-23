@@ -50,7 +50,7 @@ class Conversations::UsageReapConcurrencyTest < ActiveJob::TestCase
     if (run = Run.find_by(id: @run&.id))
       run.with_lock { Runs::Reap.destroy_aggregate(run) }
     end
-    Conversation.find_by(id: @conversation&.id)&.destroy!
+    destroy_memory_owner!(Conversation.find_by(id: @conversation&.id))
     UsageRecord.where(conversation_public_id: @conversation&.public_id).delete_all
     ModelUsageSummary.where(subject_kind: "conversation", subject_id: @conversation&.id).delete_all
   end

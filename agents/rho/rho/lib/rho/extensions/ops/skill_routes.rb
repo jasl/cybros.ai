@@ -1,25 +1,11 @@
 module Rho
   module Extensions
     module Ops
-      # `rho skills`' ROW HALF: the
-      # kernel's `skills/` rows on rho's two managed scopes, each
-      # through the memory door that owns it — the Agent's own
-      # (`profile/memory`, the `agent/` rung, reachable from any workspace)
-      # and the room's own (`workspaces/{id}/memory`, the `workspace/` rung of this daemon's adopted workspace). Each door lists its one scope,
-      # so a listing is filtered to `skills/` alone. The PROJECT section is
-      # what this daemon's runner announces under `documents` — the root's
-      # skills, as the Coding extension scans them (the same bytes
-      # `announce_tools` sends) — never a row, and `null` while no root is
-      # set. NOT the merge: the merge is the kernel's, read as the seed's
-      # bytes through `rho request`.
-      #
-      # The kernel judges every write: its four skill words
-      # (`skill_description_required`, `memory_description_invalid`,
-      # `skill_name_invalid`, `skill_scope_unavailable`) call_tool as the 422s
-      # they are, through the route table's one exception map.
+      # The CLI edits the Agent and Workspace default collections. It discovers
+      # their metadata, then addresses documents by UUID and relative path.
+      # Project skills remain the Runner's independently announced documents.
       module SkillRoutes
-        WORKSPACE_PREFIX = "workspace/skills/".freeze
-        AGENT_PREFIX = "agent/skills/".freeze
+        PREFIX = "skills/".freeze
         SCOPES = %w[agent workspace].freeze
 
         class << self
@@ -30,16 +16,15 @@ module Rho
             api.register_route("POST", "/skills/rm") { |request, ctx| remove(request, ctx) }
           end
 
-          # Three sections: the Agent's rung whole, the adopted workspace's
-          # rung whole, and the project's — this runner's announced documents.
           def list(_request, ctx)
             ctx.member_plane do |client, workspace_public_id|
-              agent = client.profile.memory.list.select { |row| row.path.start_with?(AGENT_PREFIX) }
-              workspace = client.workspace(workspace_public_id).memory.list
-                .select { |row| row.path.start_with?(WORKSPACE_PREFIX) }
-              [200, { skills: { agent: agent.map { |row| skill_row(row) },
-                                workspace: workspace.map { |row| skill_row(row) },
-                                project: project_documents(ctx) } }]
+              collections = SCOPES.to_h { |scope| [scope, default_collection(client, workspace_public_id, scope)] }
+              documents = collections.transform_values do |collection|
+                collection ? client.memory_collections.documents(collection.public_id).list.select { |row| row.path.start_with?(PREFIX) } : []
+              end
+              [200, { skills: { agent: documents.fetch("agent").map { |row| skill_row(row) },
+                workspace: documents.fetch("workspace").map { |row| skill_row(row) },
+                collections: collections.transform_values { |row| row&.to_h }, project: project_documents(ctx) } }]
             end
           end
 
@@ -56,7 +41,7 @@ module Rho
               content = String.try_convert(body["content"])
               next Rho::Daemon::Refusal.malformed("content must be a string") if content.nil?
 
-              written = memory_door(client, workspace_public_id, scope).write("#{scope}/skills/#{name}", content,
+              written = memory_door(client, workspace_public_id, scope, expected: body.fetch("expected_collection_public_id").to_s).write("skills/#{name}", content,
                 description: body["description"], expected_public_id: body.fetch("expected_public_id"),
                 expected_lock_version: body.fetch("expected_lock_version"))
               [201, { memory: written.to_h }]
@@ -72,7 +57,7 @@ module Rho
             return Rho::Daemon::Refusal.malformed("name is required") if name.empty?
 
             ctx.member_plane do |client, workspace_public_id|
-              [200, { memory: memory_door(client, workspace_public_id, scope).read("#{scope}/skills/#{name}").to_h }]
+              [200, { memory: memory_door(client, workspace_public_id, scope).read("skills/#{name}").to_h }]
             end
           end
 
@@ -82,8 +67,8 @@ module Rho
               next Rho::Daemon::Refusal.malformed("scope must be agent or workspace") unless SCOPES.include?(scope)
               next Rho::Daemon::Refusal.malformed("name is required") if name.empty?
 
-              path = "#{scope}/skills/#{name}"
-              memory_door(client, workspace_public_id, scope).delete(path,
+              path = "skills/#{name}"
+              memory_door(client, workspace_public_id, scope, expected: body.fetch("expected_collection_public_id").to_s).delete(path,
                 expected_public_id: body.fetch("expected_public_id"), expected_lock_version: body.fetch("expected_lock_version"))
               [200, { deleted: { path: path } }]
             end
@@ -93,10 +78,19 @@ module Rho
 
           private
 
-            # The door a rung is reached through: the profile's for `agent/`,
-            # the adopted workspace's own for `workspace/`.
-            def memory_door(client, workspace_public_id, scope)
-              scope == "agent" ? client.profile.memory : client.workspace(workspace_public_id).memory
+            def default_collection(client, workspace_public_id, scope)
+              owner = scope == "agent" ? client.profile : client.workspace(workspace_public_id)
+              owner.memory_collections.list(default: true).items.first
+            end
+
+            def memory_door(client, workspace_public_id, scope, expected: nil)
+              collection = default_collection(client, workspace_public_id, scope)
+              raise CybrosAgent::Api::InvalidRequest.new("The default collection is unavailable", code: "memory_scope_unavailable") unless collection
+              if expected && collection.public_id != expected
+                raise CybrosAgent::Api::Conflict.new("The selected collection changed", code: "stale_object")
+              end
+
+              client.memory_collections.documents(collection.public_id)
             end
 
             # What the runner address announces for the root of the moment:
@@ -112,7 +106,7 @@ module Rho
             end
 
             def skill_row(row)
-              { name: row.path.split("/skills/", 2).last, path: row.path, public_id: row.public_id,
+              { name: row.path.delete_prefix(PREFIX), collection_public_id: row.collection_public_id, path: row.path, public_id: row.public_id,
                 lock_version: row.lock_version, description: row.description,
                 bytesize: row.bytesize, written_at: row.written_at }
             end

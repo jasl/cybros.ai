@@ -40,6 +40,22 @@ Ask rho to remember a preference, a confirmed fact or a project decision, or to 
 
 Every Bot remembers a person separately. Your private Bot uses the same `speaker/` memory for you that an external Bot uses for each visitor. External Bots can update conversation and Speaker notes, read shared workspace knowledge, and cannot read Agent-private or Human-owned memory.
 
+Open the conversation title menu and choose **Memory bindings** to select the
+collections used by future turns. **Automatic defaults** selects applicable
+scope defaults, **Memory off** selects none, and **Custom bindings** replaces
+the complete list. Give each binding a unique path root and choose read-only
+or read/write access. The source picker loads your authorized collection inventory;
+select a named collection to pin its UUID instead of following a scope default.
+Use **Load more collections** for later pages. Nexus still checks source authority
+and the Agent's memory limits when saving and using the selection.
+
+The dialog shows the currently resolved bindings and collection states. Speaker
+defaults stay relative to each person unless you supply an explicit Speaker UUID.
+Bot and ingress conversations are read-only here, as are archived conversations.
+A failed save keeps the draft for correction and does not retry automatically.
+Saving affects future work; accepted executions retain their captured collection
+identities. Removing a binding or turning memory off does not delete its documents.
+
 Inspect the documents from the terminal:
 
 ```sh
@@ -48,7 +64,11 @@ rho memory CONVERSATION_ID read conversation/project.md
 rho memory CONVERSATION_ID grep deployment
 ```
 
-Use a path returned by `ls`. The same command supports `write`, `edit` and `delete`. The daemon uses a known conversation's original workspace; if an older conversation is not found after switching workspaces, select its original workspace and retry.
+Use a path returned by `ls`. The same command supports `write`, `edit` and `delete`.
+Paths refer to collections selected by the conversation; names such as `group/`
+are aliases and do not themselves establish who can read the notes. The commands
+pin collection and document identity plus version before writing, and report
+conflicts for you to reconsider. The daemon uses a known conversation's original workspace; if an older conversation is not found after switching workspaces, select its original workspace and retry.
 
 All actions accept `--speaker SPEAKER_UUID` to select an unbound `speaker/` root, with existing bindings and root permissions still enforced. Without it, a conversation answered by the Main Agent uses the owner's Speaker; other conversations require an explicit selector for unbound Speaker notes.
 
@@ -68,6 +88,11 @@ Choose a writable root already bound to that conversation; a shared conversation
 
 A Speaker review remains attached to that selected person's document. Replies from another Speaker do not update it, and review does not bind the conversation's other participants to that person. Enable review again with an explicit Speaker to choose another document, or choose conversation memory for shared notes.
 
-Review keeps the source conversation's access rules. A failed review leaves its answer and previous memory intact. A newer edit makes a stale review skip its write. Deleting the selected document stops automatic writes until you explicitly enable review again; deleting a note does not delete the original conversation.
+Review keeps the source conversation's access rules. A failed review leaves its answer and previous memory intact. A newer edit, changed binding, changed answerer or changed subject makes a stale
+review skip its write. Review pins the selected collection and document UUIDs;
+replacing a collection or recreating the path cannot redirect its proposal.
+Collection Archive prevents writes; Delete does not silently allocate another
+default. Deleting the selected document stops automatic writes until you
+explicitly enable review again; deleting a note does not delete the original conversation.
 
 Background memory review runs in rho and requires the daemon to be online.

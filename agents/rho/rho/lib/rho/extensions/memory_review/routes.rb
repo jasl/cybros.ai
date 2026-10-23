@@ -33,7 +33,7 @@ module Rho
 
           def write(request, ctx, operation, observer)
             ctx.member_plane(request, body: true) do |client, workspace_public_id, about, body|
-              review = observer.service(ctx, client.workspace(workspace_public_id), body.fetch("public_id").to_s, about)
+              review = observer.service(ctx, client.workspace(workspace_public_id), body.fetch("public_id").to_s, about, client: client)
               result = case operation
               when "enable"
                 speaker = body["speaker_public_id"]

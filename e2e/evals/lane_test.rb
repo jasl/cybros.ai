@@ -411,11 +411,24 @@ class EvalsLaneTest < Minitest::Test
     # answering `memory_overridden` — is a warning, never a red run.
     def reset_memory!(run)
       client = CybrosAgent::Client.new(base_url: @base_url, credential: @steward.member_token)
-      door = run&.conversation ? client.workspace(workspace_public_id).conversation(run.conversation).memory :
-        client.profile.memory
-      paths = door.list.map(&:path).grep(%r{\A(?:workspace|user)/})
-      paths.each { |path| door.delete(path) }
-      puts "memory:  #{paths.size} document(s) deleted#{paths.empty? ? "" : " (#{paths.join(", ")})"}"
+      doors = if run&.conversation
+        [client.workspace(workspace_public_id).conversation(run.conversation).memory]
+      else
+        client.profile.memory_collections.list(default: true).items.select { |collection| collection.scope == "user" }
+          .map { |collection| client.memory_collections.documents(collection.public_id) }
+      end
+      removed = []
+      doors.each do |door|
+        door.list.each do |row|
+          next if run&.conversation && !row.path.match?(%r{\A(?:workspace|user)/})
+
+          condition = { expected_public_id: row.public_id, expected_lock_version: row.lock_version }
+          condition[:expected_collection_public_id] = row.collection_public_id if run&.conversation
+          door.delete(row.path, **condition)
+          removed << row.path
+        end
+      end
+      puts "memory:  #{removed.size} document(s) deleted#{removed.empty? ? "" : " (#{removed.join(", ")})"}"
     rescue StandardError => error
       warn "the run's memory could not be reset: #{error.class}: #{error.message.to_s[0, 200]}"
     end

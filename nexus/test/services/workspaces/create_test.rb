@@ -201,6 +201,7 @@ class Workspaces::CreateTest < ActiveSupport::TestCase
       stop_database_call(removal) if removal
       stop_database_call(creation) if creation
       delete_race_workspaces_for(creator_id)
+      MemoryCollection.where(user_id: creator_id).delete_all if creator_id
       User.where(id: creator_id).delete_all if creator_id
       Identity.where(id: identity_id).delete_all if identity_id
     end
@@ -269,6 +270,7 @@ class Workspaces::CreateTest < ActiveSupport::TestCase
       stop_database_call(creation) if creation
       stop_database_call(removal) if removal
       delete_race_workspaces_for(agent_id, steward_id)
+      MemoryCollection.where(user_id: [agent_id, steward_id].compact).delete_all
       User.where(id: agent_id).delete_all if agent_id
       User.where(id: steward_id).delete_all if steward_id
       Identity.where(id: steward_identity_id).delete_all if steward_identity_id
@@ -286,6 +288,7 @@ class Workspaces::CreateTest < ActiveSupport::TestCase
         .or(Workspace.where(owner_id: user_ids))
         .pluck(:id)
       StoreEntry.where(workspace_id: workspace_ids).delete_all
+      MemoryCollection.where(workspace_id: workspace_ids).delete_all
       Workspace.where(id: workspace_ids).delete_all
     end
 end

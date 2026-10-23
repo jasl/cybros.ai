@@ -5,6 +5,7 @@ require "minitest/autorun"
 require "cybros_agent"
 require "support/nexus_server"
 require "support/browser_actor"
+require "support/memory_collections"
 require "support/device_authorization_budget"
 require "support/session_sign_in_budget"
 

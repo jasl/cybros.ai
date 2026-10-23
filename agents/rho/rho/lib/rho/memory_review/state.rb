@@ -13,10 +13,10 @@ module Rho
       def to_h = super.transform_keys(&:to_s)
     end
 
-    State = Data.define(:conversation_public_id, :enabled, :path, :document_public_id, :speaker_public_id, :model,
+    State = Data.define(:conversation_public_id, :enabled, :path, :collection_public_id, :document_public_id, :speaker_public_id, :model,
       :after_position, :pending, :last_run_public_id, :last_review_conversation_public_id, :outcome) do
       def self.empty(conversation_public_id)
-        new(conversation_public_id: conversation_public_id, enabled: false, path: nil, document_public_id: nil, speaker_public_id: nil,
+        new(conversation_public_id: conversation_public_id, enabled: false, path: nil, collection_public_id: nil, document_public_id: nil, speaker_public_id: nil,
           model: nil, after_position: -1, pending: nil, last_run_public_id: nil,
           last_review_conversation_public_id: nil, outcome: nil)
       end

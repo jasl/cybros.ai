@@ -13,7 +13,8 @@ class AgentAPI::V1::RunSpeakersTest < ActionDispatch::IntegrationTest
   end
 
   test "a controlled ingress Speaker supplies standalone memory while the member retains authority" do
-    anchor = Scopes::Anchor.call(path: "speaker/preferences.md", agent: @agent, speaker: @speaker)
+    MemoryCollection.default_for(@agent, speaker: @speaker)
+    anchor = memory_anchor(path: "speaker/preferences.md", agent: @agent, speaker: @speaker)
     written = MemoryDocuments::Write.call(anchor: anchor, content: "The owner prefers concise replies.", expected: nil)
     assert_predicate written, :written?
 

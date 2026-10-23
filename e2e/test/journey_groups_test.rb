@@ -48,9 +48,9 @@ class JourneyGroupsTest < Minitest::Test
   end
 
   def test_a_shared_human_writer_shares_no_group_with_a_reader
-    problems = GROUPS.violations(groups: { 1 => %w[compiled_bytes inference_request_turn] })
+    problems = GROUPS.violations(groups: { 1 => %w[compiled_bytes inference_request_workloads] })
 
-    assert_includes problems, "group 1 holds the shared_human writer compiled_bytes beside the reader inference_request_turn"
+    assert_includes problems, "group 1 holds the shared_human writer compiled_bytes beside the reader inference_request_workloads"
     # The two writers together are not a writer-beside-reader pair.
     assert_empty GROUPS.violations(groups: { 1 => %w[compiled_bytes memory_scopes] })
       .grep(/beside the reader/)

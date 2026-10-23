@@ -159,6 +159,9 @@ export interface Shapes {
   ConversationRegeneration: Models.ConversationRegeneration;
   TranscriptItem: Models.TranscriptItem;
   MemoryDocument: Models.MemoryDocument;
+  MemoryCollection: Models.MemoryCollection;
+  ResolvedMemoryBinding: Models.ResolvedMemoryBinding;
+  MemoryBindings: Models.MemoryBindings;
   PromptDocument: Models.PromptDocument;
   SealedRequest: Models.SealedRequest;
   InputEstimate: Models.InputEstimate;

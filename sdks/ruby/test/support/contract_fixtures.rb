@@ -34,6 +34,7 @@ module CybrosAgentTest
       work.json
       store_entries.json
       prompt_documents.json
+      memory_collections.json
       memory_documents.json
       workspaces.json
       tools.json

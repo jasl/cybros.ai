@@ -5,10 +5,9 @@
 # subject here because management never guesses from a previous input.
 # WHILE THE WORKSPACE IS OVERRIDDEN the whole door refuses
 # `memory_overridden` (409, naming the provider) for reads and writes — the
-# `user/` rung included, which the person's own door (`profile/memory`) keeps
-# serving; the kernel's rows wait for the clear. The guard is
-# `MemoryOverrideGuard`, shared with the room's own door
-# (`workspaces/{id}/memory`, the `workspace/` scope without a conversation).
+# `user/` rung included, which the person's own collection resource keeps
+# serving. `MemoryOverrideGuard` also protects Workspace/Conversation-owned
+# collection document resources; a collection UUID cannot bypass the override.
 class AgentAPI::V1::Workspaces::Conversations::MemoryController <
       AgentAPI::V1::Workspaces::Conversations::BaseController
   include AgentAPI::V1::WorkspaceScoped
@@ -22,8 +21,8 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryController <
 
     conversation = find_listable_conversation(@workspace)
 
-    entries = memory_context(conversation).listing
-    render json: { memory: AgentAPI::MemoryPresenter.listing(entries) }
+    context = memory_context(conversation)
+    render json: { memory: AgentAPI::MemoryPresenter.listing(context.listing), memory_context: context.management_projection }
   end
 
   def show
@@ -40,7 +39,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryController <
   end
 
   def create
-    fields = params.expect(memory: [:path, :content, :description, :expected_public_id, :expected_lock_version, :speaker_public_id])
+    fields = params.expect(memory: [:path, :content, :description, :expected_collection_public_id, :expected_public_id, :expected_lock_version, :speaker_public_id])
     return unless not_overridden(@workspace, path: fields[:path])
 
     conversation = find_listable_conversation(@workspace)
@@ -49,7 +48,8 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryController <
     expected = memory_precondition(fields, allow_absent: true)
     result = ::Conversations::Memory::Apply.write(
       conversation: conversation, path: fields[:path], content: fields[:content],
-      by: acting_user, expected: expected, description: fields[:description], speaker: @memory_speaker
+      by: acting_user, expected: expected, description: fields[:description], speaker: @memory_speaker,
+      expected_collection_public_id: memory_collection_precondition(fields)
     )
     return render_refusal(result.outcome) unless result.accepted?
 
@@ -58,7 +58,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryController <
   end
 
   def delete
-    fields = params.expect(memory: [:path, :expected_public_id, :expected_lock_version, :speaker_public_id])
+    fields = params.expect(memory: [:path, :expected_collection_public_id, :expected_public_id, :expected_lock_version, :speaker_public_id])
     path = fields[:path]
     return unless not_overridden(@workspace, path: path)
 
@@ -67,7 +67,8 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryController <
 
     expected = memory_precondition(fields, allow_absent: false)
     result = ::Conversations::Memory::Apply.delete(
-      conversation: conversation, path: path, by: acting_user, expected: expected, speaker: @memory_speaker
+      conversation: conversation, path: path, by: acting_user, expected: expected, speaker: @memory_speaker,
+      expected_collection_public_id: memory_collection_precondition(fields)
     )
     return render_refusal(result.outcome) unless result.accepted?
 

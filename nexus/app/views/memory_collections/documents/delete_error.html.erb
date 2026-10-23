@@ -1,0 +1,5 @@
+<%= render layout: "memory_collections/shell", locals: { error: @error, title: memory_collection_name(@collection) } do %>
+  <p class="font-mono text-sm wrap-anywhere"><%= @draft["path"] %></p>
+  <%= link_to t("data_console.read_saved"), memory_collection_document_path(@collection, path: @draft["path"]), class: "link link-hover" %>
+  <%= link_to t("data_console.memory.back"), memory_collection_documents_path(@collection), class: "link link-hover" %>
+<% end %>

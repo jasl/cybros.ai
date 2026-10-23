@@ -1,15 +1,9 @@
 <% content_for :title, t("runners.index.my_runners") %>
 
 <div class="space-y-8">
-  <header class="flex flex-wrap items-end justify-between gap-3">
-    <div class="space-y-1">
-      <h1 class="text-xl font-medium tracking-tight"><%= t("runners.index.my_runners") %></h1>
-      <p class="text-sm text-base-content/60">
-        <%= t("runners.index.machines_you_manage_as_execution_capacity_runners_and_tools") %>
-      </p>
-    </div>
+  <%= render layout: "shared/page_header", locals: { title: t("runners.index.my_runners"), description: t("runners.index.machines_you_manage_as_execution_capacity_runners_and_tools") } do %>
     <%= link_to t("runners.index.connect_runner"), runner_connection_path, class: "btn btn-primary btn-sm" %>
-  </header>
+  <% end %>
 
   <%= form_with url: runners_path, method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
     <div>

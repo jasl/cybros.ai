@@ -2,6 +2,7 @@ require "json"
 require "securerandom"
 require "time"
 require_relative "store_document"
+require_relative "memory_collections"
 require_relative "memory_review/state"
 require_relative "memory_review/review"
 
@@ -42,27 +43,27 @@ module Rho
       source.review_conversation_public_id == conversation_public_id ? source.conversation_public_id : conversation_public_id
     end
 
-    def self.context_snapshot(conversation)
-      { "memory_context" => conversation.effective_memory_context, "memory_configuration" => conversation.memory_context,
+    def self.context_snapshot(conversation, memory_context: conversation.effective_memory_context)
+      { "memory_context" => memory_context, "memory_configuration" => conversation.memory_context,
         "answering_user_public_id" => conversation.answering_user_public_id }
     end
 
     def self.unbound_speakers(conversation)
       Array(conversation.memory_context&.fetch("bindings")).select do |binding|
-        binding.fetch("scope") == "speaker" && binding["speaker_public_id"].nil?
+        binding.fetch("source")["scope"] == "speaker" && binding.fetch("source")["speaker_public_id"].nil?
       end
     end
 
-    def initialize(workspace:, conversation_public_id:, clock: -> { Time.now }, follow: nil, forget: nil, defaults: Defaults.none)
+    def initialize(workspace:, conversation_public_id:, clock: -> { Time.now }, follow: nil, forget: nil, defaults: Defaults.none, client: nil)
       @workspace, @conversation_public_id, @clock = workspace, conversation_public_id, clock
       @conversation = workspace.conversation(conversation_public_id)
-      @follow, @forget, @defaults = follow, forget, defaults
+      @follow, @forget, @defaults, @client = follow, forget, defaults, client
       @document = StoreDocument.new(store: -> { @conversation.store_entries }, namespace: NAMESPACE, key: KEY)
     end
 
     def status
       current = state
-      { "enabled" => current.enabled, "path" => current.path, "model" => current.model, "speaker_public_id" => current.speaker_public_id,
+      { "enabled" => current.enabled, "path" => current.path, "collection_public_id" => current.collection_public_id, "model" => current.model, "speaker_public_id" => current.speaker_public_id,
         "run_public_id" => current.last_run_public_id, "review_conversation_public_id" => current.last_review_conversation_public_id,
         "pending" => !current.pending.nil?, "outcome" => current.outcome }
     end
@@ -77,23 +78,21 @@ module Rho
       raise Rho::Error, "memory review cannot write skills" if name.to_s.start_with?("skills/")
       conversation = @conversation.fetch
       raise Rho::Error, "memory review needs a main conversation" if conversation.side?
-      bindings = conversation.effective_memory_context.fetch("bindings")
-      selected = bindings.find { |binding| binding.fetch("name") == root }
-      if selected.nil? && speaker_public_id
-        selected = self.class.unbound_speakers(conversation).find { |binding| binding.fetch("name") == root }
-      else
-        speaker_public_id = nil
-      end
-      unless selected && selected.fetch("access") == "read_write"
-        raise Rho::Error, "memory review needs a writable root in this conversation"
-      end
+      relative_speaker = (conversation.memory_context.nil? && root == "speaker") ||
+        self.class.unbound_speakers(conversation).any? { |binding| binding.fetch("name") == root }
+      speaker_public_id = nil unless relative_speaker
+      selected = MemoryCollections.target(conversation: @conversation, path: path,
+        speaker_public_id: speaker_public_id, client: @client)
 
       document = read_memory(path, speaker_public_id: speaker_public_id)
+      if document && document.collection_public_id != selected.fetch("collection_public_id")
+        raise Rho::Error, "memory binding changed while enabling review"
+      end
       document ||= @conversation.memory(speaker_public_id: speaker_public_id).write(path, INITIAL_CONTENT,
-        expected_public_id: nil, expected_lock_version: nil)
+        expected_collection_public_id: selected.fetch("collection_public_id"), expected_public_id: nil, expected_lock_version: nil)
       after_position ||= @conversation.turns.list(before_position: 2_147_483_647, limit: 1).items.last&.position || -1
       change do |current|
-        current.with(enabled: true, path: path, document_public_id: document.public_id, speaker_public_id: speaker_public_id,
+        current.with(enabled: true, path: path, collection_public_id: document.collection_public_id, document_public_id: document.public_id, speaker_public_id: speaker_public_id,
           model: model&.to_s, after_position: after_position)
       end
       status
@@ -191,7 +190,7 @@ module Rho
         raise Rho::Error, "memory review needs a writable root in this execution" unless selected && selected.fetch("access") == "read_write"
 
         enable(path: @defaults.path, model: @defaults.model, after_position: turn.position - 1,
-          speaker_public_id: selected["speaker_public_id"])
+          speaker_public_id: selected.dig("capture", "speaker_public_id"))
       rescue Rho::Error, CybrosAgent::Api::Forbidden, CybrosAgent::Api::Conflict, CybrosAgent::Api::NotFound,
              CybrosAgent::Api::InvalidRequest
         change { |current| current.with(enabled: false) }
@@ -213,31 +212,29 @@ module Rho
         return unless variant.memory_context == settlement.memory_context
 
         conversation = @conversation.fetch
-        snapshot = self.class.context_snapshot(conversation)
-        memory_context = snapshot.fetch("memory_context")
+        memory_context = @conversation.memory(speaker_public_id: current.speaker_public_id).bindings
+        snapshot = self.class.context_snapshot(conversation, memory_context: memory_context)
         bindings = memory_context.fetch("bindings")
         captured = settlement.memory_context&.fetch("bindings")
-        # Execution captures selectors; the management read adds resolved
-        # anchors but omits unbound Speaker roots. Only those still-configured
-        # roots may be absent; recovery also checks the raw selection and owner.
-        unbound = self.class.unbound_speakers(conversation)
-        resolved = captured&.reject { |selection| unbound.include?(selection.except("speaker_public_id")) }
+        # A member request without a subject omits a relative Speaker binding.
+        # Every source it does expose must still identify the captured collection.
+        names = bindings.map { |binding| binding.fetch("name") }
+        unbound = self.class.unbound_speakers(conversation).map { |binding| binding.fetch("name") }
+        resolved = captured&.reject do |selection|
+          selection.fetch("source")["scope"] == "speaker" && !names.include?(selection.fetch("name")) &&
+            (conversation.memory_context.nil? || unbound.include?(selection.fetch("name")))
+        end
         return unless resolved && resolved.length == bindings.length && resolved.zip(bindings).all? do |selection, binding|
-          binding.slice(*selection.keys) == selection
+          selection.slice("name", "source", "access") == binding.slice("name", "source", "access") &&
+            selection["capture"] == binding.slice("collection_public_id", "owner_public_id", "scope", "speaker_public_id")
         end
         root = current.path.split("/", 2).first
-        destination = if current.speaker_public_id
-          captured.find do |binding|
-            binding.fetch("name") == root && binding.fetch("scope") == "speaker" &&
-              binding["speaker_public_id"] == current.speaker_public_id
-          end
-        else
-          bindings.find { |binding| binding.fetch("name") == root }
-        end
-        return unless destination && destination.fetch("access") == "read_write"
+        destination = bindings.find { |binding| binding.fetch("name") == root }
+        return unless destination && destination.fetch("access") == "read_write" && destination.fetch("state") == "active" &&
+          destination.fetch("collection_public_id") == current.collection_public_id
 
         document = read_memory(current.path, speaker_public_id: current.speaker_public_id)
-        return unless document && document.public_id == current.document_public_id && document.content.bytesize <= DOCUMENT_BYTES
+        return unless document && document.collection_public_id == current.collection_public_id && document.public_id == current.document_public_id && document.content.bytesize <= DOCUMENT_BYTES
 
         model = current.model || settlement.model
         return if model.to_s.empty? || variant.content.to_s.strip.empty?
@@ -248,7 +245,7 @@ module Rho
           "source_date" => turn.created_at, "expires_at" => (@clock.call + SUBMISSION_SECONDS).utc.iso8601,
           "prompt" => bounded(variant.prompt_text.to_s, SOURCE_BYTES / 2),
           "answer" => bounded(variant.content.to_s, SOURCE_BYTES / 2),
-          "path" => document.path, "document_public_id" => document.public_id,
+          "path" => document.path, "collection_public_id" => document.collection_public_id, "document_public_id" => document.public_id,
           "lock_version" => document.lock_version, "content" => document.content,
         )
       end

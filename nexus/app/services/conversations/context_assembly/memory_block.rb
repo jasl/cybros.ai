@@ -48,14 +48,15 @@ module Conversations
           context = MemoryDocuments::Context.new(workspace: source.workspace, conversation: source.conversation,
             principal: principal, configuration: memory_context, agent: agent, execution: true)
           entries = readable(context)
-          catalog = memory_context && !MemoryContext.from_h(memory_context).default_roots? && context.bindings.any?
+          selected = MemoryContext.from_h(memory_context) if memory_context
+          catalog = selected && !selected.automatic && !selected.default_roots? && context.bindings.any?
           return Block.empty if entries.empty? && !catalog
 
           chosen, omitted = fit(entries, budget)
           return Block.new(segments: [], included: 0, omitted: omitted.length) if chosen.empty? && !catalog
 
           header = if catalog
-            roots = context.bindings.map { |binding| "#{binding.name}/ (#{binding.access == :read ? "read only" : "read and write"})" }
+            roots = context.bindings.map { |binding| "#{binding.name}/ (#{binding.scope}; #{binding.access == :read ? "read only" : "read and write"})" }
             "#{BOUND_HEADER}\nAvailable roots: #{roots.join(", ")}."
           else
             source.standalone? ? STANDALONE_HEADER : HEADER
@@ -77,9 +78,9 @@ module Conversations
           def readable(context)
             context.documents.not_skills.joins(:memory_document_version)
               .order(Arel.sql("memory_document_versions.created_at DESC"), :name, :id)
-              .pluck(:id, :conversation_id, :workspace_id, :user_id, :speaker_id, :name,
-                "memory_document_versions.bytesize").flat_map do |id, conversation_id, workspace_id, user_id, speaker_id, name, bytes|
-                context.paths(conversation_id, workspace_id, user_id, name, speaker_id: speaker_id).map { |path| [id, path, bytes] }
+              .pluck(:id, :memory_collection_id, :name,
+                "memory_document_versions.bytesize").flat_map do |id, collection_id, name, bytes|
+                context.paths(collection_id, name).first(1).map { |path| [id, path, bytes] }
               end
           end
 

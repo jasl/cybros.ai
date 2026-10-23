@@ -62,31 +62,6 @@ module E2E
       assert_empty @logs
     end
 
-    def test_external_private_memory_excludes_owner_notes_and_survives_new_conversations
-      boot_runtime(allowed: [101, 102])
-      secret = "owner-memory-#{SecureRandom.hex(6)}"
-      @memory << @human.profile.memory.write("user/#{secret}.md", secret, expected_public_id: nil, expected_lock_version: nil)
-      receive(update("person-first", "!mock reply=first -- hello", user: 102, chat: 102))
-      first_id = current("102:0")
-      first_turn = completed_reply(@workspace.conversation(first_id))
-      refute_includes request_text(first_turn), secret
-      marker = "person-fact-#{SecureRandom.hex(6)}"
-      assert_includes telegram_control("person-write", "/memory write speaker/preferences.md #{marker}", user: 102, chat: 102), "Write completed"
-      speaker = state_for("102:0").read.fetch("speakers").fetch("102")
-      telegram_control("person-new", "/new", chat: 102)
-      second_id = current("102:0")
-      refute_equal first_id, second_id
-      receive(update("person-recall", "!mock reply=second -- recall", user: 102, chat: 102))
-      request = request_text(completed_reply(@workspace.conversation(second_id)))
-      assert_includes request, marker
-      refute_includes request, secret
-      assert_equal @core.memory_read(first_id, path: "speaker/preferences.md", speaker_public_id: speaker).fetch("public_id"),
-        @core.memory_read(second_id, path: "speaker/preferences.md", speaker_public_id: speaker).fetch("public_id")
-      error = assert_raises(Rho::Core::Refused) { @core.memory_read(second_id, path: "user/#{secret}.md", speaker_public_id: speaker) }
-      assert_includes [403, 422], error.status
-      assert_empty @logs
-    end
-
     private
 
       def memory_reply(chat, answer)

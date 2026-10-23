@@ -12,7 +12,7 @@
     "agent",
     "speaker"
   ],
-  "max_documents_per_anchor": 64,
+  "max_documents_per_collection": 64,
   "name_max_length": 128,
   "content_bound": 65536,
   "skills_prefix": "skills/",
@@ -25,35 +25,12 @@
     "speaker",
     "user"
   ],
-  "door_scopes": {
-    "profile": [
-      "user",
-      "agent"
-    ],
-    "profile_agent": [
-      "agent"
-    ],
-    "workspace": [
-      "workspace"
-    ],
-    "conversation": [
-      "conversation",
-      "workspace",
-      "user",
-      "agent",
-      "speaker"
-    ]
+  "door_paths": {
+    "collection": "relative",
+    "conversation": "binding/name"
   },
-  "profile_scopes_by_principal": {
-    "human": [
-      "user"
-    ],
-    "agent": [
-      "agent"
-    ]
-  },
-  "speaker_anchor_fields": [
-    "agent_public_id",
+  "speaker_owner_fields": [
+    "owner_public_id",
     "speaker_public_id"
   ],
   "binding_name_format": "\\A[a-z][a-z0-9_-]{0,31}\\z",
@@ -72,6 +49,7 @@
   ],
   "basic_projection": [
     "path",
+    "collection_public_id",
     "public_id",
     "lock_version",
     "bytesize",
@@ -100,6 +78,7 @@
     "memory_pattern_invalid",
     "memory_pattern_too_costly",
     "memory_scope_unavailable",
+    "memory_collection_provider_unsupported",
     "not_authorized",
     "skill_description_required",
     "skill_name_invalid",
@@ -124,6 +103,7 @@
     "memory_pattern_invalid": 422,
     "memory_pattern_too_costly": 422,
     "memory_scope_unavailable": 422,
+    "memory_collection_provider_unsupported": 422,
     "not_authorized": 403,
     "skill_description_required": 422,
     "skill_name_invalid": 422,
@@ -132,6 +112,7 @@
   "valid_fixture": {
     "memory": {
       "path": "workspace/notes.md",
+      "collection_public_id": "01995000-0000-7000-8000-000000000010",
       "public_id": "01995000-0000-7000-8000-000000000001",
       "lock_version": 2,
       "bytesize": 8,
@@ -143,6 +124,7 @@
   "valid_skill_fixture": {
     "memory": {
       "path": "workspace/skills/commit-style",
+      "collection_public_id": "01995000-0000-7000-8000-000000000010",
       "public_id": "01995000-0000-7000-8000-000000000002",
       "lock_version": 0,
       "bytesize": 33,
@@ -155,6 +137,7 @@
     "memory": [
       {
         "path": "user/skills/review-checklist",
+        "collection_public_id": "01995000-0000-7000-8000-000000000010",
         "public_id": "01995000-0000-7000-8000-000000000003",
         "lock_version": 0,
         "bytesize": 24,
@@ -163,6 +146,7 @@
       },
       {
         "path": "workspace/notes.md",
+        "collection_public_id": "01995000-0000-7000-8000-000000000010",
         "public_id": "01995000-0000-7000-8000-000000000001",
         "lock_version": 2,
         "bytesize": 8,
@@ -175,6 +159,7 @@
     "memory": {
       "path": "workspace/notes.md",
       "content": "the plan",
+      "expected_collection_public_id": "01995000-0000-7000-8000-000000000010",
       "expected_public_id": null,
       "expected_lock_version": null
     }
@@ -184,6 +169,7 @@
       "path": "workspace/skills/commit-style",
       "content": "# Commits\n\nOne line, imperative.\n",
       "description": "How this team writes commit messages. Use before every commit.",
+      "expected_collection_public_id": "01995000-0000-7000-8000-000000000010",
       "expected_public_id": null,
       "expected_lock_version": null
     }
@@ -192,6 +178,7 @@
     "memory": {
       "path": "workspace/notes.md",
       "content": "the revised plan",
+      "expected_collection_public_id": "01995000-0000-7000-8000-000000000010",
       "expected_public_id": "01995000-0000-7000-8000-000000000001",
       "expected_lock_version": 2
     }
@@ -199,6 +186,7 @@
   "valid_delete_request": {
     "memory": {
       "path": "workspace/notes.md",
+      "expected_collection_public_id": "01995000-0000-7000-8000-000000000010",
       "expected_public_id": "01995000-0000-7000-8000-000000000001",
       "expected_lock_version": 2
     }
@@ -208,6 +196,7 @@
       "path": "workspace/notes.md",
       "old_text": "the plan",
       "new_text": "the revised plan",
+      "expected_collection_public_id": "01995000-0000-7000-8000-000000000010",
       "expected_public_id": "01995000-0000-7000-8000-000000000001",
       "expected_lock_version": 2
     }

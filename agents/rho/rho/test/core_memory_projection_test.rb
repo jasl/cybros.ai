@@ -17,7 +17,7 @@ class CoreMemoryProjectionTest < Minitest::Test
     }))
 
     scope = { workspace_public_id: "ws-original", speaker_public_id: "speaker-current-input" }
-    condition = { expected_public_id: "memory-1", expected_lock_version: 2 }
+    condition = { expected_collection_public_id: "collection-1", expected_public_id: "memory-1", expected_lock_version: 2 }
     assert_equal [row], core.memory_list("chat-1", path: "group/", **scope)
     assert_equal row, core.memory_read("chat-1", path: row.fetch("path"), **scope)
     assert_equal row, core.memory_write("chat-1", path: row.fetch("path"), content: "new fact", **condition, **scope)
@@ -32,7 +32,7 @@ class CoreMemoryProjectionTest < Minitest::Test
     assert_equal ["ws-original"] * 5, bodies.map { |body| body.fetch("workspace_public_id") }
     assert_equal ["speaker-current-input"] * 5, bodies.map { |body| body.fetch("speaker_public_id") }
     assert_equal({ "path" => "group/notes.md", "old_text" => "old fact", "new_text" => "new fact",
-      "expected_public_id" => "memory-1", "expected_lock_version" => 2, "public_id" => "chat-1", "workspace_public_id" => "ws-original", "speaker_public_id" => "speaker-current-input" }, bodies[2])
+      "expected_collection_public_id" => "collection-1", "expected_public_id" => "memory-1", "expected_lock_version" => 2, "public_id" => "chat-1", "workspace_public_id" => "ws-original", "speaker_public_id" => "speaker-current-input" }, bodies[2])
     assert_equal({ "pattern" => "fact", "path" => "group/", "ignore_case" => true, "limit" => 1,
       "public_id" => "chat-1", "workspace_public_id" => "ws-original", "speaker_public_id" => "speaker-current-input" }, bodies[3])
   end
@@ -45,7 +45,7 @@ class CoreMemoryProjectionTest < Minitest::Test
     }))
     core.bind_memory_context("chat-1", memory_context: nil, workspace_public_id: "ws-original")
     core.bind_memory_context("chat-1", memory_context: { "bindings" => [] }, workspace_public_id: "ws-original")
-    core.memory_write("chat-1", path: "conversation/new.md", content: "first", expected_public_id: nil, expected_lock_version: nil)
+    core.memory_write("chat-1", path: "conversation/new.md", content: "first", expected_collection_public_id: "collection-1", expected_public_id: nil, expected_lock_version: nil)
 
     bodies = seen.grep(/\APOST /).map { |request| JSON.parse(request.partition("\r\n\r\n").last) }
     assert_equal({ "public_id" => "chat-1", "memory_context" => nil, "workspace_public_id" => "ws-original" }, bodies[0])
@@ -63,11 +63,11 @@ class CoreMemoryProjectionTest < Minitest::Test
       "POST /conversations/memory/delete" => [[409, { "error" => { "code" => "stale_object", "message" => "Read the current document" } }]],
     }))
     error = assert_raises(Rho::Core::Refused) do
-      core.memory_edit("chat-1", path: "person/notes.md", old_text: "old", new_text: "new", expected_public_id: "memory-1", expected_lock_version: 0)
+      core.memory_edit("chat-1", path: "person/notes.md", old_text: "old", new_text: "new", expected_collection_public_id: "collection-1", expected_public_id: "memory-1", expected_lock_version: 0)
     end
     assert_equal [403, "memory_read_only"], [error.status, error.code]
     error = assert_raises(Rho::Core::Refused) do
-      core.memory_delete("chat-1", path: "group/notes.md", expected_public_id: "memory-1", expected_lock_version: 0)
+      core.memory_delete("chat-1", path: "group/notes.md", expected_collection_public_id: "collection-1", expected_public_id: "memory-1", expected_lock_version: 0)
     end
     assert_equal [409, "stale_object"], [error.status, error.code]
     assert_equal 2, seen.grep(/\APOST /).length

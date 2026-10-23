@@ -1,0 +1,32 @@
+zh-CN:
+  conversation_memory:
+    title: 记忆绑定
+    next_title: 当前选择
+    next_description: "后续轮次可用的绑定，受所选 Agent 的权限范围限制。单次输入也可以选择不同的记忆上下文。"
+    execution_title: 当前执行
+    execution_description: "本次执行保留已捕获的集合身份。后续绑定变更只影响新工作；集合当前权限和生命周期仍然有效。"
+    visibility: "仅显示你当前权限下可用的绑定。集合链接需要独立的所有者访问权限，绑定不会授予私有文档访问权。未指定对象的 Speaker 来源会按输入解析。"
+    overridden: "此工作区的记忆由工具提供者服务。内核集合状态不代表提供者实际保存的内容。"
+    empty: 没有可用的记忆绑定。
+    binding: 路径根名称
+    source: 来源集合
+    access: 有效权限
+    state: 集合状态
+    exact_source: 指定集合
+    default_source: 范围默认集合
+    speaker: "Speaker：%{id}"
+    collections: 管理会话集合
+    scopes:
+      conversation: 会话
+      workspace: 工作区
+      user: 个人
+      agent: Agent
+      speaker: Speaker
+    accesses:
+      read: 只读
+      read_write: 读写
+    states:
+      active: 活跃
+      archived: 已归档
+      deleted: 已删除
+      unallocated: 尚未创建

@@ -85,7 +85,7 @@ module CybrosAgent
       # nil or omission keeps the creator's member Speaker and authority.
       def create(steps:, idempotency_key:, approval_mode:, billing_subject: UNSET,
                  prompt_mechanism: UNSET, approval_rules: UNSET, default_runner_executor_public_id: UNSET,
-                 speaker_public_id: UNSET, model_selection: UNSET, fallback_models: UNSET)
+                 speaker_public_id: UNSET, memory_context: UNSET, model_selection: UNSET, fallback_models: UNSET)
         required_string(idempotency_key, "idempotency_key")
         required_string(approval_mode, "approval_mode")
         raise ArgumentError, "steps must be a non-empty Array" unless
@@ -93,7 +93,7 @@ module CybrosAgent
 
         body = fields(
           steps: Steps.envelope(steps), billing_subject:, prompt_mechanism:, approval_mode:,
-          approval_rules:, default_runner_executor_public_id:, speaker_public_id:, model_selection:, fallback_models:
+          approval_rules:, default_runner_executor_public_id:, speaker_public_id:, memory_context:, model_selection:, fallback_models:
         )
 
         result = @dispatch.call_accepting(

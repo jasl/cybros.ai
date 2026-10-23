@@ -166,7 +166,7 @@ class AgentAPI::V1::Workspaces::Conversations::AccessDoorsTest < ActionDispatch:
     assert_equal "queued", @input.reload.content_body.effective_text, "no edit landed"
     assert_equal 1, @conversation.inputs.count
     assert_equal 0, @conversation.store_entries.count
-    assert_equal 0, MemoryDocument.where(conversation_id: @conversation.id).count
+    assert_equal 0, @conversation.memory_documents.count
     assert_not @conversation.reload.tombstoned?
     assert_not @seam.run.reload.tombstoned?
   end

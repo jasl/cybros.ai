@@ -12,25 +12,30 @@ module Rho
         document.fetch("memory")
       end
 
+      def memory_target(public_id, path:, workspace_public_id: nil, speaker_public_id: nil)
+        memory_request(public_id, "target", { path: path }, workspace_public_id: workspace_public_id,
+          speaker_public_id: speaker_public_id).fetch("memory_binding")
+      end
+
       def memory_read(public_id, path:, workspace_public_id: nil, speaker_public_id: nil)
         memory_request(public_id, "read", { path: path }, workspace_public_id: workspace_public_id, speaker_public_id: speaker_public_id).fetch("memory")
       end
 
-      def memory_write(public_id, path:, content:, expected_public_id:, expected_lock_version:, workspace_public_id: nil, speaker_public_id: nil)
+      def memory_write(public_id, path:, content:, expected_collection_public_id:, expected_public_id:, expected_lock_version:, workspace_public_id: nil, speaker_public_id: nil)
         memory_request(public_id, "write", { path: path, content: content,
-          expected_public_id: expected_public_id, expected_lock_version: expected_lock_version },
+          expected_collection_public_id: expected_collection_public_id, expected_public_id: expected_public_id, expected_lock_version: expected_lock_version },
           workspace_public_id: workspace_public_id, speaker_public_id: speaker_public_id).fetch("memory")
       end
 
-      def memory_edit(public_id, path:, old_text:, new_text:, expected_public_id:, expected_lock_version:, workspace_public_id: nil, speaker_public_id: nil)
+      def memory_edit(public_id, path:, old_text:, new_text:, expected_collection_public_id:, expected_public_id:, expected_lock_version:, workspace_public_id: nil, speaker_public_id: nil)
         memory_request(public_id, "edit", { path: path, old_text: old_text, new_text: new_text,
-          expected_public_id: expected_public_id, expected_lock_version: expected_lock_version },
+          expected_collection_public_id: expected_collection_public_id, expected_public_id: expected_public_id, expected_lock_version: expected_lock_version },
           workspace_public_id: workspace_public_id, speaker_public_id: speaker_public_id).fetch("memory")
       end
 
-      def memory_delete(public_id, path:, expected_public_id:, expected_lock_version:, workspace_public_id: nil, speaker_public_id: nil)
+      def memory_delete(public_id, path:, expected_collection_public_id:, expected_public_id:, expected_lock_version:, workspace_public_id: nil, speaker_public_id: nil)
         memory_request(public_id, "delete", { path: path,
-          expected_public_id: expected_public_id, expected_lock_version: expected_lock_version },
+          expected_collection_public_id: expected_collection_public_id, expected_public_id: expected_public_id, expected_lock_version: expected_lock_version },
           workspace_public_id: workspace_public_id, speaker_public_id: speaker_public_id).fetch("deleted")
       end
 

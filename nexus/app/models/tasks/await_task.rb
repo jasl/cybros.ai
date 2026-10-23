@@ -1,5 +1,5 @@
 module Tasks
-  # A rendezvous parks until its deadline or its answer. An authored ask gives
+  # A rendezvous parks until its answer or its optional deadline. An authored ask gives
   # its caller a resolution token; a model's ask answers to write standing.
   # An existing-task observation keeps its token inside the kernel, whose
   # ordinary scheduler reads the target without owning or changing its work.
@@ -49,11 +49,16 @@ module Tasks
     # `dispatched` await has a holder and is never listed on that inbox.
     def inbox_kind = ("ask" if status == "awaiting_input")
 
-    before_validation on: :create do
-      self.await_timeout_ms ||= DEFAULT_TIMEOUT_MS
+    # Omission remains finite; only an explicitly authored coordination wait
+    # stores nil. Its existing token and Run own resolution and cancellation.
+    attribute :await_timeout_ms, :integer, default: DEFAULT_TIMEOUT_MS
+    validates :await_timeout_ms, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
+    with_options if: :indefinite? do
+      validates :resolution_token, presence: true
+      validates :awaited_task_key, absence: true
     end
 
-    validates :await_timeout_ms, numericality: { only_integer: true, greater_than: 0 }
+    def indefinite? = await_timeout_ms.nil?
     # THE CHOICES: an ask may carry its options as DATA beside the
     # question — `ask_options`, one string each, and `ask_multi` when more
     # than one may be taken — stored on the row so every reader of the
@@ -74,7 +79,7 @@ module Tasks
     # An ask announces nothing: the person's clock is the authored one.
     def announced_timeout_ms = nil
 
-    def effective_timeout_ms = super.clamp(..MAX_HOLD_MS)
+    def effective_timeout_ms = (super.clamp(..MAX_HOLD_MS) unless indefinite?)
 
     def settlement_claim_token = resolution_token
 

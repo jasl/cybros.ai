@@ -13,17 +13,17 @@ zh-CN:
     clear: 清除
     read_saved: 阅读已保存的值
     memory:
-      title: 工作区 Memory
-      description: workspace/ 下的文本文档。每个新回合都可读取其当前内容。
+      title: 记忆集合
+      description: 此工作区拥有的命名集合。会话绑定决定后续回合读取哪些集合。
       new: 新建记忆文档
       open: 打开文档
       edit: 编辑记忆文档
-      back: 返回工作区 Memory
-      empty: 此工作区还没有记忆文档。
+      back: 返回集合文档
+      empty: 此集合还没有文档。
       path: 文档路径
-      path_help: 使用 workspace/ 加文档名，例如 workspace/notes.md。创建后不能修改路径。
+      path_help: 使用相对文档名，例如 notes.md。此页面已固定目标集合，创建后不能修改文档名。
       skill_description: Skill 描述
-      description_help: 仅 workspace/skills/<name> 需要描述。普通记忆文档请留空。
+      description_help: 仅 skills/<name> 需要描述。普通记忆文档请留空。
       content: 记忆内容
       metadata: "版本 %{version} · %{bytes} 字节 · 写入于 %{time}"
       save: 保存记忆文档
@@ -31,7 +31,7 @@ zh-CN:
       deleted: 记忆文档已删除。
       retention: 保存会替换当前内容。没有版本历史或回收站。
       delete_confirmation: 删除此记忆文档？没有回收站。
-      override_help: 工具提供方接管此工作区的记忆时，普通 kernel Memory 管理不可用。精确的 workspace/skills/ 路径保留既有的 kernel 访问能力。
+      override_help: 工具提供方接管此工作区的记忆时，普通 kernel Memory 管理不可用。精确的 skills/ 路径保留既有的 kernel 访问能力。
     character:
       title: 工作区 character
       description: 工作区的提示词文档，供包含 character 槽位的提示词模板使用。
@@ -76,14 +76,15 @@ zh-CN:
       stale_object: 已保存的值发生变化或已删除。草稿及其原版本已保留。请先阅读已保存的值，再重新开始编辑；本次提交无法覆盖它。
       invalid_precondition: 缺少有效的文档标识或版本。请重新读取文档后再开始编辑。
       memory_overridden: "Memory 由 %{detail} 提供。普通 kernel Memory 管理不可用。"
-      memory_path_invalid: 请使用有效的 workspace/ 文档路径。
-      memory_scope_unavailable: 此页面只管理当前工作区的 workspace/ 作用域。
+      memory_path_invalid: 请使用有效的相对文档名。
+      memory_scope_unavailable: 此集合或其拥有者已不可用。
+      memory_read_only: 此集合只读。
       memory_not_found: 记忆文档已不存在。
       memory_content_invalid: 请输入记忆文档文本。
       memory_description_invalid: 普通文档不能有描述。Skill 描述必须是 1,024 字节以内的文本。
-      memory_full: 此工作区已达到 64 份记忆文档的上限。
+      memory_full: 此集合已达到 64 份文档的上限。
       memory_document_too_large: 记忆文档超过 64 KiB 内容上限。
-      skill_name_invalid: 请在 workspace/skills/ 后使用有效的 Skill 名称。
+      skill_name_invalid: 请在 skills/ 后使用有效的 Skill 名称。
       skill_scope_unavailable: 此作用域不能保存 Skill。
       skill_description_required: 请填写此 Skill 文档的描述。
       prompt_document_invalid: 无法保存 character。请检查文本和角色。

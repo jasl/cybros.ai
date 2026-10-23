@@ -153,7 +153,7 @@ Every routed declaration names a concrete runner and served tool, so two runners
 
 Without a runner route, kernel tools (`delegate_task`, `ask`, `memory_*`) run in the kernel, except explicitly overridden namespaces addressed to their workspace provider. Other names use the declaring agent's announced address, then an eligible tool-provider pool. Provider pool claims remain exclusive. Runner announcements never create a fallback by bare name.
 
-`skill` uses the accepted skill source, including its executor and source name: the frozen catalog records which runner or agent owns each document, and kernel memory skills keep their workspace, Agent and explicitly selected Human sources. A later default change cannot change that source.
+`skill` uses the accepted skill source, including its executor and source name: the frozen catalog records which runner or agent owns each document, and kernel memory skills keep their collection and document UUIDs, including Speaker and explicitly selected Human sources. A later default change cannot change that source.
 
 Tools and skill documents are looked up by `(executor UUID, role, name)`; an application's same-named tool cannot satisfy a Runner claim. A park's deadline uses the authored `timeout_ms`, then the announcement's value, then the kernel default. Tool arguments remain the executor's payload.
 
@@ -273,7 +273,7 @@ Every externally claimed tool may use the [task operation protocol](executor-ope
 
 ### Documents and the skill tool
 
-Each declared runner skill callable contributes only its named runner's documents; a non-runner skill callable uses the agent's documents, then workspace and user `skills/` rows by precedence. The resulting source-qualified catalog is frozen in the execution. Eager skill callables render in the assembly's `skills` block; deferred ones expose their catalog through `tool_search`. Loading an announced document reaches its recorded executor's inbox as a `skill` row (`tool_name: "skill"`, `tool_input: { name }`, `scope`), so an executor announcing documents must also announce `skill` — a kernel name routed by its source; without it every load of its names fails `tool_not_served`. The executor answers the row with the body as the result's `content`; a name it no longer holds is an ordinary error result (`skill_unknown: <name>`). A withdrawn announcement withdraws its names at the next turn's block.
+Each declared runner skill callable contributes only its named runner's documents; a non-runner skill callable combines announced Agent documents and selected collection rows using the [memory skill precedence](conversation-memory.md#skills). The resulting source-qualified catalog is frozen in the execution. Eager skill callables render in the assembly's `skills` block; deferred ones expose their catalog through `tool_search`. Loading an announced document reaches its recorded executor's inbox as a `skill` row (`tool_name: "skill"`, `tool_input: { name }`, `scope`), so an executor announcing documents must also announce `skill` — a kernel name routed by its source; without it every load of its names fails `tool_not_served`. The executor answers the row with the body as the result's `content`; a name it no longer holds is an ordinary error result (`skill_unknown: <name>`). A withdrawn announcement withdraws its names at the next turn's block.
 
 ### Reserved and overridable names
 

@@ -158,7 +158,12 @@ boolean}`. `definition` is the complete function schema, including the
 same `strict` default as provider projection; `route`, when present,
 contains the declared Runner target or MCP connection route
 (`kind`, `connection_public_id`, `tool_name`); `skills` contains
-source-qualified frozen catalog entries. Results keep whole schemas
+source-qualified frozen catalog entries. Each entry has `name`, `description`,
+`callable`, `source`, `executor_public_id`, `collection_public_id` and
+`document_public_id`. Announced documents have an executor UUID and null
+collection/document UUIDs; kernel documents have the two document identities
+and a null executor UUID. `source` is the selected binding name for a kernel
+document. Results keep whole schemas
 within the output bound, and `truncated` reports omitted matches. Search
 never adds a tool or reads a later executor announcement.
 
@@ -297,8 +302,8 @@ name [executor UUID]: description`, and kernel memory entries omit the
 UUID. The result is the document body as ordinary tool result content,
 with no additional task kind or graph edge.
 
-For a non-Runner skill callable, the [skills block](prompt-assembly.md#the-skills-block)
-defines source precedence. Database documents come only from the execution's
+For a non-Runner skill callable, [memory skills](conversation-memory.md#skills)
+define source precedence. Database documents come only from the execution's
 effective memory bindings. Acceptance freezes the selected source as well. A call reads
 its selected source, never the host's current default or another
 same-named document. A source no longer serving the selected skill fails

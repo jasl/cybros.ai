@@ -28,7 +28,7 @@ module Users
 
     def call
       return Outcome.new(outcome: :not_agent, user: @caller) unless @caller.agent_member?
-      return Outcome.new(outcome: :invalid_name, user: @caller) unless @name.match?(User::Handle::FORMAT)
+      return Outcome.new(outcome: :invalid_name, user: @caller) unless @name.match?(Constants::HANDLE_FORMAT)
 
       outcome = nil
       # Removal uses this same parent before its instance definitions. Holding
@@ -75,6 +75,7 @@ module Users
           summarizer: (@summarizer.nil? ? nil : { content: @summarizer }))
         return declared unless declared.accepted?
 
+        MemoryCollection.default_for(row) unless found
         Outcome.new(outcome: found ? :replaced : :declared, user: row)
       end
 

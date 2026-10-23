@@ -2,6 +2,14 @@
 # connected, so ending one's access is a member command, never an
 # administrator's.
 module User::Connections
+  def create_agent(display_name:)
+    agent = build_agent(display_name: display_name)
+    transaction do
+      MemoryCollection.default_for(agent) if agent.save
+    end
+    agent
+  end
+
   # A console-created program has the same logical identity as a connected one.
   # Its opaque registration key is generated here, never chosen by a person.
   def build_agent(display_name:)

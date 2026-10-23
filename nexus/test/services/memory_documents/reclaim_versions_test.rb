@@ -108,11 +108,14 @@ class MemoryDocuments::ReclaimVersionsTest < ActiveJob::TestCase
           creating_user_id: @user.id, answering_user_id: @user.id,
           last_activity_at: now, created_at: now, updated_at: now }
       end, returning: %w[id]).rows.flatten
+      collection_ids = MemoryCollection.insert_all!(conversation_ids.map do |id|
+        { account_id: @account.id, conversation_id: id, is_default: true, created_at: now, updated_at: now }
+      end, returning: %w[id]).rows.flatten
       version_ids = MemoryDocumentVersion.insert_all!(Array.new(count) do
         { account_id: @account.id, content: "retained memory", created_at: now }
       end, returning: %w[id]).rows.flatten
       MemoryDocument.insert_all!(version_ids.each_with_index.map do |version_id, index|
-        { account_id: @account.id, conversation_id: conversation_ids[index / 64],
+        { account_id: @account.id, memory_collection_id: collection_ids[index / 64],
           name: "note-#{index % 64}.md", memory_document_version_id: version_id,
           created_at: now, updated_at: now }
       end)

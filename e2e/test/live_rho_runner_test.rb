@@ -25,7 +25,7 @@ require "stringio"
 # Paid, local, opt-in: E2E_LIVE=1. The capture turn is cents.
 class LiveRhoRunnerTest < Minitest::Test
   MODEL = ENV.fetch("E2E_LIVE_MODEL") { E2E::LiveJourney.default_model }.freeze
-  DRIVER = ENV.fetch("RHO_BROWSER_PLAYWRIGHT_CLI", "npx -y playwright-core@1.62.1").freeze
+  DRIVER = ENV.fetch("RHO_BROWSER_PLAYWRIGHT_CLI", "npx -y playwright-core@1.64.0").freeze
   TROUBLE = /runner_task_failed|runner_submit_refused/
   PNG_MAGIC = "\x89PNG\r\n\x1a\n".b.freeze
   NOT_SHOWN = "image content omitted: this model does not support image input".freeze

@@ -288,7 +288,8 @@
     "default_runner_executor_public_id",
     "speaker_public_id",
     "model_selection",
-    "fallback_models"
+    "fallback_models",
+    "memory_context"
   ],
   "valid_ingress_create_request": {
     "run": {

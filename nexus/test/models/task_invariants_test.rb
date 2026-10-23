@@ -50,6 +50,15 @@ class TaskInvariantsTest < ActiveSupport::TestCase
       :resolution_token, :contradicts_status
   end
 
+  test "an indefinite await needs a holder and cannot be a task observation" do
+    assert_equal Tasks::AwaitTask::DEFAULT_TIMEOUT_MS, Tasks::AwaitTask.new.await_timeout_ms
+    refused Tasks::AwaitTask.new(status: "queued", await_timeout_ms: nil), :resolution_token, :blank
+    admitted Tasks::AwaitTask.new(status: "queued", await_timeout_ms: nil, resolution_token: TOKEN),
+      :resolution_token, :blank
+    refused Tasks::AwaitTask.new(status: "queued", await_timeout_ms: nil, resolution_token: TOKEN,
+      awaited_task_key: "source", awaited_run_public_id: TOKEN), :awaited_task_key, :present
+  end
+
   # (3) Mail is the kernel delivering a DETACHED answer after the reply was
   # final: a stamp on a foreground row, or on one still live, is a lie.
   test "result_delivered_at is a detached settlement's stamp" do

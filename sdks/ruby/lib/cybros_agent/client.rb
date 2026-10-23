@@ -19,6 +19,10 @@ module CybrosAgent
       Api::Conversations.new(dispatch: dispatch)
     end
 
+    def memory_collections
+      Api::MemoryCollectionsContext.new(dispatch: dispatch)
+    end
+
     def work
       Api::WorkQueries.new(dispatch: dispatch)
     end

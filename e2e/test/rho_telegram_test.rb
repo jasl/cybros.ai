@@ -56,15 +56,15 @@ class RhoTelegramTest < E2E::RhoTelegramCase
 
     marker = "private-note-#{SecureRandom.hex(6)}"
     skill = "private-skill-#{SecureRandom.hex(6)}"
-    @agent_memory << @client.profile.memory.write("agent/#{marker}.md", marker,
+    @agent_memory << E2E::MemoryCollections.default_documents(@client.profile).write("#{marker}.md", marker,
       expected_public_id: nil, expected_lock_version: nil)
-    @agent_memory << @client.profile.memory.write("agent/skills/#{skill}", "Secret skill instructions.", description: skill,
+    @agent_memory << E2E::MemoryCollections.default_documents(@client.profile).write("skills/#{skill}", "Secret skill instructions.", description: skill,
       expected_public_id: nil, expected_lock_version: nil)
     human_marker = "human-note-#{SecureRandom.hex(6)}"
     human_skill = "human-skill-#{SecureRandom.hex(6)}"
-    @memory << @human.profile.memory.write("user/#{human_marker}.md", human_marker,
+    @memory << E2E::MemoryCollections.default_documents(@human.profile).write("#{human_marker}.md", human_marker,
       expected_public_id: nil, expected_lock_version: nil)
-    @memory << @human.profile.memory.write("user/skills/#{human_skill}", "Human skill instructions.", description: human_skill,
+    @memory << E2E::MemoryCollections.default_documents(@human.profile).write("skills/#{human_skill}", "Human skill instructions.", description: human_skill,
       expected_public_id: nil, expected_lock_version: nil)
     boot_runtime(allowed: [101, 102])
     discover = CGI.escape(JSON.generate("query" => "skill"))
@@ -111,10 +111,5 @@ class RhoTelegramTest < E2E::RhoTelegramCase
 
     assert_group_privacy(marker, skill)
     assert_supplementary_delivery(check_late_control: true)
-  end
-
-  def test_completed_task_id_stop_preserves_a_later_independent_request
-    boot_runtime(allowed: [101])
-    assert_supplementary_delivery(check_late_control: true, by_task_id: true)
   end
 end

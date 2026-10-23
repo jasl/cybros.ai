@@ -4,15 +4,12 @@ module MemoryDocuments
   # for ordinary replacement. The old content version is reclaimed, and
   # the reclaim may lose to a fork's RESTRICT.
   #
-  # THE CALLER HOLDS THE ANCHOR ROW (`Scopes::Anchor::Result#lockable`),
-  # like `Delete`: it is the write's serialization point and the cap
-  # count's, and the doors take it FIRST in ladder order — before the
-  # conversation they then hold for the fence (`Memory::Run#revising`,
-  # `Conversations::Memory::Apply#apply`, the profile door). A lock taken
-  # here again would land AFTER the conversation in the SQL stream, and
-  # the lock-order guard reads tables, not rows.
+  # Callers hold the owner and collection locks before writing. The owner
+  # orders mutations with Fork; the collection orders lifecycle and content
+  # changes and serializes the per-collection document cap. Context writes
+  # also hold the consuming Conversation before the collection.
   #
-  # THE ONE WRITER BOTH DOORS CALL is where a skill row is judged:
+  # Execution, collection and Conversation doors share this skill validation:
   # a `skills/` path needs a name
   # under the skill grammar, a rung that is not the conversation's (a
   # skill is never per conversation — a fork would copy it into a second
@@ -50,6 +47,8 @@ module MemoryDocuments
       return Result.refused(refusal) if refusal
 
       MemoryDocument.transaction do
+        next Result.refused(@anchor.write_refusal) if @anchor.write_refusal
+
         existing = @anchor.documents.find_by(name: @anchor.name)
         next Result.refused(:stale_object) if @expected && !@expected.matches?(existing)
         next Result.refused(:memory_full) if existing.nil? && at_capacity?
@@ -84,7 +83,7 @@ module MemoryDocuments
       end
 
       def at_capacity?
-        @anchor.documents.count >= MemoryDocument::MAX_DOCUMENTS_PER_ANCHOR
+        @anchor.documents.count >= MemoryDocument::MAX_DOCUMENTS_PER_COLLECTION
       end
 
       def build_version(text)
@@ -106,9 +105,9 @@ module MemoryDocuments
       end
 
       def create(version)
-        document = MemoryDocument.create(
+        document = @anchor.collection.memory_documents.create(
           account: account, name: @anchor.name, memory_document_version: version,
-          description: @description, **@anchor.attributes
+          description: @description
         )
         return Result.refused(:memory_path_invalid) unless document.persisted?
 

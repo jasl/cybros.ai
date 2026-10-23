@@ -13,12 +13,13 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryTest < ActionDispatch::Inte
     @secret = create_access_token_fixture(user: @human, name: "Member").secret
     @owner_secret = create_access_token_fixture(user: users(:owner), name: "Owner").secret
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, memory_context: {
-      "bindings" => %w[conversation workspace user].map { |scope| { "name" => scope, "scope" => scope, "access" => "read_write" } },
+      "bindings" => %w[conversation workspace user].map { |scope| { "name" => scope, "source" => { "scope" => scope }, "access" => "read_write" } },
     })
+    MemoryCollection.default_for(@conversation)
   end
 
   def delete_fields(path)
-    anchor = Scopes::Anchor.call(path: path, workspace: @workspace, conversation: @conversation, user: @human)
+    anchor = memory_anchor(path: path, workspace: @workspace, conversation: @conversation, user: @human)
     { path: path, **memory_conditions(anchor.documents.find_by(name: anchor.name)) }
   end
 
@@ -51,11 +52,11 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryTest < ActionDispatch::Inte
 
   test "create user/ lands under the caller's controlling Human, and show reads it back" do
     post base, headers: bearer(@secret), as: :json,
-      params: { memory: { path: "user/notes.md", expected_public_id: nil, expected_lock_version: nil, content: "mine" } }
+      params: { memory: { path: "user/notes.md", **memory_collection_condition(conversation: @conversation, path: "user/notes.md", by: @human), expected_public_id: nil, expected_lock_version: nil, content: "mine" } }
     assert_response :created
     assert_equal "user/notes.md", response.parsed_body.dig("memory", "path")
-    assert MemoryDocument.for_user(@human.id).exists?(name: "notes.md")
-    assert_not MemoryDocument.for_conversation(@conversation.id).exists?
+    assert @human.memory_documents.exists?(name: "notes.md")
+    assert_not @conversation.memory_documents.exists?
 
     post "#{base}/show", headers: bearer(@secret), as: :json,
       params: { memory: { path: "user/notes.md" } }
@@ -77,7 +78,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryTest < ActionDispatch::Inte
     assert_response :success
 
     post base, headers: bearer(connection.access_secret), as: :json,
-      params: { memory: { path: "user/notes.md", expected_public_id: nil, expected_lock_version: nil, content: "x" } }
+      params: { memory: { path: "user/notes.md", **memory_collection_condition(conversation: @conversation, path: "user/notes.md", by: @human), expected_public_id: nil, expected_lock_version: nil, content: "x" } }
     assert_response :forbidden
     assert_equal "not_authorized", response.parsed_body.dig("error", "code")
   end
@@ -87,7 +88,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryTest < ActionDispatch::Inte
     Conversations::Archive.call(conversation: @conversation)
 
     post base, headers: bearer(@secret), as: :json,
-      params: { memory: { path: "workspace/notes.md", expected_public_id: nil, expected_lock_version: nil, content: "y" } }
+      params: { memory: { path: "workspace/notes.md", **memory_collection_condition(conversation: @conversation, path: "workspace/notes.md", by: @human), expected_public_id: nil, expected_lock_version: nil, content: "y" } }
     assert_response :conflict
     assert_equal "conversation_archived", response.parsed_body.dig("error", "code")
   end
@@ -117,7 +118,7 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryTest < ActionDispatch::Inte
     assert_equal "memory_overridden", response.parsed_body.dig("error", "code")
 
     post base, headers: bearer(@secret), as: :json,
-      params: { memory: { path: "workspace/notes.md", expected_public_id: nil, expected_lock_version: nil, content: "changed" } }
+      params: { memory: { path: "workspace/notes.md", **memory_collection_condition(conversation: @conversation, path: "workspace/notes.md", by: @human), expected_public_id: nil, expected_lock_version: nil, content: "changed" } }
     assert_response :conflict
     assert_equal "memory_overridden", response.parsed_body.dig("error", "code")
 
@@ -138,19 +139,19 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryTest < ActionDispatch::Inte
   # conversation.
   test "workspace/skills/<name> is written here with a description; conversation/skills is refused" do
     post base, headers: bearer(@secret), as: :json,
-      params: { memory: { path: "workspace/skills/commit-style", expected_public_id: nil, expected_lock_version: nil, content: "# Commits\n",
+      params: { memory: { path: "workspace/skills/commit-style", **memory_collection_condition(conversation: @conversation, path: "workspace/skills/commit-style", by: @human), expected_public_id: nil, expected_lock_version: nil, content: "# Commits\n",
                           description: "How this team writes commit messages." } }
     assert_response :created
     assert_equal "How this team writes commit messages.", response.parsed_body.dig("memory", "description")
-    assert MemoryDocument.for_workspace(@workspace.id).skills.exists?(name: "skills/commit-style")
+    assert @workspace.memory_documents.skills.exists?(name: "skills/commit-style")
 
     post base, headers: bearer(@secret), as: :json,
-      params: { memory: { path: "conversation/skills/plan", expected_public_id: nil, expected_lock_version: nil, content: "x", description: "d" } }
+      params: { memory: { path: "conversation/skills/plan", **memory_collection_condition(conversation: @conversation, path: "conversation/skills/plan", by: @human), expected_public_id: nil, expected_lock_version: nil, content: "x", description: "d" } }
     assert_response :unprocessable_content
     assert_equal "skill_scope_unavailable", response.parsed_body.dig("error", "code")
 
     post base, headers: bearer(@secret), as: :json,
-      params: { memory: { path: "workspace/skills/commit-style", expected_public_id: nil, expected_lock_version: nil, content: "x" } }
+      params: { memory: { path: "workspace/skills/commit-style", **memory_collection_condition(conversation: @conversation, path: "workspace/skills/commit-style", by: @human), expected_public_id: nil, expected_lock_version: nil, content: "x" } }
     assert_response :unprocessable_content
     assert_equal "skill_description_required", response.parsed_body.dig("error", "code")
   end
@@ -165,14 +166,14 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryTest < ActionDispatch::Inte
     ).outcome
 
     post base, headers: bearer(@secret), as: :json,
-      params: { memory: { path: "workspace/skills/commit-style", expected_public_id: nil, expected_lock_version: nil, content: "# Commits\n", description: "How." } }
+      params: { memory: { path: "workspace/skills/commit-style", **memory_collection_condition(conversation: @conversation, path: "workspace/skills/commit-style", by: @human), expected_public_id: nil, expected_lock_version: nil, content: "# Commits\n", description: "How." } }
     assert_response :created
 
     post "#{base}/show", headers: bearer(@secret), as: :json, params: { memory: { path: "workspace/skills/commit-style" } }
     assert_response :success
     assert_equal "# Commits\n", response.parsed_body.dig("memory", "content")
 
-    post base, headers: bearer(@secret), as: :json, params: { memory: { path: "workspace/notes.md", expected_public_id: nil, expected_lock_version: nil, content: "n" } }
+    post base, headers: bearer(@secret), as: :json, params: { memory: { path: "workspace/notes.md", **memory_collection_condition(conversation: @conversation, path: "workspace/notes.md", by: @human), expected_public_id: nil, expected_lock_version: nil, content: "n" } }
     assert_response :conflict
     assert_equal "memory_overridden", response.parsed_body.dig("error", "code")
     get base, headers: bearer(@secret)
@@ -180,6 +181,6 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryTest < ActionDispatch::Inte
 
     post "#{base}/delete", headers: bearer(@secret), as: :json, params: { memory: delete_fields("workspace/skills/commit-style") }
     assert_response :no_content
-    assert_not MemoryDocument.for_workspace(@workspace.id).skills.exists?
+    assert_not @workspace.memory_documents.skills.exists?
   end
 end

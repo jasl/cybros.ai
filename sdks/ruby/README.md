@@ -1028,10 +1028,10 @@ expired receipts raise `Api::NotFound`; other failures leave the outcome unknown
 The acceptance carries its original running status; read the turn for live state.
 
 Each candidate exposes its captured `memory_context`, independently of the
-conversation's current selection. `nil` means the default roots;
-`{ "bindings" => [] }` means memory was explicitly disabled. Named bindings
-retain their scope and access. `variant.to_h` keeps `memory_context: nil`, so
-serializing a candidate preserves that distinction.
+conversation's current selection. Captured bindings retain their authored `source`
+and `capture` with collection UUID, owner, scope and subject. An empty bindings
+list disables memory; missing historical capture does not reselect today's
+defaults. `variant.to_h` preserves nullable historical values.
 
 A generated variant (`source: "run"`, `run_backed?`) names its
 `run_public_id`, carries the Run's newest mainline `rounds`, and exposes
@@ -1191,92 +1191,89 @@ caller's own bookkeeping.
 Archive is the recycle bin and `delete` is the tombstone; `cancel` stops a
 running reply and answers `Conflict` on an idle lane rather than pretending.
 
-**Durable memory.** `chat.memory` manages the bound documents the kernel
-assembles into a reply's memory block. An execution accesses the same memory
-through its declared memory tools. Six verbs: `list` (identity,
-version, size and age, never text), `read`, `write` (a conditional whole-document
-replace), `grep`, `edit` (a conditional exact-text replacement), and `delete`
-(a conditional permanent removal). Every
-verb takes the document's **path in the body**, reads included, because the
-path's first segment is the scope and no routing convention survives a slash:
-`conversation/…` is this conversation's alone (a fork keeps its own copy),
-`workspace/…` is shared by every conversation in the workspace, `agent/…`
-belongs to the answering Agent, and `speaker/…` belongs to that Agent and
-the input's Speaker together. An Agent's memory does not implicitly include
-its steward's `user/…` documents.
-A bare name is refused (`memory_path_invalid`) rather than defaulted — the
-scopes differ in who can read them.
+**Memory collections.** A collection owns documents independently of the
+conversations that bind it. Discover/create under `client.profile.memory_collections`,
+`client.profile.agents.memory_collections(name:)`, `workspace.memory_collections`
+or `chat.memory_collections`. Global UUID operations use `client.memory_collections`.
 
-`create(memory_context:)` and `chat.set_memory_context(memory_context:)`
-select named bindings. `nil` requests the default roots; `{ "bindings" => [] }`
-disables them. A Speaker binding can name its subject explicitly:
+```ruby
+collection = workspace.memory_collections.create(name: "Release knowledge")
+collection = client.memory_collections.update(collection.public_id,
+  name: "Shared release notes", lock_version: collection.lock_version)
+documents = client.memory_collections.documents(collection.public_id)
+document = documents.write("notes.md", "the plan",
+  expected_public_id: nil, expected_lock_version: nil)
+document = documents.write(document.path, "the revised plan",
+  expected_public_id: document.public_id, expected_lock_version: document.lock_version)
+collection = client.memory_collections.archive(collection.public_id,
+  lock_version: collection.lock_version)
+collection = client.memory_collections.restore(collection.public_id,
+  lock_version: collection.lock_version)
+```
+
+Collection paths are relative. Metadata/lifecycle mutations use the collection's
+`lock_version`; documents have their own UUID/version conditions. List, read,
+write, edit, delete and grep are available on the document handle. Lists include
+`MemoryDocument#collection_public_id`. Collection names and descriptions may be
+nil. Owner lists accept `default: true` and optional `speaker_public_id:`; no read
+allocates defaults. An authorized Agent/Speaker create may explicitly initialize
+an unallocated default with `default: true`, but never replace a deleted default.
+
+`chat.memory` uses binding paths such as `knowledge/notes.md`. Select sources
+at conversation creation or with `set_memory_context`:
 
 ```ruby
 chat.set_memory_context(memory_context: {
   "bindings" => [
-    { "name" => "conversation", "scope" => "conversation", "access" => "read_write" },
-    { "name" => "speaker", "scope" => "speaker", "access" => "read_write",
-      "speaker_public_id" => speaker_public_id }
+    { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
+    { "name" => "knowledge", "source" => { "collection_public_id" => collection.public_id }, "access" => "read_write" },
+    { "name" => "speaker", "source" => { "scope" => "speaker", "speaker_public_id" => speaker_public_id }, "access" => "read" }
   ]
 })
-chat.fetch.effective_memory_context # resolved roots and their public subject identifiers
-```
-
-Without `speaker_public_id`, execution freezes the input's Speaker. A member
-memory request can resolve relative Speaker bindings for that request with
-`chat.memory(speaker_public_id: ingress_speaker_id)`. The selector applies to
-list, read, write, edit, grep and delete; it does not rewrite the Conversation's
-bindings. Omission has no input Speaker and cannot use an unresolved binding.
-Explicitly bound subjects remain explicit, and an execution's memory limit
-still constrains the available roots.
-`Conversation#memory_context` retains the authored selection;
-`#effective_memory_context` carries the resolved roots available on the member door.
-
-```ruby
-document = chat.memory.write("workspace/notes.md", "the plan",
-  expected_public_id: nil, expected_lock_version: nil) # create only if absent
-chat.memory.list.map(&:path)                 # => ["workspace/notes.md", ...]
-document = chat.memory.read("workspace/notes.md")
-document = chat.memory.write(document.path, "the revised plan",
-  expected_public_id: document.public_id, expected_lock_version: document.lock_version)
+# For an absent path, read the resolved collection identity before creating it.
+binding = chat.memory.bindings.fetch("bindings").find { |row| row.fetch("name") == "knowledge" }
+document = chat.memory.write("knowledge/decision.md", "Use a blue release marker.",
+  expected_collection_public_id: binding.fetch("collection_public_id"),
+  expected_public_id: nil, expected_lock_version: nil)
 chat.memory.delete(document.path,
+  expected_collection_public_id: document.collection_public_id,
   expected_public_id: document.public_id, expected_lock_version: document.lock_version)
 ```
 
-Both condition keywords are required. Use two `nil` values only to create an
-absent document; replacing or deleting requires the UUID and version observed
-by the caller. A concurrent edit or delete-and-recreate returns
-`Conflict` (`stale_object`). Read the new state and reconcile before submitting
-another change: the SDK never fetches a fresh version or retries a stale write
-for you. These writes do not use an `Idempotency-Key`; replaying a successful
-write with its old condition also conflicts.
+Every conversation-path mutation requires all three conditions, including absent
+creates. A changed binding, concurrent edit or delete/recreate returns
+`Conflict` (`stale_object`); the SDK never fetches a new identity or retries old
+text. The collection URL already fixes identity for direct document operations.
+These writes do not use an idempotency key.
 
-`workspace.memory` is the room's own door to the same store: the `workspace/`
-scope without a conversation — the rows every conversation of the workspace
-assembles from, written under write standing on the room (an archived room
-reads, never writes) with the same verbs and the same path-in-body rule.
-It serves `workspace/…` alone; other scopes at this door are refused
-`memory_scope_unavailable`. `client.profile.memory` serves a Human caller's
-own `user/…` documents or an Agent caller's own `agent/…` documents.
-`client.profile.agents.memory(name:)` lets the declaring Agent manage a named
-Agent's `agent/…` documents. These profile doors work without a conversation.
+`nil` author selection means applicable defaults; an empty binding list disables
+memory. Nonempty selections may omit the Conversation root. Relative sources
+resolve defaults; exact sources retain their collection UUID. An unbound Speaker
+uses the input's subject at materialization. Management can select a permitted
+ingress subject for one request with `chat.memory(speaker_public_id:)` without
+changing configuration or an explicit subject. `#bindings` and Conversation
+`#effective_memory_context` expose resolved owner/subject, collection identity,
+state and effective access. Captured execution keeps its original collection
+identity after later binding changes.
 
-**Skills are rows under `skills/`.** An available `user`, `workspace`, `agent`
-or `speaker` binding may contain `skills/<name>`, subject to the door's principal
-and read/write access. The same conditional `write` takes the description a
-model reads in its turn's skills block to choose (required there —
-`skill_description_required` — and refused on ordinary documents,
-`memory_description_invalid`), the name under the skill grammar
-(`[a-z0-9]`, single hyphens, ≤ 64 — `skill_name_invalid` otherwise), never on
-the conversation rung (`skill_scope_unavailable`); the content is the markdown
-body the model reads when it loads the skill. `MemoryDocument#description` is
-nil on a plain document, `#skill?` reads the prefix. A model's own
-`memory_write`, `memory_edit` and `memory_delete` never author a `skills/` row
-(`memory_reserved_prefix`) — a person or their program does, through these
-doors — and the assembly's memory block never renders one.
+Collection Archive is read-only, Restore retains identity, and Delete is
+terminal without stopping consumers. The default is not silently recreated.
+Collection operations follow owner authority; execution and conversation
+context access retain profile limits. Workspace provider overrides also block
+ordinary content through Workspace/Conversation collection UUIDs. Explicit
+collection selection cannot be translated into provider scope. See the
+[collection contract](../../guides/reference/agent-api/memory-collections.md)
+and [conversation contract](../../guides/reference/agent-api/conversation-memory.md).
+
+**Skills.** A User, Agent, Speaker or Workspace collection may contain
+`skills/<name>`. Conversation-owned skills are refused. Skill writes require a
+nonblank description of at most 1024 bytes; ordinary documents have no description.
+`MemoryDocument#skill?` uses that distinction independently of path prefixes.
+Model memory mutation tools cannot author skills. For example:
 
 ```ruby
-client.profile.memory.write("agent/skills/review-checklist", body,
+agent_collection = client.profile.memory_collections.list(default: true).items.fetch(0)
+client.memory_collections.documents(agent_collection.public_id).write("skills/review-checklist", body,
   expected_public_id: nil, expected_lock_version: nil,
   description: "How I review a change. Use before approving a pull request.")
 ```
@@ -1811,8 +1808,8 @@ See [lifecycle hooks](../../docs/lifecycle-hooks.md) for the result protocol.
 
 `memory_context_limit` caps future execution's memory roots using the same
 binding grammar as a conversation's selection. `nil` declares no profile cap;
-an empty bindings list disables memory. Profile limits use natural roots and
-cannot select an explicit Speaker subject. `conversation_reach: "subtree"`
+an empty bindings list disables memory. Profile limits use natural roots with `source: {scope: ...}` and cannot
+carry collection UUIDs, explicit Conversation/Speaker subjects or captures. `conversation_reach: "subtree"`
 restricts conversation tools to the current conversation and descendants;
 `nil` or `"workspace"` declares normal workspace reach. The kernel preserves
 inherited restrictions when composing these declarations. Both fields read

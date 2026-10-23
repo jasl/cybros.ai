@@ -1,3 +1,0 @@
-<%= render layout: "workspaces/data/shell", locals: { workspace: @workspace, data_writable: @data_writable, error: @error, validation_errors: @validation_errors, title: t("data_console.memory.edit") } do %>
-  <%= render "form", workspace: @workspace, draft: @draft, data_writable: @data_writable, error: @error, conflict: @conflict, memory_overridden: @memory_overridden, creating: false %>
-<% end %>

@@ -136,6 +136,21 @@ class UntilTest < Minitest::Test
     assert_nil gate.ready?(paused)
   end
 
+  def test_recovery_does_not_revive_a_canceled_or_abandoned_hold
+    [["canceled", "canceled"], ["failed", "abandoned"]].each do |status, resolution|
+      tasks = settled_trace.tasks.map do |entry|
+        entry.key == "hold-1" ? entry.with(status: status, failure_resolution: resolution) : entry
+      end
+      context = FakeContext.new(trace(tasks))
+      gate.reconsider(context)
+      assert_empty context.detail_reads
+      assert_empty context.appends
+    end
+    context = FakeContext.new(trace(settled_trace.tasks, status: "canceled"))
+    gate.reconsider(context)
+    assert_empty context.appends
+  end
+
   def test_not_ready_until_the_hold_is_parked
     waiting = trace(settled_trace.tasks.map { |t| t.key == "hold-1" ? task("hold-1", "await_task", "waiting") : t })
     assert_nil gate.ready?(waiting)
@@ -261,9 +276,8 @@ class UntilTest < Minitest::Test
     refute g.done?, "a conflict means the trace moved; look again on the next nudge"
   end
 
-  # The verdict is on the row; the recording is retried, and a kernel that
-  # keeps refusing gets the run back with the reason rather than a run
-  # parked behind its hold for twelve hours.
+  # The verdict is on the row; a refused recording stays recoverable
+  # under the same append identity without rerunning the check.
   def test_a_refused_append_keeps_the_goal_recoverable_with_the_same_key
     refusing = Class.new(FakeContext) do
       attr_reader :tries
@@ -390,8 +404,8 @@ class UntilTest < Minitest::Test
       { "tool" => { "name" => "bash", "route" => { "kind" => "runner", "runner_executor_public_id" => "runner-1" }, "executor_context" => @captured,
                     "input" => { "command" => "t", "workdir" => "/d", "timeout" => 5 },
                     "key" => "check-1", "timeout_ms" => Rho::Until::CHECK_PARK_MS, "on_failure" => "absorb" } },
-      { "ask" => { "key" => "hold-1", "prompt" => "verdict of acceptance check 1",
-                   "timeout_ms" => Rho::Until::HOLD_TIMEOUT_MS } },
+      { "ask" => { "key" => "hold-1", "prompt" => "Waiting for rho to advance acceptance check 1",
+                   "indefinite" => true } },
     ]
     assert_equal wire, Rho::Until.check_steps(1, command: "t", directory: "/d", timeout_seconds: 5, runner: "runner-1", executor_context: @captured).map(&:to_h)
     assert_equal %w[check-4 hold-4], Rho::Until.check_steps(4, command: "t", directory: "/d", timeout_seconds: 5, runner: "runner-1", executor_context: @captured).map(&:key)

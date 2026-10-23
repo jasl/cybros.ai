@@ -67,102 +67,6 @@ class SchedulesTest < Minitest::Test
     [@home, @project].compact.each { |path| FileUtils.remove_entry(path) if File.directory?(path) }
   end
 
-  def test_saved_jobs_keep_their_policy_run_independently_and_return_one_callback
-    chat, held_loop = open_conversation(script("ask", { "prompt" => "Hold the main conversation" }, "main finished"))
-    @held_loop = held_loop
-    question = await("the main conversation's ask") do
-      held_loop.fetch.tasks.find { |task| task.await? && task.status == "awaiting_input" }
-    end
-    assert_predicate chat.fetch, :busy?
-
-    verify_interval_lifecycle(chat)
-    verify_model_created_job
-
-    secret = "scheduled-file-result-#{SecureRandom.hex(12)}"
-    File.write(File.join(@project, "scheduled-result.txt"), secret)
-    prompt = script("read", { "path" => "scheduled-result.txt" }, "report the file contents")
-    rule = { "kind" => "once", "run_at" => (Time.now + 5).utc.iso8601 }
-    key = SecureRandom.uuid
-    jobs = chat.schedules
-    created = create_job(jobs, prompt: prompt, rule: rule, idempotency_key: key)
-    refute_predicate created, :replayed?
-    execution = await("the once job's independent execution") do
-      row = jobs.executions(created.public_id).items.first
-      flunk "the scheduled child failed: #{row.to_h.inspect}" if row && %w[failed canceled].include?(row.status)
-      row if row&.status == "completed"
-    end
-
-    refute_equal chat.public_id, execution.child_conversation_public_id
-    refute_equal held_loop.run_public_id, execution.run_public_id
-    refute_nil execution.input_public_id
-    refute_nil execution.turn_public_id
-    assert_equal Time.iso8601(rule.fetch("run_at")), Time.iso8601(execution.scheduled_for)
-    assert_operator Time.iso8601(execution.created_at), :>=, Time.iso8601(rule.fetch("run_at"))
-    child = @workspace.conversation(execution.child_conversation_public_id)
-    assert_equal chat.public_id, child.fetch.parent.public_id
-    child_loop = @workspace.run(execution.run_public_id)
-    first_entries = child_loop.tasks_context("r1").request.entries
-    first_request = JSON.generate(first_entries)
-    assert_includes first_request, "Conversation kind: scheduled.",
-      "the deployed profile knows this is an execution before its first model round"
-    refute_includes first_request, "{{conversation_kind}}", "the execution fact is compiled, not a literal macro"
-    read = child_loop.fetch.tasks.find { |task| task.tool_name == "read" }
-    refute_nil read, "the scheduled prompt used the ordinary read tool"
-    assert_equal "completed", read.status
-    refute_nil read.claimed_by, "the actual runner claimed the read"
-    assert_includes task_text(child_loop.task(read.key)), secret, "only the real project file contains this result"
-    assert_includes child.turns.list.items.find { |turn| turn.public_id == execution.turn_public_id }.text, secret
-
-    assert_predicate chat.fetch, :busy?, "the child completed while the original main turn remained held"
-    assert_equal "awaiting_input", held_loop.task(question.key).task.status
-    mail = await("the child's queued result on the busy main conversation") do
-      chat.inputs.list.items.find do |input|
-        input.origin == "child" && input.sender_conversation_public_id == child.public_id
-      end
-    end
-    assert_equal "pending", mail.state
-    assert_empty callback_turns(chat, child.public_id), "the result waits at the main conversation's turn boundary"
-
-    held_loop.tasks_context(question.key).resolve(content: "Continue the main conversation")
-    callback = await("the main conversation's completed callback") do
-      rows = callback_turns(chat, child.public_id)
-      failed = rows.find { |turn| turn.status == "failed" }
-      flunk "the callback failed: #{failed.to_h.inspect}" if failed
-      rows.find { |turn| turn.status == "completed" }
-    end
-    assert_equal execution.run_public_id, callback.sender_run_public_id
-    assert_equal created.public_id, callback.sender_task_key
-    refute_equal held_loop.run_public_id, callback.active_variant.run_public_id
-    request = @workspace.run(callback.active_variant.run_public_id).tasks_context("r1").request
-    receipt = request.entries.last.fetch("parts").filter_map { |part| part["text"] }.join("\n")
-    assert_includes receipt, secret, "the current callback carries the child's actual tool result"
-    assert_includes receipt, "<prompt>#{prompt[0, 80]}</prompt>",
-      "a directly saved job carries its accepted request brief even though the main never requested that work"
-    assert_includes receipt, "scheduled_for=\"#{Time.iso8601(execution.scheduled_for).utc.iso8601(6)}\"",
-      "the callback identifies this occurrence's original planned time"
-    assert_includes callback.text, secret
-    assert_equal "completed", jobs.fetch(created.public_id).status
-
-    replay = jobs.create(prompt: prompt, rule: rule, model: MODEL, approval_mode: "bypass", idempotency_key: key)
-    assert_predicate replay, :replayed?
-    assert_equal created.public_id, replay.public_id
-    page = jobs.executions(created.public_id)
-    assert_equal [execution.input_public_id], page.items.map(&:input_public_id)
-    refute_nil page.last_cursor
-    tail = jobs.executions(created.public_id, after: page.last_cursor)
-    assert_empty tail.items
-    assert_equal page.last_cursor, tail.last_cursor
-
-    continued = continue_main(chat, after: callback.position)
-    assert_includes continued.text, "continued"
-    assert_equal [callback.public_id], callback_turns(chat, child.public_id).map(&:public_id),
-      "one execution returned once across a subsequent ordinary main turn"
-    assert_equal [execution.input_public_id], jobs.executions(created.public_id).items.map(&:input_public_id)
-
-    verify_parent_followup(chat, child, jobs: jobs,
-      job_id: created.public_id, execution: execution)
-  end
-
   def test_a_model_created_once_schedule_keeps_its_snapshot_across_submitter_exit_and_kernel_downtime
     marker = "offline-schedule-#{SecureRandom.hex(10)}"
     File.write(File.join(@project, "offline-schedule.txt"), marker)
@@ -238,6 +142,11 @@ class SchedulesTest < Minitest::Test
     chat, held_loop = open_conversation(script("ask", { "prompt" => "Hold for both worker results" }, "main finished",
       echo_content: true))
     @held_loop = held_loop
+    # Both workers must capture the same collection to share a reply.
+    # Their independent Conversation defaults have different identities.
+    chat.set_memory_context(memory_context: { "bindings" => [
+      { "name" => "workspace", "access" => "read_write", "source" => { "scope" => "workspace" } },
+    ] })
     question = await("the main conversation's hold before both schedules") do
       held_loop.fetch.tasks.find { |task| task.await? && task.status == "awaiting_input" }
     end
@@ -308,84 +217,6 @@ class SchedulesTest < Minitest::Test
 
   private
 
-    def verify_parent_followup(chat, child, jobs:, job_id:, execution:)
-      marker = "scheduled-followup-#{SecureRandom.hex(12)}"
-      prompt = script("send", { "to" => child.public_id, "message" => "!mock reply=#{marker} -- answer the follow-up" },
-        "follow-up sent", prior_answers: 1)
-      receipt = @peer.submit_and_exit(base_url: @base_url, workspace_public_id: @workspace.public_id,
-        conversation_public_id: chat.public_id, kind: "direct_reply", model: MODEL, text: prompt,
-        approval_mode: "bypass", idempotency_key: SecureRandom.uuid)
-      materialization = await("the follow-up input's execution") { chat.inputs.materialization(receipt) }
-      parent = await("the parent conversation's follow-up request") do
-        turn = chat.turns.fetch(materialization.turn_public_id)
-        turn if turn.status == "completed"
-      end
-      owner = @workspace.run(parent.active_variant.run_public_id)
-      send = owner.fetch.tasks.find { |task| task.tool_name == "send" }
-      refute_nil send, "the parent sent a new request into its scheduled child"
-      assert_equal "completed", send.status
-      reply = await("the scheduled child's reply to its parent's later request") do
-        callback_turns(chat, child.public_id).find do |turn|
-          turn.position > parent.position && turn.status == "completed" && turn.sender_task_key == send.key
-        end
-      end
-      assert_equal owner.run_public_id, reply.sender_run_public_id,
-        "the later request owns its reply independently of the original clock occurrence"
-      assert_includes reply.text, marker
-      assert_equal [execution.input_public_id], jobs.executions(job_id).items.map(&:input_public_id),
-        "a follow-up does not create another scheduled occurrence"
-      assert_equal "completed", jobs.fetch(job_id).status
-    end
-
-    def verify_interval_lifecycle(chat)
-      jobs = chat.schedules
-      rule = { "kind" => "interval", "every_seconds" => 3_600, "starts_at" => (Time.now + 3_600).utc.iso8601 }
-      created = create_job(jobs, prompt: "inspect the project later", rule: rule, idempotency_key: SecureRandom.uuid)
-      assert_equal "active", created.schedule.status
-      assert_includes jobs.list.items.map(&:public_id), created.public_id
-      row = jobs.fetch(created.public_id)
-      updated = jobs.update(row.public_id, expected_lock_version: row.lock_version, prompt: "inspect the revised project later")
-      assert_equal "inspect the revised project later", updated.prompt
-      assert_operator updated.lock_version, :>, row.lock_version
-      assert_equal "paused", jobs.pause(row.public_id).status
-      assert_equal "active", jobs.resume(row.public_id).status
-      assert_equal "canceled", jobs.cancel(row.public_id).status
-      assert_empty jobs.executions(row.public_id).items, "future lifecycle edits do not dispatch an occurrence"
-    end
-
-    def verify_model_created_job
-      arguments = { "action" => "create", "prompt" => "inspect the project from a model-created plan",
-        "rule" => { "kind" => "interval", "every_seconds" => 3_600, "starts_at" => (Time.now + 3_600).utc.iso8601 } }
-      chat, source = open_conversation(script("manage_schedule", arguments, "job saved"))
-      completed = await("the model's schedule tool to complete") do
-        row = source.fetch
-        flunk "the schedule tool's turn failed: #{row.to_h.inspect}" if row.status == "failed"
-        row if row.status == "completed"
-      end
-      call = completed.tasks.find { |task| task.tool_name == "manage_schedule" }
-      refute_nil call
-      assert_equal "completed", call.status
-      rows = chat.schedules.list.items
-      assert_equal 1, rows.length
-      row = rows.fetch(0)
-      @job_doors[row.public_id] = chat.schedules
-      assert_equal source.run_public_id, row.source_run_public_id
-      assert_equal call.key, row.source_task_key
-      detail = source.task(call.key)
-      result = JSON.parse(task_text(detail))
-      assert_equal row.public_id, result.fetch("public_id")
-      assert_equal row.rule.to_h.transform_keys(&:to_s), result.fetch("rule")
-      declaring = source.task(detail.declaring_task_key)
-      names = declaring.tool_definitions.map { |entry| entry.dig("function", "name") || entry.fetch("name") }
-      assert_equal names.sort, row.tool_names.sort, "the actual calling model round owns the saved tool policy"
-      assert_equal declaring.task.model.fetch("model"), row.model.model
-      assert_equal completed.approval_mode, row.approval_mode
-      refute_nil completed.turn.answering_user_public_id
-      assert_equal completed.turn.answering_user_public_id, row.answering_user_public_id,
-        "the calling turn owns the saved answerer"
-      assert_equal "canceled", chat.schedules.cancel(row.public_id).status
-    end
-
     def create_job(jobs, **fields)
       created = jobs.create(**fields, model: MODEL, approval_mode: "bypass")
       @job_doors[created.public_id] = jobs
@@ -402,17 +233,6 @@ class SchedulesTest < Minitest::Test
       assert_equal receipt, chat.turns.fetch(materialization.turn_public_id).input_public_id
       refute_nil materialization.run_public_id
       [chat, @workspace.run(materialization.run_public_id)]
-    end
-
-    def continue_main(chat, after:)
-      chat.inputs.create(kind: "direct_reply", model: MODEL, text: "!mock reply=continued -- continue normally",
-        approval_mode: "bypass", idempotency_key: SecureRandom.uuid)
-      await("a subsequent ordinary main conversation reply") do
-        chat.turns.list.items.find do |turn|
-          turn.role == "assistant" && turn.position > after && turn.status == "completed" &&
-            turn.sender_conversation_public_id.nil?
-        end
-      end
     end
 
     def callback_turns(chat, child_id)

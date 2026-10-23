@@ -12,6 +12,7 @@ class Conversations::ContextAssemblyBudgetTest < ActiveSupport::TestCase
     @workspace = workspaces(:shared)
     DevModelLane.ensure_enabled!(@account)
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
+    MemoryCollection.default_for(@conversation)
     @profile = DevModelLane.profile_for("dev/mock-text")
   end
 
