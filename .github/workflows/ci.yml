@@ -314,7 +314,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.99.1
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           components: rustfmt, clippy
 
@@ -336,7 +336,7 @@ jobs:
         run: cargo doc --locked --no-deps --all-features
 
       - name: Install the minimum supported Rust compiler
-        uses: dtolnay/rust-toolchain@1.88.0
+        uses: dtolnay/rust-toolchain@1.120.0
 
       - name: Check all features on the minimum Rust version
         run: cargo +1.88.0 check --locked --all-features
