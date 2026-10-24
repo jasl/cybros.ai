@@ -17,7 +17,7 @@ module Rho
       def environment_path = File.join(root, "rho.env")
 
       def environment(current = ENV.to_h)
-        Runner::ChildEnv.scrubbed(current).merge(current.slice(*PROVIDER_VARIABLES)).merge(
+        Env::ChildEnv.scrubbed(current).merge(current.slice(*PROVIDER_VARIABLES)).merge(
           "CODEX_HOME" => codex_root, "CLAUDE_CONFIG_DIR" => claude_root,
           "ANTHROPIC_CONFIG_DIR" => File.join(claude_root, "anthropic")
         )

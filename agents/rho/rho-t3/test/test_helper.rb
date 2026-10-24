@@ -150,12 +150,12 @@ module T3Test
   def with_work(store: Store.new, native: Native.new, task: "tool", config: settings, sleeper: nil)
     Dir.mktmpdir do |root|
       questions = Questions.new
-      context = Rho::Runner::ExecutionContext.new(run_public_id: "run", conversation_public_id: "conversation", task_key: task, orchestration: questions)
-      env = Rho::Runner::ToolEnv.new(root: root, artifacts_dir: File.join(root, "artifacts"))
+      context = Rho::Env::ExecutionContext.new(run_public_id: "run", conversation_public_id: "conversation", task_key: task, orchestration: questions)
+      env = Rho::Env::ToolEnv.new(root: root, artifacts_dir: File.join(root, "artifacts"))
       session = Session.new(store, context)
       work = Rho::T3::Work.new(settings: config, session: session, env: env, home: nil, bridge: native,
         sleeper: sleeper || -> { native.complete })
-      Rho::Runner::ExecutionContext.with(context) { yield work, native, store, context, questions, session }
+      Rho::Env::ExecutionContext.with(context) { yield work, native, store, context, questions, session }
     end
   end
 end

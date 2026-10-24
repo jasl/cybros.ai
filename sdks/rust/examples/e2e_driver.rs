@@ -174,16 +174,22 @@ async fn run(v: Value) -> Result<Value> {
                 })
                 .await?
                 .body;
-            if !client
-                .agents()
-                .list(&PageQuery::default())
-                .await?
-                .body
-                .items
-                .iter()
-                .any(|a| a.public_id == agent.public_id)
-            {
-                return Err(Error::Protocol("created agent absent from list"));
+            // A small page exercises traversal even without the other journeys' Agents.
+            let mut query = PageQuery {
+                limit: Some(1),
+                order: Some(Order::Asc),
+                ..Default::default()
+            };
+            loop {
+                let listed = client.agents().list(&query).await?.body;
+                if listed.items.iter().any(|a| a.public_id == agent.public_id) {
+                    break;
+                }
+                query.after = Some(
+                    listed
+                        .next_after
+                        .ok_or(Error::Protocol("created agent absent from list"))?,
+                );
             }
             client.agents().agent(&agent.public_id)?.remove().await?;
             client.session().revoke().await?;

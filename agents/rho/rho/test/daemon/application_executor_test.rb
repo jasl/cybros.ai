@@ -4,7 +4,7 @@ require "cybros_agent/test_support/fake_realtime"
 class DaemonApplicationExecutorTest < Minitest::Test
   include RhoTest::DaemonHarness
 
-  def test_full_mode_announces_both_roles_and_runs_environment_work_on_one_application_inbox
+  def test_default_startup_announces_both_roles_and_runs_environment_work_on_one_application_inbox
     root = File.join(@root, "project")
     FileUtils.mkdir_p(root)
     File.write(File.join(root, "marker.txt"), "application environment")

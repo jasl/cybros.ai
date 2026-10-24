@@ -1,6 +1,6 @@
 require "json"
 require "cybros_agent"
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module Mcp
@@ -91,7 +91,7 @@ module Rho
         schema = Hash.try_convert(tool.input_schema)
         return "#{public_name}'s schema is not a JSON Schema object" unless schema && schema["type"] == "object"
 
-        Rho::Runner::InputSchema.compile(schema)
+        Rho::Env::InputSchema.compile(schema)
         nil
       rescue ArgumentError => error
         "#{public_name}'s schema was refused: #{error.message}"

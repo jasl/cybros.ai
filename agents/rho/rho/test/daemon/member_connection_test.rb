@@ -10,7 +10,7 @@ class MemberConnectionTest < Minitest::Test
       events << [connection, Thread.current, !Async::Task.current?.nil?]
       release.pop if connection.nil?
     end
-    daemon = connected_boot(config: agent_mode, extensions: [extension])
+    daemon = connected_boot(config: application_config, extensions: [extension])
     connect(daemon)
     adopted = events.pop(timeout: 2)
     assert_equal "0199-user", adopted.fetch(0).user_public_id
@@ -35,7 +35,7 @@ class MemberConnectionTest < Minitest::Test
 
   def test_same_profile_reconnect_delivers_a_fresh_connection
     events = Queue.new
-    daemon = connected_boot(config: agent_mode, extensions: [connection_extension { |connection| events << (connection || :lost) }])
+    daemon = connected_boot(config: application_config, extensions: [connection_extension { |connection| events << (connection || :lost) }])
     connect(daemon)
     first = events.pop(timeout: 2)
     assert_equal 200, request(daemon, :post, "/disconnect", token: bearer(daemon)).code.to_i
@@ -49,7 +49,7 @@ class MemberConnectionTest < Minitest::Test
 
   def test_same_credentials_readoption_does_not_restart_the_member_worker
     events = Queue.new
-    daemon = connected_boot(config: agent_mode, extensions: [connection_extension { |connection| events << connection }])
+    daemon = connected_boot(config: application_config, extensions: [connection_extension { |connection| events << connection }])
     connect(daemon)
     refute_nil events.pop(timeout: 2)
     about = daemon.lineage.credentials
@@ -87,7 +87,7 @@ class MemberConnectionTest < Minitest::Test
       super(path, params, timeout: timeout)
     end
     daemon = boot(device_flow: connection_device_flow(oauth), api_transport: api,
-      config: agent_mode, extensions: [extension])
+      config: application_config, extensions: [extension])
     connect(daemon)
     original = events.pop(timeout: 2).fetch(1)
     api.accept(NexusDoubles::MEMBER_TOKEN, false)
@@ -112,7 +112,7 @@ class MemberConnectionTest < Minitest::Test
 
   def test_a_replacement_profile_does_not_retarget_the_previous_member_client
     events = Queue.new
-    daemon = connected_boot(config: agent_mode, extensions: [connection_extension { |connection| events << (connection || :lost) }])
+    daemon = connected_boot(config: application_config, extensions: [connection_extension { |connection| events << (connection || :lost) }])
     connect(daemon)
     first = events.pop(timeout: 2)
     assert_equal 200, request(daemon, :post, "/disconnect", token: bearer(daemon)).code.to_i
@@ -128,7 +128,7 @@ class MemberConnectionTest < Minitest::Test
 
   def test_agent_loss_retires_the_member_worker_and_application_connection
     events = Queue.new
-    daemon = connected_boot(extensions: [Rho::Runner::Extensions::Coding,
+    daemon = connected_boot(extensions: [Rho::Env::Extensions::Coding,
       connection_extension { |connection| events << (connection || :lost) }])
     connect(daemon)
     refute_nil events.pop(timeout: 2)
@@ -138,12 +138,12 @@ class MemberConnectionTest < Minitest::Test
 
     assert_equal :lost, events.pop(timeout: 2)
     assert_nil daemon.lineage.credentials
-    assert_empty daemon.lineage.runners
+    assert_nil daemon.lineage.runner
   end
 
   def test_runner_disconnect_does_not_restart_the_member_worker
     events = Queue.new
-    daemon = connected_boot(extensions: [Rho::Runner::Extensions::Coding,
+    daemon = connected_boot(extensions: [Rho::Env::Extensions::Coding,
       connection_extension { |connection| events << (connection || :lost) }])
     connect(daemon)
     refute_nil events.pop(timeout: 2)
@@ -152,11 +152,11 @@ class MemberConnectionTest < Minitest::Test
 
     assert_equal 422, response.code.to_i
     assert_nil events.pop(timeout: 0)
-    assert daemon.lineage.credentials.agent?
+    assert daemon.lineage.credentials.member_plane?
   end
 
   def test_boot_checks_startup_before_adopting_credentials_and_delivers_the_connection_once
-    first = connected_boot(config: agent_mode)
+    first = connected_boot(config: application_config)
     connect(first)
     @daemons.pop.stop
     events = Queue.new
@@ -167,7 +167,7 @@ class MemberConnectionTest < Minitest::Test
       api.on(:startup) { events << :startup }
     end
 
-    daemon = connected_boot(config: agent_mode, extensions: [extension])
+    daemon = connected_boot(config: application_config, extensions: [extension])
 
     assert_equal :active, daemon.phase
     assert_equal :startup, events.pop(timeout: 2)

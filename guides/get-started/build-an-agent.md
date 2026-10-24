@@ -17,7 +17,10 @@
 | A **tool provider** — tools served by name from a pool | A transport credential only | [Tool providers](../runners/tool-providers.md) |
 | A **direct model integration** — model calls through the gateway, no conversation | An agent's member credential | [Direct model calls](../build/direct-model-calls.md) |
 
-An agent can also be a runner for its own machine, the way rho is in full mode: its application address announces both services through one transport credential.
+An agent can also implement a runner for its own machine: its application address
+announces both services through one transport credential. This works with your own
+implementation in any language; rho and `rho-env` are optional. See
+[Implement a Runner in your Agent](../runners/index.md#implement-a-runner-in-your-agent).
 
 ## Choose a language
 
@@ -51,7 +54,7 @@ rho uses only the public APIs, so its source is a complete worked example. The r
 | --- | --- |
 | Device pairing, credential storage and rotation, the settings file | `rho` — the daemon core and CLI |
 | Following conversations, rendering streamed answers, approvals and questions in a UI | `rho-webui` — plain browser modules over the daemon's control API |
-| The inbox claim loop, file and shell tools, checkpoints, process management | `rho-runner` |
+| The inbox claim loop, file and shell tools, checkpoints, process management | `rho-env` |
 | Orchestrating tools and model calls from JavaScript (programmatic tool calling) | `rho-codemode` |
 | An external channel as an ingress: consent, routing, delivery | `rho-ingress-telegram` |
 | MCP servers as tools, with OAuth login | `rho-mcp` |

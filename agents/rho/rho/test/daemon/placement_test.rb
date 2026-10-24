@@ -18,7 +18,7 @@ class DaemonPlacementTest < Minitest::Test
     assert_equal stated, env.root
     # The root's captures are rho's bookkeeping: under the work
     # root, keyed by the root, never an `artifacts/` in the person's tree.
-    assert_equal Rho::Runner::ToolEnv.artifacts_dir_for(root: stated, work_dir: daemon.home.work_root),
+    assert_equal Rho::Env::ToolEnv.artifacts_dir_for(root: stated, work_dir: daemon.home.work_root),
       env.artifacts_dir, "the root's captures are placed under the work root, keyed by the root"
     refute env.artifacts_dir.start_with?("#{stated}/"), "rho's bookkeeping inside the person's tree: #{env.artifacts_dir}"
     assert_equal 120, env.bash_timeout_seconds
@@ -36,9 +36,9 @@ class DaemonPlacementTest < Minitest::Test
       env = daemon.context.tool_env
 
       store = env.checkpoints
-      assert_kind_of Rho::Runner::Checkpoints::Store, store
+      assert_kind_of Rho::Env::Checkpoints::Store, store
       assert_equal File.realpath(project), store.root
-      assert_equal File.join(File.realpath(daemon.home.work_root), "checkpoints", Rho::Runner::Checkpoints::Store.digest(project)),
+      assert_equal File.join(File.realpath(daemon.home.work_root), "checkpoints", Rho::Env::Checkpoints::Store.digest(project)),
         store.path
       assert_equal 7, store.retention_days
       assert_equal 30.0, store.capture_timeout_seconds
@@ -93,13 +93,13 @@ class DaemonPlacementTest < Minitest::Test
     assert_respond_to daemon.host.checkpoints, :call, "the member is the callable, decided at boot"
     token = connect(daemon)
     await_workspace_state(daemon, "adopted", token: token)
-    wait_for { daemon.lineage.runners.length == 1 }
+    wait_for { daemon.lineage.runner }
 
     store = daemon.context.tool_env.checkpoints
-    assert_kind_of Rho::Runner::Checkpoints::Store, store
+    assert_kind_of Rho::Env::Checkpoints::Store, store
     assert_equal File.realpath(daemon.context.environment.root), store.root
     assert store.root.start_with?("#{File.realpath(home.work_root)}/"), "the runner's default root sits under the work root"
-    assert_equal File.join(File.realpath(home.work_root), "checkpoints", Rho::Runner::Checkpoints::Store.digest(store.root)), store.path
+    assert_equal File.join(File.realpath(home.work_root), "checkpoints", Rho::Env::Checkpoints::Store.digest(store.root)), store.path
     assert_same store, daemon.host.checkpoints.call
     assert_includes daemon.context.registry.serving(:runner).names, "checkpoint_restore"
     assert_includes daemon.context.registry.serving(:runner).names, "checkpoints"
@@ -162,7 +162,7 @@ def test_a_home_inside_the_runner_root_is_still_a_protected_root_of_the_store
   assert_respond_to daemon.host.checkpoints, :call, "the root is under no protected root: the member stands"
 
   store = daemon.context.tool_env.checkpoints
-  assert_kind_of Rho::Runner::Checkpoints::Store, store
+  assert_kind_of Rho::Env::Checkpoints::Store, store
   assert_equal File.realpath(area), store.root
 home.protected_members.each do |member|
   assert_includes store.protected_roots, Rho.spelled(member), "the home's members inside the root are excluded at capture"
@@ -175,7 +175,7 @@ refute_includes store.protected_roots, File.realpath(home_root), "the home's own
   record = store.capture(run_public_id: "al-1")
   refute record.skip?, "the capture stands: #{record.inspect}"
   paths = []
-  SQLite3::Database.new(File.join(store.path, Rho::Runner::Checkpoints::Store::DATABASE_FILE), readonly: true) do |db|
+  SQLite3::Database.new(File.join(store.path, Rho::Env::Checkpoints::Store::DATABASE_FILE), readonly: true) do |db|
     paths = JSON.parse(db.get_first_value("SELECT manifest FROM trees WHERE hash = ?", [record.hash])).keys
   end
   assert_includes paths, "a.txt"
@@ -198,21 +198,21 @@ end
     moved = Dir.mktmpdir("rho-moved")
     token = connect(daemon)
     await_workspace_state(daemon, "adopted", token: token)
-    wait_for { daemon.lineage.runners.length == 1 && api.announcements.length == 1 }
-    runner = daemon.lineage.runner(:runner)
+    wait_for { daemon.lineage.runner && api.announcements.length == 1 }
+    runner = daemon.lineage.runner
     before = daemon.context.tool_env
 
     daemon.context.repoint_tools(moved)
     wait_for { api.announcements.length == 2 }
 
-    assert_same runner, daemon.lineage.runner(:runner), "the runner stands"
+    assert_same runner, daemon.lineage.runner, "the runner stands"
     refute_same before, daemon.context.tool_env, "placement zero is rebuilt, never mutated"
     assert_equal File.realpath(moved), File.realpath(daemon.context.tool_env.root)
     assert_equal File.realpath(moved), File.realpath(api.announcements.last.dig("services", "runner", "environment", "root")),
       "the announcement names the root the tools serve"
     assert_equal File.realpath(moved), daemon.context.tool_env.checkpoints.root
     assert_same daemon.context.tool_env.checkpoints, daemon.host.checkpoints.call, "zero's store outside a call"
-    assert_equal Rho::Runner::ToolEnv.artifacts_dir_for(root: moved, work_dir: daemon.home.work_root),
+    assert_equal Rho::Env::ToolEnv.artifacts_dir_for(root: moved, work_dir: daemon.home.work_root),
       daemon.context.tool_env.artifacts_dir, "the captures follow the root of the moment, under the work root (H-4)"
   ensure
     FileUtils.remove_entry(moved) if moved && File.directory?(moved)
@@ -255,17 +255,15 @@ end
     assert_equal 0, facts.fetch("nudged")
   end
 
-  # THE TWO LOOPS OF FULL MODE: the runner address serves
-  # this machine's tools, the agent address its own. Agent mode places the
-  # agent's run alone and registers no runner.
-  def test_full_mode_places_one_runtime_with_both_roles_and_agent_mode_only_application
+  # One runtime serves both roles on the same application address.
+  def test_application_places_one_runtime_with_both_roles
     api = NexusDoubles::FakeAgentApi.new(
       workspaces: [{ public_id: "0199-workspace", name: "Helper", dedicated: true }]
     )
     daemon = boot(device_flow: connection_device_flow, api_transport: api)
     token = connect(daemon)
     await_workspace_state(daemon, "adopted", token: token)
-    wait_for { daemon.lineage.runners.length == 1 }
+    wait_for { daemon.lineage.runner }
 
     document = JSON.parse(request(daemon, :get, "/runner", token: token).body)
     assert_includes document.fetch("runner").fetch("tools"), "bash"
@@ -279,63 +277,6 @@ end
     assert_includes log, "event=executor.announced tools=21 role=runner"
     assert_includes log, "event=executor.announced tools=3 role=agent"
 
-    agent = boot(device_flow: connection_device_flow, api_transport: NexusDoubles::FakeAgentApi.new(
-      workspaces: [{ public_id: "0199-workspace", name: "Helper", dedicated: true }]
-    ), config: agent_mode, root: File.join(@root, "agent"))
-    token = connect(agent)
-    await_workspace_state(agent, "adopted", token: token)
-    wait_for { agent.lineage.runner }
-    document = JSON.parse(request(agent, :get, "/runner", token: token).body)
-    assert_nil document.fetch("runner")
-    assert_equal %w[list_extensions manage_extension code], document.fetch("agent").fetch("tools")
-    assert_nil agent.identity.runner_executor_public_id
-  end
-
-  # RUNNER MODE CONSTRUCTS NO MEMBER PLANE: a boot under the
-  # fake records ZERO requests under the member credential, mounts no page,
-  # registers no conversation routes, announces a runner-shaped identity and
-  # places its one run from adoption — no workspace.
-  def test_a_runner_mode_boot_touches_no_member_resource
-    api = NexusDoubles::FakeAgentApi.new
-    daemon = boot(device_flow: connection_device_flow, api_transport: api, config: runner_mode)
-    token = bearer(daemon)
-    request(daemon, :post, "/device/start", token: token)
-    body = await_state(daemon, "active", token: token)
-    wait_for { api.runner_inbox_reads.positive? }
-
-    assert_nil daemon.host_followers, "no HostFollowers, so no HostStore behind it"
-    refute_predicate daemon, :page?
-    assert_equal "404", get(daemon, "/nope").code
-    assert_equal "not_found", JSON.parse(get(daemon, "/nope").body).dig("error", "code")
-    %w[/conversations /say /stop /compact /runs].each do |path|
-      response = request(daemon, :post, path, token: token, body: {})
-      assert_equal "404", response.code, path
-      assert_equal "not_found", JSON.parse(response.body).dig("error", "code"), path
-    end
-    assert_equal "404", request(daemon, :get, "/runs", token: token).code
-
-    assert_equal "runner", body["mode"]
-    refute body.key?("workspace"), "a runner adopts no workspace"
-    # The status names the install too (the home's instance id); the
-    # announcement below is the lineage's own facts and carries none.
-    assert_equal({ "executor_public_id" => "0199-runner", "runner_executor_public_id" => "0199-runner",
-                   "instance_id" => daemon.home.instance_id },
-      body.fetch("identity"))
-    assert_equal ["runner_transport"], body.dig("authority", "planes").keys
-    assert_equal({ "executor_public_id" => "0199-runner", "runner_executor_public_id" => "0199-runner" },
-      announcement(daemon).fetch("identity"))
-    document = JSON.parse(request(daemon, :get, "/runner", token: token).body)
-    assert_includes document.fetch("runner").fetch("tools"), "read"
-    assert_nil document.fetch("agent")
-    assert_empty(api.requests.select { |_path, credential, _| credential == NexusDoubles::MEMBER_TOKEN },
-      "zero requests under the member credential")
-    assert_empty api.announcements, "nothing on the agent address"
-    assert_equal 1, api.runner_announcements.length
-    refute_nil api.runner_announcements.first.dig("services", "runner", "environment")
-    log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
-    # Runner mode keeps the same default local tools, including web reading.
-    assert_includes log, "event=executor.announced tools=21 role=runner"
-    assert_equal "connected", JSON.parse(request(daemon, :get, "/environment", token: token).body).dig("environment", "root").then { |root| root ? "connected" : "unset" }
-    assert_includes daemon.context.environment.root, File.join("runners", "0199-runner")
+    assert_equal daemon.identity.executor_public_id, daemon.identity.runner_executor_public_id
   end
 end

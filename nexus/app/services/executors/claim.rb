@@ -54,8 +54,9 @@ module Executors
             (node.target_executor_id != executor.id || node.target_executor_public_id != executor.public_id)
           return Outcome.refused(:not_addressed_here, node)
         end
-        return Outcome.refused(:not_eligible, node) unless executor.eligible_for?(run.answering_user)
-        return Outcome.refused(:tool_not_served, node) unless Address.serves?(executor, node.tool_name, run.answering_user, role: node.addressed_role)
+        readiness = Executor.credential_readiness_for([executor])
+        return Outcome.refused(:not_eligible, node) unless executor.eligible_for?(run.answering_user, readiness: readiness)
+        return Outcome.refused(:tool_not_served, node) unless Address.serves?(executor, node.tool_name, run.answering_user, role: node.addressed_role, readiness: readiness)
         return Outcome.refused(:not_authorized, node) unless
           run.workspace.data_writable_by?(run.creating_user)
         return Outcome.refused(:task_not_claimable, node) unless

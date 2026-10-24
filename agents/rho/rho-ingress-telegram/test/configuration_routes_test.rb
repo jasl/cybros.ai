@@ -23,7 +23,7 @@ class TelegramConfigurationRoutesTest < Minitest::Test
     client = @client
     Rho::IngressTelegram::Client.define_singleton_method(:new) { |**| client }
     @daemon = Rho::Daemon.boot(home: @home, extensions: [],
-      config: Rho::Config.from_hash({ "mode" => "agent", "api_only" => true, "plugins" => {
+      config: Rho::Config.from_hash({ "api_only" => true, "plugins" => {
         Rho::IngressTelegram::NAME => { "enabled" => true },
       } }))
     @core = Rho::Core.new(home: @home)
@@ -111,7 +111,7 @@ class TelegramConfigurationRoutesTest < Minitest::Test
   end
 
   def test_post_save_connection_application_failure_reports_saved_truthfully
-    context = Struct.new(:home, :config).new(@home, Rho::Config.from_hash({ "mode" => "agent" }))
+    context = Struct.new(:home, :config).new(@home, Rho::Config.from_hash({}))
     context.define_singleton_method(:configure_plugin) do |id, operations:, enabled:, before_save:|
       before_save.call
       values = operations.to_h { |operation| [operation.fetch("path").last, operation.fetch("value")] }

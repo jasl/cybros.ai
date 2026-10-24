@@ -7,15 +7,6 @@ require "socket"
 # a process mode (`rho server`), never a separate artifact.
 module Rho
   AGENT_IDENTIFIER = "rho".freeze
-  # TWO RUNNER IDENTIFIERS: full mode's in-process runner is
-  # named for the agent — a different key column from the agent's
-  # (`executors.registration_identifier` beside `users.agent_identifier`), so
-  # one manager holds one of each — and runner mode presents its own, or
-  # a full rho and a runner-mode rho under one manager would fence each
-  # other on the one live row per (account, manager, registration_identifier).
-  REGISTRATION_IDENTIFIER = "rho".freeze
-  STANDALONE_REGISTRATION_IDENTIFIER = "rho-runner".freeze
-
   def self.default_display_name = "rho on #{Socket.gethostname}"
 
   # THE PROGRAM'S ROOT: the directory the running process loads this file from — a bundler
@@ -46,7 +37,7 @@ module Rho
   # loader, a standalone runner — protects the program roots alone, and
   # a member not yet on disk is named by its resolved spelling.
   def self.protected_roots(home)
-    candidates = [root, Rho::Runner.root, Rho::Install.protected_root, *home&.protected_members]
+    candidates = [root, Rho::Env.root, Rho::Install.protected_root, *home&.protected_members]
       .compact.map { |path| spelled(path) }.uniq
     candidates.reject { |path| candidates.any? { |other| other != path && path.start_with?("#{other}/") } }
   end
@@ -59,7 +50,7 @@ module Rho
   # land on the root's spelling. ONE RULE, the runner gem's
   # (`ToolEnv.spelled`): the placement memo keys on it and the door and
   # the Guard judge on it, so the two must never drift.
-  def self.spelled(path) = Rho::Runner::ToolEnv.spelled(path)
+  def self.spelled(path) = Rho::Env::ToolEnv.spelled(path)
 end
 
 require_relative "rho/errors"
@@ -87,7 +78,6 @@ require_relative "rho/environment_store"
 require_relative "rho/lock"
 require_relative "rho/home"
 require_relative "rho/identity"
-require_relative "rho/credentials"
 require_relative "rho/application_connection"
 require_relative "rho/api_keys"
 require_relative "rho/connection"
@@ -105,7 +95,7 @@ require_relative "rho/stream_printer"
 # COMPOSED, NOT CONTAINED. The runner is its own gem because a runner must
 # also be able to run alone — on a machine with no daemon, no control
 # server and no webui. rho builds one and spawns it; it does not own it.
-require "rho/runner"
+require "rho/env"
 require_relative "rho/processes"
 require_relative "rho/extensions/guard"
 require_relative "rho/extensions/processes"

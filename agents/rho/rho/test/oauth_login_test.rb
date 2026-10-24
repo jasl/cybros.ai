@@ -78,7 +78,7 @@ class OAuthLoginTest < Minitest::Test
 
   def login_daemon
     @nexus = Nexus.new
-    boot(config: Rho::Config.from_hash({ "mode" => "agent", "executor_socket" => false,
+    boot(config: Rho::Config.from_hash({ "executor_socket" => false,
       "nexus_public_url" => "http://10.0.0.115:3300", "public_url" => "http://10.0.0.115:7777" }), api_transport: @nexus)
   end
 
@@ -113,7 +113,7 @@ class OAuthLoginTest < Minitest::Test
       body: started.slice("state", "login_secret").merge("code" => "code"))
     assert_equal "200", completed.code, completed.body
     assert_equal before, daemon.identity.vault.read
-    assert_equal "api_key", daemon.lineage.credentials.agent.authentication_kind
+    assert_equal "api_key", daemon.lineage.credentials.authentication_kind
     human = JSON.parse(completed.body).fetch("bearer")
     assert_equal "human-1", JSON.parse(request(daemon, :get, "/auth/status", token: human).body).dig("human", "public_id")
   end
@@ -142,11 +142,11 @@ class OAuthLoginTest < Minitest::Test
     assert_equal false, JSON.parse(public_status.body).fetch("paired")
   end
 
-  def test_full_mode_login_uses_application_registration_in_both_browser_flows
+  def test_login_uses_application_registration_in_both_browser_flows
     daemon = login_daemon
     sign_in(daemon)
     daemon.stop
-    full = boot(config: Rho::Config.from_hash({ "mode" => "full", "executor_socket" => false,
+    full = boot(config: Rho::Config.from_hash({ "executor_socket" => false,
       "nexus_public_url" => "http://10.0.0.115:3300", "public_url" => "http://10.0.0.115:7777" }),
       api_transport: @nexus, realtime_factory: ->(*) { })
 
@@ -448,12 +448,12 @@ class OAuthLoginTest < Minitest::Test
     File.write(daemon.home.operator_credentials_path, "{}")
     File.chmod(0o644, daemon.home.operator_credentials_path)
     owner = Rho::ApplicationConnection.new(home: daemon.home, transport: @nexus)
-    connection = Rho::Connection.new(home: daemon.home, mode: "agent", device_flow: owner, api_transport: @nexus)
+    connection = Rho::Connection.new(home: daemon.home, device_flow: owner, api_transport: @nexus)
     connection.start
     assert_raises(CybrosAgent::Credentials::NotDurable) { connection.await }
     assert_equal :error, connection.phase
     assert_path_exists daemon.home.pending_connection_path
-    resumed = Rho::Connection.new(home: daemon.home, mode: "agent", device_flow: owner, api_transport: @nexus)
+    resumed = Rho::Connection.new(home: daemon.home, device_flow: owner, api_transport: @nexus)
     assert resumed.resume
     assert_equal :active, resumed.phase
     refute_path_exists daemon.home.pending_connection_path

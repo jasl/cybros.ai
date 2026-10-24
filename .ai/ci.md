@@ -54,7 +54,7 @@ entry points; use their focused tasks or test filters for scoped implementation 
   Bundler audit, Brakeman, Rails tests, offline manual-tooling tests, test seeds and system tests.
   Focused checks include `bin/brakeman --no-pager`, `bin/bundler-audit`, `bin/rubocop -f github`,
   `bundle exec archspec check`, `bun run lint:js`, `bun run test:js`,
-  `bin/rails db:test:prepare`, `bin/rails test`, `bin/rails test ../e2e/manual`,
+  `bin/rails db:test:prepare`, `bin/rails test`, `bin/rails test ../e2e/products/manual`,
   `env RAILS_ENV=test bin/rails db:seed:replant`, `bin/rails test:system`,
   `bin/rails zeitwerk:check` and `env RAILS_ENV=test bin/jobs check`.
 - `sdks/ruby`: `bundle exec rake` and `bundle exec rake build`. The default task includes tests,
@@ -68,15 +68,17 @@ entry points; use their focused tasks or test filters for scoped implementation 
   all features on the declared minimum Rust version; the current compiler alone does not prove
   that minimum.
 - `agents/rho/rho`: `bundle exec rake` and `bundle exec rake build`. The default task includes
-  tests, RuboCop, RBS validation/conformance and installer checks. RBS loads the SDK and Runner
+  tests, RuboCop, RBS validation/conformance and installer checks. RBS loads the SDK and rho-env
   signatures, so drift in their typed surfaces is caught here.
 - Each other gem under `agents/rho/`: `bundle exec rake` and `bundle exec rake build` in the
   affected gem. Its Rakefile owns the precise gate; `rho-webui`, `rho-ingress-telegram` and `rho-t3`
   include browser JavaScript tests run with Bun.
 - `cmctl`: `bundle exec rake` and `bundle exec rake build` (tests and RuboCop).
-- `e2e`: `bundle exec rake` runs the offline harness, ordinary deterministic product journeys and
-  RuboCop. WebRTC journeys run explicitly with `rake realtime`. Paid diagnostics are separate named tasks, never
-  part of this default gate.
+- `e2e/protocol` and `e2e/products` each own a Gemfile, lockfile and `bundle exec rake`
+  gate (harness, deterministic journeys and RuboCop). The protocol lane uses SDK fake peers and
+  must pass without `agents/rho/**`; the product lane exercises real rho/rho-env. The root `e2e`
+  task dispatches both bundles. Product WebRTC runs explicitly with `rake realtime`; paid
+  diagnostics remain separate named tasks.
 - `nexus/vendor/simple_inference`: `bundle exec rake`.
 - `guides`: `bun install --frozen-lockfile` and `bun run build`. The VitePress build runs under
   Bun (`bun --bun node_modules/vitepress/bin/vitepress.js`) and fails on a dead internal link,

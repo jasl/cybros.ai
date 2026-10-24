@@ -18,7 +18,7 @@ class SetupModelsTest < Minitest::Test
     })
     local_home = Rho::Home.resolve(base_url: endpoint, root: @root).prepare
     oauth = NexusDoubles::FakeOAuth.new
-    connection = Rho::Connection.new(home: local_home, mode: "agent", display_name: "Test",
+    connection = Rho::Connection.new(home: local_home, display_name: "Test",
       device_flow: CybrosAgent::DeviceFlow::Client.new(base_url: endpoint, transport: oauth, sleeper: ->(_) { }),
       api_transport: NexusDoubles::FakeAgentApi.new)
     connection.start
@@ -71,7 +71,7 @@ class SetupModelsTest < Minitest::Test
     local_home = Rho::Home.resolve(base_url: endpoint, root: @root).prepare
     local_home.write_setting("mode", "agent")
     owner = CybrosAgent::DeviceFlow::Client.new(base_url: endpoint, transport: NexusDoubles::FakeOAuth.new, sleeper: ->(_) { })
-    connection = Rho::Connection.new(home: local_home, mode: "agent", device_flow: owner, api_transport: api)
+    connection = Rho::Connection.new(home: local_home, device_flow: owner, api_transport: api)
     connection.start
     connection.await
     before = File.read(connection.identity.vault.path)

@@ -39,9 +39,9 @@ class ToolsTest < Minitest::Test
     assert Fetch::INTERNAL_CLAMP
     assert_equal ["url"], Fetch::SCHEMA["required"]
     assert_equal "The URL to fetch content from", Fetch::SCHEMA.dig("properties", "url", "description")
-    validator = Rho::Runner::Extensions::Tool.validate(Fetch, extension: "rho.web_tools")
-    assert_nil Rho::Runner::InputSchema.refusal(validator, { "url" => "https://example.com" })
-    assert Rho::Runner::Extensions::Tool.internal_clamp?(Fetch)
+    validator = Rho::Env::Extensions::Tool.validate(Fetch, extension: "rho.web_tools")
+    assert_nil Rho::Env::InputSchema.refusal(validator, { "url" => "https://example.com" })
+    assert Rho::Env::Extensions::Tool.internal_clamp?(Fetch)
     assert_includes Fetch::DESCRIPTION, "Fetches content from a specified URL."
     assert_includes Fetch::DESCRIPTION, "truncated to 2000 lines or 50.0KB (whichever is hit first)"
     assert_includes Fetch::DESCRIPTION, "This tool is read-only and does not modify any files."
@@ -88,7 +88,7 @@ class ToolsTest < Minitest::Test
       spill = Dir.glob(File.join(env.artifacts_dir, "web-*.md")).fetch(0)
       assert_match(/\/web-[0-9a-f]{16}\.md\z/, spill)
       assert_equal [spill], result.files
-      truncation = Rho::Runner::Truncation.truncate_head(File.read(spill, encoding: Encoding::UTF_8))
+      truncation = Rho::Env::Truncation.truncate_head(File.read(spill, encoding: Encoding::UTF_8))
       assert truncation.truncated
       assert_equal :bytes, truncation.truncated_by
       footer = "\n\n[Showing lines 1-#{truncation.output_lines} of #{truncation.total_lines} (50.0KB limit). " \
@@ -96,7 +96,7 @@ class ToolsTest < Minitest::Test
       assert result.content.end_with?(footer), result.content[-200..]
       body = result.content.lines[2..].join.delete_suffix(footer)
       assert_equal truncation.content, body
-      assert_operator body.bytesize, :<=, Rho::Runner::Truncation::DEFAULT_MAX_BYTES
+      assert_operator body.bytesize, :<=, Rho::Env::Truncation::DEFAULT_MAX_BYTES
       details = result.structured_content.fetch("truncation")
       assert_equal true, details.fetch("truncated")
       assert_equal :bytes, details.fetch("truncated_by")
@@ -156,7 +156,7 @@ class ToolsTest < Minitest::Test
       assert_equal "image/png", result.structured_content.fetch("content_type")
       assert_match(/\.jpeg\z/, fetch(env, "#{@site}/picture").files.fetch(0))
       assert_match(/\.bin\z/, fetch(env, "#{@site}/blob").files.fetch(0))
-      read = Rho::Runner::Tools::Read.new(env: env).call("path" => path)
+      read = Rho::Env::Tools::Read.new(env: env).call("path" => path)
       assert_equal "#{File.basename(path)}: image attached", read.content
     end
   end
@@ -345,8 +345,8 @@ class ToolsTest < Minitest::Test
   end
 
   def test_the_schema_refuses_a_call_without_a_url_before_the_handler
-    validator = Rho::Runner::InputSchema.compile(Fetch::SCHEMA)
-    refute_nil Rho::Runner::InputSchema.refusal(validator, {})
-    assert_nil Rho::Runner::InputSchema.refusal(validator, { "url" => "https://example.com/" })
+    validator = Rho::Env::InputSchema.compile(Fetch::SCHEMA)
+    refute_nil Rho::Env::InputSchema.refusal(validator, {})
+    assert_nil Rho::Env::InputSchema.refusal(validator, { "url" => "https://example.com/" })
   end
 end

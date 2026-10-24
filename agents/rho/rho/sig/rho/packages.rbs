@@ -37,12 +37,12 @@ module Rho
       attr_reader configuration_version: Integer
       attr_reader schema: Configuration::Schema
       attr_reader default_enabled: bool
-      attr_reader modes: Array[String]
+
       attr_reader requires: Array[String]
       attr_reader restart_only: bool
       attr_reader configuration_migrations: String?
       attr_reader directory: String
-      def self.new: (name: String, id: String, display_name: String, description: String, state_schema: String, dependencies: Hash[String, String], configuration_version: Integer, schema: Configuration::Schema, default_enabled: bool, modes: Array[String], requires: Array[String], restart_only: bool, configuration_migrations: String?, directory: String) -> instance
+      def self.new: (name: String, id: String, display_name: String, description: String, state_schema: String, dependencies: Hash[String, String], configuration_version: Integer, schema: Configuration::Schema, default_enabled: bool, requires: Array[String], restart_only: bool, configuration_migrations: String?, directory: String) -> instance
       def self.read: (String directory) -> instance
       def descriptor: () -> Hash[String, untyped]
       def migrate: (Hash[String, untyped] configuration, from: Integer) -> Configuration::Resolved
@@ -95,7 +95,7 @@ module Rho
         DESCRIPTION: String
         SCHEMA: Hash[String, untyped]
         EFFECT_PROFILE: Hash[String, untyped]
-        def call: (Hash[String, untyped] args) -> Runner::Result
+        def call: (Hash[String, untyped] args) -> Env::Result
       end
       class Manage
         include Tool
@@ -105,7 +105,7 @@ module Rho
         SCHEMA: Hash[String, untyped]
         EFFECT_PROFILE: Hash[String, untyped]
         TIMEOUT_MS: Integer
-        def call: (Hash[String, untyped] args) -> Runner::Result
+        def call: (Hash[String, untyped] args) -> Env::Result
       end
     end
   end

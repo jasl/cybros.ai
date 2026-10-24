@@ -1,6 +1,6 @@
 require "json"
 require "securerandom"
-require_relative "manual_openrouter"
+require_relative "../products/support/manual_openrouter"
 require_relative "red_square_png"
 
 module E2E

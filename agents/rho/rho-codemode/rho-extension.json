@@ -19,11 +19,6 @@
     "additionalProperties": false
   },
   "default_enabled": true,
-  "modes": [
-    "full",
-    "agent",
-    "runner"
-  ],
   "requires": [],
   "restart_only": false
 }

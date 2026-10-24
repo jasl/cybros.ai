@@ -10,9 +10,9 @@ and model selection; [daily use](rho-usage.md) covers conversations and tools.
 | Layout | Use it for | Where tools run |
 | --- | --- | --- |
 | Combined Docker stack | Nexus and a complete rho on one Docker host | Inside the rho container by default |
-| Host installation, full mode | A personal workstation or server connected to Nexus | As the host user running rho by default |
-| Agent mode plus separate runners | Browser/channel access on one machine, working files elsewhere | On each tool's declared Runner |
-| Runner-only host or container | Add another execution environment | On that runner; no conversation UI |
+| Host installation | A personal workstation or server connected to Nexus | As the host user running rho by default |
+| rho with independent executors | Browser/channel access on one machine, working files elsewhere | On each tool's declared Runner |
+| Custom independent Runner | Add another execution environment | On that runner; no conversation UI |
 
 The runner uses the operating-system environment where it is deployed. A host,
 container or VM supplies its files, dependencies and chosen isolation. A working
@@ -93,12 +93,11 @@ Supported targets are Linux with glibc and macOS, on x64 and arm64.
 
 The default `full` installation profile includes the browser UI. The `dev`
 profile adds Playwright and Chromium for the model's optional browser tools.
-Installation profiles select installed tools; the runtime mode selects rho's
-role:
+Installation profiles select installed tools. Every profile runs the same complete application:
 
 ```sh
 rho setup --nexus-url https://nexus.example
-rho server --mode full
+rho server
 ```
 
 Use another terminal under the same `RHO_HOME` for `rho status` and
@@ -126,35 +125,33 @@ no environment variable beside it. What stays in the environment or on the comma
 process needs before it can read its settings: where the home is (`RHO_HOME`,
 `RHO_WORK_DIR`), which Nexus it belongs to (`RHO_NEXUS_URL`, recorded in the home
 at first pairing and optional afterwards — one home is one Nexus), and how it
-listens (`RHO_MODE`, `RHO_BIND`, `--port`, `RHO_API_ONLY`, `RHO_WEBUI_ROOT`,
+listens (`RHO_BIND`, `--port`, `RHO_API_ONLY`, `RHO_WEBUI_ROOT`,
 `RHO_PUBLIC_URL` and the transport assertions). Nothing else needs a restart or
 a container recreation to change.
 
-## A separate runner container
+## A separate rho container
 
-The published rho image starts in runner mode unless the deployment overrides
-it. Replace the Nexus URL below; mount a project writable by the image's uid
+The published rho image runs the complete application with a Local environment. Replace the Nexus URL below; mount a project writable by the image's uid
 1000 user:
 
 ```sh
-docker run -d --name rho-runner --restart unless-stopped --stop-timeout 30 \
+docker run -d --name rho-project --restart unless-stopped --stop-timeout 30 \
   -e RHO_NEXUS_URL=https://nexus.example \
   -e RHO_DISPLAY_NAME="project runner" \
-  -v rho-runner-home:/var/lib/rho \
+  -v rho-project-home:/var/lib/rho \
   -v "$PWD:$PWD" -w "$PWD" -e RHO_TOOLS_ROOT="$PWD" \
   docker.io/jasl123/cybros-rho:latest
 
-docker exec rho-runner rho connect
-docker exec rho-runner rho status
-docker logs rho-runner
+docker exec rho-project rho connect
+docker exec rho-project rho status
+docker logs rho-project
 ```
 
-Complete the device flow printed by `connect`. From the agent's installation,
-list eligible runners with `rho runners` and choose the returned public ID
-using `rho runners use RUNNER_ID`. The choice sets the default for new conversations;
-explicit tool declarations can still target other eligible Runners.
-Nexus routes each tool request to its accepted target; the browser does not connect to it.
-The runner needs outbound access to Nexus and publishes no control port.
+Complete the device flow printed by `connect`, then run conversations through this
+application, for example `docker exec rho-project rho run 'Describe the project'`.
+Its Local environment is reserved for this application family; another rho cannot
+use it. Nexus supports independent executor implementations, but there is no
+separate first-party Runner application or tools-only rho runtime.
 
 Use a separate named volume for every rho instance. The project mount above
 keeps paths identical on the host and container. The image's default working
@@ -168,18 +165,15 @@ the image name. A Nexus running on a Docker Desktop host is reachable through
 mapping or another reachable address.
 
 The optional [standalone Compose template](../install/docker/compose.yml)
-contains runner and full-mode services. Its `ghcr.io/jasl/rho:release` reference
+contains separate application deployment examples. Its `ghcr.io/jasl/rho:release` reference
 is an operator-published example: replace it with the Docker Hub image above
 or your own built image before using it. The template is separate from the
 combined stack installer.
 
 ## Browser UI and remote access
 
-| Runtime mode | Browser page | Role |
-| --- | --- | --- |
-| `full` | Enabled by default | Agent and local runner |
-| `agent` | Enabled by default | Agent; select a separate runner for environment tools |
-| `runner` | None | Tool execution only |
+rho serves its browser page by default when `rho-webui` is installed and enabled.
+It uses one application address for both agent and runner services.
 
 The separate `rho-webui` gem ships with the installer and images. The Ruby
 daemon serves its static files; serving the UI needs no Node, Deno or Bun
@@ -201,7 +195,7 @@ deployment. rho itself does not terminate TLS. HTTP deployments configure
 writes these settings from the chosen deployment URLs.
 
 ```sh
-rho server --mode agent --bind 0.0.0.0 --port 7777 --expect-external-encryption
+rho server --bind 0.0.0.0 --port 7777 --expect-external-encryption
 ```
 
 A wider bind asks every browser for a Nexus sign-in by default (`webui_access`
@@ -218,7 +212,6 @@ Device Flow, credential and transport behavior.
 | --- | --- |
 | `RHO_HOME` | Settings, instance identity, connections and logs; preserve for upgrades, never share between concurrent installations |
 | `RHO_NEXUS_URL` | Nexus API address for this home |
-| `RHO_MODE` | `full`, `agent` or `runner` |
 | `RHO_TOOLS_ROOT` | Runner's initial working directory |
 | `RHO_WORKSPACE` | Override the default workspace for this boot |
 | `RHO_NEXUS_PUBLIC_URL` | Nexus origin reachable by the user's browser |
@@ -240,7 +233,7 @@ servers. Preserve existing entries when adding an extension. See the
 
 Give containers a 30-second stop grace period. rho handles termination and
 stops the process groups it owns; the image's tini process reaps child
-processes. Use `docker stop rho-runner` or the existing service manager.
+processes. Use `docker stop rho-project` or the existing service manager.
 
 Update a combined stack with `./cybros update` according to its
 [update and backup instructions](../install/stack/README.md). For standalone

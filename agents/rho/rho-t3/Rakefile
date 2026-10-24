@@ -5,7 +5,7 @@ Minitest::TestTask.create
 RuboCop::RakeTask.new
 
 task :rbs do
-  sh "bundle", "exec", "rbs", "-I", "sig", "-I", "../rho/sig", "-I", "../rho-runner/sig", "-I", "../../../sdks/ruby/sig", "validate"
+  sh "bundle", "exec", "rbs", "-I", "sig", "-I", "../rho/sig", "-I", "../rho-env/sig", "-I", "../../../sdks/ruby/sig", "validate"
 end
 
 desc "Run the browser module's tests against rho-webui's kernel"

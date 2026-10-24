@@ -61,7 +61,7 @@ class SessionTest < Minitest::Test
     def session_with(dispatch)
       workspace = CybrosAgent::Api::WorkspaceContext.new(dispatch: dispatch, public_id: "workspace")
       plane = Plane.new(client: Client.new(scope: workspace), workspace_public_id: "workspace")
-      context = Rho::Runner::ExecutionContext.new(run_public_id: "control-run", task_key: "stop",
+      context = Rho::Env::ExecutionContext.new(run_public_id: "control-run", task_key: "stop",
         conversation_public_id: "conversation", workspace_public_id: "workspace")
       Rho::T3::Session.new(member_plane: ->(**) { plane }, context: context)
     end

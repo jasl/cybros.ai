@@ -1,62 +1,63 @@
 # Runner quickstart
 
-Every stack installation already has a Runner reserved for that rho instance: full mode runs the Agent and its Runner in one process, with `/home/runner` (the installation's `data/rho/work`) as its working directory. This page adds an independent Runner on another machine so eligible Agents can work on that machine's files.
+rho includes a Local execution environment on its application address. In the stack,
+its working directory is `/home/runner`, backed by `data/rho/work`. On a host,
+tools run as the user who starts rho.
 
-## 1. Start a runner on the other machine
+## 1. Connect rho
 
-Use the published image. Replace the Nexus address with the one the other machine can reach, and mount the project you want the agent to work on:
-
-```sh
-docker run -d --name rho-runner --restart unless-stopped --stop-timeout 30 \
-  -e RHO_NEXUS_URL=https://nexus.example \
-  -e RHO_DISPLAY_NAME="project runner" \
-  -v rho-runner-home:/var/lib/rho \
-  -v "$PWD:$PWD" -w "$PWD" -e RHO_TOOLS_ROOT="$PWD" \
-  docker.io/jasl123/cybros-rho:latest
-```
-
-Or install rho on that host and start it in runner mode:
+For the stack, open its rho page and complete **Connect to Nexus**. On a host:
 
 ```sh
-rho server --mode runner
+rho setup --nexus-url https://nexus.example
+rho server
 ```
 
-The runner needs outbound access to Nexus and publishes no port.
+The application announces both Agent and Runner services on one Executor. Local is
+available to this rho's Main Agent, Bots and Subagents when their execution policy
+permits it. Another rho cannot use this Local environment, even under the same Human.
 
-## 2. Pair it
+## 2. Choose a working directory
+
+Use the working-directory picker when creating a conversation, or start one from
+the CLI:
 
 ```sh
-docker exec rho-runner rho connect     # container
-rho connect                            # host
+rho run 'Create hello.txt containing hello' --dir /absolute/path/to/project
 ```
 
-`connect` prints a device code and a verification link. Open the link as the Human who will manage the Runner, check the code and approve. This independent Runner uses `user_private`, so all Agents you steward may use it; an owner or administrator can opt a fresh registration into `account_wide` on the approval page. The Runner receives only a transport credential. rho's Local environment is a Runner service on its application address, available only to that application family; see [Identity and scope](deploy.md#identity-and-scope).
+For a container, mount the project at the directory used inside the container and
+give UID 1000 the permissions needed for the work. A working directory is not a
+filesystem sandbox.
 
-```sh
-docker exec rho-runner rho status
-```
+## 3. Verify execution
 
-## 3. Select it
+Read `hello.txt` in the selected directory. Nexus accepts and addresses the tool
+call; rho claims it on the executor plane, writes the file and commits its result.
+The browser does not need a direct connection to an independent executor.
 
-From the agent's installation, list eligible runners and choose the new one for future conversations:
+## Use an independent Runner
+
+Nexus supports independent Runners through the public executor protocol. There is
+currently no separately deployable first-party Runner application; the rho image
+and `rho server` both run the complete rho application. `rho-env` is an embeddable
+Ruby execution library, not a standalone service.
+
+To share an environment across applications, deploy your own executor implementation
+and complete its device connection. Its Human manager grants `user_private` scope;
+an owner or administrator may choose `account_wide` for a fresh registration.
+Then select its UUID from rho:
 
 ```sh
 rho runners
 rho runners use RUNNER_ID
 ```
 
-Or choose it in the browser when creating a conversation. The default applies to new conversations; an existing conversation keeps its runner, and explicit tool declarations can still target any eligible runner.
-
-## 4. Verify
-
-Start a conversation on the new runner with its working directory and ask:
-
-> Which machine are you on? Write the output of `uname -a` to hello.txt in your working directory.
-
-Read `hello.txt` on the runner's host. The kernel addressed the call to that runner's inbox, the runner claimed and executed it locally and committed the result; the browser never connected to the runner.
+The saved choice affects new conversations. Accepted tasks retain their original
+targets, and selecting an environment never transfers files.
 
 ## Next
 
-- [Deploy a runner](deploy.md) for service management, state, LAN binds and updates
-- [Tools and announcements](tools-and-announcements.md) to see what the runner declared
-- [Security model](security-model.md) before giving a runner access to anything sensitive
+- [Deploy a runner](deploy.md) for environment deployment and assignment scope
+- [Tools and announcements](tools-and-announcements.md) for the executor contract
+- [Claims and results](claims-and-results.md) for implementing a worker

@@ -23,7 +23,7 @@ class EnvironmentRoutesTest < Minitest::Test
     NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE, **options)
   end
 
-  def ready(api, config: agent_mode)
+  def ready(api, config: application_config)
     member_ready(boot(config: config), api, identity: RUNNER_IDENTITY)
   end
 
@@ -131,8 +131,8 @@ class EnvironmentRoutesTest < Minitest::Test
   end
 
   # THE LIVE TABLE: `GET /environments` lists every followed
-  # conversation's memo row; a runner-mode daemon serves none of it.
-  def test_environments_lists_the_followed_rows_records_in_host_mode_alone
+  # conversation's memo row.
+  def test_environments_lists_the_followed_conversation_rows
     api = api()
     daemon = ready(api)
     store.remember(conversation_host("c-1"), workspace: "ws-1", model: "m/x", runner: "0199-runner")
@@ -148,12 +148,12 @@ class EnvironmentRoutesTest < Minitest::Test
                     "source" => "conversation", "fs" => nil, "mcp" => [] }], JSON.parse(response.body).fetch("environments")
     assert_equal "401", request(daemon, :get, "/environments").code
 
-    runner = boot(root: File.join(@root, "runner"), config: runner_mode, extensions: [Rho::Extensions::Environment])
+    runner = boot(root: File.join(@root, "runner"), extensions: [Rho::Extensions::Environment])
     refused = request(runner, :get, "/environments", token: bearer(runner))
     assert_equal "409", refused.code
     assert_equal "member_plane_unavailable", JSON.parse(refused.body).dig("error", "code")
     assert_equal "409", request(runner, :get, "/conversations/environment?public_id=c-1", token: bearer(runner)).code,
-      "a runner-mode rho reads no store: no member plane"
+      "an unconnected rho reads no store: no member plane"
   end
 
   # A ROW BOUND TO A RUNNER ELSEWHERE: the bind writes the record,
@@ -285,7 +285,7 @@ class EnvironmentRoutesTest < Minitest::Test
   # nor the log.
   def test_mcp_binds_the_editors_servers_under_the_anchor_keeps_when_absent_and_closes_on_the_empty_list
     api = api()
-    daemon = ready(api, config: agent_mode("plugins" => { "rho.mcp" => { "enabled" => false }, "rho.servers" => servers_extension }))
+    daemon = ready(api, config: application_config("plugins" => { "rho.mcp" => { "enabled" => false }, "rho.servers" => servers_extension }))
     store.remember(conversation_host("c-1"), workspace: "ws-1", model: "m/x", runner: "0199-runner")
     src = project("src")
     assert_equal "200", bind(daemon, { public_id: "c-1", root: src }).first
@@ -301,7 +301,7 @@ class EnvironmentRoutesTest < Minitest::Test
     assert_equal %w[mcp__fx__lookup mcp__fx__paths], daemon.context.environments.servers.names_for("c-1")
     assert_equal declared_before + 1, api.configuration_declarations.length, "the union declared once for the set"
     assert_includes declared_names(api), "mcp__fx__lookup"
-    assert_includes declared_names(api), "list_extensions", "this machine's own entries stay in the union (agent mode: the agent's own)"
+    assert_includes declared_names(api), "list_extensions", "this application's own entries stay in the union"
 
     code, answer = get_environment(daemon, "c-1")
     assert_equal "200", code
@@ -350,7 +350,7 @@ class EnvironmentRoutesTest < Minitest::Test
   # the servers run on the agent slot, which is here.
   def test_mcp_is_refused_by_code_and_lands_whatever_the_rows_runner
     api = api(executors: [NexusDoubles.remote_runner("0199-h", root: "/srv/elsewhere", booted_at: "2026-09-17T06:00:00Z")])
-    daemon = ready(api, config: agent_mode("plugins" => { "rho.mcp" => { "enabled" => false }, "rho.servers" => servers_extension }))
+    daemon = ready(api, config: application_config("plugins" => { "rho.mcp" => { "enabled" => false }, "rho.servers" => servers_extension }))
     store.remember(conversation_host("c-1"), workspace: "ws-1", model: "m/x", runner: "0199-runner")
     store.remember(conversation_host("c-2"), workspace: "ws-1", model: "m/x", runner: "0199-h")
     store.remember(conversation_host("c-3"), workspace: "ws-1", model: "m/x", runner: "0199-runner")
@@ -392,7 +392,7 @@ class EnvironmentRoutesTest < Minitest::Test
   # `mcp_unavailable` for any `mcp:` list, the empty one included — the
   # seam's first rule; a body without the member is untouched by it.
   def test_mcp_is_422_mcp_unavailable_without_a_registrar
-    daemon = ready(api(), config: agent_mode("plugins" => { "rho.mcp" => { "enabled" => false } }))
+    daemon = ready(api(), config: application_config("plugins" => { "rho.mcp" => { "enabled" => false } }))
     store.remember(conversation_host("c-1"), workspace: "ws-1", model: "m/x", runner: "0199-runner")
     assert_equal "200", bind(daemon, { public_id: "c-1", root: project("src") }).first
 
@@ -406,13 +406,13 @@ class EnvironmentRoutesTest < Minitest::Test
   end
 
   # A registrar that will not open a set at all — its own
-  # `Rho::Runner::Error`, rho-mcp's `Closed` once its shutdown ladder ran
+  # `Rho::Env::Error`, rho-mcp's `Closed` once its shutdown ladder ran
   # — is 503 `daemon_stopping`, the daemon's own sentence; the anchor
   # holds nothing, and over a held set the held set went first and the
   # union lost its names.
   def test_mcp_is_503_daemon_stopping_when_the_registrar_will_not_open_a_set
     api = api()
-    daemon = ready(api, config: agent_mode("plugins" => { "rho.mcp" => { "enabled" => false }, "rho.servers" => servers_extension }))
+    daemon = ready(api, config: application_config("plugins" => { "rho.mcp" => { "enabled" => false }, "rho.servers" => servers_extension }))
     store.remember(conversation_host("c-1"), workspace: "ws-1", model: "m/x", runner: "0199-runner")
     assert_equal "200", bind(daemon, { public_id: "c-1", root: project("src") }).first
     fx = RhoTest::ConversationServers.stdio("fx")

@@ -175,21 +175,21 @@ class BridgeTest < Minitest::Test
 
   def test_cancellation_interrupts_ticket_and_rpc_waits_but_cleanup_may_still_call
     [true, false].each do |ticket|
-      context = Rho::Runner::ExecutionContext.new(run_public_id: "run", conversation_public_id: "conversation", task_key: "tool")
+      context = Rho::Env::ExecutionContext.new(run_public_id: "run", conversation_public_id: "conversation", task_key: "tool")
       options = ticket ? { stall_ticket: true } : { behavior: ->(*) { sleep(60) } }
       with_server(**options) do |server, bridge, task|
         cancel = task.async do
           sleep(0.01) until ticket ? server.http_requests.any? : server.rpc_requests.length == 2
           context.cancel
         end
-        Rho::Runner::ExecutionContext.with(context) do
-          assert_raises(Rho::Runner::ExecutionContext::Cancelled) { bridge.call(PROJECTION, PAYLOAD) }
+        Rho::Env::ExecutionContext.with(context) do
+          assert_raises(Rho::Env::ExecutionContext::Cancelled) { bridge.call(PROJECTION, PAYLOAD) }
         end
       ensure
         cancel&.stop
       end
       with_server do |_, bridge|
-        Rho::Runner::ExecutionContext.with(context) do
+        Rho::Env::ExecutionContext.with(context) do
           assert_equal({ "received" => PAYLOAD }, bridge.call(PROJECTION, PAYLOAD, cancelled: false))
         end
       end

@@ -36,7 +36,7 @@ The split is deliberate. Nexus implements general mechanisms without knowing wha
 
 ## The default bundle
 
-The Docker stack — Nexus, PostgreSQL and rho in full mode on one host — is the default bundle. rho's full mode serves agent and runner tools on one Agent Executor, so the bundle works on files inside its container out of the box; add runners on other machines when the work lives there. [Install the stack](../get-started/install.md) is that path.
+The Docker stack — Nexus, PostgreSQL and rho on one host — is the default bundle. rho serves agent and runner tools on one Agent Executor, so the bundle works on files inside its container out of the box; add runners on other machines when the work lives there. [Install the stack](../get-started/install.md) is that path.
 
 ## Build on it
 

@@ -174,7 +174,7 @@ framework mechanism is insufficient, and a test that fails without the added des
 
 - Agent business data persists through Nexus wherever possible. File-style memory tools address
   database rows; opaque recovery, routing and delivery state uses scoped stores; artifacts use
-  uploads. Local filesystem work belongs to the Runner, including when rho full combines roles.
+  uploads. Local filesystem work belongs to the Runner, including rho's Local environment.
   Bootstrap credentials/configuration and disposable caches are distinct from durable business
   state. Repair storage gaps at their existing owner rather than adding an Agent-local store.
   Agent program source, extension packages, installed versions and assembly configuration remain
@@ -214,6 +214,13 @@ framework mechanism is insufficient, and a test that fails without the added des
   A runner may serve multiple Agents within its assignment scope because each task freezes
   its own execution principal separately from its destination. Tool processes, files and working
   directories are executor-local state.
+- Any Agent application may implement its own Runner service through the public executor
+  protocol, in any language. Neither rho nor `rho-env` is a Nexus dependency or required
+  implementation. `Rho::Env` and `Daemon#mount_runner` are rho's library and composition
+  choices. `Rho::Env` is the library namespace and `Rho::Env::Executor` owns execution.
+  rho is one complete application with no runtime mode selector or independent Runner identity.
+  There is no separately deployable first-party Runner application. Keep protocol capability,
+  library reuse and deployment entry points distinct when documenting or explaining them.
 - Nexus is the gateway. Components poll its HTTP API over outbound connections; Action Cable
   and presence are latency hints, never correctness dependencies. Live lifecycle, credentials
   and ACLs still gate admission. Every role uses the same asynchronous task inbox: exclusive
@@ -539,7 +546,7 @@ application address and its transport keys; independent machines keep their own 
 also fence existing static member keys; ordinary single-key revocation does not replace the
 connection or revoke its other keys.
 
-rho uses Nexus application OAuth for Human login. Initial Agent/Runner connection may use OAuth
+rho uses Nexus application OAuth for Human login. Initial application connection may use OAuth
 or explicitly imported API keys. Imported member and executor keys are checked
 against the existing profile and executor self-descriptions before installation. Their opaque
 registration identifiers stay with the connection so later Human login selects that same Agent
@@ -553,8 +560,9 @@ supported. An extension with exclusive process-wide state explicitly requires a 
 replacement or removal; a refused preparation retains the running instance. Existing run snapshots stay
 captured; incompatible later tool calls use ordinary tool failure without run migration
 or compatibility copies. Local configuration format/schema versions are separate from
-run snapshots: one startup or explicit management migration updates saved JSON, and
-normal runtime readers use only the current shape. Core and plugin settings share
+run snapshots: plugin-owned migration hooks update their versioned configuration, while
+the core settings reader accepts only its current format. Old pre-release core settings
+and identity state are rebuilt explicitly, without compatibility readers or automatic conversion. Core and plugin settings share
 `<RHO_HOME>/settings.json` and its existing serialized writer; new plugin private runtime
 data uses `<RHO_HOME>/plugins/<id>/`, while existing credential stores retain their
 owned directories within the same home. Static descriptors expose disabled plugins
@@ -814,3 +822,9 @@ longer than the accepted-order cut requires, or a convergence job growing an unb
 - E2E may inspect kernel/agent databases or processes for internal observability only — to explain
   what happened, never to create the success condition. Control/use actions and externally visible
   assertions go through public APIs, not direct service calls or synthetic result injection.
+
+
+Protocol E2E under `e2e/protocol` uses the SDK and deterministic fake Agent/Runner
+fixtures, with its own dependency closure. It must run without `agents/rho/**`.
+Product E2E under `e2e/products` owns real rho/rho-env integration, filesystem,
+process and checkpoint behavior. Shared `e2e/support` remains independent of rho.

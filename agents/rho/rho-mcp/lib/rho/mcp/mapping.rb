@@ -2,7 +2,7 @@ require "base64"
 require "fileutils"
 require "json"
 require "securerandom"
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module Mcp
@@ -40,7 +40,7 @@ module Rho
         text = redact.call(lines.compact.join("\n"))
         text = JSON.generate(structured) if text.empty? && !structured.nil?
         constructor = raw["isError"] == true ? :error : :ok
-        Rho::Runner::Result.public_send(constructor, text, structured, files: files)
+        Rho::Env::Result.public_send(constructor, text, structured, files: files)
       end
 
       def with_notice(result, notice)

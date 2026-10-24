@@ -6,29 +6,21 @@ A runner uses the operating-system environment where it is deployed: the host, c
 
 | Environment | How | Notes |
 | --- | --- | --- |
-| The stack's rho container | Already running in full mode | Working directory `/home/runner`, mapped to `data/rho/work`; edit the bind in `compose.yaml` to work on a host project |
-| A host, full or agent mode | The host installer, then `rho server --mode full` | Tools run as the host user; the default working directory is the `RHO_TOOLS_ROOT` setting |
-| A host, runner mode | `rho server --mode runner` | No browser page, no conversation UI; serves tools only |
-| A separate container | The published image, which starts in runner mode by default | Runs as UID 1000 without sudo; mount projects writable by that UID |
+| The stack's rho container | The complete rho application | `/home/runner` maps to `data/rho/work` |
+| rho on a host | The host installer, then `rho server` | Tools run as the host user |
+| rho in a separate container | The published rho image | A complete application with its own Local environment; UID 1000 without sudo |
+| An independent Runner | Your own executor implementation | Use the public executor protocol and a transport credential |
 
-The published image includes language toolchains, Chromium, document conversion tools, fonts and Python file-work libraries, described to the model by its `workspace-tools` skill. Chromium alone does not enable browsing: add `rho/browser` to the extensions list for Playwright tools.
+`rho-env` is a Ruby library for embedding tools, placement and execution machinery.
+It has no standalone daemon or connection command. The published rho image always
+runs the complete application. Its Local environment cannot be shared with another
+application. For shared execution, implement an independent Runner or use an
+implementation that supports the [executor contract](claims-and-results.md).
 
-## A separate container
-
-```sh
-docker run -d --name rho-runner --restart unless-stopped --stop-timeout 30 \
-  -e RHO_NEXUS_URL=https://nexus.example \
-  -e RHO_DISPLAY_NAME="project runner" \
-  -v rho-runner-home:/var/lib/rho \
-  -v "$PWD:$PWD" -w "$PWD" -e RHO_TOOLS_ROOT="$PWD" \
-  docker.io/jasl123/cybros-rho:latest
-
-docker exec rho-runner rho connect
-docker exec rho-runner rho status
-docker logs rho-runner
-```
-
-Mounting the project at the same path inside and outside the container keeps paths identical. Use a separate state volume for every instance; copying a connected home duplicates its identity and a later pairing can replace the original. A Nexus on a Docker Desktop host is reachable as `host.docker.internal`; Linux needs a host-gateway mapping or another reachable address. The image's entry point runs rho commands (`docker run IMAGE doctor --strict`); use `--entrypoint /bin/bash` for a shell.
+The rho image includes language toolchains, Chromium, document conversion tools,
+fonts and Python file-work libraries. Enable the Browser plugin to expose browser
+tools. See [Deployment layouts](../operate/deployment-layouts.md) for host and
+container commands.
 
 ## Connect through the console
 
@@ -38,7 +30,7 @@ link or enter its code. Browser approval is followed by the program collecting i
 credentials. Use **Refresh connection status**, then **View Runner** to inspect that
 exact address. This does not prove that the program is online or a tool has executed.
 
-For full-mode rho API-key setup, issue the application's member and executor keys and import
+For rho API-key setup, issue the application's member and executor keys and import
 both using the [API-key setup guide](../build/credentials-and-planes.md#api-keys).
 Its Runner service uses that same application address and transport key.
 
@@ -51,13 +43,14 @@ A Runner's logical registration is its Account, Human manager and registration i
 | `user_private` | Agents stewarded by the Runner's Human manager |
 | `account_wide` | Eligible Agents across the Account |
 
-Full-mode rho announces a Runner service on its application Executor. Local targets resolve to
-that application's UUID. Its Main Agent, Bots and Subagents may use it when their execution
-policy permits Runner tools. Another rho instance cannot discover or use it, even under the
-same Human. Switching between agent and full mode removes or adds this service without another
-connection, address or credential family. Independent Runner mode uses `user_private` by default;
-an owner or administrator may choose `account_wide` when approving a fresh registration.
-Deploy an independent Runner when several applications need one execution environment.
+rho announces its Local Runner service on the application Executor. Local resolves
+to that application's UUID. Its Main Agent, Bots and Subagents may use it when
+their execution policy permits Runner tools. Another application cannot discover
+or use it, even under the same Human. Both roles share one connection lifecycle.
+
+An independent Runner defaults to `user_private`; an owner or administrator may
+choose `account_wide` when approving a fresh registration. Use this registration
+shape when several applications need one execution environment.
 
 ## State
 
@@ -66,17 +59,17 @@ Deploy an independent Runner when several applications need one execution enviro
 | `RHO_HOME` (`/var/lib/rho` in the image) | Settings, instance identity, connection and logs; preserve it across upgrades, never share it between instances |
 | `RHO_NEXUS_URL` | The Nexus this home belongs to; recorded at first pairing |
 | `RHO_TOOLS_ROOT` | The initial working directory for tools |
-| `extensions` in settings | Tool plugins loaded at boot: `rho/browser`, `rho/web-tools`, `rho/mcp` |
+| `plugins` in settings | Installed plugin enablement and configuration |
 
 The home is private. Working files are separate from runner state; back up both according to their own plans. Nexus owns durable conversations, uploads, memory and schedules, so a runner home alone is not a backup of that data.
 
 ## Interactive terminals
 
 The optional **Terminal** plugin (`rho.terminal`) serves an operator-only interactive
-Bash tool in full and runner modes. It is disabled by default and is not advertised
+Bash tool on rho's Local environment. It is disabled by default and is not advertised
 to models. It uses the existing task claim, deadline renewal and Stop lifecycle.
 
-1. Build the transport helper from the rho-runner package's `transport/` directory,
+1. Build the transport helper from the rho-env package's `transport/` directory,
    using the Go version declared in its `go.mod`:
 
    ```sh
@@ -91,7 +84,7 @@ to models. It uses the existing task claim, deadline renewal and Stop lifecycle.
    ```
 
    The browser's **Plugins → Terminal** settings edit the same configuration on a
-   full-mode installation. A missing executable reports repair guidance and leaves
+   rho installation. A missing executable reports repair guidance and leaves
    other capabilities available. Go is needed to build the helper, not to run it;
    ordinary rho startup has no Go requirement.
 

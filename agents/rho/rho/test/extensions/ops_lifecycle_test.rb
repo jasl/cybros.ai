@@ -94,7 +94,7 @@ class OpsLifecycleTest < Minitest::Test
           end
         end
       RUBY
-      daemon = member_ready(boot(config: Rho::Config.from_hash({ "mode" => "agent", "plugins" => { "rho.test_release" => RhoTest.described_extension(hook, id: "rho.test_release") } })), api)
+      daemon = member_ready(boot(config: Rho::Config.from_hash({ "plugins" => { "rho.test_release" => RhoTest.described_extension(hook, id: "rho.test_release") } })), api)
       capturing_spawns(daemon) do
         if entry == :attach
           attach(daemon)

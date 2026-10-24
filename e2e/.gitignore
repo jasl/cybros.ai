@@ -12,3 +12,9 @@
 /log/
 /tmp/
 /harnesses/**/node_modules/
+
+# Each independent lane owns local diagnostics and reports.
+/products/artifacts/
+/products/tmp/
+/protocol/artifacts/
+/protocol/tmp/

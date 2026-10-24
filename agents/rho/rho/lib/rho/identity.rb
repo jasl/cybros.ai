@@ -3,13 +3,11 @@ require "time"
 
 module Rho
   class Identity
-    SESSION_VERSION = 5
-    MODES = Config::MODES
+    SESSION_VERSION = 6
 
-    attr_reader :root, :user_public_id, :executor_public_id, :mode,
-      :agent_identifier, :runner_registration_identifier
+    attr_reader :root, :user_public_id, :executor_public_id, :agent_identifier
 
-    def self.agent(home:, user_public_id:, executor_public_id:, mode:, agent_identifier: nil)
+    def self.agent(home:, user_public_id:, executor_public_id:, agent_identifier: nil)
       user_public_id = validate_public_id!(
         user_public_id, label: "Agent user", error_class: ConfigurationError
       )
@@ -17,22 +15,9 @@ module Rho
         executor_public_id, label: "Agent executor", error_class: ConfigurationError
       )
       new(
-        home: home, root: home.identity_root(user_public_id), mode: validate_mode!(mode, %w[full agent]),
+        home: home, root: home.identity_root(user_public_id),
         user_public_id: user_public_id, executor_public_id: executor_public_id,
         agent_identifier: agent_identifier
-      )
-    end
-
-    # Runner mode's identity: no user, the one address is the runner's.
-    def self.runner(home:, executor_public_id:, runner_registration_identifier: nil)
-      executor_public_id = validate_public_id!(
-        executor_public_id, label: "Runner executor", error_class: ConfigurationError
-      )
-      new(
-        home: home, root: home.runner_identity_root(executor_public_id), mode: "runner",
-        user_public_id: nil, executor_public_id: executor_public_id,
-        agent_identifier: nil,
-        runner_registration_identifier: runner_registration_identifier
       )
     end
 
@@ -44,17 +29,8 @@ module Rho
           "the connection pointer is not format version #{SESSION_VERSION}"
       end
 
-      mode = pointer.fetch("mode") { raise StoredConnectionError, "the connection pointer names no mode" }
-      if mode == "runner"
-        runner(home: home, executor_public_id: pointer.fetch("executor_public_id"),
-          runner_registration_identifier: pointer["runner_registration_identifier"])
-      else
-        agent(
-          home: home, user_public_id: pointer.fetch("user_public_id"),
-          executor_public_id: pointer.fetch("executor_public_id"), mode: mode,
-          agent_identifier: pointer["agent_identifier"]
-        )
-      end
+      agent(home: home, user_public_id: pointer.fetch("user_public_id"),
+        executor_public_id: pointer.fetch("executor_public_id"), agent_identifier: pointer["agent_identifier"])
     rescue KeyError
       raise StoredConnectionError, "the connection pointer is missing an Agent identity public id"
     rescue ConfigurationError => error
@@ -68,47 +44,30 @@ module Rho
       raise error_class, "#{label} public id must be a non-empty String"
     end
 
-    def self.validate_mode!(mode, words)
-      return mode if words.include?(mode)
-
-      raise ConfigurationError, "mode must be one of #{words.join(", ")}, got #{mode.inspect}"
-    end
-
-    def initialize(home:, root:, mode:, user_public_id:, executor_public_id:,
-      agent_identifier: nil, runner_registration_identifier: nil)
+    def initialize(home:, root:, user_public_id:, executor_public_id:,
+      agent_identifier: nil)
       @home = home
       @root = root
-      @mode = mode
       @user_public_id = user_public_id
       @executor_public_id = executor_public_id
       @agent_identifier = agent_identifier
-      @runner_registration_identifier = runner_registration_identifier
     end
 
     def vault = Rho::StateFile.new(File.join(@root, "credentials.json"))
-    def runner_vault = Rho::StateFile.new(File.join(@root, "runner_credentials.json"))
     def session = Rho::StateFile.new(File.join(@root, "session.json"))
 
-    def public_id = @user_public_id || @executor_public_id
+    def public_id = @user_public_id
 
-    def runner_mode? = @mode == "runner"
+    def runner_executor_public_id = @executor_public_id
 
-    def runner_executor_public_id = (@executor_public_id unless @mode == "agent")
-
-    # Where this identity's tools land by default: the Profile's work root,
-    # or the runner's own.
-    def work_root
-      runner_mode? ? @home.runner_work_root(@executor_public_id) : @home.identity_work_root(@user_public_id)
-    end
+    def work_root = @home.identity_work_root(@user_public_id)
 
     def pointer_document
       {
         "version" => SESSION_VERSION,
-        "mode" => @mode,
         "user_public_id" => @user_public_id,
         "executor_public_id" => @executor_public_id,
         "agent_identifier" => @agent_identifier,
-        "runner_registration_identifier" => @runner_registration_identifier,
       }.compact
     end
 
@@ -131,8 +90,7 @@ module Rho
       self
     end
 
-    # Every pointer field is compared — the mode among them, so a home paired
-    # in one mode and booted in another fails closed for free.
+    # The pointer and recorded session must describe the same application.
     def verify_belongs_here
       document = session.read
       if document.nil?
@@ -186,7 +144,7 @@ module Rho
       self
     end
 
-    def inspect = "#<Rho::Identity mode=#{@mode} public_id=#{public_id.inspect}>"
+    def inspect = "#<Rho::Identity public_id=#{public_id.inspect}>"
     alias_method :to_s, :inspect
   end
 end

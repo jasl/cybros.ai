@@ -6,6 +6,8 @@ module ModelProviders
         return false unless super
 
         snapshot = ModelCatalog.current
+        policy = ModelProviderConfig.find_by(account: @account, provider_id: @provider_id)
+        snapshot = ModelCatalog::RetainedCatalog.base(snapshot: snapshot, policy: policy)
         original = snapshot.providers[@provider_id]
         return true if original.nil?
 
@@ -20,7 +22,8 @@ module ModelProviders
 
       def apply_change(policy)
         policy.provider_definition = nil
-        policy.enabled = false unless ModelCatalog.current.providers.key?(@provider_id)
+        base = ModelCatalog::RetainedCatalog.base(snapshot: ModelCatalog.current, policy: policy)
+        policy.enabled = false unless base.providers.key?(@provider_id)
       end
   end
 end

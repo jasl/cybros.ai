@@ -322,7 +322,7 @@ module Nexus
             # THE TWO SETTLED `skill` LOADS — one per source, the same result grammar. A KERNEL-ROW
             # load ran in-process: nobody claimed it, `output` is the row's body as `memory_read`
             # would answer it, the title names the rung it was read from. An ANNOUNCED load reached
-            # its announcer: claimed by that runner, the body it committed plus rho-runner's one
+            # its announcer: claimed by that runner, the body it committed plus rho-env's one
             # base-directory line. A name neither holds is an ordinary error result whose text is
             # the one word `skill_unknown: <name>`.
             "valid_skill_task_detail_fixture" => detail_of(CONTRACT_NODE_TYPE.new(

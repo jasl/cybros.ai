@@ -5,7 +5,7 @@ AllCops:
   TargetRubyVersion: 4.0
   # The evals corpus's fixture environments are the MODEL's material, not
   # ours: a lint stand-in that reports a trailing space needs a file with
-  # one, a debugging task needs a bug (e2e/evals/tasks/<task>/environment/).
+  # one, a debugging task needs a bug (e2e/products/evals/tasks/<task>/environment/).
   # The tasks' own Ruby (expected.rb, verification.rb, environment.rb)
   # keeps the house style. The task probe's fixture projects
   # (support/task_bench/fixtures/) are the model's material the same way: a
@@ -13,9 +13,11 @@ AllCops:
   # artifacts/ is gitignored scratch — a run's outputs, and at times a whole
   # checkout a batch compared against — never code of this tree.
   Exclude:
-    - "evals/tasks/**/environment/**/*"
-    - "support/task_bench/fixtures/**/*"
+    - "products/evals/tasks/**/environment/**/*"
+    - "products/support/task_bench/fixtures/**/*"
     - "artifacts/**/*"
+    - "protocol/artifacts/**/*"
+    - "products/artifacts/**/*"
 
 # Note: RuboCop's server mode is a CLI feature, not a config section. If you
 # need deterministic lint in constrained/sandboxed environments, prefer running

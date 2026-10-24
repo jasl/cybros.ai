@@ -105,10 +105,9 @@ $RHO_PREFIX/                       ~/.local/share/rho ($XDG_DATA_HOME/rho); the 
 $RHO_HOME (~/.rho)                 rho state; setup writes selected settings and private credentials
 ```
 
-The profiles are row sets, not modes: `runner` (Ruby, gems, rg, fd), `full` (+ jq, uv; the default),
+The profiles are row sets, not modes: `minimal` (Ruby, gems, rg, fd), `full` (+ jq, uv; the default),
 `dev` (+ Node, playwright-core and the Chromium shell; enable them with
-`rho extensions enable rho.browser`). A runner-profile
-install can still run `RHO_MODE=full`; its models simply have no uv.
+`rho extensions enable rho.browser`). Every profile runs the complete application; `minimal` simply omits jq and uv.
 
 ## Knobs
 
@@ -116,7 +115,7 @@ Environment or flag; the flag wins.
 
 | Variable / flag | Default | Meaning |
 |---|---|---|
-| `RHO_PROFILE` / `--profile` | the receipt's, else `full` | `runner` \| `full` \| `dev` |
+| `RHO_PROFILE` / `--profile` | the receipt's, else `full` | `minimal` \| `full` \| `dev` |
 | `RHO_PREFIX` / `--prefix` | `~/.local/share/rho` | the toolchain's home |
 | `RHO_HOME` | `~/.rho` | rho state; prewarm creates its cache, interactive setup writes chosen settings |
 | `RHO_SOURCE` / `--from-checkout DIR` | the checkout this script sits in | the checkout to install the packaged trees from (the image builds with it explicit) |
@@ -304,7 +303,7 @@ rollback, the in-progress-operation refusal, the no-remote answer — then `--mo
 `rho uninstall`, `--purge`), `update_test.sh` (the same ladder and dry run OFFLINE against a fabricated
 receipt: no Ruby, no gems — CI's half of the update), `docker_test.sh` (the image: `base` and
 `rho` built for the host's arch, the verbs through the door, `doctor --strict` inside, tini reaping an
-orphan, the packaged WebUI served in full/agent mode and absent in runner/api-only mode, the compose
+orphan, the packaged WebUI served by default and absent under `api_only`, the compose
 file; opt-in with `RHO_INSTALL_TEST_DOCKER=1`). The install test needs the network —
 `RHO_INSTALL_TEST_CACHE=<dir>` keeps the ~35 MB of downloads between runs; `RHO_INSTALL_TEST_OFFLINE=1`
 skips it (CI's `agent_rho` job runs the offline set).

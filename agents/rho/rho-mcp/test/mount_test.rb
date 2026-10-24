@@ -13,7 +13,7 @@ class MountTest < Minitest::Test
 
   def prepare(tools: %w[echo lookup])
     Rho::Mcp.settings_table = { "fx" => { "transport" => "stdio", "command" => "ruby", "tools" => tools } }
-    result = Rho::Runner::Extensions::Loader.call(builtin: [Rho::Mcp])
+    result = Rho::Env::Extensions::Loader.call(builtin: [Rho::Mcp])
     assert_predicate result, :ok?, result.failures.inspect
     result.committed.fetch(0)
   end
@@ -32,7 +32,7 @@ class MountTest < Minitest::Test
     assert_equal [0, 0], @transports.map(&:closes)
     start(candidate)
     refute_same old.connection, Rho::Mcp.entries.fetch("fx").connection
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
       assert_equal "captured", klass.new(env: nil).call({ "text" => "captured" }).content
     end
     assert_equal 1, @transports.first.requests.count { |request| request[:method] == "tools/call" }
@@ -64,7 +64,7 @@ class MountTest < Minitest::Test
     stop(candidate)
     assert_same old, Rho::Mcp.entries.fetch("fx")
     assert_equal [0, 1], @transports.map(&:closes)
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
       assert_equal "restored", Rho::Mcp.call("fx", "echo", { "text" => "restored" }).content
     end
   end
@@ -79,7 +79,7 @@ class MountTest < Minitest::Test
     start(latest)
     stop(middle)
     assert_equal [0, 0], @transports.map(&:closes)
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
       assert_equal "old call", klass.new(env: nil).call({ "text" => "old call" }).content
     end
     stop(first)

@@ -34,7 +34,13 @@ rho's browser has a **Nexus** page beside its own Settings, with the same operat
 
 Pricing is optional. Missing prices do not block a model; usage quantities are recorded and unknown monetary amounts stay absent.
 
-Saved definitions apply to later requests without a restart. Deployment files remain the base: resetting a file-backed definition restores it, removing a custom definition removes its configuration, and disabling a provider preserves everything.
+Saved definitions apply to later requests without a restart. Nexus retains configured providers' catalog definitions in its database when enabling a lane, saving model definitions, or running `bin/rails db:prepare` during installation or upgrade. Current deployment definitions take precedence over saved catalog facts, so new models and updated metadata remain available. Removing a model or provider from a later catalog does not remove its saved definition. Explicit model removal still prevents use; disabling a provider preserves its configuration.
+
+Resetting a model override restores its current catalog definition, or its retained definition if it has left the catalog. A custom model without either disappears on reset. Provider credentials, manual hiding and upstream-unavailable marks remain independent. Retention preserves configuration, not upstream service availability. Before replacing catalog files manually, run `bin/rails model_catalog:retain` from `nexus` to save the current definitions; run it again afterward to capture updates. Definitions removed before they were ever saved cannot be recovered automatically.
+
+Kimi Code uses `KIMI_CODE_API_KEY` and the model IDs `k3`, `k3-256k`, `k3.1-pro`, and `k3.1-pro-highspeed`. China API access uses the independent `moonshot` provider and `MOONSHOT_API_KEY`; international API access uses `moonshot_global` and `MOONSHOT_GLOBAL_API_KEY`. API platform IDs use the `kimi-` prefix, such as `kimi-k3.1-pro`. Code subscription credentials do not authorize either API provider.
+
+[Kimi's K3.1 Pro guide](https://platform.kimi.com/docs/guide/kimi-k3-1-pro-quickstart) describes a 1M-token context window, visual input, and improvements in coding, 3D creation and financial research; the Highspeed variant is advertised at roughly 2–3 times the output speed. As of October 24, 2026, its weights are not yet published, so Nexus declares no weight or tokenizer repository. New API routes with no verified price schedule remain unpriced, not free. These API routes are configured from documentation; live verification covered the four Code routes only.
 
 ## Thinking and effort
 

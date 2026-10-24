@@ -47,6 +47,24 @@ class InferenceRequests::ModelSelectionTest < ActiveSupport::TestCase
     assert_equal "dev/mock-text", event.payload.dig("model_change", "to")
   end
 
+  test "an overflowing fallback is skipped and the later candidate seals the accepted input" do
+    options = { submitted: Nexus::SubmittedModelSelection.new(model: "missing/text", reasoning_effort: nil),
+                fallback_models: %w[dev/mock-text dev/mock-windowless] }
+    overflow = ModelRequests::TokenCount::Result.counted(1_000_000, exact: true)
+    ModelRequests::TokenCount.stub(:count, overflow) do
+      result = create(**options)
+      assert_predicate result, :created?, result.refusal.inspect
+      request = InferenceRequest.find_by!(public_id: result.accepted.fetch("inference_request_public_id"))
+      assert_equal "mock-windowless", request.model_invocation.model_ref
+      body = request.model_invocation.content_bodies.find_by!(role: "request")
+      assert_predicate body, :sealed?
+      assert_equal attributes.fetch(:input).sole, JSON.parse(body.effective_text)
+      event = request.inference_request_event_items.find_by!(item_type: "run_status")
+      assert_equal %w[unknown_provider estimated_input_exceeds_model_limit],
+        event.payload.fetch("model_skips").map { |skip| skip.fetch("reason") }
+    end
+  end
+
   test "selection intent and ordered candidates participate in create idempotency" do
     key = SecureRandom.uuid
     intent = { "source" => "explicit", "model" => "dev/mock-text", "constraint" => "route", "alternatives" => [] }

@@ -39,7 +39,8 @@
     "additionalProperties": false
   },
   "default_enabled": true,
-  "modes": ["full", "agent"],
-  "requires": ["rho.ops"],
+  "requires": [
+    "rho.ops"
+  ],
   "restart_only": false
 }

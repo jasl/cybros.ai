@@ -28,7 +28,7 @@ module RegistrationHotPathProbe
     if mode == "counts"
       calls = 0
       trace = TracePoint.new(:call) do |event|
-        calls += 1 if event.self == Rho::Runner::InputSchema && event.method_id == :compile
+        calls += 1 if event.self == Rho::Env::InputSchema && event.method_id == :compile
       end
       trace.enable { yield }
       return { compile_calls: calls }
@@ -47,8 +47,8 @@ module RegistrationHotPathProbe
   end
 
   def synthetic
-    schema = Rho::Runner::Tools::Read::SCHEMA
-    profile = Rho::Runner::Tools::Read::EFFECT_PROFILE
+    schema = Rho::Env::Tools::Read::SCHEMA
+    profile = Rho::Env::Tools::Read::EFFECT_PROFILE
     tools = Array.new(100) do |index|
       Class.new do
         const_set(:NAME, "audit_#{index}")
@@ -92,7 +92,7 @@ module RegistrationHotPathProbe
   Dir.mktmpdir("rho-registration-probe-") do |root|
     host = Rho::Extensions::Host.new(
       home: Rho::Home.resolve(base_url: "https://nexus.example", root: root),
-      log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({ "mode" => "full" }), processes: nil,
+      log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({}), processes: nil,
       checkpoints: -> { raise "the probe never opens a checkpoint store" }
     )
     default_gems = Rho::Extensions::CONTROL_GEMS + Rho::Extensions::TOOL_GEMS + Rho::Extensions::DEFAULT_GEMS

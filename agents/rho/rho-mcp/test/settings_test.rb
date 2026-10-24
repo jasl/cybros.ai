@@ -191,7 +191,7 @@ class SettingsTest < Minitest::Test
       error = assert_raises(Rho::Mcp::Settings::Malformed, key) { parse({ key => STDIO }) }
       assert_includes error.message, "MCP servers names #{key.inspect}"
     end
-    assert_kind_of Rho::Runner::Extensions::RegistrationError, Rho::Mcp::Settings::Malformed.new("x")
+    assert_kind_of Rho::Env::Extensions::RegistrationError, Rho::Mcp::Settings::Malformed.new("x")
   end
 
   # THE EDITOR'S ROWS: the ACP

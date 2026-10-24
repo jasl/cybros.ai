@@ -18,6 +18,6 @@ Gem::Specification.new do |spec|
       file.end_with?(".gem") || file.start_with?(*%w[Gemfile bin pkg test tmp]) ||
       (file.end_with?(".md") && file != "README.md")
   end
-  spec.add_dependency "rho-runner"
+  spec.add_dependency "rho-env"
   spec.add_dependency "mini_racer", "~> 0.22.1"
 end

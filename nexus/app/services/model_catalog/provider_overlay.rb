@@ -5,6 +5,9 @@ module ModelCatalog
 
     class << self
       def apply(providers:, models:, selectors:, policy:, account_unit:, model_definitions: {}, logger: Rails.logger)
+        retained = RetainedCatalog.apply(providers: providers, models: models, model_definitions: model_definitions,
+          policy: policy, logger: logger)
+        providers, models, model_definitions = retained.providers, retained.models, retained.model_definitions
         compose(providers: providers, models: models, selectors: selectors, policy: policy,
           account_unit: account_unit, model_definitions: model_definitions, logger: logger)
       rescue Nexus::ProviderDefinition::Invalid, ModelCatalog::CompileError

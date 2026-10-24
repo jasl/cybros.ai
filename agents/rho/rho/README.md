@@ -51,7 +51,7 @@ rho connect
 Open rho's ordinary public URL and choose **Sign in with Nexus**. The browser
 uses Authorization Code with PKCE S256; **Use a device code** supports terminals
 and browsers that cannot use the configured callback. The first login connects
-this installation's Agent. Full mode announces Runner capability on that same application address. Later logins
+this installation's Agent. rho announces Runner capability on that same application address. Later logins
 reuse that runtime connection. The page never asks for a separate rho password.
 
 If Nexus has no account yet, its authorization page continues through owner
@@ -161,8 +161,7 @@ For Docker, use `./cybros setup` from the joint installation directory. It suppl
 the internal API URL and public browser URL separately, preserves the connection,
 and applies changes to the running daemon. `--public-url` saves the browser URL
 used by settings links; it never changes the bound API or credential authority.
-Native installs start `rho server` if it is not running. Setup requires a terminal and
-is unavailable in runner-only mode, where `rho connect` is the pairing command.
+Native installs start `rho server` if it is not running. Setup requires a terminal.
 
 `rho setup telegram` creates or updates a shared Telegram Connection. It validates
 the BotFather token with `getMe`, shows the physical account for confirmation, and
@@ -192,23 +191,18 @@ The profile's `user_public_id` selects the local identity root, while the
 mandatory `executor_public_id` records the paired delivery address. Rho
 considers the Agent fully active only while both planes are live.
 
-Removing or disabling the Agent fences both planes and its refresh grant.
-In full mode, the independent Runner keeps its credentials and continues
-running. An Agent-only reconnect restores the Agent; canceling that ceremony
-keeps the Runner connected.
+Removing or disabling the Agent fences both runtime planes and its refresh grant.
+The Local Runner shares the same application address and lifecycle. An independent
+Runner owned by another program retains its separate lifecycle.
 
-The identifier rho presents is the program's name plus a per-home INSTANCE
-part — `rho.3f9a2c1e`, and `rho-runner.3f9a2c1e` in runner mode — derived at
-the home's first boot into `RHO_HOME/instance.json` and never typed, so several
-installs of one program pair under one steward as separate rows; `rho status`
-prints it as `instance:`. Identity is the home: an explicit reconnect of the
-SAME home presents the same identifier, and Nexus re-pairs the existing Agent
-and fences the previous device; a soft-removed Agent is restored.
-An upgrade is "replace the checkout,
-restart" and a rollback "restart the old checkout" — the file stays, so neither
-re-pairs. A home from before the instance file derives one at its next boot and
-pairs as a NEW row at its next ceremony; revoke the old row through the
-console, or start from a fresh home.
+rho presents the program name plus a per-home instance part, such as
+`rho.3f9a2c1e`, created at first boot in `RHO_HOME/instance.json`. A reconnect of
+the same home presents the same identifier; Nexus re-pairs that Agent and fences
+the previous credentials. Distinct installations use distinct homes.
+
+The current core settings and identity formats have no compatibility reader for
+older pre-release state. Reconfigure incompatible local state and reconnect;
+plugin-owned configuration versions remain independent of the core format.
 
 Do not copy an old `RHO_HOME`, access token, refresh token, credential document,
 or attempt state to move a registration: a copied home answers the original's
@@ -218,26 +212,20 @@ domain and are an unsupported deployment.
 
 ## Execution
 
-Coding tools run on the runner role, and rho plays it in one of three modes —
-`rho server --mode full|agent|runner` (settings `mode`, `RHO_MODE`; default
-full). Full connects one Agent Executor, announcing `agent`
+rho always runs as a complete application. One Agent Executor announces `agent`
 for application tools and `runner` for Coding, Processes and environment tools.
-Both roles share one transport credential, inbox subscription and execution pool.
-The member bearer never reaches a claim. Local resolves to this application's
-Executor UUID before work is accepted. Its Main, Bots and Subagents can use that
-runner capability; another application under the same Human cannot. Switching
-between agent and full modes replaces the services announcement on the same
-address and credentials, without another pairing ceremony.
-Agent names a runner (`rho run … --runner`, the `runner`
-setting). Runner serves tools alone — the container runs
-`RHO_MODE=runner rho server` with `RHO_HOME` on a volume and an optional
-`RHO_DISPLAY_NAME`; `rho connect` prints the pairing code and URL.
-Standalone Runner access remains the Human-private or account-wide scope chosen
-at connection.
-It constructs no member plane (no
-`run`; the Ops routes are not in the runner set, and rho-dev is never
-named on a runner home). `rho disconnect` revokes and
-forgets. Rho creates its own private, dedicated workspace when none is
+Both roles share one transport credential, inbox subscription, execution pool and
+lifecycle. The member bearer never reaches a claim. Local resolves to this
+application's Executor UUID before work is accepted. Its Main, Bots and Subagents
+can use it; another application under the same Human cannot.
+
+`rho run … --runner UUID` can select an eligible independent Runner. Nexus supports
+these implementations through its public protocol, but rho has no tools-only
+runtime mode or independent Runner identity. `rho-env` is an embeddable Ruby
+library, not a standalone service. `rho disconnect` revokes and forgets the
+application connection.
+
+Rho creates its own private, dedicated workspace when none is
 selected. `rho workspaces` lists its dedicated workspaces and visible shared
 workspaces; `rho workspaces create NAME` creates another dedicated workspace,
 and `rho workspaces use ID` persists the default in `settings.json`. Selection
@@ -482,7 +470,7 @@ conversation, and the unblock path) and the run verbs (watch, follow,
 result, transcript, retry, approve, …) are described with their verbs in
 `agents/rho/rho-dev/README.md`, with the two mock lanes that drive the
 whole spawn surface and the group chat through them
-(`e2e/test/rho_spawn_test.rb`, `e2e/test/group_chat_test.rb`) and the paid
+(`e2e/products/test/rho_spawn_test.rb`, `e2e/products/test/group_chat_test.rb`) and the paid
 `cd e2e && E2E_LIVE=1 rake live_spawn`.
 
 The `code` tool, supplied by `rho-codemode`, is enabled by default in every rho mode,
@@ -942,11 +930,11 @@ forward these fields independently; Nexus resolves their effective values.
 
 The separate `rho-webui` gem supplies the browser page. The host installer, Docker image
 and checkout bundle include it. Use the repository's installation guide for the
-supported installation path. Full and agent modes load `rho/webui` by default. The daemon
+supported installation path. `rho/webui` is enabled by default. The daemon
 continues to own the control API, authentication and static-file serving.
 
 Run `rho console --open` after starting `rho server`. `RHO_API_ONLY=1` disables the page;
-runner mode is always headless. `webui_root` in settings or `RHO_WEBUI_ROOT` overrides the
+`webui_root` in settings or `RHO_WEBUI_ROOT` overrides the
 plugin's static directory. If the plugin is absent or its bundle is incomplete, the daemon
 continues with its control API; extension load failures appear in `rho runner`.
 
@@ -958,11 +946,11 @@ see [deployment](../../../docs/rho-deploy.md) for portable installation and cont
 
 rho ships a described default set. Each built-in, installed gem, selected local
 file and managed package has a static descriptor with its id, display name, human-readable description,
-configuration schema/version, defaults, supported modes and dependencies.
+configuration schema/version, defaults and dependencies.
 Disabled plugins stay visible and configurable without loading their Ruby code,
 starting children or connecting to a service. Enablement is separate from
 configuration completeness: an enabled plugin can be active but not ready.
-Web tools are enabled by default in full and runner modes; explicit disabled
+Web tools are enabled by default; explicit disabled
 settings remain disabled. Browser, MCP, ACP client, Telegram and T3 require
 explicit enablement. Their descriptions and schemas remain visible in the core manager.
 Environment-dependent plugins check prerequisites before becoming active. Browser
@@ -977,7 +965,7 @@ sibling JSON descriptor, such as `/opt/team/rho-ops.json` for the file below:
 
 ```json
 {
-  "settings_version": 1,
+  "settings_version": 2,
   "plugins": {
     "rho.web_tools": { "enabled": true, "configuration_version": 1, "configuration": {} },
     "team.ops": {
@@ -1085,7 +1073,6 @@ that defines one module responding to `register(api)`, and a `rho-extension.json
   "configuration_schema": { "type": "object", "properties": {}, "additionalProperties": false },
   "category": "tools",
   "default_enabled": false,
-  "modes": ["full", "agent"],
   "requires": [],
   "restart_only": false,
   "state_schema": "notes-v1",
@@ -1226,7 +1213,7 @@ A failed daemon refresh is reported separately and leaves the saved login intact
 `rho mcp logout NAME` forgets the credentials. `rho
 console --open` and `rho mcp login` open your browser through `$BROWSER`
 when it is set. The OAuth path is driven through this binary by
-`e2e/test/mcp_oauth_test.rb` on the mock (group 2 of the gate: the login with a stubbed `$BROWSER` and with `--no-browser` + the pasted redirect, the live announcement refresh, credential reuse after restart, silent renewal, a renewal failure, a refusal, re-login and step-up, `rho mcp` and `rho mcp probe` with no daemon, the config faults and an unreadable credential file) and the manual paid
+`e2e/products/test/mcp_oauth_test.rb` on the mock (group 2 of the gate: the login with a stubbed `$BROWSER` and with `--no-browser` + the pasted redirect, the live announcement refresh, credential reuse after restart, silent renewal, a renewal failure, a refusal, re-login and step-up, `rho mcp` and `rho mcp probe` with no daemon, the config faults and an unreadable credential file) and the manual paid
 `cd e2e && E2E_LIVE=1 E2E_MCP_OAUTH_URL=<url> rake live_mcp_oauth` (a real
 public OAuth server, your own consent click). A stdio server runs
 one call at a time; a call that times out stops that server (its process
@@ -1238,7 +1225,7 @@ connect. Restarting the daemon re-lists every enabled server.
 
 ```json
 {
-  "settings_version": 1,
+  "settings_version": 2,
   "plugins": {
     "rho.mcp": {
       "enabled": true,
@@ -1305,7 +1292,7 @@ from the CLI and prints what the model would read, whole (`--raw` for the bytes 
 
 ```json
 {
-  "settings_version": 1,
+  "settings_version": 2,
   "plugins": {
     "rho.web_tools": {
       "enabled": true,
@@ -1397,7 +1384,7 @@ rho-acp connect
 
 The flags are the defaults for new sessions: the mode (`bypass`, rho's own
 posture; an editor that wants prompts passes `--mode ask`), the model (else the
-home's `default_model`), the runner-kind executor an agent-mode rho names for
+home's `default_model`), the selected Runner executor used for
 the session's tools. Zed's `agent_servers`:
 
 ```json
@@ -1429,7 +1416,7 @@ package or per-platform archives under `distribution` — which the
 build-from-checkout install does not provide. The benchmark door uses an
 INLINE entry instead: `harbor run -a acp:rho` over a `local` distribution
 whose `cmd` is the evals image's `/opt/rho/libexec/rho-acp-launch`
-(`e2e/evals/docker/rho-acp-launch`; `cd e2e && rake "evals_harbor_acp[dry]"`
+(`e2e/products/evals/docker/rho-acp-launch`; `cd e2e && rake "evals_harbor_acp[dry]"`
 prints the entry, the command and the pairing sidecar's plan).
 
 The other direction is the optional `rho.acp-client` plugin: another ACP agent in
@@ -1443,7 +1430,7 @@ acp` on OpenRouter, the model-neutral one:
 
 ```json
 {
-  "settings_version": 1,
+  "settings_version": 2,
   "plugins": {
     "rho.acp-client": {
       "enabled": true,
@@ -1526,7 +1513,7 @@ is returned with a `failed/process_live` result for that Runner in `restoration.
 
 ```json
 {
-  "settings_version": 1,
+  "settings_version": 2,
   "plugins": {
     "rho.checkpoints": {
       "enabled": true,
@@ -1662,9 +1649,7 @@ id answers the exit and "the entry is gone — start_process again gives a new
 id", `rho logs` still answers the remembered exit, and the log file's last line
 keeps it. A periodic validity sweep on the daemon is the fallback for a group
 that died unnoticed. A restart resurrects nothing: the state file names only
-live groups, and the next boot reaps them. A runner-mode rho owns an entry by
-the same row's conversation but follows no conversation's feed, so there an
-entry ends only by the sweep, a kill, or the daemon's shutdown.
+live groups, and the next boot reaps them.
 
 Archive keeps local following, processes and result delivery for accepted work.
 The archived Conversation remains readable, and its historical archive event
@@ -1759,7 +1744,7 @@ module MyExtension
       "idempotency" => "none", "reconciliation" => "none"
     }.freeze
     def initialize(env:) = @env = env
-    def call(args) = Rho::Runner::Result.ok("pong")
+    def call(args) = Rho::Env::Result.ok("pong")
   end
 
   def self.register(api)
@@ -1783,7 +1768,7 @@ Two more verbs on the handle announce DOCUMENTS — the skill-shaped catalog
 lines a turn's `skills` block carries — and answer their loads, each on an
 address: `api.describe_documents(serves:) { |env| [{name, description}] }`
 lists them, `api.load_document(serves:) { |name, env| body }` answers one
-(a `Rho::Runner::Result`, or nil to let the next loader on that address
+(a `Rho::Env::Result`, or nil to let the next loader on that address
 try). An extension that announces documents on an address must serve
 `skill` there (Coding does on the runner's; rho/mcp does on the agent's):
 each catalog entry names its source and callable. A Runner’s callable carries its

@@ -30,7 +30,7 @@ class SetupConnectionTest < Minitest::Test
 
   def test_public_browser_url_does_not_change_pairing_api_authority
     seen = []
-    active = { "state" => "active", "mode" => "agent", "connection" => { "phase" => "active" },
+    active = { "state" => "active", "connection" => { "phase" => "active" },
       "identity" => { "user_public_id" => "user-1", "executor_public_id" => "executor-1" } }
     endpoint = recording_routed_endpoint(seen, {
       "POST /device/start" => [[200, pending_start]], "GET /status" => [[200, active]],

@@ -25,7 +25,7 @@ host update procedure; interrupted upgrades direct the operator to host recovery
 
 ## Use
 
-Install this gem alongside rho. It is enabled by default in full and agent modes.
+Install this gem alongside rho. It is enabled by default.
 To restore a disabled WebUI, use the core manager:
 
 ```sh
@@ -283,7 +283,7 @@ and settings.
 
 Create a conversation with an available model and a runner. The runner uses
 its default working directory. The model list comes from Nexus's configured, usable models. The
-selected runner is the default for newly authored calls; an agent-only daemon can
+selected runner is the default for newly authored calls; rho can
 use a separately paired runner. Opening an existing conversation displays its
 default without changing it. Each accepted Runner call retains its own target.
 

@@ -8,7 +8,7 @@ class ConsoleLinkExtensionTest < Minitest::Test
 
   WITHOUT_CONSOLE_LINK = Rho::Extensions::DEFAULT_EXTENSIONS - [Rho::Extensions::ConsoleLink]
 
-  def boot(extensions: [Rho::Extensions::ConsoleLink], config: agent_mode, **options) = super(extensions:, config:, **options)
+  def boot(extensions: [Rho::Extensions::ConsoleLink], config: application_config, **options) = super(extensions:, config:, **options)
 
   def test_it_registers_the_page_location_and_the_console_verb
     api = Rho::Extensions::Api.new(host: RhoTest.host, extension_name: "rho.console_link", source: "<test>")
@@ -41,14 +41,14 @@ class ConsoleLinkExtensionTest < Minitest::Test
   end
 
   def test_the_page_location_uses_the_configured_browser_url
-    daemon = boot(webui_root: console_bundle, config: agent_mode("public_url" => "http://10.0.0.115:7777"))
+    daemon = boot(webui_root: console_bundle, config: application_config("public_url" => "http://10.0.0.115:7777"))
 
     response = request(daemon, :get, "/console", token: bearer(daemon))
     assert_equal "http://10.0.0.115:7777", JSON.parse(response.body).fetch("url")
   end
 
   def test_a_daemon_without_a_page_refuses_the_console_link
-    daemon = boot(config: agent_mode("api_only" => true), webui_root: console_bundle)
+    daemon = boot(config: application_config("api_only" => true), webui_root: console_bundle)
 
     response = request(daemon, :get, "/console", token: bearer(daemon))
     assert_equal "409", response.code

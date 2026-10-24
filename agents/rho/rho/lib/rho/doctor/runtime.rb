@@ -99,17 +99,17 @@ module Rho
       # Count retained captures and undos without initializing a database or
       # requiring its work root to remain present.
       def checkpoints(home)
-        dir = File.join(home.work_root, Rho::Runner::Checkpoints::Store::DIRECTORY)
+        dir = File.join(home.work_root, Rho::Env::Checkpoints::Store::DIRECTORY)
         stores = if File.directory?(dir)
           Dir.children(dir).sort.select do |child|
-            File.file?(File.join(dir, child, Rho::Runner::Checkpoints::Store::DATABASE_FILE))
+            File.file?(File.join(dir, child, Rho::Env::Checkpoints::Store::DATABASE_FILE))
           end
         else
           []
         end
         return Row.new("checkpoints", "store", :ok, "#{dir}: none yet") if stores.empty?
 
-        records = stores.sum { |store| Rho::Runner::Checkpoints::Store.record_count(File.join(dir, store)) }
+        records = stores.sum { |store| Rho::Env::Checkpoints::Store.record_count(File.join(dir, store)) }
         stores_word = "#{stores.length} store#{"s" unless stores.length == 1}"
         records_word = "#{records} record#{"s" unless records == 1}"
         Row.new("checkpoints", "store", :ok, "#{dir}: #{stores_word}, #{records_word}, #{size_of(dir)}")

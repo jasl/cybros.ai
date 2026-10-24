@@ -37,7 +37,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "cmctl", "~> 0.1"
   # COMPOSED, NOT CONTAINED: the runner is its own gem so it can also run
   # with no daemon around it. rho builds one and spawns it on its reactor.
-  spec.add_dependency "rho-runner"
+  spec.add_dependency "rho-env"
   # The CLI dispatcher. exe/rho is the one human entry point
   # and its verb set grows with the product; Thor is what keeps that cheap.
   spec.add_dependency "thor", "~> 1.4"

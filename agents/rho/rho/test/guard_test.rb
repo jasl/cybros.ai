@@ -34,11 +34,11 @@ class GuardTest < Minitest::Test
 
   # Through the plane: a veto is what the hook answers, and only for bash.
   def test_it_vetoes_bash_through_the_extension_plane_and_nothing_else
-    result = Rho::Runner::Extensions::Loader.call(builtin: [Guard])
+    result = Rho::Env::Extensions::Loader.call(builtin: [Guard])
     assert_predicate result, :ok?
     hooks = result.registry.hooks
     veto = hooks.before_call("bash", { "command" => "git push --force" })
-    assert_kind_of Rho::Runner::Extensions::Hooks::Veto, veto
+    assert_kind_of Rho::Env::Extensions::Hooks::Veto, veto
     assert_equal "rho.guard", veto.extension
     assert_match(/force push/, veto.reason)
 
@@ -71,7 +71,7 @@ class GuardTest < Minitest::Test
 
   def floor_hooks(home)
     host = RhoTest.host.with(home: home)
-    result = Rho::Runner::Extensions::Loader.call(builtin: [Guard], api_options: { host: host },
+    result = Rho::Env::Extensions::Loader.call(builtin: [Guard], api_options: { host: host },
       api_class: Rho::Extensions::Api)
     assert_predicate result, :ok?
     result.registry.hooks
@@ -83,17 +83,17 @@ class GuardTest < Minitest::Test
       settings = File.join(home.root, "settings.json")
 
       veto = hooks.before_call("write", { "path" => settings, "content" => "{}" })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, veto
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, veto
       assert_equal "rho.guard", veto.extension
       assert_equal "write under #{Rho.spelled(home.settings_path)} is refused: #{Rho::RunDeclaration::INCUBATION} " \
                    "(refused: #{settings})", veto.reason
 
       edit = hooks.before_call("edit", { "path" => File.join(home.identity_root("u1"), "credentials.json"), "old" => "a" })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, edit
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, edit
       assert_match(/\Aedit under .* is refused: direct installation edits are disabled/, edit.reason)
 
       program = hooks.before_call("write", { "path" => File.join(Rho.root, "lib", "rho.rb") })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, program, "the checkout is a root too"
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, program, "the checkout is a root too"
     end
   end
 
@@ -103,12 +103,12 @@ class GuardTest < Minitest::Test
       command = "sed -i s/a/b/ #{File.join(Rho.root, "lib", "rho.rb")}"
 
       veto = hooks.before_call("bash", { "command" => command })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, veto
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, veto
       assert_equal "bash under #{File.realpath(Rho.root)} is refused: #{Rho::RunDeclaration::INCUBATION} " \
                    "(refused: #{command})", veto.reason
 
       started = hooks.before_call("start_process", { "command" => "tail -f #{File.realpath(home.root)}/log/rho.log" })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, started
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, started
       assert_match(/\Astart_process under /, started.reason)
     end
   end
@@ -142,11 +142,11 @@ class GuardTest < Minitest::Test
       File.symlink(home.root, link)
 
       veto = hooks.before_call("write", { "path" => File.join(link, "settings.json") })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, veto
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, veto
 
       refute File.exist?(home.users_root), "the member is not on disk yet"
       deep = hooks.before_call("write", { "path" => File.join(home.users_root, "not", "yet", "there.txt") })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, deep
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, deep
     end
   end
 
@@ -160,15 +160,15 @@ class GuardTest < Minitest::Test
       hooks = floor_hooks(home)
       project = File.join(home.work_root, "users", "u1", "proj")
       FileUtils.mkdir_p(project)
-      env = Rho::Runner::ToolEnv.new(root: project, artifacts_dir: File.join(home.work_root, "artifacts", "x"))
-      context = Rho::Runner::ExecutionContext.new(tool_env: env)
+      env = Rho::Env::ToolEnv.new(root: project, artifacts_dir: File.join(home.work_root, "artifacts", "x"))
+      context = Rho::Env::ExecutionContext.new(tool_env: env)
 
-      Rho::Runner::ExecutionContext.with(context) do
+      Rho::Env::ExecutionContext.with(context) do
         inside = hooks.before_call("write", { "path" => "lib/a.rb", "content" => "x" })
         assert_equal({ "path" => "lib/a.rb", "content" => "x" }, inside, "inside the bound root: passes as written")
         escape = "../../../../home/settings.json"
         veto = hooks.before_call("write", { "path" => escape, "content" => "{}" })
-        assert_kind_of Rho::Runner::Extensions::Hooks::Veto, veto, "`..` into the home's settings is refused"
+        assert_kind_of Rho::Env::Extensions::Hooks::Veto, veto, "`..` into the home's settings is refused"
         assert_equal "write under #{Rho.spelled(home.settings_path)} is refused: #{Rho::RunDeclaration::INCUBATION} " \
                      "(refused: #{escape})", veto.reason
       end
@@ -181,10 +181,10 @@ class GuardTest < Minitest::Test
   # A handle with no home (the runner's own loader, a standalone runner)
   # protects the program roots alone.
   def test_without_a_home_the_floor_protects_the_program_roots_alone
-    hooks = Rho::Runner::Extensions::Loader.call(builtin: [Guard]).registry.hooks
+    hooks = Rho::Env::Extensions::Loader.call(builtin: [Guard]).registry.hooks
 
-    veto = hooks.before_call("write", { "path" => File.join(Rho::Runner.root, "lib", "x.rb") })
-    assert_kind_of Rho::Runner::Extensions::Hooks::Veto, veto
+    veto = hooks.before_call("write", { "path" => File.join(Rho::Env.root, "lib", "x.rb") })
+    assert_kind_of Rho::Env::Extensions::Hooks::Veto, veto
     assert_equal({ "path" => "/tmp/elsewhere/x" }, hooks.before_call("write", { "path" => "/tmp/elsewhere/x" }))
   end
 
@@ -212,17 +212,17 @@ class GuardTest < Minitest::Test
 
       settings = File.join(home.root, "settings.json")
       veto = hooks.before_call("write", { "path" => settings, "content" => "{}" })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, veto, "the home around the work root is still refused"
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, veto, "the home around the work root is still refused"
       assert_equal "write under #{Rho.spelled(home.settings_path)} is refused: #{Rho::RunDeclaration::INCUBATION} " \
                    "(refused: #{settings})", veto.reason
       edit = hooks.before_call("edit", { "path" => File.join(home.identity_root("u1"), "credentials.json"), "old" => "a" })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, edit, "the identity's vault is refused"
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, edit, "the identity's vault is refused"
       mcp = hooks.before_call("edit", { "path" => File.join(home.mcp_credentials_dir, "fx.json"), "old" => "a" })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, mcp, "an MCP credential is refused"
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, mcp, "an MCP credential is refused"
       shelled = hooks.before_call("bash", { "command" => "echo x >> #{Rho.spelled(home.settings_path)}" })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, shelled, "a command naming a member (resolved) is refused"
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, shelled, "a command naming a member (resolved) is refused"
       program = hooks.before_call("write", { "path" => File.join(Rho.root, "lib", "rho.rb") })
-      assert_kind_of Rho::Runner::Extensions::Hooks::Veto, program, "the checkout is a root still"
+      assert_kind_of Rho::Env::Extensions::Hooks::Veto, program, "the checkout is a root still"
     end
   end
 

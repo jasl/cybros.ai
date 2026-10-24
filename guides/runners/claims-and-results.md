@@ -99,6 +99,6 @@ Field tables for every verb, the extend and progress doors, lifecycle hook tasks
 
 An explicitly interactive handler can exchange bounded WebRTC descriptions and check current
 interaction permission under its original claim. See [Task realtime](../reference/agent-api/task-realtime.md)
-for both credential planes, the one-second authorization window and rho-runner's `context.realtime`.
+for both credential planes, the one-second authorization window and rho-env's `context.realtime`.
 The handler retains the same resource and execution ownership through Pause and temporary network
 loss. Existing Stop and native cleanup still decide when that resource can be released.

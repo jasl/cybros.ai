@@ -49,7 +49,7 @@ seed_upstream() {
   rm -rf "$stage"
   mkdir -p "$stage"
   ( cd "$REPO_ROOT" && tar -cf - --exclude=.git --exclude=tmp --exclude=log --exclude=coverage --exclude=node_modules \
-      --exclude=vendor/bundle --exclude=.bundle --exclude=pkg install sdks/ruby cmctl agents/rho/rho-runner agents/rho/rho-browser agents/rho/rho-mcp agents/rho/rho-web-tools agents/rho/rho-codemode agents/rho/rho-webui agents/rho/rho-ingress-telegram agents/rho/rho-acp agents/rho/rho-acp-client agents/rho/rho-t3 agents/rho/rho ) \
+      --exclude=vendor/bundle --exclude=.bundle --exclude=pkg install sdks/ruby cmctl agents/rho/rho-env agents/rho/rho-browser agents/rho/rho-mcp agents/rho/rho-web-tools agents/rho/rho-codemode agents/rho/rho-webui agents/rho/rho-ingress-telegram agents/rho/rho-acp agents/rho/rho-acp-client agents/rho/rho-t3 agents/rho/rho ) \
     | tar -xf - -C "$stage"
   git_quiet -C "$stage" init -q -b main
   git_quiet -C "$stage" add -A

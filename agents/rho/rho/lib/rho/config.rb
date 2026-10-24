@@ -6,15 +6,14 @@ module Rho
   # Core deployment settings and the prepared plugin view share one saved file.
   # Environment values seed deployment; saved choices and explicit flags win.
   class Config < Data.define(:values, :plugins, :catalog, :resolved, :plugin_errors, :workspace_override, :home)
-    SETTINGS_VERSION = 1
-    KEYS = %w[bind api_only tools_root webui_root webui_access kernel_tools default_model conversation_title_model adaptations adaptations_dir executor_socket mode runner workspace fallback_models subagent_default nexus_public_url public_url].freeze
+    SETTINGS_VERSION = 2
+    KEYS = %w[bind api_only tools_root webui_root webui_access kernel_tools default_model conversation_title_model adaptations adaptations_dir executor_socket runner workspace fallback_models subagent_default nexus_public_url public_url].freeze
     # Who may open the WebUI once rho is paired: `open` lets any browser that
     # reaches the page in, `password` asks for rho's unlock password, `nexus`
     # asks for a Nexus sign-in; nil chooses by bind (open on loopback, nexus
     # elsewhere). Nexus sign-in stays available in every mode.
     WEBUI_ACCESS = %w[open nexus password].freeze
-    MODES = %w[full agent runner].freeze
-    ENV_KEYS = { "bind" => "RHO_BIND", "api_only" => "RHO_API_ONLY", "tools_root" => "RHO_TOOLS_ROOT", "webui_root" => "RHO_WEBUI_ROOT", "webui_access" => "RHO_WEBUI_ACCESS", "default_model" => "RHO_DEFAULT_MODEL", "adaptations" => "RHO_ADAPTATIONS", "executor_socket" => "RHO_EXECUTOR_SOCKET", "mode" => "RHO_MODE", "workspace" => "RHO_WORKSPACE", "nexus_public_url" => "RHO_NEXUS_PUBLIC_URL", "public_url" => "RHO_PUBLIC_URL" }.freeze
+    ENV_KEYS = { "bind" => "RHO_BIND", "api_only" => "RHO_API_ONLY", "tools_root" => "RHO_TOOLS_ROOT", "webui_root" => "RHO_WEBUI_ROOT", "webui_access" => "RHO_WEBUI_ACCESS", "default_model" => "RHO_DEFAULT_MODEL", "adaptations" => "RHO_ADAPTATIONS", "executor_socket" => "RHO_EXECUTOR_SOCKET", "workspace" => "RHO_WORKSPACE", "nexus_public_url" => "RHO_NEXUS_PUBLIC_URL", "public_url" => "RHO_PUBLIC_URL" }.freeze
     SWITCHES = %w[api_only executor_socket subagent_default].freeze
     DEFAULTS = {
       "bind" => nil, "api_only" => false, "tools_root" => nil, "webui_root" => nil, "webui_access" => nil,
@@ -30,7 +29,7 @@ module Rho
         nexus.image.generate nexus.schedules.read nexus.schedules.manage
       ],
       "default_model" => nil, "conversation_title_model" => "follow_current", "fallback_models" => [], "subagent_default" => true, "adaptations" => "auto",
-      "adaptations_dir" => nil, "executor_socket" => true, "mode" => "full",
+      "adaptations_dir" => nil, "executor_socket" => true,
       "runner" => nil, "workspace" => nil, "nexus_public_url" => nil, "public_url" => nil,
     }.freeze
 
@@ -69,7 +68,7 @@ module Rho
           document = hash.to_h.transform_keys(&:to_s)
           version = document.fetch("settings_version", SETTINGS_VERSION)
           unless version == SETTINGS_VERSION
-            raise ConfigurationError, "settings format requires migration before loading"
+            raise ConfigurationError, "unsupported settings format; reconfigure this rho installation"
           end
           envelope = { "type" => "object", "properties" => {
             "subagent_default" => { "type" => "boolean" },
@@ -99,10 +98,9 @@ module Rho
       @home, @catalog = home, catalog
       @plugins = immutable(plugins)
       @values = values.merge(
-        "mode" => one_of(values.fetch("mode"), "mode", MODES),
         "runner" => presence(values["runner"]),
-        "workspace" => room(values["workspace"], values["mode"]),
-        "fallback_models" => fallback_list(values.fetch("fallback_models"), values.fetch("mode")),
+        "workspace" => presence(values["workspace"]),
+        "fallback_models" => values.fetch("fallback_models").map(&:strip).reject(&:empty?).uniq,
         "bind" => presence(values["bind"]), "default_model" => presence(values["default_model"]),
         "conversation_title_model" => values["conversation_title_model"]&.strip,
         "tools_root" => expanded(values["tools_root"]), "webui_root" => expanded(values["webui_root"]),
@@ -163,7 +161,7 @@ module Rho
 
     def plugin_requested?(id)
       descriptor = @catalog.descriptors[id]
-      !!(descriptor && descriptor.modes.include?(mode) &&
+      !!(descriptor &&
         (descriptor.source["kind"] != "package" || @plugins.dig(id, "source") == descriptor.source) &&
         @plugins.fetch(id, {}).fetch("enabled", descriptor.default_enabled) == true)
     end
@@ -204,23 +202,6 @@ module Rho
       def presence(value)
         text = value.to_s
         text.empty? ? nil : text
-      end
-
-      # A runner constructs no member plane and adopts nothing: a room
-      # named there would be a promise the boot cannot keep.
-      def room(value, rho_mode)
-        address = presence(value)
-        raise ConfigurationError, "workspace needs mode full or agent" if address && rho_mode == "runner"
-
-        address
-      end
-
-      def fallback_list(value, rho_mode)
-        models = value.map(&:strip).reject(&:empty?).uniq
-        if !models.empty? && rho_mode == "runner"
-          raise ConfigurationError, "fallback_models needs mode full or agent"
-        end
-        models
       end
 
       def truthy?(value) = %w[1 true yes on].include?(value.to_s.downcase)

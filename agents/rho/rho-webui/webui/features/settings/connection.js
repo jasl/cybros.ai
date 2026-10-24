@@ -7,10 +7,8 @@ export function connectionCard(shell, initialProps) {
   const keys = {
     access_token: input({ name: "access_token", type: "password", autocomplete: "off" }),
     executor_access_token: input({ name: "executor_access_token", type: "password", autocomplete: "off" }),
-    runner_access_token: input({ name: "runner_access_token", type: "password", autocomplete: "off" }),
   };
-  const labels = { access_token: t("connection.access_token"), executor_access_token: t("connection.executor_access_token"),
-    runner_access_token: t("connection.runner_access_token") };
+  const labels = { access_token: t("connection.access_token"), executor_access_token: t("connection.executor_access_token") };
   const rows = Object.fromEntries(Object.entries(keys).map(([name, control]) =>
     [name, field({ label: labels[name], control })]));
   const submitButton = button({ label: t("connection.import"), variant: "primary", size: "sm", type: "submit" });
@@ -23,15 +21,11 @@ export function connectionCard(shell, initialProps) {
   details.body.append(form, feedback.element);
   card.body.append(details.element);
 
-  const mode = () => props.document?.deployment?.mode || "full";
-  const selected = () => mode() === "runner" ? ["executor_access_token"]
-    : mode() === "agent" ? ["access_token", "executor_access_token"] : Object.keys(keys);
-
   async function submit(event) {
     event.preventDefault();
     fields.disabled = true; feedback.hide();
     try {
-      const body = Object.fromEntries(selected().map((name) => [name, keys[name].value]));
+      const body = Object.fromEntries(Object.keys(keys).map((name) => [name, keys[name].value]));
       if (Object.values(body).some((value) => !value.trim())) {
         feedback.show(t("connection.required"), "error");
         return;
@@ -46,10 +40,5 @@ export function connectionCard(shell, initialProps) {
     } finally { fields.disabled = false; }
   }
 
-  function paint() {
-    const names = selected();
-    for (const [name, row] of Object.entries(rows)) row.element.hidden = !names.includes(name);
-  }
-  paint();
-  return { element: card.element, update(next) { props = next; paint(); } };
+  return { element: card.element, update(next) { props = next; } };
 }

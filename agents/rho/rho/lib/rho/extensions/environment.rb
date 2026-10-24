@@ -5,7 +5,7 @@ module Rho
     # Authoring defaults and local environment controls. Accepted work carries
     # its own captured context through Nexus to the selected Executor.
     module Environment
-      NAME = Rho::Runner::Environment::CONTEXT_KEY.freeze
+      NAME = Rho::Env::Environment::CONTEXT_KEY.freeze
       # THE RECORD'S TWO SPELLINGS: nothing reserves them
       # kernel-side, so rho pins them here — once — and every reader and
       # writer names the constants. The namespace IS the extension's name,
@@ -45,7 +45,7 @@ module Rho
             # no identity work root to fall back to.
             return { environment: { source: "unset" } } if selection.root.nil?
 
-            environment = Rho::Runner::Environment.local(root: selection.root)
+            environment = Rho::Env::Environment.local(root: selection.root)
             { environment: {
               root: environment.root,
               source: selection.source,
@@ -153,8 +153,7 @@ module Rho
             end
           end
 
-          # THE LIVE TABLE: every followed conversation's memo row — host
-          # mode alone (a runner-mode rho holds no member plane, and says so).
+          # The live table contains every followed conversation's memo row.
           def environments(ctx)
             ctx.member_plane do |*|
               hosts = ctx.host_bindings.map { |binding| binding.fetch(:host) }.select(&:outlives_turn?)

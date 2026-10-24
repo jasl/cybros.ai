@@ -284,7 +284,7 @@ class DaemonConfigurationTest < Minitest::Test
 
     daemon.send(:place_runners, about, NexusDoubles::MEMBER_TOKEN, "ws-1")
 
-    assert_empty daemon.lineage.runners
+    assert_nil daemon.lineage.runner
     assert_equal({ runner: nil, agent: nil }, daemon.context.runner_snapshot, "no runner: the honest answer, not an idle shape")
     assert daemon.lineage.reserve_runner(about), "the runner reservation was given back"
     log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
@@ -304,7 +304,7 @@ class DaemonConfigurationTest < Minitest::Test
 
     daemon.send(:place_runners, about, NexusDoubles::MEMBER_TOKEN, "ws-1")
 
-    assert_equal 1, daemon.lineage.runners.length
+    refute_nil daemon.lineage.runner
     assert_equal %w[list_extensions manage_extension code], daemon.context.runner_snapshot.fetch(:agent).fetch(:tools)
     assert_includes daemon.context.runner_snapshot.fetch(:runner).fetch(:tools), "bash"
     assert_equal %w[agent runner], api.announcements.last.fetch("services").keys
@@ -315,9 +315,8 @@ class DaemonConfigurationTest < Minitest::Test
     api = NexusDoubles::FakeAgentApi.new
     daemon = connected_boot(api_transport: api)
     daemon.lineage.stop_maintenance
-    owner = Object.new
-    owner.define_singleton_method(:executor_credential) { NexusDoubles::RUNNER_TOKEN }
-    about = Rho::Credentials.new(runner: owner)
+    about = Object.new
+    about.define_singleton_method(:executor_credential) { NexusDoubles::RUNNER_TOKEN }
     daemon.lineage.adopt(identity: RUNNER_IDENTITY, credentials: about)
     execution_roles = daemon.method(:execution_roles)
     daemon.define_singleton_method(:execution_roles) do
@@ -325,10 +324,10 @@ class DaemonConfigurationTest < Minitest::Test
       execution_roles.call
     end
 
-    assert_nil daemon.send(:mount_runner, about, :runner)
+    assert_nil daemon.send(:mount_runner, about)
 
     assert_nil daemon.lineage.credentials
-    assert_nil daemon.lineage.runner(:runner)
+    assert_nil daemon.lineage.runner
     assert_empty api.runner_announcements
   end
 
@@ -453,7 +452,7 @@ class DaemonConfigurationTest < Minitest::Test
     end
     assert File.file?(File.join(Rho.root, "lib", "rho.rb")) && File.file?(File.join(Rho.root, "rho.gemspec")),
       "the checkout the running process loads `lib/rho.rb` from: #{Rho.root}"
-    assert File.file?(File.join(Rho::Runner.root, "lib", "rho", "runner.rb")), Rho::Runner.root
+    assert File.file?(File.join(Rho::Env.root, "lib", "rho", "env.rb")), Rho::Env.root
   end
 
   # THE BOOT ROW IS THE UNIVERSE:
@@ -523,7 +522,7 @@ class DaemonConfigurationTest < Minitest::Test
   def test_without_the_extension_the_declaration_turns_compaction_off
     api = NexusDoubles::FakeAgentApi.new(workspaces: [WORKSPACE], tools: CATALOG)
     config = Rho::Config.from_hash({ "plugins" => { "rho.compaction" => { "configuration_version" => 1, "configuration" => { "model" => "dev/mock-text" } } } })
-    daemon, = adopted(api, config: config, extensions: [Rho::Runner::Extensions::Coding])
+    daemon, = adopted(api, config: config, extensions: [Rho::Env::Extensions::Coding])
 
     assert_equal({ "mode" => "off" }, declared(api).fetch("compaction_policy"))
     refute_includes daemon.context.registry.names, "summarize_history"
@@ -553,7 +552,7 @@ class DaemonConfigurationTest < Minitest::Test
     announced(api)
     wait_for { status_runner(daemon, token).fetch("swept").positive? }
     swept_before = status_runner(daemon, token).fetch("swept")
-    runner = daemon.lineage.runner(:runner)
+    runner = daemon.lineage.runner
     root = File.join(@root, "elsewhere")
     FileUtils.mkdir_p(root)
 
@@ -561,7 +560,7 @@ class DaemonConfigurationTest < Minitest::Test
 
     assert_equal "200", response.code, response.body
     assert_equal announced(api, 1), announced(api, 2), "the runner half ran: the same announcement, written again"
-    assert_same runner, daemon.lineage.runner(:runner), "the runner stands"
+    assert_same runner, daemon.lineage.runner, "the runner stands"
     assert_equal File.realpath(root), File.realpath(daemon.context.tool_env.root), "placement zero moved"
     after = status_runner(daemon, token)
     assert_operator after.fetch("swept"), :>=, swept_before, "the one runner's own meter, monotonic"

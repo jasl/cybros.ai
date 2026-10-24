@@ -1,0 +1,60 @@
+module Rho
+  module Env
+    class WebrtcStream
+      BLOCK_BYTES: Integer
+      MAX_OFFSET: Integer
+      class Input < Data
+        attr_reader id: Integer
+        attr_reader bytes: String
+        def self.new: (id: Integer, bytes: String) -> instance
+      end
+      class Receipt < Data
+        attr_reader id: Integer
+        attr_reader sequence: Integer
+        attr_reader status: String
+        attr_reader bytes: Integer
+        def self.new: (id: Integer, sequence: Integer, status: String, bytes: Integer) -> instance
+      end
+      class Resume < Data
+        attr_reader offset: Integer
+        def self.new: (offset: Integer) -> instance
+      end
+      class Output < Data
+        attr_reader offset: Integer
+        attr_reader bytes: String
+        def self.new: (offset: Integer, bytes: String) -> instance
+      end
+      class Gap < Data
+        attr_reader from: Integer
+        attr_reader to: Integer
+        def self.new: (from: Integer, to: Integer) -> instance
+        def message: () -> String
+      end
+      module Protocol
+        def self.encode: (Input | Resume | Output | Gap | Receipt) -> String
+        def self.decode: (String) -> (Input | Resume | Output | Gap | Receipt)
+      end
+      class Receiver
+        def initialize: () -> void
+        attr_reader offset: Integer
+        def resume: () -> String
+        def input: (String) -> String
+        def receive: (String) -> Array[Output | Gap | Receipt]
+      end
+      class Window
+        def initialize: (max_bytes: Integer, max_age: Numeric, clock: ^() -> Numeric) -> void
+        attr_reader end_offset: Integer
+        attr_reader retained_bytes: Integer
+        def append: (String, retain: bool) -> nil
+        def next_frame: (Integer) -> (Output | Gap | nil)
+        def expire: () -> nil
+        def clear: () -> nil
+      end
+      def initialize: (connection: WebrtcConnection, context: ExecutionContext, ?window_bytes: Integer, ?window_seconds: Numeric, ?clock: ^() -> Numeric) -> void
+      def write_output: (String) -> nil
+      def acknowledge_input: (Integer) -> nil
+      def poll: () -> WebrtcTransport::Poll
+      def close: () -> nil
+    end
+  end
+end

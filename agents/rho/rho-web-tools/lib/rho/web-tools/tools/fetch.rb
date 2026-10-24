@@ -39,8 +39,8 @@ module Rho
         DESCRIPTION =
           "Fetches content from a specified URL. The URL must be a fully-formed valid URL (http:// or https://). " \
           "HTML is converted to markdown; other text is returned as-is; an image or other binary is saved to a " \
-          "file you can read. Output is truncated to #{Rho::Runner::Truncation::DEFAULT_MAX_LINES} lines or " \
-          "#{Rho::Runner::Truncation.format_size(Rho::Runner::Truncation::DEFAULT_MAX_BYTES)} (whichever is hit first); if truncated, the full " \
+          "file you can read. Output is truncated to #{Rho::Env::Truncation::DEFAULT_MAX_LINES} lines or " \
+          "#{Rho::Env::Truncation.format_size(Rho::Env::Truncation::DEFAULT_MAX_BYTES)} (whichever is hit first); if truncated, the full " \
           "page is saved to a file named in the result — continue with read on it. This tool is read-only and does " \
           "not modify any files. A redirect to another site is reported, not followed — call again with the new URL. " \
           "Use this tool when you need to retrieve and analyze web content. " \
@@ -102,7 +102,7 @@ module Rho
             " #{klass.name.delete_prefix("Net::HTTP").gsub(/(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/, " ")}"
           end
 
-          def size(bytes) = Rho::Runner::Truncation.format_size(bytes)
+          def size(bytes) = Rho::Env::Truncation.format_size(bytes)
         end
 
         def initialize(env:, settings: Rho::WebTools.settings, log: Rho::WebTools.log)
@@ -110,23 +110,23 @@ module Rho
         end
 
         def call(args)
-          Rho::Runner::ExecutionContext.current&.raise_if_cancelled!
+          Rho::Env::ExecutionContext.current&.raise_if_cancelled!
           url = args.fetch("url").to_s
           started = now
           page = Client.new(allow_private_network: @settings.fetch("allow_private_network")).get(url)
           answer(page, started)
         rescue Refused => error
           log&.info("web.refused", host: host_of(url), reason: error.reason.to_s)
-          Rho::Runner::Result.error(error.message, structure(url: url))
+          Rho::Env::Result.error(error.message, structure(url: url))
         rescue Redirected => error
           log&.info("web.refused", host: host_of(url), reason: "redirect")
-          Rho::Runner::Result.error(error.message, structure(url: url, final_url: error.location, status: error.status))
+          Rho::Env::Result.error(error.message, structure(url: url, final_url: error.location, status: error.status))
         rescue TooLarge => error
           log&.info("web.refused", host: host_of(url), reason: "too_large")
-          Rho::Runner::Result.error(error.message, structure(url: url, bytes: error.bytes))
+          Rho::Env::Result.error(error.message, structure(url: url, bytes: error.bytes))
         rescue Unreachable, Render::Unrenderable => error
           log&.warn("web.failed", host: host_of(url), error_class: error.class.name, ms: elapsed(started))
-          Rho::Runner::Result.error(error.message, structure(url: url))
+          Rho::Env::Result.error(error.message, structure(url: url))
         end
 
         private
@@ -162,7 +162,7 @@ module Rho
           def answered(page, started)
             log&.info("web.fetch", host: host_of(page.final_url), status: page.status, content_type: page.media_type,
               bytes: page.bytes, rendered_bytes: 0, redirects: page.redirects, ms: elapsed(started))
-            Rho::Runner::Result.error(self.class.answered(page), structure(page: page))
+            Rho::Env::Result.error(self.class.answered(page), structure(page: page))
           end
 
           # THE BOUND AND THE SPILL: `truncate_head` with the runner's
@@ -171,11 +171,11 @@ module Rho
           # verbatim, with `format_size`'s spelling; the path rides
           # `files:` so a client fetches the page as a capture.
           def text(page, rendering)
-            truncation = Rho::Runner::Truncation.truncate_head(rendering.text)
+            truncation = Rho::Env::Truncation.truncate_head(rendering.text)
             spill = truncation.truncated ? write(".md", rendering.text) : nil
             body = truncation.first_line_exceeds_limit ? "" : truncation.content
             content = "#{self.class.status_line(page, rendering)}\n\n#{body}#{footer(truncation, spill)}"
-            Rho::Runner::Result.ok(content, structure(page: page, truncation: truncation), files: spill ? [spill] : [])
+            Rho::Env::Result.ok(content, structure(page: page, truncation: truncation), files: spill ? [spill] : [])
           end
 
           def footer(truncation, spill)
@@ -197,7 +197,7 @@ module Rho
           # `.bin`; `read` on an image answers "image attached".
           def bytes(page, _rendering)
             path = write(extension(page), page.body)
-            Rho::Runner::Result.ok("#{WebTools.shorten(page.final_url, URL_MAX_BYTES)} — #{page.status} #{page.media_type}; " \
+            Rho::Env::Result.ok("#{WebTools.shorten(page.final_url, URL_MAX_BYTES)} — #{page.status} #{page.media_type}; " \
                                    "#{self.class.size(page.bytes)} saved to #{path}", structure(page: page), files: [path])
           end
 

@@ -9,7 +9,7 @@ class PackagePendingConfigurationTest < Minitest::Test
     path = source("pending", id: ID, restart_only: true)
     FileUtils.copy_file(File.join(path, "rho-extension.json"), File.join(path, "extension.json"))
     home = Rho::Home.resolve(base_url: "https://nexus.example", root: @root).prepare
-    home.write_settings("settings_version" => 1, "plugins" => {
+    home.write_settings("settings_version" => 2, "plugins" => {
       ID => { "source" => { "kind" => "path", "path" => File.join(path, "extension.rb") },
         "enabled" => true, "configuration_version" => 1, "configuration" => { "count" => 1 } },
     })

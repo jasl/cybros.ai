@@ -17,7 +17,7 @@ CI.run do
 
     group "Tests" do
       step "Tests: Rails", "bin/rails test"
-      step "Tests: Manual tooling", "bin/rails test ../e2e/manual"
+      step "Tests: Manual tooling", "bin/rails test ../e2e/products/manual"
       step "Tests: Seeds", "env RAILS_ENV=test bin/rails db:seed:replant"
       step "Tests: System", "env PARALLEL_WORKERS=1 bin/rails test:system"
     end

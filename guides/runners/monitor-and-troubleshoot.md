@@ -4,7 +4,7 @@
 
 ```sh
 rho status                         # on the runner
-docker exec rho-runner rho status  # in a container
+docker exec rho-env rho status  # in a container
 rho runners                        # from the agent's installation: eligible runners
 ```
 
@@ -34,7 +34,7 @@ Give containers a 30-second grace period. rho handles termination, stops the pro
 
 ## Logs and diagnostics
 
-- `docker logs rho-runner`, or the service manager's log on a host.
+- `docker logs rho-env`, or the service manager's log on a host.
 - `rho doctor --strict` checks the installed runtime and tools (Playwright, document tools) without making a model request.
 - `./cybros logs rho` for the stack's runner.
 

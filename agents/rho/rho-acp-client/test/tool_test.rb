@@ -20,10 +20,10 @@ class ToolTest < Minitest::Test
 
   def test_the_class_passes_the_runners_validation_and_carries_the_constants
     klass = Tool.build(rows)
-    validator = Rho::Runner::Extensions::Tool.validate(klass, extension: "rho.acp-client")
-    assert_nil Rho::Runner::InputSchema.refusal(validator, { "agent" => "codex", "prompt" => "hi" })
+    validator = Rho::Env::Extensions::Tool.validate(klass, extension: "rho.acp-client")
+    assert_nil Rho::Env::InputSchema.refusal(validator, { "agent" => "codex", "prompt" => "hi" })
     assert_equal "delegate_agent", klass::NAME
-    assert_equal Rho::Runner::Tools::Bash::EFFECT_PROFILE, klass::EFFECT_PROFILE
+    assert_equal Rho::Env::Tools::Bash::EFFECT_PROFILE, klass::EFFECT_PROFILE
     assert_equal 900_000, klass::TIMEOUT_MS, "the longest ENABLED clock; the disabled row's never"
     assert klass::INTERNAL_CLAMP
     assert_equal "Rho::AcpClient::Tools[delegate_agent]", klass.name
@@ -38,7 +38,7 @@ class ToolTest < Minitest::Test
     assert_equal %w[opencode codex], schema.dig("properties", "agent", "enum")
     assert_equal %w[agent prompt], schema.fetch("required")
     assert_predicate schema, :frozen?
-    Rho::Runner::InputSchema.compile(schema)
+    Rho::Env::InputSchema.compile(schema)
   end
 
   # The description is the rows' words in a fixed frame — one line per

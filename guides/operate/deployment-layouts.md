@@ -6,13 +6,16 @@ rho connects to Nexus and runs as a foreground service. Deploy it with Nexus in 
 | --- | --- | --- |
 | Combined Docker stack | Nexus and a complete rho on one Docker host | Inside the rho container by default |
 | [Dokploy](dokploy.md) | Nexus and rho with Dokploy-managed HTTPS and updates | Inside the rho container by default |
-| Host installation, full mode | A personal workstation or server connected to Nexus | As the host user running rho |
-| Agent mode plus separate runners | Browser and channel access on one machine, working files elsewhere | On each tool's declared runner |
-| Runner-only host or container | Another execution environment | On that runner; no conversation UI |
+| Host installation | A personal workstation or server connected to Nexus | As the host user running rho |
+| rho with independent executors | Browser and channel access on one machine, working files elsewhere | On each tool's declared runner |
+| Custom independent Runner | A shared execution environment | On its host or container |
 
 A runner uses the operating-system environment where it is deployed. A host, container or VM supplies its files, dependencies and isolation. A working directory is a starting location for tools, not a filesystem access boundary. One run can use several runners; changing a conversation's default affects future tool calls that omit a target and never copies files.
 
-Full mode's bundled Runner is reserved for that rho instance's eligible Main, Bot and Subagent work. Use an independent runner-only host or container to share an execution environment between rho instances. [Runner identity and scope](../runners/deploy.md#identity-and-scope) describes who may discover and use each Runner.
+rho's Local Runner is reserved for its Main Agent, Bots and Subagents. An independent
+Runner can share an environment across applications, but there is currently no
+separate first-party Runner executable. See [Runner identity and scope](../runners/deploy.md#identity-and-scope)
+for implementing or deploying an independent executor.
 
 ## The combined stack
 
@@ -79,14 +82,10 @@ Install with the host installer ([Connect a host installation](../get-started/co
 
 ```sh
 rho setup --nexus-url https://nexus.example
-rho server --mode full
+rho server
 ```
 
-| Mode | Browser page | Role |
-| --- | --- | --- |
-| `full` | Enabled by default | Agent and local runner |
-| `agent` | Enabled by default | Agent; select a separate runner for environment tools |
-| `runner` | None | Tool execution only |
+rho always serves the complete application with its Local execution environment.
 
 The daemon serves the browser page's static files itself; no Node, Deno or Bun process is needed. `RHO_API_ONLY=1` disables the page while keeping the control API.
 
@@ -98,7 +97,6 @@ Settings have one owner, `<RHO_HOME>/settings.json`, edited at runtime from the 
 | --- | --- |
 | `RHO_HOME` | Settings, instance identity, connections and logs; preserve for upgrades, never share between concurrent installations |
 | `RHO_NEXUS_URL` | Nexus API address for this home; recorded at first pairing |
-| `RHO_MODE` | `full`, `agent` or `runner` |
 | `RHO_BIND`, `--port`, `RHO_API_ONLY`, `RHO_WEBUI_ROOT`, `RHO_PUBLIC_URL` | How it listens and its registered OAuth callback origin |
 | `RHO_NEXUS_PUBLIC_URL` | Nexus origin reachable by the user's browser, when different from `RHO_NEXUS_URL` |
 | `RHO_TOOLS_ROOT`, `RHO_WORKSPACE`, `RHO_DEFAULT_MODEL`, `RHO_WEBUI_ACCESS` | Seeds for the corresponding saved settings |
@@ -108,30 +106,38 @@ Settings have one owner, `<RHO_HOME>/settings.json`, edited at runtime from the 
 A host server binds to loopback by default. Nexus accepts rho's `/auth/callback` URL on private LAN IP addresses and any valid port without extra registration. For a DNS name or public HTTPS origin, configure the exact callback in `NEXUS_OAUTH_REDIRECT_URIS`; this replaces the default allowed set. Provide a transport assertion on each rho start: `--expect-external-encryption` when TLS or an encrypted VPN fronts the socket, or `--unsafe-plaintext` for an explicitly chosen local/LAN HTTP deployment. rho does not terminate TLS.
 
 ```sh
-rho server --mode agent --bind 0.0.0.0 --port 7777 --expect-external-encryption
+rho server --bind 0.0.0.0 --port 7777 --expect-external-encryption
 ```
 
 A wider bind asks every browser for a Nexus sign-in by default. Where a browser cannot complete that flow, set an unlock password under **Settings › General › Opening this page**.
 
 When you change the access mode to **Open** or **Unlock password**, the browser making the change stays in. Other browsers unlocked under the previous mode must enter again under the current mode. Changing to **Nexus sign-in** requires every unlocked browser, including yours, to sign in. Changing the unlock password ends other unlocked sessions while keeping the page that changed it. Browsers already signed in with Nexus keep their Human sessions and authority.
 
-## A separate runner container
+## A separate rho container
 
-The published rho image starts in runner mode unless overridden. Mount a project writable by the image's UID 1000:
+The published rho image starts the complete application. Mount a project writable by the image's UID 1000:
 
 ```sh
-docker run -d --name rho-runner --restart unless-stopped --stop-timeout 30 \
+docker run -d --name rho --restart unless-stopped --stop-timeout 30 \
   -e RHO_NEXUS_URL=https://nexus.example \
-  -e RHO_DISPLAY_NAME="project runner" \
-  -v rho-runner-home:/var/lib/rho \
+  -e RHO_DISPLAY_NAME="project assistant" \
+  -v rho-home:/var/lib/rho \
   -v "$PWD:$PWD" -w "$PWD" -e RHO_TOOLS_ROOT="$PWD" \
   docker.io/jasl123/cybros-rho:latest
 
-docker exec rho-runner rho connect
-docker exec rho-runner rho status
+docker exec rho rho connect
+docker exec rho rho status
 ```
 
-Complete the device flow printed by `connect`, then select the runner from the agent's installation with `rho runners use RUNNER_ID`. The runner needs outbound access to Nexus and publishes no control port. Use a separate state volume for every instance. The image's working directory is `/home/runner`, its OS home `/home/rho`, and persistent state `/var/lib/rho`; it runs as UID 1000 without sudo. A Nexus on a Docker Desktop host is reachable as `host.docker.internal`.
+Complete the device flow printed by `connect`. Run conversations through this
+application, for example with `docker exec rho rho run 'Describe this project'`.
+Its Local Runner belongs to this application and cannot be selected by another rho.
+The command above publishes no browser port; use the CLI or configure an explicit
+browser-facing bind and transport policy as described above.
+
+Use a separate state volume for every instance. The image's working directory is
+`/home/runner`, its OS home `/home/rho`, and persistent state `/var/lib/rho`. A Nexus
+on a Docker Desktop host is reachable as `host.docker.internal`.
 
 ## Stop, update and recover
 

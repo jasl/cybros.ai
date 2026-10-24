@@ -33,9 +33,9 @@ module Rho
 
         def call(_args)
           @env.raise_if_cancelled!
-          Rho::Runner::Result.ok(JSON.generate(@core.packages))
+          Rho::Env::Result.ok(JSON.generate(@core.packages))
         rescue Rho::Error => error
-          Rho::Runner::Result.error(error.message)
+          Rho::Env::Result.error(error.message)
         end
       end
 
@@ -68,16 +68,16 @@ module Rho
         def call(args)
           @env.raise_if_cancelled!
           missing = ACTION_FIELDS.fetch(args.fetch("action")) - args.keys
-          return Rho::Runner::Result.error("#{args.fetch("action")} requires #{missing.join(", ")}") unless missing.empty?
+          return Rho::Env::Result.error("#{args.fetch("action")} requires #{missing.join(", ")}") unless missing.empty?
 
           document = @core.manage_package(**args.transform_keys(&:to_sym))
           if document["passed"] == false
-            Rho::Runner::Result.error(JSON.generate(document))
+            Rho::Env::Result.error(JSON.generate(document))
           else
-            Rho::Runner::Result.ok(JSON.generate(document))
+            Rho::Env::Result.ok(JSON.generate(document))
           end
         rescue Rho::Error => error
-          Rho::Runner::Result.error(error.message)
+          Rho::Env::Result.error(error.message)
         end
       end
     end

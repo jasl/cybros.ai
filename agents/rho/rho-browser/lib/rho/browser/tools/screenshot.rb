@@ -41,7 +41,7 @@ module Rho
             shot = File.join(dir, "#{CAPTURE_PREFIX}-#{SecureRandom.hex(8)}.png")
             page.screenshot(path: shot, fullPage: full_page)
             path = @env.keep_capture(shot, CAPTURE_PREFIX)
-            Rho::Runner::Result.ok(noticed("Saved a screenshot of #{page.url} to #{path}", fresh), files: [path])
+            Rho::Env::Result.ok(noticed("Saved a screenshot of #{page.url} to #{path}", fresh), files: [path])
           end
         end
       end

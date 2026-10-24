@@ -8,8 +8,7 @@ module Rho
     # child's copy and a side's fork copy share, so their turns find the
     # parent's servers with no row of their own — bound by the door's
     # `mcp:` member, served on the AGENT slot (they must run beside the
-    # editor; the slot exists in full and agent mode, so `--runner ID`
-    # works), and closed on the anchor's `:host_ended` and the daemon's
+    # editor, independently of the selected Runner), and closed on the anchor's `:host_ended` and the daemon's
     # `:shutdown`. The table holds what the ONE registrar (rho-mcp's,
     # `Extensions::Registrar`) answered: the SET, closed and replaced
     # whole, and the entries this anchor SERVES after the collision
@@ -101,7 +100,7 @@ module Rho
       # drop; an equal digest → no-op (the held report, nothing changed);
       # else the held set is closed FIRST (a stdio server re-launched over
       # its predecessor's ports), the registrar asked — its ArgumentError
-      # is the door's 400, its own `Rho::Runner::Error` the door's 503
+      # is the door's 400, its own `Rho::Env::Error` the door's 503
       # `daemon_stopping`, the anchor then holding nothing either way (the
       # table moved: `Environments#bind_servers` reads that off `digest`)
       # — and the new set held, judged and reported. `changed` says the
@@ -123,7 +122,7 @@ module Rho
         begin
           candidates, validation_faults = admit(anchor, set)
           served, faults = judge(anchor, candidates, validation_faults)
-        rescue Rho::Runner::Extensions::RegistrationError => error
+        rescue Rho::Env::Extensions::RegistrationError => error
           # THE SEAM BROKEN (a class without `SERVER_KEY`): the registrar's
           # own bug, raised through the door as its 500 and logged by name
           # here — the set it answered is closed on the way out (a stdio
@@ -221,7 +220,7 @@ module Rho
         # The registrar's answer; the door's 400 for a list it refuses (its
         # ArgumentError), and the door's 503 `daemon_stopping` for a
         # registrar that will not open a set at all (its own
-        # `Rho::Runner::Error`): the daemon does not know rho-mcp's classes,
+        # `Rho::Env::Error`): the daemon does not know rho-mcp's classes,
         # and the one raiser the seam names is its shutdown ladder —
         # `Rho::Mcp::Closed` once it ran — so the refusal is the daemon's
         # own sentence and the registrar's rides the log line.
@@ -230,7 +229,7 @@ module Rho
         rescue ArgumentError => error
           @log&.warn("mcp_servers.malformed", anchor: anchor, detail: error.message)
           Daemon::Refusal.malformed(error.message)
-        rescue Rho::Runner::Error => error
+        rescue Rho::Env::Error => error
           @log&.warn("mcp_servers.registrar_closed", anchor: anchor, error_class: error.class.name, detail: error.message)
           Daemon::Refusal.stopping
         end
@@ -243,7 +242,7 @@ module Rho
           faults = {}
           candidates = keyed.filter_map do |row, klass|
             [row, entry_over(klass)].freeze
-          rescue Rho::Runner::Extensions::RegistrationError => error
+          rescue Rho::Env::Extensions::RegistrationError => error
             faults[row] = error.message
             @log&.warn("mcp_servers.class_refused", anchor: anchor, detail: error.message, row: row)
             nil
@@ -269,8 +268,8 @@ module Rho
 
         def entry_over(klass)
           extension = @registrar.extension
-          validator = Rho::Runner::Extensions::Tool.validate(klass, extension: extension)
-          Rho::Runner::Extensions::Registry::Entry.new(
+          validator = Rho::Env::Extensions::Tool.validate(klass, extension: extension)
+          Rho::Env::Extensions::Registry::Entry.new(
             name: klass::NAME.to_s, klass: klass, extension: extension, source: "conversation", serves: :agent,
             validator: validator
           )
@@ -299,7 +298,7 @@ module Rho
           return klass::SERVER_KEY.to_s if klass.const_defined?(:SERVER_KEY, false)
 
           named = klass.const_defined?(:NAME, false) ? klass::NAME.to_s : klass.inspect
-          raise Rho::Runner::Extensions::RegistrationError,
+          raise Rho::Env::Extensions::RegistrationError,
             "#{named} carries no SERVER_KEY: a conversation server's class names its row (#{@registrar.extension})"
         end
 

@@ -68,11 +68,11 @@ module Rho
 
     # The runner slot's forwarding handle: the `Toolsets` duck the runner
     # gem reads, over the `Toolsets` of the moment.
-    class Slot < Rho::Runner::Toolsets
+    class Slot < Rho::Env::Toolsets
       def initialize: (Environments environments, ?agent: bool) -> void
-      def for: (untyped task) -> Rho::Runner::Placement
+      def for: (untyped task) -> Rho::Env::Placement
       def names: () -> Array[String]
-      def zero: () -> Rho::Runner::Placement
+      def zero: () -> Rho::Env::Placement
       def ports: () -> (^(String?) -> Extensions::Environment::FsPort?)?
       def extras: () -> Servers?
     end
@@ -83,13 +83,13 @@ module Rho
 
       class Held < ::Data
         attr_reader set: untyped
-        attr_reader candidates: Array[[String, Rho::Runner::Extensions::Registry::Entry]]
+        attr_reader candidates: Array[[String, Rho::Env::Extensions::Registry::Entry]]
         attr_reader validation_faults: Hash[String, String]
-        attr_reader entries: Hash[String, Rho::Runner::Extensions::Registry::Entry]
+        attr_reader entries: Hash[String, Rho::Env::Extensions::Registry::Entry]
         attr_reader digest: String
         attr_reader faults: Hash[String, String]
-        def self.new: (set: untyped, candidates: Array[[String, Rho::Runner::Extensions::Registry::Entry]],
-                       validation_faults: Hash[String, String], entries: Hash[String, Rho::Runner::Extensions::Registry::Entry], digest: String,
+        def self.new: (set: untyped, candidates: Array[[String, Rho::Env::Extensions::Registry::Entry]],
+                       validation_faults: Hash[String, String], entries: Hash[String, Rho::Env::Extensions::Registry::Entry], digest: String,
                        faults: Hash[String, String]) -> instance
       end
 
@@ -101,14 +101,14 @@ module Rho
 
       def self.digest: (untyped entries) -> String
       def initialize: (monitor: untyped, log: untyped, registrar: Extensions::Registrar?,
-                       served: Rho::Runner::Extensions::Registry) -> void
+                       served: Rho::Env::Extensions::Registry) -> void
       def registrar?: () -> bool
       attr_reader registrar: Extensions::Registrar?
-      attr_reader served: Rho::Runner::Extensions::Registry
-      def configure: (registrar: Extensions::Registrar?, served: Rho::Runner::Extensions::Registry) -> Servers
+      attr_reader served: Rho::Env::Extensions::Registry
+      def configure: (registrar: Extensions::Registrar?, served: Rho::Env::Extensions::Registry) -> Servers
       def bind: (String anchor, untyped entries) -> (Bound | Daemon::Refusal)
       def report: (String? anchor) -> Array[Hash[Symbol, untyped]]
-      def call: (String? anchor) -> [Hash[String, Rho::Runner::Extensions::Registry::Entry], String?]
+      def call: (String? anchor) -> [Hash[String, Rho::Env::Extensions::Registry::Entry], String?]
       def owner_of: (String name) -> String?
       def names: () -> Array[String]
       def names_for: (String? anchor) -> Array[String]
@@ -132,25 +132,25 @@ module Rho
     end
 
     def initialize: (
-      home: Home, config: config, registry: Rho::Runner::Extensions::Registry, log: untyped, clock: ^() -> Time,
+      home: Home, config: config, registry: Rho::Env::Extensions::Registry, log: untyped, clock: ^() -> Time,
       default_root: ^() -> String?, member_plane: ^(?host_public_id: String?, ?require_workspace: bool, ?workspace_public_id: String?) -> Extensions::MemberPlane?,
       own_runner: ^(String?) -> bool,
       ?processes: untyped, ?checkpoints: bool, ?registrar: Extensions::Registrar?,
-      ?served: Rho::Runner::Extensions::Registry?, ?servers_changed: (^() -> untyped)?, ?own_runner_public_id: ^() -> String?
+      ?served: Rho::Env::Extensions::Registry?, ?servers_changed: (^() -> untyped)?, ?own_runner_public_id: ^() -> String?
     ) -> void
     def toolsets: () -> Slot
-    def configure: (config: config, ?registry: Rho::Runner::Extensions::Registry,
-                    ?agent_registry: Rho::Runner::Extensions::Registry?, ?registrar: Extensions::Registrar?,
-                    ?served: Rho::Runner::Extensions::Registry, ?checkpoints: bool) -> Environments
-    def current_toolsets: () -> Rho::Runner::Toolsets
-    def current_agent_toolsets: () -> Rho::Runner::Toolsets
-    def zero: () -> Rho::Runner::Placement
-    def rebuild_zero: () -> Rho::Runner::Placement
+    def configure: (config: config, ?registry: Rho::Env::Extensions::Registry,
+                    ?agent_registry: Rho::Env::Extensions::Registry?, ?registrar: Extensions::Registrar?,
+                    ?served: Rho::Env::Extensions::Registry, ?checkpoints: bool) -> Environments
+    def current_toolsets: () -> Rho::Env::Toolsets
+    def current_agent_toolsets: () -> Rho::Env::Toolsets
+    def zero: () -> Rho::Env::Placement
+    def rebuild_zero: () -> Rho::Env::Placement
     def zero_checkpoints: () -> untyped
-    def checkpoint_stores: (?String? id) -> Array[Runner::Checkpoints::Store]
-    def agent_toolsets: (Rho::Runner::Extensions::Registry registry) -> Slot
+    def checkpoint_stores: (?String? id) -> Array[Env::Checkpoints::Store]
+    def agent_toolsets: (Rho::Env::Extensions::Registry registry) -> Slot
     def read: (String conversation, ?plane: Extensions::MemberPlane?, ?run_public_id: String?, ?parent: String?, ?runner: String?) -> Resolved
-    def binding_for: (String conversation, ?plane: Extensions::MemberPlane?, ?run_public_id: String?, ?parent: String?, ?workspace_public_id: String?, ?runner: String?) -> Rho::Runner::Environment::Binding?
+    def binding_for: (String conversation, ?plane: Extensions::MemberPlane?, ?run_public_id: String?, ?parent: String?, ?workspace_public_id: String?, ?runner: String?) -> Rho::Env::Environment::Binding?
     def bind: (String conversation, root: String, directories: Array[String], ?plane: Extensions::MemberPlane?, ?runner: String?, ?initialize_only: bool) -> (Resolved | Daemon::Refusal)
     def clear: (String conversation, ?plane: Extensions::MemberPlane?, ?runner: String?) -> (Resolved | Daemon::Refusal)
     def remember_copy: (String conversation, untyped binding, ?runner: String?) -> untyped

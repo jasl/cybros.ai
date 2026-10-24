@@ -37,7 +37,7 @@ Gem::Specification.new do |spec|
       (f.end_with?(".md") && f != "README.md")
   end
 
-  spec.add_dependency "rho-runner"
+  spec.add_dependency "rho-env"
   # THE OFFICIAL CLIENT, never a hand-rolled JSON-RPC layer: `MCP::Client`
   # on `MCP::Client::Stdio` / `MCP::Client::HTTP`. Pinned to the minor
   # because rho-mcp SUBCLASSES the stdio transport (four members, three public on 1.8 —

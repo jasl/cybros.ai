@@ -374,7 +374,7 @@ class DaemonEnvironmentsTest < Minitest::Test
     agent = table.agent_toolsets(registry)
     before = runner.for(task("c-1", binding: binding(@other)))
     original_agent = agent.for(task("c-1"))
-    empty = Rho::Runner::Extensions::Loader.call(builtin: []).registry
+    empty = Rho::Env::Extensions::Loader.call(builtin: []).registry
 
     table.configure(config: Rho::Config.from_hash({ "plugins" => { "rho.coding" => { "configuration_version" => 1, "configuration" => { "bash_timeout_seconds" => 7 } } } }),
       registry: empty, agent_registry: empty)
@@ -510,7 +510,7 @@ class DaemonEnvironmentsTest < Minitest::Test
     assert_equal 1, log_text.scan(/event=fs_port\.dropped .*anchor=c-1 reason=host_ended/).length
 
     port = table.port_for("c-2")
-    error = assert_raises(Rho::Runner::FsPort::Unavailable) { port.read_text("/srv/a", line: 1, limit: 1) }
+    error = assert_raises(Rho::Env::FsPort::Unavailable) { port.read_text("/srv/a", line: 1, limit: 1) }
     assert_same port, table.port_for("c-2"), "the client raises; the runner's ask drops"
     port.drop(error.message)
     assert_nil table.port_for("c-2"), "dropped on Unavailable"

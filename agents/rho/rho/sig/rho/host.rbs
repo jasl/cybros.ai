@@ -302,8 +302,8 @@ module Rho
     end
     ASSEMBLED_MECHANISMS: Array[String]
     def self?.steps: (
-      prompt: untyped, model: untyped, registry: Rho::Runner::Extensions::Registry,
-      ?environment: Rho::Runner::Environment?, ?instructions: untyped, ?system_prompt: String, ?key: String,
+      prompt: untyped, model: untyped, registry: Rho::Env::Extensions::Registry,
+      ?environment: Rho::Env::Environment?, ?instructions: untyped, ?system_prompt: String, ?key: String,
       ?kernel_tools: Array[String], ?kernel_aliases: Array[Hash[String, untyped]],
       ?runner_executor_public_ids: Array[String], ?runner_tool_names: Array[String]?, ?mcp_tools: Array[Hash[String, String]],
       ?served: untyped, ?prompt_mechanism: untyped, ?hints: untyped, ?code_mode: bool, ?runner_executor_public_id: String?,
@@ -312,12 +312,12 @@ module Rho
     def self?.assembled?: (untyped mechanism) -> bool
     def self?.led: (untyped lead, untyped prompt) -> String
     def self?.lead: (
-      registry: Rho::Runner::Extensions::Registry, ?environment: Rho::Runner::Environment?,
+      registry: Rho::Env::Extensions::Registry, ?environment: Rho::Env::Environment?,
       ?instructions: untyped, ?hints: untyped, ?code_mode: bool, ?kernel_environment: bool, ?environment_snapshot: untyped,
       ?root: String?, ?directories: Array[String]
     ) -> String
     def self?.instructions: (
-      registry: Rho::Runner::Extensions::Registry, ?environment: Rho::Runner::Environment?,
+      registry: Rho::Env::Extensions::Registry, ?environment: Rho::Env::Environment?,
       ?instructions: untyped, ?system_prompt: String, ?hints: untyped, ?code_mode: bool
     ) -> String
     def self?.hint_block: (untyped hints) -> String?
@@ -329,7 +329,7 @@ module Rho
     def self?.remote_instructions: (untyped environment, ?instructions: untyped, ?system_prompt: String, ?hints: untyped) -> String
     def self?.snapshot_block: (untyped environment) -> String
     def self?.declaration: (
-      registry: Rho::Runner::Extensions::Registry, ?kernel_tools: Array[String], ?kernel_aliases: Array[Hash[String, untyped]],
+      registry: Rho::Env::Extensions::Registry, ?kernel_tools: Array[String], ?kernel_aliases: Array[Hash[String, untyped]],
       ?runner_executor_public_ids: Array[String], ?runner_tool_names: Array[String]?, ?mcp_tools: Array[Hash[String, String]],
       ?compaction: Hash[String, untyped],
       ?image_model: String?, ?remote: Array[untyped], ?roots: Array[String], ?default_model: String?, ?grants: Array[Hash[String, untyped]],
@@ -342,21 +342,21 @@ module Rho
     def self?.unique_entries: (Array[untyped] lists) -> Array[Hash[String, untyped]]
     def self?.digest: (untyped entries) -> String
     def self?.announcement: (
-      registry: Rho::Runner::Extensions::Registry, ?extras: Array[Hash[String, untyped]]
+      registry: Rho::Env::Extensions::Registry, ?extras: Array[Hash[String, untyped]]
     ) -> Array[Hash[String, untyped]]
     def self?.environment_document: (
-      registry: Rho::Runner::Extensions::Registry, environment: Rho::Runner::Environment, ?booted_at: String?
+      registry: Rho::Env::Extensions::Registry, environment: Rho::Env::Environment, ?booted_at: String?
     ) -> Hash[String, untyped]
     def self?.documents: (
-      registry: Rho::Runner::Extensions::Registry, environment: Rho::Runner::Environment
+      registry: Rho::Env::Extensions::Registry, environment: Rho::Env::Environment
     ) -> Array[Hash[String, untyped]]
     def self?.surface: (Hash[String, untyped] task) -> Hash[String, untyped]
     def self?.environment_block: (
-      Rho::Runner::Extensions::Registry registry, Rho::Runner::Environment environment,
+      Rho::Env::Extensions::Registry registry, Rho::Env::Environment environment,
       ?kernel_environment: bool, ?snapshot: untyped
     ) -> String?
     def self?.tool_lines: (
-      Rho::Runner::Extensions::Registry registry, ?code_mode: bool
+      Rho::Env::Extensions::Registry registry, ?code_mode: bool
     ) -> String?
   end
 

@@ -71,7 +71,7 @@ class TelegramBotConfigurationTest < Minitest::Test
   end
 
   def test_preparation_changes_only_the_selected_bot_and_does_not_read_a_connection_token
-    config = Rho::Config.from_hash({ "mode" => "agent", "plugins" => { Rho::IngressTelegram::NAME => {
+    config = Rho::Config.from_hash({ "plugins" => { Rho::IngressTelegram::NAME => {
       "enabled" => true, "configuration" => document,
     } } })
     configuration = Rho::IngressTelegram::Configuration.new(config: config, clients: ->(*) { raise "unexpected Telegram IO" })

@@ -4,9 +4,7 @@ module Rho
 
   AGENT_IDENTIFIER: String
 
-  REGISTRATION_IDENTIFIER: String
 
-  STANDALONE_REGISTRATION_IDENTIFIER: String
 
   def self.default_display_name: () -> String
 
@@ -157,12 +155,10 @@ module Rho
     def log_path: () -> String
     def cache_root: () -> String
     def users_root: () -> String
-    def runners_root: () -> String
     def conventions_path: () -> String
     def protected_members: () -> Array[String]
     def mcp_root: () -> String
     def identity_work_root: (String user_public_id) -> String
-    def runner_work_root: (String executor_public_id) -> String
     def boot_lock_path: () -> String
     def announcement_path: () -> String
     def host_cache_path: (String user_public_id) -> String
@@ -187,7 +183,6 @@ module Rho
     def extensions_root: () -> String
     def environment_path: () -> String
     def identity_root: (String user_public_id) -> String
-    def runner_identity_root: (String executor_public_id) -> String
     def prepare: () -> Home
     def inspect: () -> String
     def to_s: () -> String
@@ -460,7 +455,6 @@ module Rho
     ENV_KEYS: Hash[String, String]
     DEFAULTS: Hash[String, untyped]
     SWITCHES: Array[String]
-    MODES: Array[String]
     WEBUI_ACCESS: Array[String]
     attr_reader bind: String?
     attr_reader api_only: bool
@@ -473,7 +467,7 @@ module Rho
     attr_reader adaptations: String
     attr_reader adaptations_dir: String?
     attr_reader executor_socket: bool
-    attr_reader mode: String
+
     attr_reader runner: String?
     attr_reader workspace: String?
     attr_reader fallback_models: Array[String]
@@ -515,7 +509,7 @@ module Rho
       attr_reader adaptations: String
       attr_reader adaptations_dir: String?
       attr_reader executor_socket: bool
-      attr_reader mode: String
+
       attr_reader runner: String?
       attr_reader workspace: String?
       attr_reader fallback_models: Array[String]

@@ -1,6 +1,6 @@
 # Nexus + rho on Docker
 
-This installs Nexus, PostgreSQL and a full-mode rho on one Docker host. It uses
+This installs Nexus, PostgreSQL and a complete rho on one Docker host. It uses
 published `jasl123/cybros-nexus`, `jasl123/cybros-rho` and `jasl123/cybros-updater` images for
 `linux/amd64` and `linux/arm64`. Linux Docker Engine with Compose v2 and macOS
 Docker Desktop are supported. The installer downloads images rather than
@@ -698,7 +698,7 @@ the delivered installer.
 Set `CYBROS_TEST_COMPOSE_CONFIG=1` to additionally parse the generated files with
 an installed Docker Compose; this is read-only and does not contact the daemon.
 
-The opt-in [stack installation E2E](../../e2e/test/stack_installation_test.rb)
+The opt-in [stack installation E2E](../../e2e/products/test/stack_installation_test.rb)
 targets a fresh, disposable installed stack. It exercises browser account setup,
 Nexus OAuth login and Agent/Runner connection, provider configuration, model discovery and a
 WebUI conversation against a local fake provider using a synthetic key. No

@@ -41,7 +41,7 @@ rho runners use RUNNER_ID
 rho runners use --none
 ```
 
-These settings affect new conversations. Selecting another runner does not transfer files. `--none` clears the saved choice: full mode then uses its own runner, while agent-only mode needs an explicit runner for environment tools.
+These settings affect new conversations. Selecting another runner does not transfer files. `--none` clears the saved choice: rho then uses its Local environment.
 
 For a single terminal request use `--workspace`, `--runner` and `--dir` instead of changing defaults; the directory is on the selected runner.
 

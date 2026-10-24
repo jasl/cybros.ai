@@ -8,17 +8,25 @@ module ModelSelection
         FROM jsonb_each(CASE WHEN jsonb_typeof(model_overrides -> 'entries') = 'object'
           THEN model_overrides -> 'entries' ELSE '{}'::jsonb END)), '{}'::jsonb) AS model_operations
     SQL
+    RETAINED = <<~SQL.squish.freeze
+      model_overrides #> '{retained_catalog,provider}' AS retained_provider,
+      ARRAY(SELECT jsonb_object_keys(CASE
+        WHEN jsonb_typeof(model_overrides #> '{retained_catalog,models}') = 'object'
+        THEN model_overrides #> '{retained_catalog,models}' ELSE '{}'::jsonb END)) AS retained_model_refs
+    SQL
 
     def self.read(account:, snapshot:, provider_id: nil)
       scope = ModelProviderConfig.where(account: account)
       scope = scope.where(provider_id: provider_id) if provider_id
-      policies = scope.select(:provider_id, :enabled, :lock_version, :provider_definition, Arel.sql(OPERATIONS)).index_by(&:provider_id)
+      policies = scope.select(:provider_id, :enabled, :lock_version, :provider_definition,
+        Arel.sql(OPERATIONS), Arel.sql(RETAINED)).index_by(&:provider_id)
       providers = provider_id ? snapshot.providers.slice(provider_id) : snapshot.providers
       refs = snapshot.models.keys.group_by { |ref| Nexus::ModelRef.parse(ref).provider_id }
       counts = refs.transform_values(&:length)
       policies.each_value do |policy|
         providers = apply_definition(providers, policy, account)
         configured = Set.new(refs.fetch(policy.provider_id, []))
+        configured.merge(policy[:retained_model_refs].select { |ref| ModelProviderConfig.provider_lane_ref?(policy.provider_id, ref) })
         policy[:model_operations].each do |ref, op|
           next unless ModelProviderConfig.provider_lane_ref?(policy.provider_id, ref)
 
@@ -34,9 +42,10 @@ module ModelSelection
     end
 
     def self.apply_definition(providers, policy, account)
-      return providers if policy.provider_definition.nil?
+      authored = policy.provider_definition || (policy[:retained_provider] unless providers.key?(policy.provider_id))
+      return providers if authored.nil?
 
-      definition = Nexus::ProviderDefinition.normalize(policy.provider_definition, provider_id: policy.provider_id)
+      definition = Nexus::ProviderDefinition.normalize(authored, provider_id: policy.provider_id)
       ModelCatalog::CatalogValidation.validate_provider_definition(policy.provider_id, definition)
       providers.merge(policy.provider_id => definition)
     rescue Nexus::ProviderDefinition::Invalid, ModelCatalog::CompileError

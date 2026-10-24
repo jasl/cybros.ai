@@ -349,19 +349,17 @@ class DaemonBootTest < Minitest::Test
   end
 
   # A public page cannot carry the shell-capable local control credential.
-  def test_the_page_carries_no_credential_in_either_browser_mode
-    %w[full agent].each do |mode|
-      bundle = File.join(@root, "bundle-#{mode}")
-      FileUtils.mkdir_p(bundle)
-      File.write(File.join(bundle, "index.html"), "<!doctype html><p>rho</p>")
-      daemon = boot(config: Rho::Config.from_hash({ "mode" => mode }), webui_root: bundle,
-        root: File.join(@root, "home-#{mode}"))
+  def test_the_page_carries_no_credential
+    bundle = File.join(@root, "bundle-application")
+    FileUtils.mkdir_p(bundle)
+    File.write(File.join(bundle, "index.html"), "<!doctype html><p>rho</p>")
+    daemon = boot(config: Rho::Config.from_hash({}), webui_root: bundle,
+      root: File.join(@root, "home-application"))
 
-      page = get(daemon, "/").body
-      refute_includes page, bearer(daemon)
-      refute_includes page, Rho::Daemon::LOCAL_BEARER_PREFIX
-      assert_includes page, "<p>rho</p>", "and it is still the page"
-    end
+    page = get(daemon, "/").body
+    refute_includes page, bearer(daemon)
+    refute_includes page, Rho::Daemon::LOCAL_BEARER_PREFIX
+    assert_includes page, "<p>rho</p>", "and it is still the page"
   end
 
   # NOTHING IS PRINTED AT BOOT. A supervisor merges every process's stdout
@@ -396,7 +394,7 @@ class DaemonBootTest < Minitest::Test
 
     body = JSON.parse(request(daemon, :get, "/status", token: bearer(daemon)).body)
     assert_equal "disconnected", body["state"]
-    assert_equal "full", body["mode"], "the mode is a boot fact, said before any connection exists"
+    refute body.key?("mode")
     refute body.key?("identity"), "a daemon with no credentials must not describe an identity"
     assert_equal({ "state" => "pending" }, body["workspace"],
       "a live daemon always carries one workspace block, and before adoption it is pending")

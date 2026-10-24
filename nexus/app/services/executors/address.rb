@@ -131,8 +131,8 @@ module Executors
       end
     end
 
-    def serves?(executor, name, principal, role:)
-      executor.present? && executor.served?(name, role: role) && executor.eligible_for_role?(role, principal)
+    def serves?(executor, name, principal, role:, readiness: nil)
+      executor.present? && executor.served?(name, role: role) && executor.eligible_for_role?(role, principal, readiness: readiness)
     end
 
     # Derived at each start, never frozen on the Run: a reconnected

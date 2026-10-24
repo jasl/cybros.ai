@@ -327,8 +327,8 @@ class HouseholdLedgerTest < Minitest::Test
     client = Client.new(workspace_row: ScopedWorkspace.new(conversations: conversations))
     plane = ->(**) { Rho::Extensions::MemberPlane.new(client: client, workspace_public_id: "fixture-workspace") }
     resolve = lambda do |current, id|
-      current = Rho::Runner::ExecutionContext.new(conversation_public_id: current, workspace_public_id: "fixture-workspace")
-      Rho::Runner::ExecutionContext.with(current) do
+      current = Rho::Env::ExecutionContext.new(conversation_public_id: current, workspace_public_id: "fixture-workspace")
+      Rho::Env::ExecutionContext.with(current) do
         Extension::Session.new(member_plane: plane, source_conversation: @session.conversation, room: "hall", work_id: id)
       end
     end
@@ -357,9 +357,9 @@ class HouseholdLedgerTest < Minitest::Test
       assert_equal "fixture-workspace", workspace_public_id
       Rho::Extensions::MemberPlane.new(client: Client.new(workspace_row: workspace), workspace_public_id: workspace_public_id)
     end
-    context = Rho::Runner::ExecutionContext.new(conversation_public_id: @session.conversation, workspace_public_id: "fixture-workspace",
+    context = Rho::Env::ExecutionContext.new(conversation_public_id: @session.conversation, workspace_public_id: "fixture-workspace",
       run_public_id: "source-run", task_key: "triage")
-    session = Rho::Runner::ExecutionContext.with(context) { Extension::Session.new(member_plane: plane) }
+    session = Rho::Env::ExecutionContext.with(context) { Extension::Session.new(member_plane: plane) }
     observe
     ledger(session: session).call("action" => "triage", "room" => "hall", "reason" => "The reported spill needs cleaning")
     fields = @jobs.rows.values.first.fetch(:fields)
@@ -383,8 +383,8 @@ class HouseholdLedgerTest < Minitest::Test
   def test_household_session_requires_its_conversation_and_member_connection
     plane = ->(**) { flunk "an unbound tool must not open a member connection" }
     assert_raises(Extension::Error) { Extension::Session.new(member_plane: plane) }
-    context = Rho::Runner::ExecutionContext.new(conversation_public_id: @session.conversation, workspace_public_id: "fixture-workspace")
-    Rho::Runner::ExecutionContext.with(context) do
+    context = Rho::Env::ExecutionContext.new(conversation_public_id: @session.conversation, workspace_public_id: "fixture-workspace")
+    Rho::Env::ExecutionContext.with(context) do
       assert_raises(Extension::Error) { Extension::Session.new(member_plane: ->(**) { nil }) }
     end
   end
@@ -411,8 +411,8 @@ class HouseholdLedgerTest < Minitest::Test
       ["complete", evidence],
       ["cancel_reminders", { "work_id" => "fixture-work" }],
     ]
-    context = Rho::Runner::ExecutionContext.new(conversation_public_id: @session.conversation, workspace_public_id: "fixture-workspace")
-    Rho::Runner::ExecutionContext.with(context) do
+    context = Rho::Env::ExecutionContext.new(conversation_public_id: @session.conversation, workspace_public_id: "fixture-workspace")
+    Rho::Env::ExecutionContext.with(context) do
       calls.each do |action, fields|
         fields.each_key do |missing|
           result = tool.call({ "action" => action, "room" => "hall" }.merge(fields.except(missing)))
@@ -448,10 +448,10 @@ class HouseholdLedgerTest < Minitest::Test
       assert loaded.ok?, loaded.failures.map(&:message).join("\n")
       assert_equal ["household_cleaning_#{installed.fetch(:version)[0, 12]}"], loaded.registry.serving(:agent).names
       tool = loaded.registrations.first.tools.first.klass
-      env = Rho::Runner::ToolEnv.new(root: root, artifacts_dir: File.join(root, "artifacts"))
-      context = Rho::Runner::ExecutionContext.new(conversation_public_id: @session.conversation, workspace_public_id: "fixture-workspace",
+      env = Rho::Env::ToolEnv.new(root: root, artifacts_dir: File.join(root, "artifacts"))
+      context = Rho::Env::ExecutionContext.new(conversation_public_id: @session.conversation, workspace_public_id: "fixture-workspace",
         run_public_id: "fixture-run", task_key: "fixture-completion")
-      result = Rho::Runner::ExecutionContext.with(context) do
+      result = Rho::Env::ExecutionContext.with(context) do
         tool.new(env: env).call("action" => "complete", "room" => "hall", "work_id" => current_work.fetch("id"),
           "worker" => "fixture-worker", "source" => "fixture-worker-report", "note" => "Floor inspected and clear")
       end

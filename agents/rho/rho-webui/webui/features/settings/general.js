@@ -10,10 +10,6 @@ const row = (label, description, control) => el("div", { class: "settings-row" }
     description ? el("p", { class: "settings-row__description", text: description }) : null), control);
 
 function factValue(key, value) {
-  if (key === "mode") return ({
-    full: t("settings_editor.deployment.modes.full"), agent: t("settings_editor.deployment.modes.agent"),
-    runner: t("settings_editor.deployment.modes.runner"),
-  })[value] || value;
   if (value === true) return t("common.boolean_true");
   if (value === false) return t("common.boolean_false");
   if (value === null || value === undefined) return t("settings_editor.deployment.not_configured");
@@ -22,7 +18,7 @@ function factValue(key, value) {
 
 const deploymentLabel = (key) => ({
   api_only: t("settings_editor.deployment.api_only"), bind: t("settings_editor.deployment.bind"),
-  executor_socket: t("settings_editor.deployment.executor_socket"), mode: t("settings_editor.deployment.mode"),
+  executor_socket: t("settings_editor.deployment.executor_socket"),
   public_url: t("settings_editor.deployment.public_url"), webui_root: t("settings_editor.deployment.webui_root"),
 })[key] || key;
 

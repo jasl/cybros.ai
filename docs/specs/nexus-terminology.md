@@ -230,7 +230,7 @@ this cutover. Consumer obligations are part of the same implementation:
 - Rename `LoopRequest` to `RunDeclaration` for rho's execution request and
   standing configuration helpers. UI state using `execution` must name the actual identity it tracks:
   Run, Variant or follower; do not replace every such field with `run_id`.
-- Update rho-runner, rho-browser, rho-mcp, adapters and extension operations
+- Update rho-env, rho-browser, rho-mcp, adapters and extension operations
   which carry these fields. This does not authorize native desktop/browser
   features or a rho product redesign during the Nexus milestone.
 

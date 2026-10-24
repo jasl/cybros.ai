@@ -29,8 +29,6 @@ module Rho
   # (`do`, `say`, `stop`, `watch`, …) are rho-dev's, a development gem a
   # home names.
   # `Thor::Actions` is never included here: it defines `run`.
-  # In RUNNER MODE `run` is not here — the daemon registers
-  # no `Loops` routes, and `rho help` says so.
   class Command < Thor
     # Thor exits 0 on a usage error unless told otherwise, which would let a
     # mistyped flag read as success to a script or a supervisor.
@@ -43,12 +41,6 @@ module Rho
     # are: `doctor` reads a receipt, `update` and `uninstall` exec a shell
     # script — none may run an extension's factories first.
     CORE_ONLY = %w[server version doctor update uninstall settings extensions].freeze
-    # The member-plane verb a runner-mode rho has no daemon routes for:
-    # the one conversation verb the core carries. (rho-dev's `compact` is
-    # a repair verb; Ops's routes are not in the runner set, and rho-dev
-    # is never named on a runner home.)
-    CONVERSATION_VERBS = %w[run].freeze
-
     # How many words a verb takes, read off its usage line (`kill ID` is
     # one; `retry LOOP_ID [TASK_KEY]` one or two). Thor learns a `def`'s
     # arity from Ruby; a verb an extension registered has only its usage.
@@ -89,7 +81,7 @@ module Rho
 
         install(load_extensions, invoked: given_args.first) unless CORE_ONLY.include?(given_args.first.to_s)
         super
-      rescue Rho::Runner::Extensions::RegistrationError => error
+      rescue Rho::Env::Extensions::RegistrationError => error
         warn "rho: #{error.message}"
         exit 1
       end
@@ -97,10 +89,8 @@ module Rho
       # Once per process, before Thor parses: every extension verb becomes
       # a Thor command, every extension flag lands on the core verb it
       # names, and a failure is reported only where it changes the answer.
-      # A runner-mode home drops the conversation verbs first, so an honest
-      # `rho help` lists what this rho serves.
+      # `rho help` lists the selected assembly's commands.
       def install(loaded, invoked:)
-        remove_conversation_verbs if mode == "runner"
         loaded.commands.each { |command| install_command(command) }
         loaded.flags.each { |flags| install_flags(flags) }
         report_load_failures(loaded.failures, invoked: invoked)
@@ -108,7 +98,6 @@ module Rho
 
       # The mode the bound home's settings state (`Config.load`), read once
       # with the extensions; `full` until then.
-      def mode = @mode || "full"
 
       # EXACT VERBS ONLY. Thor expands a unique prefix into the verb it
       # starts (`rho do` would run `doctor` on a product home, where `do`
@@ -151,15 +140,14 @@ module Rho
         def load_extensions
           home = Rho::Home.resolve(base_url: Rho::Home.bound_address || Rho::Home::DEFAULT_NEXUS_URL)
           config = Rho::Config.load(home.settings_path, home: home)
-          @mode = config.mode
           sources = Rho::Extensions.sources(home, config)
-          Rho::Extensions.load(host: host_for(home, config), extensions: Rho::Extensions.selected_builtins(config, Rho::Extensions.defaults_for(config.mode)),
+          Rho::Extensions.load(host: host_for(home, config), extensions: Rho::Extensions.selected_builtins(config, Rho::Extensions::DEFAULT_EXTENSIONS),
             gems: sources.gems, paths: sources.paths, managed: sources.managed)
         rescue Rho::ConfigurationError => error
           config = Rho::Config.from_hash({})
           loaded = Rho::Extensions.load(host: host_for(home, config))
           loaded.with(failures: loaded.failures + [
-            Rho::Runner::Extensions::Loader::Failure.new(
+            Rho::Env::Extensions::Loader::Failure.new(
               source: home.settings_path, error_class: error.class.name, message: error.message
             ),
           ])
@@ -171,16 +159,6 @@ module Rho
         def host_for(home, config)
           Rho::Extensions::Host.new(home: home, log: nil, clock: -> { Time.now }, config: config, processes: nil,
             serving_tools: false)
-        end
-
-        # The map (`run` → `run_prompt`) is read first, the way
-        # `install_flags` reads it; the spelling goes with the verb.
-        def remove_conversation_verbs
-          CONVERSATION_VERBS.each do |verb|
-            target = map.fetch(verb, verb).to_s
-            remove_command target, undefine: true if all_commands.key?(target)
-            map.delete(verb)
-          end
         end
 
         # `desc` immediately before `define_method`: Thor's `method_added`
@@ -198,7 +176,7 @@ module Rho
         def install_command(command)
           method_name = command.name.tr("-", "_")
           if all_commands.key?(method_name) || map.key?(command.name)
-            raise Rho::Runner::Extensions::RegistrationError,
+            raise Rho::Env::Extensions::RegistrationError,
               "#{command.extension} registers `#{command.name}`, which is already a verb"
           end
 
@@ -217,7 +195,7 @@ module Rho
         def install_flags(flags)
           target = map.fetch(flags.command, flags.command).to_s
           unless all_commands.key?(target)
-            raise Rho::Runner::Extensions::RegistrationError,
+            raise Rho::Env::Extensions::RegistrationError,
               "#{flags.extension} adds flags to `#{flags.command}`, which is not a verb"
           end
 
@@ -409,13 +387,6 @@ module Rho
       desc: "Assert that TLS or a VPN fronts this socket (required for a non-loopback --bind)"
     option :"unsafe-plaintext", type: :boolean, default: false,
       desc: "Acknowledge bare plaintext on a non-loopback --bind; not remembered between boots"
-    # NO default: the settings file and RHO_MODE decide when the flag is
-    # absent (the precedence `Rho::Config` states).
-    option :mode, type: :string, enum: %w[full agent runner],
-      desc: "What this rho is: full (agent + runner on one machine, the default), " \
-            "agent (drives conversations, names a runner), runner (serves tools alone)"
-    # THE ROOM KNOB: the same ladder as `--mode` — the settings
-    # file's `workspace`, then RHO_WORKSPACE, then this flag.
     option :workspace, type: :string,
       desc: "Override the default workspace for this boot (own dedicated or visible undedicated); " \
             "default: the `workspace` setting or RHO_WORKSPACE, else the dedicated one"
@@ -438,7 +409,7 @@ module Rho
           Rho::Daemon.boot(
             home: home, bind: bind, port: options[:port], transport_assertion: assertion,
             display_name: options[:"display-name"],
-            flags: { "mode" => options[:mode], "workspace" => options[:workspace] }
+            flags: { "workspace" => options[:workspace] }
           )
         rescue Rho::AlreadyRunning, Rho::ConfigurationError => error
           abort_with("server", error)
@@ -451,7 +422,7 @@ module Rho
       # Neither the bearer nor a console code is printed: under a supervisor
       # this stream lands in a file whose permissions this daemon does not
       # own. `rho console` mints a code on demand from the 0600 announcement.
-      say "rho #{Rho::VERSION} listening on #{daemon.endpoint} (#{daemon.phase}, mode #{daemon.mode})"
+      say "rho #{Rho::VERSION} listening on #{daemon.endpoint} (#{daemon.phase})"
       say "console: open it with `rho console`" if daemon.page?
       say "announcement: #{home.announcement_path}"
       say "log:  #{home.log_path}"
@@ -479,10 +450,6 @@ module Rho
       super
       return if command
 
-      if self.class.mode == "runner"
-        say "\nThis rho is in mode runner: it serves tools and opens no conversations " \
-          "(`run` is not here)."
-      end
       say <<~DOCTRINE
 
         Every command takes --nexus-url URL, or reads RHO_NEXUS_URL. With neither,

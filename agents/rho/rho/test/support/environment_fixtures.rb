@@ -201,7 +201,7 @@ module RhoTest
 
     def log_text = File.read(File.join(@root, "rho.log"), encoding: Encoding::UTF_8)
 
-    def registry = @registry ||= Rho::Runner::Extensions::Loader.call(builtin: [Rho::Runner::Extensions::Coding]).registry
+    def registry = @registry ||= Rho::Env::Extensions::Loader.call(builtin: [Rho::Env::Extensions::Coding]).registry
 
     # The host's tables over a scripted client. `spawn:` runs the call_tool
     # fiber's block on a thread, so the gate has something to wait on;
@@ -219,7 +219,7 @@ module RhoTest
     def plane(client) = Rho::Extensions::MemberPlane.new(client: client, workspace_public_id: "ws-1")
 
     def binding(root = @project, directories: [], anchor: "c-1")
-      Rho::Runner::Environment::Binding.new(root: root, directories: directories, anchor: anchor)
+      Rho::Env::Environment::Binding.new(root: root, directories: directories, anchor: anchor)
     end
 
     def value(root = @project, directories: [], anchor: "c-1")

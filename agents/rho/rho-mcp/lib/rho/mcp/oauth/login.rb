@@ -44,7 +44,7 @@ module Rho
         # seams.
         def call(cli, row, storage, options, browser: nil, input: $stdin, callback: nil)
           out = cli.out
-          redact = Rho::Runner::Redact.new(row.secrets, live: storage)
+          redact = Rho::Env::Redact.new(row.secrets, live: storage)
           challenge = harvest_challenge(cli, row, redact) || published_challenge(row)
           if challenge.nil?
             out.puts "#{row.key} answered without asking for authorization and publishes no authorization server — " \

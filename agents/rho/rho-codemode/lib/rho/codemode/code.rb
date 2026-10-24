@@ -27,7 +27,7 @@ module Rho
       end
 
       def call(args)
-        context = Rho::Runner::ExecutionContext.current
+        context = Rho::Env::ExecutionContext.current
         unless context&.orchestration
           raise ArgumentError, "code requires a claim-scoped task orchestration bridge"
         end

@@ -1,5 +1,5 @@
 require "rho"
-require "rho/runner"
+require "rho/env"
 require "json"
 require_relative "t3/version"
 
@@ -27,7 +27,7 @@ require_relative "t3/control"
 module Rho
   module T3
     def self.register(api)
-      raise Error, "T3 delegation requires rho agent or full mode" unless api.serves?(:agent)
+      raise Error, "T3 delegation requires an application Agent service" unless api.serves?(:agent)
 
       settings = Settings.parse(api.configuration)
       member_plane = api.host.member_plane

@@ -66,11 +66,11 @@ module Rho
           return
         end
 
-        redact = Rho::Runner::Redact.new(row.secrets)
+        redact = Rho::Env::Redact.new(row.secrets)
         word = row.enabled? ? "enabled" : "disabled — `rho acp-agents enable #{row.key}`"
         out.puts "agent:     #{row.key}  #{escape(redact.call(row.launch))}  #{row.permissions}  #{seconds(row.timeout_ms)}s  " \
                  "#{escape(row.description)}  #{word}"
-        out.puts "  env:     #{row.env.keys.map { |name| "#{name}=#{Rho::Runner::Redact::MASK}" }.join("  ")}" unless row.env.empty?
+        out.puts "  env:     #{row.env.keys.map { |name| "#{name}=#{Rho::Env::Redact::MASK}" }.join("  ")}" unless row.env.empty?
         sessions.each do |session|
           out.puts "  session: #{session_word(session)}"
         end
@@ -116,7 +116,7 @@ module Rho
       # The child is this verb's own — its own group, no capture, the
       # ladder in an `ensure` — connected in the working directory.
       def probe_row(cli, row)
-        redact = Rho::Runner::Redact.new(row.secrets)
+        redact = Rho::Env::Redact.new(row.secrets)
         shown = ->(text) { escape(redact.call(text.to_s)) }
         child = Children::Child.new(row, conversation: nil, redact: redact, log: nil, clock: -> { Time.now })
         begin
@@ -139,7 +139,7 @@ module Rho
         out.puts "  capabilities: #{capabilities_word(child.capabilities)}"
         methods = child.auth_methods.map { |method| "#{shown.call(method["id"])} (#{shown.call(method["type"] || Methods::AuthMethodType::AGENT)})" }
         out.puts "  auth methods: #{methods.empty? ? "(none)" : methods.join(", ")}"
-        out.puts "  env:     #{row.env.keys.map { |name| "#{name}=#{Rho::Runner::Redact::MASK}" }.join("  ")}" unless row.env.empty?
+        out.puts "  env:     #{row.env.keys.map { |name| "#{name}=#{Rho::Env::Redact::MASK}" }.join("  ")}" unless row.env.empty?
       end
 
       def capabilities_word(capabilities)

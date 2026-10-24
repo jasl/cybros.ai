@@ -435,6 +435,7 @@ en:
               too_many_refs: "holds more than %{limit} model refs"
               invalid_hidden_models: "hidden_models must contain unique model refs from this provider"
               invalid_unavailable_models: "unavailable_models must contain unique model refs from this provider"
+              invalid_retained_catalog: "retained catalog must contain bounded provider and model definitions from this provider"
               not_canonical: "must contain only canonical JSON values"
               too_many_bytes: "exceeds %{limit} canonical bytes"
               entry_outside_lane: "entry %{ref} is outside this provider lane"

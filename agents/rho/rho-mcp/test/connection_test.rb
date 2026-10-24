@@ -25,7 +25,7 @@ class ConnectionTest < Minitest::Test
     log = @log
     %i[debug info warn error].each { |level| logger.define_singleton_method(level) { |event, **f| log << [level, event, f] } }
     @connection = Rho::Mcp::Connection.new(row, log: logger, transport_factory: @factory, clock: @clock,
-      redact: Rho::Runner::Redact.new([McpTest::FX_TOKEN]))
+      redact: Rho::Env::Redact.new([McpTest::FX_TOKEN]))
   end
 
   def row(timeout: nil)
@@ -40,7 +40,7 @@ class ConnectionTest < Minitest::Test
   # the answer a test reads.
   def checkpointed
     yield
-  rescue Rho::Runner::ExecutionContext::Cancelled => error
+  rescue Rho::Env::ExecutionContext::Cancelled => error
     error
   end
 
@@ -104,7 +104,7 @@ class ConnectionTest < Minitest::Test
     @connection.open!
     with_tool_env do |env, _root|
       first, second = %w[r5t0 r6t0].map do |task_key|
-        Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new(task_key: task_key)) do
+        Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new(task_key: task_key)) do
           call("picture", {}, env: env)
         end
       end
@@ -166,14 +166,14 @@ class ConnectionTest < Minitest::Test
   def test_a_cancelled_call_sends_the_notification_answers_nothing_and_poisons_the_connection
     @held << "hang"
     @connection.open!
-    context = Rho::Runner::ExecutionContext.new(task_key: "t9")
+    context = Rho::Env::ExecutionContext.new(task_key: "t9")
     answer = :unset
-    worker = Thread.new { Rho::Runner::ExecutionContext.with(context) { answer = checkpointed { call("hang") } } }
+    worker = Thread.new { Rho::Env::ExecutionContext.with(context) { answer = checkpointed { call("hang") } } }
     await { transport.requests.any? { |r| r[:method] == "tools/call" } }
     assert worker.alive?
     context.cancel(:deadline)
     worker.join(5)
-    assert_kind_of Rho::Runner::ExecutionContext::Cancelled, answer, "the call returns through the runner's checkpoint"
+    assert_kind_of Rho::Env::ExecutionContext::Cancelled, answer, "the call returns through the runner's checkpoint"
     assert_equal :deadline, answer.reason, "— by reason, so the task run answers the clamp as data"
     assert_equal 1, transport.closes, "the poison rule: the ladder ran"
     cancelled = transport.notifications.find { |n| n[:method] == "notifications/cancelled" }
@@ -190,12 +190,12 @@ class ConnectionTest < Minitest::Test
   def test_one_request_in_flight_per_connection_and_a_sibling_cancelled_while_waiting_runs_nothing
     @held << "hang"
     @connection.open!
-    first = Thread.new { Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) { call("hang") } }
+    first = Thread.new { Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) { call("hang") } }
     await { transport.requests.any? { |r| r[:method] == "tools/call" } }
-    waiting_context = Rho::Runner::ExecutionContext.new
+    waiting_context = Rho::Env::ExecutionContext.new
     second_answer = :unset
     second = Thread.new do
-      Rho::Runner::ExecutionContext.with(waiting_context) { second_answer = checkpointed { call("echo", { "text" => "two" }) } }
+      Rho::Env::ExecutionContext.with(waiting_context) { second_answer = checkpointed { call("echo", { "text" => "two" }) } }
     end
     sleep 0.2
     assert_equal 1, transport.requests.count { |r| r[:method] == "tools/call" }, "the sibling waits under the mutex"
@@ -203,7 +203,7 @@ class ConnectionTest < Minitest::Test
     transport.instance_variable_get(:@wake) << :released
     first.join(5)
     second.join(5)
-    assert_kind_of Rho::Runner::ExecutionContext::Cancelled, second_answer, "cancelled while waiting: nothing was sent"
+    assert_kind_of Rho::Env::ExecutionContext::Cancelled, second_answer, "cancelled while waiting: nothing was sent"
     assert_equal 1, transport.requests.count { |r| r[:method] == "tools/call" }
   end
 
@@ -301,7 +301,7 @@ class ConnectionTest < Minitest::Test
       MCP::Tool::Response.new([], structured_content: { "token" => token, token => ["nested #{token}", 7] })
     end
     @connection = Rho::Mcp::Connection.new(row, transport_factory: @factory, clock: @clock,
-      redact: Rho::Runner::Redact.new([token]))
+      redact: Rho::Env::Redact.new([token]))
     @connection.open!
 
     result = call("reveal_structure")

@@ -11,8 +11,6 @@ module Rho
       TOOL_CALL_KIND = "tool_call".freeze
       ASK_KIND = "ask".freeze
       APPROVAL_KIND = "approval".freeze
-      # The address each slot serves, as the log names it.
-      ADDRESSES = { runner: "executor" }.freeze
       RECONNECT_SECONDS = 5.0
 
       # `booted_at` is the daemon's boot
@@ -60,40 +58,40 @@ module Rho
       # The lineage owns the client; this listener owns its subscription.
       # Recover transient losses on that same client, but never reopen a
       # retired slot. Ordinary work admission still has the HTTP sweep.
-      def nudge_stream(about, slot = :runner)
-        client = @lineage.executor_realtime_for(about, slot: slot)
+      def nudge_stream(about)
+        client = @lineage.executor_realtime_for(about)
         return if client.nil? || client.connected?
 
-        while listening?(client, slot)
+        while listening?(client)
           begin
-            consume_nudges(client, slot)
+            consume_nudges(client)
             break
           rescue CybrosAgent::Realtime::ConnectionLostError, CybrosAgent::TransportError => error
-            log_stream_end(slot, error)
+            log_stream_end(error)
           end
-          sleep(RECONNECT_SECONDS) if listening?(client, slot)
+          sleep(RECONNECT_SECONDS) if listening?(client)
         end
       rescue StandardError => error
-        log_stream_end(slot, error)
+        log_stream_end(error)
       end
 
       private
 
-        def listening?(client, slot)
-          !@lineage.stopping? && @lineage.executor_realtime(slot).equal?(client)
+        def listening?(client)
+          !@lineage.stopping? && @lineage.executor_realtime.equal?(client)
         end
 
-        def log_stream_end(slot, error)
-          @log.warn("executor_nudge_stream_ended", address: ADDRESSES.fetch(slot), error_class: error.class.name,
+        def log_stream_end(error)
+          @log.warn("executor_nudge_stream_ended", address: "executor", error_class: error.class.name,
             error: CybrosAgent::Redaction.call(error.message))
         end
 
-        def consume_nudges(client, slot)
+        def consume_nudges(client)
           client.connect unless client.connected?
           subscription = client.subscribe(channel: EXECUTOR_INBOX_CHANNEL, params: {})
-          @lineage.runner(slot)&.wake
+          @lineage.runner&.wake
           subscription.each do |message|
-            break unless listening?(client, slot)
+            break unless listening?(client)
 
             event = Hash.try_convert(Hash.try_convert(message)&.fetch("event", nil))
             next unless event
@@ -112,7 +110,7 @@ module Rho
               # kind this version does not know is left to the sweep, which
               # carries it.
               case event["kind"]
-              when TOOL_CALL_KIND then @context.spawn { dispatch_nudge(event, slot) }
+              when TOOL_CALL_KIND then @context.spawn { dispatch_nudge(event) }
               when ASK_KIND
                 @log.info("executor.ask_available", run_public_id: event["run_public_id"], task: event["task_key"])
               when APPROVAL_KIND
@@ -123,34 +121,32 @@ module Rho
               # Cheap and inline: the running context is found by run and key,
               # cancelled cooperatively on every placed runner; nothing waits
               # on the answer.
-              @lineage.runners.each do |runner|
-                runner.cancel(run_public_id: event["run_public_id"], task_key: event["task_key"])
-              end
+              @lineage.runner&.cancel(run_public_id: event["run_public_id"], task_key: event["task_key"])
             else
               # A frame this version does not know: the row is the fact and
               # the sweep will read it.
               nil
             end
           end
-          @log.info("executor_nudge_stream_ended", address: ADDRESSES.fetch(slot), reason: "closed")
+          @log.info("executor_nudge_stream_ended", address: "executor", reason: "closed")
         ensure
           subscription&.unsubscribe
         end
 
-        def root_environment = Rho::Runner::Environment.local(root: @context.tool_env.root)
+        def root_environment = Rho::Env::Environment.local(root: @context.tool_env.root)
 
         # The runner of the moment, not the stream's: `rho env` rebuilds it,
         # and a captured one handed every nudge to a stopped runner (the
         # signature is `nudged: 0` beside a rising `swept`).
-        def dispatch_nudge(event, slot)
-          runner = @lineage.runner(slot)
+        def dispatch_nudge(event)
+          runner = @lineage.runner
           return if runner.nil?
 
           runner.nudged(
             run_public_id: event["run_public_id"],
             task_key: event["task_key"], tool_name: event["tool_name"], role: event["role"]
           )
-        rescue *Rho::Runner::TaskRun::FATAL => error
+        rescue *Rho::Env::TaskRun::FATAL => error
           # A process-fatal raise from a tool would end the reactor thread and
           # leave a daemon holding its port and lock answering nothing.
           @log.warn("runner_fatal", error_class: error.class.name,

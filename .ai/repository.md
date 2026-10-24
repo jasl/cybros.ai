@@ -112,7 +112,7 @@ rho keeps core deployment settings and all plugin overrides in
 An environment variable only seeds a setting the file does not have; a saved
 value — a saved `null` included — wins, and a launch flag wins for that start.
 Only what a process needs before it can read its settings stays a launch
-parameter: the home, the Nexus it is bound to, mode, bind, port and the serving
+parameter: the home, the Nexus it is bound to, bind, port and the serving
 switches. A credential a plugin needs at runtime is a saved write-only field
 (`rho.t3`'s and Telegram's `token`); a value the settings can hold needs no
 environment variable beside it.
@@ -120,8 +120,9 @@ New plugin private data uses `<RHO_HOME>/plugins/<id>/`; existing credential
 stores retain their owned directories in the same home. The core plugin manager,
 authentication, configuration migration and CLI recovery remain available when all
 optional plugins are disabled. Disabled metadata discovery never evaluates a factory.
-Current-file fallback is field-scoped; old formats use one forward migration before
-normal loading. Runtime code consumes only current plugin configurations through
+Current-file fallback is field-scoped. The core accepts only the current settings
+format; incompatible pre-release local state is rebuilt explicitly. Plugin-owned
+configuration versions retain their separate migration hooks. Runtime code consumes only current plugin configurations through
 `Api#configuration`; it carries no previous-key aliases or parallel settings writer.
 Settings editors offer what the daemon can list instead of typed names: the kernel
 tool catalog (`GET /kernel_tools`), adaptation rows (`GET /adaptations/rows`), models,
@@ -172,27 +173,26 @@ rho consists of these independently packaged surfaces:
   approvals. Core exposes the capability independently of ingress so CLI and WebUI can share
   the same complete application surface. Reference snapshots are readable context, never
   newly produced replies or recoverable execution.
-- `rho-runner`: filesystem/process tools, checkout skill loading, checkpoints and capture/restore
-  capabilities executed where the files live. It runs separately in `RHO_MODE=runner` through
-  the same executable, or in full mode as a Runner service on rho's application
-  address. Full mode uses one transport owner and inbox for both roles. The current runner reserves local worker-pool
-  admission capacity before claiming a task. Extensions can declare a shared local resource
-  and concurrency limit at registration. An exclusive resource admits one task at a time;
-  ordinary CLI and filesystem tools retain independent startup capacity. Resource permits
-  last until the handler and result hooks exit, including after cancellation or pool replacement.
-  That policy belongs to the runner, never a kernel lock (`.ai/nexus.md`, The Task Inbox).
-  Each accepted Runner call records its explicit
-  target; a host's nullable default applies only to future authored calls with an omitted target.
-  Full mode's Local environment uses the application UUID and serves this rho's Main, Bots and
-  Subagents through their existing application ownership. Another rho under the same Human
-  cannot use it. Agent/full mode changes withdraw or add the Runner service without a second
-  connection or credential family. Standalone Runner mode retains its Human-private or
-  account-wide assignment. One role-dispatching execution owner shares admission resources
-  across both services. Operator-facing capabilities are
-  announced without model descriptions or schemas and hidden from model declarations.
+- `rho-env`: filesystem/process tool primitives, checkout skill loading, checkpoints and
+  capture/restore capabilities executed where the files live. `Rho::Env` is the library namespace;
+  `Rho::Env::Executor` owns the inbox loop. rho owns credentials, connection lifecycle, daemon
+  resources and authoring policy. The library has no standalone daemon or executable.
+  rho is one complete application: one address announces agent and runner roles, sharing one
+  transport owner, inbox, admission pool and lifecycle. Local uses the application UUID and
+  serves this rho's Main, Bots and Subagents through their existing application ownership.
+  Another rho under the same Human cannot use it. Independent Runner implementations remain
+  supported by Nexus, but there is no separate first-party Runner application.
+  The executor reserves local worker-pool admission capacity before claiming a task. Extensions
+  can declare a shared local resource and concurrency limit at registration. An exclusive resource
+  admits one task at a time; ordinary CLI and filesystem tools retain independent startup capacity.
+  Resource permits last until the handler and result hooks exit, including after cancellation or
+  pool replacement. That policy belongs to the executor, never a kernel lock (`.ai/nexus.md`,
+  The Task Inbox). Each accepted Runner call records its explicit target; a host's nullable
+  default applies only to future authored calls with an omitted target. Operator-facing
+  capabilities are announced without model descriptions or schemas and hidden from model declarations.
 - `rho-webui`: plain browser ES modules and CSS, with no build step or Node/Deno server dependency.
-  It registers its page through `Api#register_webui`; full/agent modes select it by default,
-  runner mode stays headless, and `api_only` disables serving. rho owns static serving,
+  It registers its page through `Api#register_webui`; it is selected by default,
+  and `api_only` disables serving. rho owns static serving,
   authentication and control APIs. The page is a shell with a closed slot catalog: its own
   features and the browser modules of running extensions register into the same slots through
   one `register(ui)` contract. A running extension contributes its module through
@@ -240,7 +240,7 @@ rho consists of these independently packaged surfaces:
   tools ride the agent address. OAuth login and its loopback listener belong to the CLI process.
   Served tools retain `mcp__<server>__<tool>` names; explicit Runner imports receive stable,
   source-qualified callable aliases. Curated prompts/resources become documents
-  through rho-runner's skill plane. `rho mcp`, `probe`, `login` and `logout` expose management.
+  through rho-env's skill plane. `rho mcp`, `probe`, `login` and `logout` expose management.
 - `rho-web-tools`: `web_fetch {url}` and `rho web fetch URL`, using httpx, `UrlRule` SSRF filtering,
   same-site redirects and HTML rendering bounded to 1 MiB of input. Private hosts require the operator's explicit
   `allow_private_network: true` setting. It is enabled by default in runner-capable modes;
@@ -277,7 +277,7 @@ rho consists of these independently packaged surfaces:
 - `rho-acp`: an ACP peer surface over `Rho::Core` beside CLI/WebUI, with its own stdio executable,
   not an extension. It owns shared JSON-RPC/ndjson framing, bidirectional cancellation and session,
   prompt, mode, configuration and authentication handling.
-- `rho-acp-client`: an extension depending on rho-acp's wire and rho-runner. It owns
+- `rho-acp-client`: an extension depending on rho-acp's wire and rho-env. It owns
   `delegate_agent`, one child per conversation/agent from its `agents` configuration, management routes/verbs,
   and cleanup at host end and daemon shutdown. Child permission requests are relayed to rho's
   approval floor, never proxied as independent authority.

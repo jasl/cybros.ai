@@ -32,7 +32,7 @@ class ProcessesRegistryTest < Minitest::Test
   # The four verbs as a tool calls them: the run and its conversation
   # travel together, the way the context hands them over.
   def start(command, run_public_id: nil, **options)
-    @registry.start(command:, workdir: @dir, env: Rho::Runner::ChildEnv.call,
+    @registry.start(command:, workdir: @dir, env: Rho::Env::ChildEnv.call,
       run_public_id: run_public_id, conversation: CONVERSATIONS[run_public_id], **options)
   end
 
@@ -348,7 +348,7 @@ class ProcessesRegistryTest < Minitest::Test
   # The previous daemon died without stopping: what it recorded is still
   # there, in its recorded group, and the next boot ends it.
   def test_sweeps_a_previous_daemons_orphans_and_says_so_once
-    orphan = Rho::Runner::OwnedProcess.spawn(
+    orphan = Rho::Env::OwnedProcess.spawn(
       "/bin/sh", "-c", "sleep 30", in: File::NULL, out: File::NULL, err: File::NULL
     )
     @state.write("processes" => [

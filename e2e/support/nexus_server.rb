@@ -42,7 +42,7 @@ module E2E
     BIND_ENV = "E2E_NEXUS_BIND".freeze
     LOOPBACK = "127.0.0.1".freeze
 
-    attr_reader :port, :base_url, :rho_browser_url, :mcp_fixture_url, :mcp_oauth_fixture_url
+    attr_reader :port, :base_url, :mcp_fixture_url, :mcp_oauth_fixture_url
 
     def self.register_database_cleanup(server)
       @database_cleanup_owners ||= {}
@@ -68,7 +68,7 @@ module E2E
       end
     end
 
-    def initialize(nexus_root:, port: nil, model_overrides: {}, setup_secret: nil, mcp_fixture: false)
+    def initialize(nexus_root:, port: nil, model_overrides: {}, setup_secret: nil, mcp_fixture: false, callback_urls: [])
       @nexus_root = nexus_root
       @model_overrides = model_overrides
       @setup_secret = setup_secret
@@ -76,8 +76,7 @@ module E2E
       requested_port = Integer(requested_port) if requested_port
       @port_reservation = TCPServer.new(LOOPBACK, requested_port || 0)
       @port = @port_reservation.addr[1]
-      @rho_port_reservation = TCPServer.new(LOOPBACK, 0)
-      @rho_browser_url = "http://#{LOOPBACK}:#{@rho_port_reservation.addr[1]}"
+      @callback_urls = callback_urls
       @bind = ENV.fetch(BIND_ENV, LOOPBACK)
       # Suffix every mutable per-run resource so parallel and repeated runs never share state.
       @run_id = "#{Process.pid}_#{SecureRandom.hex(8)}"
@@ -159,7 +158,7 @@ module E2E
       @operator_handle_path ||= run_path("runtime", "operator.json").tap do |path|
         File.write(path, JSON.generate(
           "nexus_root" => @nexus_root, "env" => env, "log_dir" => @run_root,
-          "rho_browser_url" => @rho_browser_url, "mcp_fixture_url" => @mcp_fixture_url,
+          "callback_urls" => @callback_urls, "mcp_fixture_url" => @mcp_fixture_url,
           "mcp_oauth_fixture_url" => @mcp_oauth_fixture_url
         ))
         File.chmod(0o600, path)
@@ -284,7 +283,7 @@ module E2E
         # canonical domain override inherited by the harness.
         "BASE_URL" => nil,
         "NEXUS_SETUP_SECRET" => @setup_secret,
-        "NEXUS_OAUTH_REDIRECT_URIS" => JSON.generate(["#{@rho_browser_url}/auth/callback"]),
+        "NEXUS_OAUTH_REDIRECT_URIS" => (@callback_urls.empty? ? nil : JSON.generate(@callback_urls)),
         "NEXUS_OAUTH_ALLOW_HTTP" => "true",
         "PIDFILE" => run_path("runtime", "puma.pid"),
         "HOME" => run_path("home"),
@@ -408,10 +407,8 @@ module E2E
 
     def release_port_reservation
       @port_reservation&.close
-      @rho_port_reservation&.close
     ensure
       @port_reservation = nil
-      @rho_port_reservation = nil
     end
 
     # Fresh per-run databases from the committed schemas. db:prepare would

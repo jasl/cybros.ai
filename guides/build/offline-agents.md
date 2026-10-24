@@ -20,10 +20,16 @@ what must remain available:
 | rho code mode | rho's JavaScript VM for the entire call |
 | `rho run --until` | rho's continuation observer |
 
-An independent Runner can use the rho-runner package without starting the rho
-application. It holds its own executor credential; it does not need the
-application's member credential. An offline application is still an active
-Agent identity with ordinary Workspace access and grants.
+An independent Runner is a separate implementation of the executor protocol.
+Ruby applications can embed `rho-env` in their own host; the gem has no standalone
+CLI and rho always runs the complete application.
+The independent Runner holds its own executor credential and needs no application
+member credential. An offline application is still an active Agent identity with
+ordinary Workspace access and grants.
+
+An [Agent's built-in Runner](../runners/index.md#implement-a-runner-in-your-agent)
+still needs its serving process to stay online. Embedding that service in the
+submitting process does not let its tools execute after that process exits.
 
 ## 2. Capture execution settings
 

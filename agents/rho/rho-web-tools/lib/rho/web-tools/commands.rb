@@ -30,7 +30,7 @@ module Rho
 
       # A one-sentence refusal the CLI prints (`Rho::Error` where rho is
       # loaded — the only process with this verb; the gem's own root
-      # otherwise, so nothing here names a constant rho-runner lacks).
+      # otherwise, so nothing here names a constant rho-env lacks).
       def refuse(sentence)
         raise (defined?(Rho::Error) ? Rho::Error : Rho::WebTools::Error), sentence
       end

@@ -364,7 +364,7 @@ module Rho
           stdin_reader, stdin_writer = IO.pipe
           out_reader, out_writer = IO.pipe
           out_reader.binmode
-          process = Rho::Runner::OwnedProcess.spawn(
+          process = Rho::Env::OwnedProcess.spawn(
             env, SHELL, "-c", command,
             chdir: workdir, in: stdin_reader, out: out_writer, err: out_writer, unsetenv_others: true
           )

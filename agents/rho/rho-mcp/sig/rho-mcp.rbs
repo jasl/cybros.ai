@@ -6,7 +6,7 @@ module Rho
     REFERENCE_TOOLSET_BYTES: Integer
     CLOSE_JOIN_SECONDS: Float
 
-    class Error < Rho::Runner::Error
+    class Error < Rho::Env::Error
     end
     class Unavailable < Error
     end
@@ -38,9 +38,9 @@ module Rho
     def self.child_env: (untyped row, ?Hash[String, String] current) -> Hash[String, String]
     def self.entries: () -> Hash[String, Entry]
     def self.connections: () -> Hash[String, Connection]
-    def self.call: (String server_key, String raw_name, untyped args, ?env: untyped, ?public_name: String) -> Rho::Runner::Result?
+    def self.call: (String server_key, String raw_name, untyped args, ?env: untyped, ?public_name: String) -> Rho::Env::Result?
     def self.documents_for: (Symbol serves) -> Array[Hash[String, String]]
-    def self.load_document: (Symbol serves, String name, untyped env) -> Rho::Runner::Result?
+    def self.load_document: (Symbol serves, String name, untyped env) -> Rho::Env::Result?
     def self.prepare: (Mount mount) -> Mount
     def self.activate: (Mount mount) -> Mount?
     def self.retire: (Mount mount) -> nil
@@ -66,7 +66,7 @@ module Rho
       def closed?: () -> bool
       def connections: () -> Array[Connection]
       def documents_for: (Symbol serves) -> Array[Hash[String, String]]
-      def load_document: (Symbol serves, String name, untyped env) -> Rho::Runner::Result?
+      def load_document: (Symbol serves, String name, untyped env) -> Rho::Env::Result?
     end
 
     module Refresh
@@ -103,7 +103,7 @@ module Rho
     end
 
     class RedactingLog
-      def initialize: (untyped inner, Rho::Runner::Redact redact) -> void
+      def initialize: (untyped inner, Rho::Env::Redact redact) -> void
       def debug: (String event, **untyped fields) -> untyped
       def info: (String event, **untyped fields) -> untyped
       def warn: (String event, **untyped fields) -> untyped
@@ -128,7 +128,7 @@ module Rho
     end
 
     module Settings
-      class Malformed < Rho::Runner::Extensions::RegistrationError
+      class Malformed < Rho::Env::Extensions::RegistrationError
       end
       TRANSPORTS: Array[String]
       SERVES: Array[String]
@@ -231,16 +231,16 @@ module Rho
 
       def self?.curate: (untyped row, untyped prompts, untyped resources) -> Curated
       def self?.text_type?: (untyped mime) -> bool
-      def self?.prompt_result: (untyped raw, server: String, name: String, ?env: untyped) -> Rho::Runner::Result
-      def self?.resource_result: (untyped contents, server: String, name: String, ?env: untyped) -> Rho::Runner::Result
+      def self?.prompt_result: (untyped raw, server: String, name: String, ?env: untyped) -> Rho::Env::Result
+      def self?.resource_result: (untyped contents, server: String, name: String, ?env: untyped) -> Rho::Env::Result
     end
 
     module Mapping
       TAIL_LINES: Integer
       TAIL_BYTES: Integer
       CAPTURE_EXTENSIONS: Hash[String, String]
-      def self?.result: (untyped raw, server: String, redact: Rho::Runner::Redact, ?env: untyped) -> Rho::Runner::Result
-      def self?.with_notice: (Rho::Runner::Result result, String? notice) -> Rho::Runner::Result
+      def self?.result: (untyped raw, server: String, redact: Rho::Env::Redact, ?env: untyped) -> Rho::Env::Result
+      def self?.with_notice: (Rho::Env::Result result, String? notice) -> Rho::Env::Result
       def self?.line: (untyped block, server: String, env: untyped, stem: String?, files: Array[String]) -> String?
       def self?.capture: (untyped data, untyped mime, String server, untyped env, String? stem, Array[String] files, String kind) -> String
       def self?.number: (untyped value) -> String
@@ -306,7 +306,7 @@ module Rho
       attr_reader connected_at: Time?
       attr_reader storage: untyped
       attr_reader challenge: Oauth::Challenge?
-      def initialize: (untyped row, ?log: untyped, ?redact: Rho::Runner::Redact, transport_factory: untyped, ?clock: ^() -> Time, ?storage: untyped) -> void
+      def initialize: (untyped row, ?log: untyped, ?redact: Rho::Env::Redact, transport_factory: untyped, ?clock: ^() -> Time, ?storage: untyped) -> void
       def open!: (?list: bool) -> Connection
       def auth_status: () -> Oauth::Storage::Status?
       def connected?: () -> bool
@@ -319,9 +319,9 @@ module Rho
       def server_capabilities: () -> untyped
       def exit_record: () -> ExitRecord?
       def down: () -> String?
-      def call_tool: (String raw_name, untyped arguments, public_name: String, ?env: untyped) -> Rho::Runner::Result?
-      def load_prompt: (String raw_name, name: String, ?env: untyped) -> Rho::Runner::Result?
-      def load_resource: (String uri, name: String, ?env: untyped) -> Rho::Runner::Result?
+      def call_tool: (String raw_name, untyped arguments, public_name: String, ?env: untyped) -> Rho::Env::Result?
+      def load_prompt: (String raw_name, name: String, ?env: untyped) -> Rho::Env::Result?
+      def load_resource: (String uri, name: String, ?env: untyped) -> Rho::Env::Result?
       def resource_templates: () -> Array[untyped]
       def close: () -> untyped
     end
@@ -379,7 +379,7 @@ module Rho
       def self?.server_line: (Hash[String, untyped] server, ^(untyped) -> String shown) -> String
       def self?.identity_word: (untyped name, untyped version, ^(untyped) -> String shown) -> String
       def self?.auth_line: (Hash[String, untyped] auth, ^(untyped) -> String shown) -> String
-      def self?.shown: (Rho::Runner::Redact redact) -> ^(untyped) -> String
+      def self?.shown: (Rho::Env::Redact redact) -> ^(untyped) -> String
       def self?.probe: (untyped cli, String name) -> untyped
       def self?.probe_row: (untyped cli, untyped row) -> untyped
       def self?.login: (untyped cli, String name, untyped options) -> untyped
@@ -479,7 +479,7 @@ module Rho
         attr_accessor issuer: String?
         def self.client_metadata: (String redirect_uri) -> Hash[String, untyped]
         def self.headless: (row: untyped, storage: untyped, ?authorization_mutex: Mutex) -> Provider
-        def self.interactive: (row: untyped, storage: untyped, callback: Callback, out: untyped, ?browser: untyped, ?no_browser: bool, ?input: untyped, ?redact: Rho::Runner::Redact) -> Provider
+        def self.interactive: (row: untyped, storage: untyped, callback: Callback, out: untyped, ?browser: untyped, ?no_browser: bool, ?input: untyped, ?redact: Rho::Env::Redact) -> Provider
         def self.say: (untyped out, String line) -> void
         def initialize: (?authorization_mutex: Mutex, **untyped) -> void
         def synchronize_authorization: [T] () { () -> T } -> T
@@ -514,12 +514,12 @@ module Rho
         OPTIONAL_CLAUSE: String
         def self?.call: (untyped cli, untyped row, untyped storage, untyped options, ?browser: untyped, ?input: untyped, ?callback: Callback?) -> untyped
         def self?.refresh: (untyped cli, untyped row) -> untyped
-        def self?.harvest_challenge: (untyped cli, untyped row, Rho::Runner::Redact redact) -> Challenge?
+        def self?.harvest_challenge: (untyped cli, untyped row, Rho::Env::Redact redact) -> Challenge?
         def self?.published_challenge: (untyped row) -> Challenge?
-        def self?.run_flow: (untyped row, untyped storage, Challenge challenge, untyped out, Rho::Runner::Redact redact, browser: untyped, no_browser: bool, input: untyped, callback: Callback?) -> untyped
-        def self?.flow_failure: (untyped row, Callback listener, Provider provider, String message, Rho::Runner::Redact redact) -> String
+        def self?.run_flow: (untyped row, untyped storage, Challenge challenge, untyped out, Rho::Env::Redact redact, browser: untyped, no_browser: bool, input: untyped, callback: Callback?) -> untyped
+        def self?.flow_failure: (untyped row, Callback listener, Provider provider, String message, Rho::Env::Redact redact) -> String
         def self?.issuer_mismatch?: (Callback listener, Provider provider) -> bool
-        def self?.prove: (untyped cli, untyped row, untyped storage, Rho::Runner::Redact redact) -> untyped
+        def self?.prove: (untyped cli, untyped row, untyped storage, Rho::Env::Redact redact) -> untyped
       end
 
       module Logout

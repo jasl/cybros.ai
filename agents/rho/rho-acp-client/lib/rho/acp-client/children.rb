@@ -1,6 +1,6 @@
 require "securerandom"
 require "rho"
-require "rho/runner"
+require "rho/env"
 require "rho/acp"
 require_relative "capture"
 
@@ -129,7 +129,7 @@ module Rho
           stdout_r, stdout_w = IO.pipe
           stderr_r, stderr_w = IO.pipe
           begin
-            @process = Rho::Runner::OwnedProcess.spawn(
+            @process = Rho::Env::OwnedProcess.spawn(
               env, @row.command, *@row.args,
               chdir: cwd, in: stdin_r, out: stdout_w, err: stderr_w, unsetenv_others: true
             )
@@ -484,7 +484,7 @@ module Rho
               log&.info("acp.session_opened", agent: row.key, conversation: conversation, session: id, acp_session: acp_id,
                 cwd: cwd)
               opened
-            rescue Unavailable, Refused, Rho::Runner::ExecutionContext::Cancelled
+            rescue Unavailable, Refused, Rho::Env::ExecutionContext::Cancelled
               discard(child, log)
               raise
             end
@@ -647,7 +647,7 @@ module Rho
               end
               return existing if existing
 
-              redact = Rho::Runner::Redact.new(row.secrets)
+              redact = Rho::Env::Redact.new(row.secrets)
               capture = artifacts_dir && Capture.new(Capture.path_for(artifacts_dir, row.key, session_id), redact: redact, clock: clock)
               @children[key] = Child.new(row, conversation: conversation, redact: redact, log: log, clock: clock, capture: capture)
             end

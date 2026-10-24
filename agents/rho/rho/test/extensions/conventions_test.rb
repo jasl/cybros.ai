@@ -20,7 +20,7 @@ class ConventionsExtensionTest < Minitest::Test
   end
 
   def describe(working_directory)
-    environment = Rho::Runner::Environment.local(root: @dir, working_directory: working_directory)
+    environment = Rho::Env::Environment.local(root: @dir, working_directory: working_directory)
     @api.environment_descriptions.map { |description| description.handler.call(environment) }
   end
 
@@ -51,7 +51,7 @@ class ConventionsExtensionTest < Minitest::Test
   def test_the_fragment_follows_the_built_in_describers
     File.write(File.join(@dir, "AGENTS.md"), "Always run the tests.")
     registry = Rho::Extensions.load(host: RhoTest.host).registry
-    environment = Rho::Runner::Environment.local(root: @dir, working_directory: @dir)
+    environment = Rho::Env::Environment.local(root: @dir, working_directory: @dir)
 
     fragments = registry.environment_fragments(environment)
     assert_equal %w[rho.coding rho.conventions], fragments.map { |fragment| fragment.fetch("extension") }
@@ -63,7 +63,7 @@ class ConventionsExtensionTest < Minitest::Test
   def test_loaded_alone_the_block_rides_the_turns_lead
     File.write(File.join(@dir, "AGENTS.md"), "Always run the tests.")
     api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE)
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Conventions]), api, identity: RUNNER_IDENTITY)
+    daemon = member_ready(boot(extensions: [Rho::Env::Extensions::Coding, Rho::Extensions::Conventions]), api, identity: RUNNER_IDENTITY)
 
     response = request(daemon, :post, "/conversations", token: bearer(daemon),
       body: { prompt: "p", model: "dev/mock-text", working_directory: @dir })
@@ -78,7 +78,7 @@ class ConventionsExtensionTest < Minitest::Test
     path = File.join(@dir, "AGENTS.md")
     File.write(path, "Run the original checks.")
     registry = Rho::Extensions.load(host: RhoTest.host).registry
-    environment = Rho::Runner::Environment.local(root: @dir)
+    environment = Rho::Env::Environment.local(root: @dir)
     snapshot = { "fragments" => registry.environment_fragments(environment) }
 
     lead = Rho::RunDeclaration.lead(registry: registry, environment: environment,
@@ -103,7 +103,7 @@ class ConventionsExtensionTest < Minitest::Test
     host = RhoTest.host.with(environments: -> { tables })
     api = Rho::Extensions::Api.new(host: host, extension_name: "rho.conventions", source: "<test>")
     Rho::Extensions::Conventions.register(api)
-    environment = Rho::Runner::Environment.local(root: @dir, working_directory: @dir)
+    environment = Rho::Env::Environment.local(root: @dir, working_directory: @dir)
     describe = -> { api.environment_descriptions.fetch(0).handler.call(environment) }
     sentence = Rho::Extensions::Conventions::PORT_SENTENCE
 

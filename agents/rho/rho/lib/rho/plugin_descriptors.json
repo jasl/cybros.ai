@@ -42,10 +42,6 @@
       "additionalProperties": false
     },
     "default_enabled": false,
-    "modes": [
-      "full",
-      "runner"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -61,10 +57,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -101,11 +93,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent",
-      "runner"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -128,10 +115,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "runner"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -160,10 +143,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -179,10 +158,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -198,10 +173,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -217,10 +188,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -236,11 +203,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent",
-      "runner"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -256,11 +218,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent",
-      "runner"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -288,10 +245,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -394,10 +347,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -438,10 +387,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -457,10 +402,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -476,11 +417,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent",
-      "runner"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -496,11 +432,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent",
-      "runner"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -516,10 +447,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -535,11 +462,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent",
-      "runner"
-    ],
     "requires": [],
     "restart_only": false
   },
@@ -555,10 +477,6 @@
       "additionalProperties": false
     },
     "default_enabled": true,
-    "modes": [
-      "full",
-      "agent"
-    ],
     "requires": [],
     "restart_only": false
   }

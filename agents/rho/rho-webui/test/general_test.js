@@ -60,10 +60,10 @@ test("appearance and content size drive this browser's theme and follow changes 
 });
 
 test("readiness, deployment facts and the daemon version are listed as the deployment states them", () => {
-  const g = general({ document: { deployment: { mode: "full", api_only: false, bind: "127.0.0.1:7000", webui_root: null, extra: { a: 1 } } },
+  const g = general({ document: { deployment: { api_only: false, bind: "127.0.0.1:7000", webui_root: null, extra: { a: 1 } } },
     status: { defaults: { tools_ready: true, runner_executor_public_id: "r-1" } } });
   const facts = g.element.querySelectorAll(".settings-facts dt").map((term) => [term.textContent, term.nextElementSibling.textContent]);
-  expect(facts).toEqual([["Version", "0.9.1"], ["Operating mode", "Agent and Runner"], ["API only", "No"], ["Configured listening address", "127.0.0.1:7000"],
+  expect(facts).toEqual([["Version", "0.9.1"], ["API only", "No"], ["Configured listening address", "127.0.0.1:7000"],
     ["Web interface directory", "Not set in settings"], ["extra", '{"a":1}']]);
   expect(g.element.textContent).toContain("A tool list has been received and a default Runner is selected.");
 });

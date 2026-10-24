@@ -5,14 +5,6 @@ class PluginInventoryTest < Minitest::Test
 
   ID = "test.inventory_probe".freeze
 
-  def test_inventory_uses_the_running_mode_selected_by_a_launch_flag
-    daemon = boot(flags: { mode: "runner" })
-    row = plugin_row(daemon, "rho.webui")
-
-    refute row.fetch("active")
-    assert_includes row.fetch("readiness").fetch("issues"), "Unavailable in runner mode"
-  end
-
   def test_startup_failure_is_visible_without_returning_the_exception_message
     path = write_plugin('api.on(:startup) { raise "synthetic secret in exception" }')
     seed(ID => path_entry(path))
@@ -28,7 +20,7 @@ class PluginInventoryTest < Minitest::Test
   end
 
   def test_prerequisite_failure_keeps_management_available_and_surfaces_repair_guidance
-    path = write_plugin('api.on(:startup) { raise Rho::Runner::Extensions::PrerequisiteError, "Install the test driver, then enable this plugin again." }')
+    path = write_plugin('api.on(:startup) { raise Rho::Env::Extensions::PrerequisiteError, "Install the test driver, then enable this plugin again." }')
     seed(ID => path_entry(path))
     daemon = boot
     row = plugin_row(daemon)
@@ -40,7 +32,7 @@ class PluginInventoryTest < Minitest::Test
   end
 
   def test_failed_enable_retains_actionable_diagnostics_and_can_retry_after_repair
-    path = write_plugin('api.on(:startup) { raise Rho::Runner::Extensions::PrerequisiteError, "Install the test driver, then enable this plugin again." }')
+    path = write_plugin('api.on(:startup) { raise Rho::Env::Extensions::PrerequisiteError, "Install the test driver, then enable this plugin again." }')
     seed(ID => path_entry(path).merge("enabled" => false))
     daemon = boot
 
@@ -93,7 +85,7 @@ class PluginInventoryTest < Minitest::Test
     path = write_plugin(<<~RUBY)
       fail_start = api.configuration.fetch("fail_start", false)
       api.on(:startup) do
-        raise Rho::Runner::Extensions::PrerequisiteError, "Repair the test driver." if fail_start
+        raise Rho::Env::Extensions::PrerequisiteError, "Repair the test driver." if fail_start
       end
       api.register_route("GET", "/inventory-probe") { |_request, _ctx| [200, { fail_start: fail_start }] }
     RUBY
@@ -118,7 +110,7 @@ class PluginInventoryTest < Minitest::Test
   end
 
   def test_registration_prerequisite_failure_also_returns_actionable_guidance
-    path = write_plugin('raise Rho::Runner::Extensions::PrerequisiteError, "Install the test runtime."')
+    path = write_plugin('raise Rho::Env::Extensions::PrerequisiteError, "Install the test runtime."')
     seed(ID => path_entry(path).merge("enabled" => false))
     daemon = boot
 
@@ -292,7 +284,7 @@ class PluginInventoryTest < Minitest::Test
     daemon = boot
     core = Rho::Core.new(home: daemon.home)
     core.configure_extension("rho.terminal", operations: [
-      { "op" => "set", "path" => ["executable"], "value" => Rho::Runner::OwnedProcess.group_identity_guard },
+      { "op" => "set", "path" => ["executable"], "value" => Rho::Env::OwnedProcess.group_identity_guard },
       { "op" => "set", "path" => ["ice_servers"], "value" => [
         { "urls" => ["turn:relay.example:3478"], "username" => "test", "credential" => "synthetic-turn-secret" },
       ] },
@@ -356,6 +348,6 @@ class PluginInventoryTest < Minitest::Test
     def seed(plugins)
       home = Rho::Home.resolve(base_url: "https://nexus.example", root: @root)
       home.prepare
-      home.write_settings("settings_version" => 1, "plugins" => plugins)
+      home.write_settings("settings_version" => 2, "plugins" => plugins)
     end
 end

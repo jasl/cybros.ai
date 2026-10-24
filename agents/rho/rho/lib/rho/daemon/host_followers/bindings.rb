@@ -185,13 +185,13 @@ module Rho
             registry = @loaded.registry
             hints = lead_hints(model)
             own_names = ((registry.serving(:agent).names + @environments.servers.names_for(binding&.anchor)).uniq -
-              RunDeclaration.undeclared - [Rho::Runner::Tools::Skill::NAME]).sort
+              RunDeclaration.undeclared - [Rho::Env::Tools::Skill::NAME]).sort
             if runner.nil?
               return Surface.new(runner: nil, remote: false, environment: nil, own_names: own_names,
                 lead: RunDeclaration.lead(registry: registry.serving(:agent), instructions: instructions, hints: hints, code_mode: code_mode))
             end
             if @context.own_runner?(runner)
-              environment = Rho::Runner::Environment.local(root: binding&.root || @context.tool_env.root,
+              environment = Rho::Env::Environment.local(root: binding&.root || @context.tool_env.root,
                 directories: binding ? binding.directories : [], working_directory: working_directory)
               # THE RENDER NAMES ITS ANCHOR: the conventions
               # describer says the port sentence while the anchor's port is
@@ -226,22 +226,22 @@ module Rho
               selected ||= @environments.read(host, plane: plane, runner: target).binding if host
               value = selected || begin
                 root = @context.own_runner?(target) ? @context.tool_env.root : remote_runner(target, client: client)&.environment_for(:runner)&.fetch("root", nil)
-                Rho::Runner::Environment::Binding.new(root: root, directories: [], anchor: host)
+                Rho::Env::Environment::Binding.new(root: root, directories: [], anchor: host)
               end
               unless value.root && Pathname.new(value.root).absolute?
                 raise CybrosAgent::Api::InvalidRequest.new("Runner #{target} has no concrete absolute environment root", code: "executor_environment_unavailable")
               end
-              [target, { Rho::Runner::Environment::CONTEXT_KEY => value.to_h }]
+              [target, { Rho::Env::Environment::CONTEXT_KEY => value.to_h }]
             end
             address = @lineage.identity&.executor_public_id
             if address && !bare
               local = if runner && @context.own_runner?(runner)
-                contexts.fetch(runner).fetch(Rho::Runner::Environment::CONTEXT_KEY)
+                contexts.fetch(runner).fetch(Rho::Env::Environment::CONTEXT_KEY)
               else
                 selected = @environments.read(host, plane: plane, runner: nil).binding if host
-                (selected || Rho::Runner::Environment::Binding.new(root: @context.tool_env.root, directories: [], anchor: binding&.anchor || host)).to_h
+                (selected || Rho::Env::Environment::Binding.new(root: @context.tool_env.root, directories: [], anchor: binding&.anchor || host)).to_h
               end
-              contexts[address] = { Rho::Runner::Environment::CONTEXT_KEY => local }
+              contexts[address] = { Rho::Env::Environment::CONTEXT_KEY => local }
             end
             contexts
           end

@@ -351,7 +351,7 @@ class HomeTest < Minitest::Test
   end
   def test_current_settings_with_widened_permissions_are_refused_without_repair
     resolved = home.prepare
-    document = { "settings_version" => 1, "plugins" => {
+    document = { "settings_version" => 2, "plugins" => {
       "rho.ingress_telegram" => { "configuration" => { "bots" => { "rho" => { "token" => "synthetic-secret" } } } },
     } }
     resolved.write_settings(document)

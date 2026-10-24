@@ -38,7 +38,7 @@ Gem::Specification.new do |spec|
       (f.end_with?(".md") && f != "README.md")
   end
 
-  spec.add_dependency "rho-runner"
+  spec.add_dependency "rho-env"
   # PINNED TO THE MINOR, because the Ruby client tracks the Node driver's
   # protocol release for release (`Playwright::COMPATIBLE_PLAYWRIGHT_VERSION`)
   # and a driver a minor ahead or behind is not a supported pair.

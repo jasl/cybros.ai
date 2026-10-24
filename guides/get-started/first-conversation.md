@@ -117,7 +117,7 @@ The startup output includes its local address and working directory. In this
 example:
 
 ```text
-rho 0.1.0 listening on http://127.0.0.1:56588 (active, mode full)
+rho 0.1.0 listening on http://127.0.0.1:56588 (active)
 console: open it with `rho console`
 announcement: /Users/guochunzhong/.rho/tmp/announcement.json
 log:  /Users/guochunzhong/.rho/log/rho.log

@@ -119,7 +119,7 @@ module Rho
               registry = runner.nil? ? ctx.registry.serving(:agent) : ctx.registry
               # Every environment field is optional and constrains nothing:
               # the tools decline path confinement.
-              environment = Rho::Runner::Environment.local(
+              environment = Rho::Env::Environment.local(
                 root: ctx.tool_env.root, working_directory: body["working_directory"]
               ) if ctx.own_runner?(runner)
               # THE SHELL'S MECHANISM: the body's word rides to

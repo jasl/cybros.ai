@@ -39,7 +39,7 @@ class DevCliTest < Minitest::Test
     home.prepare
     return if File.file?(home.settings_path)
 
-    home.write_settings("settings_version" => 1, "plugins" => { "rho.dev" => { "enabled" => true } })
+    home.write_settings("settings_version" => 2, "plugins" => { "rho.dev" => { "enabled" => true } })
   end
 
   def test_help_lists_the_dev_verbs_under_their_own_heading_and_run_under_commands
@@ -60,7 +60,7 @@ class DevCliTest < Minitest::Test
 
   def test_the_explicit_path_entry_loads_the_same_development_commands
     home.prepare
-    home.write_settings("settings_version" => 1, "plugins" => {
+    home.write_settings("settings_version" => 2, "plugins" => {
       "rho.dev" => { "enabled" => true,
         "source" => { "kind" => "path", "path" => File.join(RhoDevTest::LIB, "rho", "dev_plugin.rb") } },
     })

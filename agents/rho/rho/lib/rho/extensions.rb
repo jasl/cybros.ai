@@ -3,7 +3,7 @@ require "digest"
 module Rho
   # THE DAEMON'S HALF OF THE EXTENSION PLANE.
   #
-  # rho-runner owns the contract, the registry and the two tool hooks,
+  # rho-env owns the contract, the registry and the two tool hooks,
   # because a runner on a second machine with no daemon in the process
   # needs all of them. What a DAEMON adds is what only a daemon has: a
   # lifetime to run background work in, and an operator to surface
@@ -26,7 +26,7 @@ module Rho
     end
 
     DEFAULT_EXTENSIONS = [
-      Rho::Runner::Extensions::Coding, Rho::Runner::Extensions::Terminal, Rho::Extensions::Guard, Rho::Runner::Extensions::Checkpoints,
+      Rho::Env::Extensions::Coding, Rho::Env::Extensions::Terminal, Rho::Extensions::Guard, Rho::Env::Extensions::Checkpoints,
       Rho::Extensions::Processes, Rho::Extensions::Conventions, Rho::Extensions::Until,
       Rho::Extensions::Environment, Rho::Extensions::ConsoleLink, Rho::Extensions::Ops,
       Rho::Extensions::DefaultRunner, Rho::Extensions::Compaction,
@@ -39,29 +39,6 @@ module Rho
     # Configuration is available before the operator enables polling.
     CONTROL_GEMS = ["rho/ingress-telegram"].freeze
     TOOL_GEMS = ["rho/codemode"].freeze
-
-    # THE SHIPPED SET IS PER MODE. `DEFAULT_EXTENSIONS` stays
-    # the FULL set — the e2e preludes swap that constant — and the agent and
-    # runner subsets are derived from it at CALL time by two static exclude
-    # tables, not by inference: the tool-less extensions (Ops, ConsoleLink,
-    # Until, Conventions, Guard, Environment) carry no `serves:` to derive
-    # from, and the `serves:` refusal at load is the check that keeps the
-    # tables honest. An agent runs no environment tool of its own (Coding);
-    # Processes loads in every mode because its VERBS are the person's in
-    # every mode — `rho ps`/`rho logs` read a bound runner's table through
-    # the call_tool — and it registers its tools only where the
-    # host serves the runner address (`Api#serves?`); a runner opens no
-    # conversation and holds no member plane (Ops, Compaction,
-    # ConsoleLink, Until, Conventions, DefaultRunner, Agents, Images — an
-    # agent-mode rho is exactly the daemon that names remote runners, and
-    # keeps it); Guard and Environment serve both.
-    AGENT_MODE_EXCLUDES = [Rho::Runner::Extensions::Coding, Rho::Runner::Extensions::Terminal].freeze
-    RUNNER_MODE_EXCLUDES = [
-      Rho::Extensions::Ops, Rho::Extensions::Compaction, Rho::Extensions::ConsoleLink,
-      Rho::Extensions::Until, Rho::Extensions::Conventions, Rho::Extensions::DefaultRunner, Rho::Extensions::Agents,
-      Rho::Extensions::Images,
-      Rho::Extensions::Schedules, Rho::Extensions::MemoryReview,
-    ].freeze
 
     # WHAT A TOOL REACHES THE MEMBER PLANE THROUGH: the member client and the
     # adopted workspace, resolved at CALL time by the daemon.
@@ -130,7 +107,7 @@ module Rho
 
       def claim(extension, handler)
         if @registrar
-          raise Rho::Runner::Extensions::RegistrationError,
+          raise Rho::Env::Extensions::RegistrationError,
             "#{extension} registers conversation servers; #{@registrar.extension} already did — one registrar per daemon"
         end
 
@@ -140,7 +117,7 @@ module Rho
 
     # The handle a DAEMON hands an extension: everything the runner's
     # offers, plus the verbs that need a daemon to mean anything.
-    class Api < Rho::Runner::Extensions::Api
+    class Api < Rho::Env::Extensions::Api
       AUTHS = %i[bearer none].freeze
       DAEMON_EVENTS = (superclass::DAEMON_EVENTS + %i[conversation_binding member_connection]).freeze
 
@@ -159,9 +136,9 @@ module Rho
           when "path" then source == expected.fetch("path")
           else false
           end
-          raise Rho::Runner::Extensions::RegistrationError, "plugin registration does not match its description" unless matches
+          raise Rho::Env::Extensions::RegistrationError, "plugin registration does not match its description" unless matches
         elsif validate_description && source != "<built-in>" && source != "<core>"
-          raise Rho::Runner::Extensions::RegistrationError, "plugin registration has no static description"
+          raise Rho::Env::Extensions::RegistrationError, "plugin registration has no static description"
         end
         super(host: host, source: source, extension_name: extension_name,
           configuration: descriptor ? host.config.plugin_configuration(extension_name) : {},
@@ -179,41 +156,19 @@ module Rho
         @agents = []
       end
 
-      # BOTH SOURCES, REFUSED BY MODE: a daemon admits an agent tool the base handle refuses,
-      # and refuses the source its mode cannot serve — naming the extension, the tool, the
-      # mode and the ways out. A shipped extension never meets this
-      # (`Extensions.defaults_for`); an operator-named one lands as a `Loader::Failure` with
-      # the sentence and rides `rho runner`. WHICH ADDRESS THIS DAEMON SERVES, by its mode:
-      # full both, agent the agent's alone, runner the runner's alone. An extension whose
-      # tools are one address's and whose verbs are every host's asks here before registering
-      # a tool the mode would refuse.
-      def serves?(source)
-        mode = host.config.mode
-        !(mode == "agent" && source == :runner) && !(mode == "runner" && source == :agent)
-      end
+      # Both protocol roles are served by this application's single address.
+      def serves?(source) = SERVES.include?(source)
 
       def register_tool(klass, serves: :runner, resource: nil, concurrency: 1)
         unless SERVES.include?(serves)
-          raise Rho::Runner::Extensions::RegistrationError,
+          raise Rho::Env::Extensions::RegistrationError,
             "#{extension_name} registers #{klass}: serves must be :runner or :agent, not #{serves.inspect}"
         end
 
-        mode = host.config.mode
-        if mode == "agent" && serves == :runner
-          raise Rho::Runner::Extensions::RegistrationError,
-            "#{extension_name} registers `#{klass::NAME}` for the runner; this rho is in mode agent — " \
-            "use mode full, or name a runner: `rho run … --runner ID`"
-        end
-        if mode == "runner" && serves == :agent
-          raise Rho::Runner::Extensions::RegistrationError,
-            "#{extension_name} registers `#{klass::NAME}` for the agent; this rho is in mode runner — " \
-            "use mode full or agent"
-        end
-
-        validator = Rho::Runner::Extensions::Tool.validate(klass, extension: extension_name)
-        @tools << Rho::Runner::Extensions::Api::Registration.new(klass: klass, serves: serves,
+        validator = Rho::Env::Extensions::Tool.validate(klass, extension: extension_name)
+        @tools << Rho::Env::Extensions::Api::Registration.new(klass: klass, serves: serves,
           name: tool_name(klass::NAME), validator: validator,
-          admission: resource && Rho::Runner::Admission::Rule.new(resource: resource, limit: concurrency))
+          admission: resource && Rho::Env::Admission::Rule.new(resource: resource, limit: concurrency))
         self
       end
 
@@ -233,8 +188,6 @@ module Rho
       # Product-owned profiles join the same declaration/removal edge as
       # checkout definitions, and survive a sync without a filesystem root.
       def register_agent(definition)
-        return unavailable("named agents") if runner_mode?
-
         @agents << definition
         self
       end
@@ -273,15 +226,12 @@ module Rho
       # Observers run on the daemon reactor without delaying outcome delivery.
       # Reconnect may replay it; consumers use durable source identity.
       # It does not assert that an external IM delivery succeeded.
-      # In RUNNER MODE there is no `HostFollowers` to fire them: they answer the
-      # base handle's `unavailable`, logged, never raised.
       def on(event, &handler)
         return super unless DAEMON_EVENTS.include?(event)
-        return unavailable("hook #{event}") if runner_mode? && event != :configuration_change
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "on(#{event.inspect}) needs a block" if handler.nil?
 
-        @daemon_hooks << Rho::Runner::Extensions::Hooks::Registration.new(
+        @daemon_hooks << Rho::Env::Extensions::Hooks::Registration.new(
           event: event, extension: extension_name, handler: handler, owner: resources
         )
         self
@@ -291,10 +241,10 @@ module Rho
       # the local bearer and the admission gate; `:none` is for the doors a
       # caller with no bearer must reach. Handler: (request, ctx).
       def register_route(method, path, auth: :bearer, &handler)
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "register_route(#{method} #{path}) needs a block" if handler.nil?
         unless AUTHS.include?(auth)
-          raise Rho::Runner::Extensions::RegistrationError,
+          raise Rho::Env::Extensions::RegistrationError,
             "register_route(#{method} #{path}): auth must be one of #{AUTHS.inspect}, not #{auth.inspect}"
         end
 
@@ -309,12 +259,11 @@ module Rho
       # contributes no page; two committed owners refuse the load, as two
       # routes owning the same path refuse daemon boot.
       def register_webui(root:)
-        return unavailable("webui") if runner_mode?
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "#{extension_name} already registered a webui" if @webui_root
 
         root = root.to_s
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "register_webui needs a non-empty root" if root.empty?
 
         @webui_root = File.expand_path(root)
@@ -325,17 +274,16 @@ module Rho
       # page `register_webui` owns. One directory per extension, entered at its
       # index.js; a runner serves no page and therefore no module.
       def register_webui_module(root:)
-        return unavailable("webui module") if runner_mode?
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "#{extension_name} already registered a webui module" if @webui_module
 
         root = root.to_s
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "register_webui_module needs a non-empty root" if root.empty?
 
         entry = File.join(File.expand_path(root), "index.js")
         unless File.file?(entry)
-          raise Rho::Runner::Extensions::RegistrationError,
+          raise Rho::Env::Extensions::RegistrationError,
             "#{extension_name} registers a webui module without #{entry}"
         end
 
@@ -352,7 +300,7 @@ module Rho
       # is its own: a test or a page reads it, the terminal does not.
       def register_command(name, usage: name.to_s, description: "", long_description: nil,
                            options: {}, aliases: [], &handler)
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "register_command(#{name.inspect}) needs a block" if handler.nil?
 
         @commands << Command.new(
@@ -368,12 +316,11 @@ module Rho
       # (body, options) -> body. pi has registerFlag + getFlag; ours folds
       # because the CLI and the daemon are two processes.
       def register_flags(command, **options, &fold)
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "register_flags(#{command.inspect}) needs a block" if fold.nil?
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "register_flags(#{command.inspect}) needs at least one option" if options.empty?
-        # No `run` in runner mode, so nothing for a flag to land on.
-        return unavailable("flags on #{command}") if runner_mode?
+        # Only augment a command present in the selected assembly.
 
         @flags << Flags.new(
           command: command.to_s, options: options.freeze, extension: extension_name, fold: fold
@@ -385,7 +332,7 @@ module Rho
       # the stated one, and an extension that can only respond and never
       # act is half a plane.
       def background(name = extension_name, &handler)
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "background(#{name.inspect}) needs a block" if handler.nil?
 
         @background_tasks << BackgroundTask.new(
@@ -398,7 +345,7 @@ module Rho
       # `mcpServers` list as the door received it (stdio `{name, command,
       # args, env: [{name, value}]}`, http `{type, name, url, headers:
       # [...]}`), the block raising ArgumentError with a sentence for a
-      # malformed entry (the door's 400) or its own `Rho::Runner::Error`
+      # malformed entry (the door's 400) or its own `Rho::Env::Error`
       # for a set it will not open at all (the door's 503, the shutdown
       # ladder's `Closed`), and answering a SET: `classes` (tool classes
       # as `register_tool` takes them, named `mcp__<name>__<tool>` — the
@@ -407,13 +354,10 @@ module Rho
       # the daemon's judgement faults a taken name's ROW), `report`
       # (`{name, state, fault, transport}` per row), `digest` (name +
       # launch + env/header KEYS, never a value), `close` (idempotent).
-      # ONE per daemon; the agent slot serves the classes, so a
-      # RUNNER-MODE daemon — no agent slot, no conversation — answers
-      # `unavailable`, logged, as the hooks do.
+      # One registrar per daemon; the agent service serves these classes.
       def register_conversation_servers(&handler)
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "register_conversation_servers needs a block" if handler.nil?
-        return unavailable("conversation servers") if runner_mode?
 
         @conversation_servers = @registrar_slot.claim(extension_name, handler)
         self
@@ -425,8 +369,6 @@ module Rho
       # `stop_extensions`).
 
       private
-
-        def runner_mode? = host.config.mode == "runner"
     end
 
     Route = Data.define(:method, :path, :auth, :extension, :handler, :owner) do
@@ -489,15 +431,7 @@ module Rho
 
     module_function
 
-    # The mode's shipped set, read off `DEFAULT_EXTENSIONS` at call time so
-    # a prelude-swapped constant flows through (the exclude tables above).
-    def defaults_for(mode)
-      case mode.to_s
-      when "agent" then DEFAULT_EXTENSIONS - AGENT_MODE_EXCLUDES
-      when "runner" then DEFAULT_EXTENSIONS - RUNNER_MODE_EXCLUDES
-      else DEFAULT_EXTENSIONS
-      end
-    end
+
 
     # One answer for the daemon and the CLI, so the verbs one offers are
     # the verbs the other serves. Sources follow this prepared configuration,
@@ -512,7 +446,7 @@ module Rho
 
     def selected_builtins(config, extensions = DEFAULT_EXTENSIONS)
       extensions.select do |mod|
-        id = Rho::Runner::Extensions::Loader.extension_name_of(mod)
+        id = Rho::Env::Extensions::Loader.extension_name_of(mod)
         (!config.catalog.descriptors.key?(id) && !config.catalog.failures.key?(id)) || config.plugin_enabled?(id)
       end
     end
@@ -525,7 +459,7 @@ module Rho
         entry = api.conversation_servers
         registrar.claim(entry.extension, entry.handler) if entry
       end
-      result = Rho::Runner::Extensions::Loader.call(
+      result = Rho::Env::Extensions::Loader.call(
         builtin: extensions, gems: gems, paths: paths,
         api_class: Api, api_options: { host: host, validate_description: true, registrar_slot: registrar, managed: managed.to_h { |package| [package.path, package] } }, log: log, reuse: reuse
       )
@@ -538,7 +472,7 @@ module Rho
     # Only successful owners contribute runtime surfaces. The same assembly
     # serves initial loading and removal of an owner whose startup failed.
     def assemble(registrations, failures: [], registry: nil)
-      registry ||= registrations.each_with_object(Rho::Runner::Extensions::Registry.new) do |api, table|
+      registry ||= registrations.each_with_object(Rho::Env::Extensions::Registry.new) do |api, table|
         table.commit(api)
       end
       Loaded.new(
@@ -557,7 +491,7 @@ module Rho
     def registered_agents(committed)
       definitions = committed.flat_map(&:agents)
       duplicate = definitions.group_by(&:name).find { |_name, rows| rows.length > 1 }
-      raise Rho::Runner::Extensions::RegistrationError, "two extensions register agent #{duplicate.first}" if duplicate
+      raise Rho::Env::Extensions::RegistrationError, "two extensions register agent #{duplicate.first}" if duplicate
 
       definitions.freeze
     end
@@ -565,7 +499,7 @@ module Rho
     def webui_root_of(committed)
       owners = committed.select(&:webui_root)
       if owners.length > 1
-        raise Rho::Runner::Extensions::RegistrationError,
+        raise Rho::Env::Extensions::RegistrationError,
           "multiple webui owners: #{owners.map(&:extension_name).join(", ")} — one page per daemon"
       end
 

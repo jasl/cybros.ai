@@ -66,7 +66,7 @@
               "maximum": 10,
               "default": 2,
               "title": "Message grouping delay in seconds",
-              "description": "Wait 0\u201310 seconds before submitting consecutive text together; each new message restarts the wait. Zero sends immediately."
+              "description": "Wait 0–10 seconds before submitting consecutive text together; each new message restarts the wait. Zero sends immediately."
             },
             "transcription_model": {
               "type": "string",
@@ -117,10 +117,6 @@
     "additionalProperties": false
   },
   "default_enabled": false,
-  "modes": [
-    "full",
-    "agent"
-  ],
   "requires": [],
   "restart_only": false
 }

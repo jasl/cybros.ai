@@ -46,8 +46,8 @@ module Executors
   # from the event vocabularies by constant reference in progress_test.
   # The accepted answer's value is the frame as broadcast, nil when dropped.
   module Progress
-    # The floor of the cadence per key per kernel process. rho-runner
-    # MIRRORS it (`Rho::Runner::Progress::MIN_INTERVAL_MS`) and the contract
+    # The floor of the cadence per key per kernel process. rho-env
+    # MIRRORS it (`Rho::Env::Progress::MIN_INTERVAL_MS`) and the contract
     # pack pins the two equal (`size_bounds.json#/progress_min_interval_ms`).
     MIN_INTERVAL_MS = 250
     MIN_INTERVAL = (MIN_INTERVAL_MS / 1000.0).seconds

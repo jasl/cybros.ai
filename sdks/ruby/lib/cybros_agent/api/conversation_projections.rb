@@ -366,7 +366,7 @@ module CybrosAgent
       private
 
         # THE RUNNER'S CHECKPOINT, parsed once: the
-        # kernel carries it VERBATIM — rho-runner's `{hash, store}`, its
+        # kernel carries it VERBATIM — rho-env's `{hash, store}`, its
         # `{skipped, bytes, files}`, a placeholder — so `raw` is that value
         # and the members are the facts this gem reads off an object; nil
         # for a stored null and for an absent member.

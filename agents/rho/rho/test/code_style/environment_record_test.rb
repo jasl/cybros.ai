@@ -23,16 +23,16 @@ class EnvironmentRecordTest < Minitest::Test
     assert_equal "binding", Rho::Extensions::Environment::STORE_KEY
     assert_equal Rho::Extensions::Environment::NAME, Rho::Extensions::Environment::STORE_NAMESPACE,
       "the extension's NAME is the namespace, as HostStore notes are keyed"
-    assert_empty occurrences(/"rho\.environment"/), "the executor context key is owned by rho-runner"
-    assert_equal Rho::Runner::Environment::CONTEXT_KEY, Rho::Extensions::Environment::STORE_NAMESPACE
+    assert_empty occurrences(/"rho\.environment"/), "the executor context key is owned by rho-env"
+    assert_equal Rho::Env::Environment::CONTEXT_KEY, Rho::Extensions::Environment::STORE_NAMESPACE
     assert_equal 1, occurrences(/"binding"/).length, occurrences(/"binding"/).inspect
     assert_equal 1, occurrences(/STORE_NAMESPACE\s*=/).length
     assert_equal 1, occurrences(/STORE_KEY\s*=/).length
   end
 
   def test_rho_announces_its_boot_instant_in_the_environment_document
-    registry = Rho::Runner::Extensions::Loader.call(builtin: [Rho::Runner::Extensions::Coding]).registry
-    environment = Rho::Runner::Environment.local(root: Dir.tmpdir)
+    registry = Rho::Env::Extensions::Loader.call(builtin: [Rho::Env::Extensions::Coding]).registry
+    environment = Rho::Env::Environment.local(root: Dir.tmpdir)
 
     document = Rho::RunDeclaration.environment_document(registry: registry, environment: environment,
       booted_at: "2026-09-17T08:00:00Z")

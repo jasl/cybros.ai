@@ -7,6 +7,24 @@ require "test_helpers/run_api_test_helper"
 class AgentAPI::V1::RunsTest < ActionDispatch::IntegrationTest
   include RunAPITestHelper
 
+  test "create seeds its private row without relocking while later appends still lock" do
+    locks = []
+    observer = lambda do |*, payload|
+      sql = payload[:sql]
+      locks << sql if sql.match?(/FROM "runs".*FOR UPDATE/)
+    end
+    run_id = ActiveSupport::Notifications.subscribed(observer, "sql.active_record") { create_loop! }
+    assert_empty locks
+
+    ActiveSupport::Notifications.subscribed(observer, "sql.active_record") do
+      post "#{loops_path}/#{run_id}/tasks", headers: auth("locked-append"), as: :json,
+        params: { steps: [{ ask: { key: "next", prompt: "Continue?" } }], expected_revision: 1 }
+    end
+    assert_response :success
+    assert_equal 1, locks.size
+    assert_equal 2, loop_record(run_id).revision
+  end
+
   test "create seeds the graph in written order and answers in task vocabulary only" do
     post loops_path, headers: auth("al-1"), as: :json, params: {
       run: {
@@ -342,7 +360,7 @@ class AgentAPI::V1::RunsTest < ActionDispatch::IntegrationTest
       approval_mode: "bypass", steps: [{ ask: { key: "gate", prompt: "Continue?" } }],
     } }
     started_at = Time.current.change(usec: 0)
-    append = Runs::Tasks::Append.method(:call)
+    append = Runs::Tasks::Append.method(:call_locked)
     delayed_append = lambda do |command|
       result = append.call(command)
       travel 1.minute
@@ -350,7 +368,7 @@ class AgentAPI::V1::RunsTest < ActionDispatch::IntegrationTest
     end
 
     travel_to started_at do
-      Runs::Tasks::Append.stub(:call, delayed_append) do
+      Runs::Tasks::Append.stub(:call_locked, delayed_append) do
         post loops_path, headers: auth("seed-window"), as: :json, params: payload
       end
       assert_response :created

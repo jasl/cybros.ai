@@ -11,7 +11,7 @@ module Rho
       Probe = Data.define(:about, :report)
 
       def initialize(lineage:, home:, wire:, clock:, interval:, log:, announce:, lose:,
-        member_credential:, on_workspace_adopted:, spawn:, mode: "full", workspace: nil, workspace_selection: nil,
+        member_credential:, on_workspace_adopted:, spawn:, workspace: nil, workspace_selection: nil,
         sweep: -> { nil })
         @lineage = lineage
         @home = home
@@ -24,7 +24,6 @@ module Rho
         @member_credential = member_credential
         @on_workspace_adopted = on_workspace_adopted
         @spawn = spawn
-        @mode = mode
         # THE ROOM KNOB: the room's public id, or nil for the
         # dedicated path.
         @workspace_selection = workspace_selection || -> { workspace }
@@ -54,13 +53,13 @@ module Rho
       def running? = @lineage.maintenance_running?
 
       def run_once(about, verify:)
-        renewals_for(about, unless_stopping: false).map { |renewal| renewal.run_once(verify: verify) }
+        renewal_for(about, unless_stopping: false)&.run_once(verify: verify)
       end
 
       # Settings use the same adoption edge immediately, without renewing
       # credentials or running the rest of the periodic maintenance cycle.
       def refresh_workspace(about)
-        if about && @mode != "runner" && @lineage.current?(about)
+        if about && @lineage.current?(about)
           ensure_workspace(about)
         end
       end
@@ -99,7 +98,7 @@ module Rho
         return nil unless about
 
         report = Authority.new(
-          oauth: about, base_url: @home.base_url, transport: @wire.api_transport, mode: @mode
+          oauth: about, base_url: @home.base_url, transport: @wire.api_transport
         ).check
         Probe.new(about: about, report: report)
       rescue StandardError
@@ -125,20 +124,18 @@ module Rho
         end
 
         # Everything below applies through the object-identity CAS on
-        # `about`, never to a replacement lineage adopted mid-cycle. A
-        # runner-mode daemon adopts no workspace: Ensure-Workspace is the
-        # member plane's, and it skips it.
+        # `about`, never to a replacement lineage adopted mid-cycle.
         def maintain_current(about, forced_probe: true)
           return if about.nil?
 
-          renewals_for(about, unless_stopping: true).each(&:run_once)
+          renewal_for(about, unless_stopping: true)&.run_once
           return unless @lineage.current?(about)
 
           if forced_probe || !@lineage.observation_fresh?(about)
             snapshot = authority_snapshot(about: about)
             observe(snapshot) if snapshot
           end
-          return unless @mode != "runner" && @lineage.current?(about)
+          return unless @lineage.current?(about)
 
           ensure_workspace(about)
           @sweep.call if @lineage.current?(about)
@@ -146,14 +143,11 @@ module Rho
           @log.warn("authority.maintenance_failed", error: error)
         end
 
-        def renewals_for(about, unless_stopping:)
-          agent_owned = about.agent? ? about.agent : about.runner
-          renewals = []
-          if agent_owned&.refreshable?
-            renewals << Renewal.new(oauth: agent_owned, clock: @clock,
+        def renewal_for(about, unless_stopping:)
+          if about&.refreshable?
+            Renewal.new(oauth: about, clock: @clock,
               on_event: ->(event) { renewal_event(event, about, unless_stopping: unless_stopping) })
           end
-          renewals
         end
 
         # Outside the monitor: a rebind reaches a socket.

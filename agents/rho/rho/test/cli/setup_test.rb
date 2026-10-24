@@ -29,6 +29,7 @@ class CliSetupTest < Minitest::Test
   def setup
     @root = Dir.mktmpdir("rho-setup")
     @home = Rho::Home.resolve(base_url: "http://nexus", root: @root).prepare
+    Rho::Settings.prepare(@home)
     @output = TerminalIO.new
     @providers, @telegrams = [], []
     @cli = Controller.new(@home, [model("paid/tool"), model("free/tool", state: "known_free_candidate"),
@@ -80,7 +81,7 @@ class CliSetupTest < Minitest::Test
     assert_equal "https://public.example/nexus", settings.fetch("nexus_public_url")
   end
 
-  def test_no_models_no_tty_runner_and_invalid_url_fail_without_writing
+  def test_no_models_no_tty_and_invalid_url_fail_without_writing
     @cli = Controller.new(@home, [model("disabled/tool", available: false)])
     assert wizard("n\n").run("model")
     assert_includes @output.string, "/admin/model_providers"
@@ -89,8 +90,6 @@ class CliSetupTest < Minitest::Test
     noninteractive = Rho::Cli::Setup.new(cli: @cli, input: StringIO.new, output: StringIO.new, env: {})
     assert_raises(Rho::Error) { noninteractive.run }
     assert_raises(Rho::Error) { wizard("", public_url: "file:///tmp/nexus").run("model") }
-    @home.write_setting("mode", "runner")
-    assert_raises(Rho::Error) { wizard("").run }
     assert_empty @cli.connections
   end
 

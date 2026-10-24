@@ -47,7 +47,7 @@ class UntilExtensionTest < Minitest::Test
   # `environment: nil`, `runs/bindings.rb`): its tools run where it is.
   def draft(body, working_directory: @dir, remote: false,
             tools: Rho::RunDeclaration.tool_entries(Rho::RunDeclaration.announcement(registry: @registry)) + [KERNEL_TOOL])
-    environment = remote ? nil : Rho::Runner::Environment.local(root: @dir, working_directory: working_directory)
+    environment = remote ? nil : Rho::Env::Environment.local(root: @dir, working_directory: working_directory)
     lead = remote ? "" : Rho::RunDeclaration.lead(registry: @registry, environment: environment)
     runner = body.fetch("default_runner_executor_public_id", "0199-runner")
     root = body.fetch("working_directory", remote ? "/srv/remote" : working_directory)
@@ -59,7 +59,7 @@ class UntilExtensionTest < Minitest::Test
 
   # The clamp the check step carries: the operator's bash timeout under
   # the tool's own ceiling.
-  def clamp(config) = [config.plugin_configuration("rho.coding").fetch("bash_timeout_seconds"), Rho::Runner::Tools::Bash::MAX_TIMEOUT_SECONDS].min
+  def clamp(config) = [config.plugin_configuration("rho.coding").fetch("bash_timeout_seconds"), Rho::Env::Tools::Bash::MAX_TIMEOUT_SECONDS].min
 
   # The two flags land on `run`, the one conversation verb a product home
   # has, through the ONE fold (`Rho::Until.fold`, S5) —
@@ -138,7 +138,7 @@ class UntilExtensionTest < Minitest::Test
   # carries what the profile DECLARED — the daemon's policy after the
   # active plugin selection — never the settings file read raw.
   def test_the_seed_carries_the_declared_policy_and_disables_compaction_without_its_plugin
-    config = agent_mode("plugins" => { "rho.compaction" => { "configuration_version" => 1, "configuration" => { "model" => "dev/mock-text" } } })
+    config = application_config("plugins" => { "rho.compaction" => { "configuration_version" => 1, "configuration" => { "model" => "dev/mock-text" } } })
 
     served = member_ready(boot(extensions: [Rho::Extensions::Compaction, Rho::Extensions::Until], config: config),
       NexusDoubles::FakeAgentApi.new)
@@ -219,7 +219,7 @@ class UntilExtensionTest < Minitest::Test
   def test_the_daemon_reads_the_remote_runners_root_from_discovery
     api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE,
       executors: [NexusDoubles.remote_runner("R1", root: "/srv/remote")])
-    daemon = member_ready(boot(extensions: [Rho::Extensions::Until], config: agent_mode), api)
+    daemon = member_ready(boot(extensions: [Rho::Extensions::Until], config: application_config), api)
     body = { "until" => { "command" => "make test" }, "default_runner_executor_public_id" => "R1" }
 
     recorded = author.call(draft(body, remote: true), daemon.context).notes.fetch("rho.until")
@@ -231,7 +231,7 @@ class UntilExtensionTest < Minitest::Test
   # neither creates tasks nor requires the write-only Ask receipt.
   def test_the_follow_hook_builds_a_gate_without_an_append_request
     api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE)
-    daemon = member_ready(boot(extensions: [Rho::Extensions::Until], config: agent_mode), api)
+    daemon = member_ready(boot(extensions: [Rho::Extensions::Until], config: application_config), api)
     policy = Rho::Until::Policy.new(command: "make test", attempts: 2, directory: @dir, runner: "0199-runner", seed: { "executor_contexts" => { "0199-runner" => { "rho.environment" => { "root" => @dir, "directories" => [] } } } })
 
     assert_nil follow.call("al-1", {}, daemon.context)
@@ -271,7 +271,7 @@ class UntilExtensionTest < Minitest::Test
         original.call(path, **fields)
       end
     end
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Until]), api, identity: RUNNER_IDENTITY)
+    daemon = member_ready(boot(extensions: [Rho::Env::Extensions::Coding, Rho::Extensions::Until]), api, identity: RUNNER_IDENTITY)
     check.fetch("executor_context").fetch("rho.environment")["root"] = daemon.context.tool_env.root
 
     response = request(daemon, :post, "/conversations", token: bearer(daemon), body: {
@@ -303,7 +303,7 @@ class UntilExtensionTest < Minitest::Test
     api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE)
     api.stock_principals([{ "public_id" => "peer-1", "handle" => "lark", "kind" => "agent", "display_name" => "Lark",
       "agent_identifier" => "rho.peer", "steward_public_id" => "steward-1" }])
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Until]), api, identity: RUNNER_IDENTITY)
+    daemon = member_ready(boot(extensions: [Rho::Env::Extensions::Coding, Rho::Extensions::Until]), api, identity: RUNNER_IDENTITY)
 
     response = request(daemon, :post, "/conversations", token: bearer(daemon), body: {
       prompt: "fix it", model: "dev/mock-text", agent: "@lark", default_runner_executor_public_id: "0199-runner", until: { command: "make test" },
@@ -320,7 +320,7 @@ class UntilExtensionTest < Minitest::Test
     blocked = NexusDoubles::FakeAgentApi::MATERIALIZED_EVENTS.first.merge("type" => "input_blocked",
       "payload" => { "input_public_id" => "cin-1", "blocked_reason" => "runner_required" })
     api = NexusDoubles::FakeAgentApi.new(events: [blocked])
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Until]), api, identity: RUNNER_IDENTITY)
+    daemon = member_ready(boot(extensions: [Rho::Env::Extensions::Coding, Rho::Extensions::Until]), api, identity: RUNNER_IDENTITY)
 
     response = request(daemon, :post, "/conversations", token: bearer(daemon), body: {
       prompt: "fix it", model: "dev/mock-text", until: { command: "make test" },
@@ -350,7 +350,7 @@ class UntilExtensionTest < Minitest::Test
       "visibility" => "visible", "created_at" => "2026-09-05T00:00:00Z",
       "output" => "not yet: run 1\n\nCommand exited with code 1", "structured_content" => { "exit_status" => 1 },
     })
-    daemon = member_ready(boot(extensions: [Rho::Extensions::Until], config: agent_mode), api)
+    daemon = member_ready(boot(extensions: [Rho::Extensions::Until], config: application_config), api)
     policy = Rho::Until::Policy.new(command: "make test", attempts: 3, directory: @dir, runner: "0199-runner", seed: { "executor_contexts" => { "0199-runner" => { "rho.environment" => { "root" => @dir, "directories" => [] } } } })
     gate = follow.call("al-1", { "rho.until" => policy.to_h.merge("run_public_id" => "al-1") }, daemon.context)
     context = daemon.wire.client(NexusDoubles::MEMBER_TOKEN).workspace("ws-1").runs.run("al-1")

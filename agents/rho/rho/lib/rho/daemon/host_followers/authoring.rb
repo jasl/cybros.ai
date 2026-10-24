@@ -67,7 +67,7 @@ module Rho
                                 staged: Staged.none, root_set: nil)
             workspace = client.workspace(workspace_public_id)
             model = draft.body.fetch("model")
-            # A named answerer other than rho is FOREIGN: the create names it,
+            # A named answerer other tha rho is FOREIGN: the create names it,
             # the row remembers it, and the first turn carries the bare words.
             foreign = answerer && answerer.public_id != ctx.own_user_public_id
             policy = initial_policy(model: model, notes: draft.notes,
@@ -164,8 +164,8 @@ module Rho
 
           def anchor_draft(draft, public_id)
             contexts = draft.body.fetch("executor_contexts", {}).transform_values do |context|
-              value = context.fetch(Rho::Runner::Environment::CONTEXT_KEY)
-              context.merge(Rho::Runner::Environment::CONTEXT_KEY => value.merge("anchor" => value["anchor"] || public_id))
+              value = context.fetch(Rho::Env::Environment::CONTEXT_KEY)
+              context.merge(Rho::Env::Environment::CONTEXT_KEY => value.merge("anchor" => value["anchor"] || public_id))
             end
             notes = draft.notes
             if (note = notes["rho.until"])
@@ -273,7 +273,7 @@ module Rho
             return refusal if refusal
 
             local = runner.nil? || @context.own_runner?(runner)
-            Rho::Runner::Environment::Binding.new(root: local ? File.expand_path(root) : root,
+            Rho::Env::Environment::Binding.new(root: local ? File.expand_path(root) : root,
               directories: local ? directories.map { |path| File.expand_path(path) } : directories, anchor: nil)
           end
 
@@ -452,7 +452,7 @@ module Rho
           end
 
           # THE PICTURES, STAGED: each path the verb posted is
-          # resolved the way `Rho::Runner::Files` and the tools resolve one — expanded
+          # resolved the way `Rho::Env::Files` and the tools resolve one — expanded
           # against the environment root, no confinement (a bearer holding
           # this door authors a `bash` that reads anything this user can) —
           # read, and uploaded through the member plane as rho's own user;

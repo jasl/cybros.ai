@@ -23,10 +23,11 @@ module Executors
 
     def self.ineligibility(executor, principal)
       return "revoked" unless executor.active?
-      return "no ready credential" unless Executor.credential_readiness_for([executor]).fetch(executor.id) == :ready
+      readiness = Executor.credential_readiness_for([executor])
+      return "no ready credential" unless readiness.fetch(executor.id) == :ready
       return "shutdown pending" if executor.shutdown_pending?
 
-      "not in scope for this host's principal" unless executor.eligible_for_role?(:runner, principal)
+      "not in scope for this host's principal" unless executor.eligible_for_role?(:runner, principal, readiness: readiness)
     end
   end
 end

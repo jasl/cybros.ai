@@ -314,19 +314,20 @@ module Conversations
         def switch_to_fallback(conversation, invocation, turn, variant)
           return unless invocation.recovery_eligible?
 
+          configuration = Runs::ModelFallback.chosen_configuration(invocation)
+          regeneration = Regenerate.for_fallback(conversation: conversation, turn: turn,
+            principal: invocation.creating_user, configuration: configuration)
           resolved = Runs::ModelFallback.recover(account: conversation.account, workload: "text_generation",
-            current: invocation, owner: variant, configuration: Runs::ModelFallback.chosen_configuration(invocation),
+            current: invocation, owner: variant, configuration: configuration,
             excluded: switched_models(variant), request_body: invocation.content_bodies.find_by(role: "request")) do |selection|
-            Regenerate.fallback_refusal(conversation: conversation, turn: turn, origin: variant,
-              selection: selection, principal: invocation.creating_user)
+            regeneration.fallback_refusal(turn, variant, selection)
           end
           @model_skips = resolved.skips
           return unless resolved.resolved?
 
           candidate = Runs::ModelFallback.from_selection(resolved.selection,
             reason: Runs::ModelFallback.reason_of(invocation), category: invocation.refusal_category)
-          regenerated = Regenerate.fallback(conversation: conversation, turn: turn, origin: variant,
-            candidate: candidate, principal: invocation.creating_user)
+          regenerated = regeneration.fallback(turn, variant, resolved.selection)
           return unless regenerated.accepted?
 
           previous = "#{invocation.provider_id}/#{invocation.model_ref}"

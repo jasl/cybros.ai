@@ -58,7 +58,7 @@ class MaintenanceTest < Minitest::Test
   # connection that works, and the same tick kills every later recovery.
   def test_renewal_follows_a_reconnect_rather_than_the_connection_it_started_with
     now = Time.now
-    daemon = connected_boot(config: agent_mode, clock: -> { now }, renewal_interval: 0.02)
+    daemon = connected_boot(config: application_config, clock: -> { now }, renewal_interval: 0.02)
     token = bearer(daemon)
     request(daemon, :post, "/device/start", token: token)
     await_state(daemon, "active", token: token)
@@ -100,7 +100,7 @@ class MaintenanceTest < Minitest::Test
   # report is right about the lineage it names and must not be applied to the
   # live one.
   def test_a_late_answer_about_a_superseded_lineage_is_not_news
-    daemon = connected_boot(config: agent_mode)
+    daemon = connected_boot(config: application_config)
     token = bearer(daemon)
     request(daemon, :post, "/device/start", token: token)
     await_state(daemon, "active", token: token)
@@ -122,7 +122,7 @@ class MaintenanceTest < Minitest::Test
   # leaving it at "active" made the CLI print "Connected" as the revoked
   # identity while the line above it said the credentials had expired.
   def test_a_terminal_loss_leaves_the_daemon_disconnected
-    daemon = connected_boot(config: agent_mode)
+    daemon = connected_boot(config: application_config)
     token = bearer(daemon)
     request(daemon, :post, "/device/start", token: token)
     await_state(daemon, "active", token: token)
@@ -351,7 +351,7 @@ class MaintenanceTest < Minitest::Test
     replacement_identity = Rho::Identity.agent(
       home: daemon.home,
       user_public_id: daemon.identity.user_public_id,
-      executor_public_id: "0199-executor-new", mode: "full"
+      executor_public_id: "0199-executor-new"
     ).prepare
     replacement_oauth = CybrosAgent::Credentials::OAuth.issue(
       credentials: CybrosAgent::DeviceFlow::Credentials.new(
@@ -366,7 +366,6 @@ class MaintenanceTest < Minitest::Test
       clock: -> { Time.now }
     )
     replacement_identity.record(clock: -> { Time.now })
-    replacement_oauth = Rho::Credentials.new(agent: replacement_oauth)
     replacement_connection = daemon.ceremony.build_connection
     replacement_connection.send(:instance_variable_set, :@identity, replacement_identity)
     replacement_connection.send(:instance_variable_set, :@oauth, replacement_oauth)
@@ -524,7 +523,7 @@ class MaintenanceTest < Minitest::Test
     request(daemon, :post, "/device/start", token: token)
     await_state(daemon, "active", token: token)
 
-    credentials = daemon.lineage.credentials.agent
+    credentials = daemon.lineage.credentials
     store = credentials.send(:instance_variable_get, :@store)
     committing = Queue.new
     allow_commit = Queue.new
@@ -558,7 +557,7 @@ class MaintenanceTest < Minitest::Test
     )
     assert_equal :active, replacement.phase
     assert_equal 1,
-      replacement.lineage.credentials.rotation(:member), "the agent lineage's rotation was written down"
+      replacement.lineage.credentials.rotation, "the agent lineage's rotation was written down"
   ensure
     allow_commit&.push(true)
     stopping&.kill if stopping&.alive?

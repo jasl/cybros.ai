@@ -3,23 +3,11 @@ require_relative "../process_registry"
 
 module E2E
   module McpFixture
-    # THE FIXTURE PROCESS: `server.rb ENTRY PORT` under puma on a loopback port the journey picks,
-    # spawned in its own group under rho-mcp's bundle (puma is its development dependency; e2e's
-    # Gemfile is unchanged — on a box that means rho-mcp's dev bundle is installed) through
-    # `E2E::ProcessRegistry`, so the registry's drain leaves nothing behind on a red run. Shared by
-    # the `http` entry (mcp_tools) and the `oauth` entry (mcp_oauth): the port is picked
-    # bind-then-close, the process is ready once the port answers, and its log is read by UTF-8
-    # name.
+    # The caller's E2E bundle owns this standalone fixture process.
     module Host
-      RHO_MCP_ROOT = File.expand_path("../../../agents/rho/rho-mcp", __dir__)
       FIXTURE = File.expand_path("server.rb", __dir__)
       READY_SECONDS = 30
       POLL = 0.1
-      BUNDLE_ENV = {
-        "BUNDLE_GEMFILE" => File.join(RHO_MCP_ROOT, "Gemfile"),
-        "BUNDLE_LOCKFILE" => File.join(RHO_MCP_ROOT, "Gemfile.lock"),
-        "BUNDLE_FROZEN" => "true",
-      }.freeze
 
       # The port never answered inside READY_SECONDS; the message carries
       # the fixture's own log, so the caller's flunk names the cause.
@@ -37,8 +25,8 @@ module E2E
       # The pid of the fixture's process group; the journey owns its stop.
       def spawn(entry:, port:, log:)
         ProcessRegistry.spawn(
-          BUNDLE_ENV, Gem.ruby, Gem.bin_path("bundler", "bundle"), "exec", "ruby", FIXTURE, entry, port.to_s,
-          chdir: RHO_MCP_ROOT, out: [log, "a"], err: [log, "a"], pgroup: true
+          Gem.ruby, Gem.bin_path("bundler", "bundle"), "exec", "ruby", FIXTURE, entry, port.to_s,
+          chdir: File.dirname(__dir__), out: [log, "a"], err: [log, "a"], pgroup: true
         )
       end
 

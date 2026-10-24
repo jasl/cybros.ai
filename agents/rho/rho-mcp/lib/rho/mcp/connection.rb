@@ -1,6 +1,6 @@
 require "faraday"
 require "mcp"
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module Mcp
@@ -110,7 +110,7 @@ module Rho
       # The last no-token 401 `open!` classified (the verb's first phase).
       attr_reader :challenge
 
-      def initialize(row, log: nil, redact: Rho::Runner::Redact.new, transport_factory:, clock: -> { Time.now }, storage: nil)
+      def initialize(row, log: nil, redact: Rho::Env::Redact.new, transport_factory:, clock: -> { Time.now }, storage: nil)
         @row = row
         @key = row.key
         @log = log
@@ -356,7 +356,7 @@ module Rho
         rescue MCP::Client::InputRequiredError
           raise CallRefused, "mcp server #{@key}'s #{public_name} asks for input this client does not provide" if document.nil?
 
-          Mapping.with_notice(Rho::Runner::Result.error("skill_unavailable: #{document} asks for input this client " \
+          Mapping.with_notice(Rho::Env::Result.error("skill_unavailable: #{document} asks for input this client " \
                                                         "does not provide"), opening)
         rescue MCP::Client::RequestHandlerError => error
           raise ServerGone, died_under_call(public_name, error)
@@ -448,7 +448,7 @@ module Rho
           message = @redact.call(error.message.to_s)
           if error.code == -32602
             body = document ? "skill_unknown: #{document}" : "The server refused the call: #{message}"
-            return Mapping.with_notice(Rho::Runner::Result.error(body), notice)
+            return Mapping.with_notice(Rho::Env::Result.error(body), notice)
           end
 
           raise CallRefused, "mcp server #{@key} answered #{public_name} with error #{error.code}: #{message}"
@@ -458,13 +458,13 @@ module Rho
         # with its reason (`:deadline` → the clamp's answer, else
         # "interrupted"); outside a context (the probe) nothing raises.
         def checkpoint!
-          Rho::Runner::ExecutionContext.current&.raise_if_cancelled!
+          Rho::Env::ExecutionContext.current&.raise_if_cancelled!
         end
 
         def with_cancellation
           cancellation = MCP::Cancellation.new
           on_cancel = -> { cancellation.cancel(reason: "the runner cancelled the call") }
-          Rho::Runner::ExecutionContext.with_cancel_signal(on_cancel) { yield cancellation }
+          Rho::Env::ExecutionContext.with_cancel_signal(on_cancel) { yield cancellation }
         end
 
         # A LEGACY SESSION'S EXPIRY IS NOT A DEATH: the gem cleared the session on the 404; "per

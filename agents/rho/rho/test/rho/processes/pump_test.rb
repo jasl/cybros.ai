@@ -55,7 +55,7 @@ class ProcessesPumpTest < Minitest::Test
   end
 
   def test_the_cadence_floor_is_the_runners_mirror_and_the_interval_must_be_positive
-    assert_equal Rho::Runner::Progress::MIN_INTERVAL_MS, pump.interval_ms
+    assert_equal Rho::Env::Progress::MIN_INTERVAL_MS, pump.interval_ms
     assert_raises(ArgumentError) { Rho::Processes::Pump.new(post: ->(_) { true }, interval_ms: 0) }
   end
 

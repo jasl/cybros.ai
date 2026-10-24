@@ -32,9 +32,8 @@ module Rho
       # [{name, value}]}`, http `{type: "http", name, url, headers}`; an
       # sse entry the daemon lists down). `additionalDirectories` beyond
       # the record's 4 KiB shape are -32602 (the spec's root set is small).
-      # Not connected: -32000 naming the methods; a runner-mode
-      # home: -32603 `Agent::RUNNER_MODE`; no daemon: -32603 with Core's
-      # sentence.
+      # Not connected: -32000 naming the methods; no daemon: -32603
+      # with Core's sentence.
       # EVERY REFUSAL IS READ BY ITS CODE (`Core::Refused`): `not_found` on the attach,
       # `mcp_unavailable` on the servers bind, the shared error mapping (`Errors.translate`)
       # for the rest — no sentence is matched, so a daemon rewording cannot break this surface
@@ -130,19 +129,13 @@ module Rho
 
         # The three doors before any open: the mode, the daemon, the connection.
         def admit!(agent, core)
-          raise Refusal.internal(RUNNER_MODE) if runner_mode?(core)
-
           daemon = core.require_daemon
           Auth.connected!(agent, core, daemon)
         rescue Rho::Error => error
           raise Errors.translate(error)
         end
 
-        def runner_mode?(core)
-          core.config.mode == "runner"
-        rescue Rho::Error
-          false
-        end
+
 
         # Followed already, else attached. The kernel's 404 — the daemon's attach arm relays it
         # as the kernel's own `not_found` — is -32002, and ONLY that code; every other refusal

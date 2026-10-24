@@ -350,9 +350,6 @@ class CoreTest < Minitest::Test
     pointer = core.stored_connection
     assert_equal "0199-old-runner", pointer.fetch("executor_public_id"), "read as it stands"
     assert_raises(Rho::Error, CybrosAgent::Error) { core.stored_identity(pointer) }
-
-    File.write(home.settings_path, JSON.generate("mode" => "runner"))
-    assert_nil core.stored_facts, "a runner-mode home declares no row"
   end
 
   # `adaptation_choice` resolves the row from the files alone — the gem's

@@ -8,13 +8,13 @@ module Rho
 
     attr_reader :access_token, :executor_access_token
 
-    def self.parse(document, mode:)
+    def self.parse(document)
       fields = document.to_h.transform_keys(&:to_s)
       raise ConnectionError, "Unknown API key fields" unless (fields.keys - FIELDS).empty?
 
-      required = mode == "runner" ? %w[executor_access_token] : %w[access_token executor_access_token]
+      required = FIELDS
       unless fields.keys.sort == required.sort
-        raise ConnectionError, "Mode #{mode} requires #{required.join(", ")}"
+        raise ConnectionError, "The application requires #{required.join(", ")}"
       end
       tokens = fields.transform_values { |value| value.to_s.strip }
       raise ConnectionError, "API keys must not be empty" if tokens.values.any?(&:empty?)
@@ -22,7 +22,7 @@ module Rho
       new(**tokens.transform_keys(&:to_sym))
     end
 
-    def initialize(access_token: nil, executor_access_token:)
+    def initialize(access_token:, executor_access_token:)
       @access_token = access_token
       @executor_access_token = executor_access_token
     end

@@ -13,7 +13,7 @@ gem "cmctl", path: "../../../cmctl"
 # surface gem depends on the body, never the other way round.
 gem "rho", path: "../rho"
 gem "cybros_agent", path: "../../../sdks/ruby"
-gem "rho-runner", path: "../rho-runner"
+gem "rho-env", path: "../rho-env"
 
 # The development group: a checkout's suite, never an installed prefix's
 # (the installer runs `--without development test`).

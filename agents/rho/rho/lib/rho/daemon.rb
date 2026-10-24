@@ -33,7 +33,6 @@ module Rho
 
     attr_reader :home, :endpoint, :bearer
     # The collaborators by name; none of them hands out the daemon itself.
-    # `runs` is nil in runner mode.
     attr_reader :host, :context, :routes, :lineage, :wire, :ceremony, :maintenance, :host_followers, :executor_plane
 
     def self.boot(home:, bind: LOOPBACK, port: 0, on_phase: nil, clock: -> { Time.now },
@@ -44,7 +43,7 @@ module Rho
       extensions: nil, flags: {})
       home.prepare
       lock = Lock.acquire(home.boot_lock_path)
-      Settings.prepare(home, flags: config ? { mode: config.mode } : flags)
+      Settings.prepare(home, flags: flags)
       config = config ? config.with({}, home: home) : Config.load(home.settings_path, flags: flags, home: home)
       bind = config.bind || bind
       verify_bind(bind, transport_assertion: transport_assertion)
@@ -96,7 +95,7 @@ module Rho
       @config = Config::Current.new(config || Config.from_hash({}))
       # The mode's shipped set, or the narrower one a test names to prove an
       # extension loads alone.
-      @extensions = extensions || Extensions.defaults_for(@config.mode)
+      @extensions = extensions || Extensions::DEFAULT_EXTENSIONS
       @transport_assertion = transport_assertion
       @renewal_interval = renewal_interval
       # Explicit argument or settings; the plugin supplies the default after loading.
@@ -131,9 +130,7 @@ module Rho
 
     def identity = @lineage.identity
 
-    def mode = @config.mode
 
-    def runner_mode? = @config.mode == "runner"
 
     # A console hint on an api_only daemon, or one with no build, is a lie.
     def page? = !@webui.nil?
@@ -254,7 +251,7 @@ module Rho
           host: @host, bearer: @bearer, page: page?, lineage: @lineage, wire: @wire, loaded: @loaded,
           environment_store: EnvironmentStore.new(@home.environment_path),
           endpoint: -> { @endpoint },
-          member_credential: (->(about) { member_credential_for(about) } unless runner_mode?),
+          member_credential: ->(about) { member_credential_for(about) },
           executor_credential: ->(about) { executor_credential_for(about) },
           tool_env: -> { @environments.zero.env }, host_followers: -> { @host_followers },
           spawn: ->(&work) { @server.spawn(&work) }, repointed: -> { repoint_zero },
@@ -277,21 +274,18 @@ module Rho
           own_runner_public_id: -> { @lineage.identity&.runner_executor_public_id }, own_runner: ->(public_id) { @context.own_runner?(public_id) },
           processes: @host.processes,
           checkpoints: !@host.checkpoints.nil?, registrar: @loaded.conversation_servers, served: @loaded.registry,
-          servers_changed: -> { reannounce(:runner) }
+          servers_changed: -> { reannounce }
         )
         @executor_plane = ExecutorPlane.new(wire: @wire, lineage: @lineage, context: @context, log: log,
           booted_at: @booted_at)
-        unless runner_mode?
-          @host_followers = HostFollowers.new(
-            lineage: @lineage, home: @home, config: @config, wire: @wire, loaded: @loaded, log: log,
-            context: @context, clock: @clock, sleeper: @sleeper, environments: @environments,
-            on_host_ended: ->(host) { host_ended(host) }
-          )
-        end
+        @host_followers = HostFollowers.new(
+          lineage: @lineage, home: @home, config: @config, wire: @wire, loaded: @loaded, log: log,
+          context: @context, clock: @clock, sleeper: @sleeper, environments: @environments,
+          on_host_ended: ->(host) { host_ended(host) }
+        )
         @maintenance = Maintenance.new(
           lineage: @lineage, home: @home, wire: @wire, clock: @clock, interval: @renewal_interval,
           log: log, announce: -> { announce }, lose: ->(**edge) { lose_authority(**edge) },
-          mode: @config.mode,
           workspace: @config.workspace, workspace_selection: -> { @config.workspace_selection(@home) },
           member_credential: ->(about) { member_credential_for(about) },
           on_workspace_adopted: ->(about, credential, public_id) { place_runners(about, credential, public_id) },
@@ -300,7 +294,7 @@ module Rho
         )
         @ceremony = Ceremony.new(
           lineage: @lineage, home: @home, device_flow: @device_flow, wire: @wire, clock: @clock,
-          display_name: @display_name, log: log, maintenance: @maintenance, mode: @config.mode,
+          display_name: @display_name, log: log, maintenance: @maintenance,
           announce: -> { announce }, adopt: ->(**facts) { adopt_connection(**facts) },
           settle: ->(adoption, phase) { settle(adoption, phase) },
           lose: ->(**edge) { lose_authority(**edge) },
@@ -322,8 +316,7 @@ module Rho
       # registration order, fail-OPEN: an extension holding a child per
       # conversation lets it go here, and one that raises costs nothing
       # but its own log line — not the next subscriber, and never the
-      # release, which ran first. A runner-mode daemon builds no `HostFollowers`
-      # and fires none of this (the registration answered `unavailable`).
+      # release, which ran first.
       # THE EDITOR'S SERVERS GO WITH THE HOST: the tables
       # close and drop the anchor's set — the agent slot re-announced by
       # the tables' own edge — and the union is declared again on the
@@ -344,11 +337,11 @@ module Rho
       end
 
       # An incomplete or absent build costs the daemon its page, never its
-      # control surface; a runner-mode daemon serves no page at all. Running
+      # control surface. Running
       # extensions' browser modules mount inside the page, so an explicit
       # `webui_root` replaces the page and still serves the installed modules.
       def webui(loaded = @loaded)
-        return nil if @config.api_only || runner_mode?
+        return nil if @config.api_only
         return nil unless loaded.webui_root
 
         root = @webui_root || loaded.webui_root
@@ -375,7 +368,7 @@ module Rho
         api.register_route("POST", "/disconnect") do |request, _ctx|
           if ControlServer.json_body(request).key?("runner")
             Refusal.new(status: 422, code: "invalid_request",
-              message: "Runner-only disconnect is no longer supported; change the local mode to disable runner capability")
+              message: "Disconnect applies to the whole application; omit the runner field")
           else
             @ceremony.disconnect
           end
@@ -392,20 +385,20 @@ module Rho
       # itself, its meters, sockets and rows stand: nothing is rebuilt.
       def repoint_zero
         @environments.rebuild_zero
-        reannounce(:runner)
+        reannounce
       end
 
       # THE NAMED ANNOUNCE EDGE: the slot's document written again
       # under its own credential, on the reactor, for a slot that is
       # placed; a slot not placed announces at its placement.
-      def reannounce(slot)
+      def reannounce
         about = @lineage.credentials
-        return if about.nil? || @lineage.runner(slot).nil?
+        return if about.nil? || @lineage.runner.nil?
 
-        credential = slot_credential_for(about, slot)
+        credential = executor_credential_for(about)
         return if credential.nil?
 
-        @server.spawn { announce_slot(credential, slot) }
+        @server.spawn { announce_services(credential) }
       end
 
       # ONCE PER MAINTENANCE CYCLE, after Ensure-Workspace: the side sweep
@@ -419,12 +412,12 @@ module Rho
         @host_followers.recover_until
       end
 
-      # The workspace-adopted edge (full and agent mode): the mode's runs,
+      # The workspace-adopted edge: the application's runs,
       # then what the lineage follows and declares beside them. The member
       # credential reaches `readopt` and the declaration, which are the
       # member plane's — once, whatever the slot count.
       def place_runners(about, credential, workspace_public_id)
-        mount_runner(about, :runner)
+        mount_runner(about)
         @server.spawn do
           @host_followers.readopt(nil, workspace_public_id, credential_provider: about.method(:member_credential).to_proc)
         end
@@ -451,7 +444,7 @@ module Rho
         candidate = Rho.spelled(@config.tools_root || @home.work_root)
         return nil if Rho.protected_roots(@home).any? { |root| Rho.under?(candidate, root) }
 
-        -> { Rho::Runner::ExecutionContext.current&.tool_env&.checkpoints || @environments.zero_checkpoints }
+        -> { Rho::Env::ExecutionContext.current&.tool_env&.checkpoints || @environments.zero_checkpoints }
       end
 
       # Pure: the first network operation happens when a followed feed subscribes.
@@ -506,7 +499,7 @@ module Rho
         rescue StandardError, ScriptError => error
           rejected << api
           api.resources.retire
-          @loaded.failures << Rho::Runner::Extensions::Loader::Failure.new(
+          @loaded.failures << Rho::Env::Extensions::Loader::Failure.new(
             source: api.source, error_class: error.class.name, message: error.message)
           log.warn("extension_startup_failed", extension: api.extension_name, error_class: error.class.name)
         end
@@ -560,10 +553,10 @@ module Rho
       # every `git status` the model runs.
       # Whose conversation a run is reaches the table on every call, from
       # the inbox row the kernel wrote (item P; `conversation_public_id`),
-      # in every mode — the daemon resolves nothing.
+      # without a separate lookup by the daemon.
       # The table's watcher channel rides along: its pump
       # posts each row's output under the row's host through the RUNNER
-      # slot of the moment — none placed (agent mode: never a binding),
+      # slot of the moment — none placed while disconnected,
       # nothing posted — at the kernel's cadence. `RHO_PROGRESS_INTERVAL_MS`
       # is a HARNESS KNOB alone: the e2e journey proving the kernel's
       # per-key bound posts faster than the kernel admits, so the drop is
@@ -580,14 +573,13 @@ module Rho
       end
 
       def progress_interval_ms
-        Integer(ENV.fetch("RHO_PROGRESS_INTERVAL_MS", Rho::Runner::Progress::MIN_INTERVAL_MS))
+        Integer(ENV.fetch("RHO_PROGRESS_INTERVAL_MS", Rho::Env::Progress::MIN_INTERVAL_MS))
       end
 
       # The runner slot of the moment posts; a daemon with none placed
-      # answers false and the pump drops the frame silently — an
-      # agent-mode rho owns no process the kernel would bind it to.
+      # answers false and the pump drops the frame silently.
       def post_process_output(frame)
-        runner = @lineage.runner(:runner)
+        runner = @lineage.runner
         return false if runner.nil?
 
         runner.report_progress(frame)
@@ -599,7 +591,7 @@ module Rho
       # LOCAL truth about this daemon's own runner slot —
       # never kernel presence, which a self-read would only stamp.
       def status
-        document = @lineage.status_document.merge(mode: @config.mode, runner: runner_facts)
+        document = @lineage.status_document.merge(runner: runner_facts)
         # THE INSTANCE beside the identity: the home's own
         # per-install part of every identifier the daemon presents, read
         # off the home so the status names the same install `rho status`
@@ -609,15 +601,12 @@ module Rho
         end
         # THE DEFAULT MODEL'S ADAPTATION ROW: the row
         # this boot declares under and its source; a runner declares none.
-        document = document.merge(adaptations: @host_followers.adaptations.facts) unless runner_mode?
+        document = document.merge(adaptations: @host_followers.adaptations.facts)
         # THE PROFILE'S MODELS as the kernel answered the last declaration —
         # rho's own and the fallback a declined step re-runs on; absent
-        # until one landed (a runner never declares).
+        # until one landed.
         models = @host_followers&.declared_models
         document = document.merge(profile: models) if models
-        # A runner adopts no workspace: the block would be a pending that
-        # never settles.
-        document = document.except(:workspace) if runner_mode?
         @lineage.request_probe
         document
       end
@@ -631,13 +620,13 @@ module Rho
       # work carried by polling with the latency path broken.
       def runner_facts
         facts = { selected: selected_runner }.compact
-        runner = @lineage.runner(:runner)
-        return facts if runner.nil? || @config.mode == "agent"
+        runner = @lineage.runner
+        return facts if runner.nil?
 
         snapshot = runner.snapshot
         facts.merge(
           running: snapshot.running, tools: @loaded.registry.serving(:runner).names.length, swept: snapshot.swept, nudged: snapshot.nudged,
-          in_flight: snapshot.in_flight, socket: @lineage.executor_realtime(:runner)&.connected? || false
+          in_flight: snapshot.in_flight, socket: @lineage.executor_realtime&.connected? || false
         )
       end
 

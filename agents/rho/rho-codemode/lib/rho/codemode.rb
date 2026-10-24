@@ -1,7 +1,7 @@
 require "json"
 require "mini_racer"
 require "securerandom"
-require "rho/runner"
+require "rho/env"
 require_relative "codemode/version"
 require_relative "codemode/runtime"
 require_relative "codemode/authoring"

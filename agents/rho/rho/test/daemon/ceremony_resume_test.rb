@@ -195,64 +195,24 @@ class CeremonyResumeTest < Minitest::Test
 
   # THE SETTINGS/POINTER RULE: a home paired in one mode and
   # booted in another is refused with the switch sentence.
-  def test_a_pointer_whose_mode_disagrees_with_settings_is_refused_with_the_switch_sentence
-    daemon = connected_boot
-    token = bearer(daemon)
-    request(daemon, :post, "/device/start", token: token)
-    await_state(daemon, "active", token: token)
-    @daemons.pop.stop
-
-    restarted = boot(device_flow: connection_device_flow, api_transport: NexusDoubles::FakeAgentApi.new,
-      config: runner_mode)
-    body = JSON.parse(request(restarted, :get, "/status", token: bearer(restarted)).body)
-    assert_equal "disconnected", body["state"]
-    assert_equal "this home was paired in mode full; settings say runner — `rho disconnect`, " \
-                 "then `rho server --mode runner` and `rho connect`", body["error"]
-  end
-
-  # agent→full is recoverable: the stored mode is a subset, the runner plane
-  # reads absent, and `rho connect` opens the runner-only shape.
-  def test_a_pointer_paired_in_agent_mode_boots_under_full_mode_as_recoverable
+  def test_restart_with_changed_extensions_keeps_the_application_address
     daemon = boot(device_flow: connection_device_flow, api_transport: NexusDoubles::FakeAgentApi.new,
-      extensions: [Rho::Extensions::Ops], config: agent_mode)
+      extensions: [Rho::Extensions::Ops], config: application_config)
     token = bearer(daemon)
     request(daemon, :post, "/device/start", token: token)
     await_state(daemon, "active", token: token)
-    @daemons.pop.stop
-
-    restarted = boot(device_flow: connection_device_flow, api_transport: NexusDoubles::FakeAgentApi.new)
-    token = bearer(restarted)
-    body = JSON.parse(request(restarted, :get, "/status", token: token).body)
-    assert_equal "active", body["state"]
-    assert_equal "full", body["mode"]
-    refute body.fetch("authority").fetch("planes").key?("runner_transport")
-    assert_equal "signed_in", body.dig("authority", "signed"), "the runner plane never moves the login word"
-    wait_for { restarted.lineage.runner }
-    assert_equal restarted.identity.executor_public_id, restarted.identity.runner_executor_public_id
-  end
-
-  # A runner-mode restart resumes the one lineage from `runner_credentials.json`.
-  def test_a_runner_mode_restart_resumes_the_one_lineage
-    daemon = boot(device_flow: connection_device_flow, api_transport: NexusDoubles::FakeAgentApi.new,
-      config: runner_mode)
-    token = bearer(daemon)
-    request(daemon, :post, "/device/start", token: token)
-    await_state(daemon, "active", token: token)
-    identity = daemon.identity
-    assert File.exist?(identity.runner_vault.path)
-    refute File.exist?(identity.vault.path)
+    identity = daemon.identity.pointer_document
     @daemons.pop.stop
 
     oauth = NexusDoubles::FakeOAuth.new
-    restarted = boot(device_flow: connection_device_flow(oauth), api_transport: NexusDoubles::FakeAgentApi.new,
-      config: runner_mode)
+    restarted = boot(device_flow: connection_device_flow(oauth), api_transport: NexusDoubles::FakeAgentApi.new)
     body = JSON.parse(request(restarted, :get, "/status", token: bearer(restarted)).body)
     assert_equal "active", body["state"]
-    assert_equal "runner", body["mode"]
-    assert_equal ["runner_transport"], body.dig("authority", "planes").keys
-    assert_equal "signed_in", body.dig("authority", "signed")
-    assert_equal "0199-runner", body.dig("identity", "runner_executor_public_id")
-    refute body.key?("workspace")
+    refute body.key?("mode")
+    assert_equal %w[executor_transport member], body.dig("authority", "planes").keys.sort
+    assert_equal identity, restarted.identity.pointer_document
+    wait_for { restarted.lineage.runner }
+    assert_equal restarted.identity.executor_public_id, restarted.identity.runner_executor_public_id
     assert_empty oauth.requests
   end
 

@@ -68,16 +68,16 @@ module Rho
             fresh = false
             Rho::Browser.session.with_page(owner) do |page, seen|
               fresh = seen
-              Rho::Runner::ExecutionContext.current&.raise_if_cancelled!
+              Rho::Env::ExecutionContext.current&.raise_if_cancelled!
               yield page, seen
             end
-          rescue Rho::Runner::ExecutionContext::Cancelled
+          rescue Rho::Env::ExecutionContext::Cancelled
             raise
           rescue Rho::Browser::Closed, Rho::Browser::CallTimedOut,
                  Rho::Browser::Driver::Failure => error
-            Rho::Runner::Result.error(noticed(error.message, fresh))
+            Rho::Env::Result.error(noticed(error.message, fresh))
           rescue StandardError => error
-            Rho::Runner::Result.error(noticed("#{error.class.name}: #{error.message}", fresh))
+            Rho::Env::Result.error(noticed("#{error.class.name}: #{error.message}", fresh))
           end
 
           # THE ELEMENT WAS THERE WHEN CHECKED AND GONE WHEN ACTED ON — a
@@ -107,15 +107,15 @@ module Rho
             missing = keys.select { |key| args[key].to_s.strip.empty? }
             return nil if missing.empty?
 
-            Rho::Runner::Result.error("#{missing.join(", ")} #{missing.one? ? "is" : "are"} required")
+            Rho::Env::Result.error("#{missing.join(", ")} #{missing.one? ? "is" : "are"} required")
           end
 
           def owner
-            Rho::Runner::ExecutionContext.current&.run_public_id || Session::DEFAULT_OWNER
+            Rho::Env::ExecutionContext.current&.run_public_id || Session::DEFAULT_OWNER
           end
 
           def page_result(page, fresh)
-            Rho::Runner::Result.ok(noticed(SnapshotText.call(page), fresh))
+            Rho::Env::Result.ok(noticed(SnapshotText.call(page), fresh))
           end
 
           NEW_TAB_NOTICE = "NOTE: this loop has a new browser tab; any refs from an earlier tab " \

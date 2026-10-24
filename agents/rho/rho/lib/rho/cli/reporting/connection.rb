@@ -23,11 +23,10 @@ module Rho
         # the planes, the workspace, the profile's two models, the default row.
         def report_running(daemon)
           document = core.status_document(daemon)
-          @out.puts "mode:      #{document["mode"]}" if document["mode"]
           print_instance
           @out.puts "daemon:    running at #{daemon.fetch("endpoint")} (pid #{daemon["pid"]})"
           @out.puts "state:     #{SIGNED_WORDS.fetch(document.dig("authority", "signed"), document["state"])}"
-          describe_identity(document["identity"], mode: document["mode"], runner: document["runner"])
+          describe_identity(document["identity"], runner: document["runner"])
           planes = document.dig("authority", "planes")
           planes&.each { |plane, state| @out.puts "  #{plane}: #{state}" }
           describe_workspace(document["workspace"])
@@ -77,7 +76,6 @@ module Rho
         # "not connected" when a vault exists would be a lie.
         def report_stored
           pointer = core.stored_connection
-          @out.puts "mode:      #{pointer ? pointer["mode"] : config.mode}"
           print_instance
           @out.puts "daemon:    not running"
           if pointer.nil?
@@ -85,7 +83,7 @@ module Rho
           else
             core.stored_identity(pointer)
             @out.puts "state:     connected (no daemon running)"
-            describe_identity(pointer, mode: pointer["mode"], runner: nil)
+            describe_identity(pointer, runner: nil)
           end
           report_adaptations(core.stored_facts, width: 13)
           pointer
@@ -106,23 +104,20 @@ module Rho
         # After the two ids, LOCAL truth about rho's own runner (crit-product
         # M-4): what the daemon knows of its slot, never kernel presence —
         # a self-read would only stamp what it reads.
-        def describe_identity(identity, mode: nil, runner: nil)
+        def describe_identity(identity, runner: nil)
           return if identity.nil?
 
           @out.puts "profile:   #{identity["user_public_id"]}" if identity["user_public_id"]
           @out.puts "handle:    @#{identity["handle"]}" if identity["handle"]
-          @out.puts "executor:  #{identity["executor_public_id"]}" if identity["executor_public_id"] && mode != "runner"
-          @out.puts runner_line(identity, mode, runner) unless mode.nil?
+          @out.puts "executor:  #{identity["executor_public_id"]}" if identity["executor_public_id"]
+          @out.puts runner_line(identity, runner)
         end
 
-        def runner_line(identity, mode, runner)
+        def runner_line(identity, runner)
           id = identity["runner_executor_public_id"]
           return "runner:    not registered" if id.nil? && (runner.nil? || runner["tools"].nil?)
           return "runner:    #{id} (daemon not running)" if runner.nil?
-          if runner["tools"].nil?
-            return "runner:    #{id} not registered (credential lost — run rho connect)" if mode == "full"
-            return "runner:    #{id} stopped"
-          end
+          return "runner:    #{id} stopped" if runner["tools"].nil?
           return "runner:    #{id} stopped" unless runner["running"]
 
           socket = runner["socket"] ? "socket connected" : "no socket"
@@ -161,7 +156,7 @@ module Rho
 
         # The last line names what got paired, per mode, in the words `rho
         # status` uses (crit-product S-2).
-        def report(identity, mode: nil, runner: nil)
+        def report(identity, runner: nil)
           if identity.nil?
             @out.puts "Connected."
             return identity
@@ -170,18 +165,7 @@ module Rho
           user = identity["user_public_id"]
           executor = identity["executor_public_id"]
           runner_id = identity["runner_executor_public_id"]
-          case mode
-          when "full"
-            @out.puts "Connected as #{user} — agent #{executor}, runner #{runner_id} (private to you)."
-          when "agent"
-            @out.puts "Connected as #{user} — agent #{executor}."
-            selected = runner&.dig("selected") || config.runner
-            @out.puts(selected ? "runner:    #{selected}" : "runner:    none selected — `rho run … --runner ID` names one")
-          when "runner"
-            @out.puts "Connected runner #{executor} (#{Rho::STANDALONE_REGISTRATION_IDENTIFIER} on #{Socket.gethostname})."
-          else
-            @out.puts "Connected as #{user || executor}."
-          end
+          @out.puts "Connected as #{user} — application #{executor}, Local runner #{runner_id}."
           identity
         end
 
@@ -189,8 +173,7 @@ module Rho
           report(
             { "user_public_id" => identity.user_public_id,
               "executor_public_id" => identity.executor_public_id,
-              "runner_executor_public_id" => identity.runner_executor_public_id }.compact,
-            mode: identity.mode
+              "runner_executor_public_id" => identity.runner_executor_public_id }.compact
           )
         end
     end

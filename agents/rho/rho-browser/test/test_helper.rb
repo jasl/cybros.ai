@@ -14,8 +14,8 @@ module BrowserTest
     def with_tool_env
       Dir.mktmpdir("rho-browser-test") do |root|
         real = File.realpath(root)
-        env = Rho::Runner::ToolEnv.new(root: real, artifacts_dir: File.join(real, ".artifacts"))
-        Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+        env = Rho::Env::ToolEnv.new(root: real, artifacts_dir: File.join(real, ".artifacts"))
+        Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
           yield(env, real)
         end
       end

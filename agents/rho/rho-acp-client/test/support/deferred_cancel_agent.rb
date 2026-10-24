@@ -1,6 +1,6 @@
 # Reuse the protocol fixture; only the cancellation cleanup is held at a
 # file gate so the caller can return before the old prompt's final update.
-require_relative "../../../../../e2e/support/acp_fixture/agent"
+require_relative "../../../../../e2e/products/support/acp_fixture/agent"
 
 class DeferredCancelAgent < E2E::AcpFixture::Agent
   private

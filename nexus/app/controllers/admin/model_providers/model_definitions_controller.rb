@@ -55,10 +55,10 @@ class Admin::ModelProviders::ModelDefinitionsController < Admin::ModelProviders:
     end
 
     def build_form(row: nil, attributes: {})
-      @installation_model = row && snapshot.models.key?(row.fetch(:model))
+      @installation_model = row && (row.fetch(:source) != "custom")
       Admin::ModelProviders::ModelForm.new(provider_id: provider_id, provider_definition: configuration.fetch(:definition),
         definition: row ? row.fetch(:definition) || {} : {}, model: row&.fetch(:model), lock_version: @provider.fetch(:lock_version),
-        model_definitions: snapshot.model_definitions, cost_unit: account.cost_unit, attributes: attributes)
+        model_definitions: configuration.fetch(:model_definitions), cost_unit: account.cost_unit, attributes: attributes)
     end
 
     def save_model(row: nil, fields: model_fields)

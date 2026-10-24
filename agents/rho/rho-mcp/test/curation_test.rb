@@ -30,7 +30,7 @@ class CurationTest < Minitest::Test
     assert_equal true, echo.klass::INTERNAL_CLAMP
     assert_equal ["fx", "echo"], [echo.klass::SERVER_KEY, echo.klass::RAW_NAME]
     assert_equal({ "server_key" => "fx", "tool_name" => "echo" },
-      Rho::Runner::Extensions::Tool.announcement(echo.klass, name: echo.public_name).fetch("mcp"))
+      Rho::Env::Extensions::Tool.announcement(echo.klass, name: echo.public_name).fetch("mcp"))
     assert_equal "worst case", echo.profile_source
     assert_equal "Rho::Mcp::Tools[mcp__fx__echo]", echo.klass.name
     expected = JSON.generate(CybrosAgent::Api::ToolLowering.function_entry(
@@ -38,7 +38,7 @@ class CurationTest < Minitest::Test
     )).bytesize
     assert_equal expected, echo.bytes
     assert_equal curated.announced.sum(&:bytes), curated.bytes
-    curated.classes.each { |klass| Rho::Runner::Extensions::Tool.validate(klass, extension: "rho.mcp") }
+    curated.classes.each { |klass| Rho::Env::Extensions::Tool.validate(klass, extension: "rho.mcp") }
   end
 
   def test_the_class_calls_through_with_its_server_and_raw_name_and_the_env
@@ -48,19 +48,19 @@ class CurationTest < Minitest::Test
     klass = curated.classes.fetch(0)
     assert_equal :answered, klass.new(env: :the_env).call({ "text" => "hi" })
     assert_equal [["fx", "echo", { "text" => "hi" }, :the_env, "mcp__fx__echo"]], calls
-    assert_nil Rho::Runner::Extensions::Tool.timeout_ms(klass), "no row timeout: the kernel's default park"
+    assert_nil Rho::Env::Extensions::Tool.timeout_ms(klass), "no row timeout: the kernel's default park"
   end
 
   def test_budget_projections_match_registration_without_compiling_schemas
     configured = row(timeout: 5000)
     curated = Rho::Mcp::Curation.curate(configured, tools_of(McpTest::FixtureServer.build(tools: %w[echo lookup])), caller: ->(*) { nil })
-    api = Rho::Runner::Extensions::Api.new(extension_name: "rho.mcp", source: "<test>")
+    api = Rho::Env::Extensions::Api.new(extension_name: "rho.mcp", source: "<test>")
     curated.classes.each { |klass| api.register_tool(klass) }
-    expected = Rho::Runner::Extensions::Registry.new.commit(api).announcement
+    expected = Rho::Env::Extensions::Registry.new.commit(api).announcement
     budget = Rho::Mcp::Budget.new({})
     calls = 0
     trace = TracePoint.new(:call) do |event|
-      calls += 1 if event.self == Rho::Runner::InputSchema && event.method_id == :compile
+      calls += 1 if event.self == Rho::Env::InputSchema && event.method_id == :compile
     end
     projected = trace.enable do
       assert_same curated, budget.judge(configured, curated)
@@ -125,6 +125,6 @@ class CurationTest < Minitest::Test
     announced = curated.announced.fetch(0)
     assert_equal Rho::Mcp::Naming.tool("fx", "dotted.name/with space"), announced.public_name
     assert_equal "dotted.name/with space", announced.klass::RAW_NAME
-    Rho::Runner::Extensions::Tool.validate(announced.klass, extension: "rho.mcp")
+    Rho::Env::Extensions::Tool.validate(announced.klass, extension: "rho.mcp")
   end
 end

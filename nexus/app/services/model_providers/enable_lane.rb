@@ -9,6 +9,7 @@ module ModelProviders
 
     def apply_change(policy)
       policy.enabled = true
+      RetainCatalog.capture(policy)
     end
   end
 end

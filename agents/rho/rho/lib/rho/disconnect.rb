@@ -10,36 +10,31 @@ module Rho
   # it leaves behind is counted before the revoke: the unclaimed rows
   # addressed to the runner park to their deadline (accepted tasks retain their targets).
   module Disconnect
-    Result = Data.define(:revoked, :unclaimed, :runner_executor_public_id, :identity, :mode)
+    Result = Data.define(:revoked, :unclaimed, :runner_executor_public_id, :identity)
 
     module_function
 
-    # `credentials` is the `Rho::Credentials` holder; `identity` its
+    # `credentials` is the SDK credential owner; `identity` its
     # identity; `executor_client` builds the runner's inbox reader.
     def call(home:, identity:, credentials:, executor_client:, log: nil)
       unclaimed = unclaimed_count(credentials, executor_client, log)
       revoked = []
-      if credentials.runner?
-        credentials.runner.revoke
-        revoked << "runner"
-      end
-      if credentials.agent?
-        credentials.agent.revoke
+      if credentials
+        credentials.revoke
         revoked << "agent"
       end
       Rho::StateFile.new(home.connection_pointer_path).delete
       identity.session.delete
       Result.new(revoked: revoked, unclaimed: unclaimed,
-        runner_executor_public_id: identity.runner_executor_public_id, identity: identity, mode: identity.mode)
+        runner_executor_public_id: identity.runner_executor_public_id, identity: identity)
     end
 
     # ONE `inbox.list` on the runner credential; a read that fails costs
     # the count, never the disconnect.
     def unclaimed_count(credentials, executor_client, log)
-      owner = credentials.agent || credentials.runner
-      return 0 unless owner
+      return 0 unless credentials
 
-      page = executor_client.call(owner.executor_credential).inbox.list
+      page = executor_client.call(credentials.executor_credential).inbox.list
       page.items.count { |row| !row.claimed }
     rescue CybrosAgent::Error => error
       log&.warn("disconnect.inbox_unread", error_class: error.class.name)

@@ -2,7 +2,39 @@
 
 A runner is an execution environment's delivery address. It serves tools bound to a machine — files, shell commands, processes, a browser, MCP servers — and executes them where the files live: a workstation, a server, a container. A tool provider is the same protocol for tools served by name from a pool rather than a specific environment.
 
-Both are **executors**: they hold a transport credential, announce what they serve, and take work from their own inbox. Neither is a member of the account, and neither ever holds a member credential.
+Independent Runners and tool providers are **executors**: they hold a transport credential, announce what they serve, and take work from their own inbox. Those registrations are not account members and receive no member credential. An Agent application can also serve the Runner role on its existing Executor; its separate member credential remains on the member plane.
+
+## Implement a Runner in your Agent
+
+Any Agent application can implement its own Runner service in any language that
+can use the executor HTTP protocol. Nexus requires neither rho nor the
+`rho-env` Ruby gem. The application chooses its tools and execution machinery;
+Nexus owns task addressing, claims, approvals and result settlement.
+
+1. Connect your Agent and obtain its application Executor transport credential
+   through [Agent connection](../build/credentials-and-planes.md).
+2. [Announce](tools-and-announcements.md) both `services.agent` and
+   `services.runner` on that address, keeping `agent` even when its tools are empty.
+   Put your environment tools in the Runner service.
+3. Serve the shared [inbox](claims-and-results.md) with that transport credential.
+   Dispatch by the task's addressed role and tool name, and implement claims,
+   cancellation, deadlines and result commits for your handlers.
+4. Import the Runner tools with the application's concrete Executor UUID as their
+   target. Announcing a tool alone does not select it for an execution.
+
+This built-in service keeps the application's existing address and transport
+lifecycle. It creates no independent Runner registration or second credential
+family. Its owning Agent and eligible named Agents can use it; other applications
+cannot, even under the same Human. See the [Executor contract](../reference/agent-api/executor.md#agent).
+Choose an [independent Runner](deploy.md#identity-and-scope) when several
+applications need to share an environment.
+
+rho implements this contract with `Rho::Env` from `rho-env` and calls its
+built-in environment **Local**. The gem provides reusable execution machinery;
+`Rho::Env::Executor` owns its inbox loop. The complete rho application owns
+credentials, connection lifecycle and environment selection. There is currently
+no separately deployable first-party Runner application. Other applications may
+embed the library or implement the protocol themselves.
 
 ## Passive by construction
 

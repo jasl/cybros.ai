@@ -1,5 +1,5 @@
 module ModelProviders
-  # Reset deletes the operation, returning this exact ref to file inheritance.
+  # Reset deletes the operation, restoring the current or retained catalog entry.
   class ResetModelOverride < ModelDefinitionCommand
     private
 

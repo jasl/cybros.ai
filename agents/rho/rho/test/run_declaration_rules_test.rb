@@ -4,8 +4,8 @@ class RunDeclarationTest
   def test_many_remote_runners_keep_the_complete_wire_policy_at_the_same_size
     home = Rho::Home.resolve(base_url: "https://nexus.example",
       root: "/private/var/folders/_6/7vgpkxd14klg0lpvxyh5nk2h0000gn/T/rho-telegram-e2e20261006-56370-ctaq3p/home")
-    host = RhoTest.host.with(home: home, config: Rho::Config.from_hash({ "mode" => "agent" }))
-    agent = Rho::Extensions.load(host: host, extensions: Rho::Extensions.defaults_for("agent"),
+    host = RhoTest.host.with(home: home, config: Rho::Config.from_hash({}))
+    agent = Rho::Extensions.load(host: host, extensions: Rho::Extensions::DEFAULT_EXTENSIONS,
       gems: Rho::Extensions::TOOL_GEMS).registry
     full = Rho::Extensions.load(host: RhoTest.host, gems: Rho::Extensions::TOOL_GEMS).registry
     served = Rho::RunDeclaration.announcement(registry: full.serving(:runner))

@@ -119,7 +119,7 @@ module Rho
       def self.register: (untyped api) -> untyped
 
       class Observer
-        def initialize: (resources: Runner::Extensions::Resources, log: untyped, ?defaults: Rho::MemoryReview::Defaults) -> void
+        def initialize: (resources: Env::Extensions::Resources, log: untyped, ?defaults: Rho::MemoryReview::Defaults) -> void
         def settled: (TurnSettlement settlement, untyped ctx) -> untyped
         def service: (untyped ctx, untyped workspace, String conversation_public_id, untyped about, ?client: untyped) -> Rho::MemoryReview
         def close: () -> void

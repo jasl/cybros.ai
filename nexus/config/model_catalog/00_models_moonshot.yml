@@ -2,6 +2,20 @@ schema_version: cybros.model_catalog.v1
 # Explicit model facts shared by provider routes. Serving limits may override
 # the complete limits block; protocol options and pricing stay on each route.
 model_definitions:
+  # https://platform.kimi.com/docs/guide/kimi-k3-1-pro-quickstart
+  # Read 2026-10-24: API-accessible; weights are not yet published. Do not
+  # invent a Hugging Face tokenizer/weight repository from the model name.
+  kimi-k3.1-pro:
+    display_name: Kimi K3.1 Pro
+    capabilities:
+      input_modalities: [image]
+      limits:
+        combined_input_output_tokens: 1048576
+      reasoning:
+        disable_supported: false
+        efforts: [low, high, max]
+        default_effort: high
+        default_enabled: true
   kimi-k3:
     capabilities:
       input_modalities: [image]

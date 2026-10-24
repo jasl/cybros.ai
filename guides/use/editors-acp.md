@@ -10,7 +10,7 @@ Point your editor's ACP agent configuration at the installed executable:
 rho-acp [--mode bypass|ask|rules] [--model MODEL] [--runner EXECUTOR_ID]
 ```
 
-The flags are defaults for new sessions: the approval mode (`bypass` is rho's own posture; an editor that wants prompts passes `--mode ask`), the model (otherwise the home's default model), and, for an agent-mode rho, the runner that serves the session's tools.
+The flags are defaults for new sessions: the approval mode (`bypass` is rho's own posture; an editor that wants prompts passes `--mode ask`), the model (otherwise the home's default model), and the Runner that serves the session's tools.
 
 `rho-acp connect` runs the pairing ceremony on plain stdio for editors that offer a terminal authentication step: it prints the code and the identity and exits `0` when connected. A home that is already connected exits `0` at once.
 

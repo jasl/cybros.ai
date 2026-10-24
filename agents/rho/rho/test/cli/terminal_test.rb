@@ -227,44 +227,10 @@ class CliTerminalTest < Minitest::Test
     assert_match(/Connected as 0199-user/, @out.string)
   end
 
-  # The connect line per mode (crit-product S-2), and `rho status` in
-  # runner mode.
-  def test_connect_names_what_got_paired_per_mode
+  def test_connect_names_the_application_and_local_service_at_one_address
     boot
     cli.connect
-    assert_match(/^Connected as 0199-user — agent 0199-executor, runner 0199-executor \(private to you\)\.$/, @out.string)
-    @daemons.pop.stop
-    FileUtils.rm_rf(@root)
-    FileUtils.mkdir_p(@root)
-
-    boot(config: Rho::Config.from_hash({ "mode" => "agent" }), extensions: [Rho::Extensions::Ops])
-    reset_out
-    cli.connect
-    assert_match(/^Connected as 0199-user — agent 0199-executor\.$/, @out.string)
-    assert_match(/^runner:    none selected — `rho run … --runner ID` names one$/, @out.string)
-    @daemons.pop.stop
-    FileUtils.rm_rf(@root)
-    FileUtils.mkdir_p(@root)
-
-    boot(config: Rho::Config.from_hash({ "mode" => "agent" }), extensions: [Rho::Extensions::Ops])
-    File.write(home.settings_path, JSON.generate("mode" => "agent", "runner" => "0199-elsewhere"))
-    reset_out
-    cli.connect
-    assert_match(/^runner:    0199-elsewhere$/, @out.string, "the selection as the settings file says now")
-    @daemons.pop.stop
-    FileUtils.rm_rf(@root)
-    FileUtils.mkdir_p(@root)
-
-    boot(config: Rho::Config.from_hash({ "mode" => "runner" }))
-    reset_out
-    cli.connect
-    assert_match(/^Connected runner 0199-runner \(rho-runner on \S+\)\.$/, @out.string)
-    reset_out
-    cli.report_status
-    assert_equal "mode:      runner", lines[1]
-    refute_match(/^profile:/, @out.string)
-    refute_match(/^executor:/, @out.string)
-    assert_match(/^runner:    0199-runner (serving|stopped)/, @out.string)
+    assert_match(/^Connected as 0199-user — application 0199-executor, Local runner 0199-executor\.$/, @out.string)
   end
 
   # A health document the core refuses ends connect before any code prints.
@@ -383,26 +349,22 @@ class CliTerminalTest < Minitest::Test
     assert_match(/state:     credentials expired/, @out.string)
   end
 
-  def test_disconnect_refuses_with_work_in_flight_and_disconnects_an_agent_only_home
+  def test_disconnect_refuses_with_work_in_flight_and_disconnects_the_application
     daemon = boot
     cli.connect
-    about = daemon.lineage.credentials
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
-    sleep 0.02 while daemon.lineage.runner(:runner).nil? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
-    daemon.lineage.take_runner(about, slot: :runner)
-    busy = Object.new
-    busy.define_singleton_method(:snapshot) { Struct.new(:in_flight).new(1) }
-    busy.define_singleton_method(:stop) { nil }
-    assert daemon.lineage.reserve_runner(about, slot: :runner)
-    assert daemon.lineage.install_runner(about, busy, nil, slot: :runner)
-
+    sleep 0.02 while daemon.lineage.runner.nil? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+    runner = daemon.lineage.runner
+    refute_nil runner
+    busy = runner.snapshot.with(in_flight: 1)
+    runner.define_singleton_method(:snapshot) { busy }
     error = assert_raises(Rho::Error) { cli.disconnect }
     assert_equal "1 tool call(s) are running; stop them or wait before disconnecting", error.message
     @daemons.pop.stop
     FileUtils.rm_rf(@root)
     FileUtils.mkdir_p(@root)
 
-    agent_daemon = boot(config: Rho::Config.from_hash({ "mode" => "agent" }), extensions: [Rho::Extensions::Ops])
+    agent_daemon = boot(config: Rho::Config.from_hash({}), extensions: [Rho::Extensions::Ops])
     cli.connect
     cli.disconnect
     assert_nil agent_daemon.lineage.credentials
@@ -414,14 +376,13 @@ class CliTerminalTest < Minitest::Test
     daemon = boot
     cli.connect
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
-    sleep 0.02 while daemon.lineage.runner(:runner).nil? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+    sleep 0.02 while daemon.lineage.runner.nil? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
     reset_out
 
     cli.report_status
 
     assert_equal "nexus:     https://nexus.example", lines[0]
-    assert_equal "mode:      full", lines[1], "the mode is the second line (crit-product S-1)"
-    assert_equal "instance:  #{daemon.home.instance_id}", lines[2], "the per-home instance part after the mode"
+    assert_equal "instance:  #{daemon.home.instance_id}", lines[1], "the per-home instance part after the mode"
     assert_match(/daemon:    running at http:/, @out.string)
     assert_match(/state:     signed in/, @out.string)
     assert_match(/profile:   0199-user/, @out.string)
@@ -647,7 +608,7 @@ class CliTerminalTest < Minitest::Test
 
   # THE STORED BRANCH prints the instance too: the id is the
   # home's, so a daemon need not be running to say which install this is.
-  def test_offline_status_prints_the_instance_after_the_mode
+  def test_offline_status_prints_the_instance
     daemon = boot
     cli.connect
     daemon.stop
@@ -655,9 +616,8 @@ class CliTerminalTest < Minitest::Test
 
     cli.report_status
 
-    assert_equal "mode:      full", lines[1]
-    assert_equal "instance:  #{home.instance_id}", lines[2]
-    assert_equal "daemon:    not running", lines[3]
+    assert_equal "instance:  #{home.instance_id}", lines[1]
+    assert_equal "daemon:    not running", lines[2]
     assert_match(/state:     connected \(no daemon running\)/, @out.string)
   end
 
@@ -669,7 +629,7 @@ class CliTerminalTest < Minitest::Test
 
     cli.report_status
 
-    assert_equal "daemon:    not running", lines[3], "the header lines print before the verification"
+    assert_equal "daemon:    not running", lines[2], "the header lines print before the verification"
     assert_match(/state:     unreadable/, @out.string)
     refute_match(/connected \(no daemon running\)/, @out.string)
   end

@@ -33,7 +33,7 @@ vocabulary already carries; the rule grammar already walks `url`.
 }
 ```
 
-The distributed plugin is enabled by default in full and runner modes. An explicit
+The distributed plugin is enabled by default. An explicit
 disabled setting remains disabled. Change it in Settings → Plugins or with
 `rho extensions enable rho.web_tools` / `rho extensions disable rho.web_tools`.
 Configure it in Settings → Plugins, including while disabled. The static schema

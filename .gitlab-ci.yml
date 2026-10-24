@@ -16,6 +16,7 @@ default:
 
 variables:
   # Docker's latest published Ruby image as of 2026-10-24.
+  # This image pin can lag .ruby-version and GitHub's ruby/setup-ruby release.
   RUBY_VERSION: "4.0.8"
   BUN_VERSION: "1.4.4"
   BUNDLE_FROZEN: "true"
@@ -34,7 +35,10 @@ variables:
     paths:
       - vendor/bundle/
   before_script: &ruby_setup
-    - apt-get update -qq
+    # Use HTTPS for runners that block HTTP egress. Failed index downloads must
+    # stop setup before installation reports valid packages as missing.
+    - sed -i 's|http://deb.debian.org/|https://deb.debian.org/|g' /etc/apt/sources.list.d/debian.sources
+    - apt-get update --error-on=any -o Acquire::Retries=3
     - apt-get install --no-install-recommends -y curl unzip ${CI_APT_PACKAGES:-}
     # The Ruby image sets BUNDLE_APP_CONFIG globally. Each project needs its own
     # config so isolated E2E children can find their bundle after clearing ENV.
@@ -78,6 +82,12 @@ variables:
 
 nexus_lint:
   extends: .nexus
+  variables:
+    RUBOCOP_CACHE_ROOT: tmp/rubocop
+  cache:
+    paths:
+      - vendor/bundle/
+      - nexus/tmp/rubocop/
   script:
     - ruby ../bin/lint-eof
     - bin/brakeman --no-pager
@@ -181,7 +191,15 @@ agent_sdk_rust:
     - rustup toolchain install 1.88.0 --profile minimal
     - cd sdks/rust
   script:
-    - bin/ci
+    - cargo fmt --all -- --check
+    - cargo clippy --locked --all-targets --all-features -- -D warnings
+    - cargo test --locked
+    - cargo test --locked --all-features
+    - RUSTDOCFLAGS='-D warnings' cargo doc --locked --no-deps --all-features
+    - cargo +1.88.0 check --locked --all-features
+    # Local bin/ci allows a dirty checkout; CI packaging should reject one.
+    - cargo package --locked
+    - bin/package-smoke
 
 cmctl:
   extends: .gem
@@ -192,16 +210,16 @@ agent_rho:
   extends: .gem
   variables:
     PROJECT_DIR: agents/rho/rho
-    CI_APT_PACKAGES: shellcheck
+    CI_APT_PACKAGES: shellcheck jq
   script:
     - bundle exec rake smoke rubocop rbs:validate install:check
     - bundle exec rake build
     - RHO_INSTALL_TEST_OFFLINE=1 ../../../install/test/run.sh
 
-agent_rho_runner:
+agent_rho_env:
   extends: .gem
   variables:
-    PROJECT_DIR: agents/rho/rho-runner
+    PROJECT_DIR: agents/rho/rho-env
     CI_APT_PACKAGES: ripgrep fd-find
 
 agent_rho_t3:
@@ -269,11 +287,48 @@ guides_build:
     - |
       bun -e 'const s = require("./package.json").scripts; for (const [k, v] of Object.entries(s)) { if (!/^bun( |$)/.test(v)) { console.error(k + " does not run under bun: " + v); process.exit(1) } }'
 
-e2e:
+e2e_protocol:
   extends: [.ruby, .postgres]
   timeout: 30m
   variables:
-    PROJECT_DIR: e2e
+    PROJECT_DIR: e2e/protocol
+    CI_APT_PACKAGES: libpq-dev libvips ripgrep fd-find
+    E2E_WORLDS: "1"
+    E2E_DEADLINE_SECONDS: "300"
+    E2E_TEARDOWN_DEADLINE_SECONDS: "60"
+    A: "-v"
+  before_script:
+    - *ruby_setup
+    - *install_bun
+    - |
+      for project in nexus; do
+        cd "$CI_PROJECT_DIR/$project"
+        bundle config set --local path "$CI_PROJECT_DIR/vendor/bundle"
+        bundle config set --local frozen true
+        bundle install --jobs 1
+      done
+    - cd "$CI_PROJECT_DIR/e2e/protocol"
+  script:
+    - |
+      set -o pipefail
+      mkdir -p tmp
+      rho_source=$(mktemp -d)
+      mv ../../agents/rho "$rho_source/rho"
+      trap 'mv "$rho_source/rho" ../../agents/rho; rmdir "$rho_source"' EXIT
+      bundle exec rake smoke_harness_test smoke rubocop 2>&1 | tee tmp/ci-smoke.log
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - e2e/artifacts/
+      - e2e/protocol/tmp/ci-smoke.log
+      - e2e/protocol/artifacts/
+
+e2e_products:
+  extends: [.ruby, .postgres]
+  timeout: 30m
+  variables:
+    PROJECT_DIR: e2e/products
     CI_APT_PACKAGES: libpq-dev libvips ripgrep fd-find
     E2E_WORLDS: "1"
     E2E_DEADLINE_SECONDS: "300"
@@ -289,7 +344,7 @@ e2e:
         bundle config set --local frozen true
         bundle install --jobs 1
       done
-    - cd "$CI_PROJECT_DIR/e2e"
+    - cd "$CI_PROJECT_DIR/e2e/products"
   script:
     - |
       set -o pipefail
@@ -300,4 +355,5 @@ e2e:
     expire_in: 7 days
     paths:
       - e2e/artifacts/
-      - e2e/tmp/ci-smoke.log
+      - e2e/products/tmp/ci-smoke.log
+      - e2e/products/artifacts/

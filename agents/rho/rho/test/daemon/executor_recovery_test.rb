@@ -126,7 +126,7 @@ class DaemonExecutorRecoveryTest < Minitest::Test
         lineage.adopt(identity: RhoTest::DaemonHarness::RUNNER_IDENTITY, credentials: about)
         runner = Runner.new
         lineage.reserve_runner(about)
-        lineage.install_runner(about, runner, nil)
+        lineage.install_runner(about, runner)
         plane = Rho::Daemon::ExecutorPlane.new(
           wire: Rho::Daemon::Wire.new(base_url: "http://kernel.test"), lineage: lineage, context: Context.new(task),
           log: Rho::Log.new(io: StringIO.new))

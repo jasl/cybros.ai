@@ -1,5 +1,5 @@
 require "rho"
-require "rho/runner"
+require "rho/env"
 require "rho/acp"
 require "json"
 require "time"
@@ -72,7 +72,7 @@ module Rho
       # dropped) plus the row's `env` — the hash a third party's process
       # gets whole, under `unsetenv_others: true` at the spawn site.
       def child_env(row, current = ENV.to_h)
-        Rho::Runner::ChildEnv.scrubbed(current).merge(row.env)
+        Rho::Env::ChildEnv.scrubbed(current).merge(row.env)
       end
 
       # THE DOOR (the loader's contract): the rows parsed at load, the tool
@@ -129,7 +129,7 @@ module Rho
             directories.map { |directory| File.join(directory, command) }
           end
           unless paths.any? { |path| File.file?(path) && File.executable?(path) }
-            raise Rho::Runner::Extensions::PrerequisiteError,
+            raise Rho::Env::Extensions::PrerequisiteError,
               "ACP agent #{row.key} cannot find an executable command. Install its runtime or correct its command and PATH in " \
               "the ACP agents plugin settings, then enable the plugin again."
           end
@@ -146,13 +146,13 @@ module Rho
         env.raise_if_cancelled!
         key = args["agent"].to_s
         row = row(key)
-        return Rho::Runner::Result.error("no enabled acp agent named #{key.inspect}") if row.nil?
+        return Rho::Env::Result.error("no enabled acp agent named #{key.inspect}") if row.nil?
 
         workdir = args["workdir"].to_s
         cwd = env.resolve(workdir.empty? ? "." : workdir)
-        return Rho::Runner::Result.error("Working directory does not exist: #{cwd}") unless File.directory?(cwd)
+        return Rho::Env::Result.error("Working directory does not exist: #{cwd}") unless File.directory?(cwd)
 
-        context = Rho::Runner::ExecutionContext.current
+        context = Rho::Env::ExecutionContext.current
         conversation = context&.conversation_public_id || context&.run_public_id || "standalone"
         session = Children.acquire(row, conversation: conversation, cwd: cwd, workdir_given: !workdir.empty?,
           session: (args["session"] unless args["session"].to_s.empty?), env: env, artifacts_dir: env.ensure_artifacts_dir!,
@@ -160,7 +160,7 @@ module Rho
         Call.new(session: session, prompt: args["prompt"].to_s, env: env, home: @home, log: @log,
           clock: @clock || -> { Time.now }).run
       rescue Refused, Unavailable => error
-        Rho::Runner::Result.error(error.message)
+        Rho::Env::Result.error(error.message)
       end
 
       # `:host_ended`: the conversation's children let go.
@@ -197,7 +197,7 @@ module Rho
                      "enabled" => true, "state" => "down", "detail" => "config: #{row.sentence}", "env" => [], "children" => 0 }
           end
 
-          redact = Rho::Runner::Redact.new(row.secrets)
+          redact = Rho::Env::Redact.new(row.secrets)
           { "key" => row.key, "launch" => redact.call(row.launch), "description" => row.description,
             "permissions" => row.permissions, "timeout_ms" => row.timeout_ms, "enabled" => row.enabled?,
             "state" => row.enabled? ? "enabled" : "disabled", "detail" => nil, "env" => row.env.keys,

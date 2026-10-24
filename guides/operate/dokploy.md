@@ -1,6 +1,6 @@
 # Deploy with Dokploy
 
-Use Dokploy to run Nexus, PostgreSQL and a full-mode rho on one server. Dokploy owns deployment, HTTPS routing and image updates. The application images include the required runtimes; no host Ruby or JavaScript installation is needed.
+Use Dokploy to run Nexus, PostgreSQL and a complete rho on one server. Dokploy owns deployment, HTTPS routing and image updates. The application images include the required runtimes; no host Ruby or JavaScript installation is needed.
 
 ## Create the service
 

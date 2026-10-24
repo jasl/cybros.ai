@@ -55,10 +55,10 @@ class ProfileRemovalTest < Minitest::Test
     daemon.lineage.install_follower(about, fake_run("old-agent-work"))
     remove_agent(oauth, api)
 
-    assert_equal [:lost], daemon.maintenance.run_once(about, verify: true)
+    assert_equal :lost, daemon.maintenance.run_once(about, verify: true)
 
     assert_nil daemon.lineage.credentials
-    assert_empty daemon.lineage.runners
+    assert_nil daemon.lineage.runner
     assert_empty daemon.lineage.followers
     assert_equal :disconnected, daemon.phase
   end
@@ -76,7 +76,7 @@ class ProfileRemovalTest < Minitest::Test
     assert oauth.polling.pop(timeout: 5), "the restore never polled its device code"
     assert_equal "200", request(daemon, :post, "/device/cancel", token: token).code
     assert_nil daemon.lineage.credentials
-    assert_empty daemon.lineage.runners
+    assert_nil daemon.lineage.runner
     assert_equal :disconnected, daemon.phase
 
     oauth.hold_connection = false
@@ -89,7 +89,6 @@ class ProfileRemovalTest < Minitest::Test
     assert_equal "agent", restarted["branch"]
     wait_for { daemon.lineage.credentials && daemon.lineage.runner }
     refute_same about, daemon.lineage.credentials
-    assert_nil daemon.lineage.credentials.runner
     assert_equal daemon.identity.executor_public_id, daemon.identity.runner_executor_public_id
     assert_equal [:agent, :agent, :agent], oauth.branches
   ensure
@@ -113,7 +112,7 @@ class ProfileRemovalTest < Minitest::Test
     assert_equal ["agent"], JSON.parse(response.body).fetch("revoked")
     assert_equal :disconnected, daemon.phase
     assert_nil daemon.lineage.credentials
-    assert_empty daemon.lineage.runners
+    assert_nil daemon.lineage.runner
     assert_nil Rho::StateFile.new(daemon.home.connection_pointer_path).read
     restarting = JSON.parse(request(daemon, :post, "/device/start", token: token).body)
     assert_equal "agent", restarting["branch"]
@@ -136,7 +135,7 @@ class ProfileRemovalTest < Minitest::Test
 
     wait_for { socket.closed? }
     assert_nil daemon.lineage.executor_realtime
-    assert_empty daemon.lineage.runners
+    assert_nil daemon.lineage.runner
     assert_equal 1, sockets.length
   end
 
@@ -154,11 +153,11 @@ class ProfileRemovalTest < Minitest::Test
       if after.zero?
         assert_equal :active, restarted.phase
         assert_equal "expired", restarted.lineage.status_document.dig(:authority, :signed)
-        assert_equal [:lost], restarted.maintenance.run_once(restarted.lineage.credentials, verify: true)
+        assert_equal :lost, restarted.maintenance.run_once(restarted.lineage.credentials, verify: true)
       end
       assert_equal :disconnected, restarted.phase
       assert_nil restarted.lineage.credentials
-      assert_empty restarted.lineage.runners
+      assert_nil restarted.lineage.runner
       assert_equal [:agent], oauth.branches, "restart cannot authorize another connection"
     end
 

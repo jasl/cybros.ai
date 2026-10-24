@@ -75,7 +75,11 @@ module ModelProviders
           return Result.new(outcome: installed.outcome, session: completed, task: task) unless
             installed.done?
 
-          @policy.update!(enabled: true) if session.device_start? && !@policy.enabled?
+          if session.device_start?
+            @policy.enabled = true
+            RetainCatalog.capture(@policy)
+            @policy.save! if @policy.changed?
+          end
           Result.new(outcome: :installed, session: completed, task: task, credential: installed.credential)
         end
 

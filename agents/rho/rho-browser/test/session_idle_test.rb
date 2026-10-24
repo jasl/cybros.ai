@@ -197,9 +197,9 @@ class SessionIdleTest < Minitest::Test
   end
 
   def test_a_cancelled_first_call_keeps_the_new_tab_notice
-    context = Rho::Runner::ExecutionContext.new
-    Rho::Runner::ExecutionContext.with(context) do
-      assert_raises(Rho::Runner::ExecutionContext::Cancelled) do
+    context = Rho::Env::ExecutionContext.new
+    Rho::Env::ExecutionContext.with(context) do
+      assert_raises(Rho::Env::ExecutionContext::Cancelled) do
         @session.with_page("new") do |_page, fresh|
           assert fresh
           context.cancel

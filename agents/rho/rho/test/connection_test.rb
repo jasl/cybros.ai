@@ -30,12 +30,11 @@ class ConnectionTest < Minitest::Test
     )
   end
 
-  # Agent mode by default: the agent shape is branch A exactly as it was,
-  # and the full/runner shapes are pinned by name below.
-  def connection(oauth: @oauth, api: @api, mode: "agent", **options)
+  # Application connection uses the Agent ceremony by default.
+  def connection(oauth: @oauth, api: @api, **options)
     Rho::Connection.new(
       home: @home, device_flow: device_flow(oauth), api_transport: api,
-      display_name: "Helper", mode: mode, **options
+      display_name: "Helper", **options
     )
   end
 
@@ -83,31 +82,25 @@ class ConnectionTest < Minitest::Test
     )
   end
 
-  # ---- the three request shapes of ONE Connection ----
+  # Application registration and stable identity.
 
   # THE IDENTIFIER PRESENTED is the program's constant plus this home's instance part —
-  # `rho.<id>`, `rho-runner.<id>` — so several installs of one program pair under one
+  # `rho.<id>` — so several installs of one program pair under one
   # steward as separate rows; the constants stay the program's name.
-  def test_the_three_shapes_name_their_identifiers
+  def test_the_application_names_its_stable_identifier
     assert_equal "rho", Rho::AGENT_IDENTIFIER, "the wire identity is a release-stable product constant"
     instance = @home.instance_id
     assert_match(/\A[0-9a-f]{8}\z/, instance)
 
-    connect(mode: "agent")
+    connect
     agent_params = @oauth.requests.first.last
     assert_equal "rho.#{instance}", agent_params[:agent_identifier]
     assert_equal %i[agent_display_name agent_identifier client_id executor_display_name], agent_params.keys.sort
 
-    full = FakeOAuth.new
-    connect(mode: "full", oauth: full)
-    assert_equal agent_params, full.requests.first.last, "full mode connects the same application"
-    assert_equal 1, full.requests.count { |path, _| path == "/oauth/device_authorization" }
-
-    standalone = FakeOAuth.new
-    connect(mode: "runner", oauth: standalone)
-    runner_params = standalone.requests.first.last
-    assert_equal %i[client_id executor_kind registration_identifier runner_display_name], runner_params.keys.sort
-    assert_equal ["rho-runner.#{instance}", "runner"], runner_params.values_at(:registration_identifier, :executor_kind)
+    repeated = FakeOAuth.new
+    connect(oauth: repeated)
+    assert_equal agent_params, repeated.requests.first.last, "reconnecting names the same application"
+    assert_equal 1, repeated.requests.count { |path, _| path == "/oauth/device_authorization" }
   end
 
   # Two homes present two identifiers; one home twice presents one (a
@@ -119,10 +112,10 @@ class ConnectionTest < Minitest::Test
     again = FakeOAuth.new
     elsewhere = FakeOAuth.new
 
-    connect(mode: "agent", oauth: first)
-    connect(mode: "agent", oauth: again)
+    connect(oauth: first)
+    connect(oauth: again)
     Rho::Connection.new(home: other, device_flow: device_flow(elsewhere), api_transport: FakeAgentApi.new,
-      display_name: "Helper", mode: "agent").tap { |c| c.start ; c.await }
+      display_name: "Helper").tap { |c| c.start ; c.await }
 
     presented = [first, again, elsewhere].map { |oauth| oauth.requests.first.last.fetch(:agent_identifier) }
     assert_equal presented[0], presented[1], "one home, one identifier"
@@ -132,11 +125,10 @@ class ConnectionTest < Minitest::Test
     FileUtils.remove_entry(other_root) if other_root && File.directory?(other_root)
   end
 
-  def test_full_mode_pairs_once_and_files_one_application_lineage
-    connection = connect(mode: "full")
+  def test_application_pairs_once_and_files_one_application_lineage
+    connection = connect
     assert_equal :active, connection.phase
     identity = connection.identity
-    assert_equal "full", identity.mode
     assert_equal "0199-user", identity.user_public_id
     assert_equal "0199-executor", identity.executor_public_id
     assert_equal identity.executor_public_id, identity.runner_executor_public_id
@@ -145,86 +137,46 @@ class ConnectionTest < Minitest::Test
     assert_equal({ planes: { member: :live, executor_transport: :live }, lost: false,
       member_handle: "helper" }, connection.authority_report)
     assert_equal [MEMBER_TOKEN, TRANSPORT_TOKEN], [connection.oauth.member_credential, connection.oauth.executor_credential]
-    assert_equal 1, connection.oauth.lineages.length
-    assert_nil identity.runner_vault.read
     assert_equal MEMBER_TOKEN, identity.vault.read.fetch("access_token")
     refute pointer.key?("runner_executor_public_id")
-    assert_equal({ "branch" => "agent", "mode" => "full" }, connection.to_h.slice("branch", "mode"))
+    assert_equal({ "branch" => "agent" }, connection.to_h.slice("branch", "mode"))
   end
 
-  def test_runner_mode_pairs_the_one_lineage_under_the_runner_root
-    connection = connect(mode: "runner")
-
-    identity = connection.identity
-    assert_equal "runner", identity.mode
-    assert_nil identity.user_public_id
-    assert_equal "0199-runner", identity.executor_public_id
-    assert_equal @home.runner_identity_root("0199-runner"), identity.root
-    assert_equal [["/agent_api/v1/executor", RUNNER_TOKEN]],
-      @api.requests.map { |path, credential, _params| [path, credential] }, "no /profile read: a runner has no user"
-    assert_equal({ planes: { runner_transport: :live }, lost: false }, connection.authority_report)
-    about = connection.oauth
-    refute about.agent?
-    assert_equal RUNNER_TOKEN, about.runner_credential
-    assert_equal RUNNER_TOKEN, identity.runner_vault.read.fetch("executor_access_token")
-    refute File.exist?(identity.vault.path), "no agent lineage was filed"
-    assert_equal({ "version" => 5, "mode" => "runner", "executor_public_id" => "0199-runner",
-                   "runner_registration_identifier" => "rho.imported-runner" }, pointer)
-    assert_equal "runner", connection.to_h.fetch("branch")
-  end
 
   # A grant that names a runner and answers a non-runner kind is refused
   # — and the agent half installs nothing, so a retry resumes at activation.
-  def test_a_runner_grant_naming_a_non_runner_kind_is_refused_and_installs_nothing
-    api = FakeAgentApi.new
-    api.define_singleton_method(:runner_executor) do
-      { "executor" => { "public_id" => "0199-runner", "kind" => "tool_provider", "status" => "active", "service_roles" => ["tool_provider"],
-                        "display_name" => "Helper", "presence" => "offline", "credential_epoch" => 1 },
-        "measured_at" => "2026-07-26T00:00:00Z" }
-    end
-    connection = connection(mode: "runner", api: api)
-    connection.start
 
-    error = assert_raises(Rho::ConnectionError) { connection.await }
-    assert_match(/the runner grant named a tool_provider/, error.message)
-    assert_nil pointer
-    refute File.exist?(@home.identity_root("0199-user")), "nothing was filed"
-    refute_nil Rho::StateFile.new(@home.pending_connection_path).read, "the bundle stays staged for a retry"
-  end
-
-  def test_full_mode_restore_replaces_the_application_owner_and_keeps_one_address
-    first = connect(mode: "full")
-    restored = connect(mode: "full", oauth: FakeOAuth.new, request: :agent,
+  def test_application_restore_replaces_the_application_owner_and_keeps_one_address
+    first = connect
+    restored = connect(oauth: FakeOAuth.new, request: :agent,
       existing: first.oauth, existing_identity: first.identity)
-    refute_same first.oauth.agent, restored.oauth.agent
-    assert_equal 1, restored.oauth.lineages.length
+    refute_same first.oauth, restored.oauth
     assert_equal first.identity.executor_public_id, restored.identity.runner_executor_public_id
-    assert_nil restored.oauth.runner
     refute pointer.key?("runner_executor_public_id")
   end
 
-  def test_full_mode_cannot_start_a_separate_runner_registration
-    assert_raises(ArgumentError) { connection(mode: "full", request: :runner) }
+  def test_application_cannot_start_a_separate_runner_registration
+    assert_raises(ArgumentError) { connection(request: :runner) }
   end
 
-  def test_agent_identity_documents_carry_the_mode_and_only_agent_identity_facts
+  def test_identity_documents_carry_one_application_identity
     connection = connect
 
     assert_equal(
-      %w[agent_identifier executor_public_id mode user_public_id version],
+      %w[agent_identifier executor_public_id user_public_id version],
       connection.identity.pointer_document.keys.sort
     )
     assert_equal(
-      %w[agent_identifier base_url connected_at executor_public_id mode user_public_id version],
+      %w[agent_identifier base_url connected_at executor_public_id user_public_id version],
       connection.identity.session.read.keys.sort
     )
     assert_equal(
-      %w[executor_public_id instance_id user_public_id],
+      %w[executor_public_id instance_id runner_executor_public_id user_public_id],
       connection.to_h.fetch("identity").keys.sort
     )
     assert_equal @home.instance_id, connection.to_h.dig("identity", "instance_id"),
       "the ceremony document says which instance paired (the pointer does not: it is the identity's public ids)"
-    assert_equal(%w[branch identity mode phase], connection.to_h.keys.sort)
+    assert_equal(%w[branch identity phase], connection.to_h.keys.sort)
   end
 
   def test_the_credentials_land_in_the_destination_vault
@@ -485,7 +437,7 @@ class ConnectionTest < Minitest::Test
   end
 
   def test_no_diagnostic_renders_a_credential
-    connection = connect(mode: "full")
+    connection = connect
 
     [connection.inspect, connection.to_s, connection.to_h.to_s, connection.oauth.inspect].each do |diagnostic|
       refute_includes diagnostic, "member.secret"
@@ -496,17 +448,17 @@ class ConnectionTest < Minitest::Test
 
   # A crash between the mint and the install leaves the whole bundle —
   # the runner half and the branch — staged, so the next attempt files both.
-  def test_a_staged_full_mode_bundle_resumes_the_application_owner
-    first = connection(mode: "full")
+  def test_a_staged_bundle_resumes_the_application_owner
+    first = connection
     first.define_singleton_method(:install) { raise Rho::StateError, "injected failure" }
     first.start
     assert_raises(Rho::StateError) { first.await }
     staged = Rho::StateFile.new(@home.pending_connection_path).read
-    assert_equal 6, staged.fetch("version")
+    assert_equal Rho::Connection::STAGING_VERSION, staged.fetch("version")
     assert_equal "agent", staged.fetch("branch")
     refute staged.key?("runner")
 
-    second = connection(mode: "full")
+    second = connection
     assert second.resume
     assert_equal :active, second.phase
     assert_equal TRANSPORT_TOKEN, second.oauth.executor_credential

@@ -1,5 +1,5 @@
 require "cybros_agent"
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module Mcp
@@ -31,7 +31,7 @@ module Rho
       # `announced` is the handle's: `{runner: [...], agent: [...]}` — or
       # a ledger this class answered.
       def initialize(announced)
-        @ledger = Rho::Runner::Extensions::Api::SERVES.to_h { |serves| [serves, Array(announced&.dig(serves))] }
+        @ledger = Rho::Env::Extensions::Api::SERVES.to_h { |serves| [serves, Array(announced&.dig(serves))] }
       end
 
       # The kernel-shaped entries of one curation — what `judge` adds to
@@ -39,7 +39,7 @@ module Rho
       # opened after it (`Conversations::Set#kernel_entries`).
       def self.entries_for(curated)
         curated.announced.map do |tool|
-          Rho::Runner::Extensions::Tool.announcement(tool.klass, name: tool.public_name)
+          Rho::Env::Extensions::Tool.announcement(tool.klass, name: tool.public_name)
         end
       end
 

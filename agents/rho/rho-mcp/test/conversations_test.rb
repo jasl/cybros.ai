@@ -45,7 +45,7 @@ class ConversationsTest < Minitest::Test
   end
 
   def call(klass, args = {})
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) { klass.new(env: nil).call(args) }
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) { klass.new(env: nil).call(args) }
   end
 
   def klass(set, name) = set.classes.find { |k| k::NAME == name }
@@ -55,7 +55,7 @@ class ConversationsTest < Minitest::Test
     assert_equal ["cnv_1", 2], [set.anchor, @transports.length], "the sse row spawned nothing"
     assert_equal %w[mcp__fx__echo mcp__fx__lookup mcp__fx__write mcp__remote__echo mcp__remote__lookup mcp__remote__write],
       set.classes.map { |k| k::NAME }, "under \"*\" the undescribed `blank` is skipped, as at boot"
-    set.classes.each { |k| Rho::Runner::Extensions::Tool.validate(k, extension: "rho.mcp") }
+    set.classes.each { |k| Rho::Env::Extensions::Tool.validate(k, extension: "rho.mcp") }
     echo = klass(set, "mcp__fx__echo")
     assert_equal [McpTest::FixtureServer::ECHO_DESCRIPTION, "object", Rho::Mcp::Curation::WORST_CASE, "fx", "echo"],
       [echo::DESCRIPTION, echo::SCHEMA["type"], echo::EFFECT_PROFILE, echo::SERVER_KEY, echo::RAW_NAME]

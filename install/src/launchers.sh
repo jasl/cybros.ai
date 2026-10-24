@@ -253,13 +253,9 @@ epilogue() {
   if [ -n "$CHROMIUM_APT_LINE" ]; then
     printf "The Chromium shell needs shared libraries this script cannot install (root):\n  %s\n\n" "$CHROMIUM_APT_LINE"
   fi
-  if [ "${RHO_MODE:-full}" = runner ]; then
-    printf "Next: pair this runner with a Nexus:\n  rho connect --nexus-url https://nexus.example\n"
-  else
-    printf "Next: configure your model and optional Telegram connection:\n  rho setup --nexus-url https://nexus.example\n"
-  fi
+  printf "Next: configure your model and optional Telegram connection:\n  rho setup --nexus-url https://nexus.example\n"
   printf "Then: rho server   (the daemon); rho doctor at any time; rho update; rho uninstall\n"
-  if [ "$MODE" = install ] && [ -z "${NONINTERACTIVE-}" ] && [ "${RHO_MODE:-full}" != runner ]; then
+  if [ "$MODE" = install ] && [ -z "${NONINTERACTIVE-}" ]; then
     "$PREFIX/bin/rho" setup </dev/tty || warn "Setup did not finish; saved settings were retained. Run rho setup to continue."
   fi
 }

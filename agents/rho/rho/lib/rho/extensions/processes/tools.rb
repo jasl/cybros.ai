@@ -5,7 +5,7 @@ module Rho
       # description is one paragraph with one example of the answer: a name
       # plus one example moved valid-first calls from two in ten to seven.
       module Tools
-        Result = Rho::Runner::Result
+        Result = Rho::Env::Result
 
         NO_HOST = "start_process is not available here: this runner has no daemon to own a process".freeze
         READ_PROFILE = {
@@ -18,15 +18,15 @@ module Rho
         }.freeze
 
         module Shared
-          def caller_id = Rho::Runner::ExecutionContext.current&.run_public_id
+          def caller_id = Rho::Env::ExecutionContext.current&.run_public_id
           # The registry gates by the caller's conversation — the kernel's
           # word on the inbox row, carried by the context (nil: a standalone
           # run, which owns by its own id); a call outside a task (a test,
           # a probe) is the person's.
           def caller = caller_id || "user"
-          def caller_conversation = Rho::Runner::ExecutionContext.current&.conversation_public_id
+          def caller_conversation = Rho::Env::ExecutionContext.current&.conversation_public_id
           def caller_source
-            context = Rho::Runner::ExecutionContext.current
+            context = Rho::Env::ExecutionContext.current
             return nil if context.nil? || context.claim_token.nil?
 
             { "run_public_id" => context.run_public_id, "task_key" => context.task_key,
@@ -118,7 +118,7 @@ module Rho
             wait_for = blank_to_nil(args["wait_for"])
             wait_seconds = wait_budget(args["wait_seconds"])
             row = table.start(
-              command:, workdir:, env: Rho::Runner::ChildEnv.call, name: blank_to_nil(args["name"])&.byteslice(0, 64),
+              command:, workdir:, env: Rho::Env::ChildEnv.call, name: blank_to_nil(args["name"])&.byteslice(0, 64),
               run_public_id: caller_id, conversation: caller_conversation, wait_for:, source: caller_source
             )
             wait(row, wait_seconds)

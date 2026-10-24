@@ -9,7 +9,7 @@ module RhoTest
   # `close`, which appends the anchor to `closes` so a test reads what was
   # closed and when. A malformed entry — no name — raises ArgumentError
   # with a sentence, the door's 400; `command: "stopping"` raises the
-  # registrar's own `Rho::Runner::Error` (rho-mcp's `Closed` once its
+  # registrar's own `Rho::Env::Error` (rho-mcp's `Closed` once its
   # shutdown ladder ran), the door's 503. No env value is ever read: a
   # secret handed in stays in the entry the daemon never logs.
   module ConversationServers
@@ -22,7 +22,7 @@ module RhoTest
             PROFILE = { "kind" => "read_only", "destructive" => false, "effect_scope" => "open",
                         "idempotency" => "none", "reconciliation" => "none" }.freeze
 
-            class Stopping < Rho::Runner::Error; end
+            class Stopping < Rho::Env::Error; end
 
             def self.tool_class(server, raw)
               public_name = "mcp__\#{server}__\#{raw}"
@@ -33,7 +33,7 @@ module RhoTest
                 const_set(:EFFECT_PROFILE, PROFILE)
                 const_set(:SERVER_KEY, server)
                 define_method(:initialize) { |env:| @env = env }
-                define_method(:call) { |args| Rho::Runner::Result.ok("\#{public_name}: \#{args["q"]}") }
+                define_method(:call) { |args| Rho::Env::Result.ok("\#{public_name}: \#{args["q"]}") }
               end
             end
 

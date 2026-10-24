@@ -64,7 +64,7 @@ module Rho
 
       def call(method, params, cancelled: true)
         RpcSchema.validate!(method, params)
-        context = Rho::Runner::ExecutionContext.current if cancelled
+        context = Rho::Env::ExecutionContext.current if cancelled
         context&.raise_if_cancelled!
         value, error = Sync do |parent|
           operation = parent.async do |task|

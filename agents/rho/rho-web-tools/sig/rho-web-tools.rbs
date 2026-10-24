@@ -4,7 +4,7 @@ module Rho
     NAME: String
     SETTINGS_KEYS: Array[String]
 
-    class Error < Rho::Runner::Error
+    class Error < Rho::Env::Error
     end
     class Refused < Error
       attr_reader reason: Symbol
@@ -143,7 +143,7 @@ module Rho
         def self.phrase: (Integer status) -> String
         def self.size: (Integer bytes) -> String
         def initialize: (env: untyped, ?settings: Hash[String, untyped], ?log: untyped) -> void
-        def call: (untyped args) -> Rho::Runner::Result
+        def call: (untyped args) -> Rho::Env::Result
       end
     end
 

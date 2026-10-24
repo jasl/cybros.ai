@@ -2,7 +2,7 @@ require "open3"
 require "rho/browser"
 
 # Use the shipped browser owner and driver, including its normal child environment.
-output, status = Open3.capture2e(Rho::Runner::ChildEnv.call, "python3", "-c",
+output, status = Open3.capture2e(Rho::Env::ChildEnv.call, "python3", "-c",
                                "import sys, docx, openpyxl, pptx, pypdf; assert sys.prefix == '/opt/cowork'; print('cowork imports ready')")
 abort output unless status.success?
 

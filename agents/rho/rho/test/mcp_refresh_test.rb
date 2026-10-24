@@ -48,7 +48,7 @@ class McpRefreshTest < Minitest::Test
     assert_equal "logged_in", server.dig("auth", "state")
     assert_same original, Rho::Mcp.connections.fetch("other")
     assert_equal 0, unrelated.closes
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
       assert_equal "authenticated", Rho::Mcp.call("fxo", "echo", { "text" => "authenticated" }).content
     end
   end

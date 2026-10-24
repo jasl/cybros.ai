@@ -8,8 +8,8 @@
     "linux-arm64"
   ],
   "profiles": {
-    "runner": "portable Ruby, the gems, rg, fd — a machine or container that serves tools alone (RHO_MODE=runner)",
-    "full": "runner + jq + uv — a person's machine running agent and runner",
+    "minimal": "portable Ruby, the gems, rg, fd — the smallest tool installation for the complete rho application",
+    "full": "minimal + jq + uv — the default tool installation",
     "dev": "full + Node + playwright-core + the Chromium headless shell — browsing tasks (extensions: [\"rho/browser\"])"
   },
   "app": {
@@ -17,7 +17,7 @@
     "trees": [
       "sdks/ruby",
       "cmctl",
-      "agents/rho/rho-runner",
+      "agents/rho/rho-env",
       "agents/rho/rho-browser",
       "agents/rho/rho-mcp",
       "agents/rho/rho-web-tools",
@@ -85,7 +85,7 @@
     "rg": {
       "version": "15.2.0",
       "profiles": [
-        "runner",
+        "minimal",
         "full",
         "dev"
       ],
@@ -126,7 +126,7 @@
     "fd": {
       "version": "10.5.0",
       "profiles": [
-        "runner",
+        "minimal",
         "full",
         "dev"
       ],

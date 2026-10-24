@@ -4,12 +4,13 @@
 # reader validates and warns on the document; an optional provider definition
 # replaces file facts.
 class ModelProviderConfig < ApplicationRecord
+  include CatalogRetention
   OVERRIDES_SCHEMA_VERSION = "cybros.model_provider_overrides.v1".freeze
   MAX_OVERRIDE_REFS = 256
   MAX_OVERRIDES_BYTES = 2 * 1024 * 1024
   # THE DOCUMENT GRAMMAR, spelled once: the reader (`ModelCatalog::ModelOverlay`)
   # closes the same document and entry key sets this validation closes.
-  DOCUMENT_KEYS = %w[schema_version entries hidden_models unavailable_models].freeze
+  DOCUMENT_KEYS = %w[schema_version entries hidden_models unavailable_models retained_catalog].freeze
   ENTRY_OPS = %w[upsert remove].freeze
   ENTRY_KEYS = %w[op model].freeze
   PROVIDER_ID_MAX_LENGTH = Nexus::ProviderDefinition::MAX_ID_LENGTH
@@ -39,6 +40,7 @@ class ModelProviderConfig < ApplicationRecord
     hidden = Array.try_convert(document.fetch("hidden_models", []))
     unavailable = Array.try_convert(document.fetch("unavailable_models", []))
     return false if entries.nil? || hidden.nil? || unavailable.nil?
+    return false unless valid_retained_catalog_shape?(document.fetch("retained_catalog", {}), provider_id: provider_id)
     return false unless valid_model_refs?(hidden, provider_id: provider_id) &&
       valid_model_refs?(unavailable, provider_id: provider_id)
     return false if (entries.keys | hidden | unavailable).length > MAX_OVERRIDE_REFS
@@ -134,6 +136,9 @@ class ModelProviderConfig < ApplicationRecord
     end
 
     entries.each { |ref, entry| validate_entry(ref, entry) }
+    unless self.class.valid_retained_catalog_shape?(document.fetch("retained_catalog", {}), provider_id: provider_id)
+      return errors.add(:model_overrides, :invalid_retained_catalog)
+    end
     hidden = Array.try_convert(document.fetch("hidden_models", []))
     unless hidden && self.class.valid_model_refs?(hidden, provider_id: provider_id)
       return errors.add(:model_overrides, :invalid_hidden_models)

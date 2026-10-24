@@ -63,7 +63,7 @@ module Rho
                   message: "This daemon has nowhere to read from yet")
               end
 
-              answer = Rho::Runner::Files.bytes(root: root, path: query["path"], download: query["download"] == "1")
+              answer = Rho::Env::Files.bytes(root: root, path: query["path"], download: query["download"] == "1")
               return [answer.status, answer.body] unless answer.ok?
 
               Protocol::HTTP::Response[answer.status, policed(answer.headers), [answer.body]]
@@ -85,7 +85,7 @@ module Rho
               path = query["path"].to_s
               return Rho::Daemon::Refusal.malformed("path is required") if path.empty?
 
-              relayed = Ops.call_tool(ctx, runner, Rho::Runner::Tools::FilesBytes::NAME, { "path" => path }, RELAY_TIMEOUT_MS)
+              relayed = Ops.call_tool(ctx, runner, Rho::Env::Tools::FilesBytes::NAME, { "path" => path }, RELAY_TIMEOUT_MS)
               return relayed if relayed in Rho::Daemon::Refusal
 
               link = Array(relayed.detail.content).find { |block| block["type"] == "resource_link" }
@@ -113,10 +113,10 @@ module Rho
                 spool.flush
                 file = File.open(spool.path, "rb")
                 spool.close!
-                located = Rho::Runner::Files::Located.new(path: link.fetch("name"), size: file.size,
-                  type: Rho::Runner::Files.classify(link.fetch("name")))
-                inline = !download && Rho::Runner::Files::INLINE_TYPES.key?(File.extname(link.fetch("name")).downcase)
-                headers = policed(Rho::Runner::Files.headers_for(located, inline)).except("content-length")
+                located = Rho::Env::Files::Located.new(path: link.fetch("name"), size: file.size,
+                  type: Rho::Env::Files.classify(link.fetch("name")))
+                inline = !download && Rho::Env::Files::INLINE_TYPES.key?(File.extname(link.fetch("name")).downcase)
+                headers = policed(Rho::Env::Files.headers_for(located, inline)).except("content-length")
                 Protocol::HTTP::Response[200, headers, Protocol::HTTP::Body::File.new(file)]
               end
             end

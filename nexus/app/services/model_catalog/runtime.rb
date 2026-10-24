@@ -26,8 +26,8 @@ module ModelCatalog
     private
 
     def compile
-      # No cohort gate: the catalog is the only place a model exists, and an
-      # operator who removes one meant to.
+      # This is the shipped base. Configured lanes also retain database
+      # definitions, so deleting a shipped row does not retire an installed model.
       candidate = FileBase.compile(root: @root, override_dir: @override_dir, env: @env)
       Snapshot.new(
         providers: candidate.providers,

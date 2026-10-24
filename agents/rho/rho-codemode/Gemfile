@@ -3,7 +3,7 @@ source "https://rubygems.org"
 gem "sqlite3", ">= 2.10.0"
 gemspec
 gem "cybros_agent", path: "../../../sdks/ruby"
-gem "rho-runner", path: "../rho-runner"
+gem "rho-env", path: "../rho-env"
 
 group :development do
   gem "rake", "~> 13.0"

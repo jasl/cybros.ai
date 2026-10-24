@@ -4,7 +4,7 @@ module Rho
     NAME: String
     TOOLS: Array[Class]
 
-    class Closed < Rho::Runner::Error
+    class Closed < Rho::Env::Error
     end
 
     LOCK: Mutex
@@ -16,7 +16,7 @@ module Rho
     def self.session: () -> Session
     def self.close!: () -> untyped
     def self.reset!: () -> untyped
-    def self.register: (Rho::Runner::Extensions::Api) -> untyped
+    def self.register: (Rho::Env::Extensions::Api) -> untyped
     def self.check_prerequisites: () -> untyped
 
     class Driver
@@ -28,7 +28,7 @@ module Rho
       STOP_STAGE_SECONDS: Float
       INSTALL_HINT: String
 
-      class Failure < Rho::Runner::Error
+      class Failure < Rho::Env::Error
       end
       class StartTimedOut < Failure
       end
@@ -55,7 +55,7 @@ module Rho
       def stop: () -> untyped
     end
 
-    class CallTimedOut < Rho::Runner::Error
+    class CallTimedOut < Rho::Env::Error
     end
 
     class Deadline < Exception
@@ -112,7 +112,7 @@ module Rho
 
       module Base
         NEW_TAB_NOTICE: String
-        def initialize: (env: Rho::Runner::ToolEnv) -> void
+        def initialize: (env: Rho::Env::ToolEnv) -> void
       end
 
       class Snapshot
@@ -123,7 +123,7 @@ module Rho
         EFFECT_PROFILE: Hash[String, untyped]
         PROMPT_SNIPPET: String
         PROMPT_GUIDELINES: Array[String]
-        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+        def call: (Hash[String, untyped]) -> Rho::Env::Result
       end
 
       class Navigate
@@ -134,7 +134,7 @@ module Rho
         EFFECT_PROFILE: Hash[String, untyped]
         PROMPT_SNIPPET: String
         PROMPT_GUIDELINES: Array[String]
-        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+        def call: (Hash[String, untyped]) -> Rho::Env::Result
       end
 
       class Click
@@ -145,7 +145,7 @@ module Rho
         EFFECT_PROFILE: Hash[String, untyped]
         PROMPT_SNIPPET: String
         PROMPT_GUIDELINES: Array[String]
-        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+        def call: (Hash[String, untyped]) -> Rho::Env::Result
       end
 
       class Type
@@ -156,7 +156,7 @@ module Rho
         EFFECT_PROFILE: Hash[String, untyped]
         PROMPT_SNIPPET: String
         PROMPT_GUIDELINES: Array[String]
-        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+        def call: (Hash[String, untyped]) -> Rho::Env::Result
       end
 
       class Screenshot
@@ -168,7 +168,7 @@ module Rho
         PROMPT_SNIPPET: String
         PROMPT_GUIDELINES: Array[String]
         CAPTURE_PREFIX: String
-        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+        def call: (Hash[String, untyped]) -> Rho::Env::Result
       end
 
       class Evaluate
@@ -180,7 +180,7 @@ module Rho
         PROMPT_SNIPPET: String
         PROMPT_GUIDELINES: Array[String]
         MAX_BYTES: Integer
-        def call: (Hash[String, untyped]) -> Rho::Runner::Result
+        def call: (Hash[String, untyped]) -> Rho::Env::Result
       end
     end
   end

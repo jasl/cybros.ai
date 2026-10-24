@@ -5,24 +5,17 @@ module Rho
     # `unknown` is not a hedge: Nexus being unreachable says nothing about our
     # authority, and reporting a plane dead on that evidence would send a human
     # to redo a ceremony they do not need.
-    PLANES_BY_MODE = {
-      "full" => %i[member executor_transport],
-      "agent" => %i[member executor_transport],
-      "runner" => %i[runner_transport],
-    }.freeze
-    PLANES = PLANES_BY_MODE.fetch("agent")
+    PLANES = %i[member executor_transport].freeze
 
-    def initialize(oauth:, base_url:, transport: nil, expected_identity: nil, mode: "full")
+    def initialize(oauth:, base_url:, transport: nil, expected_identity: nil)
       @oauth = oauth
       @base_url = base_url
       @transport = transport
       @expected_identity = expected_identity
-      @planes = PLANES_BY_MODE.fetch(mode)
-      @mode = mode
     end
 
     def check
-      states = @planes.to_h { |plane| [plane, probe(plane)] }
+      states = PLANES.to_h { |plane| [plane, probe(plane)] }
       { planes: states, lost: @lost, member_handle: @member_handle }.compact
     end
 
@@ -35,7 +28,7 @@ module Rho
         # Read BEFORE the call: the counter exists to notice a rotation that
         # happened DURING this probe, and a value read after the refusal has
         # already absorbed it.
-        rotation = @oauth.rotation(plane)
+        rotation = @oauth.rotation if @oauth.refreshable?
         result = call(plane, credential)
         verify_expected_identity(plane, result)
         :live
@@ -84,7 +77,7 @@ module Rho
       # stale while the live one is already on disk. Adopting it spends
       # nothing.
       def adopt_current_rotation(plane, rotation)
-        return nil unless @oauth.rotation(plane).to_i > rotation.to_i
+        return nil unless @oauth.refreshable? && @oauth.rotation > rotation.to_i
 
         credential_for(plane)
       rescue CybrosAgent::Error
@@ -92,10 +85,12 @@ module Rho
       end
 
       def credential_for(plane)
+        return nil if @oauth.nil?
+
         case plane
         when :member then @oauth.member_credential
         when :executor_transport then @oauth.executor_credential
-        else @oauth.runner_credential
+        else raise ArgumentError, "unknown credential plane #{plane}"
         end
       rescue CybrosAgent::Credentials::PlaneUnavailable
         nil
@@ -124,7 +119,7 @@ module Rho
           case plane
           when :member then [result.member.public_id, @expected_identity.user_public_id]
           when :executor_transport then [result.executor.public_id, @expected_identity.executor_public_id]
-          else [result.executor.public_id, @expected_identity.runner_executor_public_id]
+          else raise ArgumentError, "unknown credential plane #{plane}"
           end
         return if actual == expected
 

@@ -15,9 +15,7 @@ module Rho
       def self.register(api)
         # A REPAIR VERB, this gem's and not core:
         # the route is the core's (`POST /compact`, the store is the
-        # core's), the terminal spelling is here. The exception rule — a
-        # repair verb a runner-mode rho needs stays core — names nothing:
-        # runner mode drops the conversation verbs and compacts nothing.
+        # core's), the terminal spelling is here.
         api.register_command("compact", usage: "compact ID [TASK_KEY]",
           description: "Compact a run or conversation this daemon follows: a conversation's running reply is " \
                        "repaired on its next round (idle, its history is summarized); a run needs the round's key",

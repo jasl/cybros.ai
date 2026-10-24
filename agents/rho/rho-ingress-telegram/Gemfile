@@ -7,7 +7,7 @@ gemspec
 gem "cmctl", path: "../../../cmctl"
 
 gem "rho", path: "../rho"
-gem "rho-runner", path: "../rho-runner"
+gem "rho-env", path: "../rho-env"
 gem "cybros_agent", path: "../../../sdks/ruby"
 
 group :development do

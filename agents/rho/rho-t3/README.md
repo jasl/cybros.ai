@@ -277,7 +277,7 @@ text("The coding result will arrive when ready.");
 Use the callable tool name in the current declaration if an adaptation supplies
 another spelling. Background work uses the existing Nexus ownership transfer and
 result delivery. The extension requires a conversation-owned task on an agent
-address; standalone tasks and runner-only mode are refused.
+address; standalone tasks are refused.
 
 Delegation uses an ordinary tool claim with a one-hour renewable window. Waiting
 for a native result or a Human answer keeps the same live execution and claim;
@@ -354,7 +354,7 @@ model. Native thread, project, provider-instance and callback identifiers remain
 inside the adapter's records and diagnostics. It fetches command output omitted from a projection and captures a JSON
 report plus the native thread diff through the existing tool-result upload path.
 Unfetchable command logs retain `outputOmitted`; an unavailable diff is an
-explicit report limitation. Text shown inline is truncated by rho-runner, while
+explicit report limitation. Text shown inline is truncated by rho-env, while
 captures retain the fetched content. These are the native agent's reported
 checks, not an independent correctness verdict. The projection endpoint returns
 a bounded native history window, so older conversation text may be absent.
@@ -396,7 +396,7 @@ The default task also runs the page module's tests with Bun (`bun test test/webu
 against rho-webui's kernel and primitives in the same checkout, so development
 needs Bun beside Ruby; installing and serving the gem need only Ruby.
 
-The repository's `e2e/test/rho_t3_test.rb` separately exercises real Nexus and rho
+The repository's `e2e/products/test/rho_t3_test.rb` separately exercises real Nexus and rho
 against an authored external T3 wire server. It covers background delegation,
 an ordinary question held open for 35 seconds while the main conversation and
 `coding_work` list/observe/steer remain available, identified approvals and

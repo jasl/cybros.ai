@@ -14,7 +14,7 @@ the SDK: the whole gem is one schema-defined plugin configuration, the registry'
 names — is `rho-acp`'s, the agent gem this one depends on and speaks from
 the other end; never a second implementation of the protocol. The
 row-secrets rule and the child-env scrub are the runner's
-(`Rho::Runner::Secrets`, `Redact`, `ChildEnv.scrubbed`).
+(`Rho::Env::Secrets`, `Redact`, `ChildEnv.scrubbed`).
 
 The permission call_tool is a FLOOR, never a proxy: a child agent's request
 runs through rho's own rules (`Guard.refusal`: the nine command shapes and
@@ -166,8 +166,8 @@ cd agents/rho/rho-acp-client && bundle exec rake        # test, rubocop, rbs
 `test/test_helper.rb` requires rho's test support tree by relative path
 (`RhoTest.host`, the host a loader hands an extension without booting a
 daemon) and spawns the harness's scripted agent
-(`e2e/support/acp_fixture/agent.rb`) under the scrubbed child environment,
+(`e2e/products/support/acp_fixture/agent.rb`) under the scrubbed child environment,
 so the table, the call, the call_tool, cancel, the wall, a death and the release
 are proven on the daemon's own handle. The e2e lane is
-`e2e/test/rho_acp_client_test.rb`. CI runs the suite as
+`e2e/products/test/rho_acp_client_test.rb`. CI runs the suite as
 `agent_rho_acp_client`.

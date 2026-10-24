@@ -57,7 +57,7 @@ class RhoRunDeclarationTest < Minitest::Test
       assert_equal expected_keys.sort, entry.keys.sort,
         "name, profile and the declaration facts, and a timeout only where one is declared"
       assert_equal registry.effect_profile(entry.fetch("name")), entry.fetch("effect_profile")
-      assert_equal Rho::Runner::Extensions::Tool::EFFECT_KEYS, entry.fetch("effect_profile").keys
+      assert_equal Rho::Env::Extensions::Tool::EFFECT_KEYS, entry.fetch("effect_profile").keys
       registered = registry.entries.find { |candidate| candidate.name == entry.fetch("name") }
       next if registered.undescribed?
 
@@ -82,7 +82,7 @@ class RhoRunDeclarationTest < Minitest::Test
   # request's — no working directory — and no daemon-UI `source`.
   def test_the_environment_document_is_the_roots_facts_and_the_fragments
     Dir.mktmpdir do |root|
-      environment = Rho::Runner::Environment.local(root: root)
+      environment = Rho::Env::Environment.local(root: root)
 
       document = Rho::RunDeclaration.environment_document(registry: registry, environment: environment)
 
@@ -125,7 +125,7 @@ class RhoRunDeclarationTest < Minitest::Test
   # own instructions: an operator who wanted to add one sentence must not
   # silently lose the working directory.
   def test_stable_guidance_precedes_the_environment_in_raw_instructions
-    env = Rho::Runner::Environment.local(root: "/tmp/root", working_directory: "/src/app")
+    env = Rho::Env::Environment.local(root: "/tmp/root", working_directory: "/src/app")
 
     step = sole_step(Rho::RunDeclaration.steps(runner_executor_public_id: "own-runner",
       prompt: "go", model: "dev/mock-text", registry: registry, environment: env
@@ -147,7 +147,7 @@ class RhoRunDeclarationTest < Minitest::Test
   end
 
   def test_stated_instructions_replace_the_preamble_and_not_the_environment
-    env = Rho::Runner::Environment.local(root: "/tmp/root", working_directory: "/src/app")
+    env = Rho::Env::Environment.local(root: "/tmp/root", working_directory: "/src/app")
 
     step = sole_step(Rho::RunDeclaration.steps(runner_executor_public_id: "own-runner",
       prompt: "go", model: "dev/mock-text", registry: registry,
@@ -164,7 +164,7 @@ class RhoRunDeclarationTest < Minitest::Test
   # works — the environment is a statement, not a boundary, and absolute
   # paths go anywhere on the machine regardless.
   def test_a_run_with_no_directory_still_gets_the_one_fact_that_always_exists
-    env = Rho::Runner::Environment.local(root: "/tmp/root")
+    env = Rho::Env::Environment.local(root: "/tmp/root")
 
     instructions = sole_step(Rho::RunDeclaration.steps(runner_executor_public_id: "own-runner",
       prompt: "go", model: "dev/mock-text", registry: registry, environment: env
@@ -183,7 +183,7 @@ class RhoRunDeclarationTest < Minitest::Test
   end
 
   def test_a_machine_serving_nothing_keeps_the_main_prompt_without_a_tools_key
-    empty = Rho::Runner::Extensions::Loader.call.registry
+    empty = Rho::Env::Extensions::Loader.call.registry
 
     step = sole_step(Rho::RunDeclaration.steps(runner_executor_public_id: "own-runner",
       prompt: "go", model: "dev/mock-text", registry: empty

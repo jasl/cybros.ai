@@ -95,7 +95,7 @@ class PackagesTest < Minitest::Test
     # business state. Both explicit version selection and rollback must refuse it.
     current = Rho::Packages::Selection.new(name: "notes", version: b, configuration_version: 1, configuration: {}, state_schema: "notes-v2")
     previous = Rho::Packages::Selection.new(name: "notes", version: a, configuration_version: 1, configuration: {}, state_schema: "notes-v1")
-    @home.write_settings("settings_version" => 1, "plugins" => {
+    @home.write_settings("settings_version" => 2, "plugins" => {
       "personal.notes" => Rho::Packages::Entry.new(enabled: true, selection: current, previous: previous).to_h,
     })
     assert_raises(Rho::ConfigurationError) { select(a) }
@@ -252,7 +252,7 @@ class PackagesTest < Minitest::Test
     assert_equal({ "prefix" => "current" }, manifest.migrate({ "prefix" => "current" }, from: 2).overrides)
     current = Rho::Packages::Selection.new(name: "notes", version: version, configuration_version: 1,
       configuration: { "prefix" => "unmigrated" }, state_schema: "notes-v1")
-    @home.write_settings("settings_version" => 1, "plugins" => {
+    @home.write_settings("settings_version" => 2, "plugins" => {
       "personal.notes" => Rho::Packages::Entry.new(enabled: true, selection: current, previous: nil).to_h,
     })
     before = File.read(@home.settings_path)
@@ -268,7 +268,7 @@ class PackagesTest < Minitest::Test
 
   def test_saving_a_package_preserves_unrelated_core_and_unmigrated_plugin_fields
     future = { "enabled" => false, "configuration_version" => 99, "configuration" => { "old" => "do not normalize" }, "unknown" => true }
-    @home.write_settings("settings_version" => 1, "default_model" => "chosen", "plugins" => { "another.plugin" => future })
+    @home.write_settings("settings_version" => 2, "default_model" => "chosen", "plugins" => { "another.plugin" => future })
     version = install
     select(version, configuration: { "prefix" => "mine" })
 
@@ -280,7 +280,7 @@ class PackagesTest < Minitest::Test
 
   def test_explicit_source_conflict_refuses_without_overwriting_another_plugin
     configured = { "enabled" => false, "source" => { "kind" => "gem", "feature" => "rho/another" }, "configuration" => {} }
-    @home.write_settings("settings_version" => 1, "plugins" => { "personal.notes" => configured })
+    @home.write_settings("settings_version" => 2, "plugins" => { "personal.notes" => configured })
     version = install
 
     assert_raises(Rho::ConfigurationError) { select(version) }

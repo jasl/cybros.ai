@@ -1,7 +1,7 @@
 require "test_helper"
 
 # THE ROW GRAMMAR of `settings.json#acp_agents`:
-# rho-mcp's shape, the secrets trio the runner's (`Rho::Runner::Secrets`,
+# rho-mcp's shape, the secrets trio the runner's (`Rho::Env::Secrets`,
 # `Redact`), faults per row, only a table that is not rows refusing the
 # extension.
 class SettingsTest < Minitest::Test
@@ -54,7 +54,7 @@ class SettingsTest < Minitest::Test
                                           "PORT" => "8080", "DEBUG_KEY" => "1" }) }, env: env).fetch(0)
     assert_equal RhoAcpClientTest::SECRET, row.env.fetch("OPENROUTER_API_KEY")
     assert_equal [RhoAcpClientTest::SECRET, "ghp_literal_0123456789"], row.secrets
-    redact = Rho::Runner::Redact.new(row.secrets)
+    redact = Rho::Env::Redact.new(row.secrets)
     assert_equal "key=••• token=••• port=8080", redact.call("key=#{RhoAcpClientTest::SECRET} token=ghp_literal_0123456789 port=8080")
 
     fault = parse({ "a" => raw("env" => { "X" => "${NOPE}" }) }, env: env).fetch(0)
@@ -70,7 +70,7 @@ class SettingsTest < Minitest::Test
       "bad-args" => raw("args" => "acp"),
       "bad-permissions" => raw("permissions" => "ask"),
       "bad-timeout" => raw("timeout_ms" => 0),
-      "big-timeout" => raw("timeout_ms" => Rho::Runner::Extensions::Tool::MAX_TIMEOUT_MS + 1),
+      "big-timeout" => raw("timeout_ms" => Rho::Env::Extensions::Tool::MAX_TIMEOUT_MS + 1),
       "bad-enabled" => raw("enabled" => "yes"),
       "stranger" => raw("cwd" => "/tmp"),
       "bad-model" => raw("model" => 3),

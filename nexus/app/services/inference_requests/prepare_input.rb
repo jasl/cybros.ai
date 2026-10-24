@@ -40,6 +40,7 @@ module InferenceRequests
       return Result.refused(:model_selection_invalid) unless @model_selection.valid?
       return Result.refused(:fallback_models_invalid) unless ModelReferencesValidator.valid_value?(@fallback_models)
 
+      normalized = nil
       selection = ModelSelection::Recovery.resolve(
         account: @account, workload: @workload, submitted: @submitted,
         configuration: @configuration, model_selection: @model_selection,
@@ -59,7 +60,7 @@ module InferenceRequests
       uploads = resolve_uploads
       return Result.refused(uploads.refusal) unless uploads.accepted?
 
-      normalized = ModelSelection::Workloads.normalize_workload_input(
+      normalized ||= ModelSelection::Workloads.normalize_workload_input(
         selection: selection.selection, input: @input, uploads: uploads.uploads
       )
       return Result.refused(normalized.refusal) unless normalized.accepted?

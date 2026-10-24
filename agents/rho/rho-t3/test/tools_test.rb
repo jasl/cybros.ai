@@ -30,17 +30,17 @@ class ToolsTest < Minitest::Test
   def test_lost_question_acceptance_is_not_returned_as_a_completed_tool_error
     Dir.mktmpdir do |root|
       task = LostQuestionResponse.new
-      orchestration = Rho::Runner::ClaimOrchestration.new(task: task, claim_token: "exact-claim", log: nil)
-      context = Rho::Runner::ExecutionContext.new(orchestration: orchestration,
+      orchestration = Rho::Env::ClaimOrchestration.new(task: task, claim_token: "exact-claim", log: nil)
+      context = Rho::Env::ExecutionContext.new(orchestration: orchestration,
         run_public_id: "run", conversation_public_id: "conversation", task_key: "coding",
         deadline: Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5)
       session = T3Test::Session.new(T3Test::Store.new, context)
       native = T3Test::Native.new
       native.question
       factory = ->(env) { Rho::T3::Work.new(settings: settings, session: session, env: env, home: nil, bridge: native) }
-      env = Rho::Runner::ToolEnv.new(root: root, artifacts_dir: File.join(root, "artifacts"))
+      env = Rho::Env::ToolEnv.new(root: root, artifacts_dir: File.join(root, "artifacts"))
       tool = Rho::T3::Tools.delegate(factory).new(env: env)
-      pool = Rho::Runner::Pool.new(worker_threads: 1)
+      pool = Rho::Env::Pool.new(worker_threads: 1)
 
       error = nil
       result = begin

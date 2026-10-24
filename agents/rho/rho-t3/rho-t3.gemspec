@@ -20,5 +20,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "async-http", "~> 0.90"
   spec.add_dependency "async-websocket", "~> 0.30"
   spec.add_dependency "rho"
-  spec.add_dependency "rho-runner"
+  spec.add_dependency "rho-env"
 end

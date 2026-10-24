@@ -1,33 +1,17 @@
-require_relative "rho_daemon"
 require_relative "runner_grant"
 
 module E2E
-  # THE BROWSER HALF OF A DAEMON'S OWN CEREMONY (r-modes M2/M5): a person
-  # walks the connection page a rho daemon opened and clicks Connect. ONE
-  # helper for every rho journey, dispatching on the SHAPE THE DAEMON
-  # PUBLISHED — `branch` in its `/device/start` answer (`Connection#to_h`):
-  # `agent` and `combined` are the one agent page; `runner` is the machine
-  # page with its scope block. `login` keeps the published runtime `mode`.
-  # Never the settings file, never the `RHO_MODE` environment variable:
-  # the harness passes the mode through the child's environment and does
-  # not parse it back — the daemon's own document is the fact.
-  #
-  # THE ONE-SENTENCE PIN. A full-mode boot pairs the combined grant: the
-  # agent page plus one facts row, in the page's own words, and the settled
-  # page repeats it. An agent-mode boot (and the fence agent's grant) shows
-  # no trace of a runner — the sentence's absence is asserted, not assumed.
-  #
-  # `status` is a callable answering the daemon's status document; when it
-  # is given, the helper waits for the daemon to finish — `state` active
-  # with the ceremony gone or itself active — on the daemon's poll cadence,
-  # never a fixed sleep. `status: nil` is a grant no daemon owns (the fence
-  # agent's).
+  # Complete the published SDK or application ceremony through its browser page.
+  # Agent connections and Human login use the agent page; independent Runner
+  # registration uses the machine page and its scope selection. The published
+  # branch determines the page, independently of the peer implementation.
+  # When supplied, status waits for the owning application to become active.
   module Ceremony
     RUNNER_SENTENCE = "Also runs as a runner on that machine".freeze
     AGENT_SUBJECT = "agent program".freeze
     BRANCHES = %w[agent runner login].freeze
 
-    # What `RunnerGrant` reads off an authorization: the runner-mode daemon's
+    # What `RunnerGrant` reads off an independent executor authorization: the
     # grant is branch B for a `runner`-kind registration.
     Authorization = Data.define(:verification_uri_complete, :user_code, :branch, :executor_kind)
 
@@ -97,14 +81,14 @@ module E2E
     end
 
     def await_active(status)
-      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + RhoDaemon::READY_TIMEOUT
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 60
       loop do
         document = status.call
         return document if finished?(document)
         raise "the daemon never finished its ceremony; last seen #{document.inspect}" if
           Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
 
-        sleep RhoDaemon::POLL
+        sleep 0.2
       end
     end
 

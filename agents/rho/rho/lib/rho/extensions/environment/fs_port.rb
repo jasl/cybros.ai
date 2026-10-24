@@ -5,7 +5,7 @@ require "uri"
 module Rho
   module Extensions
     module Environment
-      # THE DAEMON'S SIDE OF THE FILE-SYSTEM PORT: the runner gem's duck (`Rho::Runner::
+      # THE DAEMON'S SIDE OF THE FILE-SYSTEM PORT: the runner gem's duck (`Rho::Env::
       # FsPort` — `serves?`, `read_text`, `write_text`, `drop`, `client`)
       # spoken over stdlib `Net::HTTP` to the loopback URL the surface
       # registered through the door's `fs:` member, the bearer on every
@@ -29,7 +29,7 @@ module Rho
       # and the tool sees `Cancelled`. The token never rides an inspection
       # or a log line: `inspect` names the client and the flags alone.
       class FsPort
-        include Rho::Runner::FsPort
+        include Rho::Env::FsPort
 
         OPEN_TIMEOUT_SECONDS = 2
         READ_TIMEOUT_SECONDS = 30
@@ -39,9 +39,9 @@ module Rho
         # The codes with an error of their own; every other 4xx code is
         # `Refused` under that code.
         CODES = {
-          "not_found" => Rho::Runner::FsPort::NotFound,
-          "beyond_eof" => Rho::Runner::FsPort::BeyondEof,
-          "cancelled" => Rho::Runner::FsPort::Cancelled,
+          "not_found" => Rho::Env::FsPort::NotFound,
+          "beyond_eof" => Rho::Env::FsPort::BeyondEof,
+          "cancelled" => Rho::Env::FsPort::Cancelled,
         }.freeze
         # A bearer refusal is the surface's, not the editor's.
         BROKEN_STATUSES = [401, 403].freeze
@@ -90,14 +90,14 @@ module Rho
         def read_text(path, line:, limit:)
           answer = post(READ_ROUTE, { "path" => path, "line" => line, "limit" => limit }.compact, timeout: @read_timeout)
           text = answer["text"]
-          raise Rho::Runner::FsPort::Unavailable, "malformed: the read's answer carries no text" unless text.is_a?(String)
+          raise Rho::Env::FsPort::Unavailable, "malformed: the read's answer carries no text" unless text.is_a?(String)
 
           text
         end
 
         def write_text(path, text)
           answer = post(WRITE_ROUTE, { "path" => path, "text" => text }, timeout: @write_timeout)
-          raise Rho::Runner::FsPort::Unavailable, "malformed: the write's answer is not ok" unless answer["ok"] == true
+          raise Rho::Env::FsPort::Unavailable, "malformed: the write's answer is not ok" unless answer["ok"] == true
 
           nil
         end
@@ -119,10 +119,10 @@ module Rho
         private
 
           def post(route, body, timeout:)
-            context = Rho::Runner::ExecutionContext.current
+            context = Rho::Env::ExecutionContext.current
             cancelled!(context) if context&.cancelled?
             http = session(timeout)
-            response = Rho::Runner::ExecutionContext.with_cancel_signal(-> { finish(http) }) do
+            response = Rho::Env::ExecutionContext.with_cancel_signal(-> { finish(http) }) do
               http.start { http.request(request_for(route, body)) }
             end
             answer(response)
@@ -141,7 +141,7 @@ module Rho
           # The duck's word for it; the runner's `ask` turns it into the
           # worker's own cancel path with the signal's reason.
           def cancelled!(context)
-            raise Rho::Runner::FsPort::Cancelled, "the request was cancelled (#{context.reason || "cancelled"})"
+            raise Rho::Env::FsPort::Cancelled, "the request was cancelled (#{context.reason || "cancelled"})"
           end
 
           def session(timeout)
@@ -175,9 +175,9 @@ module Rho
           # a shape to parse.
           def answer(response)
             status = response.code.to_i
-            raise Rho::Runner::FsPort::Unavailable, "status_#{status}: the surface refused the bearer" if
+            raise Rho::Env::FsPort::Unavailable, "status_#{status}: the surface refused the bearer" if
               BROKEN_STATUSES.include?(status)
-            raise Rho::Runner::FsPort::Unavailable, "status_#{status}: #{response.body.to_s.byteslice(0, 200)}" unless
+            raise Rho::Env::FsPort::Unavailable, "status_#{status}: #{response.body.to_s.byteslice(0, 200)}" unless
               status == 200 || (400..499).cover?(status)
 
             document = parse(response.body)
@@ -188,11 +188,11 @@ module Rho
 
           def parse(body)
             document = JSON.parse(body.to_s)
-            raise Rho::Runner::FsPort::Unavailable, "malformed: the answer is not a JSON object" unless document.is_a?(Hash)
+            raise Rho::Env::FsPort::Unavailable, "malformed: the answer is not a JSON object" unless document.is_a?(Hash)
 
             document
           rescue JSON::ParserError
-            raise Rho::Runner::FsPort::Unavailable, "malformed: the answer is not JSON"
+            raise Rho::Env::FsPort::Unavailable, "malformed: the answer is not JSON"
           end
 
           # A 4xx with a code: the client's own errors, or `Refused` under
@@ -200,17 +200,17 @@ module Rho
           def refuse(document, status)
             error = Hash.try_convert(document["error"]) || {}
             code = error["code"]
-            raise Rho::Runner::FsPort::Unavailable, "status_#{status}: a refusal with no code" unless code.is_a?(String)
+            raise Rho::Env::FsPort::Unavailable, "status_#{status}: a refusal with no code" unless code.is_a?(String)
 
             message = error["message"].to_s
             klass = CODES[code]
             raise klass, message if klass
 
-            raise Rho::Runner::FsPort::Refused.new(message, code: code)
+            raise Rho::Env::FsPort::Refused.new(message, code: code)
           end
 
           def unavailable(label, error)
-            raise Rho::Runner::FsPort::Unavailable, "#{label}: #{error.class.name}: #{error.message}"
+            raise Rho::Env::FsPort::Unavailable, "#{label}: #{error.class.name}: #{error.message}"
           end
       end
     end

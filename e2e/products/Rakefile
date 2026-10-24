@@ -1,0 +1,12 @@
+require_relative "../support/nexus_server"
+require_relative "support/product_world"
+require_relative "support/journey_groups"
+
+module E2E
+  LANE_ROOT = __dir__
+  NEXUS_ROOT = File.expand_path("../../nexus", __dir__)
+  WORLD_CLASS = ProductWorld
+  SMOKE_JOURNEYS = %w[rho_run rho_core_only].freeze
+end
+
+require_relative "../support/lane_tasks"

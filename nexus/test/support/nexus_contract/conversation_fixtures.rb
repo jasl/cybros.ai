@@ -399,7 +399,7 @@ module Nexus
           body = body_type.new(effective_text: "Here is the plan.")
           # THE WORLD: a loop-backed variant also carries what its loop did to the files, DERIVED
           # off the loop's rows — here the first runner-addressed write-kind call a runner claimed,
-          # and that call's `metadata.checkpoint` VERBATIM (rho-runner's `{hash, store}`); the four
+          # and that call's `metadata.checkpoint` VERBATIM (rho-env's `{hash, store}`); the four
           # shapes are `runner_effects_fixtures`.
           loop = AgentAPI::ConversationPresenter::RunBlock.new(
             run_public_id: "01900000-0000-7000-8000-0000000000b1",

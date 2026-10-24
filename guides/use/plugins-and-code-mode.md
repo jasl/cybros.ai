@@ -25,9 +25,9 @@ Edit the JSON file directly only while rho is stopped.
 | Plugin | Provides | Default |
 | --- | --- | --- |
 | `rho.coding` | File, shell and process tools on the runner | On |
-| `rho.webui` | The browser page | On in full and agent modes |
+| `rho.webui` | The browser page | On by default |
 | `rho.codemode` | The `code` tool: JavaScript orchestration of tools and model calls | On |
-| `rho.web_tools` | `web_fetch`: read a public URL as markdown, text or a saved file | On in full and runner modes |
+| `rho.web_tools` | `web_fetch`: read a public URL as markdown, text or a saved file | On by default |
 | `rho.mcp` | Tools from configured MCP servers (stdio and streamable HTTP), with OAuth login from the CLI | Configure servers to use |
 | `rho.browser` | Playwright browser tools, when the driver and Chromium are installed | Add `rho/browser` to the extensions list |
 | `rho.ingress_telegram` | [Telegram](telegram.md) | Off |

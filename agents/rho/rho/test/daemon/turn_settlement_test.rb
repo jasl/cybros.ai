@@ -161,7 +161,7 @@ class TurnSettlementTest < Minitest::Test
 
   def test_retirement_waits_for_the_admitted_hook_then_releases_its_resources
     cleaned = false
-    resources = Rho::Runner::Extensions::Resources.new(extension: "test")
+    resources = Rho::Env::Extensions::Resources.new(extension: "test")
     resources.own { cleaned = true }
     handler = hook(owner: resources) do |_event, _ctx|
       refute resources.retire
@@ -367,7 +367,7 @@ class TurnSettlementTest < Minitest::Test
         turn_public_id: turn.public_id, run_public_id: turn.active_variant.run_public_id,
         status: "completed", model: "test/model", memory_context: Fixtures.capture(Fixtures.memory_context))
     end
-    resources = Rho::Runner::Extensions::Resources.new(extension: "memory-review")
+    resources = Rho::Env::Extensions::Resources.new(extension: "memory-review")
     observer = Rho::Extensions::MemoryReview::Observer.new(resources: resources, log: nil)
     context = Context.new(workspace)
     Async do |task|
@@ -406,6 +406,6 @@ class TurnSettlementTest < Minitest::Test
   private
 
     def hook(owner: nil, &handler)
-      Rho::Runner::Extensions::Hooks::Registration.new(event: :turn_settled, extension: "test", handler: handler, owner: owner)
+      Rho::Env::Extensions::Hooks::Registration.new(event: :turn_settled, extension: "test", handler: handler, owner: owner)
     end
 end

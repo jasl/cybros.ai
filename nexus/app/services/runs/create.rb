@@ -123,7 +123,9 @@ module Runs
         run.create_event_cursor!(account: run.account)
         # The seed is an authored envelope on an empty loop: its end tip is
         # the answer by construction, so nothing names one.
-        appended = Tasks::Append.call(Tasks::Append::Command.authored(
+        # This transaction owns the newly inserted row; no other appender
+        # can see it yet, so it needs no lock read.
+        appended = Tasks::Append.call_locked(Tasks::Append::Command.authored(
           run: run, steps: @command.steps, creator: creating_user
         ))
         raise ActiveRecord::Rollback unless appended.applied?
@@ -134,10 +136,10 @@ module Runs
         persist_create_receipt(run)
       end
       return seed_refusal if seed_refusal
-      return Result.created(run, appended.receipt) if appended&.applied?
-      return Result.invalid(appended.errors) if appended && appended.outcome == :invalid_steps
+      return Result.created(run, appended.receipt) if appended.applied?
+      return Result.invalid(appended.errors) if appended.outcome == :invalid_steps
 
-      Result.refused(appended&.outcome || :not_available)
+      Result.refused(appended.outcome)
     rescue ActiveRecord::RecordNotUnique
       # The retry raced the original past the pre-check; the receipt the
       # winner wrote is the answer.

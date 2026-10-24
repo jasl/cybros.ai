@@ -22,7 +22,7 @@ module Rho
     # the DEFAULTS for new sessions — the mode (`bypass`, rho's own
     # posture; an editor that wants prompts passes `--mode ask`), the
     # model (else the home's `default_model`), the runner-kind executor an
-    # agent-mode rho names for the session's tools.
+    # rho names for the session's tools.
     #
     # FD-LEVEL HYGIENE at entry (`Wire.over_stdio`): the original fd 1 is
     # dup'd into the wire IO and STDOUT is reopened onto stderr with
@@ -50,12 +50,10 @@ module Rho
     # live members released best-effort (`fs: nil`, `mcp: []` — the record
     # stays, it is the conversation's), the port stopped, exit 0; the
     # kernel turns keep running (a conversation outlives its reader; this
-    # process stops nothing on EOF). A runner-mode home answers
-    # `initialize` and refuses `session/new` -32603 by `RUNNER_MODE`.
+    # process stops nothing on EOF).
     class Agent
       MODES = %w[bypass ask rules].freeze
       DEFAULT_MODE = "bypass".freeze
-      RUNNER_MODE = "this rho runs in mode runner: it opens no conversations".freeze
       # The exe's stderr prefix: every sentence this process prints.
       PREFIX = "rho-acp".freeze
 

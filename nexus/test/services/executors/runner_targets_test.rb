@@ -70,6 +70,22 @@ class Executors::RunnerTargetsTest < ActiveJob::TestCase
       Executors::TaskOperations::Context.defaults(children.first).dig("environment", "default_runner_executor_public_id")
   end
 
+  test "explicit routes refuse MCP availability before Runner eligibility and eligibility before serving" do
+    missing_runner = declaration("missing_runner", runner_b)
+    runner_b.revoke_credentials
+    missing_tool = declaration("missing_tool", runner_a, served: "not_announced")
+    missing_mcp = declaration("missing_mcp", runner_a).merge("route" => {
+      "kind" => "mcp", "connection_public_id" => SecureRandom.uuid, "tool_name" => "read",
+    })
+
+    assert_equal :mcp_connection_unavailable,
+      create_loop(model("plan", "tools" => [missing_tool, missing_runner, missing_mcp])).outcome
+    assert_equal :runner_not_eligible,
+      create_loop(model("plan", "tools" => [missing_tool, missing_runner])).outcome
+    assert_equal :tool_not_served,
+      create_loop(model("plan", "tools" => [missing_tool])).outcome
+  end
+
   test "a continuation cannot change a declared target and narrowing retains route identity" do
     definitions = [declaration("read_a", runner_a)]
     run = seed(model("plan", "tools" => definitions))

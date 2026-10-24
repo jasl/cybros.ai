@@ -202,20 +202,20 @@ assert_contains "$LAST_OUTPUT" "git pull --ff-only failed in $checkout" "the pul
 assert_not_contains "$LAST_OUTPUT" "Running:" "nothing was run"
 pass "no remote: git's own line, nothing run"
 
-# --- 6. --modify-path on a second prefix (the runner profile), --add-rows without an install
+# --- 6. --modify-path on a second prefix (the minimal profile), --add-rows without an install
 second_prefix="$TEST_TMP/prefix2"
 fakehome="$TEST_TMP/fakehome"
 mkdir -p "$fakehome"
 assert_exit 0 "install --modify-path" -- env RHO_PREFIX="$second_prefix" RHO_HOME="$TEST_TMP/home2" RHO_LAUNCHER_DIR="$TEST_TMP/bin2" \
-  HOME="$fakehome" SHELL=/bin/zsh /bin/bash "$checkout/install/install.sh" --profile runner --modify-path
+  HOME="$fakehome" SHELL=/bin/zsh /bin/bash "$checkout/install/install.sh" --profile minimal --modify-path
 assert_contains "$LAST_OUTPUT" "Adding the PATH line to $fakehome/.zprofile" "--modify-path names the rc file"
 grep -qxF "export PATH=\"$TEST_TMP/bin2:\$PATH\"   # rho" "$fakehome/.zprofile" || fail "the rc line was not written"
 assert_eq "$(grep -c "# rho" "$fakehome/.zprofile")" "1" "one rc line"
 assert_eq "$(readlink "$second_prefix/current")" "versions/${expected_pair}" "the second prefix's version dir"
-[[ -x "$second_prefix/bin/rg" && ! -e "$second_prefix/bin/jq" ]] || fail "the runner profile rows"
+[[ -x "$second_prefix/bin/rg" && ! -e "$second_prefix/bin/jq" ]] || fail "the minimal profile rows"
 assert_exit 0 "rho version from the second prefix" -- env RHO_HOME="$TEST_TMP/home2" "$second_prefix/bin/rho" version
 assert_eq "$LAST_OUTPUT" "${expected_app}" "the second prefix runs"
-pass "--modify-path writes the one rc line; the runner profile"
+pass "--modify-path writes the one rc line; the minimal profile"
 
 assert_exit 1 "rho update --add-rows needs a receipt" -- env RHO_PREFIX="$TEST_TMP/nowhere" /bin/bash "$checkout/install/install.sh" --add-rows
 assert_contains "$LAST_OUTPUT" "nothing is installed" "add-rows names the reason"

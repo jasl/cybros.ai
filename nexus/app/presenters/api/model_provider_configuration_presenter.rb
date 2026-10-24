@@ -7,6 +7,7 @@ module API
       policy = catalog.policies[provider_id]
       raise ActiveRecord::RecordNotFound if definition.nil? && policy.nil?
 
+      snapshot = ModelCatalog::RetainedCatalog.base(snapshot: snapshot, policy: policy)
       entries = policy&.override_entries || {}
       refs = (snapshot.models.keys | entries.keys).select { |ref| ModelProviderConfig.provider_lane_ref?(provider_id, ref) }
       source = if definition.nil?

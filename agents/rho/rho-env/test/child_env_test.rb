@@ -1,0 +1,124 @@
+require "test_helper"
+require "open3"
+
+class ChildEnvTest < Minitest::Test
+  # The suite itself runs under `bundle exec`, so the hazard is live in
+  # this very process: what a child would have inherited is exactly what
+  # the daemon's children inherited before this helper existed.
+  def test_strips_bundlers_trail_and_keeps_the_rest
+    env = Rho::Env::ChildEnv.call
+
+    assert_empty env.keys.grep(/\ABUNDLE_|\ABUNDLER_(ORIG_|SETUP\z)/),
+      "a child would load rho's Gemfile: #{env.keys.grep(/BUNDLE/).inspect}"
+    # A pre-existing version pin, including one set by Bundler's lockfile
+    # version switch, is restored. It selects Bundler, not rho's Gemfile.
+    assert_equal Bundler.original_env.slice("BUNDLER_VERSION"), env.slice("BUNDLER_VERSION")
+    # A RUBYLIB or RUBYOPT that predates Bundler is the person's own and
+    # stays; Bundler's additions to them must not.
+    refute_match(/bundler/, env.fetch("RUBYOPT", ""))
+    refute_match(/bundler/, env.fetch("RUBYLIB", ""))
+    assert_equal ENV.fetch("HOME"), env["HOME"]
+    assert_equal "1", env["PYTHONUNBUFFERED"]
+  end
+
+  def test_a_child_with_a_bundler_version_pin_loads_its_own_gemfile
+    Dir.mktmpdir("rho-child-bundle") do |root|
+      gemfile = File.join(File.realpath(root), "Gemfile")
+      File.write(gemfile, "")
+      env = Rho::Env::ChildEnv.call.merge("BUNDLER_VERSION" => Bundler::VERSION)
+      # The empty child project has no dependency on this suite's RBS hook.
+      env["RUBYOPT"] = (env.fetch("RUBYOPT", "").split - ["-rrbs/test/setup"]).join(" ")
+
+      stdout, stderr, status = Open3.capture3(
+        env, RbConfig.ruby, "-rbundler/setup", "-e", "puts Bundler.default_gemfile.realpath",
+        chdir: root, unsetenv_others: true
+      )
+
+      assert status.success?, stderr
+      assert_equal gemfile, stdout.strip
+    end
+  end
+
+  def test_the_persons_bundler_editor_is_preserved_for_tools_but_scrubbed_for_third_parties
+    with_bundler_snapshot({ "BUNDLER_EDITOR" => "vim" }) do
+      assert_equal "vim", Rho::Env::ChildEnv.call.fetch("BUNDLER_EDITOR")
+      refute Rho::Env::ChildEnv.scrubbed.key?("BUNDLER_EDITOR")
+    end
+  end
+
+  def test_without_bundler_the_same_keys_are_dropped_by_name
+    current = {
+      "PATH" => "/usr/bin", "BUNDLE_GEMFILE" => "/x/Gemfile", "RUBYOPT" => "-rbundler/setup",
+      "RUBYLIB" => "/x/lib", "GEM_HOME" => "/x/gems", "LANG" => "C.UTF-8",
+    }
+    stripped = current.reject { |key, _| key.match?(Rho::Env::ChildEnv::BUNDLER_KEYS) }
+
+    assert_equal %w[LANG PATH], stripped.keys.sort
+  end
+
+  # Rho decides the locale after Bundler took its snapshot; the child must
+  # see rho's decision, not the machine's absence of one.
+  def test_the_current_locale_wins_over_bundlers_snapshot
+    snapshot = { "LANG" => "C", "LC_ALL" => "C", "LC_CTYPE" => "C", "PATH" => "/usr/bin" }
+    with_bundler_snapshot(snapshot) do
+      with_env("LANG" => "C.UTF-8", "LC_ALL" => nil, "LC_CTYPE" => nil) do
+        env = Rho::Env::ChildEnv.call
+
+        assert_equal "C.UTF-8", env["LANG"]
+        refute env.key?("LC_ALL")
+        refute env.key?("LC_CTYPE")
+        assert_equal "/usr/bin", env["PATH"]
+      end
+    end
+  end
+
+  # THE SCRUB: what a THIRD
+  # PARTY's long-lived child gets whole under `unsetenv_others: true` —
+  # `call` minus every credential-shaped name, rho's own, and Bundler's
+  # trail by name on top (a nested `bundle exec` leaves one `call` reads
+  # back as the environment Bundler started from). `call` reads Bundler's
+  # snapshot, never a variable planted at run time, so the pin reads the
+  # result's shape against `call`'s.
+  def test_scrubbed_is_call_minus_credential_shaped_rhos_and_bundlers_names
+    base = Rho::Env::ChildEnv.call
+    env = Rho::Env::ChildEnv.scrubbed
+
+    refute_nil env["PATH"]
+    assert_equal ENV.fetch("HOME"), env["HOME"]
+    assert_equal "1", env["PYTHONUNBUFFERED"]
+    assert_empty env.keys - base.keys, "the scrub adds nothing"
+    assert_equal base.slice(*env.keys), env, "a kept variable keeps its value"
+    withheld = lambda do |name|
+      name.match?(Rho::Env::Secrets::CREDENTIAL_SHAPED) || name.start_with?("RHO_", "BUNDLE_", "BUNDLER_") ||
+        name.match?(Rho::Env::ChildEnv::BUNDLER_KEYS)
+    end
+    assert_empty env.keys.select(&withheld), "a credential-shaped, rho or Bundler name reached the child"
+    assert_empty (base.keys - env.keys).reject(&withheld), "a name outside the rule was dropped"
+  end
+
+  def test_scrubbed_takes_the_current_environment_it_is_given_for_the_locale
+    with_env("LANG" => "C.UTF-8", "LC_ALL" => nil) do
+      env = Rho::Env::ChildEnv.scrubbed({ "LANG" => "zh_CN.UTF-8", "GH_TOKEN" => "x" })
+      assert_equal "zh_CN.UTF-8", env["LANG"], "the locale is the current environment's, as `call` takes it"
+      refute env.key?("GH_TOKEN")
+    end
+  end
+
+  private
+
+    def with_bundler_snapshot(snapshot)
+      original = Bundler.method(:with_unbundled_env)
+      Bundler.define_singleton_method(:with_unbundled_env) { snapshot }
+      yield
+    ensure
+      Bundler.define_singleton_method(:with_unbundled_env, original)
+    end
+
+    def with_env(pairs)
+      saved = pairs.keys.to_h { |key| [key, ENV.fetch(key, nil)] }
+      pairs.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
+      yield
+    ensure
+      saved.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
+    end
+end

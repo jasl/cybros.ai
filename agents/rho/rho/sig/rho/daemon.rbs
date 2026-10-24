@@ -22,11 +22,9 @@ module Rho
     def phase: () -> Symbol
     def connection: () -> Connection?
     def identity: () -> Identity?
-    def mode: () -> String
-    def runner_mode?: () -> bool
 
     # The executor plane's two verbs, out of HostFollowers: an address's
-    # announcement and its nudge stream, for every mode.
+    # announcement and its nudge stream, for both roles.
     class ExecutorPlane
       EXECUTOR_INBOX_CHANNEL: String
       WORK_AVAILABLE: String
@@ -40,9 +38,9 @@ module Rho
       def initialize: (wire: Wire, lineage: Lineage, context: Context, log: untyped, ?booted_at: String?) -> void
       def announced: () -> Hash[String, Integer?]
       def announce_services: (untyped credential, services: Hash[String, untyped]) -> untyped
-      def environment_document: (Rho::Runner::Extensions::Registry registry) -> Hash[String, untyped]
-      def documents: (Rho::Runner::Extensions::Registry registry) -> Array[Hash[String, untyped]]
-      def nudge_stream: (untyped about, ?Symbol slot) -> void
+      def environment_document: (Rho::Env::Extensions::Registry registry) -> Hash[String, untyped]
+      def documents: (Rho::Env::Extensions::Registry registry) -> Array[Hash[String, untyped]]
+      def nudge_stream: (untyped about) -> void
     end
 
     # The one owner of the transport, read at call time by every collaborator.
@@ -61,7 +59,6 @@ module Rho
       LOST_REPORT: Hash[Symbol, untyped]
       NOT_DURABLE: String
       JOINABLE_PHASES: Array[Symbol]
-      SLOTS: Array[Symbol]
       UNCHECKED: Object
 
       class Workspace < ::Data
@@ -86,8 +83,8 @@ module Rho
       class Retired < ::Data
         attr_reader followers: Array[untyped]
         attr_reader realtime: untyped
-        attr_reader executor_realtimes: Array[untyped]
-        attr_reader runners: Array[untyped]
+        attr_reader executor_realtime: untyped
+        attr_reader runner: untyped
         def self.none: () -> instance
         def clients: () -> Array[untyped]
       end
@@ -148,11 +145,9 @@ module Rho
       def connection: () -> untyped
       def followers: () -> Array[untyped]
       def follower: (String public_id) -> untyped
-      def runner: (?Symbol slot) -> untyped
-      def runners: () -> Array[untyped]
-      def tool_env: (?Symbol slot) -> untyped
+      def runner: () -> untyped
       def realtime: () -> untyped
-      def executor_realtime: (?Symbol slot) -> untyped
+      def executor_realtime: () -> untyped
       def maintenance_running?: () -> bool
       def holds?: (untyped about) -> bool
       def current?: (untyped about) -> bool
@@ -180,15 +175,14 @@ module Rho
       def release_slot: (untyped connection, ?canceled: bool) -> bool
       def release_poller: (Thread thread) -> void
       def realtime_for: (untyped about) -> untyped
-      def executor_realtime_for: (untyped about, ?slot: Symbol) -> untyped
+      def executor_realtime_for: (untyped about) -> untyped
       def install_follower: (untyped about, untyped run) -> [untyped, bool]
       def drop_follower: (String public_id) -> untyped
       def rebind_runs: () -> Array[untyped]
       def retire_runs: () -> Retired
-      def reserve_runner: (untyped about, ?slot: Symbol) -> bool
-      def release_runner: (untyped about, ?slot: Symbol) -> bool
-      def install_runner: (untyped about, untyped runner, untyped tool_env, ?slot: Symbol) -> bool
-      def take_runner: (untyped about, ?slot: Symbol) -> [untyped, untyped]?
+      def reserve_runner: (untyped about) -> bool
+      def release_runner: (untyped about) -> bool
+      def install_runner: (untyped about, untyped runner) -> bool
       def admit: () -> bool
       def release: () -> void
       def begin_stop: () -> bool
@@ -213,14 +207,13 @@ module Rho
       def initialize: (
         lineage: Lineage, home: Home, device_flow: untyped, wire: Wire, clock: ^() -> Time,
         display_name: String, log: untyped, maintenance: Maintenance,
-        announce: Proc, adopt: Proc, settle: Proc, lose: Proc, transition: Proc,
-        ?mode: String
+        announce: Proc, adopt: Proc, settle: Proc, lose: Proc, transition: Proc
       ) -> void
       class LoginPlan < Data
         attr_reader request: Symbol
-        attr_reader credentials: Credentials?
+        attr_reader credentials: credential?
         attr_reader identity: Identity?
-        def self.new: (request: Symbol, credentials: Credentials?, identity: Identity?) -> instance
+        def self.new: (request: Symbol, credentials: credential?, identity: Identity?) -> instance
       end
       def login_plan: () -> (LoginPlan | Refusal)
       def complete_login: (LoginPlan plan) { () -> CybrosAgent::ApplicationOAuth::Credentials? } -> (CybrosAgent::ApplicationOAuth::Credentials | Refusal)?
@@ -249,7 +242,7 @@ module Rho
       def initialize: (
         lineage: Lineage, home: Home, wire: Wire, clock: ^() -> Time, interval: Numeric,
         log: untyped, announce: Proc, lose: Proc, member_credential: Proc,
-        on_workspace_adopted: Proc, spawn: Proc, ?mode: String, ?workspace: String?, ?workspace_selection: (^() -> String?)?,
+        on_workspace_adopted: Proc, spawn: Proc, ?workspace: String?, ?workspace_selection: (^() -> String?)?,
         ?sweep: Proc
       ) -> void
       def start: () -> Thread
@@ -543,7 +536,7 @@ module Rho
                      ?runner: untyped) -> void
       def forget: ((Host::Run | Host::Conversation) host) -> void
       def host_of: (String public_id, untyped runs) -> (Host::Run | Host::Conversation)
-      def registry: () -> Rho::Runner::Extensions::Registry
+      def registry: () -> Rho::Env::Extensions::Registry
       def compaction_policy: () -> Hash[String, untyped]
       def kernel_tool_configuration: (?untyped client) -> Hash[Symbol, Array[untyped]]
       def lead_hints: (String? model) -> Array[String]
@@ -554,7 +547,7 @@ module Rho
       def repoint_tools: (String? root) -> (EnvironmentStore::Selection | Refusal)
       def runner_snapshot: () -> Hash[Symbol, Hash[Symbol, untyped]?]
       def inventory: () -> Array[Hash[String, untyped]]
-      def failures: () -> Array[Rho::Runner::Extensions::Loader::Failure]
+      def failures: () -> Array[Rho::Env::Extensions::Loader::Failure]
       def spawn: () { () -> untyped } -> untyped
     end
 
@@ -598,7 +591,7 @@ module Rho
 
     private
 
-    def mount_runner: (untyped about, Symbol slot) -> Rho::Runner?
-    def build_runner: (untyped owner) -> Rho::Runner
+    def mount_runner: (untyped about) -> Rho::Env::Executor?
+    def build_runner: (untyped owner) -> Rho::Env::Executor
   end
 end

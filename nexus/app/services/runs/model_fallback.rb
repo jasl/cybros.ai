@@ -5,7 +5,6 @@ module Runs
     REFUSED = ModelInvocation::DECLINED_KEY
     OVERLOADED = ModelInvocation::OVERLOADED_KEY
     SWITCH_REASONS = [REFUSED, *ModelInvocation::RECOVERY_FAILURE_KEYS, *ModelInvocation::AVAILABILITY_KEYS].freeze
-    FOREIGN_TOOL_HISTORY = "foreign_tool_history".freeze
 
     Candidate = Data.define(:provider_id, :model_ref, :reasoning_effort, :reasoning_enabled, :reason, :category) do
       def initialize(category: nil, reasoning_enabled: nil, **) = super

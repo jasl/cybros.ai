@@ -16,7 +16,7 @@ class CancelReuseTest < Minitest::Test
       home: Rho::Home.resolve(base_url: "https://nexus.example", root: File.join(Dir.tmpdir, "rho-acp-reuse-test")),
       log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({}), processes: nil
     )
-    loaded = Rho::Runner::Extensions::Loader.call(gems: ["rho/acp-client"], api_class: Rho::Extensions::Api,
+    loaded = Rho::Env::Extensions::Loader.call(gems: ["rho/acp-client"], api_class: Rho::Extensions::Api,
       api_options: { host: host })
     assert_predicate loaded, :ok?, loaded.failures.inspect
   end
@@ -55,10 +55,10 @@ class CancelReuseTest < Minitest::Test
       with_tool_env do |env, root, context|
         gate = File.join(root, "release-old-prompt")
         worker = Thread.new do
-          Rho::Runner::ExecutionContext.with(context) do
+          Rho::Env::ExecutionContext.with(context) do
             Rho::AcpClient.call({ "agent" => "deferred", "prompt" => "defer:#{gate}" }, env: env)
           end
-        rescue Rho::Runner::ExecutionContext::Cancelled => error
+        rescue Rho::Env::ExecutionContext::Cancelled => error
           error.reason
         end
         row = await(seconds: 3) do
@@ -77,9 +77,9 @@ class CancelReuseTest < Minitest::Test
     end
 
     def continue_session(env, row)
-      context = Rho::Runner::ExecutionContext.new(conversation_public_id: "conv-1", task_key: "next-call",
+      context = Rho::Env::ExecutionContext.new(conversation_public_id: "conv-1", task_key: "next-call",
         run_public_id: "loop-1")
-      Rho::Runner::ExecutionContext.with(context) do
+      Rho::Env::ExecutionContext.with(context) do
         Rho::AcpClient.call({ "agent" => "deferred", "session" => row.fetch("session"), "prompt" => "new-answer" }, env: env)
       end
     end

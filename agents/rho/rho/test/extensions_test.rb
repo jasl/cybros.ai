@@ -2,7 +2,7 @@ require "test_helper"
 require "net/http"
 require "tmpdir"
 
-# THE DAEMON'S HALF OF THE PLANE. rho-runner owns the contract, the
+# THE DAEMON'S HALF OF THE PLANE. rho-env owns the contract, the
 # registry and the tool hooks, because a runner on a second machine needs
 # all of them with no daemon in the process. What a daemon adds is what
 # only a daemon has: a lifetime to run background work in, and an operator
@@ -25,7 +25,7 @@ class RhoExtensionsTest < Minitest::Test
         "idempotency" => "intrinsic", "reconciliation" => "none",
       })
       define_method(:initialize) { |env:| @env = env }
-      define_method(:call) { |_args| Rho::Runner::Result.ok("ok") }
+      define_method(:call) { |_args| Rho::Env::Result.ok("ok") }
     end
   end
 
@@ -174,10 +174,10 @@ class RhoExtensionsTest < Minitest::Test
     assert_equal ["rho.shaper"], api.daemon_hooks.map(&:extension).uniq
     assert_equal [:tool_call], api.hooks.map(&:event)
     assert_equal [:shutdown], api.lifecycle.map(&:event)
-    assert_raises(Rho::Runner::Extensions::RegistrationError) { api.on(:turn_author) }
-    assert_raises(Rho::Runner::Extensions::RegistrationError) { api.on(:host_ended) }
-    assert_raises(Rho::Runner::Extensions::RegistrationError) { api.on(:member_connection) }
-    assert_raises(Rho::Runner::Extensions::RegistrationError) { api.on(:run_author) { nil } }
+    assert_raises(Rho::Env::Extensions::RegistrationError) { api.on(:turn_author) }
+    assert_raises(Rho::Env::Extensions::RegistrationError) { api.on(:host_ended) }
+    assert_raises(Rho::Env::Extensions::RegistrationError) { api.on(:member_connection) }
+    assert_raises(Rho::Env::Extensions::RegistrationError) { api.on(:run_author) { nil } }
     api.freeze
     assert_raises(FrozenError) { api.on(:turn_follow) { nil } }
     assert_raises(FrozenError) { api.on(:host_ended) { nil } }
@@ -209,9 +209,9 @@ class RhoExtensionsTest < Minitest::Test
   def test_flags_need_options_and_a_fold
     api = Rho::Extensions::Api.new(host: host, extension_name: "rho.x", source: "<test>")
 
-    assert_raises(Rho::Runner::Extensions::RegistrationError) { api.register_flags("do") { |body, _o| body } }
-    assert_raises(Rho::Runner::Extensions::RegistrationError) { api.register_flags("do", x: { type: :string }) }
-    assert_raises(Rho::Runner::Extensions::RegistrationError) { api.register_command("x") }
+    assert_raises(Rho::Env::Extensions::RegistrationError) { api.register_flags("do") { |body, _o| body } }
+    assert_raises(Rho::Env::Extensions::RegistrationError) { api.register_flags("do", x: { type: :string }) }
+    assert_raises(Rho::Env::Extensions::RegistrationError) { api.register_command("x") }
   end
 
   # ONE `register(api)` WORKS UNDER BOTH HOSTS. The daemon's handle is a
@@ -338,7 +338,7 @@ class RhoExtensionsTest < Minitest::Test
               "idempotency" => "none", "reconciliation" => "none"
             }.freeze
             def initialize(env:) = @env = env
-            def call(_args) = Rho::Runner::Result.ok("fetched")
+            def call(_args) = Rho::Env::Result.ok("fetched")
           end
           def self.register(api)
             api.register_tool(Fetch)
@@ -376,7 +376,7 @@ class RhoExtensionsTest < Minitest::Test
         end
       RUBY
 
-      error = assert_raises(Rho::Runner::Extensions::RegistrationError) do
+      error = assert_raises(Rho::Env::Extensions::RegistrationError) do
         Rho::Daemon.boot(
           home: Rho::Home.resolve(base_url: "https://nexus.example", root: File.join(dir, "home")),
           config: Rho::Config.from_hash({ "plugins" => { "rho.squatter" => RhoTest.described_extension(path, id: "rho.squatter") } })
@@ -489,7 +489,7 @@ class RhoExtensionsTest < Minitest::Test
 end
 
 # ---- the shipped set is per mode ----
-class ExtensionsPerModeTest < Minitest::Test
+class ExtensionsRolesTest < Minitest::Test
   def tool_class(name)
     Class.new do
       const_set(:NAME, name)
@@ -500,7 +500,7 @@ class ExtensionsPerModeTest < Minitest::Test
         "idempotency" => "intrinsic", "reconciliation" => "none",
       })
       define_method(:initialize) { |env:| @env = env }
-      define_method(:call) { |_args| Rho::Runner::Result.ok("ok") }
+      define_method(:call) { |_args| Rho::Env::Result.ok("ok") }
     end
   end
 
@@ -511,10 +511,10 @@ class ExtensionsPerModeTest < Minitest::Test
     end
   end
 
-  def host(mode)
+  def host
     Rho::Extensions::Host.new(
       home: Rho::Home.resolve(base_url: "https://nexus.example", root: File.join(Dir.tmpdir, "rho-test-host")),
-      log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({ "mode" => mode }), processes: nil
+      log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({}), processes: nil
     )
   end
 
@@ -523,9 +523,9 @@ class ExtensionsPerModeTest < Minitest::Test
   # extension that connects to list its tools spawns nothing there. The
   # member, not `processes.nil?`: that is nil under a standalone runner too.
   def test_the_host_states_whether_it_serves_tools_and_defaults_to_true
-    assert_equal true, host("full").serving_tools
+    assert_equal true, host.serving_tools
     silent = Rho::Extensions::Host.new(
-      home: host("full").home, log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({}), processes: nil,
+      home: host.home, log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({}), processes: nil,
       serving_tools: false
     )
     assert_equal false, silent.serving_tools
@@ -541,82 +541,43 @@ class ExtensionsPerModeTest < Minitest::Test
   # the shipped set carries the extension between the guard and the
   # process table (a veto first; the capture never runs for a vetoed call).
   def test_the_host_carries_the_checkpoint_stores_member_and_the_shipped_set_the_extension
-    assert_nil host("full").checkpoints
+    assert_nil host.checkpoints
     store = Object.new
     handed = Rho::Extensions::Host.new(
-      home: host("full").home, log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({}), processes: nil,
+      home: host.home, log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({}), processes: nil,
       checkpoints: -> { store }
     )
     assert_same store, handed.checkpoints.call
     shipped = Rho::Extensions::DEFAULT_EXTENSIONS
-    assert_equal [Rho::Extensions::Guard, Rho::Runner::Extensions::Checkpoints, Rho::Extensions::Processes],
+    assert_equal [Rho::Extensions::Guard, Rho::Env::Extensions::Checkpoints, Rho::Extensions::Processes],
       shipped[shipped.index(Rho::Extensions::Guard), 3]
 
-    bare = Rho::Extensions.load(host: host("full").with(checkpoints: nil)).registry
+    bare = Rho::Extensions.load(host: host.with(checkpoints: nil)).registry
     refute_includes bare.names, "checkpoint_restore", "no member: the extension registers nothing"
-    assert_includes Rho::Extensions.load(host: host("full").with(checkpoints: -> { store })).registry.names, "checkpoint_restore"
+    assert_includes Rho::Extensions.load(host: host.with(checkpoints: -> { store })).registry.names, "checkpoint_restore"
     assert_includes Rho::Extensions.load(host: RhoTest.host).registry.names, "checkpoints"
   end
 
   # DEFAULT_EXTENSIONS SURVIVES as the full set: the e2e preludes swap the
   # constant through RUBYOPT, and `defaults_for` reads it at call time so
   # the swapped list flows through to every mode.
-  def test_defaults_for_derives_the_agent_and_runner_subsets_from_the_full_set
-    full = Rho::Extensions::DEFAULT_EXTENSIONS
-    assert_equal full, Rho::Extensions.defaults_for("full")
-    assert_equal full, Rho::Extensions.defaults_for(:full)
-
-    agent = Rho::Extensions.defaults_for("agent")
-    assert_equal full - [Rho::Runner::Extensions::Coding, Rho::Runner::Extensions::Terminal], agent
-    refute_includes agent, Rho::Runner::Extensions::Coding
-    # Processes loads in agent mode for its VERBS (`rho ps` reads a bound runner's table through the call_tool); its tools go to no address there.
-    assert_includes agent, Rho::Extensions::Processes
-
-    runner = Rho::Extensions.defaults_for("runner")
-    assert_equal full - [Rho::Extensions::Ops, Rho::Extensions::Compaction, Rho::Extensions::Schedules,
-                         Rho::Extensions::ConsoleLink, Rho::Extensions::Until, Rho::Extensions::Conventions,
-                         Rho::Extensions::DefaultRunner, Rho::Extensions::Agents, Rho::Extensions::Images,
-                         Rho::Extensions::MemoryReview], runner
-    assert_equal [Rho::Runner::Extensions::Coding, Rho::Runner::Extensions::Terminal, Rho::Extensions::Guard, Rho::Runner::Extensions::Checkpoints,
-                  Rho::Extensions::Processes, Rho::Extensions::Environment, Rho::Extensions::Setup, Rho::Extensions::Packages, Rho::Extensions::LifecycleHooks], runner
-    assert_includes agent, Rho::Extensions::Environment, "Guard and Environment serve both"
-    assert_includes runner, Rho::Extensions::Guard
-  end
 
   # WHICH ADDRESS A HOST SERVES, asked before a tool is registered: the
   # daemon by its mode, the base handle the runner's alone.
-  def test_serves_answers_by_mode_and_the_base_handle_serves_the_runner_alone
-    full = Rho::Extensions::Api.new(host: host("full"), extension_name: "t", source: "<test>")
-    assert full.serves?(:runner)
-    assert full.serves?(:agent)
-    agent = Rho::Extensions::Api.new(host: host("agent"), extension_name: "t", source: "<test>")
-    refute agent.serves?(:runner)
-    assert agent.serves?(:agent)
-    runner = Rho::Extensions::Api.new(host: host("runner"), extension_name: "t", source: "<test>")
-    assert runner.serves?(:runner)
-    refute runner.serves?(:agent)
-    base = Rho::Runner::Extensions::Api.new(extension_name: "t", source: "<test>")
+  def test_application_serves_both_roles_and_environment_handle_serves_runner
+    api = Rho::Extensions::Api.new(host: host, extension_name: "t", source: "<test>")
+    assert api.serves?(:runner)
+    assert api.serves?(:agent)
+    refute api.serves?(:unknown)
+    base = Rho::Env::Extensions::Api.new(extension_name: "t", source: "<test>")
     assert base.serves?(:runner)
     refute base.serves?(:agent)
-  end
-
-  def test_a_swapped_constant_flows_through_defaults_for
-    original = Rho::Extensions::DEFAULT_EXTENSIONS
-    Rho::Extensions.send(:remove_const, :DEFAULT_EXTENSIONS)
-    Rho::Extensions.const_set(:DEFAULT_EXTENSIONS, [Rho::Extensions::Ops].freeze)
-
-    assert_equal [Rho::Extensions::Ops], Rho::Extensions.defaults_for("agent")
-    assert_equal [Rho::Extensions::Ops], Rho::Extensions.defaults_for("full")
-    assert_empty Rho::Extensions.defaults_for("runner")
-  ensure
-    Rho::Extensions.send(:remove_const, :DEFAULT_EXTENSIONS)
-    Rho::Extensions.const_set(:DEFAULT_EXTENSIONS, original)
   end
 
   # THE TWO ANNOUNCEMENTS, from one registry: the runner address serves the
   # environment tools, the agent address its application tools.
   def test_the_registry_partitions_the_default_set_into_the_two_addresses
-    registry = Rho::Extensions.load(host: host("full")).registry
+    registry = Rho::Extensions.load(host: host).registry
 
     runner = Rho::RunDeclaration.announcement(registry: registry.serving(:runner))
     agent = Rho::RunDeclaration.announcement(registry: registry.serving(:agent))
@@ -631,41 +592,23 @@ class ExtensionsPerModeTest < Minitest::Test
       "the declaration reads the whole registry: both addresses' announcements are one set"
   end
 
-  # AN OPERATOR-NAMED EXTENSION OF THE WRONG SOURCE IS REFUSED AT LOAD (S-7):
-  # the failure names the extension, the tool, the mode and the ways out —
-  # only verbs that exist at landing.
-  def test_a_runner_tool_under_agent_mode_and_an_agent_tool_under_runner_mode_are_load_failures
-    agent_mode = Rho::Extensions.load(host: host("agent"), extensions: [
-      extension("rho.net") { |api| api.register_tool(tool_class("net_fetch")) },
-    ])
-    refute_predicate agent_mode, :ok?
-    assert_equal ["rho.net registers `net_fetch` for the runner; this rho is in mode agent — " \
-                  "use mode full, or name a runner: `rho run … --runner ID`"], agent_mode.failures.map(&:message)
-    assert_empty agent_mode.registry.names
-
-    runner_mode = Rho::Extensions.load(host: host("runner"), extensions: [
-      extension("rho.summary") { |api| api.register_tool(tool_class("summarize"), serves: :agent) },
-    ])
-    assert_equal ["rho.summary registers `summarize` for the agent; this rho is in mode runner — " \
-                  "use mode full or agent"], runner_mode.failures.map(&:message)
-
-    full_mode = Rho::Extensions.load(host: host("full"), extensions: [
+  # One application can register tools on both service roles.
+  def test_application_registers_both_roles
+    loaded = Rho::Extensions.load(host: host, extensions: [
       extension("rho.both") do |api|
         api.register_tool(tool_class("net_fetch"))
         api.register_tool(tool_class("summarize"), serves: :agent)
       end,
     ])
-    assert_predicate full_mode, :ok?
-    assert_equal %w[net_fetch], full_mode.registry.serving(:runner).names
-    assert_equal %w[summarize], full_mode.registry.serving(:agent).names
+    assert_predicate loaded, :ok?
+    assert_equal %w[net_fetch], loaded.registry.serving(:runner).names
+    assert_equal %w[summarize], loaded.registry.serving(:agent).names
   end
 
-  # In runner mode there is no `HostFollowers` to fire a turn hook or a host's end
-  # (a runner follows no conversation; the parity with the processes table's own gap, stated) and no `do` to carry a
-  # flag: all answer the base handle's `unavailable`, logged.
-  def test_daemon_hooks_and_flags_are_unavailable_in_runner_mode_not_a_load_error
+  # Daemon hooks and command flags are available to every application.
+  def test_application_registers_daemon_hooks_and_flags
     log = RhoExtensionsTest::RecordingLog.new
-    loaded = Rho::Extensions.load(host: host("runner"), log: log, extensions: [
+    loaded = Rho::Extensions.load(host: host, log: log, extensions: [
       extension("rho.hooky") do |api|
         api.on(:turn_author) { |draft, _ctx| draft }
         api.on(:host_ended) { |_host_public_id| nil }
@@ -675,14 +618,10 @@ class ExtensionsPerModeTest < Minitest::Test
     ])
 
     assert_predicate loaded, :ok?
-    assert_empty loaded.daemon_hooks
-    assert_empty loaded.flags
+    assert_equal %i[turn_author host_ended], loaded.daemon_hooks.map(&:event)
+    refute_empty loaded.flags
     assert_equal %w[net_fetch], loaded.registry.names
-    details = log.lines.select { |event, _| event == "extension_verb_unavailable" }.map { |_, fields| fields[:detail] }
-    assert_equal ["hook turn_author is not surfaced by a standalone runner",
-                  "hook host_ended is not surfaced by a standalone runner",
-                  "flags on do is not surfaced by a standalone runner"], details
-    assert_equal %i[turn_author host_ended], Rho::Extensions.load(host: host("full"), extensions: [
+    assert_equal %i[turn_author host_ended], Rho::Extensions.load(host: host, extensions: [
       extension("rho.hooky") do |api|
         api.on(:turn_author) { |draft, _ctx| draft }
         api.on(:host_ended) { |_host_public_id| nil }
@@ -694,39 +633,25 @@ class ExtensionsPerModeTest < Minitest::Test
   # the block that turns a conversation's `mcpServers` list into the set
   # the agent slot serves, and `Loaded` carries it; a SECOND extension
   # asking is refused BY NAME — its load fails, listed, the first stands;
-  # in runner mode there is no agent slot to serve on, so the verb
-  # answers the base handle's `unavailable`, logged, and the extension
-  # still loads.
-  def test_the_conversation_servers_registrar_is_one_per_daemon_and_unavailable_in_runner_mode
-    loaded = Rho::Extensions.load(host: host("full"), extensions: [
+  # the library-only base handle has no conversation owner and logs unavailability.
+  def test_the_conversation_servers_registrar_is_one_per_daemon
+    loaded = Rho::Extensions.load(host: host, extensions: [
       extension("rho.first") { |api| api.register_conversation_servers { |anchor, entries| [anchor, entries] } },
       extension("rho.second") { |api| api.register_conversation_servers { |_anchor, _entries| nil } },
     ])
 
     assert_equal "rho.first", loaded.conversation_servers.extension
     assert_equal ["c-1", []], loaded.conversation_servers.handler.call("c-1", [])
-    assert_equal ["Rho::Runner::Extensions::RegistrationError"], loaded.failures.map(&:error_class)
+    assert_equal ["Rho::Env::Extensions::RegistrationError"], loaded.failures.map(&:error_class)
     assert_match(/rho\.second registers conversation servers; rho\.first already did — one registrar per daemon/,
       loaded.failures.first.message)
     assert_equal ["rho.first"], loaded.extensions.map(&:name), "the second is not committed"
 
-    log = RhoExtensionsTest::RecordingLog.new
-    runner = Rho::Extensions.load(host: host("runner"), log: log, extensions: [
-      extension("rho.first") do |api|
-        api.register_conversation_servers { |_anchor, _entries| nil }
-        api.register_tool(tool_class("net_fetch"))
-      end,
-    ])
-    assert_predicate runner, :ok?
-    assert_nil runner.conversation_servers
-    assert_equal %w[net_fetch], runner.registry.names
-    assert_includes log.lines.map { |_, fields| fields[:detail] }, "conversation servers is not surfaced by a standalone runner"
-
-    error = assert_raises(Rho::Runner::Extensions::RegistrationError) do
-      Rho::Extensions::Api.new(extension_name: "rho.x", source: "x", host: host("full")).register_conversation_servers
+    error = assert_raises(Rho::Env::Extensions::RegistrationError) do
+      Rho::Extensions::Api.new(extension_name: "rho.x", source: "x", host: host).register_conversation_servers
     end
     assert_match(/register_conversation_servers needs a block/, error.message)
-    assert_nil Rho::Extensions.load(host: host("full"), extensions: [extension("rho.plain") { |_api| nil }]).conversation_servers,
+    assert_nil Rho::Extensions.load(host: host, extensions: [extension("rho.plain") { |_api| nil }]).conversation_servers,
       "nobody registered: nil, the door's 422"
   end
 end

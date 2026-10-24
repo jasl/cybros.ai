@@ -310,7 +310,7 @@ module Conversations
             @tool_assembly = @tool_assembly.with(environment: environment.merge("skills" => skills))
           end
 
-          selection, selection_refusal = resolve_selection(input)
+          selection, selection_refusal, prepared = resolve_selection(input)
           return materialize_unavailable_result_delivery(input) if selection_refusal && input.kernel_origin?
           return park(input, selection_refusal) if selection_refusal
 
@@ -322,7 +322,7 @@ module Conversations
             return Outcome.refused(:conversation_busy) if armed.accepted?
           end
 
-          result, refusal = attempt_reply(input, selection)
+          result, refusal = attempt_reply(input, selection, prepared: prepared)
           return Outcome.refused(refusal) if refusal == CALLBACK_FIT_REFUSAL
           # THE FIT IS THE WALL: with no stated budget the assembly fits
           # history to the window, and once the timeline crosses the fit
@@ -421,17 +421,20 @@ module Conversations
           [:estimated_input_exceeds_model_limit, Nexus::SizeBounds::REJECTION].include?(refusal)
         end
 
-        def attempt_reply(input, selection, slide: false)
-          compiled, assembled, compile_refusal, uploads = compile_input(input, selection, slide: slide)
-          return [nil, compile_refusal] if compile_refusal
+        def prepare_reply(input, selection, slide: false)
+          compiled, assembled, refusal, uploads = compile_input(input, selection, slide: slide)
+          return [nil, assembled, refusal] if refusal
 
           normalized = ModelSelection::Workloads.normalize_workload_input(
-            selection: selection, input: compiled, uploads: uploads
-          )
-          return [nil, normalized.refusal] unless normalized.accepted?
+            selection: selection, input: compiled, uploads: uploads)
+          return [nil, assembled, normalized.refusal] unless normalized.accepted?
 
-          window_refusal = window_refusal(selection, normalized)
-          return [nil, window_refusal] if window_refusal
+          [normalized, assembled, ModelSelection::Recovery.context_refusal(selection, normalized.value.value)]
+        end
+
+        def attempt_reply(input, selection, slide: false, prepared: nil)
+          normalized, assembled, refusal = prepared || prepare_reply(input, selection, slide: slide)
+          return [nil, refusal] if refusal
 
           reply_refusal = nil
           result = nil
@@ -541,25 +544,6 @@ module Conversations
           !slide && stated_budget.nil? && FIT_CUTS.include?(history.skipped_reason)
         end
 
-        # Assembly is kernel-side, so the caller cannot avoid a request the
-        # estimate knows the model cannot take. Only an exact count may
-        # block, and it blocks at THE WINDOW THE KERNEL PLANS TO
-        # (`planning_input_bound`: the advisory bound where a lane has one,
-        # else the hard one), the same bound the fit wall and the compaction
-        # arms read; the hard bound stays the wire's own refusal.
-        def window_refusal(selection, normalized)
-          limit = selection.capabilities.limits.planning_input_bound
-          return nil if limit.nil?
-
-          counted = ModelRequests::TokenCount.count(
-            profile: selection.execution_profile,
-            segments: Nexus::ModelRequestInput.text_segments(normalized.value.value)
-          )
-          return nil unless counted.counted? && counted.exact?
-
-          :estimated_input_exceeds_model_limit if counted.tokens > limit
-        end
-
         # The caller's replay policy wins; the kill-switch silences the
         # default; otherwise the kernel's (Replay::DEFAULT_MODE).
         def replay_ask(input, selection)
@@ -578,35 +562,26 @@ module Conversations
             reasoning_effort: model.reasoning_effort,
             reasoning_enabled: model.reasoning_enabled
           )
-          addressee = input.answering_user if !input.kernel_origin? &&
-            AnswerEngine.applies?(@conversation, addressee: input.answering_user,
-              sent: input.sender_conversation_public_id.present?)
+          prepared = nil
           resolved = AnswerEngine.resolve(
             account: @conversation.account,
             submitted: submitted,
             configuration: InferenceRequests::CoerceConfiguration.call(input.request_options),
-            addressee: addressee,
             model_selection: input.execution_model_selection,
             fallback_models: input.execution_fallback_models
-          ) { |candidate| candidate_refusal(input, candidate) }
+          ) do |candidate|
+            refusal = ModelSelection::Recovery.tools_refusal(candidate, @tool_assembly.definitions)
+            next refusal if refusal
+
+            prepared = prepare_reply(input, candidate)
+            prepared.last
+          end
           @model_skips = resolved.skips
           @model_change = if resolved.resolved? && "#{resolved.selection.provider_id}/#{resolved.selection.model_ref}" != submitted.model
             Runs::ModelFallback.from_selection(resolved.selection, reason: @model_skips.first.fetch("reason"))
               .narration(submitted.model).fetch("model_change")
           end
-          resolved.resolved? ? [resolved.selection, nil] : [nil, resolved.refusal]
-        end
-
-        def candidate_refusal(input, selection)
-          refusal = ModelSelection::Recovery.tools_refusal(selection, @tool_assembly.definitions)
-          return refusal if refusal
-
-          compiled, _assembled, refusal, uploads = compile_input(input, selection)
-          return refusal if refusal
-
-          normalized = ModelSelection::Workloads.normalize_workload_input(
-            selection: selection, input: compiled, uploads: uploads)
-          normalized.accepted? ? window_refusal(selection, normalized) : normalized.refusal
+          resolved.resolved? ? [resolved.selection, nil, prepared] : [nil, resolved.refusal]
         end
 
         # Authored trailing work needs the same Run owner as declared tools.

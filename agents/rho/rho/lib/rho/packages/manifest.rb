@@ -5,7 +5,7 @@ require_relative "../configuration"
 module Rho
   class Packages
     Manifest = Data.define(:name, :id, :display_name, :description, :state_schema, :dependencies,
-      :configuration_version, :schema, :default_enabled, :modes, :requires, :restart_only,
+      :configuration_version, :schema, :default_enabled, :requires, :restart_only,
       :configuration_migrations, :directory) do
       def self.read(directory)
         document = JSON.parse(File.read(File.join(directory, "rho-extension.json"), encoding: "UTF-8")).to_h
@@ -37,10 +37,6 @@ module Rho
         unless [true, false].include?(default_enabled) && [true, false].include?(restart_only)
           raise Rho::ConfigurationError, "default_enabled and restart_only must be booleans"
         end
-        modes = document.fetch("modes", %w[full agent runner]).map(&:to_s)
-        unless !modes.empty? && (modes - %w[full agent runner]).empty?
-          raise Rho::ConfigurationError, "package modes must name full, agent or runner"
-        end
         migrations = document["configuration_migrations"]&.to_s
         if migrations
           absolute = File.expand_path(migrations, directory)
@@ -51,7 +47,7 @@ module Rho
         new(name: name, id: id, display_name: document.fetch("display_name", name).to_s,
           description: document.fetch("description", "").to_s, state_schema: state_schema, dependencies: dependencies,
           configuration_version: version, schema: Configuration::Schema.new(document.fetch("configuration_schema", { "type" => "object", "properties" => {} })),
-          default_enabled: default_enabled, modes: modes, requires: document.fetch("requires", []).map(&:to_s),
+          default_enabled: default_enabled, requires: document.fetch("requires", []).map(&:to_s),
           restart_only: restart_only, configuration_migrations: migrations, directory: File.expand_path(directory))
       rescue JSON::ParserError, KeyError, NoMethodError, TypeError, Gem::Requirement::BadRequirementError
         raise Rho::ConfigurationError, "rho-extension.json must contain a name, static description and valid dependency requirements", cause: nil
@@ -62,7 +58,7 @@ module Rho
       def descriptor
         { "id" => id, "display_name" => display_name, "description" => description,
           "configuration_version" => configuration_version, "configuration_schema" => schema.schema,
-          "default_enabled" => default_enabled, "modes" => modes, "requires" => requires,
+          "default_enabled" => default_enabled, "requires" => requires,
           "restart_only" => restart_only, "configuration_migrations" => configuration_migrations }
       end
 

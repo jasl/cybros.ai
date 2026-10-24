@@ -64,6 +64,7 @@ module ModelProviders
 
       policy = ModelProviderConfig.create_or_find_by(account: @account, provider_id: @provider_id) do |row|
         row.assign_attributes(model_overrides: ModelProviderConfig.empty_overrides, **attributes)
+        RetainCatalog.capture(row) if row.enabled? || row.override_entries.any?
       end
       if !policy.persisted?
         Result.new(outcome: :invalid, policy: nil)

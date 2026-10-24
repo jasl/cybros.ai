@@ -14,7 +14,7 @@ module Rho
   # THE CHECK IS A BASH TOOL STEP ON THE BOUND RUNNER. It is placed by position after the attempt's round — `check-N`,
   # `{tool: bash, input: {command, workdir, timeout}, on_failure: absorb}`
   # — and the kernel's one addressing site sends it to the host's runner:
-  # this machine's own in full mode, or a runner elsewhere, so the check
+  # Local or an independent runner, so the check
   # runs where the tree is. Its verdict is the settled row's `exit_status`
   # (bash's structured content), read once through the run's single-task
   # door; its output is the row's result, which the next round names in
@@ -77,7 +77,7 @@ module Rho
       def self.from_h(hash)
         policy = new(command: hash.fetch("command"), attempts: Integer(hash.fetch("attempts")),
           directory: hash.fetch("directory"), runner: hash.fetch("runner"), seed: hash.fetch("seed"))
-        root = policy.seed.fetch("executor_contexts").fetch(policy.runner).fetch(Rho::Runner::Environment::CONTEXT_KEY).fetch("root")
+        root = policy.seed.fetch("executor_contexts").fetch(policy.runner).fetch(Rho::Env::Environment::CONTEXT_KEY).fetch("root")
         unless !policy.command.strip.empty? && policy.attempts.between?(1, MAX_ATTEMPTS) &&
             !policy.runner.to_s.empty? && !root.to_s.empty?
           raise ArgumentError, "invalid durable Until policy"

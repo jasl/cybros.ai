@@ -16,8 +16,8 @@ module WebToolsTest
     def with_tool_env
       Dir.mktmpdir("rho-web-tools-test") do |root|
         real = File.realpath(root)
-        env = Rho::Runner::ToolEnv.new(root: real, artifacts_dir: File.join(real, ".artifacts"))
-        Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) { yield(env, real) }
+        env = Rho::Env::ToolEnv.new(root: real, artifacts_dir: File.join(real, ".artifacts"))
+        Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) { yield(env, real) }
       end
     end
 

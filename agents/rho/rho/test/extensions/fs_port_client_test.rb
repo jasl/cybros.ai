@@ -14,7 +14,7 @@ require "support/fs_port_double"
 # scripted loopback server, as bytes.
 class FsPortClientTest < Minitest::Test
   FsPort = Rho::Extensions::Environment::FsPort
-  Duck = Rho::Runner::FsPort
+  Duck = Rho::Env::FsPort
 
   def setup
     @servers = []
@@ -145,10 +145,10 @@ class FsPortClientTest < Minitest::Test
   def test_the_contexts_cancel_signal_ends_a_hanging_session_at_once
     double = server { |*| :hang }
     port = port(double, read_timeout: 10)
-    context = Rho::Runner::ExecutionContext.new
+    context = Rho::Env::ExecutionContext.new
 
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    Rho::Runner::ExecutionContext.with(context) do
+    Rho::Env::ExecutionContext.with(context) do
       canceller = Thread.new do
         sleep 0.2
         context.cancel

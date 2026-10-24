@@ -1,0 +1,43 @@
+schema_version: cybros.model_catalog.v1
+providers:
+  moonshot_global:
+    display_name: Moonshot AI (International)
+    api_format: openai_compatible_chat
+    # https://platform.kimi.ai/docs/get-your-api-key, read 2026-10-24.
+    # International credentials and billing are separate from China and Code.
+    base_url: https://api.moonshot.ai
+models:
+  # Document-based configuration only; no international key was available.
+  # The shared facts describe API capabilities, not downloadable weights.
+  # Rates remain unknown until an authoritative price table is available.
+  moonshot_global/kimi-k3.1-pro:
+    inherit: kimi-k3.1-pro
+    pricing:
+    capabilities:
+      reasoning:
+        default_effort: max
+      reasoning_replay:
+        format: chat_reasoning
+        required_for_tool_rounds: true
+  moonshot_global/kimi-k3.1-pro-highspeed:
+    inherit: kimi-k3.1-pro
+    display_name: Kimi K3.1 Pro Highspeed
+    pricing:
+    capabilities:
+      reasoning:
+        default_effort: max
+      reasoning_replay:
+        format: chat_reasoning
+        required_for_tool_rounds: true
+  moonshot_global/kimi-k3:
+    inherit: kimi-k3
+    display_name: Kimi K3
+    pricing:
+    capabilities:
+      limits:
+        combined_input_output_tokens: 1048576
+      reasoning:
+        disable_supported: false
+      reasoning_replay:
+        format: chat_reasoning
+        required_for_tool_rounds: true

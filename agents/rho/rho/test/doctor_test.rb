@@ -129,8 +129,8 @@ class DoctorTest < Minitest::Test
       root = File.join(dir, "project")
       FileUtils.mkdir_p(root)
       File.write(File.join(root, "a.txt"), "a")
-      assert_equal "checkpoints", Rho::Runner::Checkpoints::Store::DIRECTORY, "the one spelling of the stores' directory"
-      store = Rho::Runner::Checkpoints::Store.open(dir: File.join(home.work_root, Rho::Runner::Checkpoints::Store::DIRECTORY), root: root)
+      assert_equal "checkpoints", Rho::Env::Checkpoints::Store::DIRECTORY, "the one spelling of the stores' directory"
+      store = Rho::Env::Checkpoints::Store.open(dir: File.join(home.work_root, Rho::Env::Checkpoints::Store::DIRECTORY), root: root)
       store.capture(run_public_id: "al-1")
       File.write(File.join(root, "a.txt"), "b")
       store.capture(run_public_id: "al-2")
@@ -139,7 +139,7 @@ class DoctorTest < Minitest::Test
       assert_match(/\A#{Regexp.escape(File.join(home.work_root, "checkpoints"))}: 1 store, 2 records, \d+\.\d MB\z/, row.detail)
       assert_equal "checkpoints", row.section
 
-      db = SQLite3::Database.new(File.join(store.path, Rho::Runner::Checkpoints::Store::DATABASE_FILE))
+      db = SQLite3::Database.new(File.join(store.path, Rho::Env::Checkpoints::Store::DATABASE_FILE))
       db.execute("VACUUM")
       db.close
       FileUtils.rm_rf(root)

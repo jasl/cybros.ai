@@ -15,7 +15,7 @@ module Rho
     # thousand rows would otherwise arrive as a tool result the size of
     # the runner's whole submit budget.
     module SnapshotText
-      MAX_BYTES = Rho::Runner::Truncation::DEFAULT_MAX_BYTES
+      MAX_BYTES = Rho::Env::Truncation::DEFAULT_MAX_BYTES
       # THE HEADER IS CAPPED, so it cannot eat the budget: a page opened
       # from a 60 KB `data:` URL would otherwise answer every action with
       # its own URL and no tree at all — no refs, nothing to click.

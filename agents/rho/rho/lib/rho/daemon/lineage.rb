@@ -15,9 +15,7 @@ module Rho
       VERIFY_WINDOW = 300
       LOST_REPORT = { planes: {}, lost: true }.freeze
       NOT_DURABLE = "the renewed credential is live but was not written down".freeze
-      JOINABLE_PHASES = %i[starting pending pending_runner activating].freeze
-      # The single executor runtime slot (see Retirement).
-      SLOTS = %i[runner].freeze
+      JOINABLE_PHASES = %i[starting pending activating].freeze
       # `expected:` omitted means unchecked; `nil` means "no credential", which
       # is what a recovery after a terminal loss legitimately expects.
       UNCHECKED = Object.new.freeze
@@ -46,10 +44,10 @@ module Rho
       # executor sockets ride here beside the member one, one
       # per runner slot: what closes them is the lineage, never the stream
       # fiber.
-      Retired = Data.define(:followers, :realtime, :executor_realtimes, :runners) do
-        def self.none = new(followers: [], realtime: nil, executor_realtimes: [], runners: [])
+      Retired = Data.define(:followers, :realtime, :executor_realtime, :runner) do
+        def self.none = new(followers: [], realtime: nil, executor_realtime: nil, runner: nil)
 
-        def clients = (followers.filter_map(&:realtime) + [realtime] + executor_realtimes).compact.uniq
+        def clients = (followers.filter_map(&:realtime) + [realtime, executor_realtime]).compact.uniq
       end
 
       Adoption = Data.define(:changed, :from, :retired)
@@ -82,11 +80,10 @@ module Rho
         @followers = {}
         @realtime = nil
         @realtime_about = nil
-        @executor_realtimes = {}
-        @executor_realtime_abouts = {}
-        @runners = {}
-        @tool_envs = {}
-        @runner_abouts = {}
+        @executor_realtime = nil
+        @executor_realtime_about = nil
+        @runner = nil
+        @runner_about = nil
         @control_operations = 0
         @maintenance_requested = false
         @maintenance_running = false
@@ -115,16 +112,11 @@ module Rho
 
       def follower(public_id) = @monitor.synchronize { @followers[public_id] }
 
-      def runner(slot = :runner) = @monitor.synchronize { @runners[slot] }
-
-      # Every placed runner, `:runner` first.
-      def runners = @monitor.synchronize { SLOTS.filter_map { |slot| @runners[slot] } }
-
-      def tool_env(slot = :runner) = @monitor.synchronize { @tool_envs[slot] }
+      def runner = @monitor.synchronize { @runner }
 
       def realtime = @monitor.synchronize { @realtime }
 
-      def executor_realtime(slot = :runner) = @monitor.synchronize { @executor_realtimes[slot] }
+      def executor_realtime = @monitor.synchronize { @executor_realtime }
 
       def maintenance_running? = @monitor.synchronize { @maintenance_running }
 
@@ -173,8 +165,7 @@ module Rho
       # ---- lineage edges ----
 
       # Rotation updates the same OAuth object; a different object is a
-      # replacement Agent lineage inherits no followers or Agent handler.
-      # An unchanged independent Runner keeps its runtime. A same-object
+      # replacement application lineage that inherits no followers or runner. A same-object
       # re-adopt only refreshes the observation.
       def adopt(identity:, credentials:, authority_report: nil)
         @monitor.synchronize do

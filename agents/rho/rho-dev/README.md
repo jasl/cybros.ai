@@ -27,7 +27,7 @@ An installed `rho-dev` gem advertises its static descriptor. Enable it in
 `$RHO_HOME/settings.json`:
 
 ```json
-{ "settings_version": 1, "plugins": { "rho.dev": { "enabled": true } } }
+{ "settings_version": 2, "plugins": { "rho.dev": { "enabled": true } } }
 ```
 
 For the source checkout, use an explicit path so the packaged rho bundle does
@@ -35,7 +35,7 @@ not need to include this development gem:
 
 ```json
 {
-  "settings_version": 1,
+  "settings_version": 2,
   "plugins": {
     "rho.dev": {
       "enabled": true,
@@ -271,13 +271,13 @@ old candidate does not restart its canceled work. This is separate from
 `rho variant --conceal|--restore`, which controls whether a candidate is shown.
 
 The spawn surface is driven through these verbs by two lanes:
-`e2e/test/rho_spawn_test.rb` on the mock covers detached role results,
+`e2e/products/test/rho_spawn_test.rb` on the mock covers detached role results,
 `wait: true`, `send`, `rho stop CHILD`, and a role using another rho home's
 Runner while retaining the spawning principal. Direct peer conversations and
 messaging have separate coverage. The paid
 `cd e2e && E2E_LIVE=1 rake live_spawn` covers the selected models through its
 `subagent`, `role`, and `group` variants. The group's mock lane is
-`e2e/test/group_chat_test.rb` (group 4: rho A and a differently-declared
+`e2e/products/test/group_chat_test.rb` (group 4: rho A and a differently-declared
 SDK peer B in one room — `rho do --agent @b`, `rho say --to @a`, A's
 `send` reaching B, each agent reading the other wrapped and the person
 bare, the two-instant "B not woken" read, the unnamed steer reaching the

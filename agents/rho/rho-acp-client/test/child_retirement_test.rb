@@ -100,7 +100,7 @@ class ChildRetirementTest < Minitest::Test
         Children::Child.define_singleton_method(:new, &factory)
         begin
           worker = Thread.new do
-            Rho::Runner::ExecutionContext.with(context) { acquire(env, root) }
+            Rho::Env::ExecutionContext.with(context) { acquire(env, root) }
           rescue Rho::AcpClient::Error => error
             error
           end

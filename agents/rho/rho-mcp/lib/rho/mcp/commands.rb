@@ -72,7 +72,7 @@ module Rho
 
       # A one-sentence refusal the CLI prints (`Rho::Error` where rho is
       # loaded — the only process with these verbs; the gem's own root
-      # otherwise, so nothing here names a constant rho-runner lacks).
+      # otherwise, so nothing here names a constant rho-env lacks).
       def refuse(sentence)
         raise (defined?(Rho::Error) ? Rho::Error : Rho::Mcp::Error), sentence
       end
@@ -105,7 +105,7 @@ module Rho
           cli.out.puts "server:    #{row.key}  #{row.transport}  #{row.launch}  serves #{row.serves}  #{word}"
           storage = Oauth.storage_for(row, home: cli.home)
           auth = storage ? status_document(storage.status) : { "state" => "needs_login", "reason" => NO_HOME }
-          cli.out.puts "  auth:    #{auth_line(auth, shown(Rho::Runner::Redact.new(row.secrets, live: storage)))}"
+          cli.out.puts "  auth:    #{auth_line(auth, shown(Rho::Env::Redact.new(row.secrets, live: storage)))}"
         end
       end
 
@@ -118,9 +118,9 @@ module Rho
         print_tools(out, server) unless server.fetch("tools").empty? && server.fetch("skipped").empty?
         print_documents(out, server)
         env = server.fetch("env")
-        out.puts "  env:     #{env.map { |name| "#{name}=#{Rho::Runner::Redact::MASK}" }.join("  ")}" unless env.empty?
+        out.puts "  env:     #{env.map { |name| "#{name}=#{Rho::Env::Redact::MASK}" }.join("  ")}" unless env.empty?
         headers = server.fetch("headers")
-        out.puts "  headers: #{headers.map { |name| "#{name}: #{Rho::Runner::Redact::MASK}" }.join("  ")}" unless headers.empty?
+        out.puts "  headers: #{headers.map { |name| "#{name}: #{Rho::Env::Redact::MASK}" }.join("  ")}" unless headers.empty?
       end
 
       # `shown` is what a third-party string looks like on the terminal. An
@@ -280,7 +280,7 @@ module Rho
       # refreshed, nothing cleared, nothing written).
       def probe_row(cli, row)
         storage = Oauth.storage_for(row, home: cli.home)
-        redact = Rho::Runner::Redact.new(row.secrets, live: storage)
+        redact = Rho::Env::Redact.new(row.secrets, live: storage)
         connection = Connection.new(row, redact: redact, transport_factory: Rho::Mcp.transport_factory,
           storage: storage&.read_only)
         begin
@@ -372,8 +372,8 @@ module Rho
         out.puts "  would be down: #{curated.fault}" if curated.fault
         print_probe_tools(out, row, connection.tools, curated, redact)
         print_probe_documents(out, row, connection, redact)
-        out.puts "  env:     #{row.env.keys.map { |name| "#{name}=#{Rho::Runner::Redact::MASK}" }.join("  ")}" unless row.env.empty?
-        out.puts "  headers: #{row.headers.keys.map { |name| "#{name}: #{Rho::Runner::Redact::MASK}" }.join("  ")}" unless row.headers.empty?
+        out.puts "  env:     #{row.env.keys.map { |name| "#{name}=#{Rho::Env::Redact::MASK}" }.join("  ")}" unless row.env.empty?
+        out.puts "  headers: #{row.headers.keys.map { |name| "#{name}: #{Rho::Env::Redact::MASK}" }.join("  ")}" unless row.headers.empty?
       end
 
       def print_probe_tools(out, row, tools, curated, redact)

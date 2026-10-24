@@ -48,8 +48,8 @@ class ProcessesOutputTest < Minitest::Test
     # And a reader's default bound is the runner's one output bound, read
     # by name: a whole read of this buffer is cut to it.
     bounded = output.lines(10_000_000)
-    assert_operator bounded.bytesize, :<=, Rho::Runner::Truncation::DEFAULT_MAX_BYTES
-    assert_operator bounded.bytesize, :>, Rho::Runner::Truncation::DEFAULT_MAX_BYTES - 200, "the bound, not a smaller one"
+    assert_operator bounded.bytesize, :<=, Rho::Env::Truncation::DEFAULT_MAX_BYTES
+    assert_operator bounded.bytesize, :>, Rho::Env::Truncation::DEFAULT_MAX_BYTES - 200, "the bound, not a smaller one"
     assert_operator whole.bytesize, :<=, Rho::Processes::Output::HEAD_BYTES + Rho::Processes::Output::TAIL_BYTES + 200
     assert_equal total * 107, File.size(@path), "the file is the complete record"
   end

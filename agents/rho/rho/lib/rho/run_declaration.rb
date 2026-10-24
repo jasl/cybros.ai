@@ -47,7 +47,7 @@ module Rho
 
     # THE RUNNER'S READS: read-only by construction —
     # each declares `kind: read_only, destructive: false, effect_scope: closed`
-    # (`rho-runner/lib/rho/runner/tools/{read,grep,ls,find}.rb`,
+    # (`rho-env/lib/rho/env/tools/{read,grep,ls,find}.rb`,
     # `extensions/processes/tools.rb` READ_PROFILE) — so `ask` means "ask
     # before an EFFECT", as every reference does (claude-code
     # `FileReadTool.isReadOnly`, codex's auto-approved read-only commands,
@@ -512,7 +512,7 @@ module Rho
     def tool_entries(served)
       offered = served_entries(served).reject do |tool|
         name = tool.fetch("name")
-        undeclared.include?(name) || name == Rho::Runner::Tools::Skill::NAME
+        undeclared.include?(name) || name == Rho::Env::Tools::Skill::NAME
       end
       CybrosAgent::Api::ToolLowering.function_entries(offered).map do |entry|
         entry.dig("function", "name").start_with?(MCP_PREFIX) ? entry.merge("defer_loading" => true) : entry
@@ -533,9 +533,9 @@ module Rho
     # checkpoint inspection/restoration, and environment binding. Runner
     # skills are imported by Nexus from the selected Runner's announcement.
     def undeclared
-      [Rho::Runner::Tools::FilesBytes::NAME, Rho::Runner::Tools::GitReview::NAME,
+      [Rho::Env::Tools::FilesBytes::NAME, Rho::Env::Tools::GitReview::NAME,
        Extensions::Processes::Tools::ProcessLog::NAME,
-       Rho::Runner::Tools::Checkpoints::NAME, Rho::Runner::Tools::CheckpointRestore::NAME].freeze
+       Rho::Env::Tools::Checkpoints::NAME, Rho::Env::Tools::CheckpointRestore::NAME].freeze
     end
 
     # The two feeders' one shape: the announcement hash as rendered here

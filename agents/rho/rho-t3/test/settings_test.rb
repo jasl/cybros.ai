@@ -54,7 +54,7 @@ class SettingsTest < Minitest::Test
     factory = ->(_) { nil }
     tools = [Rho::T3::Tools.delegate(factory), Rho::T3::Tools.control(factory)]
     tools.each do |tool|
-      assert_respond_to Rho::Runner::Extensions::Tool.validate(tool, extension: "test"), :validate
+      assert_respond_to Rho::Env::Extensions::Tool.validate(tool, extension: "test"), :validate
     end
     assert_equal [3_600_000, 60_000], tools.map { |tool| tool::TIMEOUT_MS },
       "the delegation window fits the ordinary claim-extension bound"

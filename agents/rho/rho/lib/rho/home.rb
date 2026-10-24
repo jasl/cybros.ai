@@ -164,10 +164,8 @@ module Rho
     def log_root = File.join(@root, LOG_DIRECTORY)
     def log_path = File.join(log_root, "rho.log")
     def cache_root = File.join(@root, CACHE_DIRECTORY)
-    # The identity roots' and the runner roots' parents (`identity_root`,
-    # `runner_identity_root`): the vaults live under them.
+    # Application identity roots and their credential vaults live here.
     def users_root = File.join(@root, "users")
-    def runners_root = File.join(@root, "runners")
     def browser_sessions_root = File.join(@root, "browser_sessions")
     # The WebUI's unlock password, as a salted digest beside the sessions it admits.
     def webui_password_path = File.join(@root, "webui_password.json")
@@ -190,7 +188,7 @@ module Rho
     # not a member and not protected.
     def protected_members
       [settings_path, binding_path, instance_path, connection_pointer_path, environment_path, conventions_path,
-       connections_root, users_root, runners_root, mcp_root, adaptations_path, extensions_root, plugins_root, cache_root,
+       connections_root, users_root, mcp_root, adaptations_path, extensions_root, plugins_root, cache_root,
        tmp_root, log_root, browser_sessions_root, webui_password_path, operator_credentials_path, File.join(@root, "telegram")]
     end
 
@@ -200,9 +198,7 @@ module Rho
 
     # A runner has no user: its work root is keyed by the
     # address it registered.
-    def runner_work_root(executor_public_id)
-      File.join(@work_root, "runners", segment(executor_public_id))
-    end
+
 
     # Rebuilt by the next boot, so they live in `tmp/`. The boot lock is
     # claimed before any identity is known, which is the whole reason this
@@ -226,7 +222,7 @@ module Rho
     def binding_path = File.join(@root, "nexus.json")
 
     # THE INSTANCE ID: the per-home part appended to the program's identifiers at pairing
-    # (`rho.<id>`, `rho-runner.<id>`, `Connection`), so several installs of one program pair
+    # (`rho.<id>`, `rho-env.<id>`, `Connection`), so several installs of one program pair
     # under one steward as separate rows. Derived by the first `prepare` and kept by every
     # later one; a COPIED home answers the same id, so its pairing fences the original —
     # which is why a home is never copied. Not the connection pointer: that is written at
@@ -308,12 +304,6 @@ module Rho
     # The connected Agent's root.
     def identity_root(user_public_id)
       File.join(users_root, segment(user_public_id))
-    end
-
-    # A runner-mode home's root: a runner has no user, and the
-    # user-keyed root would lie, so it is keyed by the address it registered.
-    def runner_identity_root(executor_public_id)
-      File.join(runners_root, segment(executor_public_id))
     end
 
     # Directories are created private and, where rho owns them outright, made

@@ -21,7 +21,7 @@ class OpsRestoreGuardTest < Minitest::Test
       return super unless method == :get && path.end_with?("/tasks/call_tool") && @tool_env
 
       tool = run_creates.last.fetch("run").fetch("steps").first.fetch("tool")
-      handler = tool.fetch("name") == "checkpoints" ? Rho::Runner::Tools::Checkpoints : Rho::Runner::Tools::CheckpointRestore
+      handler = tool.fetch("name") == "checkpoints" ? Rho::Env::Tools::Checkpoints : Rho::Env::Tools::CheckpointRestore
       @restores << tool if tool.fetch("name") == "checkpoint_restore"
       result = handler.new(env: @tool_env).call(tool.fetch("input"))
       respond(200, { "task" => {
@@ -48,8 +48,8 @@ class OpsRestoreGuardTest < Minitest::Test
 
   def prepare(runner: RUNNER, cached: true, store_id: nil)
     @daemon = boot
-    @store = Rho::Runner::Checkpoints::Store.open(
-      dir: File.join(@daemon.home.work_root, Rho::Runner::Checkpoints::Store::DIRECTORY), root: @old_root)
+    @store = Rho::Env::Checkpoints::Store.open(
+      dir: File.join(@daemon.home.work_root, Rho::Env::Checkpoints::Store::DIRECTORY), root: @old_root)
     @target = @store.capture(run_public_id: "L1")
     File.write(File.join(@old_root, "data.txt"), "after")
     effect = { "run_public_id" => "L1", "task_key" => "write", "runner_executor_public_id" => runner }
@@ -65,12 +65,12 @@ class OpsRestoreGuardTest < Minitest::Test
     member_ready(@daemon, @api, identity: RhoTest::DaemonHarness::RUNNER_IDENTITY)
     @api.stock_store_entry("c-1", namespace: "rho.environment", key: "binding/#{runner}",
       value: { "root" => @current_root, "directories" => [], "anchor" => "c-1" })
-    @api.tool_env = Rho::Runner::ToolEnv.new(root: @current_root, artifacts_dir: File.join(@projects, "artifacts"),
+    @api.tool_env = Rho::Env::ToolEnv.new(root: @current_root, artifacts_dir: File.join(@projects, "artifacts"),
       checkpoint_resolver: @daemon.context.environments.method(:checkpoint_stores).to_proc)
   end
 
   def process_in(root)
-    @daemon.host.processes.start(command: "sleep 30", workdir: root, env: Rho::Runner::ChildEnv.call,
+    @daemon.host.processes.start(command: "sleep 30", workdir: root, env: Rho::Env::ChildEnv.call,
       name: "server", run_public_id: "L1", conversation: "c-1")
   end
 

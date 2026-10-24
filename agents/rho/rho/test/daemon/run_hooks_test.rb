@@ -106,7 +106,7 @@ class DaemonHostFollowersTest < Minitest::Test
     boom = host_ended_extension("boom.rb", "rho.boom", 'raise "no release today"')
     keeper = host_ended_extension("keeper.rb", "rho.keeper", "File.open(#{seen.inspect}, \"a\") { |f| f.puts host_public_id }")
     daemon = boot(config: Rho::Config.from_hash({ "plugins" => { "rho.boom" => boom, "rho.keeper" => keeper } }))
-    process = daemon.host.processes.start(command: "sleep 30", workdir: @root, env: Rho::Runner::ChildEnv.call, run_public_id: "c-1")
+    process = daemon.host.processes.start(command: "sleep 30", workdir: @root, env: Rho::Env::ChildEnv.call, run_public_id: "c-1")
 
     daemon.host_followers.forget(conversation_host("c-1"))
 
@@ -139,7 +139,7 @@ class DaemonHostFollowersTest < Minitest::Test
     daemon = member_ready(boot(config: Rho::Config.from_hash({ "plugins" => { "rho.keeper" => hook } })), api)
     host = run_host("al-1")
     workspace = daemon.wire.client(NexusDoubles::MEMBER_TOKEN).workspace("ws-1")
-    process = daemon.host.processes.start(command: "sleep 30", workdir: @root, env: Rho::Runner::ChildEnv.call, run_public_id: host.public_id)
+    process = daemon.host.processes.start(command: "sleep 30", workdir: @root, env: Rho::Env::ChildEnv.call, run_public_id: host.public_id)
     capturing_spawns(daemon) do
       daemon.host_followers.remember(host, workspace: "ws-1")
       daemon.host_followers.adopt_follower(host, host.context(workspace), {}, runs: workspace.runs)
@@ -165,20 +165,6 @@ class DaemonHostFollowersTest < Minitest::Test
     daemon.host_followers.forget(host)
     assert_nil daemon.context.follower(host.public_id), "explicit forgetting still drops the retained snapshot"
     assert_empty followed(daemon)
-  end
-
-  # A RUNNER-MODE HOST follows no conversation, so it has no end to fire
-  # (the parity with the processes table's own gap, stated): the
-  # registration answers the base handle's `unavailable`, logged, and the
-  # extension loads all the same.
-  def test_host_ended_is_unavailable_on_a_runner_mode_host_not_a_load_error
-    path = host_ended_extension("releaser.rb", "rho.releaser", "nil")
-    daemon = boot(config: Rho::Config.from_hash({ "mode" => "runner", "plugins" => { "rho.releaser" => path } }))
-
-    assert_nil daemon.host_followers, "a runner-mode daemon builds no HostFollowers"
-    log = File.read(daemon.home.log_path, encoding: Encoding::UTF_8)
-    assert_match(/event=extension_verb_unavailable .*extension=rho\.releaser .*hook host_ended is not surfaced by a standalone runner/, log)
-    refute_includes log, "extension_load_failed"
   end
 
   def host_ended_extension(file, name, body)

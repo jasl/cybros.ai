@@ -290,15 +290,12 @@ module Rho
       # behind, and — for a whole disconnect — the connection that ended.
       def report_disconnect(document)
         revoked = Array(document["revoked"])
-        if revoked.include?("runner")
-          @out.puts "Revoked the runner credential (#{document["runner_executor_public_id"] || Rho::REGISTRATION_IDENTIFIER})."
-        end
         unclaimed = document["unclaimed"].to_i
         if unclaimed.positive?
           @out.puts "#{unclaimed} task#{"s" unless unclaimed == 1} addressed to this runner #{unclaimed == 1 ? "is" : "are"} " \
             "unclaimed and will time out; accepted tasks retain their original target."
         end
-        if revoked.include?("agent") || (revoked.include?("runner") && document["mode"] == "runner")
+        if revoked.include?("agent")
           identity = document["identity"] || {}
           @out.puts "Disconnected from #{@home.base_url} as #{identity["user_public_id"] || identity["executor_public_id"]}."
         end
@@ -675,7 +672,7 @@ module Rho
           when "round_started"
             key = frame.fetch("task_key")
             key = "#{key} (branch)" if payload["mainline"] == false
-            [[key, "started · #{payload["model"]} · #{Rho::Runner::Truncation.format_size(payload["request_bytes"].to_i)} " \
+            [[key, "started · #{payload["model"]} · #{Rho::Env::Truncation.format_size(payload["request_bytes"].to_i)} " \
                    "· attempt #{payload["attempt"]}"]]
           when "step_started"
             [[frame.fetch("task_key"), "#{frame["tool_name"]} #{payload["status"]}"]]

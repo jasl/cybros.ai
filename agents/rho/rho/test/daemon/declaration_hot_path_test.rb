@@ -84,9 +84,9 @@ class DaemonDeclarationHotPathTest < Minitest::Test
               const_set(:NAME, name)
               const_set(:DESCRIPTION, "The #{name} tool")
               const_set(:SCHEMA, { "type" => "object", "properties" => {} })
-              const_set(:EFFECT_PROFILE, Rho::Runner::Tools::Read::EFFECT_PROFILE)
+              const_set(:EFFECT_PROFILE, Rho::Env::Tools::Read::EFFECT_PROFILE)
               define_method(:initialize) { |env:| }
-              define_method(:call) { |_arguments| Rho::Runner::Result.ok(name) }
+              define_method(:call) { |_arguments| Rho::Env::Result.ok(name) }
             end
             api.register_tool(tool, serves: address)
           end

@@ -22,10 +22,8 @@ class APIKeyConnectionTest < Minitest::Test
     assert_equal :active, daemon.phase
     identity = daemon.identity
     assert_equal "api_key", identity.vault.read.fetch("authentication_kind")
-    assert_nil identity.runner_vault.read
     assert_equal "rho.imported-agent", identity.agent_identifier
-    assert_nil identity.runner_registration_identifier
-    assert_equal [], daemon.maintenance.run_once(daemon.lineage.credentials, verify: true)
+    assert_nil daemon.maintenance.run_once(daemon.lineage.credentials, verify: true)
     assert_empty oauth.requests
     daemon.stop
 
@@ -44,10 +42,9 @@ class APIKeyConnectionTest < Minitest::Test
     api.accept(NexusDoubles::MEMBER_TOKEN, false)
 
     report = Rho::Authority.new(oauth: daemon.lineage.credentials, base_url: daemon.home.base_url,
-      transport: api, expected_identity: daemon.identity, mode: "full").check
+      transport: api, expected_identity: daemon.identity).check
     assert_equal({ member: :unauthorized, executor_transport: :live }, report.fetch(:planes))
     refute report[:lost]
-    refute report[:runner_lost]
     assert_empty oauth.requests
   end
 
@@ -66,7 +63,7 @@ class APIKeyConnectionTest < Minitest::Test
     assert_equal 200, import(daemon).code.to_i
   end
 
-  def test_full_mode_refuses_a_retired_third_key
+  def test_import_refuses_a_third_key
     daemon = connected_boot
     response = import(daemon, keys.merge("runner_access_token" => NexusDoubles::RUNNER_TOKEN))
     assert_equal 422, response.code.to_i
@@ -77,7 +74,7 @@ class APIKeyConnectionTest < Minitest::Test
   def test_install_failure_resumes_staged_static_keys_without_an_exchange
     oauth = NexusDoubles::FakeOAuth.new
     home.prepare
-    connection = Rho::Connection.new(home: home, mode: "full", device_flow: connection_device_flow(oauth),
+    connection = Rho::Connection.new(home: home, device_flow: connection_device_flow(oauth),
       api_transport: NexusDoubles::FakeAgentApi.new)
     connection.define_singleton_method(:install) { raise Rho::StateError, "interrupted install" }
     assert_raises(Rho::StateError) { connection.receive_api_keys(keys) }
@@ -142,13 +139,13 @@ class APIKeyConnectionTest < Minitest::Test
     about = daemon.lineage.credentials
     runner = Object.new
     runner.define_singleton_method(:snapshot) { Struct.new(:in_flight).new(1) }
-    daemon.lineage.define_singleton_method(:runners) { [runner] }
+    daemon.lineage.define_singleton_method(:runner) { runner }
     response = import(daemon)
     assert_equal 409, response.code.to_i
     assert_equal "work_in_flight", JSON.parse(response.body).dig("error", "code")
     assert_same about, daemon.lineage.credentials
   ensure
-    daemon&.lineage&.singleton_class&.remove_method(:runners)
+    daemon&.lineage&.singleton_class&.remove_method(:runner)
   end
 
   def test_unauthenticated_import_is_refused

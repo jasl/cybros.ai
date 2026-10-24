@@ -11,9 +11,8 @@ module RhoTest
     IDENTITY = Data.define(:user_public_id, :executor_public_id, :runner_executor_public_id).new(
       user_public_id: "user-1", executor_public_id: "executor-1", runner_executor_public_id: nil
     )
-    # The same Profile holding a runner row of its own (full mode): what a
-    # test that marks "this machine's own" runner adopts.
-    RUNNER_IDENTITY = IDENTITY.with(runner_executor_public_id: "0199-runner")
+    # This fixture exposes Local on the application address.
+    RUNNER_IDENTITY = IDENTITY.with(executor_public_id: "0199-runner", runner_executor_public_id: "0199-runner")
 
     def setup
       @root = Dir.mktmpdir("rho-daemon")
@@ -106,14 +105,7 @@ module RhoTest
       about.define_singleton_method(:executor_credential) do
         raise CybrosAgent::Error, "this fixture holds no transport credential"
       end
-      # And no runner lineage: the composite's shape, answered
-      # the way an agent-only holder answers it.
-      about.define_singleton_method(:runner_credential) do
-        raise CybrosAgent::Credentials::PlaneUnavailable, "this fixture holds no runner credential"
-      end
       about.define_singleton_method(:lineages) { [] }
-      about.define_singleton_method(:runner?) { false }
-      about.define_singleton_method(:runner) { nil }
       about.define_singleton_method(:agent?) { true }
       about.define_singleton_method(:agent) { self }
       # A fixture lineage is not a connection: the boot-time maintenance worker
@@ -169,16 +161,11 @@ module RhoTest
       context&.singleton_class&.remove_method(:spawn)
     end
 
-    # AGENT MODE, for a boot that loads no runner tool: full
-    # mode with an empty runner registry refuses to boot, so a test naming
-    # a narrower set without one says which mode it means.
-    def agent_mode(settings = {})
-      Rho::Config.from_hash({ "mode" => "agent" }.merge(settings))
+    # A complete application may load a narrow or empty tool registry.
+    def application_config(settings = {})
+      Rho::Config.from_hash(settings)
     end
 
-    def runner_mode(settings = {})
-      Rho::Config.from_hash({ "mode" => "runner" }.merge(settings))
-    end
 
     def get(daemon, path)
       Net::HTTP.get_response(URI.join(daemon.endpoint, path))

@@ -23,7 +23,7 @@ module RhoTest
     restart_only: false)
     File.write(path.sub(/\.rb\z/, ".json"), JSON.generate(
       "id" => id, "configuration_schema" => schema, "configuration_version" => 1,
-      "default_enabled" => false, "modes" => %w[full agent runner], "requires" => [], "restart_only" => restart_only
+      "default_enabled" => false, "requires" => [], "restart_only" => restart_only
     ))
     { "enabled" => true, "source" => { "kind" => "path", "path" => path },
       "configuration_version" => 1, "configuration" => {} }
@@ -40,7 +40,7 @@ module RhoTest
   def self.checkpoint_store
     @checkpoint_store ||= begin
       root = Dir.mktmpdir("rho-test-world")
-      Rho::Runner::Checkpoints::Store.open(dir: File.join(root, "checkpoints"), root: root)
+      Rho::Env::Checkpoints::Store.open(dir: File.join(root, "checkpoints"), root: root)
     end
   end
 end

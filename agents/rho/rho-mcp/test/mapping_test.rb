@@ -6,7 +6,7 @@ class MappingTest < Minitest::Test
   include McpTest::Helpers
 
   def setup
-    @redact = Rho::Runner::Redact.new
+    @redact = Rho::Env::Redact.new
   end
 
   def test_text_blocks_join_and_structure_rides_verbatim
@@ -33,7 +33,7 @@ class MappingTest < Minitest::Test
   end
 
   def test_every_block_kind_maps_and_images_and_pdfs_become_captures
-    @redact = Rho::Runner::Redact.new(["fixture-secret", Base64.strict_encode64(McpTest::PNG)])
+    @redact = Rho::Env::Redact.new(["fixture-secret", Base64.strict_encode64(McpTest::PNG)])
     with_tool_env do |env, _root|
       raw = { "content" => [
         { "type" => "text", "text" => "fixture-secret" },
@@ -85,9 +85,9 @@ class MappingTest < Minitest::Test
   end
 
   def test_the_notice_opens_the_text
-    result = Rho::Mcp::Mapping.with_notice(Rho::Runner::Result.ok("echo"), "note: restarted")
+    result = Rho::Mcp::Mapping.with_notice(Rho::Env::Result.ok("echo"), "note: restarted")
     assert_equal "note: restarted\necho", result.content
-    assert_equal "echo", Rho::Mcp::Mapping.with_notice(Rho::Runner::Result.ok("echo"), nil).content
+    assert_equal "echo", Rho::Mcp::Mapping.with_notice(Rho::Env::Result.ok("echo"), nil).content
   end
 
   def test_the_model_facing_tail_is_capped_at_three_lines_and_512_bytes

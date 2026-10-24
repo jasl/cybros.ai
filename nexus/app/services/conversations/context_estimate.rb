@@ -132,7 +132,6 @@ module Conversations
           reasoning_enabled: engine ? engine.reasoning_enabled : @command.reasoning_enabled
         ),
         configuration: InferenceRequests::CoerceConfiguration.call(@command.request_options || {}),
-        addressee: (principals.answerer if engine),
         model_selection: intent,
         fallback_models: fallbacks
       ) do |candidate|

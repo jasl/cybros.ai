@@ -12,7 +12,7 @@ class ExtensionTest < Minitest::Test
 
   # rho's daemon hands a subclass with `register_command`; this one keeps
   # what it was given, so the verb's registration is a fact to read.
-  class HostApi < Rho::Runner::Extensions::Api
+  class HostApi < Rho::Env::Extensions::Api
     attr_reader :commands
 
     def initialize(**)
@@ -34,7 +34,7 @@ class ExtensionTest < Minitest::Test
   def load(web: nil, host: true)
     options = { configuration: web || {} }
     options[:host] = Object.new if host
-    Rho::Runner::Extensions::Loader.call(builtin: [Rho::WebTools], api_class: HostApi, api_options: options)
+    Rho::Env::Extensions::Loader.call(builtin: [Rho::WebTools], api_class: HostApi, api_options: options)
   end
 
   def test_it_registers_one_tool_and_one_verb_through_the_public_loader
@@ -106,7 +106,7 @@ class ExtensionTest < Minitest::Test
     refute_predicate result, :ok?
     assert_empty result.registry.names
     failure = result.failures.fetch(0)
-    assert_equal "Rho::Runner::Extensions::RegistrationError", failure.error_class
+    assert_equal "Rho::Env::Extensions::RegistrationError", failure.error_class
     assert_equal "settings.json \"plugins.rho.web_tools.configuration\": allow_private_network must be true or false, not \"yes\"", failure.message
 
     result = load(web: { "allow_private_networks" => true })
@@ -126,8 +126,8 @@ class ExtensionTest < Minitest::Test
   def test_the_gem_declares_the_loaders_metadata_key
     spec = Gem::Specification.load(File.expand_path("../rho-web-tools.gemspec", __dir__))
     assert_equal "rho/web-tools", spec.metadata["rho_extensions"]
-    assert_equal %w[reverse_markdown rho-runner], spec.runtime_dependencies.map(&:name).sort
-    assert_equal "Rho::WebTools", Rho::Runner::Extensions::Loader.send(:module_named, "rho/web-tools").name
+    assert_equal %w[reverse_markdown rho-env], spec.runtime_dependencies.map(&:name).sort
+    assert_equal "Rho::WebTools", Rho::Env::Extensions::Loader.send(:module_named, "rho/web-tools").name
   end
 
   def test_the_markdown_config_is_written_once_and_is_idempotent

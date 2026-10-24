@@ -61,7 +61,7 @@ module Rho
 
       # Every way a driver can fail, under one class so a tool reports the
       # message and nothing else. The message is written for the model.
-      class Failure < Rho::Runner::Error; end
+      class Failure < Rho::Env::Error; end
       class StartTimedOut < Failure; end
       class Exited < Failure; end
       class Missing < Failure; end

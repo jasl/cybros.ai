@@ -53,7 +53,7 @@ class OauthConnectionTest < Minitest::Test
       "the refresh carried the resource (RFC 8707), and the record holds no token value")
     refute(@log.any? { |entry| entry[1] == "mcp.oauth.login_required" })
     assert_nil connection.down
-    redact = Rho::Runner::Redact.new(@row.secrets, live: @storage)
+    redact = Rho::Env::Redact.new(@row.secrets, live: @storage)
     assert_equal "old ••• new •••", redact.call("old #{before.dig("tokens", "refresh_token")} new #{after.dig("tokens", "access_token")}")
   end
 

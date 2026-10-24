@@ -7,7 +7,7 @@ RuboCop::RakeTask.new
 
 desc "Validate the packaged RBS surface"
 task :rbs do
-  sh "bundle", "exec", "rbs", "-I", "sig", "-I", "../rho-runner/sig", "-I", "../../../sdks/ruby/sig", "validate"
+  sh "bundle", "exec", "rbs", "-I", "sig", "-I", "../rho-env/sig", "-I", "../../../sdks/ruby/sig", "validate"
 end
 
 task default: %i[test rubocop rbs]

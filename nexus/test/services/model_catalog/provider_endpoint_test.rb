@@ -23,6 +23,7 @@ class ModelCatalog::ProviderEndpointTest < ActiveSupport::TestCase
     "xai" => "https://api.x.ai",
     "kimi_code" => "https://api.kimi.com/coding",
     "moonshot" => "https://api.moonshot.cn",
+    "moonshot_global" => "https://api.moonshot.ai",
   }.freeze
 
   test "every shipped provider declares its endpoint" do

@@ -19,6 +19,7 @@ module ModelProviders
         catalog = ModelSelection::Resolver.effective_provider_catalog(@account, snapshot, @provider_id)
         return false unless catalog.providers.key?(@provider_id)
 
+        snapshot = ModelCatalog::RetainedCatalog.base(snapshot: snapshot, policy: catalog.policies[@provider_id])
         ModelCatalog::CatalogValidation.validate_change(
           changed_models(catalog.models, snapshot), catalog.selectors, @model_ref, catalog.providers
         )

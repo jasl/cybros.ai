@@ -234,8 +234,8 @@ class ToolsTest < Minitest::Test
   end
 
   def in_loop(run_id, &)
-    context = Rho::Runner::ExecutionContext.new(run_public_id: run_id)
-    Rho::Runner::ExecutionContext.with(context, &)
+    context = Rho::Env::ExecutionContext.new(run_public_id: run_id)
+    Rho::Env::ExecutionContext.with(context, &)
   end
 
   # JSON has no NaN: the page's `0/0` reads back as null, not as an error
@@ -261,11 +261,11 @@ class ToolsTest < Minitest::Test
   end
 
   def test_cancellation_propagates_rather_than_becoming_an_error_result
-    context = Rho::Runner::ExecutionContext.new
+    context = Rho::Env::ExecutionContext.new
     context.cancel
-    env = Rho::Runner::ToolEnv.new(root: Dir.tmpdir, artifacts_dir: File.join(Dir.tmpdir, "a"))
-    Rho::Runner::ExecutionContext.with(context) do
-      assert_raises(Rho::Runner::ExecutionContext::Cancelled) do
+    env = Rho::Env::ToolEnv.new(root: Dir.tmpdir, artifacts_dir: File.join(Dir.tmpdir, "a"))
+    Rho::Env::ExecutionContext.with(context) do
+      assert_raises(Rho::Env::ExecutionContext::Cancelled) do
         tool(Rho::Browser::Tools::Snapshot, env).call({})
       end
     end

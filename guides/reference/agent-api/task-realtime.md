@@ -225,20 +225,20 @@ with its Task; no signal history or per-packet events are retained.
 
 ## Runner integration
 
-rho-runner exposes `context.realtime` inside the existing handler. Call `offer(sdp:)` on the worker;
+rho-env exposes `context.realtime` inside the existing handler. Call `offer(sdp:)` on the worker;
 the existing control reactor performs signaling and subsequent permission reads. The return value
 is the initial projection; read `snapshot` for the answer, and use `allowed?` for every action.
 The bridge is idle until the handler explicitly offers. It does not instantiate WebRTC or an OS
 resource. Your transport adapter owns peer verification, bounded queues and native cleanup.
 
-For a byte DataChannel, rho-runner also supplies the optional
-`rho/runner/webrtc_transport` adapter. Build its Pion helper from the installed gem's
+For a byte DataChannel, rho-env also supplies the optional
+`rho/env/webrtc_transport` adapter. Build its Pion helper from the installed gem's
 `transport/` directory with `go build -o /your/bin/rho-webrtc .` using the Go version
 in `go.mod`. Ordinary Runner startup does not load the adapter or require Go.
 The helper receives ICE server configuration through private stdio, without Nexus
 credentials or a listening HTTP control endpoint.
 
-Inside a handler, create `Rho::Runner::WebrtcTransport.new(executable: path, context: context)`
+Inside a handler, create `Rho::Env::WebrtcTransport.new(executable: path, context: context)`
 and call `connect(servers: ice_servers)`. ICE server entries use WebRTC's `urls`,
 `username` and `credential` fields. The default permits direct and TURN candidates;
 `relay: true` restricts it to TURN. `connect` publishes a fresh offer through the
@@ -256,8 +256,8 @@ incoming blocks and 64 KiB of outgoing DataChannel data. Overflow or unavailable
 transport raises a Runner error; no input is retried automatically. Queued input
 received before the current uninterrupted permission window is discarded.
 
-For automatic recovery, require `rho/runner/webrtc_connection` and create
-`Rho::Runner::WebrtcConnection.new(executable: path, context: context, servers: ice_servers)`.
+For automatic recovery, require `rho/env/webrtc_connection` and create
+`Rho::Env::WebrtcConnection.new(executable: path, context: context, servers: ice_servers)`.
 Call `poll` in the existing handler loop; it starts the first offer and advances the
 handshake. It has the same `poll` and `send_bytes` surface, plus `connection_id`.
 A disconnected or failed peer, unavailable transport, or handshake timeout closes the
@@ -282,10 +282,10 @@ The raw byte adapters do not retain output; use the optional stream below for re
 
 ### Output recovery
 
-Require `rho/runner/webrtc_stream` to wrap an existing `WebrtcConnection`:
+Require `rho/env/webrtc_stream` to wrap an existing `WebrtcConnection`:
 
 ```ruby
-stream = Rho::Runner::WebrtcStream.new(connection: connection, context: context)
+stream = Rho::Env::WebrtcStream.new(connection: connection, context: context)
 # Inside the original handler loop:
 packet = stream.poll
 packet.data.each do |bytes|

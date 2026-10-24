@@ -105,7 +105,7 @@ class ApiRunContractPackTest < Minitest::Test
 
   # THE TWO SETTLED LOADS: a kernel-row load nobody
   # claimed, its `output` the row's body under the rung's title; an
-  # announced load claimed by its runner, the body plus rho-runner's
+  # announced load claimed by its runner, the body plus rho-env's
   # base-directory line — one result grammar, parsed by the one reader.
   def test_the_skill_task_detail_fixtures_parse_through_the_real_client
     workspace = api_client(contract("runs.json").fetch("valid_skill_task_detail_fixture"))

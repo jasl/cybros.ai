@@ -71,8 +71,8 @@ module Rho
             raise Rho::Error, "skills push needs DIR, a directory holding SKILL.md" if dir.to_s.empty?
 
             scope = skill_scope(options)
-            skill = Rho::Runner::Skills.read(File.expand_path(dir))
-            raise Rho::Error, "#{skill.path}: #{skill.reason}" if skill in Rho::Runner::Skills::Skipped
+            skill = Rho::Env::Skills.read(File.expand_path(dir))
+            raise Rho::Error, "#{skill.path}: #{skill.reason}" if skill in Rho::Env::Skills::Skipped
 
             # The command explicitly replaces the remote document with this
             # local file. Capture once before sending; a conflict is not retried.

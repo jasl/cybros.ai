@@ -77,7 +77,7 @@ module Conversations
     # Preview and materialization resolve the captured intent and ordered
     # alternatives against live availability. Explicit model/provider
     # constraints remain independent of the profile's configured default.
-    def resolve(account:, submitted:, configuration:, addressee: nil, model_selection: nil, fallback_models: [], &candidate_check)
+    def resolve(account:, submitted:, configuration:, model_selection: nil, fallback_models: [], &candidate_check)
       return ModelSelection.resolve(account: account, workload: "text_generation",
         submitted: submitted, configuration: configuration, port: ModelSelection::Resolver.new) if model_selection.nil?
 

@@ -1,5 +1,4 @@
 require "async/semaphore"
-require_relative "configuration/settings_migration"
 
 module Rho
   # The existing daemon writer serializes core and plugin edits. Every edit is
@@ -16,24 +15,19 @@ module Rho
     class RestartRequired < PreparationError; end
     class AnnouncementError < Error; end
 
-    DEPLOYMENT_KEYS = %w[mode bind api_only webui_root executor_socket public_url].freeze
+    DEPLOYMENT_KEYS = %w[bind api_only webui_root executor_socket public_url].freeze
     EDITABLE_KEYS = (Config::KEYS - DEPLOYMENT_KEYS).freeze
     PUBLIC_KEYS = EDITABLE_KEYS
 
-    # The caller holds the home's lifetime lock. Root conversion is one write;
-    # each enabled plugin then migrates independently without touching siblings.
+    # Core settings accept only the current format. Plugin configuration retains
+    # its own migration contract and never rewrites the core envelope.
     def self.prepare(home, flags: {})
       document = Config.read(home.settings_path)
-      version = document.fetch("settings_version", 0)
-      unless [0, Config::SETTINGS_VERSION].include?(version)
-        raise ConfigurationError, "settings format is newer than this rho"
-      end
-      if version.zero?
-        document = Configuration::SettingsMigration.call(document, home: home)
-        # The previous settings format was operator-authored plain text. This
-        # conversion adopts the private current format before importing secrets.
-        File.chmod(StateFile::PRIVATE_FILE_MODE, home.settings_path) if File.file?(home.settings_path)
+      if !File.file?(home.settings_path)
+        document = { "settings_version" => Config::SETTINGS_VERSION, "plugins" => {} }
         home.write_settings(document)
+      elsif document["settings_version"] != Config::SETTINGS_VERSION
+        raise ConfigurationError, "unsupported settings format; reconfigure this rho installation"
       end
       config = Config.load(home.settings_path, flags: flags, home: home)
       config.catalog.descriptors.each_value do |descriptor|
@@ -163,7 +157,7 @@ module Rho
           raise ApplyError.new(error.message, applied: true), cause: nil
         rescue RestartRequired
           raise ApplyError.new("Settings were saved. Restart rho to apply the changes; the current plugins remain active.", restart_required: true), cause: nil
-        rescue Rho::Runner::Extensions::PrerequisiteError => error
+        rescue Rho::Env::Extensions::PrerequisiteError => error
           raise ApplyError, error.message, cause: nil
         rescue StandardError => error
           raise ApplyError, "Settings were saved, but applying them failed (#{error.class.name}); correct the issue and try saving again.", cause: nil

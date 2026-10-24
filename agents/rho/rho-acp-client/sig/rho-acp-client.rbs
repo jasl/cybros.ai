@@ -29,7 +29,7 @@ module Rho
     def self.child_env: (untyped row, ?Hash[String, String] current) -> Hash[String, String]
     def self.register: (untyped api) -> nil
     def self.check_prerequisites: (Array[Settings::Row | Settings::Fault] rows) -> nil
-    def self.call: (Hash[String, untyped] args, env: untyped) -> Rho::Runner::Result
+    def self.call: (Hash[String, untyped] args, env: untyped) -> Rho::Env::Result
     def self.release: (String conversation) -> nil
     def self.close!: () -> nil
     def self.sweep!: () -> Integer
@@ -38,7 +38,7 @@ module Rho
     def self.report: () -> Hash[String, untyped]
 
     module Settings
-      class Malformed < Rho::Runner::Extensions::RegistrationError
+      class Malformed < Rho::Env::Extensions::RegistrationError
       end
       KEYS: Array[String]
       KEY_FORMAT: Regexp
@@ -218,7 +218,7 @@ module Rho
       STOP_TIMED_OUT: String
       STOP_REFUSED: String
       def initialize: (session: Children::Session, prompt: String, env: untyped, home: untyped, log: untyped, clock: ^() -> Time) -> void
-      def run: () -> Rho::Runner::Result
+      def run: () -> Rho::Env::Result
     end
 
     module Commands

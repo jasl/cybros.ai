@@ -85,7 +85,13 @@ async function main(): Promise<object> {
       const grant = await new Sessions({ baseURL: config.base_url }).create({ email: config.email, password: config.password });
       const client = new PlatformClient({ baseURL: config.base_url, credential: grant.token });
       const profile = await client.profile.fetch(); const agent = await client.agents.create(config.marker);
-      const listed = await client.agents.list(); if (!listed.items.some(row => row.public_id === agent.public_id)) throw new Error('Created Agent missing');
+      // A shared journey world can contain more Agents than the first page.
+      // A small page keeps cursor traversal exercised even in a focused run.
+      let listed = await client.agents.list({ limit: 1, order: 'asc' }, { signal });
+      while (!listed.items.some(row => row.public_id === agent.public_id)) {
+        if (!listed.next_after) throw new Error('Created Agent missing');
+        listed = await client.agents.list({ limit: 1, order: 'asc', after: listed.next_after }, { signal });
+      }
       await client.agents.agent(agent.public_id).remove(); await client.session.revoke();
       return { human_public_id: profile.member.public_id, agent_public_id: agent.public_id, removed: true };
     }

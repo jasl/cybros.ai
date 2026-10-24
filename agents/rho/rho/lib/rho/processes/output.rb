@@ -86,7 +86,7 @@ module Rho
       # THE FILE'S TAIL, for a reader whose buffer is gone with its row: the
       # last `count` lines of at most `max_bytes`, cleaned the way `lines`
       # cleans; empty for a file that is not there.
-      def self.tail(path, count, max_bytes: Rho::Runner::Truncation::DEFAULT_MAX_BYTES)
+      def self.tail(path, count, max_bytes: Rho::Env::Truncation::DEFAULT_MAX_BYTES)
         text = File.open(path, "rb") do |file|
           file.seek([file.size - max_bytes, 0].max)
           file.read.to_s
@@ -112,7 +112,7 @@ module Rho
       # result does; the dropped note's size is that module's `format_size`
       # too); a cut is made at a line boundary so no reader sees half a
       # line.
-      def lines(count, max_bytes: Rho::Runner::Truncation::DEFAULT_MAX_BYTES)
+      def lines(count, max_bytes: Rho::Env::Truncation::DEFAULT_MAX_BYTES)
         text = @mutex.synchronize { render }
         selected = text.lines.last(count).map(&:chomp).join("\n")
         return selected if selected.bytesize <= max_bytes
@@ -171,7 +171,7 @@ module Rho
         def render
           text = String.new(encoding: Encoding::BINARY)
           text << @head
-          text << "\n#{format(DROPPED, Rho::Runner::Truncation.format_size(@dropped))}\n" if @dropped.positive?
+          text << "\n#{format(DROPPED, Rho::Env::Truncation.format_size(@dropped))}\n" if @dropped.positive?
           text << @tail
           text.force_encoding(Encoding::UTF_8).scrub("?").gsub(ANSI, "")
         end

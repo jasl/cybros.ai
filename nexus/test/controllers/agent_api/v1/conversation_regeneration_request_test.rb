@@ -9,6 +9,42 @@ class AgentAPI::V1::ConversationRegenerationRequestTest < ActionDispatch::Integr
   INSTRUCTIONS = "Answer using the supplied facts only.".freeze
   ORIGINAL_CONFIGURATION = { "temperature" => 0.2, "max_output_tokens" => 37 }.freeze
 
+  test "archive retains accepted direct recovery while the manual regeneration door stays closed" do
+    conversation = create_reply_conversation("direct")
+    post inputs_path(conversation), headers: auth(SecureRandom.uuid), as: :json,
+      params: { input: { kind: "direct_reply", text: "A fact.", model: { model: "dev/mock-text" },
+        model_selection: { source: "explicit", model: "dev/mock-text", constraint: "any" },
+        fallback_models: ["dev/mock-unmetered"] } }
+    assert_response :accepted
+    Current.reset
+    perform_enqueued_jobs only: Conversations::Inputs::DrainJob
+    turn = conversation.turns.sole
+    origin = turn.active_variant
+    invocation = origin.model_invocation
+
+    post archive_conversation_path(conversation), headers: auth, as: :json
+    assert_response :success
+    Current.reset
+    attempt = ModelInvocations::AdmitQueuedWork.call.admitted.find { |row| row.invocation.id == invocation.id }.attempt
+    apply_via(attempt, sse_refused("Cannot answer on this route."))
+    Conversations::Turns::ConvergeJob.perform_now(conversation.id, { "invocation_id" => invocation.id })
+
+    get turns_path(conversation), headers: auth
+    assert_response :success
+    assert_equal "running", response.parsed_body.fetch("turns").sole.fetch("status")
+    fallback = turn.variants.find_by!(origin_variant_id: origin.id, source: "fallback")
+    assert_equal "mock-unmetered", fallback.model_ref
+    complete_reply(conversation, turn, fallback)
+    assert_predicate conversation.reload, :archived?
+
+    assert_no_difference -> { turn.variants.count } do
+      post "#{turns_path(conversation)}/#{turn.public_id}/regeneration",
+        headers: auth(SecureRandom.uuid), as: :json, params: { regeneration: {} }
+      assert_response :conflict
+      assert_equal "conversation_archived", response.parsed_body.dig("error", "code")
+    end
+  end
+
   %w[direct loop].each do |engine|
     test "#{engine} regeneration replays one acceptance while running and after completion" do
       conversation, turn, = settled_reply(engine)

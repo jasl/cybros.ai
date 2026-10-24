@@ -96,7 +96,7 @@ class SessionTest < Minitest::Test
     overlap = false
     threads = Array.new(4) do
       Thread.new do
-        Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+        Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
           5.times do
             s.with_page do |_page|
               inside += 1
@@ -114,10 +114,10 @@ class SessionTest < Minitest::Test
 
   def test_cancellation_is_honoured_before_the_lock_and_after
     s, driver = session
-    context = Rho::Runner::ExecutionContext.new
+    context = Rho::Env::ExecutionContext.new
     context.cancel
-    Rho::Runner::ExecutionContext.with(context) do
-      assert_raises(Rho::Runner::ExecutionContext::Cancelled) { s.with_page { |_p| } }
+    Rho::Env::ExecutionContext.with(context) do
+      assert_raises(Rho::Env::ExecutionContext::Cancelled) { s.with_page { |_p| } }
     end
     assert_equal 0, driver.starts, "a cancelled task must not start a browser"
   end
@@ -130,7 +130,7 @@ class SessionTest < Minitest::Test
     entered = Queue.new
     release = Queue.new
     holder = Thread.new do
-      Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+      Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
         s.with_page do |_p|
           entered << true
           release.pop
@@ -139,18 +139,18 @@ class SessionTest < Minitest::Test
     end
     entered.pop
 
-    context = Rho::Runner::ExecutionContext.new
+    context = Rho::Env::ExecutionContext.new
     waiter = Thread.new do
       # The raise is the point of the test; the thread need not report it.
       Thread.current.report_on_exception = false
-      Rho::Runner::ExecutionContext.with(context) do
+      Rho::Env::ExecutionContext.with(context) do
         s.with_page { |_p| }
       end
     end
     sleep 0.05
     context.cancel
-    error = assert_raises(Rho::Runner::ExecutionContext::Cancelled) { waiter.join(2) || flunk("waiter never returned"); waiter.value }
-    assert_kind_of Rho::Runner::ExecutionContext::Cancelled, error
+    error = assert_raises(Rho::Env::ExecutionContext::Cancelled) { waiter.join(2) || flunk("waiter never returned"); waiter.value }
+    assert_kind_of Rho::Env::ExecutionContext::Cancelled, error
   ensure
     release << true
     holder&.join(1)
@@ -165,7 +165,7 @@ class SessionTest < Minitest::Test
     entered = Queue.new
     release = Queue.new
     holder = Thread.new do
-      Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+      Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
         s.with_page do |_p|
           entered << true
           release.pop
@@ -257,7 +257,7 @@ class SessionTest < Minitest::Test
     a_inside = Queue.new
     release = Queue.new
     holder = Thread.new do
-      Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+      Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
         s.with_page("loop-a") do |_p|
           a_inside << true
           release.pop
@@ -279,7 +279,7 @@ class SessionTest < Minitest::Test
     entered = Queue.new
     release = Queue.new
     holder = Thread.new do
-      Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+      Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
         s.with_page("loop-a") do |_p|
           entered << true
           release.pop
@@ -394,7 +394,7 @@ class SessionTest < Minitest::Test
     entered = Queue.new
     release = Queue.new
     holder = Thread.new do
-      Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+      Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
         s.with_page do |_p|
           entered << true
           release.pop
@@ -449,7 +449,7 @@ class SessionTest < Minitest::Test
     entered = Queue.new
     release = Queue.new
     holder = Thread.new do
-      Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+      Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
         s.with_page do |_p|
           entered << true
           release.pop
@@ -503,7 +503,7 @@ class SessionTest < Minitest::Test
     entered = Queue.new
     release = Queue.new
     holder = Thread.new do
-      Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+      Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
         s.with_page("loop-a") do |_p|
           entered << true
           release.pop
@@ -536,9 +536,9 @@ class SessionTest < Minitest::Test
       assert seen, "the failing call did not see the reset"
     end
     # ...a cancelled call re-arms it...
-    context = Rho::Runner::ExecutionContext.new
-    Rho::Runner::ExecutionContext.with(context) do
-      assert_raises(Rho::Runner::ExecutionContext::Cancelled) do
+    context = Rho::Env::ExecutionContext.new
+    Rho::Env::ExecutionContext.with(context) do
+      assert_raises(Rho::Env::ExecutionContext::Cancelled) do
         s.with_page("loop-a") do |_p, _reset|
           context.cancel
           context.raise_if_cancelled!
@@ -570,10 +570,10 @@ class SessionTest < Minitest::Test
     driver = BrowserTest::FakeDriver.new(page: page)
     s, = session(driver, call_deadline: 0.1)
     registry = s.instance_variable_get(:@registry)
-    context = Rho::Runner::ExecutionContext.new
+    context = Rho::Env::ExecutionContext.new
     caller = Thread.new do
       Thread.current.report_on_exception = false
-      Rho::Runner::ExecutionContext.with(context) { s.with_page("loop-a") { |p, reset| assert reset; p.goto("x") } }
+      Rho::Env::ExecutionContext.with(context) { s.with_page("loop-a") { |p, reset| assert reset; p.goto("x") } }
     end
     refute_nil entered.pop(timeout: 5), "the call never reached the page"
     registry.lock
@@ -586,7 +586,7 @@ class SessionTest < Minitest::Test
       e
     end
     registry.unlock
-    assert_kind_of Rho::Runner::ExecutionContext::Cancelled, error
+    assert_kind_of Rho::Env::ExecutionContext::Cancelled, error
     with_tool_env { s.with_page("loop-a") { |_p, reset| assert reset, "the cancelled call lost the notice" } }
   end
 

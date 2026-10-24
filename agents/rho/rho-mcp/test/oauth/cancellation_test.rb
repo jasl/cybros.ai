@@ -39,9 +39,9 @@ class OauthCancellationTest < Minitest::Test
       original.call(request, base)
     end
 
-    context = Rho::Runner::ExecutionContext.new(task_key: "first")
+    context = Rho::Env::ExecutionContext.new(task_key: "first")
     first = Thread.new do
-      Rho::Runner::ExecutionContext.with(context) do
+      Rho::Env::ExecutionContext.with(context) do
         connection.call_tool("echo", { "text" => "first" }, public_name: "mcp__fxo__echo")
       end
     rescue StandardError => error
@@ -50,7 +50,7 @@ class OauthCancellationTest < Minitest::Test
     assert_equal 0, entered.pop(timeout: 5), "the first request reached the real authorization server"
     context.cancel(:cancelled)
     assert first.join(5), "cancellation returns while the bounded HTTP request remains in flight"
-    assert_kind_of Rho::Runner::ExecutionContext::Cancelled, first.value
+    assert_kind_of Rho::Env::ExecutionContext::Cancelled, first.value
 
     second = Thread.new do
       connection.open!(list: false) if reopen

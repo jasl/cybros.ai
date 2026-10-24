@@ -5,6 +5,6 @@ class EnvironmentBindTest < Minitest::Test
     loaded = Rho::Extensions.load(host: RhoTest.host, extensions: [Rho::Extensions::Environment])
     assert_predicate loaded, :ok?, loaded.failures.inspect
     refute_includes loaded.registry.names, "environment_bind"
-    refute_includes Rho::Runner::Extensions::Checkpoints::EXEMPT, "environment_bind"
+    refute_includes Rho::Env::Extensions::Checkpoints::EXEMPT, "environment_bind"
   end
 end

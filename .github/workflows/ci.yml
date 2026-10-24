@@ -380,6 +380,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
+      - name: Install installer test tools
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y shellcheck jq
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -399,12 +402,12 @@ jobs:
       - name: Installer shell tests (offline)
         run: RHO_INSTALL_TEST_OFFLINE=1 ../../../install/test/run.sh
 
-  agent_rho_runner:
+  agent_rho_env:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: agents/rho/rho-runner
+        working-directory: agents/rho/rho-env
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -416,7 +419,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ env.RUBY_VERSION }}
-          working-directory: agents/rho/rho-runner
+          working-directory: agents/rho/rho-env
           bundler-cache: true
 
       - name: Run the default task
@@ -670,8 +673,8 @@ jobs:
       - name: Build the gem
         run: bundle exec rake build
 
-  e2e:
-    name: Product smoke and harness checks
+  e2e_protocol:
+    name: Protocol smoke checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -705,11 +708,88 @@ jobs:
         with:
           bun-version: 1.4.4
 
-      - name: Install e2e dependencies
+      - name: Install protocol E2E dependencies
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ env.RUBY_VERSION }}
-          working-directory: e2e
+          working-directory: e2e/protocol
+          bundler-cache: true
+
+      - name: Run protocol smoke checks
+        working-directory: e2e/protocol
+        env:
+          # The base for every per-run database URL: the development boot has
+          # three roles (primary/queue/cable), each named per run by the
+          # harness (RAILS_DB_URL_BASE covers them all; DATABASE_URL would
+          # only reach the primary).
+          RAILS_DB_URL_BASE: postgres://postgres:postgres@localhost:5432
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          E2E_WORLDS: "1"
+          E2E_DEADLINE_SECONDS: "300"
+          E2E_TEARDOWN_DEADLINE_SECONDS: "60"
+          A: "-v"
+        run: |
+          set -o pipefail
+          mkdir -p tmp
+          rho_source=$(mktemp -d)
+          mv ../../agents/rho "$rho_source/rho"
+          trap 'mv "$rho_source/rho" ../../agents/rho; rmdir "$rho_source"' EXIT
+          bundle exec rake smoke_harness_test smoke rubocop 2>&1 | tee tmp/ci-smoke.log
+
+      - name: Keep protocol smoke diagnostics
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-protocol-diagnostics
+          path: |
+            ${{ github.workspace }}/e2e/artifacts
+            ${{ github.workspace }}/e2e/protocol/tmp/ci-smoke.log
+            ${{ github.workspace }}/e2e/protocol/artifacts
+          if-no-files-found: ignore
+
+  e2e_products:
+    name: Products smoke checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install PostgreSQL, image processing and runner search dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libpq-dev libvips ripgrep fd-find
+
+      - name: Set up Ruby and Nexus dependencies
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: nexus
+          bundler-cache: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Install product E2E dependencies
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: e2e/products
           bundler-cache: true
 
       # The rho journey spawns the executable a person installs, from its own
@@ -721,8 +801,8 @@ jobs:
           working-directory: agents/rho/rho
           bundler-cache: true
 
-      - name: Run key harness checks, product smoke and RuboCop
-        working-directory: e2e
+      - name: Run products smoke checks
+        working-directory: e2e/products
         env:
           # The base for every per-run database URL: the development boot has
           # three roles (primary/queue/cable), each named per run by the
@@ -742,12 +822,13 @@ jobs:
           mkdir -p tmp
           bundle exec rake smoke_harness_test smoke rubocop 2>&1 | tee tmp/ci-smoke.log
 
-      - name: Keep product smoke diagnostics
+      - name: Keep products smoke diagnostics
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: e2e-diagnostics
+          name: e2e-products-diagnostics
           path: |
             ${{ github.workspace }}/e2e/artifacts
-            ${{ github.workspace }}/e2e/tmp/ci-smoke.log
+            ${{ github.workspace }}/e2e/products/tmp/ci-smoke.log
+            ${{ github.workspace }}/e2e/products/artifacts
           if-no-files-found: ignore

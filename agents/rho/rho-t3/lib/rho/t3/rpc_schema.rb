@@ -33,11 +33,11 @@ module Rho
         "orchestration.dispatchCommand" => COMMAND,
         "orchestration.getFullThreadDiff" => object({ "threadId" => STRING, "toTurnCount" => { "type" => "number" }, "ignoreWhitespace" => { "type" => "boolean" } }, required: %w[threadId toTurnCount]),
         "orchestration.getTurnItem" => object({ "threadId" => STRING, "itemId" => STRING }),
-      }.transform_values { |schema| Rho::Runner::InputSchema.compile(schema) }.freeze
+      }.transform_values { |schema| Rho::Env::InputSchema.compile(schema) }.freeze
 
       def self.validate!(method, params)
         validator = METHODS.fetch(method) { raise Error, "Unsupported T3 RPC method" }
-        raise Error, "Invalid T3 RPC payload" if Rho::Runner::InputSchema.refusal(validator, params)
+        raise Error, "Invalid T3 RPC payload" if Rho::Env::InputSchema.refusal(validator, params)
       end
     end
   end

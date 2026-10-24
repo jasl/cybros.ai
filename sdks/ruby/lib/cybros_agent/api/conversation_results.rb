@@ -221,7 +221,7 @@ module CybrosAgent
     end
 
     # THE RUNNER'S CHECKPOINT as the kernel carries it: `raw` is the stored value VERBATIM, and the members
-    # are the facts this gem reads off it when it is an object — rho-runner's
+    # are the facts this gem reads off it when it is an object — rho-env's
     # `{hash, store}`, its `{skipped, bytes, files}` with the `outside` /
     # `ignored` paths a restore could not reach — each nil or empty when the
     # runner stored none (a placeholder value keeps only `raw`).

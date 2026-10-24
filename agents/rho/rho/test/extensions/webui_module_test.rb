@@ -48,31 +48,31 @@ class WebuiModuleTest < Minitest::Test
 
   def test_a_second_module_an_empty_root_and_a_directory_without_index_js_are_refused
     handle = api.register_webui_module(root: browser_module("first"))
-    error = assert_raises(Rho::Runner::Extensions::RegistrationError) do
+    error = assert_raises(Rho::Env::Extensions::RegistrationError) do
       handle.register_webui_module(root: browser_module("second"))
     end
     assert_includes error.message, "test.module already registered a webui module"
 
     ["", nil].each do |root|
-      error = assert_raises(Rho::Runner::Extensions::RegistrationError) { api.register_webui_module(root: root) }
+      error = assert_raises(Rho::Env::Extensions::RegistrationError) { api.register_webui_module(root: root) }
       assert_includes error.message, "register_webui_module needs a non-empty root"
     end
 
     empty = File.join(@root, "empty")
     FileUtils.mkdir_p(empty)
-    error = assert_raises(Rho::Runner::Extensions::RegistrationError) { api.register_webui_module(root: empty) }
+    error = assert_raises(Rho::Env::Extensions::RegistrationError) { api.register_webui_module(root: empty) }
     assert_includes error.message, "test.module"
     assert_includes error.message, File.join(empty, "index.js")
   end
 
-  def test_runner_hosts_load_the_same_extension_without_a_module
+  def test_application_loads_a_module_and_environment_loader_accepts_the_extension
     owner = extension("test.module") { |handle| handle.register_webui_module(root: browser_module("module")) }
-    loaded = Rho::Extensions.load(host: host("mode" => "runner"), extensions: [owner])
+    loaded = Rho::Extensions.load(host: host, extensions: [owner])
 
     assert_predicate loaded, :ok?
     assert_equal ["test.module"], loaded.extensions.map(&:name)
-    assert_equal [], loaded.webui_modules
-    assert_predicate Rho::Runner::Extensions::Loader.call(builtin: [owner]), :ok?
+    assert_equal ["test.module"], loaded.webui_modules.map(&:extension)
+    assert_predicate Rho::Env::Extensions::Loader.call(builtin: [owner]), :ok?
   end
 
   def test_a_factory_that_raises_after_registering_contributes_no_module
@@ -82,7 +82,7 @@ class WebuiModuleTest < Minitest::Test
     end
     loaded = Rho::Extensions.load(host: host, extensions: [failed])
 
-    assert_equal [], loaded.webui_modules
+    assert_empty loaded.webui_modules
     assert_equal ["broken factory"], loaded.failures.map(&:message)
   end
 

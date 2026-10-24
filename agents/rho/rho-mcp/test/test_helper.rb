@@ -14,7 +14,7 @@ module McpTest
   PDF = "%PDF-1.7\n\x00\xFF\n%%EOF\n".b.freeze
 
   def self.load(**options)
-    result = Rho::Runner::Extensions::Loader.call(**options)
+    result = Rho::Env::Extensions::Loader.call(**options)
     result.committed.each do |api|
       api.lifecycle.select { |hook| hook.event == :startup }.each { |hook| hook.handler.call }
     end
@@ -51,8 +51,8 @@ module McpTest
     def with_tool_env
       Dir.mktmpdir("rho-mcp-test") do |root|
         real = File.realpath(root)
-        env = Rho::Runner::ToolEnv.new(root: real, artifacts_dir: File.join(real, ".artifacts"))
-        Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) { yield(env, real) }
+        env = Rho::Env::ToolEnv.new(root: real, artifacts_dir: File.join(real, ".artifacts"))
+        Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) { yield(env, real) }
       end
     end
 

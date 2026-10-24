@@ -15,7 +15,7 @@ class ProcessesRoutesTest < Minitest::Test
     empty = JSON.parse(request(daemon, :get, "/processes", token: token).body)
     assert_equal [], empty.fetch("processes")
 
-    row = daemon.host.processes.start(command: "echo up; sleep 30", workdir: @root, env: Rho::Runner::ChildEnv.call,
+    row = daemon.host.processes.start(command: "echo up; sleep 30", workdir: @root, env: Rho::Env::ChildEnv.call,
       name: "web", run_public_id: "run-a", wait_for: "up")
     wait_for { row.output.matched? }
 
@@ -62,9 +62,9 @@ class ProcessesRoutesTest < Minitest::Test
   # that host's run started and removes their entries; a group of another host stands.
   def test_forgetting_a_host_ends_the_processes_its_run_started
     daemon = boot
-    ours = daemon.host.processes.start(command: "sleep 30", workdir: @root, env: Rho::Runner::ChildEnv.call,
+    ours = daemon.host.processes.start(command: "sleep 30", workdir: @root, env: Rho::Env::ChildEnv.call,
       run_public_id: "run-a")
-    theirs = daemon.host.processes.start(command: "sleep 30", workdir: @root, env: Rho::Runner::ChildEnv.call,
+    theirs = daemon.host.processes.start(command: "sleep 30", workdir: @root, env: Rho::Env::ChildEnv.call,
       run_public_id: "run-b")
 
     daemon.host_followers.forget(Rho::Host::Run.new(public_id: "run-a"))
@@ -81,7 +81,7 @@ class ProcessesRoutesTest < Minitest::Test
 
   def test_stopping_the_daemon_ends_the_processes_it_owns
     daemon = boot
-    row = daemon.host.processes.start(command: "sleep 30", workdir: @root, env: Rho::Runner::ChildEnv.call)
+    row = daemon.host.processes.start(command: "sleep 30", workdir: @root, env: Rho::Env::ChildEnv.call)
 
     daemon.stop
 
@@ -100,7 +100,7 @@ def test_two_daemons_in_one_process_keep_separate_tables
   second = boot(base_url: "https://other.example", root: other)
   refute_same first.host.processes, second.host.processes
 
-  row = second.host.processes.start(command: "sleep 30", workdir: other, env: Rho::Runner::ChildEnv.call)
+  row = second.host.processes.start(command: "sleep 30", workdir: other, env: Rho::Env::ChildEnv.call)
   first.stop
 
   assert_equal "running", row.snapshot.status
@@ -138,7 +138,7 @@ end
       "output" => "p4  running  pid 77", "structured_content" => { "processes" => [remote_row] },
       "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-13T00:00:00Z",
     })
-    daemon = member_ready(boot(extensions: [Rho::Extensions::Processes, Rho::Runner::Extensions::Coding]),
+    daemon = member_ready(boot(extensions: [Rho::Extensions::Processes, Rho::Env::Extensions::Coding]),
       api, identity: RUNNER_IDENTITY)
     store = host_store(daemon)
     store.remember(Rho::Host::Conversation.new(public_id: "c-1"), workspace: "ws-1", runner: "0199-h")
@@ -171,7 +171,7 @@ end
       "error" => { "key" => "tool_timeout", "detail" => "nobody claimed it" },
       "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-13T00:00:00Z",
     })
-    daemon = member_ready(boot(extensions: [Rho::Extensions::Processes, Rho::Runner::Extensions::Coding]),
+    daemon = member_ready(boot(extensions: [Rho::Extensions::Processes, Rho::Env::Extensions::Coding]),
       api, identity: RUNNER_IDENTITY)
     host_store(daemon)
       .remember(Rho::Host::Conversation.new(public_id: "c-1"), workspace: "ws-1", runner: "0199-h")
@@ -195,7 +195,7 @@ end
                                 "lines" => ["GET / 200"] },
       "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-13T00:00:00Z",
     })
-    daemon = member_ready(boot(extensions: [Rho::Extensions::Processes, Rho::Runner::Extensions::Coding]),
+    daemon = member_ready(boot(extensions: [Rho::Extensions::Processes, Rho::Env::Extensions::Coding]),
       api, identity: RUNNER_IDENTITY)
     host_store(daemon)
       .remember(Rho::Host::Conversation.new(public_id: "c-1"), workspace: "ws-1", runner: "0199-h")
@@ -228,7 +228,7 @@ end
                                 "lines" => ["ready"] },
       "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-13T00:00:00Z",
     })
-    daemon = member_ready(boot(extensions: [Rho::Extensions::Processes, Rho::Runner::Extensions::Coding]),
+    daemon = member_ready(boot(extensions: [Rho::Extensions::Processes, Rho::Env::Extensions::Coding]),
       api, identity: RUNNER_IDENTITY)
     store = host_store(daemon)
     token = bearer(daemon)
@@ -259,9 +259,9 @@ end
     assert_equal 1, api.run_creates.length, "nothing relayed: the door refused before asking either runner"
   end
 
-  # A runner-mode daemon follows no host: its own table alone, no call_tool.
-  def test_a_runner_mode_daemon_lists_its_own_table_alone
-    daemon = boot(config: runner_mode)
+  # An unconnected daemon reads its own process table without a relay.
+  def test_an_unconnected_daemon_lists_its_own_table_alone
+    daemon = boot
     document = JSON.parse(request(daemon, :get, "/processes", token: bearer(daemon)).body)
     assert_equal({ "processes" => [], "orphans" => [], "unreachable" => [] }, document)
   end

@@ -33,7 +33,7 @@ module Rho
           # a real intent, but an absent one is a mistake that would clear
           # somebody's half-written input silently.
           unless args.key?("text") && !args["text"].nil?
-            return Rho::Runner::Result.error('text is required (send "" to clear the field)')
+            return Rho::Env::Result.error('text is required (send "" to clear the field)')
           end
 
           ref = args["ref"]

@@ -153,10 +153,8 @@ class DefaultRunnerExtensionTest < Minitest::Test
     assert_equal "0199-h", store.find("al-4").runner
   end
 
-  def test_only_member_modes_ship_default_selection
-    assert_includes Rho::Extensions.defaults_for("full"), Rho::Extensions::DefaultRunner
-    assert_includes Rho::Extensions.defaults_for("agent"), Rho::Extensions::DefaultRunner
-    refute_includes Rho::Extensions.defaults_for("runner"), Rho::Extensions::DefaultRunner
+  def test_default_selection_is_an_application_extension
+    assert_includes Rho::Extensions::DEFAULT_EXTENSIONS, Rho::Extensions::DefaultRunner
     assert_equal "rho.default_runner", Rho::Extensions::DefaultRunner::NAME
   end
 end

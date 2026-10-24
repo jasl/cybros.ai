@@ -44,7 +44,7 @@ class PostLoginRefreshTest < Minitest::Test
     assert_same original, Rho::Mcp.connections.fetch("other")
     assert_equal 0, unrelated.closes
     assert_includes cli.out.string, "daemon refreshed fxo: 2 tools announced"
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
       assert_equal "after login", Rho::Mcp.call("fxo", "echo", { "text" => "after login" }).content
     end
   end

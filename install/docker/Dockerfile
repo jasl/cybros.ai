@@ -30,9 +30,8 @@
 # refuses a stale copy). The base tag is the one ARG, checked against the
 # manifest's `toolchains.base` at the first step.
 #
-# Runs RHO_MODE=runner by default (`server` is the CMD; the environment selects the mode); `-e RHO_MODE=full`
-# makes the same image the full-mode deployment — an image is not a mode.
-# No EXPOSE: the runner dials out to Nexus and is never dialled into.
+# Runs the complete rho application (`server` is the CMD).
+# Compose owns published ports; bare image launches select their bind explicitly.
 # tini is PID 1 (the process-group rule): TERM reaches rho
 # alone, rho stops the groups it owns, tini reaps the orphans.
 
@@ -117,13 +116,13 @@ WORKDIR /home/runner
 FROM base AS rho
 ARG TARGETARCH
 LABEL org.opencontainers.image.source="https://github.com/jasl/cybros.ai" \
-      org.opencontainers.image.description="rho: the Cybros agent, runner mode by default (RHO_MODE=full for the agent half)"
+      org.opencontainers.image.description="rho: the Cybros agent with a Local execution environment"
 
 # The packaged trees and the installer, as the checkout `--from-checkout` reads
 # them (the copy excludes .git, tmp, log, vendor/bundle itself).
 COPY --chown=1000:1000 sdks/ruby /rho/src/sdks/ruby
 COPY --chown=1000:1000 cmctl /rho/src/cmctl
-COPY --chown=1000:1000 agents/rho/rho-runner /rho/src/agents/rho/rho-runner
+COPY --chown=1000:1000 agents/rho/rho-env /rho/src/agents/rho/rho-env
 COPY --chown=1000:1000 agents/rho/rho-browser /rho/src/agents/rho/rho-browser
 COPY --chown=1000:1000 agents/rho/rho-mcp /rho/src/agents/rho/rho-mcp
 COPY --chown=1000:1000 agents/rho/rho-web-tools /rho/src/agents/rho/rho-web-tools
@@ -137,9 +136,8 @@ COPY --chown=1000:1000 agents/rho/rho /rho/src/agents/rho/rho
 COPY --chown=1000:1000 install /rho/src/install
 
 USER 1000:1000
-# RHO_HOME on a volume; the bootsnap cache on the image layer (the volume starts empty, so a home-rooted cache would pay the cold boot on every fresh volume; the image's paths never move); runner mode.
-ENV RHO_MODE=runner \
-    RHO_CONTAINER=1 \
+# RHO_HOME on a volume; the bootsnap cache on the image layer (the volume starts empty, so a home-rooted cache would pay the cold boot on every fresh volume; the image's paths never move).
+ENV RHO_CONTAINER=1 \
     RHO_HOME=/var/lib/rho \
     RHO_PREFIX=/opt/rho \
     RHO_BOOTSNAP_CACHE_DIR=/opt/rho/cache/bootsnap

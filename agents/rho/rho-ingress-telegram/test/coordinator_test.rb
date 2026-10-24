@@ -50,7 +50,7 @@ class TelegramCoordinatorTest < Minitest::Test
     @events, @clients = [], []
     @store_a, @store_b = TelegramStateSupport::Store.new, TelegramStateSupport::Store.new
     @bridge = TelegramRuntimeSupport::Bridge.new
-    config = Rho::Config.from_hash({ "mode" => "agent", "plugins" => { Rho::IngressTelegram::NAME => {
+    config = Rho::Config.from_hash({ "plugins" => { Rho::IngressTelegram::NAME => {
       "enabled" => true, "configuration" => {
         "connections" => { CONNECTION => { "token" => "synthetic-coordinator-token" } },
         "bots" => { BOT => { "enabled" => true, "connection_public_id" => CONNECTION, "target" => { "chat_id" => "1" }, "owner_id" => "1" } },
@@ -62,7 +62,7 @@ class TelegramCoordinatorTest < Minitest::Test
     @host = Rho::Extensions::Host.new(home: home, config: Rho::Config::Current.new(config), log: logger,
       clock: -> { Time.now }, processes: nil, serving_tools: true,
       member_plane: ->(**) { raise "Telegram state must use the captured connection" })
-    result = Rho::Runner::Extensions::Loader.call(gems: ["rho/ingress-telegram"], api_class: Rho::Extensions::Api,
+    result = Rho::Env::Extensions::Loader.call(gems: ["rho/ingress-telegram"], api_class: Rho::Extensions::Api,
         api_options: { host: @host })
       assert_predicate result, :ok?, result.failures.inspect
     @api = result.committed.fetch(0)

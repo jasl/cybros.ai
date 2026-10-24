@@ -151,7 +151,6 @@ module ModelRequests
     # (codex-rs openai_models.rs service_tier_for_request sends only a
     # model-supported, non-default tier).
     SERVICE_TIER_REFUSAL = :unsupported_service_tier
-    SERVICE_TIER_WIRE_KEY = :service_tier
     # The tier codex omits from the wire: the provider's own default.
     DEFAULT_SERVICE_TIER = "default".freeze
 

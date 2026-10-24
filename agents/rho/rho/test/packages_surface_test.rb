@@ -42,7 +42,7 @@ class PackagesSurfaceTest < Minitest::Test
   def test_factory_owns_its_home_without_global_mutation_and_satisfies_tool_contract
     selected = home
     klass = Rho::Extensions::Packages::Manage.for_home(selected)
-    Rho::Runner::Extensions::Tool.validate(klass, extension: "rho.packages")
+    Rho::Env::Extensions::Tool.validate(klass, extension: "rho.packages")
     tool = klass.new(env: Env.new(root: "/tmp"))
     assert_same selected, tool.instance_variable_get(:@core).home
     assert_equal 120_000, klass::TIMEOUT_MS

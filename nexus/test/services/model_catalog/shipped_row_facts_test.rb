@@ -268,7 +268,9 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
     end
     assert_equal %w[
       deepseek/deepseek-flash deepseek/deepseek-v4-pro
-      moonshot/kimi-k2.7-code moonshot/kimi-k2.7-code-highspeed moonshot/kimi-k3
+      kimi_code/k3 kimi_code/k3-256k kimi_code/k3.1-pro kimi_code/k3.1-pro-highspeed
+      moonshot/kimi-k3 moonshot/kimi-k3.1-pro moonshot/kimi-k3.1-pro-highspeed
+      moonshot_global/kimi-k3 moonshot_global/kimi-k3.1-pro moonshot_global/kimi-k3.1-pro-highspeed
       openrouter/deepseek/deepseek-v4-pro-0813
       openrouter/deepseek/deepseek-v4.1-flash openrouter/moonshotai/kimi-k3
     ], required.keys.sort

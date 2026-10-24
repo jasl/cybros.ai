@@ -328,11 +328,6 @@ module Rho
       end
 
       def claims(plan)
-        if @config.mode == "runner"
-          return { registration_identifier: plan.identity&.runner_registration_identifier || "#{Rho::STANDALONE_REGISTRATION_IDENTIFIER}.#{@home.instance_id}",
-            runner_display_name: @display_name, executor_kind: "runner" }
-        end
-
         { agent_identifier: plan.identity&.agent_identifier || "#{Rho::AGENT_IDENTIFIER}.#{@home.instance_id}",
           agent_display_name: @display_name, executor_display_name: @display_name }
       end

@@ -2,12 +2,12 @@
 # root so the packaged gem trees and the installer arrive as `--from-checkout`
 # reads them): only those are sent; everything else in the monorepo —
 # nexus and its node_modules, .git, tmp, coverage — stays out. The evals
-# leg (e2e/evals/docker/Dockerfile) builds from the same root. `nexus/`
+# leg (e2e/products/evals/docker/Dockerfile) builds from the same root. `nexus/`
 # has its own Dockerfile with `nexus/` as its context, which this file
 # never sees.
 *
 !sdks/ruby
-!agents/rho/rho-runner
+!agents/rho/rho-env
 !agents/rho/rho-browser
 !agents/rho/rho-mcp
 !agents/rho/rho-web-tools
@@ -22,7 +22,7 @@
 !cmctl
 # The evals leg's one extra file: the harbor cell's launcher (ACP design
 # r2 §5.3), COPYed into the derived image's libexec.
-!e2e/evals/docker/rho-acp-launch
+!e2e/products/evals/docker/rho-acp-launch
 # Local dependencies, package output, caches and reports stay out even
 # when their parent source tree is included above.
 **/.git

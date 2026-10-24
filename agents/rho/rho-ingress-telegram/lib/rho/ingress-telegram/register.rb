@@ -3,9 +3,6 @@ module Rho
     NAME = "rho.ingress_telegram".freeze
 
     def self.register(api)
-      if api.host.config.mode == "runner"
-        raise Rho::ConfigurationError, "rho-ingress-telegram needs mode full or agent"
-      end
       settings = Settings.bindings(api.configuration)
       connections = Settings.connections(api.configuration)
       api.describe_status do

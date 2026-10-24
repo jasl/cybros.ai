@@ -144,7 +144,7 @@ class SettingsApplicationTest < Minitest::Test
 
     def seed(document)
       home = Rho::Home.resolve(base_url: "https://nexus.example", root: @root).prepare
-      home.write_settings({ "settings_version" => 1, "plugins" => {} }.merge(document))
+      home.write_settings({ "settings_version" => 2, "plugins" => {} }.merge(document))
     end
 
     def extension_events(daemon)

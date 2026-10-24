@@ -82,7 +82,7 @@ module Rho
       end
 
       Timeout.timeout(operation == "check" ? 130 : 10) do
-        child = Runner::Subprocess.start({ "CYBROS_UPDATER_SOCKET" => @socket }, RbConfig.ruby, @helper, "request")
+        child = Env::Subprocess.start({ "CYBROS_UPDATER_SOCKET" => @socket }, RbConfig.ruby, @helper, "request")
         begin
           child.stdin.write(bytes)
           child.stdin.close

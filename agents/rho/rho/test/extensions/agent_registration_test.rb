@@ -84,16 +84,11 @@ class AgentRegistrationTest < Minitest::Test
     assert_empty loaded.agents
     assert_equal ["registration failed"], loaded.failures.map(&:message)
 
-    assert_raises(Rho::Runner::Extensions::RegistrationError) do
+    assert_raises(Rho::Env::Extensions::RegistrationError) do
       Rho::Extensions.load(host: RhoTest.host, extensions: [extension("rho.first"), extension("rho.second")])
     end
   end
 
-  def test_runner_mode_does_not_register_agents
-    host = RhoTest.host.with(config: Rho::Config.from_hash({ "mode" => "runner" }))
-    loaded = Rho::Extensions.load(host: host, extensions: [extension("rho.shared")])
-    assert_empty loaded.agents
-  end
 
   def test_preset_file_import_preserves_templates_without_shadowing_extension_definitions
     api = NexusDoubles::FakeAgentApi.new(user_public_id: IDENTITY.user_public_id)

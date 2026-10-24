@@ -23,12 +23,6 @@ class SetupCommandTest < Minitest::Test
     refute_path_exists File.join(@root, "settings.json")
   end
 
-  def test_runner_setup_is_explicitly_inapplicable
-    File.write(File.join(@root, "settings.json"), JSON.generate("mode" => "runner"))
-    output, status = run_command("setup")
-    refute status.success?
-    assert_includes output, "runner-only installations use rho connect"
-  end
 
   def test_telegram_target_setup_requires_an_interactive_terminal
     output, status = run_command("setup", "telegram", "--finish")
@@ -40,7 +34,7 @@ class SetupCommandTest < Minitest::Test
   private
 
     def run_command(*args)
-      Open3.capture2e({ "RHO_HOME" => @root, "RHO_NEXUS_URL" => nil, "RHO_MODE" => nil },
+      Open3.capture2e({ "RHO_HOME" => @root, "RHO_NEXUS_URL" => nil },
         Gem.ruby, File.expand_path("../../exe/rho", __dir__), *args)
     end
 end

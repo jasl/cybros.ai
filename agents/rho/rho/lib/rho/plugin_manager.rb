@@ -29,7 +29,7 @@ module Rho
       end
 
       def self.document(home:, config:, loaded:)
-        saved = Config.load(home.settings_path, flags: { mode: config.mode }, home: home)
+        saved = Config.load(home.settings_path, home: home)
         runtime_failures = loaded.failures.map do |failure|
           descriptor = config.catalog.descriptors.values.find do |candidate|
             candidate.source.fetch("kind") != "builtin" && runtime_source(candidate) == failure.source
@@ -57,7 +57,6 @@ module Rho
         readiness = readiness(api)
         issues.concat(readiness.fetch(:issues))
         configuration = if descriptor
-          issues << "Unavailable in #{saved.mode} mode" unless descriptor.modes.include?(saved.mode)
           required = saved.plugin_resolution(id).diagnostics.select { |item| item.reason == "required" }
           issues << "Required configuration fields are missing" unless required.empty?
           descriptor.schema.view(saved.plugin_resolution(id)).to_h

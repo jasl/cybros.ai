@@ -273,7 +273,7 @@ class PluginConfigurationTest < Minitest::Test
 
   def test_sparse_current_settings_boot_and_save_without_inventing_plugin_overrides
     home = Rho::Home.resolve(base_url: "https://nexus.example", root: @root).prepare
-    home.write_settings("settings_version" => 1, "default_model" => "initial")
+    home.write_settings("settings_version" => 2, "default_model" => "initial")
     daemon = boot
     assert_equal "initial", daemon.context.config.default_model
     refute saved(daemon).key?("plugins"), "reading the current format does not write defaults"
@@ -324,19 +324,6 @@ class PluginConfigurationTest < Minitest::Test
     assert_equal entry.merge("enabled" => false), saved(daemon).dig("plugins", "test.missing_package")
   end
 
-  def test_launch_mode_leaves_unavailable_plugin_migration_inputs_untouched
-    path, marker = plugin(version: 2, migrations: 'MIGRATIONS = { 2 => ->(_old) { { "count" => 7 } } }')
-    descriptor_path = path.sub(/\.rb\z/, ".json")
-    descriptor = JSON.parse(File.read(descriptor_path)).merge("modes" => ["agent", "full"])
-    File.write(descriptor_path, JSON.generate(descriptor))
-    original = entry(path, enabled: true, configuration: { "old" => true })
-    seed(ID => original)
-    daemon = boot(flags: { mode: "runner" })
-    assert_equal original, saved(daemon).dig("plugins", ID)
-    refute File.exist?(marker)
-    assert_includes row(Rho::Core.new(home: daemon.home)).dig("readiness", "issues"), "Unavailable in runner mode"
-  end
-
   private
 
     def plugin(id: ID, version: 1, migrations: nil, requires: [])
@@ -370,7 +357,7 @@ class PluginConfigurationTest < Minitest::Test
 
     def seed(plugins)
       home = Rho::Home.resolve(base_url: "https://nexus.example", root: @root).prepare
-      home.write_settings("settings_version" => 1, "plugins" => plugins)
+      home.write_settings("settings_version" => 2, "plugins" => plugins)
       home
     end
 

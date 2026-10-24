@@ -98,7 +98,7 @@ module Rho
 
         runner = ctx.runner_selection(body)
         context = body.fetch("executor_contexts", {})[runner]
-        root = context&.dig(Rho::Runner::Environment::CONTEXT_KEY, "root")
+        root = context&.dig(Rho::Env::Environment::CONTEXT_KEY, "root")
         return Rho::Daemon::Refusal.malformed("until requires a concrete Runner and captured environment") unless runner && root
 
         directory = body["working_directory"].to_s
@@ -141,7 +141,7 @@ module Rho
       # or another's: the settings' bash timeout under the tool's ceiling.
       # (A runner's own default is for the model's calls.)
       def self.clamp(ctx)
-        [ctx.config.plugin_configuration("rho.coding").fetch("bash_timeout_seconds"), Rho::Runner::Tools::Bash::MAX_TIMEOUT_SECONDS].min
+        [ctx.config.plugin_configuration("rho.coding").fetch("bash_timeout_seconds"), Rho::Env::Tools::Bash::MAX_TIMEOUT_SECONDS].min
       end
     end
   end

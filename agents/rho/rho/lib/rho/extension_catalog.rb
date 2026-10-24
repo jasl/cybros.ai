@@ -9,15 +9,13 @@ module Rho
       CATEGORIES = %w[interface channels agents tools conversation system other].freeze
 
       Descriptor = Data.define(:id, :name, :description, :version, :schema, :default_enabled,
-        :modes, :requires, :restart_only, :category, :source, :directory, :migration_file) do
+        :requires, :restart_only, :category, :source, :directory, :migration_file) do
         def self.from_h(row, source:, directory:)
           id = Rho::Packages.package_name(row.fetch("id"))
           description_schema = { "type" => "object", "properties" => {
             "configuration_version" => { "type" => "integer", "minimum" => 1 },
             "default_enabled" => { "type" => "boolean" },
             "restart_only" => { "type" => "boolean" },
-            "modes" => { "type" => "array", "minItems" => 1,
-              "items" => { "enum" => %w[full agent runner] } },
             "requires" => { "type" => "array", "items" => { "type" => "string" } },
             "category" => { "enum" => CATEGORIES },
           } }
@@ -30,7 +28,6 @@ module Rho
             description: row.fetch("description", "").to_s, version: version,
             schema: Configuration::Schema.new(row.fetch("configuration_schema", { "type" => "object", "properties" => {} })),
             default_enabled: row.fetch("default_enabled", false) == true,
-            modes: row.fetch("modes", %w[full agent runner]).map(&:to_s),
             requires: row.fetch("requires", []).map(&:to_s),
             restart_only: row.fetch("restart_only", false) == true,
             category: row.fetch("category", "other").to_s,

@@ -1,4 +1,4 @@
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module Extensions
@@ -47,7 +47,7 @@ module Rho
         home = api.host&.home
         api.on(:tool_call) do |name, arguments|
           reason = refusal(name, arguments, home)
-          reason && Rho::Runner::Extensions::Hooks::Veto.new(extension: NAME, reason: reason)
+          reason && Rho::Env::Extensions::Hooks::Veto.new(extension: NAME, reason: reason)
         end
       end
 
@@ -78,7 +78,7 @@ module Rho
       def self.resolve(path)
         return Rho.spelled(path) if absolute?(path)
 
-        env = Rho::Runner::ExecutionContext.current&.tool_env
+        env = Rho::Env::ExecutionContext.current&.tool_env
         env && Rho.spelled(env.resolve(path))
       end
 

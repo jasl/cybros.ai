@@ -107,9 +107,8 @@ module Runs
           new(command).call
         end
 
-        # Settlement already holds the loop, possibly with a node or body
-        # lock below it. Reuse the append transaction without acquiring an
-        # earlier lock again.
+        # The caller owns the loop through its row lock or uncommitted insert.
+        # Reuse the append transaction without acquiring an earlier lock again.
         def call_locked(command)
           new(command).call(lock: false)
         end

@@ -54,9 +54,7 @@ module Rho
 
           private
 
-            # The one SDK request. A daemon with no member plane (runner mode)
-            # follows no host and never reaches here; said as `Unreachable`
-            # rather than a nil a caller would read as "no rows".
+            # Missing member authority is `Unreachable`, never an empty table.
             def call_tool(ctx, runner, tool, input)
               answer = ctx.member_plane do |client, workspace_public_id, about|
                 captured = ctx.execution_contexts(client, tools: [], runner: runner).fetch(runner)

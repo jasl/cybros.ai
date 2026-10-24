@@ -13,7 +13,7 @@ module Rho
 
         output = +""
         stream, writer = IO.pipe
-        child = Rho::Runner::OwnedProcess.spawn(RbConfig.ruby, "-Itest", "-Ilib", "-e", SCRIPT, "--", *tests,
+        child = Rho::Env::OwnedProcess.spawn(RbConfig.ruby, "-Itest", "-Ilib", "-e", SCRIPT, "--", *tests,
           chdir: directory, in: File::NULL, out: writer, err: writer)
         writer.close
         reader = Thread.new do
@@ -31,7 +31,7 @@ module Rho
             timed_out = true
             break
           end
-          sleep Rho::Runner::OwnedProcess::POLL_SECONDS
+          sleep Rho::Env::OwnedProcess::POLL_SECONDS
         end
         # The existing process owner ends descendants on every exit, including
         # a successful test that left a background child holding its output.

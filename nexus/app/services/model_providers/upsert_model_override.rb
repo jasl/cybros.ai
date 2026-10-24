@@ -20,6 +20,7 @@ module ModelProviders
 
       def apply_change(candidate)
         candidate.put_entry(@model_ref, { "op" => "upsert", "model" => @model })
+        RetainCatalog.capture(candidate)
       end
   end
 end

@@ -739,7 +739,11 @@ accepts the same tool, model, ask, step and observation operations from any runt
   optional complete replacement, parsed by the file-base grammar before composing models.
   Subsequent consumers read saved changes without a restart/reload latch. Its bounded
   `model_overrides` mapping has at most 256 exact refs and 2 MiB canonical JSON: whole `upsert`
-  entries or `remove` tombstones. Removing an operation restores file inheritance. No recursive
+  entries or `remove` tombstones. Its `retained_catalog` saves deployment provider/model facts
+  and referenced shared definitions at enablement, model authoring and installation preparation.
+  Current file facts take precedence; saved facts keep models removed from later catalogs usable.
+  Explicit overrides and tombstones apply afterward. Reads and inference never write retention.
+  Removing an operation restores current or retained catalog inheritance. No recursive
   merge, fuzzy family keys, or cross-provider batch.
 - Optional `hidden_models` holds Account-wide exact-ref restrictions separately from definitions.
   Independent `unavailable_models` retains configured models absent from a complete upstream

@@ -99,8 +99,6 @@ module Rho
   module Extensions
     DEFAULT_EXTENSIONS: Array[untyped]
     DEFAULT_GEMS: Array[String]
-    AGENT_MODE_EXCLUDES: Array[untyped]
-    RUNNER_MODE_EXCLUDES: Array[untyped]
 
     class MemberPlane < ::Data
       attr_reader realtime: CybrosAgent::Realtime::Client?
@@ -151,7 +149,7 @@ module Rho
       def claim: (String extension, ^(String, Array[Hash[String, untyped]]) -> untyped handler) -> Registrar
     end
 
-    class Api < Rho::Runner::Extensions::Api
+    class Api < Rho::Env::Extensions::Api
       AUTHS: Array[Symbol]
       DAEMON_EVENTS: Array[Symbol]
 
@@ -159,7 +157,7 @@ module Rho
       attr_reader commands: Array[Command]
       attr_reader flags: Array[Flags]
       attr_reader background_tasks: Array[BackgroundTask]
-      attr_reader daemon_hooks: Array[Rho::Runner::Extensions::Hooks::Registration]
+      attr_reader daemon_hooks: Array[Rho::Env::Extensions::Hooks::Registration]
       attr_reader conversation_servers: Registrar?
       attr_reader webui_root: String?
       attr_reader webui_module: WebuiModule?
@@ -188,7 +186,7 @@ module Rho
       attr_reader auth: Symbol
       attr_reader extension: String
       attr_reader handler: untyped
-      attr_reader owner: Rho::Runner::Extensions::Resources?
+      attr_reader owner: Rho::Env::Extensions::Resources?
     end
 
     # A running extension's browser files, mounted under the page while it runs.
@@ -237,18 +235,18 @@ module Rho
 
     class Loaded < ::Data
       attr_reader registrations: Array[Api]
-      attr_reader registry: Rho::Runner::Extensions::Registry
+      attr_reader registry: Rho::Env::Extensions::Registry
       attr_reader extensions: Array[Extension]
       attr_reader routes: Array[Route]
       attr_reader commands: Array[Command]
       attr_reader flags: Array[Flags]
       attr_reader background_tasks: Array[BackgroundTask]
-      attr_reader lifecycle: Array[Rho::Runner::Extensions::Hooks::Registration]
-      attr_reader daemon_hooks: Array[Rho::Runner::Extensions::Hooks::Registration]
+      attr_reader lifecycle: Array[Rho::Env::Extensions::Hooks::Registration]
+      attr_reader daemon_hooks: Array[Rho::Env::Extensions::Hooks::Registration]
       attr_reader conversation_servers: Registrar?
       attr_reader webui_root: String?
       attr_reader webui_modules: Array[WebuiModule]
-      attr_reader failures: Array[Rho::Runner::Extensions::Loader::Failure]
+      attr_reader failures: Array[Rho::Env::Extensions::Loader::Failure]
       attr_reader agents: Array[Rho::Agents::Definition]
 
       def ok?: () -> bool
@@ -257,15 +255,14 @@ module Rho
     end
 
     def self?.selected_builtins: (config config, ?Array[untyped] extensions) -> Array[untyped]
-    def self?.defaults_for: (untyped mode) -> Array[untyped]
     def self?.webui_root_of: (Array[Api] committed) -> String?
     def self?.registered_agents: (Array[Api] committed) -> Array[Rho::Agents::Definition]
     def self?.sources: (Home home, config config, ?managed: Array[Rho::Packages::Source]) -> Sources
     def self?.load: (
       host: untyped, ?extensions: Array[untyped], ?gems: Array[String], ?paths: Array[String], ?log: untyped, ?reuse: Array[Api], ?managed: Array[Rho::Packages::Source]
     ) -> Loaded
-    def self?.assemble: (Array[Api] registrations, ?failures: Array[Rho::Runner::Extensions::Loader::Failure],
-      ?registry: Rho::Runner::Extensions::Registry?) -> Loaded
+    def self?.assemble: (Array[Api] registrations, ?failures: Array[Rho::Env::Extensions::Loader::Failure],
+      ?registry: Rho::Env::Extensions::Registry?) -> Loaded
 
     # AGENTS.md and CLAUDE.md, then the home's AGENTS.md, as an environment
     # describer; the one port sentence while the lead's anchor has a live
@@ -318,14 +315,14 @@ module Rho
       # The daemon's side of the file-system port: the runner gem's duck
       # over `Net::HTTP` to the surface's loopback route.
       class FsPort
-        include Rho::Runner::FsPort
+        include Rho::Env::FsPort
 
         OPEN_TIMEOUT_SECONDS: Integer
         READ_TIMEOUT_SECONDS: Integer
         WRITE_TIMEOUT_SECONDS: Integer
         READ_ROUTE: String
         WRITE_ROUTE: String
-        CODES: Hash[String, singleton(Rho::Runner::FsPort::Error)]
+        CODES: Hash[String, singleton(Rho::Env::FsPort::Error)]
         BROKEN_STATUSES: Array[Integer]
         attr_reader client: String
         attr_reader url: String

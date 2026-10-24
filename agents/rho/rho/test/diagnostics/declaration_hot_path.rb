@@ -50,7 +50,7 @@ module DeclarationHotPathProbe
       super
     end
   end
-  Rho::Runner::Extensions::Registry::Entry.prepend(AuditEntry) if ENV["AUDIT_COUNTS"] == "1"
+  Rho::Env::Extensions::Registry::Entry.prepend(AuditEntry) if ENV["AUDIT_COUNTS"] == "1"
   module AuditJSON
     def generate(*args, **options)
       AuditCounts.add(:json_generate)
@@ -94,7 +94,7 @@ module DeclarationHotPathProbe
   CONFIG = Rho::Config.from_hash({})
   HOST = Rho::Extensions::Host.new(home: HOME_OBJECT, log: nil, clock: -> { Time.now }, config: CONFIG,
     processes: nil, checkpoints: -> { raise "probe never opens a checkpoint store" })
-  PROFILE = Rho::Runner::Tools::Read::EFFECT_PROFILE
+  PROFILE = Rho::Env::Tools::Read::EFFECT_PROFILE
   SCHEMA = { "type" => "object", "properties" => {
     "query" => { "type" => "string", "description" => "The text to find in the selected project." },
     "paths" => { "type" => "array", "items" => { "type" => "string" } },
@@ -143,7 +143,7 @@ module DeclarationHotPathProbe
   end
 
   def projected_names(registry, servers)
-    ((registry.serving(:agent).names + servers.names_for("anchor")).uniq - Rho::RunDeclaration.undeclared - [Rho::Runner::Tools::Skill::NAME]).sort
+    ((registry.serving(:agent).names + servers.names_for("anchor")).uniq - Rho::RunDeclaration.undeclared - [Rho::Env::Tools::Skill::NAME]).sort
   end
 
   def statistics(label, warmups: 5, iterations: 100)

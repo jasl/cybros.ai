@@ -57,21 +57,18 @@ module Executors
       if tools && environment.nil?
         routes = Array(tools).filter_map { |entry| entry["route"] }
         mcp_routes = routes.select { |entry| entry.fetch("kind") == "mcp" }
-        connections = run.account.mcp_connections.where(public_id: mcp_routes.map { |entry| entry.fetch("connection_public_id") })
-          .includes(:owner).index_by(&:public_id)
+        runner_routes = routes.select { |entry| entry.fetch("kind") == "runner" }
+        targets = runner_routes.map { |entry| entry.fetch("runner_executor_public_id") }.uniq
+        availability = Tools::Routes.new(principal: run.answering_user, runner_ids: targets,
+          connection_ids: mcp_routes.map { |entry| entry.fetch("connection_public_id") }.uniq)
         mcp_routes.each do |entry|
-          connection = connections[entry.fetch("connection_public_id")]
-          return :mcp_connection_unavailable unless
-            connection&.tool_available?(agent: run.answering_user, name: entry.fetch("tool_name"))
+          return :mcp_connection_unavailable if availability.mcp_refusal(entry)
         end
-        targets = routes.select { |entry| entry.fetch("kind") == "runner" }.map { |entry| entry.fetch("runner_executor_public_id") }.uniq
-        executors = targets.map { |id| runner(run, id) }
-        return :runner_not_eligible unless executors.all? { |executor| executor&.eligible_for_role?(:runner, run.answering_user) }
-        Array(tools).each do |entry|
-          next unless entry.dig("route", "kind") == "runner"
-          target = executors.find { |executor| executor.public_id == entry.fetch("route").fetch("runner_executor_public_id") }
-          return :tool_not_served unless target.served?(entry.fetch("route").fetch("tool_name"), role: :runner)
+        return :runner_not_eligible unless targets.all? { |id| availability.runner_eligible?(id) }
+        runner_routes.each do |entry|
+          return :tool_not_served unless availability.runner_serves?(entry)
         end
+        executors = targets.map { |id| availability.executors.fetch(id) }
         environment = snapshot(run, tools, executors)
       elsif environment.nil? && (payload["type"] == Tasks::ModelTask.sti_name || route)
         environment = snapshot(run, tools, [])

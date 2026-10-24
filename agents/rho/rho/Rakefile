@@ -14,7 +14,7 @@ Minitest::TestTask.create(:smoke) do |task|
     test/control_server_body_test.rb
     test/core_test.rb
     test/core_controls_test.rb
-    test/credentials_test.rb
+    test/credential_store_integration_test.rb
     test/daemon/executor_plane_test.rb
     test/daemon/lineage_test.rb
     test/daemon/run_inputs_test.rb
@@ -39,12 +39,12 @@ RuboCop::RakeTask.new
 # are checked alongside rho's own: a drift in cybros_agent's surface should fail
 # here rather than at runtime in a daemon.
 SDK_SIG = File.expand_path("../../../sdks/ruby/sig", __dir__)
-# rho-runner is a path dependency in this monorepo for the same reason the
+# rho-env is a path dependency in this monorepo for the same reason the
 # SDK is, and rho's own signatures now REFERENCE its types — the daemon's
 # extension handle subclasses the runner's. Without it here, a drift in
 # the runner's public surface reads as "unknown type" in rho rather than
 # as the incompatibility it is.
-RUNNER_SIG = File.expand_path("../rho-runner/sig", __dir__)
+RUNNER_SIG = File.expand_path("../rho-env/sig", __dir__)
 
 namespace :rbs do
   desc "Validate the packaged RBS surface"

@@ -17,7 +17,7 @@ module Nexus
         # announced under `documents` is dispatched to that announcer as this same
         # row; every other name runs in-process, where the kernel's own `skills/` rows
         # answer it or the result is the error `skill_unknown`. Never backtick `skill`
-        # in any kernel text: rho-runner announces a tool of that name (the cross-tree
+        # in any kernel text: rho-env announces a tool of that name (the cross-tree
         # pin).
         Tool.new(
           canonical: "nexus.skill.load",

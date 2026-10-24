@@ -1,5 +1,5 @@
 require "rho"
-require "rho/runner"
+require "rho/env"
 require "json"
 require "time"
 require "digest"
@@ -57,7 +57,7 @@ class Session
   attr_reader :store, :jobs, :conversation
 
   def initialize(member_plane:, source_conversation: nil, room: nil, work_id: nil)
-    @context = Rho::Runner::ExecutionContext.current
+    @context = Rho::Env::ExecutionContext.current
     raise Error, "household coordination requires a conversation" unless @context&.conversation_public_id
 
     @context.raise_if_cancelled!
@@ -372,9 +372,9 @@ module HouseholdLedger
           File.write(path, JSON.pretty_generate(value))
           files << path
         end
-        Rho::Runner::Result.new(content: JSON.generate(value), files: files, files_required: !files.empty?)
+        Rho::Env::Result.new(content: JSON.generate(value), files: files, files_required: !files.empty?)
       rescue Error, CybrosAgent::Error => error
-        Rho::Runner::Result.error(error.message)
+        Rho::Env::Result.error(error.message)
       end
     end
     api.register_tool(klass, serves: :agent)

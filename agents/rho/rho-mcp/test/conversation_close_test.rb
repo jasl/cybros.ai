@@ -29,7 +29,7 @@ class ConversationCloseTest < Minitest::Test
     tool = set.classes.fetch(0)
     transports.fetch(0).die!(status: 1)
     worker = Thread.new do
-      Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new(task_key: "echo")) do
+      Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new(task_key: "echo")) do
         tool.new(env: nil).call({ "text" => "late answer" })
       end
     rescue StandardError => error

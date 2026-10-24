@@ -46,7 +46,7 @@ module Rho
           # SDK failures must reach TaskRun's failed outcome, which closes any
           # accepted question whose response was lost before observation.
           rescue Error => error
-            Rho::Runner::Result.error(error.message)
+            Rho::Env::Result.error(error.message)
           end
         end
       end

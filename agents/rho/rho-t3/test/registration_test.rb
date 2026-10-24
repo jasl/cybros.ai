@@ -65,26 +65,22 @@ class RegistrationTest < Minitest::Test
   end
 
   def test_an_unconfigured_extension_registers_no_tools
-    %w[full agent].each do |mode|
-      api = registration({}, mode: mode)
+    api = registration({})
 
-      Rho::T3.register(api)
+    Rho::T3.register(api)
 
-      assert_empty api.tools
-      assert_empty Rho::Runner::Extensions::Registry.new.commit(api).announcement
-    end
+    assert_empty api.tools
+    assert_empty Rho::Env::Extensions::Registry.new.commit(api).announcement
   end
 
   def test_configured_tools_are_announced_on_the_agent_address_without_connecting
-    %w[full agent].each do |mode|
-      api = registration(configured, mode: mode)
+    api = registration(configured)
 
-      Rho::T3.register(api)
+    Rho::T3.register(api)
 
-      registry = Rho::Runner::Extensions::Registry.new.commit(api)
-      assert_equal %w[coding_work delegate_coding], registry.serving(:agent).names.sort
-      assert_empty registry.serving(:runner).names
-    end
+    registry = Rho::Env::Extensions::Registry.new.commit(api)
+    assert_equal %w[coding_work delegate_coding], registry.serving(:agent).names.sort
+    assert_empty registry.serving(:runner).names
   end
 
   def test_partial_or_missing_credential_configuration_exposes_setup_without_tools
@@ -111,11 +107,12 @@ class RegistrationTest < Minitest::Test
   end
 
   def test_configured_delegation_still_requires_an_agent_address
-    api = registration(configured, mode: "runner")
+    api = registration(configured)
+    api.define_singleton_method(:serves?) { |_role| false }
 
     error = assert_raises(Rho::T3::Error) { Rho::T3.register(api) }
 
-    assert_equal "T3 delegation requires rho agent or full mode", error.message
+    assert_equal "T3 delegation requires an application Agent service", error.message
     assert_empty api.tools
   end
 
@@ -314,16 +311,14 @@ class RegistrationTest < Minitest::Test
     end
   end
 
-  def test_full_and_agent_daemons_register_the_browser_module_shipped_in_the_gem
+  def test_the_application_registers_the_browser_module_shipped_in_the_gem
     root = File.realpath(File.expand_path("../webui", __dir__))
-    %w[full agent].each do |mode|
-      api = registration({}, mode: mode)
-      Rho::T3.register(api)
+    api = registration({})
+    Rho::T3.register(api)
 
-      assert_equal Rho::T3::NAME, api.webui_module.extension
-      assert_equal root, api.webui_module.root
-      assert_match %r{\A/modules/rho\.t3/\h{12}/index\.js\z}, api.webui_module.entry
-    end
+    assert_equal Rho::T3::NAME, api.webui_module.extension
+    assert_equal root, api.webui_module.root
+    assert_match %r{\A/modules/rho\.t3/\h{12}/index\.js\z}, api.webui_module.entry
   end
 
   def test_the_gem_ships_every_browser_module_file
@@ -341,10 +336,10 @@ class RegistrationTest < Minitest::Test
       { "url" => "http://127.0.0.1:1", "project_id" => "fixture-project", "token" => "fixture-registration-bearer" }
     end
 
-    def registration(value, mode: "full")
+    def registration(value)
       home = Rho::Home.new(root: @root, base_url: "http://localhost:7777", work_root: File.join(@root, "work"))
       host = Rho::Extensions::Host.new(home: home, log: nil, clock: -> { Time.now }, processes: nil,
-        config: Rho::Config.from_hash({ "mode" => mode,
+        config: Rho::Config.from_hash({
           "plugins" => { Rho::T3::NAME => { "enabled" => true, "configuration_version" => 1, "configuration" => value } } }),
         member_plane: ->(**) { flunk "registration must not connect" })
       Rho::Extensions::Api.new(extension_name: Rho::T3::NAME, source: "gem:rho/t3", host: host)

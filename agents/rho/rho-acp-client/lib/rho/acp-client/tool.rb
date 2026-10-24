@@ -1,4 +1,4 @@
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module AcpClient
@@ -64,7 +64,7 @@ module Rho
           const_set(:NAME, Tool::NAME)
           const_set(:DESCRIPTION, description)
           const_set(:SCHEMA, schema)
-          const_set(:EFFECT_PROFILE, Rho::Runner::Tools::Bash::EFFECT_PROFILE)
+          const_set(:EFFECT_PROFILE, Rho::Env::Tools::Bash::EFFECT_PROFILE)
           const_set(:TIMEOUT_MS, timeout_ms)
           const_set(:INTERNAL_CLAMP, true)
           define_singleton_method(:name) { "Rho::AcpClient::Tools[#{Tool::NAME}]" }

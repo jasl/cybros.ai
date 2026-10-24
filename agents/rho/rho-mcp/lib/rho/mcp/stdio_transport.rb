@@ -1,5 +1,5 @@
 require "mcp"
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module Mcp
@@ -96,7 +96,7 @@ module Rho
         stdout_r, stdout_w = IO.pipe
         stderr_r, stderr_w = IO.pipe
         begin
-          @process = Rho::Runner::OwnedProcess.spawn(
+          @process = Rho::Env::OwnedProcess.spawn(
             @env || {}, @command, *@args,
             chdir: @cwd, in: stdin_r, out: stdout_w, err: stderr_w, unsetenv_others: true
           )

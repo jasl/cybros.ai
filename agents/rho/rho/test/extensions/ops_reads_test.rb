@@ -335,7 +335,7 @@ class OpsReadsTest < Minitest::Test
 
   def test_the_prompt_preview_route_falls_back_to_the_settings_model
     api = NexusDoubles::FakeAgentApi.new(context_estimate: ESTIMATE, principals: [{ "public_id" => "narrator-id", "handle" => "narrator", "kind" => "agent", "display_name" => "Narrator" }])
-    daemon = member_ready(boot(config: agent_mode("default_model" => "dev/mock-text")), api)
+    daemon = member_ready(boot(config: application_config("default_model" => "dev/mock-text")), api)
 
     response = request(daemon, :post, "/conversations/prompt_preview", token: bearer(daemon),
       body: { "public_id" => "c-1", "prompt" => "x" })
@@ -350,7 +350,7 @@ class OpsReadsTest < Minitest::Test
   # and no settings model, the addressed turn's off the run projection.
   def test_the_prompt_preview_route_takes_the_model_say_would_send_on
     api = NexusDoubles::FakeAgentApi.new(context_estimate: ESTIMATE, principals: [{ public_id: "narrator-id", handle: "narrator", kind: "agent", display_name: "Narrator" }])
-    daemon = member_ready(boot(config: agent_mode("default_model" => "dev/mock-text")), api)
+    daemon = member_ready(boot(config: application_config("default_model" => "dev/mock-text")), api)
     store.remember(Rho::Host::Conversation.new(public_id: "c-1"), workspace: "ws-1", turn: "t-1", run_public_id: "al-1",
       model: "openrouter/opened-with")
 
@@ -441,7 +441,7 @@ class OpsReadsTest < Minitest::Test
     refute skills.key?("conversation"), "the workspace rung is the room's own door: no conversation names it"
     assert api.requests.any? { |path, _, _| path == "/agent_api/v1/memory_collections/collection-workspace/documents" },
       "the workspace door, not a conversation's"
-    assert_equal [], skills.fetch("project"), "agent mode loads no runner tool: its runner address announces no document"
+    assert_equal [], skills.fetch("project"), "this fixture announces no project document"
 
     response = request(daemon, :get, "/skills/show?scope=workspace&name=commit-style", token: bearer(daemon))
     assert_equal "200", response.code, response.body
@@ -525,8 +525,8 @@ class OpsReadsTest < Minitest::Test
     FileUtils.mkdir_p(dir)
     File.write(File.join(dir, "SKILL.md"), "---\nname: deploy-notes\ndescription: How this project is deployed.\n---\n# Deploy\n")
     api = NexusDoubles::FakeAgentApi.new
-    daemon = member_ready(boot(extensions: [Rho::Extensions::Ops, Rho::Runner::Extensions::Coding],
-      config: Rho::Config.from_hash({ "mode" => "full", "tools_root" => root })), api)
+    daemon = member_ready(boot(extensions: [Rho::Extensions::Ops, Rho::Env::Extensions::Coding],
+      config: Rho::Config.from_hash({ "tools_root" => root })), api)
 
     response = request(daemon, :get, "/skills", token: bearer(daemon))
     assert_equal "200", response.code, response.body
@@ -534,7 +534,7 @@ class OpsReadsTest < Minitest::Test
     assert_equal [{ "name" => "deploy-notes", "description" => "How this project is deployed." }], skills.fetch("project")
     assert_equal skills.fetch("project"),
       Rho::RunDeclaration.documents(registry: daemon.context.registry.serving(:runner),
-        environment: Rho::Runner::Environment.local(root: root)),
+        environment: Rho::Env::Environment.local(root: root)),
       "the section is the announcement's own bytes"
   end
 end

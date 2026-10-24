@@ -14,7 +14,7 @@ module RhoAcpClientTest
   # THE SCRIPTED AGENT: the harness's stdlib-only
   # fixture, spawned by path under the scrubbed child environment — no
   # bundle, so `Gem.ruby` alone runs it.
-  AGENT = File.expand_path("../../../../e2e/support/acp_fixture/agent.rb", __dir__)
+  AGENT = File.expand_path("../../../../e2e/products/support/acp_fixture/agent.rb", __dir__)
   # This gem's own bundle for any child a test spawns, all three names:
   # Bundler's `bundle exec` exports `BUNDLE_LOCKFILE` beside
   # `BUNDLE_GEMFILE`, and a child that inherits one while naming another
@@ -42,10 +42,10 @@ module RhoAcpClientTest
     def with_tool_env(conversation: "conv-1", task_key: "r1t0", deadline: nil)
       Dir.mktmpdir("rho-acp-client-test") do |root|
         real = File.realpath(root)
-        env = Rho::Runner::ToolEnv.new(root: real, artifacts_dir: File.join(real, ".artifacts"))
-        context = Rho::Runner::ExecutionContext.new(conversation_public_id: conversation, task_key: task_key,
+        env = Rho::Env::ToolEnv.new(root: real, artifacts_dir: File.join(real, ".artifacts"))
+        context = Rho::Env::ExecutionContext.new(conversation_public_id: conversation, task_key: task_key,
           run_public_id: "loop-1", deadline: deadline)
-        Rho::Runner::ExecutionContext.with(context) { yield(env, real, context) }
+        Rho::Env::ExecutionContext.with(context) { yield(env, real, context) }
       end
     end
 

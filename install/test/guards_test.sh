@@ -18,7 +18,7 @@ pass "INTERACTIVE + NONINTERACTIVE"
 
 assert_exit 1 "an unknown profile aborts" -- /bin/bash "$INSTALLER" --dry-run --profile wide
 assert_contains "$LAST_OUTPUT" "unknown profile 'wide'" "the profile abort names it and the choices"
-assert_contains "$LAST_OUTPUT" "runner full dev" "the profile abort lists the profiles"
+assert_contains "$LAST_OUTPUT" "minimal full dev" "the profile abort lists the profiles"
 pass "unknown profile"
 
 assert_exit 1 "an unknown argument aborts" -- /bin/bash "$INSTALLER" --frobnicate
@@ -46,10 +46,10 @@ assert_contains "$LAST_OUTPUT" "nothing was changed" "dry run says so"
 [ ! -e "$TEST_TMP/prefix" ] || fail "--dry-run created the prefix"
 pass "--dry-run prints the plan and the URLs, changes nothing"
 
-assert_exit 0 "--dry-run runner profile" -- /bin/bash "$INSTALLER" --dry-run --profile runner --from-checkout "$REPO_ROOT"
-assert_not_contains "$LAST_OUTPUT" "jq 1" "the runner profile has no jq"
-assert_not_contains "$LAST_OUTPUT" "uv 0" "the runner profile has no uv"
-assert_contains "$LAST_OUTPUT" "rg 15" "the runner profile has rg"
+assert_exit 0 "--dry-run minimal profile" -- /bin/bash "$INSTALLER" --dry-run --profile minimal --from-checkout "$REPO_ROOT"
+assert_not_contains "$LAST_OUTPUT" "jq 1" "the minimal profile has no jq"
+assert_not_contains "$LAST_OUTPUT" "uv 0" "the minimal profile has no uv"
+assert_contains "$LAST_OUTPUT" "rg 15" "the minimal profile has rg"
 pass "profiles select rows"
 
 assert_exit 1 "--from-checkout on a non-checkout aborts" -- /bin/bash "$INSTALLER" --dry-run --from-checkout "$TEST_TMP"

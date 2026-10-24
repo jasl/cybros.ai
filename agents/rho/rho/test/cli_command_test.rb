@@ -21,7 +21,7 @@ class CliCommandTest < Minitest::Test
   # operates a conversation (`do`, `say`, `stop`, `watch`, the Ops verbs)
   # is rho-dev's, a development gem a home names; a PRODUCT home — this
   # test's, which names nothing — lists none of it. `compact` is rho-dev's
-  # too: the exception rule — a repair verb a runner-mode rho needs stays
+  # too: the exception rule — a repair verb an environment host needs stays
   # core — names nothing today.
   CORE_VERBS = %w[connect disconnect status server version run extensions settings].freeze
   EXTENSION_VERBS = {
@@ -184,7 +184,7 @@ class CliCommandTest < Minitest::Test
     refute_match(/--runner-identifier/, out)
     refute_match(/--runner\b/, out)
     refute_match(/--assignment-scope/, out)
-    refute_match(/--mode/, out, "the mode is a boot fact: `rho server --mode`, never connect's")
+    refute_match(/--mode/, out)
     refute_match(
       /--display-name/, out,
       "the live daemon, not a later connect client, owns its registration display"
@@ -193,9 +193,8 @@ class CliCommandTest < Minitest::Test
     server, server_status = run_rho("help", "server")
     assert_equal 0, server_status
     assert_match(/--display-name/, server)
-    assert_match(/--mode=MODE/, server)
-    assert_match(/full \(agent \+ runner on one machine, the default\)/, server)
-    assert_match(/--workspace=WORKSPACE/, server, "the room knob is a boot fact beside the mode")
+    refute_match(/--mode=MODE/, server)
+    assert_match(/--workspace=WORKSPACE/, server, "the workspace override is a boot setting")
     assert_match(/Override the default workspace for this boot/, server)
 
     run_help, run_status = run_rho("help", "run")
@@ -208,21 +207,6 @@ class CliCommandTest < Minitest::Test
     assert_equal 0, disconnect_status
     assert_match(/Revoke this machine's credentials on Nexus and forget them/, disconnect)
     refute_match(/--runner/, disconnect)
-  end
-
-  # In runner mode the conversation verbs are not here, and the footer says so.
-  def test_in_runner_mode_help_lists_no_conversation_verb_and_says_so
-    home.prepare
-    Rho::StateFile.new(home.settings_path).write("mode" => "runner")
-    out, status = run_rho("help")
-
-    assert_equal 0, status
-    %w[run do say stop compact watch models].each { |verb| refute_match(/^\s+rho #{verb}\b/, out, "#{verb} is not a runner's verb") }
-    %w[connect disconnect status server env runner processes].each do |verb|
-      assert_match(/^\s+rho #{verb}\b/, out, "#{verb} stands")
-    end
-    assert_match(/This rho is in mode runner: it serves tools and opens no conversations/, out)
-    assert_match(/\(`run` is not here\)/, out)
   end
 
   # An extension verb's options reach Thor: `help VERB` shows them, and the
@@ -397,7 +381,7 @@ class CliCommandTest < Minitest::Test
 
     assert_equal 0, status
     instance = JSON.parse(File.read(File.join(@root, "instance.json"), encoding: Encoding::UTF_8)).fetch("id")
-    assert_equal ["nexus:     https://nexus.example", "mode:      full", "instance:  #{instance}",
+    assert_equal ["nexus:     https://nexus.example", "instance:  #{instance}",
                   "daemon:    not running", "state:     not connected", "adaptations: default (gem)"],
       out.lines.map(&:chomp)
   end

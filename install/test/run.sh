@@ -8,6 +8,10 @@ set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 install_dir=$(cd "$here/.." && pwd)
 
+for tool in shellcheck jq; do
+  command -v "$tool" > /dev/null 2>&1 || { printf 'Installer tests require %s on PATH\n' "$tool" >&2; exit 1; }
+done
+
 printf "==> shellcheck\n"
 shellcheck -s bash "$install_dir"/*.sh "$here"/*.sh
 shellcheck -s sh "$install_dir/docker-entrypoint" "$install_dir/t3-setup"

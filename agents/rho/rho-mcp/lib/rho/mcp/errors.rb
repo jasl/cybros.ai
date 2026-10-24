@@ -1,8 +1,8 @@
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module Mcp
-    class Error < Rho::Runner::Error; end
+    class Error < Rho::Env::Error; end
     # A server that could not be connected or listed at load, or restarted
     # for a call: the sentence is `rho mcp`'s `down:` line.
     class Unavailable < Error; end

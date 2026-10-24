@@ -12,14 +12,14 @@ class ExtensionTest < Minitest::Test
 
   def load(table = nil, host: RhoTest.host)
     Rho::AcpClient.settings_table = table
-    Rho::Runner::Extensions::Loader.call(gems: ["rho/acp-client"], api_class: Rho::Extensions::Api,
+    Rho::Env::Extensions::Loader.call(gems: ["rho/acp-client"], api_class: Rho::Extensions::Api,
       api_options: { host: host })
   end
 
-  def host(mode:)
+  def host
     Rho::Extensions::Host.new(
-      home: Rho::Home.resolve(base_url: "https://nexus.example", root: File.join(Dir.tmpdir, "rho-acp-test-#{mode}")),
-      log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({ "mode" => mode }), processes: nil
+      home: Rho::Home.resolve(base_url: "https://nexus.example", root: File.join(Dir.tmpdir, "rho-acp-test-application")),
+      log: nil, clock: -> { Time.now }, config: Rho::Config.from_hash({}), processes: nil
     )
   end
 
@@ -34,9 +34,9 @@ class ExtensionTest < Minitest::Test
 
   def test_the_feature_the_gemspec_names_resolves_to_this_module
     spec = Gem::Specification.load(File.join(RhoAcpClientTest::ROOT, "rho-acp-client.gemspec"))
-    feature = spec.metadata.fetch(Rho::Runner::Extensions::Loader::GEM_METADATA_KEY)
+    feature = spec.metadata.fetch(Rho::Env::Extensions::Loader::GEM_METADATA_KEY)
     assert_equal "rho/acp-client", feature
-    assert_same Rho::AcpClient, Rho::Runner::Extensions::Loader.require_feature(feature)
+    assert_same Rho::AcpClient, Rho::Env::Extensions::Loader.require_feature(feature)
   end
 
   # NO ROW, NO TOOL: the extension loads clean — the verb, the
@@ -76,7 +76,7 @@ class ExtensionTest < Minitest::Test
     klass = result.committed.fetch(0).tools.fetch(0).klass
     assert_equal %w[plain sleepy], klass::SCHEMA.dig("properties", "agent", "enum")
     assert_equal 9000, klass::TIMEOUT_MS
-    assert_equal Rho::Runner::Tools::Bash::EFFECT_PROFILE, klass::EFFECT_PROFILE
+    assert_equal Rho::Env::Tools::Bash::EFFECT_PROFILE, klass::EFFECT_PROFILE
     assert klass::INTERNAL_CLAMP
     assert_includes klass::DESCRIPTION, "the plain fixture agent"
     assert_includes klass::DESCRIPTION, "the sleep fixture agent"
@@ -106,7 +106,7 @@ class ExtensionTest < Minitest::Test
     result = load({ "missing" => row })
     startup = result.committed.fetch(0).lifecycle.find { |hook| hook.event == :startup }
 
-    error = assert_raises(Rho::Runner::Extensions::PrerequisiteError) { startup.handler.call }
+    error = assert_raises(Rho::Env::Extensions::PrerequisiteError) { startup.handler.call }
 
     assert_includes error.message, "ACP agent missing"
     assert_includes error.message, "Install its runtime"
@@ -130,7 +130,7 @@ class ExtensionTest < Minitest::Test
       refute File.exist?(marker)
       assert_empty Rho::AcpClient.report.fetch("sessions")
       File.chmod(0o600, executable)
-      assert_raises(Rho::Runner::Extensions::PrerequisiteError) { startup.handler.call }
+      assert_raises(Rho::Env::Extensions::PrerequisiteError) { startup.handler.call }
     end
   end
 
@@ -145,11 +145,11 @@ class ExtensionTest < Minitest::Test
   end
 
   # ONLY WHERE THE HOST SERVES THE RUNNER ADDRESS: an
-  # agent-mode daemon keeps the verb and the routes and registers no tool.
-  def test_an_agent_mode_host_gets_the_verb_and_no_tool
-    result = load({ "plain" => RhoAcpClientTest.raw_row("plain") }, host: host(mode: "agent"))
+  # The application keeps the tool, command and management routes together.
+  def test_application_host_gets_the_tool_and_management_verbs
+    result = load({ "plain" => RhoAcpClientTest.raw_row("plain") }, host: host)
     assert_predicate result, :ok?, result.failures.inspect
-    assert_empty result.registry.names
+    assert_equal ["delegate_agent"], result.registry.names
     api = result.committed.fetch(0)
     assert_equal ["acp-agents"], api.commands.map(&:name)
     assert_equal 2, api.routes.length

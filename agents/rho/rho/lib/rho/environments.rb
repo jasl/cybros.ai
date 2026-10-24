@@ -35,7 +35,7 @@ module Rho
     # placements come from the `Toolsets` of the moment: placement zero
     # moves under it on `rho env` and the runner stands. It builds nothing
     # of its own (no `super`): every table is the current one's.
-    class Slot < Rho::Runner::Toolsets
+    class Slot < Rho::Env::Toolsets
       def initialize(environments, agent: false) # rubocop:disable Lint/MissingSuper
         @environments = environments
         @agent = agent
@@ -94,12 +94,12 @@ module Rho
       @agent_slot = Slot.new(self, agent: true)
       # ONE queue per runner: two roots must never interleave
       # writes to one absolute path.
-      @mutation_queue = Rho::Runner::FileMutationQueue.new
+      @mutation_queue = Rho::Env::FileMutationQueue.new
     end
 
     # ---- placement zero and the runner slot's toolsets ----
 
-    # The runner slot's handle: what the daemon hands `Rho::Runner.new`.
+    # The runner slot's handle: what the daemon hands `Rho::Env::Executor.new`.
     def toolsets = @slot
 
     # Publish new consumers under the build lock. Existing calls keep
@@ -177,8 +177,8 @@ module Rho
         return [found] if found
       end
 
-      roots = Rho::Runner::Checkpoints::Store.roots(
-        dir: File.join(@home.work_root, Rho::Runner::Checkpoints::Store::DIRECTORY), id: id)
+      roots = Rho::Env::Checkpoints::Store.roots(
+        dir: File.join(@home.work_root, Rho::Env::Checkpoints::Store::DIRECTORY), id: id)
       found = roots.filter_map do |root|
         store_for(root)
       rescue SystemCallError
@@ -202,7 +202,7 @@ module Rho
         held = @monitor.synchronize { @agent_toolsets }
         next held if held
 
-        built = Rho::Runner::Toolsets.new(
+        built = Rho::Env::Toolsets.new(
           registry: @agent_registry, zero: zero.env,
           work_dir: @home.work_root, log: @log, checkpoints: (->(root) { store_for(root) } if @checkpoints),
           protected_roots: Rho.protected_roots(@home), extras: @servers
@@ -245,7 +245,7 @@ module Rho
       plane ||= @member_plane.call(host_public_id: conversation)
       return Daemon::Refusal.member_plane_unavailable if plane.nil?
 
-      binding = Rho::Runner::Environment::Binding.new(
+      binding = Rho::Env::Environment::Binding.new(
         root: runner.nil? || @own_runner.call(runner) ? File.expand_path(root) : root,
         directories: runner.nil? || @own_runner.call(runner) ? Array(directories).map { |path| File.expand_path(path) } : directories, anchor: conversation
       )
@@ -448,7 +448,7 @@ module Rho
         entry = fetch_entry(door(plane, conversation), (memo in Record) ? memo.public_id : nil, runner:)
         return nil if entry.nil?
 
-        binding = Rho::Runner::Environment::Binding.parse(entry.value)
+        binding = Rho::Env::Environment::Binding.parse(entry.value)
         if binding.nil?
           @log&.warn("environment.malformed", conversation: conversation, entry: entry.public_id)
           raise CybrosAgent::Api::InvalidRequest.new("Malformed environment record for #{conversation}", code: "executor_environment_unavailable")
@@ -591,19 +591,19 @@ module Rho
         raise Rho::Error, "the daemon has no environment root yet: connect first, or set one" if root.nil?
 
         FileUtils.mkdir_p(root)
-        env = Rho::Runner::ToolEnv.new(
+        env = Rho::Env::ToolEnv.new(
           root: root, artifacts_dir: artifacts_dir_for(root), bash_timeout_seconds: @config.plugin_configuration("rho.coding").fetch("bash_timeout_seconds"),
           processes: @processes, checkpoints: store_for(root), mutation_queue: @mutation_queue,
           checkpoint_resolver: method(:checkpoint_stores).to_proc
         )
-        Rho::Runner::Toolsets.new(
+        Rho::Env::Toolsets.new(
           registry: @registry, zero: env,
           work_dir: @home.work_root, log: @log, checkpoints: (->(root) { store_for(root) } if @checkpoints),
           protected_roots: Rho.protected_roots(@home), ports: @ports.resolver
         )
       end
 
-      def artifacts_dir_for(root) = Rho::Runner::ToolEnv.artifacts_dir_for(root: root, work_dir: @home.work_root)
+      def artifacts_dir_for(root) = Rho::Env::ToolEnv.artifacts_dir_for(root: root, work_dir: @home.work_root)
 
       # One checkpoint store per real root, under
       # `<work>/checkpoints/`, keyed by the root's digest, opened once
@@ -625,12 +625,12 @@ module Rho
       end
 
       def open_store(real)
-        Rho::Runner::Checkpoints::Store.open(
-          dir: File.join(@home.work_root, Rho::Runner::Checkpoints::Store::DIRECTORY), root: real,
+        Rho::Env::Checkpoints::Store.open(
+          dir: File.join(@home.work_root, Rho::Env::Checkpoints::Store::DIRECTORY), root: real,
           protected_roots: Rho.protected_roots(@home), excluded: [artifacts_dir_for(real)], log: @log,
           **@config.plugin_configuration("rho.checkpoints").transform_keys(&:to_sym)
         )
-      rescue ArgumentError, Rho::Runner::Error, SystemCallError => error
+      rescue ArgumentError, Rho::Env::Error, SystemCallError => error
         @log&.warn("checkpoints_unavailable", root: real, error_class: error.class.name,
           detail: CybrosAgent::Redaction.call(error.message))
         nil

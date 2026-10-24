@@ -156,10 +156,8 @@ rho setup --nexus-url https://nexus.example
 In this terminal workflow, create an account in Nexus if needed, approve the
 device code, configure Telegram, then optionally configure a provider through
 the same Human OAuth login and choose a saved default model. rho saves this
-terminal login for later setup commands. `rho setup` is available in full and
-agent modes. A runner-only installation uses
-`rho connect` to pair and serves tools to another rho; it does not choose a model
-or host a conversation UI.
+terminal login for later setup commands. Every installation runs the complete rho
+application, including its Local environment and optional conversation UI.
 
 Start the foreground server in one terminal, then use another terminal under
 the same rho home. A running service applies saved settings immediately.

@@ -95,8 +95,7 @@ runs Propshaft with the JS/CSS rebuild tasks disabled. The runtime image needs n
 ## rho's image
 
 rho is built on `ubuntu:26.04` by the same `install/install.sh` a person runs on a host —
-from the packaged gem trees of the checkout, into `/opt/rho` as uid 1000. It runs in runner
-mode by default; the combined stack selects `RHO_MODE=full`. The separate rho deployment
+from the packaged gem trees of the checkout, into `/opt/rho` as uid 1000. It runs the complete rho application with its Local execution environment. The separate rho deployment
 guide is [Deploying rho](../../docs/rho-deploy.md). The image carries the management CLI and
 `rho run` alone; the verbs that operate a conversation from a terminal are `rho-dev`'s, a development gem the
 checkout's e2e supplies and no target of this Dockerfile installs (`agents/rho/rho-dev/README.md`).
@@ -114,7 +113,7 @@ trees and `install/`). Four targets:
 | `browser` | Chromium libraries and the existing `dev` driver/headless shell; LibreOffice Writer/Calc/Impress, fonts, and the Cowork Python environment | `docker.io/jasl123/cybros-rho:latest`, `:<yyMMddHHmm UTC>` |
 
 `rho-webui` and its static resources are included from the `rho` target onward. The Ruby daemon
-serves the page in `full` and `agent` modes; the default `runner` mode stays headless. No JavaScript
+serves the page by default; `RHO_API_ONLY=1` disables the page. No JavaScript
 server or frontend build runs in the image. Node in `toolchains` belongs to the project's
 tools; Node and Chromium in `browser` belong to the model's Playwright tools. Neither layer is
 needed to serve the WebUI. `RHO_API_ONLY=1` keeps the control API and disables the page.
@@ -273,7 +272,7 @@ workflow), never as a local gate; the arm64 targets are the local gate.
 
 `install/test/docker_test.sh` (`RHO_INSTALL_TEST_DOCKER=1 install/test/run.sh`, or on its own): builds
 `base` and the published `browser` target for the host's arch (or takes `RHO_INSTALL_TEST_IMAGE=<tag>`), then — `rho version`
-through the door (tini → `docker-entrypoint` → the wrapper); `rho doctor --strict` inside; `RHO_MODE`,
+through the door (tini → `docker-entrypoint` → the wrapper); `rho doctor --strict` inside; the complete application startup,
 `RHO_HOME`, unchanged `HOME=/home/rho`, writable `RHO_TOOLS_ROOT=WORKDIR=/home/runner`,
 `LANG`, uid 1000 and tini as PID 1; `docker run --init` on top harmless; `/bin/bash` is no
 verb (every argument through the door is rho's); rg/fd/jq/uv on the prefix's PATH, gh and mise in the
@@ -309,9 +308,8 @@ killed group leader leaves — the case the process-group note names (a group of
 EPERM to `kill(-pgid)`; a reaper is what makes them go away). `docker run --init` adds a second tini
 in front; harmless.
 
-The mode is a boot fact: `RHO_MODE=runner` is the image's environment, `CMD ["server"]` carries no
-`--mode`, so `-e RHO_MODE=full` turns the same image into the full-mode deployment (a `--mode` on the
-CMD would outrank the environment and take that away).
+`CMD ["server"]` starts the complete application. The image has no runtime mode selector;
+`RHO_API_ONLY=1` can disable the browser page while preserving the control API.
 
 The root door (the postgres/redis entrypoint pattern): a container run as root (`docker run --user 0`;
 terminal-bench's images assume it) gets a root-owned state — when `id -u` is 0 and `$RHO_HOME` is not
@@ -326,8 +324,8 @@ uid 1000 sees no change.
 
 - No `sudo`, no root path: the prefix, `/opt/mise`, `/opt/uv`, `/var/lib/rho` and `/home/runner` are uid
   1000's; only the apt steps and the two `/usr/local/bin` binaries are root's, at build.
-- No `EXPOSE`: the runner dials out. The full-mode console is published by the deployment
-  (`compose.yml`'s `rho-full`), on the host's loopback. The wider internal bind uses the
+- No `EXPOSE`: the application dials out to Nexus. Its console is published by the deployment
+  (`compose.yml`'s `rho`), on the host's loopback. The wider internal bind uses the
   explicit plaintext transport option and browser access requires Nexus OAuth login.
   Configure `RHO_PUBLIC_URL` and the browser-visible `RHO_NEXUS_PUBLIC_URL`.
   Nexus accepts `/auth/callback` on localhost, loopback and private IP addresses by

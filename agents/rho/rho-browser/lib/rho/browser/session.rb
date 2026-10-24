@@ -6,7 +6,7 @@ module Rho
     # A browser call that outlived its ceiling. A subclass of the runner's
     # error so a tool reports it like any other failure; the message names
     # what happened and what to do, because the model reads it.
-    class CallTimedOut < Rho::Runner::Error; end
+    class CallTimedOut < Rho::Env::Error; end
 
     # THE SIGNAL A CEILING RAISES INSIDE ITS BLOCK. Not a StandardError, so
     # no `rescue => e` between here and the block can swallow it; and not
@@ -114,7 +114,7 @@ module Rho
       # with the tab, so retired owners leave no bookkeeping behind.
       # A returning loop must hear that its earlier refs no longer apply.
       def with_page(owner = DEFAULT_OWNER)
-        context = Rho::Runner::ExecutionContext.current
+        context = Rho::Env::ExecutionContext.current
         context&.raise_if_cancelled!
         tab = acquire_tab(owner, context)
         fresh = tab.fresh
@@ -128,7 +128,7 @@ module Rho
             recover_after_error(owner, tab, context)
             raise
           end
-        rescue Rho::Runner::ExecutionContext::Cancelled
+        rescue Rho::Env::ExecutionContext::Cancelled
           # A cancelled call delivered nothing — whether it was cancelled in
           # the yield or inside its own recovery's wait for the registry —
           # so the notice it consumed is owed to the owner's next call. The

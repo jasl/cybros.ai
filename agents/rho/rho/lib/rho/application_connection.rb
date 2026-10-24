@@ -4,7 +4,7 @@ module Rho
   # only receives the Agent and Runner lineages it knows how to install.
   class ApplicationConnection
     def self.runtime_credentials(grant)
-      grant.agent || grant.runner || raise(ConnectionError, "The login did not include a runtime connection")
+      grant.agent || raise(ConnectionError, "The login did not include a runtime connection")
     end
 
     def initialize(home:, public_url: home.base_url, transport: nil, clock: -> { Time.now })
@@ -15,7 +15,6 @@ module Rho
     end
 
     def request_authorization(**claims) = @login.request_authorization(**claims)
-    def request_runner_authorization(**claims) = @login.request_runner_authorization(**claims)
     def cancel_authorization(authorization) = @login.cancel_authorization(authorization)
     def rotate(refresh_token:) = @runtime.rotate(refresh_token: refresh_token)
     def revoke(token:) = @runtime.revoke(token: token)

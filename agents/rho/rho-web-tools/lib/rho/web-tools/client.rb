@@ -26,7 +26,7 @@ module Rho
   module WebTools
     # The gem's own root under the runner's, so a refusal raised here is
     # the runner's kind of error wherever it is read.
-    class Error < Rho::Runner::Error; end
+    class Error < Rho::Env::Error; end
     # BEFORE A SOCKET, OR BY THE ADDRESS FILTER: the URL as written is not
     # one this tool fetches. One sentence, the model reads it and corrects
     # the call (`Result.error`, never a failed task). `reason` is the log
@@ -193,7 +193,7 @@ module Rho
           watch = Module.new do
             define_method(:next_tick) do
               open = requests.reject { |request| request.response&.finished? }
-              if !open.empty? && Rho::Runner::ExecutionContext.current&.cancelled?
+              if !open.empty? && Rho::Env::ExecutionContext.current&.cancelled?
                 each.to_a.each { |selectable| selectable.force_close(true) }
                 open.each do |request|
                   request.handle_error(Interrupted.new("cancelled")) unless request.response&.finished?
@@ -304,7 +304,7 @@ module Rho
           session.close
         end
       rescue CancelWatch::Interrupted
-        Rho::Runner::ExecutionContext.current.raise_if_cancelled!
+        Rho::Env::ExecutionContext.current.raise_if_cancelled!
       rescue HTTPX::ServerSideRequestForgeryError
         raise Refused.new(private_sentence(uri.hostname), reason: :private_address)
       rescue HTTPX::InsecureRedirectError => error
@@ -364,7 +364,7 @@ module Rho
           begin
             stream.each do |chunk|
               collector.take(request.response, chunk)
-              Rho::Runner::ExecutionContext.current&.raise_if_cancelled!
+              Rho::Env::ExecutionContext.current&.raise_if_cancelled!
             end
           rescue HTTPX::HTTPError => error
             # A 4xx/5xx RAISES after its chunks were delivered
@@ -529,7 +529,7 @@ module Rho
                                  "#{size(@cap)}", bytes: 0)
             end
 
-            def size(bytes) = Rho::Runner::Truncation.format_size(bytes)
+            def size(bytes) = Rho::Env::Truncation.format_size(bytes)
         end
         private_constant :Collector
     end

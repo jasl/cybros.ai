@@ -9,7 +9,7 @@ module Rho
         attr_reader version: Integer
         attr_reader schema: Configuration::Schema
         attr_reader default_enabled: bool
-        attr_reader modes: Array[String]
+
         attr_reader requires: Array[String]
         attr_reader restart_only: bool
         attr_reader category: String

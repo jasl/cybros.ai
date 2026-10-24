@@ -28,7 +28,7 @@ module Rho
             end
           end
 
-          # THE SPLIT ALREADY DONE by the CLI (`Rho::Runner::Skills`, the
+          # THE SPLIT ALREADY DONE by the CLI (`Rho::Env::Skills`, the
           # runner's own parser — the file is where the person's terminal
           # is): the body carries the row's three fields and the rung.
           def push(request, ctx)
@@ -102,7 +102,7 @@ module Rho
               return nil if root.nil?
 
               RunDeclaration.documents(registry: ctx.registry.serving(:runner),
-                environment: Rho::Runner::Environment.local(root: root))
+                environment: Rho::Env::Environment.local(root: root))
             end
 
             def skill_row(row)

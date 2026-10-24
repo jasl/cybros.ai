@@ -20,13 +20,13 @@ class StdioTransportTest < Minitest::Test
 
   def open_connection(row = McpTest.real_row, log: nil)
     Rho::Mcp::Connection.new(row, log: log, transport_factory: McpTest.real_transport_factory,
-      redact: Rho::Runner::Redact.new(row.secrets)).tap { |c| @connections << c }
+      redact: Rho::Env::Redact.new(row.secrets)).tap { |c| @connections << c }
   end
 
   def transport_of(connection) = connection.instance_variable_get(:@transport)
 
   def call(connection, raw, args = {})
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new(task_key: "t1")) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new(task_key: "t1")) do
       connection.call_tool(raw, args, public_name: "mcp__fx__#{raw}")
     end
   end
@@ -52,8 +52,8 @@ class StdioTransportTest < Minitest::Test
     # RUBYOPT/BUNDLE_* are the child's OWN `bundle exec`'s; the pin is on
     # what rho withheld: its credentials and every credential-shaped name.
     %w[RHO_ACCESS_PASSPHRASE OPENROUTER_API_KEY RHO_HOME].each { |name| refute_includes keys, name }
-    refute(keys.any? { |name| name.match?(Rho::Runner::Secrets::CREDENTIAL_SHAPED) && name != "FX_TOKEN" },
-      "a credential-shaped name of ours reached the child: #{keys.grep(Rho::Runner::Secrets::CREDENTIAL_SHAPED).inspect}")
+    refute(keys.any? { |name| name.match?(Rho::Env::Secrets::CREDENTIAL_SHAPED) && name != "FX_TOKEN" },
+      "a credential-shaped name of ours reached the child: #{keys.grep(Rho::Env::Secrets::CREDENTIAL_SHAPED).inspect}")
     assert_equal "hello", call(connection, "echo", { "text" => "hello" }).content
   end
 
@@ -78,12 +78,12 @@ class StdioTransportTest < Minitest::Test
   def test_a_cancelled_call_kills_and_reaps_the_group_and_the_next_call_restarts_with_a_new_pid
     connection = open_connection.open!
     first = transport_of(connection)
-    context = Rho::Runner::ExecutionContext.new(task_key: "t2")
+    context = Rho::Env::ExecutionContext.new(task_key: "t2")
     answer = :unset
     worker = Thread.new do
-      Rho::Runner::ExecutionContext.with(context) do
+      Rho::Env::ExecutionContext.with(context) do
         answer = connection.call_tool("hang", {}, public_name: "mcp__fx__hang")
-      rescue Rho::Runner::ExecutionContext::Cancelled => error
+      rescue Rho::Env::ExecutionContext::Cancelled => error
         answer = error
       end
     end
@@ -94,9 +94,9 @@ class StdioTransportTest < Minitest::Test
     # two seconds after the clamp, and the claim's park is smaller still —
     # the KILL and the reap must fit inside it, or the sweep writes
     # `uncertain` for a runner that was alive the whole time.
-    worker.join(Rho::Runner::Pool::CANCELLATION_GRACE_SECONDS)
+    worker.join(Rho::Env::Pool::CANCELLATION_GRACE_SECONDS)
     refute worker.alive?, "the worker did not return inside the runner's grace"
-    assert_kind_of Rho::Runner::ExecutionContext::Cancelled, answer, "the call returns through the runner's checkpoint"
+    assert_kind_of Rho::Env::ExecutionContext::Cancelled, answer, "the call returns through the runner's checkpoint"
     assert_equal :deadline, answer.reason
     assert await(seconds: 5) { !process_group_alive?(first.group_pid) }, "the poisoned group survived"
     assert_match(/\Akilled after a timed-out call \(mcp__fx__hang\) at /, connection.down)
@@ -125,13 +125,13 @@ class StdioTransportTest < Minitest::Test
     log = []
     logger = Object.new
     %i[debug info warn error].each { |level| logger.define_singleton_method(level) { |event, **f| log << [level, event, f] } }
-    connection = open_connection(McpTest.real_row, log: Rho::Mcp::RedactingLog.new(logger, Rho::Runner::Redact.new([McpTest::FX_TOKEN])))
+    connection = open_connection(McpTest.real_row, log: Rho::Mcp::RedactingLog.new(logger, Rho::Env::Redact.new([McpTest::FX_TOKEN])))
     connection.open!
     call(connection, "whisper")
     sleep 0.2
     tail = transport_of(connection).stderr_tail
     assert_includes tail, McpTest::FX_TOKEN, "the raw tail holds the token — the redaction is on every reader"
-    assert_equal "fixture: the token is •••", Rho::Mcp::Mapping.capped_tail(Rho::Runner::Redact.new([McpTest::FX_TOKEN]).call(tail))
+    assert_equal "fixture: the token is •••", Rho::Mcp::Mapping.capped_tail(Rho::Env::Redact.new([McpTest::FX_TOKEN]).call(tail))
     error = assert_raises(Rho::Mcp::ServerGone) { call(connection, "exit") }
     refute_includes error.message, McpTest::FX_TOKEN
     refute(log.any? { |entry| entry.inspect.include?(McpTest::FX_TOKEN) }, "the token reached the log: #{log.inspect}")

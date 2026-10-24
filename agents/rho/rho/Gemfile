@@ -12,7 +12,7 @@ gem "cmctl", path: "../../../cmctl"
 gem "cybros_agent", path: "../../../sdks/ruby"
 # The runner rides alongside for the same reason: one repo, two gems, and a
 # runner that can be installed without the daemon.
-gem "rho-runner", path: "../rho-runner"
+gem "rho-env", path: "../rho-env"
 # The browser extension rides alongside too. In the bundle is not the same
 # as loaded: it registers nothing until `extensions: ["rho/browser"]` names
 # it in settings.json — a gem present as a dependency must never become a
@@ -26,7 +26,7 @@ gem "rho-mcp", path: "../rho-mcp"
 gem "rho-web-tools", path: "../rho-web-tools"
 # JavaScript task authoring, selected by default in all rho modes.
 gem "rho-codemode", path: "../rho-codemode"
-# Static browser UI, selected by the full/agent daemon defaults.
+# Static browser UI, selected by the daemon defaults.
 gem "rho-webui", path: "../rho-webui"
 # Telegram is installed but only starts when explicitly configured and enabled.
 gem "rho-ingress-telegram", path: "../rho-ingress-telegram"

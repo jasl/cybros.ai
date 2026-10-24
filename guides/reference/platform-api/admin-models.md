@@ -89,10 +89,23 @@ definitions never contain API keys or OAuth material.
 `configuration.model_definitions` is the loaded, price-free shared definition
 mapping, keyed by definition name. An authoring client uses these names as
 `inherit` choices. It is deployment configuration, not an editable provider
-setting. Each model's `definition` retains its authored `inherit` reference and
+setting. It includes saved definitions referenced by configured models when they
+are no longer shipped. Current definitions take precedence. Each model's `definition` retains its authored `inherit` reference and
 overrides. Reads place flat capability fields under `capabilities` without
 expanding inheritance or filling omitted values; database writes retain the
 submitted declaration.
+
+Configured lanes retain deployment provider/model definitions in the existing
+database configuration. Enabling a lane, saving a model definition, and installation
+preparation (`bin/rails db:prepare`, or explicit `bin/rails model_catalog:retain`)
+save current catalog facts. Reads never write or call the provider. Current file
+facts win; saved facts supply entries removed from a later deployment catalog.
+Such retained entries have `source: "catalog"` and expose their resolved definition,
+independent of removed shared definitions. Operator overrides, removals, visibility
+and availability settings still apply afterward. Stored catalog facts share the
+configuration document's 2 MiB limit, with at most 256 retained models and 256
+referenced shared definitions per provider. Retention does not guarantee that an
+upstream provider still serves a model.
 
 A removed custom provider is absent from the collection, but its policy and
 version remain addressable by ID. Its singular read returns a disabled lane
@@ -129,8 +142,8 @@ adapters or a new OAuth ceremony. Keys use the separate credential route below.
 Subsequent catalog reads, selection, admission and execution use the saved
 definition without a process restart.
 
-DELETE takes `command: {expected_lock_version: ...}`. For a file-backed provider
-it restores file inheritance. For a custom provider it removes the declaration
+DELETE takes `command: {expected_lock_version: ...}`. For a catalog-backed provider
+it restores the current or retained catalog definition. For a custom provider it removes the declaration
 and disables the retained policy. It does not delete credentials or the policy
 row. Both writes return the same envelope as the singular provider read.
 
@@ -257,7 +270,7 @@ Explicit `null`, `false`, and `[]` retain their meaning wherever the field
 permits them; only omission selects a default.
 
 PUT replaces that model definition, DELETE writes a removal entry, and reset
-removes the entry to restore file inheritance. A custom model without a file
+removes the entry to restore current or retained catalog inheritance. A custom model without either
 definition disappears on reset. These operations preserve visibility settings
 and sibling models. Success returns the provider read envelope with its current
 configuration and Policy version.

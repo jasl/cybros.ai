@@ -57,7 +57,7 @@ class EnvironmentsServersTest < Minitest::Test
       const_set(:SERVER_KEY, server) if server
       define_singleton_method(:inspect) { "Tool[#{name}]" }
       define_method(:initialize) { |env:| @env = env }
-      define_method(:call) { |_args| Rho::Runner::Result.ok(name) }
+      define_method(:call) { |_args| Rho::Env::Result.ok(name) }
     end
   end
 
@@ -95,7 +95,7 @@ class EnvironmentsServersTest < Minitest::Test
       const_set(:NAME, "rho.boot")
       define_singleton_method(:register) { |api| extra_classes.each { |klass| api.register_tool(klass) } }
     end
-    Rho::Runner::Extensions::Loader.call(builtin: [Rho::Runner::Extensions::Coding, extension]).registry
+    Rho::Env::Extensions::Loader.call(builtin: [Rho::Env::Extensions::Coding, extension]).registry
   end
 
   # `registrar: nil` is a daemon nobody registered on; the block, when
@@ -127,7 +127,7 @@ class EnvironmentsServersTest < Minitest::Test
     table = servers
     calls = 0
     trace = TracePoint.new(:call) do |event|
-      calls += 1 if event.self == Rho::Runner::InputSchema && event.method_id == :compile
+      calls += 1 if event.self == Rho::Env::InputSchema && event.method_id == :compile
     end
     trace.enable { table.bind("c-1", [entry("fx")]) }
     assert_equal 2, calls, "one admission per tool"
@@ -316,13 +316,13 @@ class EnvironmentsServersTest < Minitest::Test
   end
 
   # A registrar that will not open a set at all — its own
-  # `Rho::Runner::Error`, rho-mcp's `Closed` once its shutdown ladder ran
+  # `Rho::Env::Error`, rho-mcp's `Closed` once its shutdown ladder ran
   # — is the door's 503 `daemon_stopping`, the daemon's own sentence (it
   # does not know rho-mcp's classes); the anchor holds nothing, nothing is
   # announced, and over a held set the held set went first.
-  # rho-mcp's `Closed` by shape: a `Rho::Runner::Error` the daemon does
+  # rho-mcp's `Closed` by shape: a `Rho::Env::Error` the daemon does
   # not know by class.
-  class Closed < Rho::Runner::Error; end
+  class Closed < Rho::Env::Error; end
 
   def test_a_registrar_that_will_not_open_a_set_is_answered_as_503_daemon_stopping_and_nothing_is_held
     table = servers { |entries| raise Closed, "the mcp host is shutting down" if entries.first["command"] == "closing"
@@ -418,7 +418,7 @@ class EnvironmentsServersTest < Minitest::Test
     table = servers { |_entries| FakeSet.new(classes: [tool_class("mcp__fx__lookup", server: "fx"), tool_class("mcp__fx__paths")],
       report: [{ name: "fx", state: "connected", fault: nil, transport: "stdio" }]) }
 
-    error = assert_raises(Rho::Runner::Extensions::RegistrationError) { table.bind("c-1", [entry("fx")]) }
+    error = assert_raises(Rho::Env::Extensions::RegistrationError) { table.bind("c-1", [entry("fx")]) }
 
     assert_equal "mcp__fx__paths carries no SERVER_KEY: a conversation server's class names its row (rho.mcp)", error.message
     assert_nil table["c-1"]
@@ -513,7 +513,7 @@ class EnvironmentsServersTest < Minitest::Test
         own_runner: ->(_id) { true },
         registrar: registrar, served: registry, servers_changed: -> { changed += 1 }
       )
-      binding = Rho::Runner::Environment::Binding.new(root: project, directories: [], anchor: "c-1")
+      binding = Rho::Env::Environment::Binding.new(root: project, directories: [], anchor: "c-1")
       table.remember_copy("c-1", binding)
 
       bound = table.bind_servers("c-1", [entry("fx")])
@@ -526,7 +526,7 @@ class EnvironmentsServersTest < Minitest::Test
       host = Rho::Host::Conversation.new(public_id: "c-1")
       assert_equal [{ name: "fx", state: "connected", fault: nil, transport: "stdio" }], table.listing([host]).fetch(0).fetch(:mcp)
       assert_same table.servers, table.agent_toolsets(registry).extras, "the agent slot's extras are the table"
-      assert_kind_of Rho::Runner::Toolsets, table.agent_toolsets(registry)
+      assert_kind_of Rho::Env::Toolsets, table.agent_toolsets(registry)
 
       assert table.host_ended("c-1")
       assert_equal 2, changed

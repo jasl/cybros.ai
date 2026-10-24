@@ -113,13 +113,13 @@ class LineageTest < Minitest::Test
     @lineage.install_follower(old, old_run)
     client = @lineage.realtime_for(old)
     @lineage.reserve_runner(old)
-    @lineage.install_runner(old, runner, :env)
+    @lineage.install_runner(old, runner)
 
     adoption = @lineage.adopt(identity: IDENTITY, credentials: about)
 
     assert_equal [old_run], adoption.retired.followers
     assert_same client, adoption.retired.realtime
-    assert_equal [runner], adoption.retired.runners
+    assert_same runner, adoption.retired.runner
     assert_equal [client], adoption.retired.clients
     assert_empty stopped, "the caller stops what it is handed, outside the monitor"
     assert_empty @lineage.followers
@@ -316,7 +316,7 @@ class LineageTest < Minitest::Test
     refute_same member, client, "two sockets: one bearer each"
 
     retired = @lineage.retire_runs
-    assert_equal [client], retired.executor_realtimes
+    assert_same client, retired.executor_realtime
     assert_equal [member, client], retired.clients
     assert_nil @lineage.executor_realtime
     assert_raises(CybrosAgent::Error) { @minted.first.call }
@@ -337,11 +337,11 @@ class LineageTest < Minitest::Test
     assert @lineage.reserve_runner(credential)
 
     assert @lineage.release_runner(credential)
-    refute @lineage.install_runner(credential, Object.new, :env), "no reservation stands to install on"
+    refute @lineage.install_runner(credential, Object.new), "no reservation stands to install on"
     assert @lineage.reserve_runner(credential), "free again"
 
-    assert @lineage.install_runner(credential, Object.new, :env)
-    refute @lineage.release_runner(credential), "a placed runner is taken, never released"
+    assert @lineage.install_runner(credential, Object.new)
+    refute @lineage.release_runner(credential), "a placed runner is retired, never released"
     refute_nil @lineage.runner
   end
 
@@ -417,36 +417,36 @@ class LineageTest < Minitest::Test
     refute @lineage.reserve_runner(about), "a stale about reserves nothing"
     assert @lineage.reserve_runner(credential)
     assert @lineage.reserve_runner(credential), "a second builder may race; the install decides"
-    assert @lineage.install_runner(credential, :first, :env)
-    refute @lineage.install_runner(credential, :second, :env), "the loser stops what it built"
+    assert @lineage.install_runner(credential, :first)
+    refute @lineage.install_runner(credential, :second), "the loser stops what it built"
     refute @lineage.reserve_runner(credential), "an installed runner refuses another"
     assert_equal :first, @lineage.runner
-    assert_equal :env, @lineage.tool_env
   end
 
   def test_install_runner_for_an_unreserved_about_is_refused
     credential = adopted
-    refute @lineage.install_runner(credential, :runner, :env)
+    refute @lineage.install_runner(credential, :runner)
     assert_nil @lineage.runner
 
     @lineage.reserve_runner(credential)
     @lineage.begin_stop
-    refute @lineage.install_runner(credential, :runner, :env), "nothing is installed while stopping"
+    refute @lineage.install_runner(credential, :runner), "nothing is installed while stopping"
   end
 
-  def test_take_runner_removes_the_pair_only_for_its_about_and_lose_releases_a_reservation
+  def test_loss_retires_only_its_runner_and_releases_the_reservation
     credential = adopted
     @lineage.reserve_runner(credential)
-    @lineage.install_runner(credential, :runner, :env)
+    @lineage.install_runner(credential, :runner)
 
-    assert_nil @lineage.take_runner(about)
-    assert_equal [:runner, :env], @lineage.take_runner(credential)
+    assert_nil @lineage.lose(about: about)
+    assert_equal :runner, @lineage.runner
+    assert_equal :runner, @lineage.lose(about: credential).retired.runner
     assert_nil @lineage.runner
-    assert @lineage.reserve_runner(credential), "taking it frees the slot for a rebuild"
+    refute @lineage.install_runner(credential, :late), "the retired builder cannot publish"
 
-    @lineage.lose(about: credential)
     replacement = adopted
     assert @lineage.reserve_runner(replacement), "the dead lineage's reservation went with it"
+    assert @lineage.install_runner(replacement, :replacement)
   end
 
   # ---- the ceremony slot ----

@@ -8,7 +8,7 @@ The agent's control plane. In the Docker stack, run it as `./cybros rho …` fro
 
 | Command | Purpose |
 | --- | --- |
-| `rho server [--mode full\|agent\|runner] [--bind] [--port] [--display-name]` | Start the foreground daemon |
+| `rho server [--bind] [--port] [--display-name]` | Start the foreground daemon |
 | `rho setup [--nexus-url URL]`, `rho setup model`, `rho setup telegram [--finish]` | Guided terminal setup, or one section of it |
 | `rho connect [--api-key\|--api-key-stdin]`, `rho disconnect`, `rho status` | OAuth or API-key connection and its state |
 | `rho console --open` | Open the browser page's public URL |
@@ -63,7 +63,7 @@ Run; a cost refusal uses task retry and preserves completed work.
 `rho connect --api-key` prompts for keys without echoing them. For automation,
 `--api-key-stdin` reads one JSON object from standard input: `access_token` for
 the Agent member key and `executor_access_token` for its application transport key.
-Full and agent modes use this same pair; Runner mode supplies only `executor_access_token`. The flags are
+Both keys are required for the application. The flags are
 mutually exclusive. Keys are validated and saved in the same private credential
 stores used by OAuth, without refresh scheduling. See [Connect a host
 installation](../get-started/connect-a-host-installation.md).

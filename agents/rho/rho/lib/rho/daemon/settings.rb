@@ -10,7 +10,7 @@ module Rho
         if changes.include?("webui_access") && config.webui_access == "password" && !@browser_login.password_set?
           raise ConfigurationError, "Set an unlock password before asking for one"
         end
-        Adaptations.load(config, home: @home) unless runner_mode?
+        Adaptations.load(config, home: @home)
       end
 
       def apply_settings(previous, changes)
@@ -22,7 +22,7 @@ module Rho
           raise Settings::AnnouncementError, "Settings were applied locally, but platform announcement failed (#{error.class.name}).", cause: nil
         end
         log.info("settings.applied", keys: changes)
-      rescue Settings::PreparationError, Rho::Runner::Extensions::PrerequisiteError
+      rescue Settings::PreparationError, Rho::Env::Extensions::PrerequisiteError
         @config.apply(previous)
         raise
       end
@@ -83,9 +83,9 @@ module Rho
                 end
                 changed << id if failed_extension?(id)
                 retired = replace_extensions(reloaded: changed, managed: sources)
-              rescue Settings::PreparationError, Rho::Runner::Extensions::PrerequisiteError => error
+              rescue Settings::PreparationError, Rho::Env::Extensions::PrerequisiteError => error
                 @config.apply(previous)
-                warning = if error in Rho::Runner::Extensions::PrerequisiteError
+                warning = if error in Rho::Env::Extensions::PrerequisiteError
                   error.message
                 else
                   "Package selection was saved but could not be applied (#{error.class.name})."
@@ -132,7 +132,7 @@ module Rho
         sources = Extensions.sources(@home, @config, managed: managed)
         reusable = old.registrations.select do |api|
           wanted = if api.source == "<built-in>"
-            Extensions.selected_builtins(@config, @extensions).any? { |mod| Rho::Runner::Extensions::Loader.extension_name_of(mod) == api.extension_name }
+            Extensions.selected_builtins(@config, @extensions).any? { |mod| Rho::Env::Extensions::Loader.extension_name_of(mod) == api.extension_name }
           else
             sources.paths.include?(api.source) || sources.gems.any? { |feature| api.source == "gem:#{feature}" }
           end
@@ -157,7 +157,7 @@ module Rho
           added.each do |api|
             start_registration(api)
           rescue StandardError, ScriptError => error
-            failure = Rho::Runner::Extensions::Loader::Failure.new(
+            failure = Rho::Env::Extensions::Loader::Failure.new(
               source: api.source, error_class: error.class.name, message: error.message)
             @loaded.failures.replace((@loaded.failures + [failure]).reverse.uniq(&:source).reverse)
             raise
@@ -165,7 +165,7 @@ module Rho
           yield if block_given?
         rescue StandardError, ScriptError => error
           added.reverse_each { |api| api.resources.retire }
-          raise if error in Rho::Runner::Extensions::PrerequisiteError
+          raise if error in Rho::Env::Extensions::PrerequisiteError
 
           raise Settings::PreparationError, "Extension preparation failed (#{error.class.name}): #{error.message}"
         end
@@ -201,13 +201,13 @@ module Rho
           (candidate.registrations - reusable).reverse_each { |api| api.resources.retire }
           @loaded.failures.replace((@loaded.failures + candidate.failures).reverse.uniq(&:source).reverse)
           if candidate.failures.any?(&:prerequisite?)
-            raise Rho::Runner::Extensions::PrerequisiteError, candidate.failures.map(&:public_message).join("; ")
+            raise Rho::Env::Extensions::PrerequisiteError, candidate.failures.map(&:public_message).join("; ")
           end
           raise Settings::PreparationError, candidate.failures.map(&:message).join("; ")
         end
         candidate
-      rescue Rho::Runner::Extensions::RegistrationError => error
-        raise if error in Rho::Runner::Extensions::PrerequisiteError
+      rescue Rho::Env::Extensions::RegistrationError => error
+        raise if error in Rho::Env::Extensions::PrerequisiteError
 
         raise Settings::PreparationError, error.message
       end
@@ -216,10 +216,8 @@ module Rho
         about = @lineage.credentials
         begin
           @maintenance.refresh_workspace(about) if changes.include?("workspace")
-          Lineage::SLOTS.each do |slot|
-            credential = about && slot_credential_for(about, slot)
-            announce_slot(credential, slot) if credential && @lineage.runner(slot)
-          end
+          credential = about && executor_credential_for(about)
+          announce_services(credential) if credential && @lineage.runner
           outcome = @host_followers&.configure(config: @config, loaded: @loaded)
         ensure
           @loaded.daemon_hooks.each do |hook|
@@ -276,7 +274,7 @@ module Rho
             begin
               api.resources.own(on_retire: true) { worker.stop unless worker.finished? }
               notify_extension(task.extension, "background:#{task.name}") { task.handler.call }
-            rescue Rho::Runner::Extensions::RegistrationError
+            rescue Rho::Env::Extensions::RegistrationError
               # A queued start can arrive after its owner was already retired.
               nil
             end

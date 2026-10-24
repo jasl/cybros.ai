@@ -6,7 +6,7 @@ class TelegramConfigurationTest < Minitest::Test
   OTHER = "019a1111-2222-7333-8444-555555555553".freeze
 
   def setup
-    @config = Rho::Config.from_hash({ "mode" => "agent", "plugins" => { Rho::IngressTelegram::NAME => {
+    @config = Rho::Config.from_hash({ "plugins" => { Rho::IngressTelegram::NAME => {
       "enabled" => true, "configuration" => {
         "connections" => { CONNECTION => { "name" => "Shared", "token" => "connection-secret" } },
         "bots" => { BOT => { "enabled" => true, "connection_public_id" => CONNECTION,

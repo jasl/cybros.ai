@@ -55,7 +55,7 @@ class WebuiRegistrationTest < Minitest::Test
     pages = %w[rho.first_page rho.second_page].map do |name|
       extension(name) { |api| api.register_webui(root: @bundle) }
     end
-    error = assert_raises(Rho::Runner::Extensions::RegistrationError) do
+    error = assert_raises(Rho::Env::Extensions::RegistrationError) do
       Rho::Extensions.load(host: host, extensions: pages)
     end
 
@@ -65,21 +65,17 @@ class WebuiRegistrationTest < Minitest::Test
 
   def test_registration_rejects_an_empty_root_and_a_second_root
     api = Rho::Extensions::Api.new(host: host, extension_name: "rho.page", source: "<test>")
-    assert_raises(Rho::Runner::Extensions::RegistrationError) { api.register_webui(root: "") }
+    assert_raises(Rho::Env::Extensions::RegistrationError) { api.register_webui(root: "") }
     api.register_webui(root: @bundle)
-    assert_raises(Rho::Runner::Extensions::RegistrationError) { api.register_webui(root: "/second") }
+    assert_raises(Rho::Env::Extensions::RegistrationError) { api.register_webui(root: "/second") }
   end
 
-  def test_default_feature_is_selected_once_for_full_and_agent_and_never_for_runner_mode
-    %w[full agent].each do |mode|
-      config = Rho::Config.from_hash({ "mode" => mode, "plugins" => {
-        "rho.webui" => { "enabled" => true, "source" => { "kind" => "gem", "feature" => "rho/webui" },
-          "configuration_version" => 1, "configuration" => {} } } })
-      assert_equal 1, Rho::Extensions.sources(host.home, config).gems.count("rho/webui")
-    end
-    refute_includes Rho::Extensions.sources(host.home, Rho::Config.from_hash({ "mode" => "runner" })).gems, "rho/webui"
-    assert_includes Rho::Extensions.sources(host.home, Rho::Config.from_hash({ "api_only" => true })).gems, "rho/webui",
-      "the core api_only switch controls mounting independently of the saved plugin selection"
+  def test_default_feature_is_selected_once_and_api_only_controls_mounting
+    config = Rho::Config.from_hash({ "plugins" => {
+      "rho.webui" => { "enabled" => true, "source" => { "kind" => "gem", "feature" => "rho/webui" },
+        "configuration_version" => 1, "configuration" => {} } } })
+    assert_equal 1, Rho::Extensions.sources(host.home, config).gems.count("rho/webui")
+    assert_includes Rho::Extensions.sources(host.home, Rho::Config.from_hash({ "api_only" => true })).gems, "rho/webui"
   end
 
   def test_the_plugin_loads_through_the_real_loader_and_is_listed_in_the_inventory
@@ -92,18 +88,14 @@ class WebuiRegistrationTest < Minitest::Test
     assert_empty loaded.registry.names
   end
 
-  def test_runner_hosts_accept_the_same_plugin_without_mounting_a_page
+  def test_environment_loader_accepts_page_registration_as_unavailable
     page = extension("rho.page") { |api| api.register_webui(root: @bundle) }
-    loaded = Rho::Extensions.load(host: host("mode" => "runner"), extensions: [page])
-    assert_predicate loaded, :ok?
-    assert_nil loaded.webui_root
-
-    standalone = Rho::Runner::Extensions::Loader.call(builtin: [page])
+    standalone = Rho::Env::Extensions::Loader.call(builtin: [page])
     assert_predicate standalone, :ok?
   end
 
-  def test_agent_mode_serves_the_default_plugin
-    daemon = boot("mode" => "agent")
+  def test_application_config_serves_the_default_plugin
+    daemon = boot
 
     assert_predicate daemon, :page?
     assert_equal "200", get(daemon, "/").code
@@ -124,16 +116,9 @@ class WebuiRegistrationTest < Minitest::Test
     assert_equal "200", get(daemon, "/healthz").code
   end
 
-  def test_runner_mode_never_serves_a_page_even_with_an_explicit_plugin_and_bundle
-    daemon = boot("mode" => "runner", "plugins" => { "rho.webui" => { "enabled" => true } }, "webui_root" => @bundle)
-
-    refute_predicate daemon, :page?
-    assert_equal "404", get(daemon, "/").code
-    assert_equal "200", get(daemon, "/healthz").code
-  end
 
   def test_an_uninstalled_default_plugin_costs_only_the_page
-    loader = Rho::Runner::Extensions::Loader
+    loader = Rho::Env::Extensions::Loader
     require_feature = loader.method(:require_feature)
     loader.define_singleton_method(:require_feature) do |feature|
       raise LoadError, "rho-webui is not installed" if feature == "rho/webui"

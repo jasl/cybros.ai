@@ -38,8 +38,7 @@ class TelegramRegistrationTest < Minitest::Test
   end
 
   def test_enabled_daemon_registers_one_worker_and_bearer_status_without_starting_it
-    %w[full agent].each do |mode|
-      api = load_extension(mode: mode)
+      api = load_extension
       assert_equal ["rho.ingress_telegram"], api.background_tasks.map(&:name)
       assert_equal [:shutdown], api.lifecycle.map(&:event)
       assert_equal %i[conversation_binding member_connection configuration_change], api.daemon_hooks.map(&:event)
@@ -57,7 +56,6 @@ class TelegramRegistrationTest < Minitest::Test
 
       api.lifecycle.find { |hook| hook.event == :shutdown }.handler.call
       assert_equal "stopped", route.handler.call(nil, nil).last.fetch("connections").fetch(0).fetch("connection")
-    end
   end
 
   def test_cli_loader_registers_status_but_no_telegram_worker_or_shutdown
@@ -100,24 +98,12 @@ class TelegramRegistrationTest < Minitest::Test
     refute status.key?("access"), "transport status does not own Bot admission"
   end
 
-  def test_runner_refuses_the_extension_before_registering_any_contribution
-    result = load_result(mode: "runner")
-    refute_predicate result, :ok?
-    assert_empty result.committed
-    failure = result.failures.fetch(0)
-    assert_equal "Rho::ConfigurationError", failure.error_class
-    assert_includes failure.message, "needs mode full or agent"
-    refute_includes failure.message, TOKEN
-  end
-
-  def test_full_and_agent_daemons_register_the_browser_module_shipped_in_the_gem
+  def test_daemon_register_the_browser_module_shipped_in_the_gem
     root = File.realpath(File.expand_path("../webui", __dir__))
-    %w[full agent].each do |mode|
-      browser = load_extension(mode: mode).webui_module
+      browser = load_extension.webui_module
       assert_equal Rho::IngressTelegram::NAME, browser.extension
       assert_equal root, browser.root
       assert_match %r{\A/modules/rho\.ingress_telegram/\h{12}/index\.js\z}, browser.entry
-    end
   end
 
   def test_the_gem_ships_every_browser_module_file
@@ -137,8 +123,8 @@ class TelegramRegistrationTest < Minitest::Test
       result.committed.fetch(0).tap { |api| @apis << api }
     end
 
-    def load_result(mode: "full", serving_tools: true, token: TOKEN)
-      config = Rho::Config.from_hash({ "mode" => mode, "plugins" => { Rho::IngressTelegram::NAME => {
+    def load_result(serving_tools: true, token: TOKEN)
+      config = Rho::Config.from_hash({ "plugins" => { Rho::IngressTelegram::NAME => {
         "enabled" => true, "configuration" => {
           "connections" => { CONNECTION => { "token" => token, "name" => "Shared" } },
           "bots" => { BOT => { "enabled" => true, "connection_public_id" => CONNECTION, "target" => { "chat_id" => "42" }, "owner_id" => "42" } },
@@ -152,7 +138,7 @@ class TelegramRegistrationTest < Minitest::Test
           client = Struct.new(:profile).new(profile)
           Rho::Extensions::MemberPlane.new(client: client, workspace_public_id: nil)
         })
-      Rho::Runner::Extensions::Loader.call(gems: ["rho/ingress-telegram"], api_class: Rho::Extensions::Api,
+      Rho::Env::Extensions::Loader.call(gems: ["rho/ingress-telegram"], api_class: Rho::Extensions::Api,
         api_options: { host: host })
     end
 end

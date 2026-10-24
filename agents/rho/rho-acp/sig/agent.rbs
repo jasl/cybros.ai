@@ -12,7 +12,6 @@ module Rho
 
       MODES: Array[String]
       DEFAULT_MODE: String
-      RUNNER_MODE: String
       PREFIX: String
 
       attr_reader connection: Connection

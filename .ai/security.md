@@ -78,7 +78,7 @@ What that carve-out does **not** cover, and what stays in scope for review:
   promotion state. The explicit development seed exception may install the access/refresh pair
   from `CODEX_AUTH_FILE` through `InstallOAuthPair`, refusing any pending OAuth
   session and any environment other than development/test. That explicit tool and its tests live
-  under `e2e/manual`; Nexus never loads them. The file is a one-time seed, not a synchronized token
+  under `e2e/products/manual`; Nexus never loads them. The file is a one-time seed, not a synchronized token
   store: Nexus owns subsequent rotation, so the operator must not keep the CLI rotating that same
   pair independently. This adds no production import route. Long-lived production Codex inference
   authenticates only from the encrypted credential installed by Nexus's own device start.

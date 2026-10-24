@@ -3,7 +3,7 @@ require "cybros_agent/test_support/fake_realtime"
 
 # THE EXECUTOR PLANE OUT OF `HostFollowers`: the runner address's run, its announcement and its
 # nudge stream, driven on the RUNNER credential — the cases `runs_test` pinned through
-# `HostFollowers` before runner mode existed, re-homed with their subjects, not loosened.
+# `HostFollowers`, re-homed with their subjects, not loosened.
 class DaemonExecutorPlaneTest < Minitest::Test
   include RhoTest::DaemonHarness
 
@@ -181,7 +181,6 @@ class DaemonExecutorPlaneTest < Minitest::Test
     wait_for { api.commits.length == 1 }
     assert_empty executor.subscriptions
     assert_nil daemon.lineage.executor_realtime, "no socket was minted"
-    assert_nil daemon.lineage.executor_realtime(:agent_runner)
     document = runner_document(daemon, token)
     assert_operator document.fetch("swept"), :>, 0
     assert_equal 0, document.fetch("nudged")
@@ -344,7 +343,6 @@ class DaemonExecutorPlaneTest < Minitest::Test
     daemon.send(:lose_authority)
 
     wait_for { agent.closed? }
-    assert_nil daemon.lineage.executor_realtime(:agent_runner), "the Agent's slot retired its socket"
     assert executor.closed?
     assert_nil daemon.lineage.executor_realtime
   end

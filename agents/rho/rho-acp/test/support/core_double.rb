@@ -13,14 +13,14 @@ module RhoAcpTest
   # `Queue` a test feeds live (`[type, payload]`; `:closed` ends it) for
   # the cases that need a follow open while the client answers.
   class CoreDouble
-    Settings = Struct.new(:mode, :default_model, keyword_init: true)
+    Settings = Struct.new(:default_model, keyword_init: true)
 
     attr_reader :calls
     attr_accessor :daemon, :connected, :status_state, :status_connection, :events, :rows, :tasks, :say_answers,
       :turns_pages, :transcripts, :skills_document, :known_models, :ceremony, :refusals, :settings, :attach_answer,
       :open_answers, :environment_answers
 
-    def initialize(mode: "full", default_model: "openrouter/default-model")
+    def initialize(default_model: "openrouter/default-model")
       @calls = []
       @daemon = { "endpoint" => "http://127.0.0.1:1", "bearer" => "b", "version" => 1 }
       @connected = true
@@ -35,7 +35,7 @@ module RhoAcpTest
       @known_models = []
       @ceremony = {}
       @refusals = {}
-      @settings = Settings.new(mode: mode, default_model: default_model)
+      @settings = Settings.new(default_model: default_model)
       @attach_answer = {}
       @open_answers = []
       @environment_answers = []
@@ -67,7 +67,7 @@ module RhoAcpTest
     # carries while one is in flight; nil answers none, as the daemon does.
     def status_document(_daemon)
       record(:status_document)
-      { "state" => @status_state, "mode" => @settings.mode, "connection" => @status_connection }.compact
+      { "state" => @status_state, "connection" => @status_connection }.compact
     end
 
     def start_ceremony(_daemon)

@@ -52,13 +52,11 @@ module Rho
           )
         end
 
-        # Over the AGENT planes: the runner plane prints its own line and never moves the login
-        # word — except in runner mode, where it is the one plane there is.
+        # Both runtime planes belong to the same application connection.
         def signed_state(report)
           return "expired" if report[:lost]
 
-          states = report[:planes].reject { |plane, _| plane == :runner_transport }.values
-          states = report[:planes].values if states.empty?
+          states = report[:planes].values
           return "signed_out" if states.all? { |state| state == :absent }
           return "signed_in" if states.all? { |state| state == :live }
           return "unknown" if states.include?(:unknown)

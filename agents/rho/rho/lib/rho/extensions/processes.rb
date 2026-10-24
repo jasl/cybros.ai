@@ -1,4 +1,4 @@
-require "rho/runner"
+require "rho/env"
 require_relative "../processes"
 # `routes` first: the person's tool shares its body and its bounds.
 require_relative "processes/routes"
@@ -38,9 +38,8 @@ module Rho
       # Bound at registration: a hook looking the table up at call time
       # would, with two daemons in one process, close the other's on
       # shutdown. Under the base handle and the CLI loader there is none; nil-safe.
-      # The tools go to a host that serves the runner address (an agent-mode
-      # rho serves none and keeps the verbs: its `rho ps` reads runners
-      # elsewhere); the rest registers under every host.
+      # Tool registration follows the host's served roles. The CLI keeps
+      # management verbs without serving tools.
       def self.register(api)
         table = api.host&.processes
         TOOLS.each { |klass| api.register_tool(klass) } if api.serves?(:runner)
@@ -114,7 +113,7 @@ module Rho
       # run once, so it neither restarts a server the person closed nor
       # keeps talking to one that is gone.
       def self.with_notices(result, table)
-        context = Rho::Runner::ExecutionContext.current
+        context = Rho::Env::ExecutionContext.current
         return nil if context&.run_public_id.nil? || table.nil?
 
         notices = table.take_notices(context.run_public_id, conversation: context.conversation_public_id)

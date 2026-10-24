@@ -24,7 +24,6 @@ module Rho
         unless [nil, "model", "telegram"].include?(section)
           raise Rho::Error, "Use rho setup, rho setup model or rho setup telegram."
         end
-        raise Rho::Error, "Setup needs full or agent mode; runner-only installations use rho connect." if @cli.config.mode == "runner"
         raise Rho::Error, "--finish is only available with rho setup telegram." if finish && section != "telegram"
         return @telegram_setup.call(finish: true) if finish
 

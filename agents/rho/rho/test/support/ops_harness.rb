@@ -3,7 +3,7 @@ module RhoTest
   module OpsHarness
     include DaemonHarness
 
-    def boot(extensions: [Rho::Extensions::Ops], config: agent_mode, **options) = super(extensions:, config:, **options)
+    def boot(extensions: [Rho::Extensions::Ops], config: application_config, **options) = super(extensions:, config:, **options)
 
     def create(daemon, body)
       response = request(daemon, :post, "/runs", token: bearer(daemon), body: body)

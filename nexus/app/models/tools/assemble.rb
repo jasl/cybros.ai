@@ -36,10 +36,9 @@ module Tools
         return Result.new(refusal: :runner_not_declared)
       end
 
-      load_executors
+      load_routes
       return Result.new(refusal: :runner_not_eligible) if @runner_id && !eligible?(@runner_id)
 
-      load_connections
       refusal = mcp_import_refusal
       return Result.new(refusal: refusal) if refusal
 
@@ -73,18 +72,18 @@ module Tools
 
     private
 
-      def load_executors
-        routes = @explicit.filter_map { |entry| entry["route"] }.select { |route| route.fetch("kind") == "runner" }
-        ids = (@candidate_ids + routes.map { |route| route.fetch("runner_executor_public_id") } + [@runner_id]).compact.uniq
-        rows = Executor.providing(:runner).where(account_id: @principal.account_id, public_id: ids)
-          .includes(:manager, agent: :steward).to_a
-        @readiness = Executor.credential_readiness_for(rows)
-        @executors = rows.index_by(&:public_id)
+      def load_routes
+        routes = @explicit.filter_map { |entry| entry["route"] }
+        runner_ids = routes.filter_map { |route| route["runner_executor_public_id"] }
+        connection_ids = (@mcp_tools + routes).filter_map { |entry| entry["connection_public_id"] }
+        @routes = Routes.new(principal: @principal,
+          runner_ids: (@candidate_ids + runner_ids + [@runner_id]).compact.uniq,
+          connection_ids: connection_ids.uniq)
+        @executors = @routes.executors
+        @connections = @routes.connections
       end
 
-      def eligible?(public_id)
-        @executors[public_id]&.eligible_for_role?(:runner, @principal, readiness: @readiness)
-      end
+      def eligible?(public_id) = @routes.runner_eligible?(public_id)
 
       def base_definitions
         @base_definitions ||= begin
@@ -129,18 +128,10 @@ module Tools
         "#{name[0, 49]}__#{Digest::SHA256.hexdigest("#{public_id}\0#{name}")[0, 12]}"
       end
 
-      def load_connections
-        routes = @explicit.filter_map { |entry| entry["route"] }.select { |route| route.fetch("kind") == "mcp" }
-        ids = (@mcp_tools + routes).map { |entry| entry.fetch("connection_public_id") }.uniq
-        @connections = McpConnection.where(account_id: @principal.account_id, public_id: ids).includes(:owner).index_by(&:public_id)
-      end
-
       def mcp_import_refusal
         @mcp_tools.each do |entry|
-          connection = @connections[entry.fetch("connection_public_id")]
-          return :mcp_connection_unavailable unless connection&.usable_by?(@principal)
-          name = entry.fetch("tool_name")
-          return :mcp_tool_unavailable unless connection.tool_available?(agent: @principal, name: name)
+          refusal = @routes.mcp_refusal(entry)
+          return refusal if refusal
         end
         nil
       end
@@ -171,11 +162,10 @@ module Tools
           when "runner"
             public_id = route.fetch("runner_executor_public_id")
             return :runner_not_eligible unless eligible?(public_id)
-            return :tool_not_served unless @executors.fetch(public_id).served?(route.fetch("tool_name"), role: :runner)
+            return :tool_not_served unless @routes.runner_serves?(route)
           when "mcp"
-            connection = @connections[route.fetch("connection_public_id")]
-            return :mcp_connection_unavailable unless connection&.usable_by?(@principal)
-            return :mcp_tool_unavailable unless connection.tool_available?(agent: @principal, name: route.fetch("tool_name"))
+            refusal = @routes.mcp_refusal(route)
+            return refusal if refusal
           else
             raise ArgumentError, "unknown tool route"
           end

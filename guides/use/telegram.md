@@ -64,4 +64,4 @@ Cross-Bot delivery retains one durable receipt across restarts. An ambiguous sen
 
 Select transcription and speech models under the Bot's **Messages** card, from the account's usable `transcription` and `speech_generation` models. A saved model that is no longer offered stays selectable as unavailable.
 
-The extension runs in `full` or `agent` mode. A runner-only daemon cannot host Telegram; agent mode needs a connected runner for environment tools. `rho telegram status` (or `./cybros rho telegram status`) reports shared connection status without exposing tokens.
+The extension runs inside rho. Its tools use Local or an explicitly selected eligible Runner. `rho telegram status` (or `./cybros rho telegram status`) reports shared connection status without exposing tokens.

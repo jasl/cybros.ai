@@ -2,7 +2,7 @@ require "test_helper"
 
 class PresetRawGuidanceTest < Minitest::Test
   def test_raw_guidance_uses_the_resolved_prompt_and_keeps_explicit_request_instructions
-    registry = Rho::Runner::Extensions::Registry.new
+    registry = Rho::Env::Extensions::Registry.new
     prompt = "Replacement\n\nMore"
     expected = "#{prompt}\n\nConversation kind: standalone."
     assert_equal expected, Rho::RunDeclaration.instructions(registry: registry, system_prompt: prompt)

@@ -14,11 +14,11 @@ class ExtensionConnectionLifecycleTest < Minitest::Test
     File.write(File.join(package, "extension.rb"), <<~'RUBY')
       module CallbackProbe
         NAME = "test.callback_probe"
-        class Probe < Rho::Runner::Tools::Read
+        class Probe < Rho::Env::Tools::Read
           NAME = "callback_probe"
           DESCRIPTION = "Read a file through the callback probe"
-          SCHEMA = Rho::Runner::Tools::Read::SCHEMA
-          EFFECT_PROFILE = Rho::Runner::Tools::Read::EFFECT_PROFILE
+          SCHEMA = Rho::Env::Tools::Read::SCHEMA
+          EFFECT_PROFILE = Rho::Env::Tools::Read::EFFECT_PROFILE
         end
 
         def self.register(api)
@@ -85,7 +85,7 @@ class ExtensionConnectionLifecycleTest < Minitest::Test
         release.pop
       end
     end
-    daemon = connected_boot(config: agent_mode, extensions: [feature, refresh_control])
+    daemon = connected_boot(config: application_config, extensions: [feature, refresh_control])
     token = connect(daemon)
     phase = 2
     replacing = Thread.new { request(daemon, :post, "/replace-connection", token: token, body: {}) }
@@ -117,7 +117,7 @@ class ExtensionConnectionLifecycleTest < Minitest::Test
         release.pop
       end
     end
-    daemon = connected_boot(config: agent_mode, extensions: [feature, refresh_control])
+    daemon = connected_boot(config: application_config, extensions: [feature, refresh_control])
     token = connect(daemon)
     disconnecting = Thread.new { request(daemon, :post, "/disconnect", token: token) }
     assert retiring.pop(timeout: 2), "disconnect callback did not start"

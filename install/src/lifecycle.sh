@@ -110,9 +110,6 @@ git_operation_in_progress() {
 # them (a fetch stands in for the pull, so the tree is untouched).
 update_mode() {
   [ -f "$RECEIPT_SH" ] || abort "rho install: nothing is installed at $PREFIX (no receipt)."
-  if in_container; then
-    abort "rho update: inside a container the image rolls, not the prefix:" "  docker compose pull && docker compose up -d" "(\`rho update --add-rows\` adds a profile's tool rows in place)."
-  fi
   local source old new marker script verb
   source="$RHO_RECEIPT_SOURCE_PATH"
   if [ ! -f "$source/agents/rho/rho/rho.gemspec" ] || [ -z "$(checkout_commit "$source")" ]; then
@@ -128,6 +125,9 @@ update_mode() {
     GIT_TERMINAL_PROMPT=0 git -C "$source" fetch || abort "rho update: git fetch failed in $source (git's line above)."
     new=$(git -C "$source" rev-parse '@{u}' 2>/dev/null) || abort "rho update: the branch checked out in $source tracks no upstream; \`git branch --set-upstream-to\` it, or pull by hand."
   else
+    if in_container; then
+      abort "rho update: inside a container the image rolls, not the prefix:" "  docker compose pull && docker compose up -d" "(\`rho update --add-rows\` adds a profile's tool rows in place)."
+    fi
     ohai git -C "$source" pull --ff-only
     GIT_TERMINAL_PROMPT=0 git -C "$source" pull --ff-only || abort "rho update: git pull --ff-only failed in $source (git's line above; a diverged or conflicting tree is yours to reconcile)."
     new=$(git -C "$source" rev-parse HEAD)

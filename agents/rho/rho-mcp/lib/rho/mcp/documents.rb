@@ -1,4 +1,4 @@
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module Mcp
@@ -112,7 +112,7 @@ module Rho
           text = lines.compact.join("\n")
           message["role"].to_s == "assistant" ? "#{ASSISTANT_LINE}\n#{text}" : text
         end
-        Rho::Runner::Result.ok(paragraphs.join("\n\n"), files: files)
+        Rho::Env::Result.ok(paragraphs.join("\n\n"), files: files)
       end
 
       # A resource's `contents` (`resources/read`): text verbatim, joined;
@@ -132,7 +132,7 @@ module Rho
 
           "[resource: #{item["uri"]} (#{mime.empty? ? "unknown type" : mime}), content discarded]"
         end
-        Rho::Runner::Result.ok(lines.join("\n"), files: files)
+        Rho::Env::Result.ok(lines.join("\n"), files: files)
       end
 
       # The capture's own line names the document, the type and the bytes

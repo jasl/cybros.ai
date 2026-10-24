@@ -16,7 +16,7 @@ class ProcessesExtensionTest < Minitest::Test
       log_dir: File.join(@dir, "log"),
       state_file: Rho::StateFile.new(File.join(@dir, "processes.json"))
     )
-    @env = Rho::Runner::ToolEnv.new(root: @dir, artifacts_dir: File.join(@dir, "artifacts"), processes: @registry)
+    @env = Rho::Env::ToolEnv.new(root: @dir, artifacts_dir: File.join(@dir, "artifacts"), processes: @registry)
   end
 
   def teardown
@@ -34,9 +34,9 @@ class ProcessesExtensionTest < Minitest::Test
   def start(args) = tool(Rho::Extensions::Processes::Tools::StartProcess).call(args)
 
   def as_run(public_id, &)
-    context = Rho::Runner::ExecutionContext.new(run_public_id: public_id, task_key: "t1",
+    context = Rho::Env::ExecutionContext.new(run_public_id: public_id, task_key: "t1",
       conversation_public_id: CONVERSATIONS[public_id])
-    Rho::Runner::ExecutionContext.with(context, &)
+    Rho::Env::ExecutionContext.with(context, &)
   end
 
   # ---- the leader-exit / pipe-EOF beat, staged without a race ----
@@ -73,7 +73,7 @@ class ProcessesExtensionTest < Minitest::Test
   def start_over(row, args)
     table = Object.new
     table.define_singleton_method(:start) { |**| row }
-    env = Rho::Runner::ToolEnv.new(root: @dir, artifacts_dir: File.join(@dir, "artifacts"), processes: table)
+    env = Rho::Env::ToolEnv.new(root: @dir, artifacts_dir: File.join(@dir, "artifacts"), processes: table)
     Rho::Extensions::Processes::Tools::StartProcess.new(env: env).call({ "command" => row.command }.merge(args))
   end
 
@@ -96,14 +96,14 @@ class ProcessesExtensionTest < Minitest::Test
   # and the routes and verbs it registers are logged away, never raised.
   def test_loads_under_the_base_handle_with_no_host_and_no_table
     log = RecordingLog.new
-    api = Rho::Runner::Extensions::Api.new(extension_name: "rho.processes", source: "<test>", log: log)
+    api = Rho::Env::Extensions::Api.new(extension_name: "rho.processes", source: "<test>", log: log)
     Rho::Extensions::Processes.register(api)
 
     assert_nil api.host
     assert_equal 5, api.tools.size
     assert_equal %i[startup shutdown], api.lifecycle.map(&:event)
     assert_nil api.environment_descriptions.first.handler.call(nil)
-    assert_nil api.hooks.first.handler.call("ls", Rho::Runner::Result.ok("x"))
+    assert_nil api.hooks.first.handler.call("ls", Rho::Env::Result.ok("x"))
     api.lifecycle.each { |registration| assert_nil registration.handler.call }
     unavailable = log.lines.select { |event, _| event == "extension_verb_unavailable" }.map { |_, fields| fields[:detail] }
     assert_equal 8, unavailable.size, unavailable.inspect
@@ -173,15 +173,13 @@ class ProcessesExtensionTest < Minitest::Test
     assert_includes result.content, "no output yet"
   end
 
-  # AN AGENT-MODE DAEMON SERVES NO RUNNER TOOL AND KEEPS THE VERBS: the extension loads there for `rho ps`/`rho logs`, which read a
-  # bound runner's table through the call_tool, and registers nothing the mode
-  # would refuse.
-  def test_under_an_agent_mode_daemon_the_verbs_register_and_the_tools_do_not
-    host = RhoTest.host.with(processes: @registry, config: Rho::Config.from_hash({ "mode" => "agent" }))
+  # The application exposes both process tools and their control commands.
+  def test_application_registers_process_tools_and_commands
+    host = RhoTest.host.with(processes: @registry, config: Rho::Config.from_hash({}))
     api = Rho::Extensions::Api.new(extension_name: "rho.processes", source: "<test>", host: host)
     Rho::Extensions::Processes.register(api)
 
-    assert_empty api.tools
+    assert_equal %w[start_process list_processes read_process stop_process process_log], api.tools.map(&:name)
     assert_equal %w[processes kill logs], api.commands.map(&:name)
     assert_equal 3, api.routes.size
   end
@@ -314,7 +312,7 @@ class ProcessesExtensionTest < Minitest::Test
       @registry.row("p1").nil?
     end
 
-    result = Rho::Runner::Result.ok("ls output")
+    result = Rho::Env::Result.ok("ls output")
     told = as_run("run-b") { hook.call("ls", result) }
     assert_match(/\Als output\n\nNOTE: process p1 \(web\) \(pid \d+\) exited with signal TERM, stopped by the person/, told.content)
     assert_nil as_run("run-a") { hook.call("ls", result) }, "once, to the conversation"
@@ -323,7 +321,7 @@ class ProcessesExtensionTest < Minitest::Test
   end
 
   def test_without_a_table_the_tools_say_so
-    @env = Rho::Runner::ToolEnv.new(root: @dir, artifacts_dir: File.join(@dir, "artifacts"), processes: nil)
+    @env = Rho::Env::ToolEnv.new(root: @dir, artifacts_dir: File.join(@dir, "artifacts"), processes: nil)
 
     result = start("command" => "sleep 1")
     assert result.is_error

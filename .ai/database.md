@@ -225,6 +225,13 @@ Use the least blocking mechanism that proves the invariant, in order:
   defines the bounded document's closed keys, `upsert | remove` entries, lane containment, ref/byte
   bounds, and validation. `ModelCatalog::ModelOverlay` validates composition and warns while
   ignoring invalid stored entries. Provider connections and optional pricing use these owners.
+- `model_overrides.retained_catalog` preserves configured deployment facts, with closed
+  `provider`, `models`, and `model_definitions` keys. Models are resolved, self-contained
+  definitions; referenced shared definitions preserve authored custom inheritance. Current file
+  facts win over saved facts; explicit overrides, removals and visibility apply afterward.
+  Enablement, model authoring and installation preparation refresh this document on its existing
+  Config row. There is no catalog write on reads or inference. The existing 2 MiB document bound
+  includes retention, with 256 retained models and 256 shared definitions per lane.
 - An effective edit locks/updates its Config using ordinary `lock_version`. Readers compose
   committed Config rows with one current in-memory file snapshot; there is no Account-wide
   CatalogState, generation bump, or invalidation proof. Database failure propagates as

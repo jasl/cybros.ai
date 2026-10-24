@@ -75,6 +75,7 @@ class WorkspacesTest < Minitest::Test
 
   def test_clearing_the_saved_workspace_immediately_restores_the_dedicated_default
     home = Rho::Home.resolve(base_url: "https://nexus.example", root: @root).prepare
+    Rho::Settings.prepare(home)
     home.write_setting("workspace", "ws-1")
     api = kernel_api(workspaces: [
       { public_id: "ws-1", name: "Selected room", dedicated: false },
@@ -114,9 +115,9 @@ class WorkspacesTest < Minitest::Test
 
       %w[child grandchild].each do |child|
         assert_nil daemon.host_followers.host_workspace(child), "no settled parent or child-mail event has listed this child"
-        context = Rho::Runner::ExecutionContext.new(workspace_public_id: "ws-1",
+        context = Rho::Env::ExecutionContext.new(workspace_public_id: "ws-1",
           conversation_public_id: child, run_public_id: "run-#{child}")
-        Rho::Runner::ExecutionContext.with(context) do
+        Rho::Env::ExecutionContext.with(context) do
           plane = daemon.host.member_plane.call(host_public_id: child, workspace_public_id: context.workspace_public_id)
           assert_equal "ws-1", plane.workspace_public_id
           binding = daemon.host.environments.call.read(child, parent: child == "child" ? "c-1" : "child", plane: plane).binding

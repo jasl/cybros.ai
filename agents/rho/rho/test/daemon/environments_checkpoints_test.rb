@@ -13,7 +13,7 @@ class EnvironmentsCheckpointsTest < Minitest::Test
     end
     @home = Rho::Home.resolve(base_url: "https://nexus.example", root: File.join(@tmp, "home"))
     @home.prepare
-    @registry = Rho::Runner::Extensions::Loader.call(builtin: [Rho::Runner::Extensions::Checkpoints],
+    @registry = Rho::Env::Extensions::Loader.call(builtin: [Rho::Env::Extensions::Checkpoints],
       api_options: { host: RhoTest.host }).registry
   end
 

@@ -121,7 +121,7 @@ selector is rejected with `invalid_request`; it is never ignored to create a bro
 
 Agent and Runner products combine a release-stable product constant with an instance part
 established when their local home is prepared. For example, rho sends `rho.<instance_id>`;
-its standalone runner sends `rho-runner.<instance_id>`. Nexus treats the complete identifier
+its standalone runner sends `rho-env.<instance_id>`. Nexus treats the complete identifier
 as opaque and does not parse either part. The browser never displays or asks a person to
 choose it. Restarting the same home preserves its logical identity; preparing a fresh home
 creates a distinct instance even when the product is the same. Reconnecting the same exact

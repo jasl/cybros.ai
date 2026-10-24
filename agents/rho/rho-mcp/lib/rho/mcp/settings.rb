@@ -1,5 +1,5 @@
 require "mcp"
-require "rho/runner"
+require "rho/env"
 require "uri"
 
 module Rho
@@ -66,7 +66,7 @@ module Rho
     # conversation row. The boot grammar's own faults (a URL that is not
     # http(s), a header over plain `http://` off loopback) stay ROW faults.
     module Settings
-      class Malformed < Rho::Runner::Extensions::RegistrationError; end
+      class Malformed < Rho::Env::Extensions::RegistrationError; end
 
       TRANSPORTS = %w[stdio http].freeze
       SERVES = %w[runner agent].freeze
@@ -369,7 +369,7 @@ module Rho
         return default unless raw.key?(name)
 
         value = raw[name]
-        limit = Rho::Runner::Extensions::Tool::MAX_TIMEOUT_MS
+        limit = Rho::Env::Extensions::Tool::MAX_TIMEOUT_MS
         return value if value.is_a?(Integer) && value.positive? && value <= limit
 
         fault!(key, "#{name} must be a positive integer of milliseconds no greater than #{limit}, got #{value.inspect}")
@@ -382,7 +382,7 @@ module Rho
         table = raw.fetch("effect_profiles", {})
         fault!(key, "effect_profiles must be an object of tool name to effect profile") unless table.is_a?(Hash)
         table.to_h do |name, profile|
-          fault = Rho::Runner::Extensions::Tool.effect_profile_fault(profile)
+          fault = Rho::Env::Extensions::Tool.effect_profile_fault(profile)
           fault!(key, "effect_profiles.#{name} must be a full effect profile #{fault}") if fault
           [name.to_s, profile.to_h.transform_keys(&:to_s).freeze]
         end.freeze
@@ -395,7 +395,7 @@ module Rho
           expanded = literal ? value : expand(key, value, name, entry, env, secrets)
           # A literal under a credential-shaped `env` key is a secret when
           # it is long enough to be one (the runner's rule).
-          secrets << expanded if name == "env" && Rho::Runner::Secrets.literal_credential?(entry, expanded)
+          secrets << expanded if name == "env" && Rho::Env::Secrets.literal_credential?(entry, expanded)
           [entry.to_s, expanded]
         end.freeze
       end
@@ -403,10 +403,10 @@ module Rho
       # The runner's expansion; an unset name is this row's fault, the
       # sentence naming the key and the variable, never a value.
       def expand(key, value, name, entry, env, secrets)
-        expanded, found = Rho::Runner::Secrets.expand(value, env)
+        expanded, found = Rho::Env::Secrets.expand(value, env)
         secrets.concat(found)
         expanded
-      rescue Rho::Runner::Secrets::Unset => unset
+      rescue Rho::Env::Secrets::Unset => unset
         fault!(key, "#{name}.#{entry} names ${#{unset.variable}}, which is not set in the daemon's environment")
       end
 

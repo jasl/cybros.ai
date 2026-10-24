@@ -1,4 +1,4 @@
-require "rho/runner"
+require "rho/env"
 require "rho/acp"
 require_relative "policy"
 
@@ -33,7 +33,7 @@ module Rho
     class Call
       POLL_SECONDS = 0.1
       CANCEL_GRACE_SECONDS = 1.0
-      PROGRESS_TAIL_BYTES = Rho::Runner::Tools::Bash::PROGRESS_TAIL_BYTES
+      PROGRESS_TAIL_BYTES = Rho::Env::Tools::Bash::PROGRESS_TAIL_BYTES
       Methods = Rho::Acp::Methods
       Update = Methods::SessionUpdate
       StopReason = Methods::StopReason
@@ -72,7 +72,7 @@ module Rho
             "prompt" => [{ "type" => Methods::ContentBlock::TEXT, "text" => @prompt.to_s.scrub }],
           })
           wall = monotonic + (@row.timeout_ms / 1000.0)
-          outcome = Rho::Runner::ExecutionContext.with_cancel_signal(-> { @cancel_requested = true }) do
+          outcome = Rho::Env::ExecutionContext.with_cancel_signal(-> { @cancel_requested = true }) do
             drain(pending, wall)
           end
           settle(outcome, pending)
@@ -100,7 +100,7 @@ module Rho
             return :died if @child.exited? || @child.closed?
 
             if @cancel_requested && @cancel_sent_at.nil?
-              return :deadline if Rho::Runner::ExecutionContext.current&.reason == :deadline
+              return :deadline if Rho::Env::ExecutionContext.current&.reason == :deadline
 
               send_cancel
             end
@@ -113,7 +113,7 @@ module Rho
           @child.notify(Methods::SESSION_CANCEL, { "sessionId" => @session.acp_id })
           @cancel_sent_at = monotonic
           @log&.info("acp.cancel_sent", agent: @row.key, session: @session.id,
-            reason: Rho::Runner::ExecutionContext.current&.reason)
+            reason: Rho::Env::ExecutionContext.current&.reason)
         rescue Rho::Acp::Closed
           @cancel_sent_at = monotonic
         end
@@ -305,10 +305,10 @@ module Rho
 
         # ---- the result ----
 
-        def ok(stop) = Rho::Runner::Result.ok(body(stop), structure(stop), files: files)
+        def ok(stop) = Rho::Env::Result.ok(body(stop), structure(stop), files: files)
 
         def error(sentence, stop:)
-          Rho::Runner::Result.error(body(stop, sentence), structure(stop), files: files)
+          Rho::Env::Result.error(body(stop, sentence), structure(stop), files: files)
         end
 
         def files = @child.capture ? [@child.capture.path] : []
@@ -317,7 +317,7 @@ module Rho
           parts = []
           text = @child.redact.call(@text).strip
           unless text.empty?
-            window = Rho::Runner::Truncation.truncate_head(text)
+            window = Rho::Env::Truncation.truncate_head(text)
             parts << window.content
             if window.truncated
               parts << "[Showing lines 1-#{window.output_lines} of #{window.total_lines}. Full text: #{@child.capture&.path}]"

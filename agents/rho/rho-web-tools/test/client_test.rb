@@ -27,7 +27,7 @@ class ClientTest < Minitest::Test
 
   def client(**options) = Rho::WebTools::Client.new(allow_private_network: true, **options)
 
-  def within_context(&) = Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new, &)
+  def within_context(&) = Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new, &)
 
   # httpx's own parsing of a response header other than Location raises
   # URI::InvalidURIError; the client keeps Alt-Svc, the one such header
@@ -380,10 +380,10 @@ class ClientTest < Minitest::Test
   # runner cancels the context from another thread; the request returns
   # within a second as the context's own `Cancelled`.
   def test_a_cancel_during_a_blocked_read_returns_within_a_second
-    context = Rho::Runner::ExecutionContext.new
+    context = Rho::Env::ExecutionContext.new
     outcome = nil
     worker = Thread.new do
-      Rho::Runner::ExecutionContext.with(context) do
+      Rho::Env::ExecutionContext.with(context) do
         client.get("#{@site}/slow")
       rescue Exception => error # rubocop:disable Lint/RescueException
         outcome = error
@@ -395,7 +395,7 @@ class ClientTest < Minitest::Test
       worker.join(3)
     end
     refute_predicate worker, :alive?, "the request did not return"
-    assert_kind_of Rho::Runner::ExecutionContext::Cancelled, outcome
+    assert_kind_of Rho::Env::ExecutionContext::Cancelled, outcome
     assert_operator seconds, :<, 1
   end
 

@@ -13,7 +13,7 @@ module PersonalGreeting
       @person = person
     end
 
-    def call(_args) = Rho::Runner::Result.ok("#{WORD}, #{@person}.")
+    def call(_args) = Rho::Env::Result.ok("#{WORD}, #{@person}.")
   end
 
   def self.register(api)

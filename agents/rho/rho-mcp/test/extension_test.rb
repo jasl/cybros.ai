@@ -10,9 +10,9 @@ class ExtensionTest < Minitest::Test
     install_fake_factory
   end
 
-  def environment = Rho::Runner::Environment.local(root: Dir.tmpdir)
+  def environment = Rho::Env::Environment.local(root: Dir.tmpdir)
 
-  def tool_env = Rho::Runner::ToolEnv.new(root: Dir.tmpdir, artifacts_dir: Dir.tmpdir)
+  def tool_env = Rho::Env::ToolEnv.new(root: Dir.tmpdir, artifacts_dir: Dir.tmpdir)
 
   DOCUMENT_NAMES = ["fx-summarize", "fx-chatty-prompt-#{Rho::Mcp::Naming.digest("fx", "Chatty Prompt")}", "fx-asker", "fx-readme",
                     "fx-notes", "fx-logo"].freeze
@@ -50,7 +50,7 @@ class ExtensionTest < Minitest::Test
   # reads (`host`, `serves?`); the document verbs go through the base
   # handle's own `serves?` refusal.
   def api_class(host)
-    Class.new(Rho::Runner::Extensions::Api) do
+    Class.new(Rho::Env::Extensions::Api) do
       attr_reader :conversation_registrar
 
       define_method(:register_conversation_servers) do |&registrar|
@@ -59,23 +59,23 @@ class ExtensionTest < Minitest::Test
       end
       next if host.nil?
 
-      define_method(:serves?) { |source| host.mode == "full" || (host.mode == "runner" && source == :runner) || (host.mode == "agent" && source == :agent) }
+      define_method(:serves?) { |source| %i[agent runner].include?(source) }
       define_method(:register_tool) do |klass, serves: :runner|
-        raise Rho::Runner::Extensions::RegistrationError, "mode refuses #{serves}" unless serves?(serves)
+        raise Rho::Env::Extensions::RegistrationError, "host does not serve #{serves}" unless serves?(serves)
 
-        validator = Rho::Runner::Extensions::Tool.validate(klass, extension: extension_name)
-        @tools << Rho::Runner::Extensions::Api::Registration.new(klass: klass, serves: serves, validator: validator)
+        validator = Rho::Env::Extensions::Tool.validate(klass, extension: extension_name)
+        @tools << Rho::Env::Extensions::Api::Registration.new(klass: klass, serves: serves, validator: validator)
         self
       end
     end
   end
 
-  Host = Struct.new(:home, :config, :serving_tools, :mode, keyword_init: true)
-  Config = Struct.new(:mcp_servers, :mode, keyword_init: true)
+  Host = Struct.new(:home, :config, :serving_tools, keyword_init: true)
+  Config = Struct.new(:mcp_servers, keyword_init: true)
   Home = Struct.new(:root, keyword_init: true)
 
-  def host(mode: "full", serving: true, table: nil)
-    Host.new(home: Home.new(root: Dir.tmpdir), config: Config.new(mcp_servers: table, mode: mode), serving_tools: serving, mode: mode)
+  def host(serving: true, table: nil)
+    Host.new(home: Home.new(root: Dir.tmpdir), config: Config.new(mcp_servers: table), serving_tools: serving)
   end
 
   def test_it_announces_the_allowlisted_tools_a_shutdown_hook_and_the_verbs
@@ -112,7 +112,7 @@ class ExtensionTest < Minitest::Test
   # `skill` is registered there.
   def test_a_stdio_servers_documents_ride_the_runner_address_and_load_through_it
     Rho::Mcp.settings_table = { "fx" => stdio }
-    result = McpTest.load(builtin: [Rho::Runner::Extensions::Coding, Rho::Mcp], api_class: api_class(nil))
+    result = McpTest.load(builtin: [Rho::Env::Extensions::Coding, Rho::Mcp], api_class: api_class(nil))
     assert_predicate result, :ok?, result.failures.inspect
     registry = result.registry
     assert_equal 1, registry.names.count("skill"), "Coding's skill alone; nothing on the agent address"
@@ -123,7 +123,7 @@ class ExtensionTest < Minitest::Test
       registry.documents(environment).fetch(0))
 
     skill = registry.serving(:runner).toolset(env: tool_env).fetch("skill")
-    load = ->(name) { Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) { skill.handler.call({ "name" => name }, nil) } }
+    load = ->(name) { Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) { skill.handler.call({ "name" => name }, nil) } }
     assert_equal "Summarize the notes.\nBe brief.", load.call("fx-summarize").content
     assert_equal "# Readme\n\nRead me.", load.call("fx-readme").content
     assert_equal "note one\nnote two", load.call("fx-notes").content
@@ -142,48 +142,44 @@ class ExtensionTest < Minitest::Test
     assert_equal 6, Rho::Mcp.report.fetch("total").fetch("documents")
   end
 
-  # AN HTTP SERVER'S DOCUMENTS RIDE THE AGENT ADDRESS, and the extension
-  # registers the plane's `skill` there itself (in agent mode Coding is
-  # not loaded at all; in full mode the per-address key keeps the two
-  # apart); a load of an agent-announced name through the agent's `skill`
-  # reaches the http server, and the runner's `skill` never answers it.
+  # HTTP documents use the agent role; Coding documents use the runner role.
   def test_an_http_servers_documents_ride_the_agent_address_with_the_planes_skill
-    result = load({ "remote" => http }, host(mode: "agent"))
+    result = load({ "remote" => http }, host)
     assert_predicate result, :ok?, result.failures.inspect
     registry = result.registry
     assert_includes registry.serving(:agent).names, "skill"
-    assert_equal Rho::Runner::Tools::Skill, registry.serving(:agent).entries.find { |e| e.name == "skill" }.klass
+    assert_equal Rho::Env::Tools::Skill, registry.serving(:agent).entries.find { |e| e.name == "skill" }.klass
     assert_equal "rho.mcp", registry.serving(:agent).entries.find { |e| e.name == "skill" }.extension
     assert_equal ["remote-summarize", "remote-chatty-prompt-#{Rho::Mcp::Naming.digest("remote", "Chatty Prompt")}", "remote-asker",
                   "remote-readme", "remote-notes", "remote-logo"], registry.serving(:agent).documents(environment).map { |e| e.fetch("name") }
     assert_empty registry.serving(:runner).documents(environment)
     skill = registry.serving(:agent).toolset(env: tool_env).fetch("skill")
-    loaded = Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) { skill.handler.call({ "name" => "remote-summarize" }, nil) }
+    loaded = Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) { skill.handler.call({ "name" => "remote-summarize" }, nil) }
     assert_equal "Summarize the notes.\nBe brief.", loaded.content
 
     Rho::Mcp.reset!
     @transports.clear
     install_fake_factory
     Rho::Mcp.settings_table = { "fx" => stdio, "remote" => http }
-    result = McpTest.load(builtin: [Rho::Runner::Extensions::Coding, Rho::Mcp],
-      api_options: { host: host(mode: "full") }, api_class: api_class(host(mode: "full")))
+    result = McpTest.load(builtin: [Rho::Env::Extensions::Coding, Rho::Mcp],
+      api_options: { host: host }, api_class: api_class(host))
     assert_predicate result, :ok?, result.failures.inspect
     registry = result.registry
-    assert_equal 2, registry.names.count("skill"), "one per address under full mode"
+    assert_equal 2, registry.names.count("skill"), "one per service role"
     assert_equal %w[rho.coding rho.mcp], registry.entries.select { |e| e.name == "skill" }.map(&:extension)
     assert_equal DOCUMENT_NAMES, registry.serving(:runner).documents(environment).map { |e| e.fetch("name") }
     assert_equal 6, registry.serving(:agent).documents(environment).length
     runner_skill = registry.serving(:runner).toolset(env: tool_env).fetch("skill")
     assert_equal "skill_unknown: remote-summarize",
-      Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) { runner_skill.handler.call({ "name" => "remote-summarize" }, nil) }.content,
+      Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) { runner_skill.handler.call({ "name" => "remote-summarize" }, nil) }.content,
       "the runner's skill never answers the agent's document"
 
     Rho::Mcp.reset!
     @transports.clear
     install_fake_factory
-    result = load({ "remote" => http }, host(mode: "runner"))
+    result = load({ "remote" => http }, nil)
     assert_predicate result, :ok?
-    assert_empty result.registry.names, "a row the mode refuses announces nothing, and no skill is registered"
+    assert_empty result.registry.names, "a row the host cannot serve announces nothing, and no skill is registered"
   end
 
   # A NAME TWO SERVERS FOLD TO (`a-b` + `c`, `a` + `b-c`) is announced once,
@@ -209,7 +205,7 @@ class ExtensionTest < Minitest::Test
   def test_the_registered_class_answers_through_the_module
     result = load({ "fx" => stdio })
     klass = result.registry.entries.find { |e| e.name == "mcp__fx__echo" }.klass
-    answer = Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) { klass.new(env: nil).call({ "text" => "hi" }) }
+    answer = Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) { klass.new(env: nil).call({ "text" => "hi" }) }
     assert_equal "hi", answer.content
   end
 
@@ -237,7 +233,7 @@ class ExtensionTest < Minitest::Test
   # built, no tool registered, no document, the report's state `disabled`
   # with no detail, `call` answering `ServerGone`; a row a person parks
   # with `enabled: false` is the same; a disabled row on an address the
-  # mode refuses is just disabled. The switch is judged BEFORE the mode.
+  # host cannot serve is just disabled. The switch is judged BEFORE the role check.
   def test_the_shipped_row_is_listed_disabled_never_connected_never_announced
     result = load({ "fx" => stdio, "parked" => stdio(enabled: false), "remote" => http(enabled: false) })
     assert_predicate result, :ok?, result.failures.inspect
@@ -247,7 +243,7 @@ class ExtensionTest < Minitest::Test
     assert_equal ["disabled", nil, nil, nil, nil], [entry.state, entry.fault, entry.connection, entry.curated, entry.documents]
     refute_predicate entry.row, :enabled?
     assert_equal %w[disabled disabled], %w[parked remote].map { |key| Rho::Mcp.entries.fetch(key).state }
-    assert_nil Rho::Mcp.entries.fetch("remote").fault, "disabled is judged before the mode; nothing to say"
+    assert_nil Rho::Mcp.entries.fetch("remote").fault, "disabled is judged before the role check; nothing to say"
     assert_equal 1, @transports.length, "nothing was built for a disabled row"
     servers = Rho::Mcp.report.fetch("servers")
     context7 = servers.fetch(3)
@@ -265,7 +261,7 @@ class ExtensionTest < Minitest::Test
   # other, in the person's order, on the agent address (here through the
   # fake factory; the URL is the shipped one).
   def test_the_switch_written_under_the_key_makes_the_next_load_connect_and_announce_it
-    result = load({ "context7" => { "enabled" => true }, "fx" => stdio }, host(mode: "full"))
+    result = load({ "context7" => { "enabled" => true }, "fx" => stdio }, host)
     assert_predicate result, :ok?, result.failures.inspect
     names = result.registry.names
     assert_includes names, "mcp__context7__echo"
@@ -320,62 +316,38 @@ class ExtensionTest < Minitest::Test
     assert_equal %w[mcp__fx__echo mcp__fx__lookup], result.registry.names.sort
   end
 
-  def test_the_mode_refusal_is_a_row_level_fault_and_the_loader_serves_the_runner_address_under_mode_runner
-    result = load({ "fx" => stdio, "remote" => stdio(serves: "agent") }, host(mode: "runner"))
+  def test_a_library_host_refuses_an_agent_role_as_a_row_fault
+    result = load({ "fx" => stdio, "remote" => stdio(serves: "agent") })
     assert_predicate result, :ok?, result.failures.inspect
     assert_equal %w[mcp__fx__echo mcp__fx__lookup], result.registry.names.sort
     assert result.registry.entries.all? { |e| e.serves == :runner }
-    assert_equal 'config: mcp server "remote" serves the agent (transport stdio); this rho runs in mode runner — ' \
-                 'set "serves": "runner" for a server this machine owns, or declare it in the agent\'s settings',
+    assert_equal 'config: mcp server "remote" serves agent (transport stdio); this host does not serve that role',
       Rho::Mcp.entries.fetch("remote").fault
     assert_equal 1, @transports.length
-
-    Rho::Mcp.reset!
-    result = load({ "fx" => stdio }, host(mode: "agent"))
-    assert_predicate result, :ok?
-    assert_equal 'config: mcp server "fx" serves the runner (transport stdio); this rho runs in mode agent and serves ' \
-                 "no tool of its own — declare the server on the runner's home, or use mode full", Rho::Mcp.entries.fetch("fx").fault
   end
 
-  # THE ADDRESS BY TRANSPORT: an http row serves the agent
-  # by default — refused as that ROW's fault under mode runner, the
-  # stdio servers still announced; announced on the agent address under
-  # mode agent, where a stdio row is the one refused; both under full.
-  def test_an_http_row_serves_the_agent_by_default_and_the_mode_refusal_names_its_transport
-    result = load({ "fx" => stdio, "remote" => http }, host(mode: "runner"))
+  def test_an_application_serves_both_transport_defaults_and_explicit_roles
+    result = load({ "fx" => stdio, "remote" => http }, host)
     assert_predicate result, :ok?, result.failures.inspect
-    assert_equal %w[mcp__fx__echo mcp__fx__lookup], result.registry.names.sort
-    assert_equal 'config: mcp server "remote" serves the agent (transport http); this rho runs in mode runner — ' \
-                 'set "serves": "runner" for a server this machine owns, or declare it in the agent\'s settings',
-      Rho::Mcp.entries.fetch("remote").fault
-    assert_equal 1, @transports.length, "nothing connected for a row the mode refuses"
-
-    Rho::Mcp.reset!
-    @transports.clear
-    install_fake_factory
-    result = load({ "fx" => stdio, "remote" => http }, host(mode: "agent"))
-    assert_predicate result, :ok?, result.failures.inspect
-    assert_equal %w[mcp__remote__echo mcp__remote__lookup mcp__remote__write skill], result.registry.names.sort,
-      "under \"*\" the undescribed `blank` is skipped; the plane's skill serves the row's documents"
-    assert result.registry.entries.all? { |e| e.serves == :agent }, "an http server's tools ride the agent address"
-    assert_equal 1, @transports.length
+    assert_equal %w[mcp__remote__echo mcp__remote__lookup mcp__remote__write skill], result.registry.serving(:agent).names.sort
+    assert_equal %w[mcp__fx__echo mcp__fx__lookup], result.registry.serving(:runner).names.sort
+    assert_equal 2, @transports.length
     remote = Rho::Mcp.report.fetch("servers").find { |s| s.fetch("key") == "remote" }
     assert_equal ["http", "agent", "connected", "https://mcp.example.com/mcp", ["X-Api-Key"]],
-      remote.values_at("transport", "serves", "state", "launch", "headers"), "the launch line is the url; header NAMES only"
-    assert_equal 60_000, result.registry.entries.fetch(0).klass::TIMEOUT_MS, "the http park, and Faraday's read timeout"
+      remote.values_at("transport", "serves", "state", "launch", "headers")
+    assert_equal 60_000, result.registry.serving(:agent).entries.fetch(0).klass::TIMEOUT_MS
 
     Rho::Mcp.reset!
     @transports.clear
     install_fake_factory
-    result = load({ "fx" => stdio, "remote" => http(serves: "runner") }, host(mode: "full"))
+    result = load({ "fx" => stdio, "remote" => http(serves: "runner") }, host)
     assert_predicate result, :ok?
-    assert_equal 5, result.registry.entries.count { |e| e.serves == :runner },
-      "`serves: runner` re-addresses an http server this machine owns"
+    assert_equal 5, result.registry.entries.count { |e| e.serves == :runner }
     assert_equal 0, result.registry.entries.count { |e| e.serves == :agent }
   end
 
   def test_a_raise_out_of_register_after_a_spawn_tears_the_children_down
-    api_klass = Class.new(Rho::Runner::Extensions::Api) do
+    api_klass = Class.new(Rho::Env::Extensions::Api) do
       def register_route(*) = raise("the route door is broken")
     end
     Rho::Mcp.settings_table = { "fx" => stdio }
@@ -427,7 +399,7 @@ class ExtensionTest < Minitest::Test
   def canonical_bytes(entries) = CybrosAgent::SizeBounds.canonical_bytesize(entries)
 
   def coding_bytes
-    canonical_bytes(McpTest.load(builtin: [Rho::Runner::Extensions::Coding]).registry.announcement)
+    canonical_bytes(McpTest.load(builtin: [Rho::Env::Extensions::Coding]).registry.announcement)
   end
 
   BOUND_SENTENCE = /\Amcp server "(?<key>\w+)": its (?<count>\d+) tools \((?<mine>[\d,]+) bytes as the kernel measures an announcement\) would put the runner address's announcement at (?<total>[\d,]+) bytes, past the kernel's envelope_bound \(65,536 bytes\); (?<before>[\d,]+) bytes were announced there before it\z/
@@ -450,7 +422,7 @@ class ExtensionTest < Minitest::Test
   def test_a_server_past_the_envelope_bound_is_faulted_as_a_row_and_everything_else_announces
     serve("wide" => wide_server(12, 6_000), "fx" => @server)
     Rho::Mcp.settings_table = { "wide" => stdio(tools: ["*"]), "fx" => stdio }
-    result = McpTest.load(builtin: [Rho::Runner::Extensions::Coding, Rho::Mcp], api_class: api_class(nil))
+    result = McpTest.load(builtin: [Rho::Env::Extensions::Coding, Rho::Mcp], api_class: api_class(nil))
     assert_predicate result, :ok?, result.failures.inspect
     assert_includes result.registry.names, "bash", "the host's own tools announce"
     assert_equal %w[mcp__fx__echo mcp__fx__lookup], result.registry.names.grep(/\Amcp__/).sort, "the other server announces"
@@ -488,7 +460,7 @@ class ExtensionTest < Minitest::Test
     Rho::Mcp.reset!
     serve("tall" => wide_server(10, 6_000))
     Rho::Mcp.settings_table = { "tall" => stdio(tools: ["*"]) }
-    beside = McpTest.load(builtin: [Rho::Runner::Extensions::Coding, Rho::Mcp], api_class: api_class(nil))
+    beside = McpTest.load(builtin: [Rho::Env::Extensions::Coding, Rho::Mcp], api_class: api_class(nil))
     assert_predicate beside, :ok?, beside.failures.inspect
     assert_equal "down", Rho::Mcp.entries.fetch("tall").state
     assert_equal coding_bytes, numbers(Rho::Mcp.entries.fetch("tall").fault).fetch("before")
@@ -497,7 +469,7 @@ class ExtensionTest < Minitest::Test
     Rho::Mcp.reset!
     serve("a" => wide_server(5, 6_000), "b" => wide_server(5, 6_000))
     Rho::Mcp.settings_table = { "a" => stdio(tools: ["*"]), "b" => stdio(tools: ["*"]) }
-    result = McpTest.load(builtin: [Rho::Runner::Extensions::Coding, Rho::Mcp], api_class: api_class(nil))
+    result = McpTest.load(builtin: [Rho::Env::Extensions::Coding, Rho::Mcp], api_class: api_class(nil))
     assert_predicate result, :ok?, result.failures.inspect
     assert_equal "connected", Rho::Mcp.entries.fetch("a").state, Rho::Mcp.entries.fetch("a").fault
     assert_equal "down", Rho::Mcp.entries.fetch("b").state
@@ -561,7 +533,7 @@ class ExtensionTest < Minitest::Test
     first.committed.fetch(0).lifecycle.find { |hook| hook.event == :shutdown }.handler.call
     assert_equal [0, 1, 1, 0], @transports.map(&:closes)
     assert_equal %w[mcp__change__lookup mcp__keep__echo mcp__keep__lookup], changed.registry.names.sort
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
       assert_equal "still here", original_class.new(env: nil).call({ "text" => "still here" }).content
       assert_equal "record for new-row", Rho::Mcp.call("change", "lookup", { "key" => "new-row" }).content
     end
@@ -586,7 +558,7 @@ class ExtensionTest < Minitest::Test
       first = changed
     end
     assert_equal [1, 0, 0], @transports.map(&:closes)
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
       assert_equal "editor alive", editor_class.new(env: nil).call({ "text" => "editor alive" }).content
     end
   end
@@ -603,7 +575,7 @@ class ExtensionTest < Minitest::Test
     refute_predicate result, :ok?
     assert_same previous, Rho::Mcp.entries.fetch("fx")
     assert_equal [0, 1], @transports.map(&:closes)
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
       assert_equal "previous row", Rho::Mcp.call("fx", "echo", { "text" => "previous row" }).content
     end
   end
@@ -615,7 +587,7 @@ class ExtensionTest < Minitest::Test
     readded = load({ "fx" => stdio })
     assert_predicate readded, :ok?, readded.failures.inspect
     assert_equal [1, 0], @transports.map(&:closes)
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new) do
       assert_equal "reopened", Rho::Mcp.call("fx", "echo", { "text" => "reopened" }).content
     end
   end
@@ -633,8 +605,8 @@ class ExtensionTest < Minitest::Test
     assert_equal "given-token-1234", env["FX_TOKEN"], "the row's env lands on top of the scrub"
     assert_equal "/g", env["BUNDLE_GEMFILE"], "a row may re-add a trail of its own"
     leaked = env.keys.reject { |name| row.env.key?(name) }.select do |name|
-      name.match?(Rho::Runner::Secrets::CREDENTIAL_SHAPED) || name.start_with?("RHO_", "BUNDLE_", "BUNDLER_") ||
-        name.match?(Rho::Runner::ChildEnv::BUNDLER_KEYS)
+      name.match?(Rho::Env::Secrets::CREDENTIAL_SHAPED) || name.start_with?("RHO_", "BUNDLE_", "BUNDLER_") ||
+        name.match?(Rho::Env::ChildEnv::BUNDLER_KEYS)
     end
     assert_empty leaked, "credential-shaped, rho's or Bundler's names reached the child's environment"
     assert_equal "1", env["PYTHONUNBUFFERED"]

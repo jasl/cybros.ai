@@ -52,7 +52,7 @@ class DaemonRetirementTest < Minitest::Test
     end
     daemon.lineage.install_follower(old_credentials, run)
     daemon.lineage.realtime_for(old_credentials)
-    replacement = Rho::Credentials.new
+    replacement = Object.new
     identity = Data.define(:user_public_id, :executor_public_id, :runner_executor_public_id).new(
       user_public_id: "user-new", executor_public_id: "executor-new", runner_executor_public_id: nil
     )

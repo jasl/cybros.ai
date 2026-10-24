@@ -13,7 +13,8 @@ class ModelProviders::ConfigureAPIKeyTest < ActiveSupport::TestCase
 
     assert_predicate result, :done?
     assert_predicate @policy.reload, :enabled?
-    assert_equal before, @policy.model_overrides
+    assert_equal before, @policy.model_overrides.except("retained_catalog")
+    assert_equal ModelCatalog.current.providers.fetch("openai_api"), @policy.retained_catalog.fetch("provider")
   end
 
   test "blank and conflicting material never enable a disabled provider" do

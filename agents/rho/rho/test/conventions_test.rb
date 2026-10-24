@@ -105,10 +105,10 @@ class ConventionsTest < Minitest::Test
   def test_a_run_declaration_carries_the_conventions_in_its_instructions
     with_tree do |root|
       File.write(File.join(root, "AGENTS.md"), "Always run the tests.")
-      registry = Rho::Runner::Extensions::Loader.call(
-        builtin: [Rho::Runner::Extensions::Coding, Rho::Extensions::Conventions]
+      registry = Rho::Env::Extensions::Loader.call(
+        builtin: [Rho::Env::Extensions::Coding, Rho::Extensions::Conventions]
       ).registry
-      environment = Rho::Runner::Environment.local(root: root, working_directory: root)
+      environment = Rho::Env::Environment.local(root: root, working_directory: root)
       step = Rho::RunDeclaration.steps(runner_executor_public_id: "own-runner", prompt: "p", model: "dev/mock-text", registry: registry,
         environment: environment).first
       assert_includes step.instructions, "Always run the tests."
@@ -121,8 +121,8 @@ class ConventionsTest < Minitest::Test
       home = Rho::Home.resolve(base_url: "https://nexus.example", root: home_dir)
       # The host's contract: a home and the daemon's environment tables (none here).
       host = Struct.new(:home, :environments).new(home, nil)
-      hosted = Rho::Runner::Extensions::Loader.call(
-        builtin: [Rho::Runner::Extensions::Coding, Rho::Extensions::Conventions], api_options: { host: host }
+      hosted = Rho::Env::Extensions::Loader.call(
+        builtin: [Rho::Env::Extensions::Coding, Rho::Extensions::Conventions], api_options: { host: host }
       ).registry
       hosted_step = Rho::RunDeclaration.steps(runner_executor_public_id: "own-runner", prompt: "p", model: "dev/mock-text", registry: hosted,
         environment: environment).first

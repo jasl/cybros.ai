@@ -484,8 +484,8 @@ class DaemonNamedAgentsTest < Minitest::Test
     assert_equal 1, api.named_agent_declarations.length, "no file restores a removed row"
   end
 
-  def test_a_runner_mode_daemon_refuses_the_verbs
-    daemon = boot(config: runner_mode)
+  def test_an_unconnected_daemon_refuses_the_verbs
+    daemon = boot
 
     assert_equal "member_plane_unavailable", daemon.context.list_named_agents.code
     assert_equal "member_plane_unavailable", daemon.context.remove_named_agent("x").code

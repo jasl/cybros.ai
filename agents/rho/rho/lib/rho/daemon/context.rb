@@ -70,8 +70,7 @@ module Rho
 
       # The body first, then one decision on a workspace/credential pair read
       # in one section, then the credential fetched outside it, because a
-      # rotation may block there. A runner-mode daemon holds no member
-      # credential at all and says so before anything else.
+      # rotation may block there. Missing member authority refuses here.
       def member_plane(request = nil, body: false, host_public_id: nil, require_workspace: true, workspace_public_id: nil)
         return Refusal.member_plane_unavailable if @member_credential.nil?
 
@@ -185,8 +184,7 @@ module Rho
       # The discovery document as this daemon last read it (fetched on a
       # miss), the document a verb just read handed back to the cache, the
       # profile's source intentions, and the store's bindings — one host's, as
-      # `say` resolves an id, or every followed host's. A runner-mode
-      # daemon holds no `HostFollowers` and answers nothing.
+      # `say` resolves an id, or every followed host's.
       def remote_runner(public_id) = @host_followers.call&.remote_runner(public_id)
 
       def learn_runner(document) = @host_followers.call&.learn_runner(document)
@@ -203,8 +201,7 @@ module Rho
       # names on every run it creates; the grants themselves, for `rho
       # rules`; and the add — approve first, then this — which declares
       # the profile under the one declaring gate and answers its outcome (`:already`,
-      # `:declared`, `:unchanged`, `HostFollowers::Refused`). A runner-mode daemon
-      # holds no `HostFollowers`: the constant, no grant, and a refusal.
+      # `:declared`, `:unchanged`, `HostFollowers::Refused`).
       def approval_rules = @host_followers.call&.approval_rules || Rho::RunDeclaration::APPROVAL_RULES
 
       def grants = @host_followers.call&.grants || []
@@ -285,7 +282,7 @@ module Rho
       # `rho rewind`/`rho regenerate` read before a restore — restoring
       # under a running server this daemon spawned is the person's to
       # refuse (`rho stop` it first). Answers the process' label, or nil;
-      # nil root and a daemon with no table (agent mode, a remote runner)
+      # nil root and a host with no local process table
       # answer nil, so the guard never fires where there is nothing local
       # to protect.
       def live_process_in(root)
@@ -326,13 +323,11 @@ module Rho
       def environments = @environments.call
 
       # The daemon's own file, then the settings, then this identity's work
-      # root — read outside the lock, one identity read. A runner has no
-      # user: its work root is keyed by its own address.
+      # root — read outside the lock, one identity read.
       def environment
         @environment_store.select(configured: config.tools_root) do
           identity = @lineage.identity
-          user = identity&.user_public_id
-          user.nil? ? home.runner_work_root(identity&.executor_public_id.to_s) : home.identity_work_root(user)
+          home.identity_work_root(identity&.user_public_id.to_s)
         end
       rescue Rho::Error
         # No identity yet, so no work root to fall back to. The settings
@@ -373,7 +368,7 @@ module Rho
       # `rho agents`' listing, `import`'s files onto rows and the edge past
       # the tuple, the Agents page's declaration of one row, and `rm`'s
       # removal — each through the member plane and this daemon's
-      # `HostFollowers`; a runner-mode daemon holds none and says so.
+      # `HostFollowers`.
 
       def list_named_agents = named_verb { |runs, client, workspace| runs.named_listing(client, workspace) }
 
@@ -422,8 +417,8 @@ module Rho
       # the honest answer.
       def runner_snapshot
         announced = @announcements.call
-        { runner: (config.mode == "agent" ? nil : role_snapshot(:runner, announced["runner"])),
-          agent: (config.mode == "runner" ? nil : role_snapshot(:agent, announced["agent"])) }
+        { runner: role_snapshot(:runner, announced["runner"]),
+          agent: role_snapshot(:agent, announced["agent"]) }
       end
 
       def inventory = @loaded.inventory

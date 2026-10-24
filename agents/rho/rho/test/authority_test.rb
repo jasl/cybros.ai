@@ -22,10 +22,8 @@ class AuthorityTest < Minitest::Test
   # `expires_in` defaults to a fresh 14-day credential — what a running daemon
   # actually holds — because that is the case where a refusal must NOT cost a
   # rotation. Tests of the repair path pass an expired one explicitly.
-  # The daemon's `about` is the composite holder (Rho::Credentials): the
-  # agent lineage, and in full mode the runner lineage beside it.
-  def oauth(planes: %i[member executor], authority: rotating_authority, expires_in: 1_209_600, runner: nil)
-    Rho::Credentials.new(agent: lineage(planes: planes, authority: authority, expires_in: expires_in), runner: runner)
+  def oauth(planes: %i[member executor], authority: rotating_authority, expires_in: 1_209_600)
+    lineage(planes: planes, authority: authority, expires_in: expires_in)
   end
 
   def lineage(planes: %i[member executor], authority: rotating_authority, expires_in: 1_209_600, name: "vault")
@@ -36,17 +34,6 @@ class AuthorityTest < Minitest::Test
         refresh_token: "rt-0", token_type: "Bearer", expires_in: expires_in
       ),
       authority: authority, store: Rho::StateFile.new(File.join(@root, "#{name}.json")),
-      clock: -> { @now }
-    )
-  end
-
-  def runner_lineage(authority: rotating_authority, expires_in: 1_209_600)
-    CybrosAgent::Credentials::OAuth.issue(
-      credentials: CybrosAgent::DeviceFlow::Credentials.new(
-        access_token: nil, executor_access_token: RUNNER,
-        refresh_token: "rt-r0", token_type: "Bearer", expires_in: expires_in
-      ),
-      authority: authority, store: Rho::StateFile.new(File.join(@root, "runner.json")),
       clock: -> { @now }
     )
   end
@@ -64,8 +51,8 @@ class AuthorityTest < Minitest::Test
     object
   end
 
-  def authority_for(credentials, mode: "agent")
-    Rho::Authority.new(oauth: credentials, base_url: @home.base_url, transport: @api, mode: mode)
+  def authority_for(credentials)
+    Rho::Authority.new(oauth: credentials, base_url: @home.base_url, transport: @api)
   end
 
   def test_both_planes_live_is_the_ordinary_product_state
@@ -73,37 +60,14 @@ class AuthorityTest < Minitest::Test
 
     assert_equal({ member: :live, executor_transport: :live }, report[:planes])
     refute report[:lost]
-    refute report[:runner_lost]
   end
 
-  # ---- the planes are the mode's ----
-
-  def test_full_mode_uses_the_same_two_planes_as_agent_mode
-    report = authority_for(oauth, mode: "full").check
-    assert_equal({ member: :live, executor_transport: :live }, report[:planes])
-    refute_includes @api.calls, ["/agent_api/v1/executor", RUNNER]
-  end
-
-
-  def test_runner_mode_asks_the_one_plane_and_its_loss_is_the_daemons
-    lost = CybrosAgent::DeviceFlow::AuthorizationLostError.new(oauth_error: "invalid_grant")
-    about = Rho::Credentials.new(runner: runner_lineage(authority: rotating_authority(failure: lost), expires_in: 0))
-    @api.accept(RUNNER, false)
-
-    report = authority_for(about, mode: "runner").check
-    assert_equal [:runner_transport], report[:planes].keys
-    assert report[:lost], "the one lineage IS the runner's"
-    refute report[:runner_lost]
-  end
-
-
-  def test_the_expected_identity_names_the_runner_plane_by_its_own_public_id
-    identity = Rho::Identity.runner(home: @home, executor_public_id: "0199-elsewhere")
-    authority = Rho::Authority.new(oauth: Rho::Credentials.new(runner: runner_lineage), base_url: @home.base_url,
-      transport: @api, expected_identity: identity, mode: "runner")
-
+  def test_the_expected_identity_pins_the_application_executor
+    identity = Rho::Identity.agent(home: @home, user_public_id: "0199-user", executor_public_id: "0199-elsewhere")
+    authority = Rho::Authority.new(oauth: oauth, base_url: @home.base_url,
+      transport: @api, expected_identity: identity)
     error = assert_raises(Rho::StoredConnectionError) { authority.check }
-    assert_match(/runner_transport credential names "0199-runner", expected "0199-elsewhere"/, error.message)
+    assert_match(/executor_transport credential names/, error.message)
   end
 
   # The headline case Round D built: the member's authority died, and the
@@ -171,7 +135,7 @@ class AuthorityTest < Minitest::Test
     @api.accept("sk-renewed", true)
     # The renewal thread, landing while the member probe is in flight.
     @api.define_singleton_method(:call) do |path, credential:, timeout:, **rest|
-      credentials.agent.refresh if credential == MEMBER && spent.zero?
+      credentials.refresh if credential == MEMBER && spent.zero?
       super(path, credential: credential, timeout: timeout, **rest)
     end
 
@@ -223,7 +187,7 @@ class AuthorityTest < Minitest::Test
       CybrosAgent::Response.new(status: 503, headers: {}, body: nil)
     end
 
-    report = Rho::Authority.new(oauth: oauth, base_url: @home.base_url, transport: broken, mode: "agent").check
+    report = Rho::Authority.new(oauth: oauth, base_url: @home.base_url, transport: broken).check
     assert_equal :unknown, report[:planes][:member]
     refute report[:lost]
   end

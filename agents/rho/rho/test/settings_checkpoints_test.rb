@@ -33,7 +33,7 @@ class SettingsCheckpointsTest < Minitest::Test
   private
 
     def age_checkpoint(store, record, captured_at)
-      db = SQLite3::Database.new(File.join(store.path, Rho::Runner::Checkpoints::Store::DATABASE_FILE))
+      db = SQLite3::Database.new(File.join(store.path, Rho::Env::Checkpoints::Store::DATABASE_FILE))
       db.execute("UPDATE records SET created_at = ?, message = ? WHERE run = ?",
         [captured_at.to_i, record.with(captured_at: captured_at.iso8601).message, record.run_public_id])
     ensure

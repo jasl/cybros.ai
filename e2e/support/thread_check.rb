@@ -1,5 +1,5 @@
 require "uri"
-require_relative "gallery/thread"
+require_relative "../products/support/gallery/thread"
 
 module E2E
   # THE THREAD EQUALS THE GRAPH'S TREE: one assertion a journey makes on a settled loop. The page is

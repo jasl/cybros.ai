@@ -1,22 +1,4 @@
-# THE FIXTURE MCP SERVER: ONE `MCP::Server` from the gem, its tools from the shared declarations,
-# mounted TWO WAYS by two entry points — `stdio` (the default: the gem's `StdioTransport`, launched
-# by the daemon under rho's bundle — `bundle exec ruby` with `BUNDLE_GEMFILE` = rho's Gemfile in the
-# row's `env`; rho's lock carries `mcp` through the `rho-mcp` path gem; the daemon's child env drops
-# Bundler's own trail) and `http PORT` (the gem's `StreamableHTTPTransport` as a Rack app under puma
-# on a loopback port the journey picks, spawned by the journey under rho-mcp's bundle, where puma is
-# a development dependency, through `E2E::ProcessRegistry.spawn(…, pgroup: true)` so the registry's
-# drain leaves nothing behind on a red run) — and, since the OAuth slice, `oauth PORT`: the SAME
-# server behind rho-mcp's own mock authorization server + resource server
-# (`agents/rho/rho-mcp/test/support/oauth_fixture.rb`, ONE implementation, required across the tree
-# — risk 14), under puma on one loopback port: the RS at `/mcp` behind a bearer check with its PRM,
-# the AS under `/oauth` with metadata, dynamic registration, an auto-consent `/authorize` carrying
-# `iss`, a PKCE-verified `/token` with refresh rotation, the switches
-# `/fixture/{revoke,token_outage,require_scope,…}`, the door `/fixture/expire` (every live access
-# token expired at once — the journey's expiries are a property, never a clock) and the counters at
-# `/fixture/issued`. Both loopback entries are spawned by the journey through
-# `E2E::McpFixture::Host`. `hang` sleeps a BOUNDED twenty seconds so a red run cannot hold the
-# world; `exit` leaves with status 3 mid-request. The prompts, resources and the one template are
-# the announced documents (`declarations.rb`).
+# Deterministic MCP tools and OAuth on a test-owned loopback server.
 require "mcp"
 require_relative "declarations"
 require_relative "controlled_writes"
@@ -24,7 +6,7 @@ require_relative "controlled_writes"
 decls = E2E::McpFixture::TOOLS.to_h { |tool| [tool.fetch("name"), tool] }
 writes = E2E::McpFixture::ControlledWrites.new
 server = MCP::Server.new(name: E2E::McpFixture::SERVER_NAME, version: E2E::McpFixture::SERVER_VERSION,
-  instructions: "A fixture server for rho's e2e journeys.")
+  instructions: "A fixture server for E2E journeys.")
 
 define = lambda do |name, &handler|
   tool = decls.fetch(name)
@@ -96,7 +78,7 @@ when "http"
   transport = MCP::Server::Transports::StreamableHTTPTransport.new(server)
   serve.call(->(env) { writes.response(env) || transport.call(env) }, Integer(ARGV.fetch(1)))
 when "oauth"
-  require_relative "../../../agents/rho/rho-mcp/test/support/oauth_fixture"
+  require_relative "oauth_fixture"
   serve.call(McpTest::OauthFixture.new(server: server), Integer(ARGV.fetch(1)))
 else
   MCP::Server::Transports::StdioTransport.new(server).open

@@ -132,7 +132,7 @@ class PackageActivationTest < Minitest::Test
             SCHEMA = { "type" => "object", "properties" => {} }
             EFFECT_PROFILE = { "kind" => "read_only", "destructive" => false, "effect_scope" => "closed", "idempotency" => "intrinsic", "reconciliation" => "none" }
             def initialize(env:); end
-            def call(args) = Rho::Runner::Result.ok("#{version}")
+            def call(args) = Rho::Env::Result.ok("#{version}")
           end
           def self.register(api)
             api.restart_only if #{restart_only}

@@ -21,10 +21,10 @@ module Rho
           launch(prompt, args.fetch("title", "Coding assignment"), args)
         end
         wait
-      rescue Rho::Runner::ExecutionContext::Cancelled
+      rescue Rho::Env::ExecutionContext::Cancelled
         stop_native if @row && @row.value.fetch("owner") == @session.owner
         raise
-      rescue Error, CybrosAgent::Error, Rho::Runner::ClaimOrchestration::Failure => error
+      rescue Error, CybrosAgent::Error, Rho::Env::ClaimOrchestration::Failure => error
         raise if @row.nil? || @row.value.fetch("owner") != @session.owner
 
         detail = case stop_native
@@ -38,10 +38,10 @@ module Rho
       def control(args)
         action = args.fetch("action")
         if action == "agents"
-          return Rho::Runner::Result.ok(JSON.generate({ "agents" => catalog.report, "default_agent" => @settings.default_agent }))
+          return Rho::Env::Result.ok(JSON.generate({ "agents" => catalog.report, "default_agent" => @settings.default_agent }))
         end
         if action == "list"
-          return Rho::Runner::Result.ok(JSON.generate({ "work" => @records.list }))
+          return Rho::Env::Result.ok(JSON.generate({ "work" => @records.list }))
         end
 
         work_id = args.fetch("work_id") { raise Error, "work_id is required for coding_work action=#{action}" }
@@ -58,7 +58,7 @@ module Rho
           # The delegating handler may be waiting inside a durable question,
           # so native interruption alone cannot release its Nexus task.
           @session.cancel(@row.value.fetch("owner"))
-          Rho::Runner::Result.ok("Stop requested for coding work #{@row.public_id}; completion is observed separately.")
+          Rho::Env::Result.ok("Stop requested for coding work #{@row.public_id}; completion is observed separately.")
         when "steer"
           raise Error, "the coding task no longer owns active work" unless @session.active?(@row.value.fetch("owner"))
 
@@ -67,14 +67,14 @@ module Rho
           verify_permissions(current)
 
           send_message(prompt, mode: { "type" => "steer_active", "targetRunId" => current.run.fetch("id") })
-          Rho::Runner::Result.ok("Steering submitted for coding work #{@row.public_id}.")
+          Rho::Env::Result.ok("Steering submitted for coding work #{@row.public_id}.")
         when "forget"
           current = projection
           raise Error, "stop and settle coding work before forgetting its continuation" unless current.terminal?
           raise Error, "the owning Nexus task is still active" if @session.active?(@row.value.fetch("owner"))
 
           @records.delete(@row)
-          Rho::Runner::Result.ok("Removed the coding continuation; committed task results remain in history.")
+          Rho::Env::Result.ok("Removed the coding continuation; committed task results remain in history.")
         else raise Error, "unknown coding work action"
         end
       end
@@ -378,8 +378,8 @@ module Rho
             files.unshift(path)
           end
           text = JSON.generate(report)
-          window = Rho::Runner::Truncation.truncate_head(text)
-          Rho::Runner::Result.new(content: window.content, structured_content: report.except("text", "checks", "workers"),
+          window = Rho::Env::Truncation.truncate_head(text)
+          Rho::Env::Result.new(content: window.content, structured_content: report.except("text", "checks", "workers"),
             is_error: current.terminal? && current.run.fetch("status") != "completed", files: files, files_required: capture)
         end
 

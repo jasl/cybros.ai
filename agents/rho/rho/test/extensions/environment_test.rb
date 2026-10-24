@@ -7,7 +7,7 @@ require "test_helper"
 class EnvironmentExtensionTest < Minitest::Test
   include RhoTest::DaemonHarness
 
-  def boot(extensions: [Rho::Extensions::Environment], config: agent_mode, **options) = super(extensions:, config:, **options)
+  def boot(extensions: [Rho::Extensions::Environment], config: application_config, **options) = super(extensions:, config:, **options)
 
   # POINTING A RUNNER AT A PROJECT is the act the whole environment story
   # turns on. Telling a model where it is does not make it work there — a
@@ -16,7 +16,7 @@ class EnvironmentExtensionTest < Minitest::Test
   def test_the_environment_reads_back_what_the_tools_are_pointed_at
     stated = File.join(@root, "src")
     FileUtils.mkdir_p(stated)
-    daemon = boot(config: agent_mode("tools_root" => stated))
+    daemon = boot(config: application_config("tools_root" => stated))
 
     document = JSON.parse(request(daemon, :get, "/environment",
       token: bearer(daemon)).body).fetch("environment")
@@ -51,7 +51,7 @@ class EnvironmentExtensionTest < Minitest::Test
     settings_root = File.join(@root, "from-settings")
     api_root = File.join(@root, "from-api")
     [settings_root, api_root].each { |path| FileUtils.mkdir_p(path) }
-    daemon = boot(config: agent_mode("tools_root" => settings_root))
+    daemon = boot(config: application_config("tools_root" => settings_root))
 
     request(daemon, :post, "/environment", token: bearer(daemon), body: { root: api_root })
     response = request(daemon, :post, "/environment", token: bearer(daemon), body: { root: nil })
@@ -88,7 +88,7 @@ class EnvironmentExtensionTest < Minitest::Test
     runner.define_singleton_method(:snapshot) { Struct.new(:in_flight).new(1) }
     runner.define_singleton_method(:stop) { nil }
     assert daemon.lineage.reserve_runner(about)
-    assert daemon.lineage.install_runner(about, runner, nil)
+    assert daemon.lineage.install_runner(about, runner)
     before = daemon.context.tool_env
     moved = File.join(@root, "elsewhere")
     FileUtils.mkdir_p(moved)

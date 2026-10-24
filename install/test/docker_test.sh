@@ -47,8 +47,8 @@ pass "doctor --strict inside the image"
 # --- the container's runtime environment
 # Probes bypass the door (`--entrypoint`): the door hands every argument to
 # rho, so `docker run IMAGE /bin/bash` is "no such verb" — by design.
-out=$(docker run --rm --entrypoint /usr/bin/tini "$IMAGE" -- /bin/bash -c 'echo "$RHO_MODE $RHO_HOME $HOME $RHO_TOOLS_ROOT $PWD $LANG $(id -u) $(readlink -f /proc/1/exe)"; test -w "$RHO_TOOLS_ROOT"' 2>&1)
-assert_eq "$out" "runner /var/lib/rho /home/rho /home/runner /home/runner C.UTF-8 1000 /usr/bin/tini" "runner mode, separate state and work directories, unchanged HOME, UTF-8, uid 1000, tini as PID 1"
+out=$(docker run --rm --entrypoint /usr/bin/tini "$IMAGE" -- /bin/bash -c 'echo "$RHO_HOME $HOME $RHO_TOOLS_ROOT $PWD $LANG $(id -u) $(readlink -f /proc/1/exe)"; test -w "$RHO_TOOLS_ROOT"' 2>&1)
+assert_eq "$out" "/var/lib/rho /home/rho /home/runner /home/runner C.UTF-8 1000 /usr/bin/tini" "separate state and work directories, unchanged HOME, UTF-8, uid 1000, tini as PID 1"
 pass "RHO_HOME=/var/lib/rho HOME=/home/rho writable RHO_TOOLS_ROOT=WORKDIR=/home/runner uid 1000 tini PID 1"
 out=$(docker run --rm --init "$IMAGE" version 2>&1) || fail "docker run --init on top of tini: $out"
 pass "docker run --init on top of the image's tini is harmless"
@@ -99,17 +99,16 @@ await_announcement() {
   fail "$1 never announced itself"
 }
 
-# The installed page is served by Ruby, including in an agent-only home
-# server. No pairing or model provider is needed to serve static files.
+# The installed page is served by Ruby, for the complete application. No pairing or model provider is needed to serve static files.
 assert_webui() {
-  local mode="$1" api_only="$2" expected="$3" actual
-  docker run -d --name "$NAME" -e RHO_MODE="$mode" -e RHO_API_ONLY="$api_only" \
-    "$IMAGE" server --nexus-url http://127.0.0.1:1 >/dev/null || fail "docker run $mode server"
+  local api_only="$1" expected="$2" actual
+  docker run -d --name "$NAME" -e RHO_API_ONLY="$api_only" \
+    "$IMAGE" server --nexus-url http://127.0.0.1:1 >/dev/null || fail "docker run server"
   await_announcement "$NAME"
   actual=$(docker exec "$NAME" /bin/bash -c \
     'endpoint=$(jq -r .endpoint /var/lib/rho/tmp/announcement.json); curl -sS -o /tmp/rho-page.html -w "%{http_code}" "$endpoint/"') \
-    || fail "GET / in $mode mode"
-  assert_eq "$actual" "$expected" "WebUI in $mode mode (api_only=$api_only)"
+    || fail "GET /"
+  assert_eq "$actual" "$expected" "WebUI (api_only=$api_only)"
   if [ "$expected" = 200 ]; then
     docker exec "$NAME" /bin/bash -c '
       set -eu
@@ -121,15 +120,13 @@ assert_webui() {
         curl -fsS "$endpoint/$asset" -o /tmp/rho-asset
         cmp /tmp/rho-asset "$source"
       done
-    ' || fail "the packaged WebUI assets are not served intact in $mode mode"
+    ' || fail "the packaged WebUI assets are not served intact"
   fi
   cleanup_docker
-  pass "WebUI in $mode mode, api_only=$api_only: HTTP $expected"
+  pass "WebUI, api_only=$api_only: HTTP $expected"
 }
-assert_webui full 0 200
-assert_webui agent 0 200
-assert_webui runner 0 404
-assert_webui full 1 404
+assert_webui 0 200
+assert_webui 1 404
 
 # --- THE ROOT DOOR: `--user 0` over a home another uid owns (the box's
 # chess run: rho's floor refused the harness's uid-1000 bind mount as root).
@@ -151,7 +148,7 @@ assert_contains "$(cat "$TEST_TMP/announcement.json")" '"endpoint"' "the --user 
 out=$(docker exec "$NAME" /bin/bash -c 'id -u; stat -c %u /var/lib/rho; grep -c daemon.boot_failed /var/lib/rho/log/rho.log || true' 2>&1)
 assert_eq "$out" "$(printf '0\n0\n0')" "root inside, the home root's from inside, no boot refused"
 out=$(docker exec "$NAME" rho status --nexus-url http://127.0.0.1:1 2>&1) || fail "rho status through docker exec as root: $out"
-assert_contains "$out" "mode:      runner" "the root-run daemon answers status"
+assert_contains "$out" "state:     disconnected" "the root-run daemon answers status"
 pass "the door chowns a bind-mounted home to root for a --user 0 boot: server announced, status answers"
 docker exec -u 0 "$NAME" chmod -R a+rwX /var/lib/rho >/dev/null || fail "the release chmod"
 cleanup_docker
@@ -184,12 +181,12 @@ pass "the door's chown is real on a populated named volume (1000 -> 0 under --us
 if docker compose version >/dev/null 2>&1; then
   ( cd "$INSTALL_DIR/docker" && RHO_NEXUS_URL=https://nexus.example docker compose -f compose.yml config -q ) || fail "compose.yml does not validate"
   # Browser addresses remain separate from the container's API address.
-  ( cd "$INSTALL_DIR/docker" && RHO_NEXUS_URL=http://nexus RHO_NEXUS_PUBLIC_URL=https://nexus.example RHO_PUBLIC_URL=https://rho.example docker compose -f compose.yml --profile full config | grep -q 'RHO_PUBLIC_URL: https://rho.example' ) || fail "compose.yml's rho-full does not pass its browser origin through"
-  pass "install/docker/compose.yml passes the browser origin to rho-full"
+  ( cd "$INSTALL_DIR/docker" && RHO_NEXUS_URL=http://nexus RHO_NEXUS_PUBLIC_URL=https://nexus.example RHO_PUBLIC_URL=https://rho.example docker compose -f compose.yml config | grep -q 'RHO_PUBLIC_URL: https://rho.example' ) || fail "compose.yml's rho does not pass its browser origin through"
+  pass "install/docker/compose.yml passes the browser origin to rho"
   pass "install/docker/compose.yml validates"
 fi
 # shellcheck disable=SC2016
-grep -q '^FROM --platform=linux/amd64 \${BASE}$' "$REPO_ROOT/e2e/evals/docker/Dockerfile" || fail "the evals Dockerfile does not pin its base's platform"
+grep -q '^FROM --platform=linux/amd64 \${BASE}$' "$REPO_ROOT/e2e/products/evals/docker/Dockerfile" || fail "the evals Dockerfile does not pin its base's platform"
 pass "the evals leg pins linux/amd64"
 
 # --- the long targets, on request, with their timings

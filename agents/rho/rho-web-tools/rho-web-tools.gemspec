@@ -40,7 +40,7 @@ Gem::Specification.new do |spec|
 
   # `Result`, `Truncation`, `ToolEnv`, `ExecutionContext`, the `register(api)`
   # door; httpx and `CybrosAgent::HttpDeadline` arrive through it (the SDK).
-  spec.add_dependency "rho-runner"
+  spec.add_dependency "rho-env"
   # RUBY'S TURNDOWN: a hand-written HTML-to-markdown converter would be a
   # second implementation of a standard with a battle-tested one
   # available. Its one runtime dependency is nokogiri — Rails' own HTML

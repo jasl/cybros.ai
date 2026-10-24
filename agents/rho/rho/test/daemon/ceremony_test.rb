@@ -16,7 +16,7 @@ class CeremonyTest < Minitest::Test
   # state no production path can reach, and passed on the 502 that fabrication
   # produced rather than on any recovery.
   def test_a_terminally_lost_authority_lets_the_only_recovery_path_run
-    daemon = connected_boot(config: agent_mode)
+    daemon = connected_boot(config: application_config)
     token = bearer(daemon)
     request(daemon, :post, "/device/start", token: token)
     await_state(daemon, "active", token: token)
@@ -44,7 +44,7 @@ class CeremonyTest < Minitest::Test
         healthy.call(path, method: method, credential: credential, body: body, params: params, headers: headers, timeout: timeout)
       end
     end
-    daemon = boot(device_flow: connection_device_flow, api_transport: api, config: agent_mode)
+    daemon = boot(device_flow: connection_device_flow, api_transport: api, config: application_config)
     token = bearer(daemon)
     request(daemon, :post, "/device/start", token: token)
     await_state(daemon, "active", token: token)
@@ -61,7 +61,7 @@ class CeremonyTest < Minitest::Test
     oauth = NexusDoubles::FakeOAuth.new
     restarted = boot(
       device_flow: connection_device_flow(oauth),
-      api_transport: NexusDoubles::FakeAgentApi.new(executor_public_id: "0199-executor-new"), config: agent_mode
+      api_transport: NexusDoubles::FakeAgentApi.new(executor_public_id: "0199-executor-new"), config: application_config
     )
 
     assert_equal :active, restarted.phase
@@ -175,7 +175,7 @@ class CeremonyTest < Minitest::Test
 
     started = JSON.parse(request(daemon, :post, "/device/start", token: token).body)
     assert_equal "pending", started["phase"]
-    assert_equal "full", started["mode"]
+    refute started.key?("mode")
     assert_equal "agent", started["branch"], "one application connection for both service roles"
     assert_equal "BCDF-GHJK", started["user_code"]
     assert_equal "https://nexus.example/oauth/device", started["verification_uri"]
@@ -437,24 +437,22 @@ class CeremonyTest < Minitest::Test
     end
   end
 
-  # ---- the three request shapes of one Connection, per cell ----
-
-  # A boot whose registry serves no runner tool is agent mode: branch A
-  # alone, and the planes are the agent's two.
-  def test_an_agent_mode_boot_sends_branch_a_alone_and_reports_the_agents_planes
+  # Application registration uses branch A and both credential planes.
+  def test_an_application_config_boot_sends_branch_a_alone_and_reports_the_agents_planes
     oauth = NexusDoubles::FakeOAuth.new
     daemon = boot(device_flow: connection_device_flow(oauth), api_transport: NexusDoubles::FakeAgentApi.new,
-      extensions: [Rho::Extensions::Ops], config: agent_mode)
+      extensions: [Rho::Extensions::Ops], config: application_config)
     token = bearer(daemon)
 
     started = JSON.parse(request(daemon, :post, "/device/start", token: token).body)
-    assert_equal %w[agent agent], started.values_at("branch", "mode")
+    assert_equal "agent", started.fetch("branch")
+    refute started.key?("mode")
     body = await_state(daemon, "active", token: token)
     request = oauth.requests.find { |path, _| path == "/oauth/device_authorization" }.last
     refute request.key?(:registration_identifier)
     assert_equal %w[executor_transport member], body.dig("authority", "planes").keys.sort
-    assert_nil body.dig("identity", "runner_executor_public_id")
-    assert_equal "agent", body["mode"]
+    assert_equal "0199-executor", body.dig("identity", "runner_executor_public_id")
+    refute body.key?("mode")
   end
 
   # THE PIN: the agent planes lost beside a live runner plane
@@ -482,7 +480,6 @@ class CeremonyTest < Minitest::Test
     wait_for { !daemon.lineage.credentials.equal?(old) }
     restored = daemon.lineage.credentials
     refute_same old, restored
-    assert_nil restored.runner, "no independent runner credential"
     assert_equal "0199-executor", body.dig("identity", "runner_executor_public_id")
     assert_equal 2, oauth.requests.count { |path, _| path == "/oauth/device_authorization" }
     refute oauth.requests.last(3).any? { |path, params| path == "/oauth/device_authorization" && params[:registration_identifier] }

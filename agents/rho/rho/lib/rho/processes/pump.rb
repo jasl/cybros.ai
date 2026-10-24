@@ -1,4 +1,4 @@
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module Processes
@@ -9,8 +9,7 @@ module Rho
     # row per tick, and a last frame carrying the exit when the group ends.
     #
     # GATED ON THE TABLE, never on "while the host is followed": a
-    # runner-mode rho holds no member credential and follows nothing, so a
-    # follow gate would never fire on the separated runner; the registry
+    # tool execution can outlive local conversation following; the registry
     # feeds this from the rows it holds, and the kernel's binding fence
     # (`not_bound`) is the only other gate. A frame is droppable by
     # construction: a refusal for a row ends that row's posting (logged
@@ -18,8 +17,7 @@ module Rho
     # than the buffer loses its oldest lines — and never a process.
     #
     # `post` is the daemon's: it hands the frame to the runner slot of the
-    # moment and answers false when there is none (an agent-mode rho is
-    # never a binding), so nothing is posted and nothing is logged.
+    # moment and answers false when none is available, so nothing is posted.
     class Pump
       # THE SERVER'S ENVELOPE BOUND, MIRRORED with headroom (the daemon
       # cannot read nexus's size registry; `size_bounds.json`'s
@@ -35,7 +33,7 @@ module Rho
 
       attr_reader :interval_ms
 
-      def initialize(post:, log: nil, interval_ms: Rho::Runner::Progress::MIN_INTERVAL_MS,
+      def initialize(post:, log: nil, interval_ms: Rho::Env::Progress::MIN_INTERVAL_MS,
                      sleeper: ->(seconds) { sleep(seconds) })
         raise ArgumentError, "interval_ms must be positive" unless interval_ms.positive?
 

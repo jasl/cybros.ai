@@ -113,11 +113,12 @@ RAILS_ENV=production bin/rails db:seed
 
 The supported variables are `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
 `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, `OPENROUTER_API_KEY`,
-`KIMI_API_KEY` (the `kimi_code` provider's `kimi_code/kimi-for-coding` model),
-and `MOONSHOT_API_KEY` (the `moonshot` provider at `api.moonshot.cn`).
-Moonshot offers `moonshot/kimi-k3`, `moonshot/kimi-k2.6`,
-`moonshot/kimi-k2.7-code`, and `moonshot/kimi-k2.7-code-highspeed`, with
-their own token prices and credentials, separate from the Kimi Code subscription.
+`KIMI_CODE_API_KEY` (the `kimi_code` subscription provider),
+`MOONSHOT_API_KEY` (the `moonshot` provider at `api.moonshot.cn`),
+and `MOONSHOT_GLOBAL_API_KEY` (the independent `moonshot_global` provider at `api.moonshot.ai`).
+Both API providers offer `kimi-k3`, `kimi-k3.1-pro`, and
+`kimi-k3.1-pro-highspeed` under their own provider prefix. Their credentials
+and billing are separate from the Kimi Code subscription; unknown prices remain absent.
 The import stores credentials through the ordinary encrypted credential writer
 and enables a provider lane only when its policy row is missing. Existing
 disabled lanes stay disabled. Running it again replaces changed keys; absent

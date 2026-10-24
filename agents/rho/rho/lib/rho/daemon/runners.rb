@@ -4,36 +4,35 @@ module Rho
 
     private
 
-      def mount_runner(about, slot)
-        return unless @lineage.reserve_runner(about, slot: slot)
+      def mount_runner(about)
+        return unless @lineage.reserve_runner(about)
 
-        owner = about.agent || about.runner
-        credential = owner && executor_credential_for(owner)
+        credential = executor_credential_for(about)
         if credential.nil?
-          @lineage.release_runner(about, slot: slot)
+          @lineage.release_runner(about)
           log.warn("runner.not_placed", reason: "executor plane unavailable")
           return
         end
 
         roles = execution_roles
-        runner = Rho::Runner.new(
-          executor: @wire.executor_client(credential_provider: owner.method(:executor_credential).to_proc),
+        runner = Rho::Env::Executor.new(
+          executor: @wire.executor_client(credential_provider: about.method(:executor_credential).to_proc),
           toolsets: roles.values.first.toolsets, roles: roles,
-          admission: (@runner_admission ||= Rho::Runner::Admission.new), log: log.tagged(address: "executor")
+          admission: (@runner_admission ||= Rho::Env::Admission.new), log: log.tagged(address: "executor")
         )
-        unless @lineage.install_runner(about, runner, @environments.zero.env, slot: slot)
+        unless @lineage.install_runner(about, runner)
           stop_runner(runner)
           return
         end
 
-        announce_slot(credential, slot)
+        announce_services(credential)
         @server.spawn { runner.follow }
-        @server.spawn { @executor_plane.nudge_stream(about, slot) } if @config.executor_socket
+        @server.spawn { @executor_plane.nudge_stream(about) } if @config.executor_socket
         runner
       end
 
       # Every update publishes the complete map from the current registries.
-      def announce_slot(credential, _slot)
+      def announce_services(credential)
         services = service_registries.to_h do |role, registry|
           [role, {
             "tools" => RunDeclaration.announcement(registry: registry,
@@ -46,21 +45,14 @@ module Rho
       end
 
       def service_registries
-        roles = {}
-        roles["agent"] = @loaded.registry.serving(:agent) unless @config.mode == "runner"
-        roles["runner"] = @loaded.registry.serving(:runner) unless @config.mode == "agent"
-        roles
+        { "agent" => @loaded.registry.serving(:agent), "runner" => @loaded.registry.serving(:runner) }
       end
 
       def execution_roles
         service_registries.to_h do |role, registry|
           toolsets = role == "runner" ? @environments.toolsets : @environments.agent_toolsets(registry)
-          [role, Rho::Runner::Service.new(toolsets: toolsets, hooks: registry.hooks)]
+          [role, Rho::Env::Executor::Service.new(toolsets: toolsets, hooks: registry.hooks)]
         end
-      end
-
-      def slot_credential_for(about, _slot)
-        executor_credential_for(about.agent || about.runner)
       end
   end
 end

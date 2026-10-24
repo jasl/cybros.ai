@@ -10,7 +10,7 @@ module E2E
     # `e2e/artifacts/evals/<label>/invocation-*/logs/<task>.<model>.<style>.<n>/`, each as the RUN'S WINDOW
     # (`windows`): the world's `*.log` under the operator handle's `log_dir` (the run root:
     # `server.log`, `model_runner.log`, `jobs.log`, `rails_db_prepare.log`, …), the daemon's
-    # `daemon.log` and `log/rho.log` (`RhoDaemon#log_path`, `#rho_log_path`), the runner-mode home's
+    # `daemon.log` and `log/rho.log` (`RhoDaemon#log_path`, `#rho_log_path`), the environment host home's
     # pair when the run had one, and each world process's own Rails log (`rails.log`,
     # `jobs.rails.log`, `model_runner.rails.log`, the files the world's `RAILS_LOG_FILE` env names;
     # never the checkout's shared, rotating `nexus/log/development.log`). One world and one daemon
@@ -88,7 +88,7 @@ module E2E
       # too, by the name every copy gives it: the world's boot, whole.
       def world_sources(handle:) = world_logs(handle).to_h { |path| [source_name(path), path] }
 
-      # Both homes' pair: the daemon's, then the runner-mode home's when
+      # Both homes' pair: the daemon's, then the environment host home's when
       # the group has one.
       def home_sources(daemon:, runner: nil)
         { "daemon.log" => daemon.log_path, "rho.log" => daemon.rho_log_path,

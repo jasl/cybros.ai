@@ -14,7 +14,7 @@ class CliAPIKeysTest < Minitest::Test
     cli.connect(api_key_stdin: true, input: StringIO.new(JSON.generate(keys)))
 
     assert_equal :active, daemon.phase
-    assert_equal "api_key", daemon.lineage.credentials.agent.authentication_kind
+    assert_equal "api_key", daemon.lineage.credentials.authentication_kind
     assert_empty oauth.requests
     keys.values.each { |key| refute_includes @out.string, key }
   end
@@ -34,20 +34,6 @@ class CliAPIKeysTest < Minitest::Test
     keys.values.each { |key| refute_includes @out.string, key }
   end
 
-  def test_prompt_uses_the_live_daemon_mode
-    daemon = boot(config: Rho::Config.from_hash({ "mode" => "agent" }))
-    prompts = []
-    values = keys.values.first(2)
-    input = Object.new
-    input.define_singleton_method(:tty?) { true }
-    input.define_singleton_method(:getpass) { |prompt| prompts << prompt; values.shift }
-
-    cli.connect(api_key: true, input: input)
-
-    assert_equal :active, daemon.phase
-    assert_equal 2, prompts.size
-    refute daemon.lineage.credentials.runner?
-  end
 
   def test_invalid_json_does_not_echo_input_or_start_a_connection
     error = assert_raises(Rho::ConnectionError) do

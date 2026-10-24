@@ -34,7 +34,7 @@ class ChildrenTest < Minitest::Test
 
   def load(table)
     Rho::AcpClient.settings_table = table
-    result = Rho::Runner::Extensions::Loader.call(gems: ["rho/acp-client"], api_class: Rho::Extensions::Api,
+    result = Rho::Env::Extensions::Loader.call(gems: ["rho/acp-client"], api_class: Rho::Extensions::Api,
       api_options: { host: host }, log: @log)
     assert_predicate result, :ok?, result.failures.inspect
     result
@@ -217,7 +217,7 @@ class ChildrenTest < Minitest::Test
         context.cancel(:canceled)
       end
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      error = assert_raises(Rho::Runner::ExecutionContext::Cancelled) do
+      error = assert_raises(Rho::Env::ExecutionContext::Cancelled) do
         call({ "agent" => "sleepy", "prompt" => "sleep 10" }, env)
       end
       canceller.join
@@ -271,7 +271,7 @@ class ChildrenTest < Minitest::Test
         sleep 0.3
         context.cancel(:deadline)
       end
-      error = assert_raises(Rho::Runner::ExecutionContext::Cancelled) { call({ "agent" => "sleepy", "prompt" => "sleep 10" }, env) }
+      error = assert_raises(Rho::Env::ExecutionContext::Cancelled) { call({ "agent" => "sleepy", "prompt" => "sleep 10" }, env) }
       assert_equal :deadline, error.reason
       assert_empty sessions
       pgid = log_text[/event=acp\.child_killed agent=sleepy .*pgid=(\d+)/, 1]

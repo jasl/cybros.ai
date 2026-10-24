@@ -54,11 +54,11 @@ class HttpTransportTest < Minitest::Test
 
   def open_connection(row)
     Rho::Mcp::Connection.new(row, log: @logger, transport_factory: Rho::Mcp.transport_factory,
-      redact: Rho::Runner::Redact.new(row.secrets)).tap { |c| @connections << c }.open!
+      redact: Rho::Env::Redact.new(row.secrets)).tap { |c| @connections << c }.open!
   end
 
   def call(connection, raw, args = {})
-    Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new(task_key: "t1")) do
+    Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new(task_key: "t1")) do
       connection.call_tool(raw, args, public_name: "mcp__remote__#{raw}")
     end
   end
@@ -189,19 +189,19 @@ class HttpTransportTest < Minitest::Test
       MCP::Tool::Response.new([{ type: "text", text: "slow" }])
     end
     connection = open_connection(row(serve(gem_app(server, []))))
-    context = Rho::Runner::ExecutionContext.new(task_key: "t9")
+    context = Rho::Env::ExecutionContext.new(task_key: "t9")
     answer = :unset
     worker = Thread.new do
-      Rho::Runner::ExecutionContext.with(context) do
+      Rho::Env::ExecutionContext.with(context) do
         answer = connection.call_tool("slow", {}, public_name: "mcp__remote__slow")
-      rescue Rho::Runner::ExecutionContext::Cancelled => error
+      rescue Rho::Env::ExecutionContext::Cancelled => error
         answer = error
       end
     end
     sleep 0.3
     context.cancel(:deadline)
     worker.join(5)
-    assert_kind_of Rho::Runner::ExecutionContext::Cancelled, answer, "the call returns through the runner's checkpoint"
+    assert_kind_of Rho::Env::ExecutionContext::Cancelled, answer, "the call returns through the runner's checkpoint"
     assert_predicate connection, :connected?, "http: no poison"
     assert_nil connection.down
     refute(@log.any? { |entry| entry[1] == "mcp.server_killed" })

@@ -39,7 +39,7 @@ component READMEs provide local development and extension details.
 | --- | --- | --- |
 | Nexus | Accounts, workspace and conversation access, durable history, DAG execution, task delivery, model invocation, approvals, and usage accounting | [Nexus setup and deployment](../nexus/README.md) |
 | Agent | Product prompts, model selection, and product behavior through the kernel's APIs | [Ruby SDK](../sdks/ruby/README.md), [TypeScript SDK](../sdks/typescript/README.md), [Rust SDK](../sdks/rust/README.md), [rho](../agents/rho/rho/README.md) |
-| Runner | Tools associated with a conversation's execution environment, including files, shell commands, and processes | [rho runner](../agents/rho/rho-runner/README.md) |
+| Runner | Tools associated with a conversation's execution environment, including files, shell commands, and processes | [rho runner](../agents/rho/rho-env/README.md) |
 | Tools provider | Separately registered tools addressed by name; several providers can be available to a workspace | [Executor protocol](../guides/reference/agent-api/executor.md) |
 | Client | Human interaction with an agent through its supplied interfaces | [Using rho](rho-usage.md), [ACP server](../agents/rho/rho-acp/README.md), [ACP client](../agents/rho/rho-acp-client/README.md) |
 

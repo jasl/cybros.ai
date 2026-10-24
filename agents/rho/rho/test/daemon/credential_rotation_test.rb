@@ -80,17 +80,17 @@ class DaemonCredentialRotationTest < Minitest::Test
   def test_installed_runners_keep_polling_after_their_original_access_tokens_expire
     daemon, = connected
     about = daemon.lineage.credentials
-    runners = daemon.lineage.runners
-    assert_equal 1, runners.length
+    runner = daemon.lineage.runner
+    refute_nil runner
 
     rotate_then_expire_original_access(daemon)
     assert_equal({ member: :live, executor_transport: :live },
       daemon.maintenance.authority_snapshot.report.fetch(:planes))
-    runners.each { |runner| runner.send(:sweep) }
+    runner.send(:sweep)
 
-    assert runners.all? { |runner| runner.snapshot.running },
-      "normal refresh must keep both existing executor runtimes polling with their current access token"
-    assert_equal runners, daemon.lineage.runners, "refresh does not replace runtimes or interrupt tools"
+    assert runner.snapshot.running,
+      "normal refresh keeps the shared executor polling with the current access token"
+    assert_same runner, daemon.lineage.runner, "refresh does not replace runtimes or interrupt tools"
     assert_same about, daemon.lineage.credentials
   end
 
@@ -143,7 +143,7 @@ class DaemonCredentialRotationTest < Minitest::Test
     public_id = open_host(daemon).public_id
     daemon.stop
     restarted = boot_connection(oauth, api)
-    wait_for { restarted.lineage.follower(public_id) && restarted.lineage.runners.length == 1 }
+    wait_for { restarted.lineage.follower(public_id) && restarted.lineage.runner }
     restarted.maintenance.stop
     run = restarted.lineage.follower(public_id)
 
@@ -163,7 +163,7 @@ class DaemonCredentialRotationTest < Minitest::Test
       daemon = boot_connection(oauth, api)
       token = connect(daemon)
       await_workspace_state(daemon, "adopted", token: token)
-      wait_for { daemon.lineage.runners.length == 1 }
+      wait_for { daemon.lineage.runner }
       daemon.maintenance.stop
       [daemon, api, oauth]
     end
@@ -194,7 +194,7 @@ class DaemonCredentialRotationTest < Minitest::Test
 
     def rotate_then_expire_original_access(daemon)
       @now += 8 * 24 * 60 * 60
-      assert_equal [:renewed], daemon.maintenance.run_once(daemon.lineage.credentials, verify: false)
+      assert_equal :renewed, daemon.maintenance.run_once(daemon.lineage.credentials, verify: false)
       @now += 7 * 24 * 60 * 60
     end
 end

@@ -9,7 +9,7 @@ RuboCop::RakeTask.new
 
 ACP_SIG = File.expand_path("../rho-acp/sig", __dir__)
 RHO_SIG = File.expand_path("../rho/sig", __dir__)
-RUNNER_SIG = File.expand_path("../rho-runner/sig", __dir__)
+RUNNER_SIG = File.expand_path("../rho-env/sig", __dir__)
 SDK_SIG = File.expand_path("../../../sdks/ruby/sig", __dir__)
 
 desc "Validate the packaged RBS surface"

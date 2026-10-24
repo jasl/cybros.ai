@@ -73,8 +73,6 @@ module MemoryDocuments
       end
     end
 
-    def sources_available? = selection_refusal.nil?
-
     def resolve(path, authoring: false)
       root, name = Scopes::Anchor.split(path)
       return Scopes::Anchor.refused(:memory_path_invalid) if name.nil?

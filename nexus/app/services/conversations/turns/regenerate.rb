@@ -20,30 +20,23 @@ module Conversations
         end
 
         # THE KERNEL'S OWN REGENERATION of a direct reply a provider's
-        # classifier declined, on the next permitted captured fallback
-        # (`candidate`, an `Runs::ModelFallback::Candidate`). The
+        # classifier declined, on the next permitted captured fallback. The
         # converger decides it once, under the conversation lock it already
         # holds, before anything reads the reply as settled — so the door's
-        # guards run minus two: no standing check (the kernel acts, no
-        # member does) and no terminal check (the turn is still running on
-        # purpose: it never went idle). The sample asks as the refused one's
+        # guards omit the manual door's standing check (the kernel acts),
+        # terminal check (the turn never went idle), and archive gate
+        # (accepted work finishes).
+        # The sample asks as the refused one's
         # POSTER (`principal`), whose principal decides the memory rung and
         # the persona the prompt assembles; the answering agent would
         # assemble a different prompt than the one declined. The model
         # resolves with no effort of its own: a profile's ref names a model,
         # not the old model's reasoning vocabulary.
-        def fallback(conversation:, turn:, origin:, candidate:, principal:)
-          command = Command.new(conversation: conversation, turn_public_id: turn.public_id,
-            acting_user: principal, provider_id: candidate.provider_id, model_ref: candidate.model_ref,
-            reasoning_effort: nil, request_options: nil)
-          new(command, source: "fallback").fallback(turn, origin)
-        end
-
-        def fallback_refusal(conversation:, turn:, origin:, selection:, principal:)
+        def for_fallback(conversation:, turn:, principal:, configuration:)
           command = Command.new(conversation: conversation, turn_public_id: turn.public_id,
             acting_user: principal, provider_id: nil, model_ref: nil,
-            reasoning_effort: nil, request_options: nil)
-          new(command, source: "fallback").fallback_refusal(turn, origin, selection)
+            reasoning_effort: nil, request_options: configuration)
+          new(command, source: "fallback")
         end
       end
 
@@ -83,13 +76,13 @@ module Conversations
       end
 
       # A savepoint, never a second lock: the caller holds the row, and a
-      # refused assembly unwinds the sample it began. The invocation pump
+      # refused write unwinds the sample it began. The invocation pump
       # admits it once the caller commits.
-      def fallback(turn, origin)
+      def fallback(turn, origin, selection)
         @conversation = @command.conversation
         result = nil
         @conversation.transaction(requires_new: true) do
-          result = locked_fallback(turn, origin)
+          result = locked_fallback(turn, origin, selection)
           raise ActiveRecord::Rollback unless result.accepted?
         end
         ModelInvocations::AdmitQueuedWorkJob.perform_later if result.accepted?
@@ -97,7 +90,9 @@ module Conversations
       end
 
       # The recovery chooser checks the same assembled request before selecting
-      # and narrating a candidate. This path seals no body and creates no work.
+      # and narrating a candidate. Keep the accepted assembly on this operation
+      # so creation seals those same bytes without resolving or assembling again.
+      # This path seals no body and creates no work.
       def fallback_refusal(turn, origin, selection)
         @conversation = @command.conversation
         @turn = turn
@@ -144,31 +139,21 @@ module Conversations
         end
 
         # The declined sample is the origin, whatever the turn renders.
-        def locked_fallback(turn, origin)
-          refusal = turn_refusal(turn)
-          return Outcome.refused(refusal) if refusal
-
-          @turn = turn
-          @turn_position = turn.position
-          # The caller's own parameters, never the declining model's
-          # defaults (`ModelFallback.chosen_configuration`).
-          refusal = prepare_declaration(origin)
+        def locked_fallback(turn, origin, selection)
+          refusal = turn_refusal(turn, allow_archived: true)
           return Outcome.refused(refusal) if refusal
 
           @model_selection = origin.model_selection || ModelSelectionIntent.default("#{origin.provider_id}/#{origin.model_ref}")
           @fallback_models = origin.fallback_models || []
-          @configuration = Runs::ModelFallback.chosen_configuration(origin.model_invocation)
-          selection, refusal = resolve("#{@command.provider_id}/#{@command.model_ref}", nil, @configuration)
-          return Outcome.refused(refusal) if refusal
-
+          @configuration = @command.request_options
           create_regeneration(turn, origin, selection)
         end
 
-        # What any regeneration needs of the turn it aims at: a live,
-        # unarchived conversation, and its live tail direct reply.
-        def turn_refusal(turn)
+        # Accepted recovery may finish after archive; only the manual door
+        # requires an unarchived conversation.
+        def turn_refusal(turn, allow_archived: false)
           if @conversation.tombstoned? then :not_found
-          elsif @conversation.archived? then :conversation_archived
+          elsif !allow_archived && @conversation.archived? then :conversation_archived
           elsif turn.nil? || turn.deleted? then :not_found
           elsif turn.kind != "direct_reply" then :unsupported_turn_type
           elsif !turn.tail? then :branch_required
@@ -265,7 +250,9 @@ module Conversations
           return refusal if refusal
 
           normalized, refusal = assemble_request(selection, tools: execution_tools)
-          refusal || ModelSelection::Recovery.context_refusal(selection, normalized.value)
+          refusal ||= ModelSelection::Recovery.context_refusal(selection, normalized.value)
+          @prepared_request = normalized unless refusal
+          refusal
         end
 
         # Omission repeats the origin's configuration; an explicit object
@@ -367,7 +354,7 @@ module Conversations
             if source && seed.execution_generation.zero? && clone_safe?(origin, selection, source)
               { seed_source: source }
             else
-              assembled, refusal = assemble_request(selection, tools: execution_tools)
+              assembled, refusal = @prepared_request ? [@prepared_request, nil] : assemble_request(selection, tools: execution_tools)
               return refusal if refusal
 
               { seed_body: assembled.value, seed_uploads: assembled.uploads }
@@ -447,7 +434,7 @@ module Conversations
             )
             nil
           else
-            assembled, refusal = assemble_request(selection, tools: nil)
+            assembled, refusal = @prepared_request ? [@prepared_request, nil] : assemble_request(selection, tools: nil)
             return refusal if refusal
 
             written = ContentBodies::Replace.call(

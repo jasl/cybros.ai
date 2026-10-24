@@ -1,4 +1,4 @@
-require "rho/runner"
+require "rho/env"
 require "reverse_markdown"
 require_relative "web-tools/version"
 require_relative "web-tools/client"
@@ -15,11 +15,11 @@ module Rho
   # parked under `ask` by the mode's own word, refused for private hosts
   # unless one setting lifts loopback and RFC 1918. One verb beside it.
   #
-  # WHY A GEM and not a module in rho-runner: nokogiri and reverse_markdown
+  # WHY A GEM and not a module in rho-env: nokogiri and reverse_markdown
   # arrive on every rho install either way (rho's Gemfile carries every
   # extension gem); what the gem buys is the loader's doctrine — `rho/web-tools`
   # registers only when the plugin is enabled — the standalone
-  # `rho-runner` gem staying free of an HTML parser, and a separate hosting boundary: a tools-provider process later hosts the same client
+  # `rho-env` gem staying free of an HTML parser, and a separate hosting boundary: a tools-provider process later hosts the same client
   # and render behind the SDK's executor door with the adapter's `ToolEnv`
   # lines changed, not the client or the render.
   #
@@ -64,12 +64,12 @@ module Rho
         table.each_key do |key|
           next if SETTINGS_KEYS.include?(key.to_s)
 
-          raise Rho::Runner::Extensions::RegistrationError,
+          raise Rho::Env::Extensions::RegistrationError,
             "settings.json \"plugins.rho.web_tools.configuration\": unknown key #{key.to_s.inspect}; the keys are #{SETTINGS_KEYS.join(", ")}"
         end
         value = table.fetch("allow_private_network", false)
         unless [true, false].include?(value)
-          raise Rho::Runner::Extensions::RegistrationError,
+          raise Rho::Env::Extensions::RegistrationError,
             "settings.json \"plugins.rho.web_tools.configuration\": allow_private_network must be true or false, not #{value.inspect}"
         end
 

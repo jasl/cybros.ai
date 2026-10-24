@@ -138,7 +138,7 @@ plain world running beside them.
 ## How it was run
 
 - Corpus named by the run notes: terminal-bench 2.0 at `69671fba`, the 21 tasks the bench names
-  ([bench.yml](../../e2e/evals/bench.yml)), each with its own
+  ([bench.yml](../../e2e/products/evals/bench.yml)), each with its own
   `[agent].timeout_sec` as the budget (900 s for 17, 1 200 s for two, 1 800 s dna-insert, 600 s vulnerable-secret).
 - The ACP door: `rake "evals_harbor_acp[run]"` boots a Nexus world on the box (bound on the LAN), writes an overlay
   corpus whose every task is `FROM` the plain driver's derived image with `tini` alone as the entrypoint, hands

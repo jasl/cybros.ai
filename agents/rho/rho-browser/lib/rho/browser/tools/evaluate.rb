@@ -32,7 +32,7 @@ module Rho
         PROMPT_SNIPPET = "Run JavaScript in the page (escape hatch)".freeze
         PROMPT_GUIDELINES = GUIDELINES
 
-        MAX_BYTES = Rho::Runner::Truncation::DEFAULT_MAX_BYTES
+        MAX_BYTES = Rho::Env::Truncation::DEFAULT_MAX_BYTES
 
         def call(args)
           missing = required(args, "expression")
@@ -41,7 +41,7 @@ module Rho
           expression = args["expression"].to_s
           on_page do |page, fresh|
             value = page.evaluate(expression)
-            Rho::Runner::Result.ok(noticed(SnapshotText.clamp(JSON.generate(finite(value)), MAX_BYTES), fresh))
+            Rho::Env::Result.ok(noticed(SnapshotText.clamp(JSON.generate(finite(value)), MAX_BYTES), fresh))
           end
         end
 

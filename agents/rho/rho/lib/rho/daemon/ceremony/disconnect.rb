@@ -11,7 +11,7 @@ module Rho
             return Refusal.new(status: 409, code: "not_connected", message: "This daemon holds no connection")
           end
 
-          in_flight = @lineage.runners.sum { |runner| runner.snapshot.in_flight.to_i }
+          in_flight = @lineage.runner&.snapshot&.in_flight.to_i
           if in_flight.positive?
             return Refusal.new(status: 409, code: "work_in_flight",
               message: "#{in_flight} tool call(s) are running; stop them or wait before disconnecting")
@@ -22,7 +22,7 @@ module Rho
           @settle.call(adoption, :disconnected) if adoption
           @log.info("connection.disconnected", revoked: result.revoked.join(","), unclaimed: result.unclaimed)
           [200, {
-            revoked: result.revoked, unclaimed: result.unclaimed, mode: result.mode,
+            revoked: result.revoked, unclaimed: result.unclaimed,
             runner_executor_public_id: result.runner_executor_public_id,
             identity: Lineage::Status.identity_facts(result.identity),
           }]

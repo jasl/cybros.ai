@@ -19,7 +19,7 @@ class IngressBindingTest < Minitest::Test
       end
     RUBY
     api = OpsConversationsTest::CatalogApi.new
-    daemon = member_ready(boot(config: Rho::Config.from_hash({ "mode" => "agent", "plugins" => { "rho.test_ingress" => RhoTest.described_extension(extension_path, id: "rho.test_ingress") } })), api)
+    daemon = member_ready(boot(config: Rho::Config.from_hash({ "plugins" => { "rho.test_ingress" => RhoTest.described_extension(extension_path, id: "rho.test_ingress") } })), api)
 
     binding = { "extension" => "rho.test_ingress", "channel" => "test", "label" => "Test channel" }
     detail = JSON.parse(request(daemon, :get, "/conversations/detail?public_id=c-1", token: bearer(daemon)).body)

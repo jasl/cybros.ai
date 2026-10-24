@@ -164,7 +164,13 @@ module Rho
     private
 
       def read_settings
-        Config.read(@home.settings_path)
+        return { "settings_version" => Config::SETTINGS_VERSION, "plugins" => {} } unless File.file?(@home.settings_path)
+
+        document = Config.read(@home.settings_path)
+        unless document["settings_version"] == Config::SETTINGS_VERSION
+          raise ConfigurationError, "unsupported settings format; reconfigure this rho installation"
+        end
+        document
       end
 
       def read_entries(plugins)

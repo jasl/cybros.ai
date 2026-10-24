@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
     "cascaded, the management verbs and `GET /acp`. It is a separate gem in rho-mcp's shape " \
     "because a client to other agents is an optional dependency, and because the kernel never " \
     "speaks ACP: a delegated agent is a tool behind an executor, and this is the executor's half. " \
-    "It depends on rho-acp for the wire and on rho-runner for the row-secrets rule and the " \
+    "It depends on rho-acp for the wire and on rho-env for the row-secrets rule and the " \
     "child-env scrub."
   spec.homepage = "https://github.com/jasl/cybros.ai"
   spec.license = "MIT"
@@ -43,7 +43,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rho"
   # `Result`, `ToolEnv`, `ExecutionContext`, `OwnedProcess` and the
   # child-env scrub — the tool's body and its process-group rule.
-  spec.add_dependency "rho-runner"
+  spec.add_dependency "rho-env"
   # THE WIRE: the framing, the two-way connection and the method names
   # are the agent gem's, spoken from the other end.
   spec.add_dependency "rho-acp"

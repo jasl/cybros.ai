@@ -11,7 +11,7 @@ module Nexus
   # the model never sees one, and a curating executor (ADR-0040) shapes an
   # MCP prompt or resource into this entry itself.
   module ToolAnnouncements
-    # The runner's own tool-name rule (rho-runner Extensions::Tool::NAME_FORMAT),
+    # The runner's own tool-name rule (rho-env Extensions::Tool::NAME_FORMAT),
     # mirrored so the door refuses what the runner could not have registered.
     NAME_FORMAT = /\A[a-zA-Z0-9_-]{1,64}\z/
     ENTRY_KEYS = %w[name effect_profile timeout_ms description input_schema mcp].freeze

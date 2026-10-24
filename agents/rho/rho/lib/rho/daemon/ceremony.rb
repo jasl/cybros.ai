@@ -9,8 +9,7 @@ module Rho
     # thread and the ceremony half of an orderly stop. No lock of its own:
     # the slot is the Lineage's.
     #
-    # Full and agent modes share one application credential lineage.
-    # Runner mode registers an independent machine address.
+    # One application credential lineage serves both execution roles.
     class Ceremony
       include Stop
       include Disconnect
@@ -28,7 +27,7 @@ module Rho
       # The lineage edges (adopt, settle, lose, transition) are the daemon's callbacks: what they do outside the
       # monitor needs the server.
       def initialize(lineage:, home:, device_flow:, wire:, clock:, display_name:, log:, maintenance:,
-        announce:, adopt:, settle:, lose:, transition:, mode: "full")
+        announce:, adopt:, settle:, lose:, transition:)
         @lineage = lineage
         @home = home
         @device_flow = device_flow
@@ -42,7 +41,6 @@ module Rho
         @settle = settle
         @lose = lose
         @transition = transition
-        @mode = mode
       end
 
       # At most one ceremony in flight, and starting is idempotent: a second
@@ -92,7 +90,7 @@ module Rho
         # `starting` has nothing to cancel yet; `activating`/`active` are past
         # Consume; a failed ceremony with an authorization still asks Nexus.
         if phase == :active ||
-            (slot.phase == :active && !%i[pending pending_runner error starting activating].include?(phase))
+            (slot.phase == :active && !%i[pending error starting activating].include?(phase))
           return Refusal.new(status: 409, code: "already_connected", message: "Already connected")
         end
         if phase == :starting || phase == :activating
@@ -140,7 +138,7 @@ module Rho
 
       def build_connection(request: nil, existing: nil, existing_identity: nil)
         Connection.new(
-          home: @home, device_flow: device_flow, mode: @mode,
+          home: @home, device_flow: device_flow,
           api_transport: @wire.api_transport, clock: @clock,
           display_name: @display_name, request: request, existing: existing, existing_identity: existing_identity,
           on_phase: ->(_phase) { @announce.call }
@@ -161,7 +159,7 @@ module Rho
 
         verify_authority if @lineage.phase == :active
         credentials = @lineage.credentials
-        shape = Connection.idle_request(@mode)
+        shape = :agent
         if @lineage.phase == :active
           state, credentials, shape = required_authority_state
           case state
@@ -231,12 +229,6 @@ module Rho
           return if pointer.nil?
 
           identity = Identity.from_pointer(home: @home, pointer: pointer).verify_belongs_here
-          verify_mode(identity.mode)
-          unless identity.runner_mode?
-            identity = Identity.agent(home: @home, user_public_id: identity.user_public_id,
-              executor_public_id: identity.executor_public_id, mode: @mode,
-              agent_identifier: identity.agent_identifier)
-          end
           credentials = stored_credentials(identity)
 
           # The pointer says where to look; only a terminal refresh-lineage
@@ -244,38 +236,23 @@ module Rho
           # another identity is refused as copied state.
           report = Authority.new(
             oauth: credentials, base_url: @home.base_url, transport: @wire.api_transport,
-            expected_identity: identity, mode: @mode
+            expected_identity: identity
           ).check
           if report[:lost]
             @settle.call(@lineage.adopt_lost(identity: identity, credentials: credentials, report: report), :disconnected)
             return
           end
 
-          @log.info("connection.resumed", mode: identity.mode,
+          @log.info("connection.resumed",
             user: identity.user_public_id, executor: identity.executor_public_id,
             runner: identity.runner_executor_public_id)
           @adopt.call(identity: identity, credentials: credentials, authority_report: report)
           @lose.call(about: credentials, report: report) if report[:lost]
         end
 
-        # THE SETTINGS/POINTER RULE: equal → continue; agent→full
-        # is recoverable (the runner plane reads absent and `rho connect`
-        # opens the runner-only shape); anything else is refused with the
-        # switch sentence.
-        def verify_mode(stored)
-          return if stored == @mode
-          return if %w[agent full].include?(stored) && %w[agent full].include?(@mode)
-
-          raise StoredConnectionError,
-            "this home was paired in mode #{stored}; settings say #{@mode} — `rho disconnect`, " \
-            "then `rho server --mode #{@mode}` and `rho connect`"
-        end
-
-        # The composite from the vaults: the agent lineage unless runner
-        # mode, the runner lineage when the identity carries a runner.
         def stored_credentials(identity)
-          credentials = Rho::Credentials.load(identity: identity, authority: device_flow, clock: @clock)
-          if (identity.runner_mode? && !credentials.runner?) || (!identity.runner_mode? && !credentials.agent?)
+          credentials = CybrosAgent::Credentials.load(store: identity.vault, authority: device_flow, clock: @clock)
+          if credentials.nil?
             raise StoredConnectionError, "#{identity.root} has no credentials to reconnect with"
           end
 
@@ -331,9 +308,7 @@ module Rho
           adopt(connection)
         end
 
-        # ONE adoption door: the runner-only shape on a live agent attaches
-        # its runner under the daemon's monitor; every other shape adopts
-        # the connection's holder whole.
+        # Publish the connected application holder as one lineage.
         def adopt(connection)
           @adopt.call(identity: connection.identity, credentials: connection.oauth,
             authority_report: connection.authority_report)
@@ -353,7 +328,7 @@ module Rho
             if report[:lost]
               next unless @lose.call(about: about, report: report)
 
-              return [:recoverable, nil, Connection.idle_request(@mode)] unless @lineage.holds?(about)
+              return [:recoverable, nil, :agent] unless @lineage.holds?(about)
             end
 
             planes = report.fetch(:planes)
@@ -362,7 +337,7 @@ module Rho
             lost = planes.select { |_plane, state| LOST_PLANE_STATES.include?(state) }.keys
             return [:complete, about, nil] if lost.empty?
 
-            return [:recoverable, about, Connection.recovery_request(@mode, lost)]
+            return [:recoverable, about, :agent]
           end
 
           [:unknown, nil, nil]

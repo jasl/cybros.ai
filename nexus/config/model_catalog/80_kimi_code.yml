@@ -10,6 +10,50 @@ providers:
       # The coding chat endpoint rejects developer-role instructions.
       developer_role: system
 models:
+  # https://www.kimi.com/help/kimi-code/models and the coding /v1/models
+  # directory, checked 2026-10-24. Code IDs differ from the API platform.
+  # No separate output ceiling is published for these routes. Video and
+  # dynamic tool loading are outside this adapter's supported input contract.
+  # Keep thinking enabled: disabling it may route to a different model.
+  kimi_code/k3:
+    inherit: kimi-k3
+    display_name: Kimi K3
+    pricing:
+    capabilities:
+      limits:
+        combined_input_output_tokens: 1048576
+      reasoning:
+        disable_supported: false
+      reasoning_replay:
+        format: chat_reasoning
+        required_for_tool_rounds: true
+  kimi_code/k3-256k:
+    inherit: kimi-k3
+    display_name: Kimi K3 (256K)
+    pricing:
+    capabilities:
+      limits:
+        combined_input_output_tokens: 262144
+      reasoning:
+        disable_supported: false
+      reasoning_replay:
+        format: chat_reasoning
+        required_for_tool_rounds: true
+  kimi_code/k3.1-pro:
+    inherit: kimi-k3.1-pro
+    pricing:
+    capabilities:
+      reasoning_replay:
+        format: chat_reasoning
+        required_for_tool_rounds: true
+  kimi_code/k3.1-pro-highspeed:
+    inherit: kimi-k3.1-pro
+    display_name: Kimi K3.1 Pro Highspeed
+    pricing:
+    capabilities:
+      reasoning_replay:
+        format: chat_reasoning
+        required_for_tool_rounds: true
   # models.dev/providers/kimi-code-plan-cn/ and
   # www.kimi.com/help/kimi-code/models, read 2026-10-19: this alias serves
   # K2.8 Preview, with a 1M context, 32K output, images and three efforts.

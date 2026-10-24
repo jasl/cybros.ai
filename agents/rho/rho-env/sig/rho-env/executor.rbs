@@ -1,0 +1,43 @@
+module Rho
+  module Env
+    class Executor
+      SWEEP_SECONDS: Float
+      PAGE_LIMIT: Integer
+      TOOL_CALL_KIND: String
+      class Snapshot < ::Data
+        attr_reader running: bool
+        attr_reader in_flight: Integer
+        attr_reader claimed: Integer
+        attr_reader swept: Integer
+        attr_reader nudged: Integer
+        attr_reader canceled: Integer
+        attr_reader tools: Array[String]
+
+        def to_h: () -> Hash[Symbol, untyped]
+      end
+
+      class Service < ::Data
+        attr_reader toolsets: Toolsets | Toolsets::Fixed
+        attr_reader hooks: Extensions::Hooks::Host?
+        def self.new: (toolsets: Toolsets | Toolsets::Fixed, hooks: Extensions::Hooks::Host?) -> Service
+      end
+
+      type execution_roles = Hash[String, Service]
+
+      def initialize: (
+        executor: untyped, toolsets: (Toolsets | Toolsets::Fixed), log: untyped, ?pool: Pool?,
+        ?sleeper: (^(Numeric) -> void)?, ?hooks: Extensions::Hooks::Host?, ?admission: Admission?, ?roles: execution_roles?
+      ) -> void
+      def snapshot: () -> Snapshot
+      def configure: (?hooks: Extensions::Hooks::Host?, ?roles: execution_roles?) -> untyped
+      def wake: () -> nil
+      def follow: () -> void
+      def report_progress: (Hash[String, untyped] frame) -> untyped
+      def nudged: (run_public_id: String?, task_key: String?, ?tool_name: String?, ?role: String?) -> untyped
+      def cancel: (run_public_id: String?, task_key: String?) -> bool
+      ANSWER_WAIT_SECONDS: Float
+      def stop: (?answer_wait: Float) -> nil
+      def answering?: () -> bool
+    end
+  end
+end

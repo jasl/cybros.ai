@@ -1,7 +1,7 @@
 require "net/http"
 require "stringio"
 require "tmpdir"
-require_relative "oauth_fixture"
+require_relative "../../../../../e2e/support/mcp_fixture/oauth_fixture"
 require_relative "loopback_server"
 
 module McpTest
@@ -77,12 +77,12 @@ module McpTest
     end
 
     def connection(storage: @storage, row: @row)
-      Rho::Mcp::Connection.new(row, log: @logger, redact: Rho::Runner::Redact.new(row.secrets, live: storage),
+      Rho::Mcp::Connection.new(row, log: @logger, redact: Rho::Env::Redact.new(row.secrets, live: storage),
         transport_factory: Rho::Mcp.transport_factory, clock: @clock, storage: storage).tap { |c| @connections << c }
     end
 
     def call(connection, raw, args = {})
-      Rho::Runner::ExecutionContext.with(Rho::Runner::ExecutionContext.new(task_key: "t1")) do
+      Rho::Env::ExecutionContext.with(Rho::Env::ExecutionContext.new(task_key: "t1")) do
         connection.call_tool(raw, args, public_name: "mcp__fxo__#{raw}")
       end
     end

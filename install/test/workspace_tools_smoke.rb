@@ -1,22 +1,22 @@
 require "fileutils"
 require "json"
-require "rho/runner"
+require "rho/env"
 
 work = ARGV.fetch(0)
 root = File.join(work, "announced-project")
 bound_root = File.join(work, "bound-project")
 FileUtils.mkdir_p([root, bound_root])
 
-loaded = Rho::Runner::Extensions::Loader.call(builtin: [Rho::Runner::Extensions::Coding])
+loaded = Rho::Env::Extensions::Loader.call(builtin: [Rho::Env::Extensions::Coding])
 abort "Coding extension did not load: #{loaded.failures.inspect}" unless loaded.ok?
 registry = loaded.registry.serving(:runner)
-documents = registry.documents(Rho::Runner::Environment.local(root: root))
+documents = registry.documents(Rho::Env::Environment.local(root: root))
 abort "workspace-tools was not announced: #{documents.inspect}" unless documents.map { |row| row.fetch("name") } == ["workspace-tools"]
 File.write(File.join(work, "workspace-tools-announcement.json"), JSON.pretty_generate(documents) + "\n")
 
 environments = [
-  Rho::Runner::ToolEnv.new(root: root, artifacts_dir: work),
-  Rho::Runner::ToolEnv.new(root: bound_root, documents_root: root, artifacts_dir: work),
+  Rho::Env::ToolEnv.new(root: root, artifacts_dir: work),
+  Rho::Env::ToolEnv.new(root: bound_root, documents_root: root, artifacts_dir: work),
 ]
 contents = environments.map do |env|
   result = registry.toolset(env: env).fetch("skill").handler.call({ "name" => "workspace-tools" }, nil)

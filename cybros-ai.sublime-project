@@ -2,7 +2,8 @@
 	"folders":
 	[
 		{
-			"path": "."
+			"path": ".",
+			"folder_exclude_patterns": [".bundle",".ruby-lsp",".vscode",".idea","dist","pkg","artifacts","tmp","coverage","target"]
 		}
 	]
 }

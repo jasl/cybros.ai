@@ -321,11 +321,6 @@
     "additionalProperties": false
   },
   "default_enabled": false,
-  "modes": [
-    "full",
-    "agent",
-    "runner"
-  ],
   "requires": [],
   "restart_only": false
 }

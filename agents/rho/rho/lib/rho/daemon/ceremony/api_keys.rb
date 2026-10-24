@@ -10,7 +10,7 @@ module Rho
               message: "Finish the pending connection before importing keys")
           end
 
-          if @lineage.runners.any? { |runner| runner.snapshot.in_flight.to_i.positive? }
+          if @lineage.runner&.snapshot&.in_flight.to_i.positive?
             return Refusal.new(status: 409, code: "work_in_flight",
               message: "Stop running tool calls or wait before replacing the connection")
           end

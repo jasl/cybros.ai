@@ -272,7 +272,7 @@ module Rho
       owner = ApplicationConnection.new(home: @home, public_url: config.nexus_public_url || @home.base_url)
       connection = Connection.new(
         home: @home, device_flow: owner,
-        display_name: @display_name, mode: config.mode
+        display_name: @display_name
       )
       return connection.identity if connection.resume
 
@@ -299,7 +299,7 @@ module Rho
       if Connection.staged_oauth?(@home)
         raise ConnectionError, "Finish the pending connection before importing keys"
       end
-      connection = Connection.new(home: @home, mode: config.mode, display_name: @display_name,
+      connection = Connection.new(home: @home, display_name: @display_name,
         device_flow: ApplicationConnection.new(home: @home))
       connection.receive_api_keys(document).to_h
     ensure
@@ -318,11 +318,9 @@ module Rho
 
     # With no daemon the row is still a durable answer: the files alone
     # (the gem's rows, the home's local rows, the settings' knob) for the
-    # default model; a runner-mode home declares none; a pack the files
+    # default model; a pack the files
     # refuse answers its sentence rather than a row.
     def stored_facts
-      return nil if config.mode == "runner"
-
       Rho::Adaptations.load(config, home: @home).facts
     rescue ConfigurationError => error
       { "row" => "unreadable", "source" => error.message }
@@ -414,19 +412,17 @@ module Rho
         return nil if pointer.nil?
 
         identity = stored_identity(pointer)
-        unless identity.mode == config.mode
-          raise ConnectionError, "The stored connection uses mode #{identity.mode}; restore that mode before connecting"
-        end
-        credentials = Rho::Credentials.load(identity: identity, authority: owner)
+
+        credentials = CybrosAgent::Credentials.load(store: identity.vault, authority: owner)
         report = Authority.new(oauth: credentials, base_url: @home.base_url,
-          expected_identity: identity, mode: config.mode).check
+          expected_identity: identity).check
         planes = report.fetch(:planes)
         if planes.values.include?(:unknown)
           raise ConnectionError, "Cannot verify the current connection; try again when Nexus is reachable"
         end
         lost = planes.select { |_plane, state| %i[unauthorized absent].include?(state) }.keys
-        shape = lost.empty? ? :login : Connection.recovery_request(config.mode, lost)
-        Connection.new(home: @home, device_flow: owner, display_name: @display_name, mode: config.mode,
+        shape = lost.empty? ? :login : :agent
+        Connection.new(home: @home, device_flow: owner, display_name: @display_name,
           request: shape, existing: credentials, existing_identity: identity)
       end
 
@@ -439,7 +435,6 @@ module Rho
         raise Rho::Error, "This home is not connected; run rho connect first." if pointer.nil?
 
         identity = stored_identity(pointer)
-        raise Rho::Error, "Model discovery needs full or agent mode." if identity.runner_mode?
 
         authority = ApplicationConnection.new(home: @home)
         credential = CybrosAgent::Credentials.load(authority: authority, store: identity.vault)
@@ -477,10 +472,10 @@ module Rho
 
         identity = stored_identity(pointer)
         device_flow = ApplicationConnection.new(home: @home)
-        credentials = Rho::Credentials.load(identity: identity, authority: device_flow)
+        credentials = CybrosAgent::Credentials.load(store: identity.vault, authority: device_flow)
         result = Rho::Disconnect.call(home: @home, identity: identity, credentials: credentials,
           executor_client: ->(credential) { CybrosAgent::ExecutorClient.new(base_url: @home.base_url, credential: credential) })
-        { "revoked" => result.revoked, "unclaimed" => result.unclaimed, "mode" => result.mode,
+        { "revoked" => result.revoked, "unclaimed" => result.unclaimed,
           "runner_executor_public_id" => result.runner_executor_public_id,
           "identity" => Rho::Daemon::Lineage::Status.identity_facts(result.identity).transform_keys(&:to_s) }
       ensure

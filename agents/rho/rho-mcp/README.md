@@ -19,7 +19,7 @@ configuration still determines what this plugin connects to and announces.
 An MCP server is a tool source behind an executor. rho runs the client; the
 kernel merges the announcement once and routes a call to its announcer.
 Nothing here changes Nexus or the SDK: the whole gem is one settings key,
-two registry seams in rho-runner (per-address entries; document loaders),
+two registry seams in rho-env (per-address entries; document loaders),
 two verbs. The client is the official `mcp` gem's `MCP::Client` on its own
 two transports — never a hand-rolled JSON-RPC layer, initialize or
 `tools/list`; rho-mcp is the seams only.
@@ -39,8 +39,8 @@ two transports — never a hand-rolled JSON-RPC layer, initialize or
 The distributed plugin is disabled by default. Enable it in Settings → Plugins or
 with `rho extensions enable rho.mcp`. Its static description remains
 available in Settings → Plugins while disabled; `enabled: false` removes its
-commands, tools and connections. It loads under either host — a full-mode daemon, a runner-mode
-one — and its daemon-only verbs answer `unavailable` elsewhere.
+commands, tools and connections. rho hosts its management verbs and both tool transports;
+a library host can register the Runner tools through the environment API.
 
 ## Where a server is declared
 
@@ -416,12 +416,12 @@ fixture's `oauth` entry mounts the same app) carries the store, the
 classifier, both provider halves, the loopback listener, the login verb
 and the daemon's refresh, renewal-failure, refusal, step-up and recovery
 paths against rho's real `Rho::StateFile` (loaded from the sibling
-checkout). The world journeys are `e2e/test/mcp_tools_test.rb` (the stdio
-and http halves, the documents) and `e2e/test/mcp_oauth_test.rb` (the OAuth
+checkout). The world journeys are `e2e/products/test/mcp_tools_test.rb` (the stdio
+and http halves, the documents) and `e2e/products/test/mcp_oauth_test.rb` (the OAuth
 path through `exe/rho`: the same mock authorization server under the e2e
 fixture's `oauth PORT TTL` entry, the browser stubbed by `$BROWSER`, the
 login, the refresh, the renewal failure, the refusal, the step-up, the
 paste, no daemon, the negatives); the paid lanes against real public
-servers are `e2e/test/live_mcp_test.rb` and the MANUAL
-`e2e/test/live_mcp_oauth_test.rb` (`E2E_LIVE=1 E2E_MCP_OAUTH_URL=<url> rake
+servers are `e2e/products/test/live_mcp_test.rb` and the MANUAL
+`e2e/products/test/live_mcp_oauth_test.rb` (`E2E_LIVE=1 E2E_MCP_OAUTH_URL=<url> rake
 live_mcp_oauth`: you click consent in your browser).

@@ -31,7 +31,7 @@ class NamingTest < Minitest::Test
     assert_match(/\Amcp__fx__dotted_name_with_space_[0-9a-f]{12}\z/, name)
     assert_equal "mcp__fx__dotted_name_with_space_#{Rho::Mcp::Naming.digest("fx", "dotted.name/with space")}", name
     assert_operator name.length, :<=, 64
-    assert_match Rho::Runner::Extensions::Tool::NAME_FORMAT, name
+    assert_match Rho::Env::Extensions::Tool::NAME_FORMAT, name
   end
 
   def test_two_raw_names_that_normalize_alike_stay_apart
@@ -46,7 +46,7 @@ class NamingTest < Minitest::Test
     name = Rho::Mcp::Naming.tool("fx", raw)
     assert_equal 64, name.length
     assert_equal "mcp__fx__#{"x" * 42}_#{Rho::Mcp::Naming.digest("fx", raw)}", name
-    assert_match Rho::Runner::Extensions::Tool::NAME_FORMAT, name
+    assert_match Rho::Env::Extensions::Tool::NAME_FORMAT, name
   end
 
   def test_the_hash_is_sha256_of_server_nul_raw

@@ -79,7 +79,7 @@ class DevCommandsTest
     RhoTest::LocalRows.write(home.adaptations_path, "mock", models: ["mock-text"], tool_style: %w[claude codex],
       lead_hints: [{ "id" => "k6", "text" => "Do not wait for a detached call." }], summarizer_prompt: "Summarize by pointers.")
     RhoTest::LocalRows.write(home.adaptations_path, "plain", models: ["plain-text"])
-    File.write(home.settings_path, JSON.generate("default_model" => "dev/mock-text"))
+    File.write(home.settings_path, JSON.generate("settings_version" => Rho::Config::SETTINGS_VERSION, "default_model" => "dev/mock-text"), perm: 0o600)
 
     choice = ops(:adaptations)
     assert_equal "model:             dev/mock-text", lines[0]
@@ -105,11 +105,11 @@ class DevCommandsTest
     refute(lines.any? { |line| line.start_with?("  recut:") }, "the plain row re-cuts nothing")
 
     reset_out
-    File.write(home.settings_path, JSON.generate("default_model" => "dev/mock-text", "adaptations" => "off"))
+    File.write(home.settings_path, JSON.generate("settings_version" => Rho::Config::SETTINGS_VERSION, "default_model" => "dev/mock-text", "adaptations" => "off"), perm: 0o600)
     ops(:adaptations)
     assert_equal ["model:             dev/mock-text", "row:               off", "facts:             (no daemon)"], lines
 
-    File.write(home.settings_path, JSON.generate("default_model" => "dev/mock-text"))
+    File.write(home.settings_path, JSON.generate("settings_version" => Rho::Config::SETTINGS_VERSION, "default_model" => "dev/mock-text"), perm: 0o600)
     api = NexusDoubles::FakeAgentApi.new(models: [
       { "ref" => "dev/mock-text", "provider" => "dev", "workload" => "text_generation", "visible" => true, "available" => true,
         "capabilities" => { "tool_calls" => true }, "pricing" => { "state" => "priced" } },
@@ -117,7 +117,7 @@ class DevCommandsTest
     daemon = boot(api: api)
     cli.connect
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
-    sleep 0.02 while daemon.lineage.runner(:runner).nil? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+    sleep 0.02 while daemon.lineage.runner.nil? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
     reset_out
     ops(:adaptations)
     assert_match(/^facts:             tool_calls true \(catalog\)$/, @out.string, @out.string)
@@ -129,7 +129,7 @@ class DevCommandsTest
   # A daemon that refuses the facts read prints its sentence on the line;
   # one that cannot be reached is the verb's failure, as for every read.
   def test_adaptations_prints_a_refused_facts_read_on_the_line
-    File.write(home.settings_path, JSON.generate("default_model" => "dev/mock-text"))
+    File.write(home.settings_path, JSON.generate("settings_version" => Rho::Config::SETTINGS_VERSION, "default_model" => "dev/mock-text"), perm: 0o600)
     announce(endpoint: routed_endpoint(
       "GET /adaptations" => [[503, { "error" => { "code" => "kernel_unavailable", "message" => "no member plane" } }]]
     ))

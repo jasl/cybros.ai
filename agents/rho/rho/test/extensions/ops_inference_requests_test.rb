@@ -315,7 +315,7 @@ class OpsInferenceRequestsTest < Minitest::Test
         route(daemon, "POST", "/inference_requests").call(json_request(request_body, token: bearer(daemon)))
       end
       create_started.pop
-      daemon.lineage.adopt(identity: IDENTITY, credentials: Rho::Credentials.new)
+      daemon.lineage.adopt(identity: IDENTITY, credentials: Object.new)
       release_create << true
       status, body = creating.value
 

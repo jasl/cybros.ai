@@ -1,4 +1,4 @@
-require "rho/runner"
+require "rho/env"
 require_relative "mcp/version"
 require_relative "mcp/errors"
 require_relative "mcp/naming"
@@ -122,7 +122,7 @@ module Rho
       # long-lived process gets whole, under `unsetenv_others: true` at
       # the spawn site.
       def child_env(row, current = ENV.to_h)
-        Rho::Runner::ChildEnv.scrubbed(current).merge(row.env)
+        Rho::Env::ChildEnv.scrubbed(current).merge(row.env)
       end
 
       def entries = LOCK.synchronize { @mount ? @mount.entries.dup : {} }
@@ -321,7 +321,7 @@ module Rho
       # close over, retaining that exact connection; `owner` names the conversation on the lines;
       # `log` is the host's (the handle's at load, the seam's after).
       def connect(row, built, budget, storage: nil, owner: nil, log: @log)
-        redact = Rho::Runner::Redact.new(row.secrets, live: storage)
+        redact = Rho::Env::Redact.new(row.secrets, live: storage)
         connection = Connection.new(row, log: redacting_log(redact, log), redact: redact,
           transport_factory: transport_factory, clock: -> { Time.now }, storage: storage)
         begin
@@ -413,7 +413,7 @@ module Rho
           end
           return disabled_entry(api, row) unless row.enabled?
           unless api.serves?(row.serves)
-            sentence = mode_sentence(api, row)
+            sentence = "mcp server \"#{row.key}\" serves #{row.serves} (transport #{row.transport}); this host does not serve that role"
             @log&.warn("mcp.server_config_invalid", server: row.key, sentence: sentence)
             return Entry.new(key: row.key, row: row, connection: nil, curated: nil, fault: "config: #{sentence}",
               state: "down")
@@ -429,17 +429,6 @@ module Rho
         def disabled_entry(api, row)
           Entry.new(key: row.key, row: row, connection: nil, curated: nil, fault: nil, state: "disabled",
             storage: Oauth.storage_for(row, home: api.host&.home, log: @log))
-        end
-
-        def mode_sentence(api, row)
-          mode = api.host&.config&.mode || "runner"
-          if row.serves == :agent
-            "mcp server \"#{row.key}\" serves the agent (transport #{row.transport}); this rho runs in mode #{mode} — " \
-              "set \"serves\": \"runner\" for a server this machine owns, or declare it in the agent's settings"
-          else
-            "mcp server \"#{row.key}\" serves the runner (transport #{row.transport}); this rho runs in mode #{mode} " \
-              "and serves no tool of its own — declare the server on the runner's home, or use mode full"
-          end
         end
 
         # THE ANNOUNCE HALF of a boot row: an OAuth row's storage is built
@@ -499,9 +488,9 @@ module Rho
         # THE PLANE SEAM: the documents and their loader on each
         # address this host serves; the plane's `skill` on the AGENT address
         # when a server announced a document there (Coding serves it on the
-        # runner's; in agent mode Coding is not loaded at all).
+        # runner role).
         def register_documents(api, mount)
-          Rho::Runner::Extensions::Api::SERVES.each do |serves|
+          Rho::Env::Extensions::Api::SERVES.each do |serves|
             next unless api.serves?(serves)
 
             api.describe_documents(serves: serves) { |_environment| mount.documents_for(serves) }
@@ -510,7 +499,7 @@ module Rho
           return unless api.serves?(:agent) &&
             mount.entries.values.any? { |entry| entry.row.serves == :agent && entry.documents&.announced&.any? }
 
-          api.register_tool(Rho::Runner::Tools::Skill, serves: :agent)
+          api.register_tool(Rho::Env::Tools::Skill, serves: :agent)
         end
 
         # Every `mcp.*` line a connection writes passes the row's redaction.

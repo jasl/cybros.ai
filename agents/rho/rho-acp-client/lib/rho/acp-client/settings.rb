@@ -1,4 +1,4 @@
-require "rho/runner"
+require "rho/env"
 
 module Rho
   module AcpClient
@@ -10,11 +10,11 @@ module Rho
     # logged, contributing no agent to the tool; only a table that cannot
     # be read AS ROWS refuses the extension (`Malformed`).
     #
-    # The secrets trio is the runner's (`Rho::Runner::Secrets`): `${NAME}`
+    # The secrets trio is the runner's (`Rho::Env::Secrets`): `${NAME}`
     # in `env` values expanded ONCE from the daemon's
     # environment — an unset name is that row's fault, naming the KEY and
     # never a value — every expansion a secret, a literal under a
-    # credential-shaped key a secret too; `Rho::Runner::Redact` erases
+    # credential-shaped key a secret too; `Rho::Env::Redact` erases
     # them from everything a model, a log or a capture reads.
     #
     # `permissions` ∈ allow|reject (default allow; the floor still
@@ -27,7 +27,7 @@ module Rho
     # invents no sentence in the agent's mouth. `enabled` is the switch:
     # absent is on; `rho acp-agents enable|disable NAME` write it.
     module Settings
-      class Malformed < Rho::Runner::Extensions::RegistrationError; end
+      class Malformed < Rho::Env::Extensions::RegistrationError; end
 
       KEYS = %w[command args env description permissions timeout_ms auth_method model enabled].freeze
       # The key rides the tool's schema as an enum and the verbs' lines:
@@ -124,7 +124,7 @@ module Rho
         return DEFAULT_TIMEOUT_MS unless raw.key?("timeout_ms")
 
         value = raw["timeout_ms"]
-        limit = Rho::Runner::Extensions::Tool::MAX_TIMEOUT_MS
+        limit = Rho::Env::Extensions::Tool::MAX_TIMEOUT_MS
         return value if value.is_a?(Integer) && value.positive? && value <= limit
 
         fault!(key, "timeout_ms must be a positive integer of milliseconds no greater than #{limit}, got #{value.inspect}")
@@ -155,7 +155,7 @@ module Rho
         table.to_h do |name, value|
           fault!(key, "env.#{name} must be a string") unless value.is_a?(String)
           expanded = expand(key, name, value, env, secrets)
-          secrets << expanded if Rho::Runner::Secrets.literal_credential?(name, expanded)
+          secrets << expanded if Rho::Env::Secrets.literal_credential?(name, expanded)
           [name.to_s, expanded]
         end.freeze
       end
@@ -163,10 +163,10 @@ module Rho
       # The runner's expansion; an unset name is this row's fault, the
       # sentence naming the key and the variable, never a value.
       def expand(key, name, value, env, secrets)
-        expanded, found = Rho::Runner::Secrets.expand(value, env)
+        expanded, found = Rho::Env::Secrets.expand(value, env)
         secrets.concat(found)
         expanded
-      rescue Rho::Runner::Secrets::Unset => unset
+      rescue Rho::Env::Secrets::Unset => unset
         fault!(key, "env.#{name} names ${#{unset.variable}}, which is not set in the daemon's environment")
       end
 

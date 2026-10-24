@@ -1,5 +1,15 @@
 # Container evaluations and installation journeys
 
+Current implementation: container evaluations boot and pair a complete rho application
+inside the container through application branch A. That application authors the run
+and executes its own Local tools. Installation profile `minimal` chooses packages;
+there is no runtime-mode setting or host application borrowing the container's Local
+address. The product lane lives under `e2e/products`; run its container tasks there.
+
+The dated implementation and measurements below record the earlier design. Their
+runner-only commands and branch-B setup are historical, not current launch instructions.
+
+
 This page is §8 of the [evaluation runbook](evals-runbook.md): the two external task-pass corpora,
 each run through the one evals lane inside its own container, and the installation journeys of the
 gate's group 3. Its sections continue the runbook's numbering (§8a–§8c); any other section number
@@ -17,7 +27,7 @@ text tune (their agent, prompts, harness, cold-start checkpoint and pricing tabl
 their `external-service` shape — the model call leaves the container to Nexus — never an air-gap).
 
 **What ran on the BUILD side (2026-09-15).** Every hook is an argv with a unit test
-(`e2e/test/evals_docker_test.rb`, `evals_agents_on_rails_test.rb`, `evals_terminal_bench_test.rb`); the
+(`e2e/products/test/evals_docker_test.rb`, `evals_agents_on_rails_test.rb`, `evals_terminal_bench_test.rb`); the
 lane's container branch is code, not a paid run. What the verifier then proved on this Mac with NO model
 and NO Nexus: **proof 1** — the derived image builds for one terminal-bench base
 (`rho-evals-alexgshaw-chess-best-move-20251031`, amd64 emulated, ≈ 2 min, `rho doctor --strict` green as
@@ -48,7 +58,7 @@ task passes end to end on the floor: `chess-best-move` (`tests/test.sh` → `rew
 `ac-throttle-search` (rails); then the cells below. Every first-boot lane of round I was red on a
 lane-only defect: read (1)–(3) as the fix loop they are.
 
-**How the lane runs a container family** (`e2e/evals/lane_test.rb`, the same `run_and_record` /
+**How the lane runs a container family** (`e2e/products/evals/lane_test.rb`, the same `run_and_record` /
 `build_record` / artifact writer / world-log copy as every run): a group is one derived image
 (`Configuration#image`, its slug in the test method's name); the group builds the image once per base —
 cached by tag, else `docker pull --platform linux/amd64`, the PRE-FLIGHT (`command -v apt-get`; the
@@ -83,7 +93,7 @@ Nexus binds 127.0.0.1 and no bridge reaches it); on this Mac a bridge with `host
   tag or category naming one of `environment.profiles`, else the first profile. Correct the loader, not
   the corpus, when the real file differs. With the env set, `rake evals_tasks` lists the family and
   `rake "evals[rails/*,<model>]"` (or a task name) runs it.
-- **The derived image.** `e2e/evals/docker/Dockerfile` — `ARG BASE`, `FROM --platform=linux/amd64`
+- **The derived image.** `e2e/products/evals/docker/Dockerfile` — `ARG BASE`, `FROM --platform=linux/amd64`
   the task's base, then THE SAME `install/install.sh` the host runs, profile `runner`, into `/opt/rho`
   as uid 1000 (created there; their `/app` is root-owned and is chowned to it for `git apply`), tini as
   PID 1, `RHO_MODE=runner`, `RHO_HOME=/var/lib/rho` on a volume. The installer runs ON their base rather
@@ -214,7 +224,7 @@ reason when prerequisites are absent. A skip provides no evidence that installat
   image (no CI-driven publishing), the control port published on loopback, the home bound, and
   `--unsafe-plaintext` acknowledging the container's `0.0.0.0` listener (on native Linux the lane uses
   the host network and a loopback listener); `docker
-  compose exec rho-runner rho status`, the same one call, then the ORPHAN COUNT BEFORE THE STOP (a
+  compose exec rho-env rho status`, the same one call, then the ORPHAN COUNT BEFORE THE STOP (a
   double-forked sleep whose group leader died re-parents to PID 1 and is reaped, zero zombies, `ps` in
   the container — PID 1 is `docker-init` here, the file's own `init: true`, with the image's tini beneath
   it; under `docker run` it is tini itself) and `docker compose stop -t 30` inside the file's grace period.

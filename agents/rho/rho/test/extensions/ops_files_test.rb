@@ -13,7 +13,7 @@ class OpsFilesTest < Minitest::Test
     root = File.join(@root, "src")
     FileUtils.mkdir_p(root)
     File.write(File.join(root, "note.txt"), "hello")
-    daemon = boot(config: agent_mode("tools_root" => root))
+    daemon = boot(config: application_config("tools_root" => root))
 
     response = request(daemon, :get, "/files/bytes?path=note.txt", token: bearer(daemon))
 
@@ -46,7 +46,7 @@ class OpsFilesTest < Minitest::Test
     api = NexusDoubles::FakeAgentApi.new
     api.stock_store_entry("c-1", namespace: "rho.environment", key: "binding/0199-runner",
       value: { "root" => project, "directories" => [], "anchor" => "c-1" })
-    daemon = member_ready(boot(config: agent_mode("tools_root" => default)), api, identity: RUNNER_IDENTITY)
+    daemon = member_ready(boot(config: application_config("tools_root" => default)), api, identity: RUNNER_IDENTITY)
     store.remember(Rho::Host::Conversation.new(public_id: "c-1"), workspace: "ws-1", runner: "0199-runner")
     store.remember(Rho::Host::Conversation.new(public_id: "c-2"), workspace: "ws-1", runner: "0199-runner")
 
@@ -73,7 +73,7 @@ class OpsFilesTest < Minitest::Test
                      "on_failure" => "propagate", "visibility" => "visible", "created_at" => "2026-09-13T00:00:00Z" },
       upload_bytes: { "up-1" => "PNG!" }, executors: [NexusDoubles.remote_runner("0199-h", root: "/there")]
     )
-    daemon = member_ready(boot(config: agent_mode("tools_root" => root)), api, identity: RUNNER_IDENTITY)
+    daemon = member_ready(boot(config: application_config("tools_root" => root)), api, identity: RUNNER_IDENTITY)
     store.remember(Rho::Host::Run.new(public_id: "al-9"), workspace: "ws-1", runner: "0199-h")
     store.remember(Rho::Host::Run.new(public_id: "al-2"), workspace: "ws-1", runner: "0199-runner")
 

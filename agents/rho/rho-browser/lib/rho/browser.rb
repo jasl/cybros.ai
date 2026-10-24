@@ -1,4 +1,4 @@
-require "rho/runner"
+require "rho/env"
 require_relative "browser/version"
 require_relative "browser/driver"
 require_relative "browser/session"
@@ -47,7 +47,7 @@ module Rho
       Tools::Type, Tools::Screenshot, Tools::Evaluate,
     ].freeze
 
-    Closed = Class.new(Rho::Runner::Error)
+    Closed = Class.new(Rho::Env::Error)
 
     LOCK = Mutex.new
 
@@ -134,7 +134,7 @@ module Rho
         driver = driver_factory.call
         driver.start
       rescue StandardError, LoadError
-        raise Rho::Runner::Extensions::PrerequisiteError,
+        raise Rho::Env::Extensions::PrerequisiteError,
           "Browser tools could not start Playwright and Chromium. Install them with `npm i -g playwright && playwright install chromium`, " \
           "or set the Browser plugin's Playwright driver command to a working installation, then enable the plugin again.", cause: nil
       ensure

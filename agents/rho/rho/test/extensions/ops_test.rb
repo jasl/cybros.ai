@@ -35,7 +35,7 @@ class OpsExtensionTest < Minitest::Test
 
   def test_a_standalone_run_keeps_stable_guidance_first_without_conversation_hooks
     api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE)
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Guard, Rho::Extensions::Processes,
+    daemon = member_ready(boot(extensions: [Rho::Env::Extensions::Coding, Rho::Extensions::Guard, Rho::Extensions::Processes,
       Rho::Extensions::Ops], config: Rho::Config.from_hash({})), api, identity: RUNNER_IDENTITY)
 
     code, answer = create(daemon, { "prompt" => "fix it", "model" => "dev/mock-text", "idempotency_key" => "k-a" })
@@ -70,7 +70,7 @@ class OpsExtensionTest < Minitest::Test
                  "Relative paths resolve against #{@root}/work/users/user-1.\nAbsolute paths anywhere on this machine work; nothing is confined.",
       task.fetch("instructions")
     # The selected built-ins and gem supply the exact registry bytes.
-    loaded = Rho::Extensions.load(host: RhoTest.host, extensions: [Rho::Runner::Extensions::Coding,
+    loaded = Rho::Extensions.load(host: RhoTest.host, extensions: [Rho::Env::Extensions::Coding,
       Rho::Extensions::Processes, Rho::Extensions::Ops], gems: ["rho/codemode", "rho/web-tools"])
     assert_empty loaded.failures
     declared = Rho::RunDeclaration.declaration(registry: loaded.registry, runner_executor_public_ids: ["0199-runner"]).fetch(:tool_definitions)
@@ -101,7 +101,7 @@ class OpsExtensionTest < Minitest::Test
   # unnamed word keep the bytes above.
   def test_a_standalone_run_under_an_assembled_word_names_the_mechanism_and_leads_the_words
     api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE)
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Processes,
+    daemon = member_ready(boot(extensions: [Rho::Env::Extensions::Coding, Rho::Extensions::Processes,
       Rho::Extensions::Ops], config: Rho::Config.from_hash({})), api, identity: RUNNER_IDENTITY)
     environment = "Relative paths resolve against #{@root}/work/users/user-1.\n" \
                   "Absolute paths anywhere on this machine work; nothing is confined."
@@ -163,7 +163,7 @@ class OpsExtensionTest < Minitest::Test
       executors: [NexusDoubles.remote_runner("0199-named"), NexusDoubles.remote_runner("0199-set"),
                   NexusDoubles.remote_runner("0199-runner", tools: [], root: nil)])
     daemon = boot(device_flow: connection_device_flow, api_transport: api, config: Rho::Config.from_hash({}),
-      extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Ops])
+      extensions: [Rho::Env::Extensions::Coding, Rho::Extensions::Ops])
     token = connect(daemon)
     await_workspace_state(daemon, "adopted", token: token)
 
@@ -278,7 +278,7 @@ class OpsExtensionTest < Minitest::Test
   def test_a_standalone_run_on_a_remote_runner_carries_the_runners_entries_on_its_seed
     api = NexusDoubles::FakeAgentApi.new(trace: NexusDoubles::RUNNING_TRACE, tools: NexusDoubles::KERNEL_CATALOG,
       executors: [NexusDoubles.remote_runner("0199-h")])
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Ops],
+    daemon = member_ready(boot(extensions: [Rho::Env::Extensions::Coding, Rho::Extensions::Ops],
       config: Rho::Config.from_hash({ "kernel_tools" => NexusDoubles::KERNEL_TOOLS.keys })), api, identity: RUNNER_IDENTITY)
 
     code, answer = create(daemon, { "prompt" => "read it", "model" => "dev/mock-text",
@@ -308,7 +308,7 @@ class OpsExtensionTest < Minitest::Test
 
       super(method, path, credential)
     end
-    daemon = member_ready(boot(extensions: [Rho::Runner::Extensions::Coding, Rho::Extensions::Ops],
+    daemon = member_ready(boot(extensions: [Rho::Env::Extensions::Coding, Rho::Extensions::Ops],
       config: Rho::Config.from_hash({})), api, identity: RUNNER_IDENTITY)
 
     code, answer = create(daemon, { "prompt" => "read it", "model" => "dev/mock-text",

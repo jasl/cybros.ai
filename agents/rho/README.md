@@ -17,15 +17,23 @@ packaged gem; the container itself has no build of its own.
 - **rho/** — the core gem and flagship application. Carries the daemon
   (`rho server`), the credential vault, the Nexus connection, the local control
   API, the extension manager, the shared application core (`Rho::Core`) that every
-  surface consumes, and the single `exe/rho` CLI entry point. Runs in three modes:
-  `full` (application + Local runner service), `agent` (conversations only), and `runner`
-  (tools only, headless).
+  surface consumes, and the single `exe/rho` CLI entry point. One complete application
+  announces Agent and Local Runner services on the same address.
 
-- **rho-runner/** — the passive tool executor. Executes filesystem/process tools,
+- **rho-env/** — the passive tool executor. Executes filesystem/process tools,
   checkpoints and capture/restore where the files actually live, dialing out to
-  Nexus and never listening for inbound connections. A separate gem so a runner
-  can run standalone (`RHO_MODE=runner`) without the daemon. Most tool extensions
-  depend on this gem rather than on `rho`.
+  Nexus and never listening for inbound connections. This library has no CLI of
+  its own. `Rho::Env` holds the library and `Rho::Env::Executor` its inbox loop.
+  There is no separate first-party Runner application. A custom Ruby host can
+  compose the library without depending on the rho application. Most tool
+  extensions depend on this gem rather than on `rho`.
+
+Nexus also accepts an Agent's own Runner implementation, without either rho gem.
+The integration boundary is the executor protocol: announce the `runner` service
+beside `agent` on the application's address and serve its shared inbox. rho's
+`Daemon#mount_runner` is this application's composition point, not a Nexus
+extension point or a required base class. See the public
+[Runner guide](../../guides/runners/index.md#implement-a-runner-in-your-agent).
 
 ### Surfaces (peer interfaces over `Rho::Core`)
 
@@ -33,7 +41,7 @@ packaged gem; the container itself has no build of its own.
   answers, tool activity, artifacts, schedules, plugin management and settings.
   Plain ES modules with no JS build step, registered through
   `Api#register_webui`; other extensions can inject browser modules into the same
-  page. Enabled by default in full/agent modes.
+  page. Enabled by default.
 
 - **rho-acp/** — rho as an ACP (Agent Client Protocol) agent: the JSON-RPC/ndjson
   wire protocol plus the `rho-acp` executable an editor (Zed, JetBrains) spawns on
@@ -92,7 +100,7 @@ packaged gem; the container itself has no build of its own.
 
 ```
 cybros_agent (external SDK)
-  └── rho-runner ──────────────┐
+  └── rho-env ──────────────┐
         └── rho                │
               ├── rho-webui    ├── rho-browser
               │                ├── rho-codemode
@@ -102,11 +110,11 @@ cybros_agent (external SDK)
               └── rho-dev      └── rho-web-tools
 ```
 
-- `rho` hard-depends on `rho-runner`; everything else loads through the extension
+- `rho` hard-depends on `rho-env`; everything else loads through the extension
   plane (`rho-extension.json` static descriptors plus a `register(api)` module),
   so optional gems contribute tools, CLI verbs, control routes and web modules
   without changing the core.
-- Tool extensions depend only on `rho-runner`; surface gems depend on `rho`;
+- Tool extensions depend only on `rho-env`; surface gems depend on `rho`;
   `rho-t3` and `rho-acp-client` depend on both, and `rho-acp-client` also depends
   on `rho-acp` for the wire protocol.
 

@@ -19,7 +19,7 @@ module Rho
           when :starting
             raise ConnectionError,
               "cannot stop safely while a connection authorization is still starting; try again"
-          when :pending, :pending_runner
+          when :pending
             unless thread
               raise ConnectionError,
                 "cannot stop safely while a pending connection has not published its poller"

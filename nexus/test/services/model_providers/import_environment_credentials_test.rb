@@ -37,7 +37,7 @@ class ModelProviders::ImportEnvironmentCredentialsTest < ActiveSupport::TestCase
   end
 
   test "Kimi keys enable their own coding lane independently of Anthropic" do
-    result = import("KIMI_API_KEY" => "kimi-test-material")
+    result = import("KIMI_CODE_API_KEY" => "kimi-test-material")
 
     assert_equal :applied, result.outcomes.fetch("kimi_code")
     assert_equal :absent, result.outcomes.fetch("anthropic")
@@ -58,8 +58,19 @@ class ModelProviders::ImportEnvironmentCredentialsTest < ActiveSupport::TestCase
     assert_equal "xai-production-test-material", credential.secret
   end
 
+  test "international Moonshot credentials are never shared with China or Code" do
+    result = import("MOONSHOT_GLOBAL_API_KEY" => "international-test-key")
+
+    assert_equal :applied, result.outcomes.fetch("moonshot_global")
+    assert_equal :absent, result.outcomes.fetch("moonshot")
+    assert_equal :absent, result.outcomes.fetch("kimi_code")
+    credential = ModelProviderCredential.find_by!(account: @account, provider_id: "moonshot_global")
+    assert_equal "international-test-key", credential.secret
+    assert_predicate ModelProviderConfig.find_by!(account: @account, provider_id: "moonshot_global"), :enabled?
+  end
+
   test "Moonshot and Kimi Code import separate credentials and preserve independent lane policies" do
-    import("KIMI_API_KEY" => "coding-plan-test-key")
+    import("KIMI_CODE_API_KEY" => "coding-plan-test-key")
     assert_not ModelProviderCredential.exists?(account: @account, provider_id: "moonshot")
     coding_lane = ModelProviderConfig.find_by!(account: @account, provider_id: "kimi_code")
     ModelProviders::DisableLane.call(

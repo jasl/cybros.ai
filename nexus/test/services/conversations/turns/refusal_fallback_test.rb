@@ -22,6 +22,35 @@ class Conversations::Turns::RefusalFallbackTest < ActiveJob::TestCase
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
   end
 
+  test "an archived conversation completes accepted recovery but refuses manual regeneration" do
+    turn = reply!
+    assert_predicate Conversations::Archive.call(conversation: @conversation), :accepted?
+    refuse!
+    assemblies = 0
+    assemble = Conversations::ContextAssembly.method(:assemble)
+    Conversations::ContextAssembly.stub(:assemble, lambda { |**arguments|
+      assemblies += 1
+      assemble.call(**arguments)
+    }) { converge! }
+
+    assert_equal 1, assemblies, "candidate validation and creation use the same assembled request"
+    assert_equal "running", turn.reload.status
+    fallback = turn.variants.order(:position).last
+    assert_equal [2, "fallback", "mock-unmetered"], [turn.variants.count, fallback.source, fallback.model_ref]
+    apply_via(admitted_attempt, sse_success("answered after archive"))
+    converge!
+    assert_equal ["completed", fallback.id], turn.reload.values_at(:status, :active_variant_id)
+    assert_nil @conversation.reload.active_turn_id
+    assert_predicate @conversation, :archived?
+
+    assert_no_difference -> { turn.variants.count } do
+      result = Conversations::Turns::Regenerate.call(Conversations::Turns::Regenerate::Command.new(
+        conversation: @conversation, turn_public_id: turn.public_id, acting_user: @human,
+        provider_id: nil, model_ref: nil, reasoning_effort: nil, request_options: nil))
+      assert_equal :conversation_archived, result.outcome
+    end
+  end
+
   test "an abnormal Gemini finish fails the direct reply without a fallback or usable partial" do
     turn = reply!
     apply_provider_result(admitted_attempt, gemini_error_result("OTHER"), adapter_profile: "gemini_generate_content")

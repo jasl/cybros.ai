@@ -1,37 +1,30 @@
 module Rho
   class Identity
     SESSION_VERSION: Integer
-    MODES: Array[String]
 
     attr_reader root: String
-    attr_reader user_public_id: String?
+    attr_reader user_public_id: String
     attr_reader executor_public_id: String
-    attr_reader mode: String
-    attr_reader runner_executor_public_id: String?
+    attr_reader runner_executor_public_id: String
     attr_reader agent_identifier: String?
-    attr_reader runner_registration_identifier: String?
 
     def self.agent: (
-      home: Home, user_public_id: String, executor_public_id: String, mode: String,
+      home: Home, user_public_id: String, executor_public_id: String,
       ?agent_identifier: String?
     ) -> Identity
-    def self.runner: (home: Home, executor_public_id: String, ?runner_registration_identifier: String?) -> Identity
     def self.from_pointer: (home: Home, pointer: Hash[String, untyped]) -> Identity
     def self.validate_public_id!: (
       untyped public_id, label: String, error_class: untyped
     ) -> String
-    def self.validate_mode!: (untyped mode, Array[String] words) -> String
 
     def initialize: (
-      home: Home, root: String, mode: String,
-      user_public_id: String?, executor_public_id: String,
-      ?agent_identifier: String?, ?runner_registration_identifier: String?
+      home: Home, root: String,
+      user_public_id: String, executor_public_id: String,
+      ?agent_identifier: String?
     ) -> void
     def vault: () -> StateFile
-    def runner_vault: () -> StateFile
     def session: () -> StateFile
     def public_id: () -> String
-    def runner_mode?: () -> bool
     def work_root: () -> String
     def pointer_document: () -> Hash[String, untyped]
     def prepare: () -> Identity
@@ -42,31 +35,7 @@ module Rho
     def to_s: () -> String
   end
 
-  # One object carrying up to three planes: the agent lineage and the
-  # runner lineage, each an SDK OAuth.
-  class Credentials
-    include CybrosAgent::Redacted
-
-    # `untyped`: the daemon's edges hold whatever a test installed as a
-    # lineage, the way the Lineage's own `about` is typed.
-    attr_reader agent: untyped
-    attr_reader runner: untyped
-
-    def self.load: (identity: Identity, authority: untyped, ?clock: ^() -> Time) -> Credentials
-    def initialize: (?agent: untyped, ?runner: untyped) -> void
-    def agent?: () -> bool
-    def runner?: () -> bool
-    def lineages: () -> Array[untyped]
-    def member_credential: () -> String
-    def executor_credential: () -> String
-    def runner_credential: () -> String
-    def member_plane?: () -> bool
-    def executor_plane?: () -> bool
-    def runner_plane?: () -> bool
-    def rotation: (Symbol plane) -> Integer?
-    def inspect: () -> String
-    def to_s: () -> String
-  end
+  type credential = CybrosAgent::Credentials::OAuth | CybrosAgent::Credentials::APIKey
 
   # `rho disconnect`: the revoke-and-forget flow the daemon route and the
   # daemon-less CLI share.
@@ -74,18 +43,17 @@ module Rho
     class Result < ::Data
       attr_reader revoked: Array[String]
       attr_reader unclaimed: Integer
-      attr_reader runner_executor_public_id: String?
+      attr_reader runner_executor_public_id: String
       attr_reader identity: Identity
-      attr_reader mode: String
-      def self.new: (revoked: Array[String], unclaimed: Integer, runner_executor_public_id: String?,
-                     identity: Identity, mode: String) -> instance
+        def self.new: (revoked: Array[String], unclaimed: Integer, runner_executor_public_id: String,
+                     identity: Identity) -> instance
     end
 
     def self?.call: (
-      home: Home, identity: Identity, credentials: Credentials,
+      home: Home, identity: Identity, credentials: credential?,
       executor_client: ^(String) -> untyped, ?log: untyped
     ) -> Result
-    def self?.unclaimed_count: (Credentials credentials, ^(String) -> untyped executor_client, untyped log) -> Integer
+    def self?.unclaimed_count: (credential? credentials, ^(String) -> untyped executor_client, untyped log) -> Integer
   end
 
   class APIKeys
@@ -93,7 +61,7 @@ module Rho
     FIELDS: Array[String]
     attr_reader access_token: String?
     attr_reader executor_access_token: String
-    def self.parse: (Hash[String, untyped] document, mode: String) -> APIKeys
+    def self.parse: (Hash[String, untyped] document) -> APIKeys
     def initialize: (?access_token: String?, executor_access_token: String) -> void
     def member_plane?: () -> bool
     def executor_plane?: () -> bool
@@ -109,23 +77,20 @@ module Rho
 
     attr_reader phase: Symbol
     attr_reader identity: Identity?
-    attr_reader oauth: Credentials?
+    attr_reader oauth: credential?
     attr_reader authority_report: { planes: Hash[Symbol, Symbol], lost: bool, member_handle: String? }?
     attr_reader user_code: String?
     attr_reader verification_uri: String?
     attr_reader verification_uri_complete: String?
     attr_reader error_message: String?
     attr_reader request: Symbol
-    attr_reader mode: String
 
-    def self.idle_request: (String mode) -> Symbol
-    def self.recovery_request: (String mode, Array[Symbol] lost) -> Symbol
     def self.staged_branch: (Home home) -> String?
     def self.staged_oauth?: (Home home) -> bool?
     def initialize: (
-      home: Home, device_flow: untyped, mode: String, ?api_transport: untyped,
+      home: Home, device_flow: untyped, ?api_transport: untyped,
       ?clock: ^() -> Time, ?on_phase: (^(Symbol phase) -> void)?,
-      ?display_name: String?, ?request: Symbol?, ?existing: Credentials?, ?existing_identity: Identity?
+      ?display_name: String?, ?request: Symbol?, ?existing: credential?, ?existing_identity: Identity?
     ) -> void
     def receive: (CybrosAgent::DeviceFlow::Credentials credentials) -> Connection
     def receive_api_keys: (Hash[String, untyped] document) -> Connection
@@ -143,11 +108,10 @@ module Rho
 
   class Authority
     PLANES: Array[Symbol]
-    PLANES_BY_MODE: Hash[String, Array[Symbol]]
 
     def initialize: (
       oauth: untyped, base_url: String, ?transport: untyped,
-      ?expected_identity: untyped, ?mode: String
+      ?expected_identity: untyped
     ) -> void
     def check: () -> { planes: Hash[Symbol, Symbol], lost: bool?, member_handle: String? }
   end

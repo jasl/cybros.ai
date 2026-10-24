@@ -1,9 +1,6 @@
 require "test_helper"
 
-# The paired mode in the pointer: a pointer of format 5 names
-# the mode it was paired in and the runner it registered, so a boot whose
-# settings disagree fails closed, and a runner-mode home files itself under
-# a runner root rather than a user's.
+# One application identity owns both advertised executor services.
 class IdentityTest < Minitest::Test
   def setup
     @root = Dir.mktmpdir("rho-identity")
@@ -14,80 +11,42 @@ class IdentityTest < Minitest::Test
     FileUtils.remove_entry(@root) if @root && File.directory?(@root)
   end
 
-  def test_the_two_registration_identifiers_are_product_constants
-    assert_equal "rho", Rho::REGISTRATION_IDENTIFIER, "full mode's in-process runner, named for the agent"
-    assert_equal "rho-runner", Rho::STANDALONE_REGISTRATION_IDENTIFIER, "runner mode"
-    assert_equal 5, Rho::Identity::SESSION_VERSION
-  end
+  def test_an_application_identity_uses_one_executor_and_user_owned_storage
+    identity = Rho::Identity.agent(home: @home, user_public_id: "0199-user", executor_public_id: "0199-executor")
 
-  def test_an_agent_identity_carries_its_mode_and_its_runner
-    identity = Rho::Identity.agent(home: @home, user_public_id: "0199-user", executor_public_id: "0199-executor",
-      mode: "full")
-
-    assert_equal "full", identity.mode
     assert_equal "0199-executor", identity.runner_executor_public_id
-    assert_equal({ "version" => 5, "mode" => "full", "user_public_id" => "0199-user",
-                   "executor_public_id" => "0199-executor" },
+    assert_equal({ "version" => 6, "user_public_id" => "0199-user", "executor_public_id" => "0199-executor" },
       identity.pointer_document)
     assert_equal @home.identity_root("0199-user"), identity.root
-    assert_equal File.join(identity.root, "runner_credentials.json"), identity.runner_vault.path
+    assert_equal File.join(identity.root, "credentials.json"), identity.vault.path
     assert_equal @home.identity_work_root("0199-user"), identity.work_root
-
-    agent_only = Rho::Identity.agent(home: @home, user_public_id: "0199-user", executor_public_id: "0199-executor",
-      mode: "agent")
-    assert_equal %w[executor_public_id mode user_public_id version], agent_only.pointer_document.keys.sort,
-      "compacted: an agent-mode pointer names no runner"
+    restored = Rho::Identity.from_pointer(home: @home, pointer: identity.pointer_document)
+    assert_equal identity.pointer_document, restored.pointer_document
   end
 
-  def test_a_runner_identity_has_no_user_and_lives_under_the_runner_root
-    identity = Rho::Identity.runner(home: @home, executor_public_id: "0199-runner")
-
-    assert_equal "runner", identity.mode
-    assert_nil identity.user_public_id
-    assert_equal "0199-runner", identity.executor_public_id
-    assert_equal "0199-runner", identity.runner_executor_public_id
-    assert_equal "0199-runner", identity.public_id
-    assert_equal @home.runner_identity_root("0199-runner"), identity.root
-    assert_equal File.join(@root, "runners", "0199-runner"), identity.root
-    assert_equal({ "version" => 5, "mode" => "runner", "executor_public_id" => "0199-runner" }, identity.pointer_document)
-    assert_equal @home.runner_work_root("0199-runner"), identity.work_root
-  end
-
-  def test_from_pointer_dispatches_on_the_mode_and_refuses_the_old_format
-    runner = Rho::Identity.from_pointer(home: @home,
-      pointer: { "version" => 5, "mode" => "runner", "executor_public_id" => "0199-runner" })
-    assert_equal "runner", runner.mode
-    assert_nil runner.user_public_id
-
-    full = Rho::Identity.from_pointer(home: @home,
-      pointer: { "version" => 5, "mode" => "full", "user_public_id" => "0199-user",
-                 "executor_public_id" => "0199-executor" })
-    assert_equal "0199-executor", full.runner_executor_public_id
-
+  def test_from_pointer_refuses_old_formats_and_missing_identity_fields
     error = assert_raises(Rho::StoredConnectionError) do
       Rho::Identity.from_pointer(home: @home,
-        pointer: { "version" => 3, "user_public_id" => "0199-user", "executor_public_id" => "0199-executor" })
+        pointer: { "version" => 5, "mode" => "full", "user_public_id" => "0199-user", "executor_public_id" => "0199-executor" })
     end
-    assert_match(/format version 5/, error.message, "no compat before release: refused, never read with a fallback")
-    error = assert_raises(Rho::StoredConnectionError) do
-      Rho::Identity.from_pointer(home: @home,
-        pointer: { "version" => 5, "user_public_id" => "0199-user", "executor_public_id" => "0199-executor" })
+    assert_match(/format version 6/, error.message)
+    %w[user_public_id executor_public_id].each do |field|
+      pointer = { "version" => 6, "user_public_id" => "0199-user", "executor_public_id" => "0199-executor" }
+      pointer.delete(field)
+      assert_raises(Rho::StoredConnectionError) { Rho::Identity.from_pointer(home: @home, pointer: pointer) }
+      pointer[field] = ""
+      assert_raises(Rho::StoredConnectionError) { Rho::Identity.from_pointer(home: @home, pointer: pointer) }
     end
-    assert_match(/mode/, error.message, "a version-5 pointer names its mode")
   end
 
-  def test_the_session_records_the_mode_and_a_mode_change_fails_closed
-    clock = -> { Time.utc(2026, 9, 7) }
-    identity = Rho::Identity.agent(home: @home, user_public_id: "0199-user", executor_public_id: "0199-executor",
-      mode: "full").prepare.record(clock: clock)
-
-    assert_equal "full", identity.session.read.fetch("mode")
-    refute identity.session.read.key?("runner_executor_public_id")
+  def test_the_recorded_session_must_match_the_pointer_executor
+    identity = Rho::Identity.agent(home: @home, user_public_id: "0199-user", executor_public_id: "0199-executor")
+      .prepare.record(clock: -> { Time.utc(2026, 9, 7) })
     identity.verify_belongs_here
-
-    changed = Rho::Identity.agent(home: @home, user_public_id: "0199-user", executor_public_id: "0199-executor",
-      mode: "agent")
+    refute identity.session.read.key?("mode")
+    changed = Rho::Identity.agent(home: @home, user_public_id: "0199-user", executor_public_id: "0199-replacement")
     error = assert_raises(Rho::StoredConnectionError) { changed.verify_belongs_here }
-    assert_match(/pointer's mode/, error.message)
+    assert_match(/pointer's executor_public_id/, error.message)
+    assert_same changed, changed.verify_installable
   end
 end

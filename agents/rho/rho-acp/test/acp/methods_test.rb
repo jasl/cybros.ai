@@ -199,7 +199,7 @@ end
 # THE SURFACE'S TABLE against the core double: the
 # initialize document byte-pinned (mcpCapabilities http true, authMethods
 # non-empty), -32601 for the rest, -32002 for an unknown session, -32600
-# for a second prompt, the runner-mode refusal by sentence, -32000 naming
+# for a second prompt, -32000 naming
 # the methods when not connected, -32603 with Core's sentence when no
 # daemon runs, the modes and config options, the PromptResponse table's
 # refusals (the hold, the terminal failure, the block), the surface
@@ -323,16 +323,6 @@ class AcpAgentMethodsTest < Minitest::Test
     end
   end
 
-  def test_a_runner_mode_home_answers_initialize_and_refuses_new_by_sentence
-    @core.settings.mode = "runner"
-    harness = open
-    harness.initialize_agent
-    error = harness.refused(Methods::SESSION_NEW, { "cwd" => "/tmp", "mcpServers" => [] })
-
-    assert_equal(-32603, error.code)
-    assert_equal "this rho runs in mode runner: it opens no conversations", error.message
-    refute @core.called?(:open_conversation)
-  end
 
   def test_not_connected_is_auth_required_naming_the_methods
     @core.connected = false
@@ -627,8 +617,8 @@ class AcpAgentMethodsTest < Minitest::Test
   # `starting` phase: the daemon's short wait ran out before the Nexus
   # call answered, so the document has no code and no URL. The card is
   # built from the status once a pending document carries the code.
-  BARE_START = { "phase" => "starting", "branch" => "combined", "mode" => "full" }.freeze
-  PENDING = { "phase" => "pending", "branch" => "combined", "mode" => "full", "user_code" => "ABCD",
+  BARE_START = { "phase" => "starting", "branch" => "agent" }.freeze
+  PENDING = { "phase" => "pending", "branch" => "agent", "user_code" => "ABCD",
               "verification_uri" => "https://nexus.example/device",
               "verification_uri_complete" => "https://nexus.example/device?code=ABCD" }.freeze
 
@@ -674,7 +664,7 @@ class AcpAgentMethodsTest < Minitest::Test
   def test_authenticate_on_a_joined_activating_start_answers_once_connected_with_no_card
     @core.connected = false
     @core.status_state = "active"
-    @core.ceremony = { "phase" => "activating", "branch" => "combined", "mode" => "full" }
+    @core.ceremony = { "phase" => "activating", "branch" => "agent" }
     seen = nil
     harness = open
     harness.policy = lambda do |inbound|
@@ -693,8 +683,7 @@ class AcpAgentMethodsTest < Minitest::Test
     @core.connected = false
     @core.status_state = "connecting"
     @core.ceremony = BARE_START
-    @core.status_connection = { "phase" => "error", "branch" => "combined", "mode" => "full",
-                                "error" => "the device code expired" }
+    @core.status_connection = { "phase" => "error", "branch" => "agent", "error" => "the device code expired" }
     seen = nil
     harness = open
     harness.policy = lambda do |inbound|

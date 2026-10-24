@@ -76,6 +76,7 @@ class TelegramSetupTest < Minitest::Test
   def teardown = FileUtils.remove_entry(@root)
 
   def test_offline_setup_saves_only_a_connection_without_polling_or_secret_output
+    Rho::Settings.prepare(@home)
     @home.write_setting("plugins", { "rho.web_tools" => { "enabled" => true } })
     @home.write_setting("default_model", "provider/model")
     assert run_setup("\n #{TOKEN} \ny\n")
@@ -211,7 +212,8 @@ class TelegramSetupTest < Minitest::Test
     def configuration = config.fetch("plugins").fetch(Rho::IngressTelegram::NAME).fetch("configuration")
 
     def write_connection
-      @home.write_setting("plugins", { Rho::IngressTelegram::NAME => { "enabled" => true, "configuration" => {
+      Rho::Settings.prepare(@home)
+    @home.write_setting("plugins", { Rho::IngressTelegram::NAME => { "enabled" => true, "configuration" => {
         "connections" => { CONNECTION => { "name" => "Shared", "token" => TOKEN, "enabled" => true } },
       } } })
     end

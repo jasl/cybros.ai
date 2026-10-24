@@ -32,7 +32,7 @@
 #         --uninstall   remove the launcher, the rc line, the prefix (rho uninstall; --purge: RHO_HOME too)
 #         --dry-run     print the plan and the exact URLs (install), or the commits an update would pull
 #                       and the script it would then run (--update); change nothing
-# Knobs (environment or flag): RHO_PROFILE / --profile runner|full|dev (default full);
+# Knobs (environment or flag): RHO_PROFILE / --profile minimal|full|dev (default full);
 #   RHO_PREFIX / --prefix DIR; RHO_HOME (untouched, printed); RHO_SOURCE / --from-checkout DIR
 #   (the checkout to install the packaged trees from; default: the one this script sits in);
 #   NONINTERACTIVE / CI / --non-interactive; RHO_MODIFY_PATH=1 / --modify-path
@@ -101,8 +101,8 @@ run() {
 RHO_MANIFEST_VERSION="1"
 RHO_MANIFEST_GENERATED="2026-10-23"
 RHO_PLATFORMS="darwin-arm64 darwin-x64 linux-x64 linux-arm64"
-RHO_PROFILES="runner full dev"
-RHO_APP_TREES="sdks/ruby cmctl agents/rho/rho-runner agents/rho/rho-browser agents/rho/rho-mcp agents/rho/rho-web-tools agents/rho/rho-codemode agents/rho/rho-webui agents/rho/rho-ingress-telegram agents/rho/rho-acp agents/rho/rho-acp-client agents/rho/rho-t3 agents/rho/rho"
+RHO_PROFILES="minimal full dev"
+RHO_APP_TREES="sdks/ruby cmctl agents/rho/rho-env agents/rho/rho-browser agents/rho/rho-mcp agents/rho/rho-web-tools agents/rho/rho-codemode agents/rho/rho-webui agents/rho/rho-ingress-telegram agents/rho/rho-acp agents/rho/rho-acp-client agents/rho/rho-t3 agents/rho/rho"
 RHO_APP_ENTRY="agents/rho/rho/exe/rho"
 RHO_APP_GEMFILE="agents/rho/rho/Gemfile"
 RHO_APP_BUNDLE_WITHOUT="development:test"
@@ -132,7 +132,7 @@ RHO_RUBY_linux_arm64_BYTES="14704793"
 RHO_TOOLS="rg fd jq uv node playwright_core chromium"
 RHO_TOOL_rg_NAME="rg"
 RHO_TOOL_rg_VERSION="15.2.0"
-RHO_TOOL_rg_PROFILES="runner full dev"
+RHO_TOOL_rg_PROFILES="minimal full dev"
 RHO_TOOL_rg_INTO="bin"
 RHO_TOOL_rg_UNPACK="members"
 RHO_TOOL_rg_darwin_arm64_URL="https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-aarch64-apple-darwin.tar.gz"
@@ -149,7 +149,7 @@ RHO_TOOL_rg_linux_arm64_SHA256="800b1e7206afe799dfb5a6901f23147cfaabe0e522105381
 RHO_TOOL_rg_linux_arm64_MEMBERS="ripgrep-15.2.0-aarch64-unknown-linux-musl/rg"
 RHO_TOOL_fd_NAME="fd"
 RHO_TOOL_fd_VERSION="10.5.0"
-RHO_TOOL_fd_PROFILES="runner full dev"
+RHO_TOOL_fd_PROFILES="minimal full dev"
 RHO_TOOL_fd_INTO="bin"
 RHO_TOOL_fd_UNPACK="members"
 RHO_TOOL_fd_darwin_arm64_URL="https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-aarch64-apple-darwin.tar.gz"
@@ -279,8 +279,8 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
     "linux-arm64"
   ],
   "profiles": {
-    "runner": "portable Ruby, the gems, rg, fd — a machine or container that serves tools alone (RHO_MODE=runner)",
-    "full": "runner + jq + uv — a person's machine running agent and runner",
+    "minimal": "portable Ruby, the gems, rg, fd — the smallest tool installation for the complete rho application",
+    "full": "minimal + jq + uv — the default tool installation",
     "dev": "full + Node + playwright-core + the Chromium headless shell — browsing tasks (extensions: [\"rho/browser\"])"
   },
   "app": {
@@ -288,7 +288,7 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
     "trees": [
       "sdks/ruby",
       "cmctl",
-      "agents/rho/rho-runner",
+      "agents/rho/rho-env",
       "agents/rho/rho-browser",
       "agents/rho/rho-mcp",
       "agents/rho/rho-web-tools",
@@ -356,7 +356,7 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
     "rg": {
       "version": "15.2.0",
       "profiles": [
-        "runner",
+        "minimal",
         "full",
         "dev"
       ],
@@ -397,7 +397,7 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
     "fd": {
       "version": "10.5.0",
       "profiles": [
-        "runner",
+        "minimal",
         "full",
         "dev"
       ],
@@ -1806,13 +1806,9 @@ epilogue() {
   if [ -n "$CHROMIUM_APT_LINE" ]; then
     printf "The Chromium shell needs shared libraries this script cannot install (root):\n  %s\n\n" "$CHROMIUM_APT_LINE"
   fi
-  if [ "${RHO_MODE:-full}" = runner ]; then
-    printf "Next: pair this runner with a Nexus:\n  rho connect --nexus-url https://nexus.example\n"
-  else
-    printf "Next: configure your model and optional Telegram connection:\n  rho setup --nexus-url https://nexus.example\n"
-  fi
+  printf "Next: configure your model and optional Telegram connection:\n  rho setup --nexus-url https://nexus.example\n"
   printf "Then: rho server   (the daemon); rho doctor at any time; rho update; rho uninstall\n"
-  if [ "$MODE" = install ] && [ -z "${NONINTERACTIVE-}" ] && [ "${RHO_MODE:-full}" != runner ]; then
+  if [ "$MODE" = install ] && [ -z "${NONINTERACTIVE-}" ]; then
     "$PREFIX/bin/rho" setup </dev/tty || warn "Setup did not finish; saved settings were retained. Run rho setup to continue."
   fi
 }
@@ -1928,9 +1924,6 @@ git_operation_in_progress() {
 # them (a fetch stands in for the pull, so the tree is untouched).
 update_mode() {
   [ -f "$RECEIPT_SH" ] || abort "rho install: nothing is installed at $PREFIX (no receipt)."
-  if in_container; then
-    abort "rho update: inside a container the image rolls, not the prefix:" "  docker compose pull && docker compose up -d" "(\`rho update --add-rows\` adds a profile's tool rows in place)."
-  fi
   local source old new marker script verb
   source="$RHO_RECEIPT_SOURCE_PATH"
   if [ ! -f "$source/agents/rho/rho/rho.gemspec" ] || [ -z "$(checkout_commit "$source")" ]; then
@@ -1946,6 +1939,9 @@ update_mode() {
     GIT_TERMINAL_PROMPT=0 git -C "$source" fetch || abort "rho update: git fetch failed in $source (git's line above)."
     new=$(git -C "$source" rev-parse '@{u}' 2>/dev/null) || abort "rho update: the branch checked out in $source tracks no upstream; \`git branch --set-upstream-to\` it, or pull by hand."
   else
+    if in_container; then
+      abort "rho update: inside a container the image rolls, not the prefix:" "  docker compose pull && docker compose up -d" "(\`rho update --add-rows\` adds a profile's tool rows in place)."
+    fi
     ohai git -C "$source" pull --ff-only
     GIT_TERMINAL_PROMPT=0 git -C "$source" pull --ff-only || abort "rho update: git pull --ff-only failed in $source (git's line above; a diverged or conflicting tree is yours to reconcile)."
     new=$(git -C "$source" rev-parse HEAD)

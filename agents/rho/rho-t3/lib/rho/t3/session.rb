@@ -5,7 +5,7 @@ module Rho
     class Session
       attr_reader :records, :context
 
-      def initialize(member_plane:, context: Rho::Runner::ExecutionContext.current)
+      def initialize(member_plane:, context: Rho::Env::ExecutionContext.current)
         @context = context
         unless context&.conversation_public_id && context.run_public_id && context.task_key
           raise Error, "coding delegation requires a conversation-owned task"

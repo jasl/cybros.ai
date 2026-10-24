@@ -32,7 +32,7 @@
 #         --uninstall   remove the launcher, the rc line, the prefix (rho uninstall; --purge: RHO_HOME too)
 #         --dry-run     print the plan and the exact URLs (install), or the commits an update would pull
 #                       and the script it would then run (--update); change nothing
-# Knobs (environment or flag): RHO_PROFILE / --profile runner|full|dev (default full);
+# Knobs (environment or flag): RHO_PROFILE / --profile minimal|full|dev (default full);
 #   RHO_PREFIX / --prefix DIR; RHO_HOME (untouched, printed); RHO_SOURCE / --from-checkout DIR
 #   (the checkout to install the packaged trees from; default: the one this script sits in);
 #   NONINTERACTIVE / CI / --non-interactive; RHO_MODIFY_PATH=1 / --modify-path

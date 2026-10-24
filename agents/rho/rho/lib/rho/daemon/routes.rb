@@ -25,7 +25,7 @@ module Rho
           key = [route.method, route.path]
           existing = table[key]
           if existing
-            raise Rho::Runner::Extensions::RegistrationError,
+            raise Rho::Env::Extensions::RegistrationError,
               "#{route.extension} registers #{route.method} #{route.path}, already registered by " \
               "#{existing.extension}. Two extensions cannot serve one route — register a " \
               "different path and disable the other."

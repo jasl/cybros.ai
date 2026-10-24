@@ -11,10 +11,10 @@ class DaemonNexusMcpTest < Minitest::Test
     NAME = "mcp__files__read".freeze
     DESCRIPTION = "Read through the existing local MCP server".freeze
     SCHEMA = { "type" => "object", "properties" => { "path" => { "type" => "string" } } }.freeze
-    EFFECT_PROFILE = Rho::Runner::Tools::Read::EFFECT_PROFILE
+    EFFECT_PROFILE = Rho::Env::Tools::Read::EFFECT_PROFILE
     MCP = { "server_key" => "files", "tool_name" => "read" }.freeze
     def initialize(**) = nil
-    def call(_arguments) = Rho::Runner::Result.ok("Local MCP result")
+    def call(_arguments) = Rho::Env::Result.ok("Local MCP result")
   end
 
   module LocalMcp

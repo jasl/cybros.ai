@@ -8,7 +8,7 @@ class PackageInventoryFailureTest < Minitest::Test
 
   def test_a_selected_package_with_a_missing_dependency_has_a_readable_schema_and_a_reason
     home, entry, marker = installed(dependencies: { MISSING_GEM => ">= 1" })
-    home.write_settings("settings_version" => 1, "plugins" => { ID => entry })
+    home.write_settings("settings_version" => 2, "plugins" => { ID => entry })
     daemon = boot
     core = Rho::Core.new(home: home)
     row = plugin(core)
@@ -28,7 +28,7 @@ class PackageInventoryFailureTest < Minitest::Test
 
   def test_disabled_schema_discovery_does_not_activate_dependencies_or_evaluate_package_code
     home, entry, marker = installed(dependencies: { MISSING_GEM => ">= 1" })
-    home.write_settings("settings_version" => 1, "plugins" => { ID => entry.merge("enabled" => false) })
+    home.write_settings("settings_version" => 2, "plugins" => { ID => entry.merge("enabled" => false) })
     daemon = boot
     core = Rho::Core.new(home: home)
 
@@ -47,7 +47,7 @@ class PackageInventoryFailureTest < Minitest::Test
   def test_a_malformed_saved_package_source_preserves_core_saves_and_can_be_disabled
     home, entry, = installed
     entry = entry.merge("source" => entry.fetch("source").merge("version" => "unavailable"))
-    home.write_settings("settings_version" => 1, "plugins" => { ID => entry })
+    home.write_settings("settings_version" => 2, "plugins" => { ID => entry })
     daemon = boot
     core = Rho::Core.new(home: home)
     row = plugin(core)
@@ -65,7 +65,7 @@ class PackageInventoryFailureTest < Minitest::Test
   def test_a_factory_failure_remains_visible_and_does_not_block_unrelated_core_saves
     recovered = File.join(@root, "factory-recovered")
     home, entry, marker = installed(body: "raise 'synthetic factory secret' unless File.file?(#{recovered.inspect})")
-    home.write_settings("settings_version" => 1, "plugins" => { ID => entry })
+    home.write_settings("settings_version" => 2, "plugins" => { ID => entry })
     daemon = boot
     core = Rho::Core.new(home: home)
 

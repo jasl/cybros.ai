@@ -16,7 +16,7 @@ module E2E
   # until explicitly adopted into the SDK pack.
   module AdaptationRows
     Pack = CybrosAgent::ModelAdaptations
-    CANDIDATES_DIR = File.expand_path("../evals/candidates", __dir__)
+    CANDIDATES_DIR = File.expand_path("../products/evals/candidates", __dir__)
     # The one key a candidate's kind carries beside `id`, `kind`, `seed`.
     KINDS = { "tool_style" => "value", "lead_hints" => "text", "summarizer_prompt" => "recut", "tool_descriptions" => "entry" }.freeze
     BENCH_ROW_PREFIX = "bench-".freeze
@@ -111,7 +111,7 @@ module E2E
     # file is on the directory.
     def find(key)
       candidates.fetch(key.to_s.strip) do
-        raise ArgumentError, "no candidate #{key.inspect}: the candidates are #{candidates.keys.join(", ").presence || "none"} (e2e/evals/candidates/)"
+        raise ArgumentError, "no candidate #{key.inspect}: the candidates are #{candidates.keys.join(", ").presence || "none"} (e2e/products/evals/candidates/)"
       end
     end
 

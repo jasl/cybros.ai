@@ -32,7 +32,7 @@ rho-acp connect
 `lib/rho/acp/agent/`) until EOF or a signal; the flags are the DEFAULTS for
 new sessions — the mode (`bypass`, rho's own posture; an editor that wants
 prompts passes `--mode ask`), the model (else the home's `default_model`),
-the runner-kind executor an agent-mode rho names for the session's tools.
+the selected Runner executor for the session's tools.
 `--flag value` and `--flag=value` both parse. `rho-acp connect` runs the
 connect ceremony on plain stdio (the terminal auth method's word): the
 code and the identity printed, exit 0 when connected; a home the daemon
@@ -115,8 +115,7 @@ currently supplies a checkout-based installation instead.
   attaches to an existing conversation, replays it (below) and answers;
   `session/resume` attaches without the replay; `session/close` drops the
   in-process session (the daemon keeps following). Not connected: -32000
-  naming the auth methods; a runner-mode home: -32603 ("this rho runs in
-  mode runner: it opens no conversations"); a `cwd` the daemon refuses
+  naming the auth methods; a `cwd` the daemon refuses
   (not a directory, under a protected root): -32602 with its sentence; an
   unknown session, or one whose conversation ended: -32002.
 - **The file-system port.** When the client advertised `fs.readTextFile` /
@@ -223,7 +222,7 @@ bundle. The installer writes no `rho-acp` wrapper (its `bin/` holds `rho`,
 and `rho-playwright` under the dev profile): under a prefix the exe is
 `$RHO_PREFIX/current/agents/rho/rho-acp/exe/rho-acp`, run the way `bin/rho`
 runs the CLI — the prefix's Ruby with `-rbundler/setup` under the app's
-Gemfile (`e2e/evals/docker/rho-acp-launch` spells that line for the harbor
+Gemfile (`e2e/products/evals/docker/rho-acp-launch` spells that line for the harbor
 cell); from a checkout, `bundle exec rho-acp` under this gem's own bundle.
 The editor's `agent_servers` row names it with the flags above.
 

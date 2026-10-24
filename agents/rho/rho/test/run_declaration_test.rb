@@ -64,14 +64,14 @@ class RunDeclarationTest < Minitest::Test
       dir = File.join(root, ".agents", "skills", "deploy-notes")
       FileUtils.mkdir_p(dir)
       File.write(File.join(dir, "SKILL.md"), "---\nname: deploy-notes\ndescription: How we deploy.\n---\n# Deploy\n")
-      environment = Rho::Runner::Environment.local(root: root)
+      environment = Rho::Env::Environment.local(root: root)
 
       assert_equal [{ "name" => "deploy-notes", "description" => "How we deploy." }],
         Rho::RunDeclaration.documents(registry: registry.serving(:runner), environment: environment)
       assert_empty Rho::RunDeclaration.documents(registry: registry.serving(:agent), environment: environment),
         "the agent address announces no documents"
       assert_empty Rho::RunDeclaration.documents(registry: registry,
-        environment: Rho::Runner::Environment.local(root: File.join(root, "empty")))
+        environment: Rho::Env::Environment.local(root: File.join(root, "empty")))
     end
   end
 
@@ -221,7 +221,7 @@ class RunDeclarationTest < Minitest::Test
   # refuse or one that never matches; an object-array property and a
   # non-`mcp__` entry derive nothing. The declaration passes the announced
   # entries — the local announcement AND a remote runner's served tools —
-  # so a runner-mode rho's stdio tools get the rules by the same hand.
+  # so an environment host's stdio tools get the rules by the same hand.
   def test_the_self_modification_denies_derive_from_an_mcp_entrys_text_properties_and_skip_dotted_names
     entry = {
       "name" => "mcp__fx__lookup", "effect_profile" => {},
@@ -385,7 +385,7 @@ class RunDeclarationTest < Minitest::Test
 
   # THE READS ROW IS READ-ONLY BY CONSTRUCTION: every
   # tool it names declares `kind: read_only` on the CLOSED world on this
-  # machine's registry — rho-runner's `read|grep|ls|find` and the process
+  # machine's registry — rho-env's `read|grep|ls|find` and the process
   # reads — and every such tool the registry declares is in the row, so a
   # new local read parks under `ask` until it is named here, and a write
   # can never ride the row. `bash` is a command (a `cat` is not a read
@@ -474,7 +474,7 @@ class RunDeclarationTest < Minitest::Test
   end
 
   def test_kernel_environment_leads_keep_bound_roots_and_hints_without_duplicate_fragments
-    environment = Rho::Runner::Environment.local(root: "/runner/default")
+    environment = Rho::Env::Environment.local(root: "/runner/default")
     lead = Rho::RunDeclaration.lead(registry: registry, environment: environment, kernel_environment: true,
       root: "/project", directories: ["/shared"], instructions: "Use the editor.", hints: ["Check the result."])
     expected = "This conversation's root is /project; relative paths resolve against it there.\nAdditional directories: /shared\n\nUse the editor.\n\nCheck the result."
@@ -536,7 +536,7 @@ class RunDeclarationTest < Minitest::Test
   # prefix; the guideline is the profile's slot and never rides here.
   def test_the_conversation_lead_is_the_environment_then_the_tool_lines_and_never_the_guideline
     Dir.mktmpdir do |root|
-      environment = Rho::Runner::Environment.local(root: root, working_directory: root)
+      environment = Rho::Env::Environment.local(root: root, working_directory: root)
       lead = Rho::RunDeclaration.lead(registry: registry, environment: environment)
 
       assert lead.start_with?("Relative paths resolve against #{root}."), lead

@@ -33,7 +33,6 @@ module Rho
       attr_accessor next_poll_at: Time?
       def self.new: (state: String, secret_digest: String, verifier: String, redirect_uri: String?,
         plan: Daemon::Ceremony::LoginPlan, deadline: Time) -> instance
-      def connection_mode: () -> String
     end
 
     class Session < Data

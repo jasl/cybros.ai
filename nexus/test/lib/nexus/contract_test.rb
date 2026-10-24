@@ -118,7 +118,7 @@ class Nexus::ContractTest < ActiveSupport::TestCase
   # `Nexus::Contract.verify_version!` went with the 2026-08-15 sweep: its only
   # caller was this test. Nexus is the pack's producer, so it has no version to
   # verify — the CONSUMERS do, and each ships its own reader with its own
-  # rejection pin (e2e/test/contract_fixtures_test.rb,
+  # rejection pin (e2e/protocol/test/contract_fixtures_test.rb,
   # sdks/ruby/test/api/public_contract_pack_test.rb).
 
   test "every coverage entry resolves valid and unknown behavior fixtures" do

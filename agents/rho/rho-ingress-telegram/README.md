@@ -6,8 +6,7 @@ Node service or inbound webhook server is required.
 ## Connect a Bot
 
 Use the rho distribution, which includes this gem, in `full` or `agent` mode.
-Runner-only mode cannot host Telegram; agent mode needs a connected Runner for
-environment tools. Agent replies require a connected Nexus and an available text
+Telegram runs inside the complete rho application; environment tools use Local or a selected eligible Runner. Agent replies require a connected Nexus and an available text
 model. Core plugin management remains available while Telegram is disabled.
 Telegram-specific commands, routes and browser settings register when enabled.
 

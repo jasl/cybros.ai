@@ -1,6 +1,6 @@
 require "json"
 require "yaml"
-require "rho/runner"
+require "rho/env"
 
 module Rho
   class AgentPresets
@@ -21,7 +21,7 @@ module Rho
           fields = JSON.parse(text)
           body = nil
         when "md"
-          fields, body, = Rho::Runner::Skills.frontmatter(text)
+          fields, body, = Rho::Env::Skills.frontmatter(text)
           raise Error, fields if fields in String
         else
           raise Error, "format must be md or json"

@@ -7,9 +7,7 @@ require "cybros_agent"
 module NexusDoubles
   MEMBER_TOKEN = "sk-cybros-api-v1-member.secret".freeze
   TRANSPORT_TOKEN = "sk-cybros-api-v1-transport.secret".freeze
-  # The in-process runner's transport credential: the second
-  # lineage a combined consume mints, and the one lineage a runner-mode
-  # ceremony (branch B) mints.
+  # Synthetic credentials for independent Runner grant fixtures.
   RUNNER_TOKEN = "sk-cybros-api-v1-runner.secret".freeze
   RUNNER_REFRESH_TOKEN = "rt-cybros-api-v1-r.s".freeze
 

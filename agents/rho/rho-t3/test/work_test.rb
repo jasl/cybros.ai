@@ -272,7 +272,7 @@ class WorkTest < Minitest::Test
     with_work do |work, native, _, context, questions|
       native.question
       questions.callback = -> { context.cancel(:canceled) }
-      assert_raises(Rho::Runner::ExecutionContext::Cancelled) { work.delegate("prompt" => "Fix it") }
+      assert_raises(Rho::Env::ExecutionContext::Cancelled) { work.delegate("prompt" => "Fix it") }
       stop = native.calls.map(&:last).find { |params| params["type"] == "run.interrupt" }
       assert_equal "native-run", stop.fetch("runId")
       assert stop.fetch("holdQueue")

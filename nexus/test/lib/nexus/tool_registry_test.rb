@@ -192,7 +192,7 @@ class Nexus::ToolRegistryTest < ActiveSupport::TestCase
   # THE SKILL LOAD'S BYTES: the text points at the assembly's `skills` block through the one
   # constant the block's header opens with, the parameter sentence names the same list, the tool
   # names itself only through the macro (an alias such as `Skill` renders it as its own name) and
-  # backticks nothing — rho-runner announces a `skill` of its own, and the cross-tree pin fails any
+  # backticks nothing — rho-env announces a `skill` of its own, and the cross-tree pin fails any
   # kernel text that quotes a name rho declares.
   test "the skill entry quotes the catalog header through one constant and backticks nothing" do
     tool = Registry.entry("nexus.skill.load")

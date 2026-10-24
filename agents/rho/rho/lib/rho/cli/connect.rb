@@ -21,11 +21,9 @@ module Rho
         if api_key || api_key_stdin
           raise ConnectionError, "Choose --api-key or --api-key-stdin" if api_key && api_key_stdin
 
-          daemon = core.running_daemon
-          mode = daemon ? core.status_document(daemon).fetch("mode") : config.mode
-          document = read_api_keys(input, stdin: api_key_stdin, mode: mode)
+          document = read_api_keys(input, stdin: api_key_stdin)
           connected = core.import_api_keys(document)
-          return report(connected.fetch("identity"), mode: connected.fetch("mode"))
+          return report(connected.fetch("identity"))
         end
 
         @connection_public_url = public_url || config.nexus_public_url
@@ -43,7 +41,7 @@ module Rho
 
       private
 
-        def read_api_keys(input, stdin:, mode:)
+        def read_api_keys(input, stdin:)
           if stdin
             raw = input.read(65_537)
             raise ConnectionError, "API key input is too large" if raw.bytesize > 65_536
@@ -56,7 +54,7 @@ module Rho
             raise ConnectionError, "Use --api-key-stdin with a JSON object when no terminal is attached"
           end
 
-          fields = mode == "runner" ? %w[executor_access_token] : %w[access_token executor_access_token]
+          fields = APIKeys::FIELDS
           labels = { "access_token" => "Agent member API key", "executor_access_token" => "Executor API key" }
           fields.to_h { |field| [field, input.getpass("#{labels.fetch(field)}: ")] }
         rescue JSON::ParserError
@@ -86,7 +84,7 @@ module Rho
         def connect_through(daemon)
           started = start_ceremony(daemon)
           raise ConnectionError, core.failure_message(started) if failed?(started)
-          return report(started["identity"], mode: started["mode"]) if started["phase"] == "active"
+          return report(started["identity"]) if started["phase"] == "active"
 
           code_announced = announce_code_if_present(started)
           loop do
@@ -100,7 +98,7 @@ module Rho
               # Report only the completed ceremony or an already signed-in connection.
               phase = connection["phase"]
               if phase == "active" || (phase.nil? && status.dig("authority", "signed") == "signed_in")
-                return report(status["identity"], mode: status["mode"], runner: status["runner"])
+                return report(status["identity"], runner: status["runner"])
               end
               raise ConnectionError, "the connection is no longer in flight" if phase.nil?
             when "disconnected"

@@ -88,7 +88,7 @@ class ClaimBridgeTest < Minitest::Test
     task.paused_submissions = 2
     task.complete_child
     runtime = CountingRuntime.new
-    pool = Rho::Runner::Pool.new(worker_threads: 1)
+    pool = Rho::Env::Pool.new(worker_threads: 1)
     context = context(task, "original-claim")
     program = { "source" => "let kept = 40; const child = await tools.read(params); kept += 2; text(child.content[0].text); return kept;",
       "params" => { "path" => "README.md" } }
@@ -109,10 +109,10 @@ class ClaimBridgeTest < Minitest::Test
     task = TaskFixture.new
     task.paused_submissions = 1
     runtime = CountingRuntime.new
-    pool = Rho::Runner::Pool.new(worker_threads: 1)
+    pool = Rho::Env::Pool.new(worker_threads: 1)
     context = context(task, "original-claim")
     task.on_submit = -> { context.cancel(:canceled) }
-    error = assert_raises(Rho::Runner::ExecutionContext::Cancelled) do
+    error = assert_raises(Rho::Env::ExecutionContext::Cancelled) do
       pool.run(pool.reserve, context) do
         context.orchestration.run(program: { "source" => "return await tools.read({path:'README.md'});" }, runtime: runtime)
       end
@@ -130,7 +130,7 @@ class ClaimBridgeTest < Minitest::Test
     pool = nil
     [[1, 1], [3, 9]].each do |workers, parents|
       tasks = Array.new(parents) { TaskFixture.new }
-      pool = Rho::Runner::Pool.new(worker_threads: workers)
+      pool = Rho::Env::Pool.new(worker_threads: workers)
       tool = Rho::Codemode::Code.new(env: nil)
       args = { "code" => "const result = await tools.read(params); text(result.content[0].text); return result.structured_content;", "params" => { "path" => "README.md" } }
       results = Async do |reactor|
@@ -145,7 +145,7 @@ class ClaimBridgeTest < Minitest::Test
           sleep(0.01) until tasks.all? { |task| task.submissions == 1 }
           assert_equal parents, pool.in_flight
           tasks.each do |task|
-            child_thread = pool.run(pool.reserve, Rho::Runner::ExecutionContext.new) { task.complete_child }
+            child_thread = pool.run(pool.reserve, Rho::Env::ExecutionContext.new) { task.complete_child }
             refute_equal Thread.current, child_thread
           end
           waiting.map(&:wait)
@@ -171,12 +171,12 @@ class ClaimBridgeTest < Minitest::Test
 
   def test_accepted_work_refuses_an_unsupported_binding_before_observing_or_submitting
     task = TaskFixture.new
-    pool = Rho::Runner::Pool.new(worker_threads: 1)
+    pool = Rho::Env::Pool.new(worker_threads: 1)
     args = { "code" => "return await tools.read({path:'one'});" }
     binding = Rho::Codemode::Code::BINDING_ID
     Rho::Codemode::Code.send(:remove_const, :BINDING_ID)
     Rho::Codemode::Code.const_set(:BINDING_ID, "urn:cybros:rho:codemode:javascript:2")
-    error = assert_raises(Rho::Runner::ClaimOrchestration::Failure) do
+    error = assert_raises(Rho::Env::ClaimOrchestration::Failure) do
       pool.run(pool.reserve, context(task, "claim")) { Rho::Codemode::Code.new(env: nil).call(args) }
     end
     assert_match(/unsupported_binding/, error.message)
@@ -193,8 +193,8 @@ class ClaimBridgeTest < Minitest::Test
   private
 
     def context(task, token)
-      bridge = Rho::Runner::ClaimOrchestration.new(task:, claim_token: token, log: nil)
-      Rho::Runner::ExecutionContext.new(orchestration: bridge,
+      bridge = Rho::Env::ClaimOrchestration.new(task:, claim_token: token, log: nil)
+      Rho::Env::ExecutionContext.new(orchestration: bridge,
         deadline: Process.clock_gettime(Process::CLOCK_MONOTONIC) + 2)
     end
 end

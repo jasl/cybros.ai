@@ -143,6 +143,6 @@ installation. They cover repeated observations, separate acknowledgement and
 completion, lost schedule/notice responses, restart with persisted state,
 completion racing schedule creation, freshness, scope and disabled rules. The
 actual package loader and normal completion capture are exercised too. The E2E
-journey `e2e/test/rho_household_test.rb` drives the package through a connected
+journey `e2e/products/test/rho_household_test.rb` drives the package through a connected
 rho and real Nexus APIs with the local fake model provider. Device, notification
 provider and semantic triage quality remain separate checks.

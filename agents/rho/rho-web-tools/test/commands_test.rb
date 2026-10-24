@@ -46,7 +46,7 @@ class CommandsTest < Minitest::Test
   # under `--raw` to the text the tool would spill.
   def test_raw_prints_the_long_page_whole_and_writes_no_spill
     out, _err = fetch_verb(["fetch", "#{@site}/long.html"], raw: true)
-    assert_operator out.bytesize, :>, Rho::Runner::Truncation::DEFAULT_MAX_BYTES
+    assert_operator out.bytesize, :>, Rho::Env::Truncation::DEFAULT_MAX_BYTES
     refute_includes out, "[Showing lines"
     assert_equal Rho::WebTools::Render.markdown(WebToolsTest::FixtureApp::LONG.b, charset: "utf-8").text, out
   end

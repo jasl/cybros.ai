@@ -7,13 +7,18 @@
 # `--update --dry-run` (a fetch, the two prints — the commit range and the
 # script that would run — and nothing pulled), the flags carried onto that
 # line, "nothing new", and the no-remote answer (git's own line, before any
-# exec). The container refusal cannot be faked without /.dockerenv; the real
-# pull and re-install are install_test.sh's (network).
+# exec). Containers refuse before the pull; native hosts report its failure.
+# The real pull and re-install are install_test.sh's (network).
 # shellcheck disable=SC1091
 . "$(dirname "$0")/helpers.sh"
 
 export RHO_PREFIX="$TEST_TMP/prefix" RHO_HOME="$TEST_TMP/home" RHO_LAUNCHER_DIR="$TEST_TMP/bin" NONINTERACTIVE=1
 unset RHO_MODIFY_PATH RHO_SOURCE RHO_PROFILE || true
+
+# Use the installer's own container detection for the host-specific assertion.
+set --
+# shellcheck disable=SC1090,SC1091
+. "$INSTALLER"
 
 upstream="$TEST_TMP/upstream.git"
 checkout="$TEST_TMP/checkout"
@@ -77,11 +82,19 @@ assert_contains "$LAST_OUTPUT" "Nothing new: $checkout is at ${new:0:7}" "an up-
 assert_contains "$LAST_OUTPUT" "Would run:" "and the script would still run (its manifest rows may have moved)"
 pass "nothing new"
 
-# --- 6. no remote: git's own line, before any exec
+# --- 6. no remote: the container guard precedes git's pull failure
 git -C "$checkout" remote remove origin
 assert_exit 1 "update with no remote" -- /bin/bash "$INSTALLER" --update
-assert_contains "$LAST_OUTPUT" "git pull --ff-only failed in $checkout" "the pull's failure is named"
+if in_container; then
+  assert_contains "$LAST_OUTPUT" "inside a container the image rolls, not the prefix" "containers update their image"
+  assert_contains "$LAST_OUTPUT" "docker compose pull && docker compose up -d" "the container update command is printed"
+  assert_not_contains "$LAST_OUTPUT" "git -C $checkout pull --ff-only" "the container guard runs before git pull"
+else
+  assert_contains "$LAST_OUTPUT" "git pull --ff-only failed in $checkout" "the pull's failure is named"
+fi
 assert_not_contains "$LAST_OUTPUT" "Running:" "nothing was run"
+pass "no remote: refused before re-installing"
+
 assert_exit 1 "update --dry-run with no remote" -- /bin/bash "$INSTALLER" --update --dry-run
 assert_contains "$LAST_OUTPUT" "tracks no upstream" "a branch with no upstream has nothing to fetch and says so"
-pass "no remote: git's answer, nothing run"
+pass "no remote: dry run reports the missing upstream"

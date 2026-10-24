@@ -75,7 +75,7 @@ module Rho
         # a URL the authorization server refuses; the browser is handed
         # the URL as it is.
         def self.interactive(row:, storage:, callback:, out:, browser: nil, no_browser: false, input: nil,
-          redact: Rho::Runner::Redact.new(row.secrets, live: storage))
+          redact: Rho::Env::Redact.new(row.secrets, live: storage))
           redirect_uri = callback.redirect_uri
           shown = Commands.shown(redact)
           provider = nil

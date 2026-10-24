@@ -1,10 +1,24 @@
 # E2E diagnostics
 
-Run the ordinary deterministic gate with `bundle exec rake` from this directory.
-WebRTC (`rake realtime`) and real model calls are explicit opt-ins.
-The journey manifest groups suites into 12 isolated worlds, with two or three running at once
-according to PostgreSQL's connection ceiling. Each group has a 1,200-second outer deadline;
-scheduling weights change launch order, not product timeouts.
+The harness has two independent dependency closures:
+
+| Lane | Owns | Run from |
+| --- | --- | --- |
+| Protocol | Nexus/SDK contracts with SDK-driven fake Agent and Runner peers | `e2e/protocol` |
+| Products | Real rho/rho-env, tools, filesystem, checkpoints, UI and installation | `e2e/products` |
+
+Each lane owns its Gemfile, lockfile and Rakefile. Run `bundle install`, then
+`bundle exec rake` in the lane. `bundle exec rake smoke_harness_test smoke rubocop`
+is its bounded CI gate. The root `bundle exec rake` dispatches both bundles;
+`rake protocol` and `rake products` select one. Shared `support/` contains no rho
+runtime dependency. Protocol CI temporarily removes `agents/rho` before its gate,
+so a passing run proves independence from the product source as well as its gems.
+
+The product lane's `rake realtime` and real-model diagnostics are explicit opt-ins.
+The diagnostic commands below run from `e2e/products` unless a section names
+another directory. Each lane has its own journey manifest, isolated world databases
+and process lifecycle. Numeric groups retain their prior category keys; gaps are
+intentional and convey no execution dependency.
 
 ## Journey coverage review
 
@@ -14,6 +28,9 @@ its original group and source location, measured baseline time when available, d
 replacement coverage for each removal, and its current group and name when retained.
 Original source locations describe the pre-reduction tree at `7ea3391ff`; deleted cases no
 longer have a current location. An empty timing means unmeasured, not zero seconds.
+`native_seconds` records a successful reduced-suite or focused-final execution, distinguished
+by `native_result`. Per-case Minitest timings include that case's setup/teardown, but exclude
+outer world startup and do not sum to concurrent wall time.
 
 | Coverage category | Before | Retained |
 |---|---:|---:|
@@ -45,7 +62,8 @@ verification purpose; a smaller journey count does not replace those checks.
 The execution groups decreased from 17 to 12 to avoid paying for mostly empty Nexus worlds.
 They combine compatible categories while separating shared-Human writers and suites with
 per-test sign-in/device-grant ceremony. The authoritative file membership is in
-[`support/journey_groups.rb`](support/journey_groups.rb):
+[`products/support/journey_groups.rb`](products/support/journey_groups.rb) and
+[`protocol/support/journey_groups.rb`](protocol/support/journey_groups.rb):
 
 | Group | Main journeys |
 |---|---|
@@ -76,6 +94,20 @@ realtime and manual measurements retain their explicit prerequisites and separat
 For a scoped change, select the affected case with `N=` in `e2e_serial` or `e2e_group[k]`;
 the full suite is for broad acceptance, not every implementation slice.
 
+Native macOS verification on 2026-10-24 exercised all 179 retained cases. The full traversal
+took **45m34s with two worlds**, compared with approximately 75 minutes for the earlier
+remaining-journey run. That earlier run excluded the 13 smoke cases now included here, so this
+is an observed comparison, not a controlled timing benchmark. The case-count reduction is 50%.
+Two SDK cases initially exposed a first-page-only Agent-list assumption after consolidation;
+both language drivers now follow cursors with a one-row page. A focused final run passed both
+SDK directions and the ACL/history fixture cleanup: four cases, 214 assertions, no failures,
+errors or skips. A second full traversal was unnecessary for those scoped repairs.
+
+Replacement checks passed 1,125 package/request/service/DOM tests. The offline harness ran
+754 tests with no failures/errors and one optional manual-dataset skip; RuboCop checked 454 files without offenses.
+TypeScript typechecking, Rust formatting and the Rust E2E driver's Clippy check passed.
+Installation, realtime and paid diagnostics were not part of this verification run.
+
 ## Offline Agent execution
 
 The core offline journeys pair an SDK Agent, submit from a child process that exits
@@ -99,13 +131,16 @@ fixture; no Rho application daemon advances those runs.
 Run the offline boundary set in one isolated world:
 
 ```sh
-bundle exec rake e2e_serial N='/OfflineAgentTest|SchedulesTest|DelegateCompactionTest|UntilTest/'
+# From e2e/protocol:
+bundle exec rake e2e_serial N='/OfflineAgentTest|SchedulesTest|DelegateCompactionTest/'
+# From e2e/products:
+bundle exec rake e2e_serial N='/UntilTest/'
 ```
 
 ## Runner admission measurements
 
 Two manual, model-free measurements exercise the shared Runner path. Run them
-from `e2e/`:
+from `e2e/products/`:
 
 ```sh
 bundle exec ruby manual/runner_admission/local.rb
@@ -141,7 +176,7 @@ are not regression fixtures. The local layout is:
 | `artifacts/screen-history/` | Retired experiment definitions and their batch-specific tests |
 | `artifacts/screen-readouts/` | Historical readouts from the retired screen experiment |
 
-Reviewed historical conclusions remain in [`evals/analysis/`](evals/analysis/README.md).
+Reviewed historical conclusions remain in [`evals/analysis/`](products/evals/analysis/README.md).
 Ordinary tests use small authored inputs, including the synthetic model policy in
 `support/fixtures/evals/bench.yml`. Real model targets belong to the explicit manual
 evaluation configuration in `evals/bench.yml` or the documented environment options.
@@ -177,8 +212,8 @@ requires the installation image built locally.
 
 Group 10 exercises the TypeScript and Rust SDKs in separate processes. It needs
 Node 22.13+ or Node 24, pnpm as declared in the TypeScript SDK's `package.json`,
-and a Rust toolchain with Cargo; the Rust SDK's minimum supported version is
-1.85. Nexus asset preparation still uses Bun. Install the TypeScript
+and a Rust toolchain with Cargo meeting the minimum in the Rust SDK's `Cargo.toml`.
+Nexus asset preparation still uses Bun. Install the TypeScript
 dependencies once from its project directory before running this group or the
 full gate:
 
@@ -187,6 +222,7 @@ full gate:
 cd sdks/typescript
 pnpm install --frozen-lockfile
 cd ../../e2e
+# From e2e/protocol:
 bundle exec rake 'e2e_group[10]' N='/SDKLanguagesTest#/'
 ```
 
@@ -198,7 +234,7 @@ The full gate also runs this SDK group:
 ```sh
 # From the repository root:
 docker build -f install/docker/Dockerfile --target browser -t rho-install-test:browser .
-cd e2e
+cd e2e/products
 bundle exec rake
 ```
 
@@ -241,8 +277,8 @@ production capacity or model inference performance.
 
 ## Docker stack installation
 
-[The disposable stack driver](manual/stack_installation.sh) builds and runs the
-upgrade journey from one published UTC release tag. From `e2e/`, after
+[The disposable stack driver](products/manual/stack_installation.sh) builds and runs the
+upgrade journey from one published UTC release tag. From `e2e/products/`, after
 `bundle install`, run:
 
 ```sh
@@ -271,7 +307,7 @@ diagnosis. Browser artifacts remain under `artifacts/stack_installation/`. It do
 not accept an existing installation directory. To run the journey against a
 separately prepared disposable stack, use the manual setup below.
 
-[StackInstallationTest](test/stack_installation_test.rb) is an opt-in journey
+[StackInstallationTest](products/test/stack_installation_test.rb) is an opt-in journey
 against an already running, fresh disposable stack from the
 [joint installer](../install/stack/README.md). Use a separate installation
 directory, Compose project name and ports; the account must not have been
@@ -283,7 +319,7 @@ CYBROS_NEXUS_PORT=13300 CYBROS_RHO_PORT=17777 \
 CYBROS_NEXUS_URL=http://127.0.0.1:13300 CYBROS_RHO_URL=http://127.0.0.1:17777 \
 sh install/stack/install.sh --dir "$HOME/cybros-stack-check"
 
-cd e2e
+cd e2e/products
 bundle install
 E2E_STACK_DIR="$HOME/cybros-stack-check" \
 E2E_BASE_URL=http://127.0.0.1:13300 \
@@ -299,7 +335,7 @@ Nexus**. The first-boot page retains the authorization request and creates the
 first owner without requiring a Setup secret. Creating the owner establishes
 the Nexus browser session, resumes authorization and returns to rho without a
 separate password or pairing screen. The optional `NEXUS_SETUP_SECRET` guard is
-covered separately by [ApplicationLoginTest](test/application_login_test.rb),
+covered separately by [ApplicationLoginTest](products/test/application_login_test.rb),
 which explicitly configures a secret and checks rejected and accepted values.
 
 The test signs out and exercises both Code and Device login while checking that
@@ -389,7 +425,7 @@ recovery without repeating a migration. Run all its tests from
 
 The test closes its browser and removes its fake-provider container. Unless the
 explicit restore drill is enabled, it does not tear down the supplied stack. Inspect diagnostics under
-`e2e/artifacts/stack_installation/`, then stop the disposable stack with its
+`e2e/products/artifacts/stack_installation/`, then stop the disposable stack with its
 `./cybros stop` command. Do not point this journey at an existing personal
 installation or delete its data as part of test cleanup.
 
@@ -491,10 +527,10 @@ commands as the product, and are never loaded by Nexus or the default E2E tasks.
 Run from `nexus/`:
 
 ```sh
-RAILS_ENV=development bundle exec rake -f ../e2e/manual/codex_authorization.rake codex_authorization:manual:status
-RAILS_ENV=development bundle exec rake -f ../e2e/manual/codex_authorization.rake codex_authorization:manual:start
-RAILS_ENV=development bundle exec rake -f ../e2e/manual/codex_authorization.rake 'codex_authorization:manual:step[SESSION_PUBLIC_ID]'
-RAILS_ENV=development bundle exec rake -f ../e2e/manual/codex_authorization.rake codex_authorization:manual:refresh
+RAILS_ENV=development bundle exec rake -f ../e2e/products/manual/codex_authorization.rake codex_authorization:manual:status
+RAILS_ENV=development bundle exec rake -f ../e2e/products/manual/codex_authorization.rake codex_authorization:manual:start
+RAILS_ENV=development bundle exec rake -f ../e2e/products/manual/codex_authorization.rake 'codex_authorization:manual:step[SESSION_PUBLIC_ID]'
+RAILS_ENV=development bundle exec rake -f ../e2e/products/manual/codex_authorization.rake codex_authorization:manual:refresh
 ```
 
 Enable the `codex_subscription` provider lane before `start` or `refresh`. These
@@ -516,7 +552,7 @@ independently rotating that same seed. Production uses the device-start flow.
 The offline regression tests also use the Nexus bundle; from `nexus/` run:
 
 ```sh
-RAILS_ENV=test bin/rails test ../e2e/manual/codex_authorization/dev_import_test.rb ../e2e/manual/codex_authorization/commands_test.rb
+RAILS_ENV=test bin/rails test ../e2e/products/manual/codex_authorization/dev_import_test.rb ../e2e/products/manual/codex_authorization/commands_test.rb
 ```
 
 ## Manual OpenRouter smoke
@@ -525,7 +561,7 @@ RAILS_ENV=test bin/rails test ../e2e/manual/codex_authorization/dev_import_test.
 Nexus, rho, browser or database. Select OpenRouter's own model IDs, without the catalog's
 `openrouter/` prefix; this diagnostic does not change the shipped model definitions.
 
-With `OPENROUTER_API_KEY` supplied privately in the process environment, run from `e2e/`:
+With `OPENROUTER_API_KEY` supplied privately in the process environment, run from `e2e/products/`:
 
 ```sh
 RAILS_ENV=development E2E_LIVE=1 \
@@ -659,7 +695,7 @@ daemon, executes actual runner commands, and inspects their public task graph an
 sealed requests. The prompt supplies the command interface and objective, not a
 successful program.
 
-Set the provider key in the process environment, then run from `e2e/`:
+Set the provider key in the process environment, then run from `e2e/products/`:
 
 ```sh
 RAILS_ENV=development E2E_LIVE=1 \

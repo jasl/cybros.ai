@@ -1,6 +1,6 @@
 # Install the stack
 
-The combined Docker stack installs Nexus, PostgreSQL and a full-mode rho on one Docker host. rho supplies the agent and a runner for tools; the default runner works inside the rho container. Linux amd64 and arm64 and macOS Docker Desktop are supported. The installer pulls published images and needs no Ruby or JavaScript on the host.
+The combined Docker stack installs Nexus, PostgreSQL and a complete rho on one Docker host. rho supplies the agent and a runner for tools; the default runner works inside the rho container. Linux amd64 and arm64 and macOS Docker Desktop are supported. The installer pulls published images and needs no Ruby or JavaScript on the host.
 
 ## Prerequisites
 

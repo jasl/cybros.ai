@@ -226,20 +226,15 @@ class ConfigTest < Minitest::Test
     end
   end
 
-  def test_fallbacks_require_an_array_and_an_agent_execution_mode
+  def test_fallbacks_require_an_array_of_model_names
     [nil, "dev/second", [false]].each do |value|
       assert_raises(Rho::ConfigurationError) { Rho::Config.from_hash({ "fallback_models" => value }) }
     end
-    error = assert_raises(Rho::ConfigurationError) do
-      Rho::Config.from_hash({ "fallback_models" => ["dev/second"], "mode" => "runner" })
-    end
-    assert_match(/fallback_models needs mode full or agent/, error.message)
-    assert_empty Rho::Config.from_hash({ "fallback_models" => [], "mode" => "runner" }).fallback_models
   end
 
   # Native plugin configuration remains saved when the current mode cannot
   # serve its tools. The mode gates activation, not the user's saved intent.
-  def test_image_model_is_unset_until_stated_and_runner_mode_keeps_it_inactive
+  def test_image_model_is_unset_until_stated
     assert_nil Rho::Config.from_hash({}).plugin_configuration("rho.images")["model"]
     document = { "plugins" => { "rho.images" => { "configuration_version" => 1,
       "configuration" => { "model" => "dev/mock-image" } } } }
@@ -249,9 +244,6 @@ class ConfigTest < Minitest::Test
       assert_equal "dev/mock-image", Rho::Config.load(path).plugin_configuration("rho.images").fetch("model")
     end
     refute Rho::Config::ENV_KEYS.key?("image_model"), "plugin configuration has one saved owner"
-    runner = Rho::Config.from_hash(document.merge("mode" => "runner"))
-    refute runner.plugin_enabled?("rho.images")
-    assert_equal "dev/mock-image", runner.plugin_configuration("rho.images").fetch("model")
   end
 
   def test_default_kernel_tools_include_runner_discovery
@@ -269,7 +261,7 @@ class ConfigTest < Minitest::Test
   # Defaults still match the store. Invalid file fields fall back independently;
   # an interactive invalid edit is rejected before it can replace saved intent.
   def test_checkpoints_defaults_match_the_store_and_validation_preserves_valid_siblings
-    store = Rho::Runner::Checkpoints::Store
+    store = Rho::Env::Checkpoints::Store
     base = Rho::Config.from_hash({})
     defaults = base.plugin_configuration("rho.checkpoints")
     assert_equal({ "retention_days" => store::DEFAULT_RETENTION_DAYS,
@@ -476,7 +468,7 @@ class ConfigTest < Minitest::Test
 end
 
 # ---- mode: a boot fact like `bind` ----
-class ConfigModeTest < Minitest::Test
+class ConfigDefaultsTest < Minitest::Test
   def with_settings(hash)
     Dir.mktmpdir("rho-config") do |dir|
       path = File.join(dir, "settings.json")
@@ -485,35 +477,8 @@ class ConfigModeTest < Minitest::Test
     end
   end
 
-  def test_the_mode_defaults_to_full_and_is_one_of_three_words
-    assert_equal "full", Rho::Config.load(nil).mode
-    assert_equal %w[full agent runner], Rho::Config::MODES
-    assert_equal "runner", Rho::Config.from_hash({ "mode" => "Runner" }).mode
-    error = assert_raises(Rho::ConfigurationError) { Rho::Config.from_hash({ "mode" => "server" }) }
-    assert_match(/mode must be one of full, agent, runner/, error.message)
-  end
 
-  def test_mode_takes_the_environment_then_the_file_then_a_flag
-    assert_equal "runner", Rho::Config.load(nil, env: { "RHO_MODE" => "runner" }).mode
-    with_settings("mode" => "agent") do |path|
-      assert_equal "agent", Rho::Config.load(path).mode
-      assert_equal "agent", Rho::Config.load(path, env: { "RHO_MODE" => "runner" }).mode
-      assert_equal "full", Rho::Config.load(path, env: { "RHO_MODE" => "runner" }, flags: { "mode" => "full" }).mode
-      assert_equal "agent", Rho::Config.load(path, env: { "RHO_MODE" => "runner" }, flags: { "mode" => nil }).mode,
-        "a nil flag states nothing"
-    end
-  end
 
-  def test_a_runner_declares_no_profile_so_compaction_stays_inactive
-    plugins = { "rho.compaction" => { "enabled" => true, "configuration_version" => 1,
-      "configuration" => { "model" => "dev/summary" } } }
-    runner = Rho::Config.from_hash({ "mode" => "runner", "plugins" => plugins })
-    refute runner.plugin_enabled?("rho.compaction")
-    assert_equal "dev/summary", runner.plugin_configuration("rho.compaction").fetch("model")
-    agent = Rho::Config.from_hash({ "mode" => "agent", "plugins" => plugins })
-    assert agent.plugin_enabled?("rho.compaction")
-    assert_equal "dev/summary", agent.plugin_configuration("rho.compaction").fetch("model")
-  end
 
   # The runner new hosts start on when `rho do --runner` names none: a
   # settings key with no environment spelling, nil by default.
@@ -527,8 +492,7 @@ class ConfigModeTest < Minitest::Test
   # THE ROOM KNOB: `workspace` names a
   # steward-created room the daemon adopts instead of minting its own
   # dedicated workspace — `RHO_WORKSPACE`, the file, then `rho server
-  # --workspace` (the same ladder as `mode`); nil is the dedicated path.
-  # A runner adopts no workspace, so the key is refused there by name.
+  # --workspace` (the normal settings precedence); nil is the dedicated path.
   def test_the_workspace_setting_names_a_room_and_takes_the_environment_the_file_then_the_flag
     assert_nil Rho::Config.load(nil).workspace
     assert_nil Rho::Config.from_hash({ "workspace" => "" }).workspace
@@ -543,7 +507,5 @@ class ConfigModeTest < Minitest::Test
         Rho::Config.load(path, env: { "RHO_WORKSPACE" => "0199-room-env" }, flags: { "workspace" => nil }).workspace,
         "a nil flag states nothing"
     end
-    error = assert_raises(Rho::ConfigurationError) { Rho::Config.from_hash({ "mode" => "runner", "workspace" => "0199-room" }) }
-    assert_match(/workspace needs mode full or agent/, error.message)
   end
 end

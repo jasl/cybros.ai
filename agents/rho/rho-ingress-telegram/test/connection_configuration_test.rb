@@ -19,7 +19,7 @@ class TelegramConnectionConfigurationTest < Minitest::Test
 
   def setup
     @client = Client.new
-    @config = Rho::Config.from_hash({ "mode" => "agent", "plugins" => { Rho::IngressTelegram::NAME => {
+    @config = Rho::Config.from_hash({ "plugins" => { Rho::IngressTelegram::NAME => {
       "enabled" => true, "configuration" => { "connections" => { CONNECTION => { "name" => "Shared", "token" => "saved" } },
         "bots" => { BOT => { "connection_public_id" => CONNECTION, "target" => { "chat_id" => "7" } } } },
     } } })

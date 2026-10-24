@@ -1,14 +1,14 @@
 # Evaluation runbook
 
 Use this manual to run the mock E2E gate, select a paid evaluation, and read its records,
-scorecards, and failure evidence. The [evaluation harness overview](../e2e/evals/README.md)
-describes task authoring and the implementation under `e2e/support/evals/`.
+scorecards, and failure evidence. The [evaluation harness overview](../e2e/products/evals/README.md)
+describes task authoring and the implementation under `e2e/products/support/evals/`.
 Commands below run from the repository root unless a section says otherwise. Dated results
 and estimates are historical observations, not measurements of the current checkout.
 
 The kernel compose implementation, its dedicated evaluation family, the `workflow`
 tool-style preset, and the old screening launcher are retired. rho now loads `code`
-by default in full, agent, and runner modes on each available executor address.
+by default on both service roles of its application address.
 rho's `code_mode` setting and conversation/request override control whether a new
 rho-authored turn exposes that tool; record the effective choice when comparing runs.
 Historical compose results do not measure that JavaScript binding. The
@@ -142,9 +142,9 @@ generic regression fixtures.
 | `E2E_BENCH_CANDIDATES` | `live_task_probe` | Comma-separated existing harness candidate keys. Each candidate runs only on covered selected models; unsupported kinds or unknown keys are refused before paid calls. Candidate records retain the selected key |
 | `E2E_LIVE_ADAPTATIONS` | `rake live_task_mail` | preset words from `nexus`, `claude`, and `codex`, optionally `+`-joined. The daemon boots under a local row `sweep` with `tool_style: [<words>]` and `adaptations: sweep`. The readout identifies it as `adaptations: sweep:<words>`; an unknown word is refused at load |
 | `E2E_DATABASE_DUMPS=1` | a failed world | pg_dump on the failure path (pg_dump on PATH); the red dump itself (`e2e/artifacts/failures/<run>/`, `E2E::FailureDump`) always carries the world's logs whole (each world process's Rails log is its own file under the run root — `rails.log`, `jobs.rails.log`, `model_runner.rails.log`, named by `RAILS_LOG_FILE` — never a window of the checkout's shared `nexus/log/development.log`), and `sealed_requests.json` — the last sealed requests with their loop, task key and the host's events |
-| `RHO_*` | rho | The lane writes the daemon home's `settings.json` (`compaction`, `adaptations`, and `default_model` under `pack`) and its local adaptation row before boot. `RHO_MODE=runner` belongs to the separate runner home. There is no compose setting or CLI flag |
+| `RHO_*` | rho | The lane writes the daemon home's `settings.json` (`compaction`, `adaptations`, and `default_model` under `pack`) and its local adaptation row before boot. Container evaluations run a complete rho application inside the container and use its own Local environment. There is no compose setting or CLI flag |
 
-`E2E_EVALS_*` narrows; it never adds a model or a style the bench (`e2e/evals/bench.yml`) does not name.
+`E2E_EVALS_*` narrows; it never adds a model or a style the bench (`e2e/products/evals/bench.yml`) does not name.
 Changing the bench changes its sha256, which rides every record as `bench_digest`: a new column in the
 ledger, never a blurred one.
 
@@ -290,8 +290,8 @@ quotes it has seen the corpus. The Agents-on-Rails corpus keeps ITS canary, pass
 
 **How to add a task.** Copy a RATIONALE'd sibling. The loader refuses, by name, a missing field, an
 unknown driver, a wrong canary, an `expected.rb` that is not an `Expected`, a `verification.rb` that is
-not a 2-arity lambda. Then draw a GREEN and a RED trace for it in `e2e/test/evals_drawings.rb` and pin
-both in `e2e/test/evals_expected_test.rb` — mandatory (the gallery's two-sided rule). A predicate names
+not a 2-arity lambda. Then draw a GREEN and a RED trace for it in `e2e/products/test/evals_drawings.rb` and pin
+both in `e2e/products/test/evals_expected_test.rb` — mandatory (the gallery's two-sided rule). A predicate names
 STRUCTURE only (kinds, edges, join words, error keys, tool names, `tool_input` keys); round counts and
 fan widths are facts on the record, never a pass condition. Run `bundle exec ruby -Itest
 test/evals_corpus_test.rb test/evals_expected_test.rb` (boots nothing) and `bundle exec rubocop`.
@@ -322,8 +322,8 @@ evals: <task> <model> <style> #<n> reach=<t|f> success=<t|f|—> pass=<t|f|—> 
   (`/status`'s `runner.swept`, the delta over the run). The meter is the DAEMON's life, not the current
   runner's: `rho do --dir` rebuilds the runner, and the daemon carries the retired runner's total forward
   (`agents/rho/rho/lib/rho/daemon.rb` `rebuild_runners` / `runner_facts`), so the delta never goes negative
-  across a repoint. `nudged` — the runner's other meter (`Rho::Runner::Snapshot`,
-  `agents/rho/rho-runner/lib/rho/runner.rb:79`), served by `/status` beside `swept` and carried across a
+  across a repoint. `nudged` — the runner's other meter (`Rho::Env::Executor::Snapshot`,
+  `agents/rho/rho-env/lib/rho/env.rb:79`), served by `/status` beside `swept` and carried across a
   repoint the same way; the pair is the
   diagnosis (a rising `swept` beside `nudged: 0` is work carried by polling with the latency path broken).
   A `—` on a record predates the lane's read of it, never a guess.
@@ -443,7 +443,7 @@ a model's current quality.
 ## 6. How to read a red
 
 Every red record carries `verdict.class`, a pure function over the record (`E2E::Evals::Scorecard.classify`,
-pinned by `e2e/test/evals_scorecard_test.rb`), and a `reason` in the trace's own words. Read, in this
+pinned by `e2e/products/test/evals_scorecard_test.rb`), and a `reason` in the trace's own words. Read, in this
 order: the report line, the task's `RATIONALE.md` § "Reading a red" (the task's own tell-tales), then
 the artifact. The six classes, with their tell-tales (the fifth and the sixth are READ beside the four, never in the stop rule):
 

@@ -26,28 +26,26 @@ class SettingsTest < Minitest::Test
     end
   end
 
-  def test_inventory_reports_channels_before_a_runner_is_placed_in_both_webui_modes
-    %w[full agent].each do |mode|
-      daemon = boot(root: File.join(@root, mode), config: Rho::Config.from_hash({ "mode" => mode }))
-      token = bearer(daemon)
-      before = File.read(daemon.home.settings_path)
-      runner = JSON.parse(request(daemon, :get, "/runner", token: token).body)
-      assert_nil runner.fetch("runner")
+  def test_inventory_reports_channels_before_a_runner_is_placed
+    daemon = boot(root: File.join(@root, "application"), config: Rho::Config.from_hash({}))
+    token = bearer(daemon)
+    before = File.read(daemon.home.settings_path)
+    runner = JSON.parse(request(daemon, :get, "/runner", token: token).body)
+    assert_nil runner.fetch("runner")
 
-      response = request(daemon, :get, "/extensions", token: token)
-      assert_equal "200", response.code, response.body
-      extensions = JSON.parse(response.body).fetch("plugins")
-      assert_includes extensions.map { |entry| entry.fetch("id") }, "rho.ingress_telegram"
-      assert_includes extensions.map { |entry| entry.fetch("id") }, "rho.webui"
-      refute extensions.find { |entry| entry.fetch("id") == "rho.ingress_telegram" }.fetch("enabled")
-      refute extensions.find { |entry| entry.fetch("id") == "rho.ingress_telegram" }.fetch("active")
-      assert_equal before, File.read(daemon.home.settings_path), "extension availability is a read-only projection"
-    end
+    response = request(daemon, :get, "/extensions", token: token)
+    assert_equal "200", response.code, response.body
+    extensions = JSON.parse(response.body).fetch("plugins")
+    assert_includes extensions.map { |entry| entry.fetch("id") }, "rho.ingress_telegram"
+    assert_includes extensions.map { |entry| entry.fetch("id") }, "rho.webui"
+    refute extensions.find { |entry| entry.fetch("id") == "rho.ingress_telegram" }.fetch("enabled")
+    refute extensions.find { |entry| entry.fetch("id") == "rho.ingress_telegram" }.fetch("active")
+    assert_equal before, File.read(daemon.home.settings_path), "extension availability is a read-only projection"
   end
 
   def test_settings_need_a_bearer_and_do_not_echo_configured_secrets
     home = Rho::Home.resolve(base_url: "https://nexus.example", root: @root).prepare
-    home.write_settings("settings_version" => 1, "nexus_public_url" => "https://public.example/nexus", "plugins" => {
+    home.write_settings("settings_version" => 2, "nexus_public_url" => "https://public.example/nexus", "plugins" => {
       "rho.mcp" => { "enabled" => false, "configuration_version" => 1,
         "configuration" => { "servers" => { "private" => { "env" => { "TOKEN" => "private-tool-secret" } } } } },
     })
@@ -184,8 +182,18 @@ class SettingsTest < Minitest::Test
     end
   end
 
+  def test_old_core_settings_are_refused_without_conversion
+    home = Rho::Home.resolve(base_url: "http://example.test", root: @root).prepare
+    [{ "default_model" => "dev/old" }, { "settings_version" => 1, "plugins" => {} }].each do |old|
+      home.write_settings(old)
+      assert_raises(Rho::ConfigurationError) { Rho::Settings.prepare(home) }
+      assert_equal old, Rho::Config.read(home.settings_path)
+    end
+  end
+
   def test_cli_offline_save_preserves_other_settings_and_clears_environment_seeds
     home = Rho::Home.resolve(base_url: "http://example.test", root: @root).prepare
+    Rho::Settings.prepare(home)
     home.write_setting("runner", "saved-runner")
     Rho::Core.new(home: home).update_settings("fallback_models" => [], "default_model" => "dev/saved")
     saved = Rho::Config.load(home.settings_path, env: { "RHO_FALLBACK_MODEL" => "env/seed" })

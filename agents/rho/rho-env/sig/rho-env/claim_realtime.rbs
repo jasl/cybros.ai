@@ -1,0 +1,18 @@
+module Rho
+  module Env
+    class ClaimRealtime
+      class Closed < Error
+      end
+      def initialize: (task: untyped, claim_token: String, clock: ^() -> Numeric, log: untyped) -> void
+      def offer: (sdp: String, ?reopen: bool) -> CybrosAgent::Api::TaskRealtime
+      def allowed?: () -> bool
+      def remaining_ms: () -> Integer
+      def received_allowed?: (age: Numeric) -> bool
+      def snapshot: () -> CybrosAgent::Api::TaskRealtime?
+      def closed?: () -> bool
+      def close: () -> nil
+      def wait: (?Numeric) -> Numeric?
+      def flush: () -> untyped
+    end
+  end
+end

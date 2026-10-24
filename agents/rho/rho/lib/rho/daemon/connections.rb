@@ -27,7 +27,6 @@ module Rho
         end
         retire(adoption.retired)
         publish_phase_change(adoption.from, :active) if adoption.changed
-        @server.spawn { mount_runner(credentials, :runner) } if adoption.changed && credentials.runner?
       end
 
       # What every lineage edge leaves the caller to do OUTSIDE the monitor.
@@ -48,7 +47,7 @@ module Rho
       end
 
       def retire(retired, wait: false)
-        retired.runners.each { |runner| stop_runner(runner) }
+        stop_runner(retired.runner)
         cleanup_followers(retired.followers, retired.clients, wait: wait)
       end
 
@@ -178,14 +177,6 @@ module Rho
         about.executor_credential
       rescue CybrosAgent::Error => error
         log.warn("workspace.executor_plane_unavailable", error: CybrosAgent::Redaction.call(error.message))
-        nil
-      end
-
-      # The runner lineage's, for the runner address.
-      def runner_credential_for(about)
-        about.runner_credential
-      rescue CybrosAgent::Error => error
-        log.warn("workspace.runner_plane_unavailable", error: CybrosAgent::Redaction.call(error.message))
         nil
       end
   end
