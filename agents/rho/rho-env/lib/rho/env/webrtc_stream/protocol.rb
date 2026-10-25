@@ -9,6 +9,7 @@ module Rho
       Input = Data.define(:id, :bytes)
       Receipt = Data.define(:id, :sequence, :status, :bytes)
       Resume = Data.define(:offset)
+      Resize = Data.define(:cols, :rows)
       Output = Data.define(:offset, :bytes)
       Gap = Data.define(:from, :to) do
         def message = "Output gap: #{to - from} bytes are unavailable."
@@ -21,6 +22,8 @@ module Rho
             { type: "input", id: id, data: Base64.strict_encode64(bytes) }
           in Receipt(id:, sequence:, status:, bytes:)
             { type: "receipt", id: id, sequence: sequence, status: status, bytes: bytes }
+          in Resize(cols:, rows:)
+            { type: "resize", cols: cols, rows: rows }
           in Resume(offset:)
             { type: "resume", offset: offset }
           in Output(offset:, bytes:)
@@ -46,6 +49,12 @@ module Rho
             raise Error, "invalid input receipt" unless %w[received written].include?(status) && count <= BLOCK_BYTES && (status != "received" || count.positive?)
 
             Receipt.new(id: positive(value.fetch("id")), sequence: positive(value.fetch("sequence")), status: status, bytes: count)
+          when "resize"
+            cols = offset(value.fetch("cols"))
+            rows = offset(value.fetch("rows"))
+            raise Error, "invalid terminal dimensions" unless (2..500).cover?(cols) && (2..200).cover?(rows)
+
+            Resize.new(cols: cols, rows: rows)
           when "resume"
             Resume.new(offset: offset(value.fetch("offset")))
           when "output"

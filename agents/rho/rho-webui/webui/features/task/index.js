@@ -5,7 +5,7 @@ import { isUnresolvedFailure } from "../../kernel/format.js";
 import { artifactsIn, createArtifactOpener } from "../../kernel/artifacts.js";
 import { alert, button, iconButton, spinner } from "../../primitives/index.js";
 import { mcpTarget } from "../../primitives/mcp_target.js";
-import { terminalPanel } from "../../primitives/terminal.js";
+import { listOutlet } from "../../kernel/outlets.js";
 
 const UPLOADS = "nexus://uploads/";
 const query = (path, values) => `${path}?${new URLSearchParams(values)}`;
@@ -44,9 +44,10 @@ function taskPanel(shell, initialProps) {
   const element = el("section", { class: "task", "aria-label": t("common.task") },
     el("header", { class: "task__head" }, refresh), body);
   let reading = 0;
-  let terminal;
-  const terminalHost = el("div");
-  element.append(terminalHost);
+  const additions = el("div", { class: "task__additions" });
+  const outlet = listOutlet(shell.slots, "task.detail", additions,
+    { task: null, target: null, conversation: props.conversation, actions: props.actions }, { onError: shell.renderError });
+  element.append(additions);
 
   async function load() {
     const version = ++reading;
@@ -57,6 +58,7 @@ function taskPanel(shell, initialProps) {
       const { task } = await shell.call(query("/runs/task", values), { signal: reads.signal });
       if (version === reading && !reads.signal.aborted) {
         body.replaceChildren(taskDetail(task, artifacts));
+        outlet.update({ task, target: values, conversation, actions: props.actions });
         if (task.kind === "model_task") {
           const content = el("div", { class: "task__request" });
           const read = button({ label: t("task.read_request"), size: "sm", async onClick() {
@@ -74,13 +76,6 @@ function taskPanel(shell, initialProps) {
           } });
           body.append(block(t("task.sealed_request"), read, content));
         }
-        if (task.kind === "tool_task" && ["running", "dispatched"].includes(task.status) && !terminal) {
-          body.prepend(button({ label: t("terminal.open"), size: "sm", onClick(event) {
-            event.currentTarget.disabled = true;
-            terminal = terminalPanel({ call: shell.call, target: values });
-            terminalHost.replaceChildren(terminal.element);
-          } }));
-        }
       }
     } catch (error) {
       if (version !== reading || reads.signal.aborted || error.name === "AbortError" || error.status === 401) return;
@@ -92,7 +87,7 @@ function taskPanel(shell, initialProps) {
   return {
     element,
     update(next) { props = next; },
-    dispose() { reads.abort(); terminal?.dispose(); artifacts.dispose(); },
+    dispose() { reads.abort(); outlet.dispose(); artifacts.dispose(); },
   };
 }
 

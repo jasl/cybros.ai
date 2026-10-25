@@ -190,9 +190,11 @@ for each invocation:
 | `CYBROS_UPDATER_IMAGE_REPOSITORY` | `jasl123/cybros-updater` | Complete upgrade-manager image repository path, without a tag or digest |
 | `CYBROS_IMAGE_TAG` | `latest` | `latest` or a UTC `yyMMddHHmm` release tag shared by both product images |
 | `CYBROS_UPDATER_TAG` | Initial `CYBROS_IMAGE_TAG` | Independently selected manager tag; application upgrades do not replace the running manager |
-| `CYBROS_BIND` | `127.0.0.1` | Host address on which both HTTP ports are published |
+| `CYBROS_BIND` | `127.0.0.1` | Host address on which HTTP and terminal UDP ports are published |
 | `CYBROS_NEXUS_PORT` | `3300` | Nexus host port |
 | `CYBROS_RHO_PORT` | `7777` | rho host port |
+| `CYBROS_TERMINAL_UDP_MIN` | `49160` | First terminal UDP port; match the Terminal plugin setting |
+| `CYBROS_TERMINAL_UDP_MAX` | `49200` | Last terminal UDP port; match the Terminal plugin setting |
 | `WEB_CONCURRENCY` | Unset | Override Nexus web worker processes; otherwise Puma chooses up to 4 from the container's available CPUs |
 | `RAILS_MAX_THREADS` | `1` | Request threads per Nexus web worker |
 | `RAILS_DB_POOL` | Unset | Override maximum database connections per process and database pool |

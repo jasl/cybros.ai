@@ -124,6 +124,7 @@ export function createSwitching(shell) {
 
   async function report(answer) {
     await shell.inventory.accept(answer);
+    await shell.setup.refresh();
     shell.toast(pluginSaveMessage(answer), { tone: answer.saved && answer.applied && !answer.restart_required ? "success" : "info" });
   }
 

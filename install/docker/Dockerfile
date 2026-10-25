@@ -206,6 +206,13 @@ RUN --mount=type=bind,source=install/manifest.sh,target=/tmp/rho-manifest.sh \
     rm -rf "$HOME/.npm" /tmp/node-compile-cache; \
     rm -rf /opt/mise/state/*.log "$MISE_CONFIG_DIR"/*.lock 2>/dev/null || true
 
+# Build the optional terminal plugin's helper beside its installed source.
+# Startup uses this binary without a Go toolchain or a user-supplied path.
+RUN --mount=type=cache,id=rho-go-${TARGETARCH},target=/home/rho/go,uid=1000,gid=1000 \
+    --mount=type=cache,id=rho-go-build-${TARGETARCH},target=/home/rho/.cache/go-build,uid=1000,gid=1000 \
+    cd /opt/rho/current/agents/rho/rho-env/transport && \
+    CGO_ENABLED=0 go build -trimpath -o rho-webrtc .
+
 # hadolint ignore=SC2086
 RUN --mount=type=bind,source=install/manifest.sh,target=/tmp/rho-manifest.sh \
     --mount=type=cache,id=uv-cache-${TARGETARCH},target=/opt/uv/cache,uid=1000,gid=1000 \

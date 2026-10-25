@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -140,5 +141,42 @@ func TestDirectBytesAndReceiveOverflow(t *testing.T) {
 			t.Fatal("overflow not observed")
 		}
 		time.Sleep(time.Millisecond)
+	}
+}
+
+func TestAdvertisedAddressAndPublishedPortRange(t *testing.T) {
+	p := &peer{}
+	defer p.close()
+	value, err := p.call(command{Op: "offer", AdvertisedIP: "192.0.2.10", UDPPortMin: 49160, UDPPortMax: 49200})
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, line := range strings.Split(value["sdp"].(string), "\r\n") {
+		if !strings.HasPrefix(line, "a=candidate:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		port, err := strconv.Atoi(fields[5])
+		if err != nil || fields[4] != "192.0.2.10" || port < 49160 || port > 49200 {
+			t.Fatalf("candidate is outside the published endpoint: %s", line)
+		}
+		count++
+	}
+	if count == 0 {
+		t.Fatal("no published candidate")
+	}
+}
+
+func TestInvalidPublishedNetworkConfiguration(t *testing.T) {
+	for _, c := range []command{
+		{Op: "offer", AdvertisedIP: "not-an-ip"},
+		{Op: "offer", UDPPortMin: 49200, UDPPortMax: 49160},
+	} {
+		p := &peer{}
+		if _, err := p.call(c); err == nil {
+			t.Fatal("invalid network configuration accepted")
+		}
+		p.close()
 	}
 }

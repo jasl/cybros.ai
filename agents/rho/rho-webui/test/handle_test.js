@@ -18,7 +18,7 @@ function handle(overrides = {}) {
 
 test("the handle exposes exactly the module platform and is frozen", () => {
   const { ui, refreshes } = handle();
-  expect(Object.keys(ui).sort()).toEqual(["call", "dock", "el", "id", "inventory", "navigate", "primitives", "signal", "slots", "toast", "translator"]);
+  expect(Object.keys(ui).sort()).toEqual(["call", "dock", "el", "id", "inventory", "isTerminal", "navigate", "primitives", "signal", "slots", "toast", "translator", "uuidv7"]);
   expect(Object.isFrozen(ui)).toBe(true);
   expect(ui.id).toBe("rho.ingress_telegram");
   expect(ui.signal.aborted).toBe(false);

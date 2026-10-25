@@ -1,4 +1,4 @@
-import { permissionChannel } from "./permission_channel.js";
+import { permissionChannel } from "./permission.js";
 
 // The viewer owns peer state only. The original Task owns work and retry offers.
 export function realtimeConnection({ call, target, state, prepare, stopRun = false,

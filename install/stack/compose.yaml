@@ -125,6 +125,7 @@ services:
       - "host.docker.internal:host-gateway"
     ports:
       - "${CYBROS_BIND:-127.0.0.1}:${CYBROS_RHO_PORT:-7777}:7777"
+      - "${CYBROS_BIND:-127.0.0.1}:${CYBROS_TERMINAL_UDP_MIN:-49160}-${CYBROS_TERMINAL_UDP_MAX:-49200}:${CYBROS_TERMINAL_UDP_MIN:-49160}-${CYBROS_TERMINAL_UDP_MAX:-49200}/udp"
     volumes:
       - ./data/rho/home:/var/lib/rho
       - ./data/rho/work:/home/runner

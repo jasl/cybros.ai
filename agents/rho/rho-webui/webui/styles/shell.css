@@ -199,3 +199,13 @@
 .sidebar__bot-name { min-width: 0; flex: 1; text-align: left; padding: 7px 8px; border-radius: var(--radius-md); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar__bot:hover .sidebar__bot-name, .sidebar__bot:focus-within .sidebar__bot-name { color: var(--ink); }
 .sidebar__bot .btn--icon { width: 28px; height: 28px; flex: none; }
+
+.dock__tab-button { gap: 6px; }
+.dock__tab-button > .icon { width: 14px; height: 14px; flex: none; }
+.dock__tab-actions { display: none; }
+.dock__tab--active .dock__tab-actions:has(> :not([hidden])) { display: inline-flex; flex: none; margin-right: 24px; }
+.dock__tab-actions .btn--icon { width: 22px; height: 22px; }
+.dock__tab--active:has(.dock__tab-actions > :not([hidden])) .dock__tab-button { padding-right: 4px; }
+
+.dock__pane--fill { display: flex; flex-direction: column; padding: 8px; overflow: hidden; }
+.dock__pane > .dock__guide { padding-block: 32px; transform: none; }

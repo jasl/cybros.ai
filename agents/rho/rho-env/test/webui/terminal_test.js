@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
-import { TerminalStream } from "../webui/kernel/terminal_stream.js";
-import { terminalConnection } from "../webui/kernel/terminal_connection.js";
+import { TerminalStream } from "../../webui/terminal/stream.js";
+import { terminalConnection } from "../../webui/terminal/connection.js";
 const output = (offset, text) => JSON.stringify({ type: "output", offset, data: btoa(text) });
 const gap = (from, to) => JSON.stringify({ type: "gap", from, to });
 const wait = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -303,4 +303,24 @@ test("ICE configuration failure does not silently create a direct-only peer", as
   });
   try { await wait(); expect(created).toBe(0); expect(states.at(-1)).toBe("error"); }
   finally { link.dispose(); }
+});
+
+test("terminal dimensions wait for permission and are restored on a replacement peer", async () => {
+  const f = fixture();
+  try {
+    f.link.resize(42, 17);
+    expect(() => f.link.resize(501, 17)).toThrow();
+    await wait();
+    expect(f.peers[0].data.sent).toEqual([]);
+    f.peers[0].open();
+    await wait(520);
+    expect(f.peers[0].data.sent.filter((frame) => frame.type === "resize")).toEqual([{ type: "resize", cols: 42, rows: 17 }]);
+    f.link.resize(42, 17);
+    expect(f.peers[0].data.sent.filter((frame) => frame.type === "resize")).toHaveLength(1);
+    f.next();
+    await wait(520);
+    f.peers[1].open();
+    await wait(520);
+    expect(f.peers[1].data.sent.filter((frame) => frame.type === "resize")).toEqual([{ type: "resize", cols: 42, rows: 17 }]);
+  } finally { f.link.dispose(); }
 });

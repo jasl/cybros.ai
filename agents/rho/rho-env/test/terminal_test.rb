@@ -114,6 +114,58 @@ class TerminalTest < Minitest::Test
     end
   end
 
+  def test_shell_resize_changes_the_pty_dimensions
+    with_tool_env do |_env, root|
+      shell = Rho::Env::Tools::Terminal::Shell.new(root: root)
+      shell.resize(42, 17)
+      shell.write("stty size\n", context: Rho::Env::ExecutionContext.current)
+      assert_match(/17 42/, read_until(shell, /17 42/))
+    ensure
+      shell&.close
+    end
+  end
+
+  def test_shell_waits_for_the_first_authorized_viewer_before_emitting_its_prompt
+    with_tool_env do |env, _root|
+      gate = Gate.new
+      gate.permitted = false
+      context = Rho::Env::ExecutionContext.new(realtime: gate)
+      polls = 0
+      started_at = nil
+      output = []
+      shell = Object.new
+      reads = ["shell$ ", nil]
+      shell.define_singleton_method(:resize) { |_cols, _rows| }
+      shell.define_singleton_method(:read) { reads.shift }
+      shell.define_singleton_method(:close) { }
+      stream = Object.new
+      stream.define_singleton_method(:poll) do
+        polls += 1
+        gate.permitted = polls >= 3
+        Rho::Env::WebrtcTransport::Poll.new(data: [], state: "connected", ready: gate.permitted, pair: nil)
+      end
+      stream.define_singleton_method(:write_output) { |bytes| output << bytes if gate.allowed? }
+      stream.define_singleton_method(:close) { }
+      factory = ->(**) { started_at = polls; shell }
+      constructors = {
+        Rho::Env::WebrtcConnection => ->(**) { Object.new },
+        Rho::Env::WebrtcStream => ->(**) { stream },
+        Rho::Env::Tools::Terminal::Shell => factory,
+      }
+      originals = constructors.to_h { |type, _replacement| [type, type.method(:new)] }
+      begin
+        constructors.each { |type, replacement| type.define_singleton_method(:new, replacement) }
+        Rho::Env::ExecutionContext.with(context) do
+          Rho::Env::Tools::Terminal.new(env: env, executable: "unused").call({})
+        end
+      ensure
+        originals.each { |type, original| type.define_singleton_method(:new, original) }
+      end
+      assert_equal 3, started_at
+      assert_equal ["shell$ "], output
+    end
+  end
+
   private
 
     def read_until(shell, pattern)

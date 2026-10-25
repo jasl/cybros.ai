@@ -130,6 +130,7 @@ services:
       - "host.docker.internal:host-gateway"
     ports:
       - "${CYBROS_BIND:-127.0.0.1}:${CYBROS_RHO_PORT:-7777}:7777"
+      - "${CYBROS_BIND:-127.0.0.1}:${CYBROS_TERMINAL_UDP_MIN:-49160}-${CYBROS_TERMINAL_UDP_MAX:-49200}:${CYBROS_TERMINAL_UDP_MIN:-49160}-${CYBROS_TERMINAL_UDP_MAX:-49200}/udp"
     volumes:
       - ./data/rho/home:/var/lib/rho
       - ./data/rho/work:/home/runner
@@ -326,6 +327,8 @@ initialize() {
       write_setting CYBROS_BIND "${CYBROS_BIND:-127.0.0.1}"
       write_setting CYBROS_NEXUS_PORT "${CYBROS_NEXUS_PORT:-3300}"
       write_setting CYBROS_RHO_PORT "${CYBROS_RHO_PORT:-7777}"
+      write_setting CYBROS_TERMINAL_UDP_MIN "${CYBROS_TERMINAL_UDP_MIN:-49160}"
+      write_setting CYBROS_TERMINAL_UDP_MAX "${CYBROS_TERMINAL_UDP_MAX:-49200}"
       if [ -n "${WEB_CONCURRENCY:-}" ]; then write_setting WEB_CONCURRENCY "$WEB_CONCURRENCY"; fi
       write_setting RAILS_MAX_THREADS "${RAILS_MAX_THREADS:-1}"
       if [ -n "${RAILS_DB_POOL:-}" ]; then write_setting RAILS_DB_POOL "$RAILS_DB_POOL"; fi
@@ -797,12 +800,18 @@ install_main() {
     CYBROS_BIND=${CYBROS_BIND:-127.0.0.1}
     CYBROS_NEXUS_PORT=${CYBROS_NEXUS_PORT:-3300}
     CYBROS_RHO_PORT=${CYBROS_RHO_PORT:-7777}
+    CYBROS_TERMINAL_UDP_MIN=${CYBROS_TERMINAL_UDP_MIN:-49160}
+    CYBROS_TERMINAL_UDP_MAX=${CYBROS_TERMINAL_UDP_MAX:-49200}
+    install_port_valid "$CYBROS_TERMINAL_UDP_MIN" || install_fail 'CYBROS_TERMINAL_UDP_MIN must be a port from 1 to 65535.'
+    install_port_valid "$CYBROS_TERMINAL_UDP_MAX" || install_fail 'CYBROS_TERMINAL_UDP_MAX must be a port from 1 to 65535.'
+    [ "$CYBROS_TERMINAL_UDP_MIN" -le "$CYBROS_TERMINAL_UDP_MAX" ] || install_fail 'Terminal UDP port minimum must not exceed its maximum.'
     install_port_valid "$CYBROS_NEXUS_PORT" || install_fail 'CYBROS_NEXUS_PORT must be a port from 1 to 65535.'
     install_port_valid "$CYBROS_RHO_PORT" || install_fail 'CYBROS_RHO_PORT must be a port from 1 to 65535.'
     [ "$CYBROS_NEXUS_PORT" -ne "$CYBROS_RHO_PORT" ] || install_fail 'Nexus and rho need different ports.'
     CYBROS_NEXUS_URL=${CYBROS_NEXUS_URL:-http://$server_host:$CYBROS_NEXUS_PORT}
     CYBROS_RHO_URL=${CYBROS_RHO_URL:-http://$server_host:$CYBROS_RHO_PORT}
     export CYBROS_BIND CYBROS_NEXUS_PORT CYBROS_RHO_PORT CYBROS_NEXUS_URL CYBROS_RHO_URL
+    export CYBROS_TERMINAL_UDP_MIN CYBROS_TERMINAL_UDP_MAX
   fi
 
   printf '\n[4/5] Review installation\n'

@@ -19,6 +19,11 @@ module Rho
         attr_reader offset: Integer
         def self.new: (offset: Integer) -> instance
       end
+      class Resize < Data
+        attr_reader cols: Integer
+        attr_reader rows: Integer
+        def self.new: (cols: Integer, rows: Integer) -> instance
+      end
       class Output < Data
         attr_reader offset: Integer
         attr_reader bytes: String
@@ -31,8 +36,8 @@ module Rho
         def message: () -> String
       end
       module Protocol
-        def self.encode: (Input | Resume | Output | Gap | Receipt) -> String
-        def self.decode: (String) -> (Input | Resume | Output | Gap | Receipt)
+        def self.encode: (Input | Resume | Resize | Output | Gap | Receipt) -> String
+        def self.decode: (String) -> (Input | Resume | Resize | Output | Gap | Receipt)
       end
       class Receiver
         def initialize: () -> void
@@ -42,15 +47,14 @@ module Rho
         def receive: (String) -> Array[Output | Gap | Receipt]
       end
       class Window
-        def initialize: (max_bytes: Integer, max_age: Numeric, clock: ^() -> Numeric) -> void
+        def initialize: (max_bytes: Integer) -> void
         attr_reader end_offset: Integer
         attr_reader retained_bytes: Integer
         def append: (String, retain: bool) -> nil
         def next_frame: (Integer) -> (Output | Gap | nil)
-        def expire: () -> nil
         def clear: () -> nil
       end
-      def initialize: (connection: WebrtcConnection, context: ExecutionContext, ?window_bytes: Integer, ?window_seconds: Numeric, ?clock: ^() -> Numeric) -> void
+      def initialize: (connection: WebrtcConnection, context: ExecutionContext, ?resize: ^(Integer, Integer) -> untyped, ?window_bytes: Integer) -> void
       def write_output: (String) -> nil
       def acknowledge_input: (Integer) -> nil
       def poll: () -> WebrtcTransport::Poll

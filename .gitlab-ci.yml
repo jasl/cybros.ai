@@ -217,7 +217,7 @@ agent_rho:
     - RHO_INSTALL_TEST_OFFLINE=1 ../../../install/test/run.sh
 
 agent_rho_env:
-  extends: .gem
+  extends: [.gem, .ruby_bun]
   variables:
     PROJECT_DIR: agents/rho/rho-env
     CI_APT_PACKAGES: ripgrep fd-find

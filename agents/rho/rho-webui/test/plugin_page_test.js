@@ -22,6 +22,7 @@ function pages(plugins, { answers = {}, loaded = true, address = {} } = {}) {
   const requests = [];
   const toasts = [];
   const navigated = [];
+  let setupRefreshes = 0;
   let location = { panel: "plugins", plugin: null, ...address };
   const listeners = new Set();
   const router = {
@@ -39,6 +40,7 @@ function pages(plugins, { answers = {}, loaded = true, address = {} } = {}) {
       if (!handler) throw new Error(`unexpected ${path}`);
       return handler(options.body);
     },
+    setup: { refresh: async () => { setupRefreshes += 1; } },
     inventory: {
       state: inventory,
       refresh: async () => { requests.push(["refresh"]); },
@@ -52,7 +54,7 @@ function pages(plugins, { answers = {}, loaded = true, address = {} } = {}) {
   register(ui, shell);
   const page = shell.slots.winner("main", "plugins").component({ visible: true });
   document.body.append(page.element);
-  return { shell, page, inventory, requests, toasts, navigated, router, element: page.element };
+  return { shell, page, inventory, setupRefreshes: () => setupRefreshes, requests, toasts, navigated, router, element: page.element };
 }
 const cards = (root) => root.querySelectorAll(".plugin-card:not(.plugin-card--skeleton)");
 const flip = (input, checked) => { input.checked = checked; input.dispatchEvent(new Event("change")); };
@@ -108,6 +110,7 @@ test("enabling posts the plugin manager's enable and applies the answered row", 
   expect(p.requests.at(-1)).toEqual(["/extensions/notes/enable", "POST", { dependents: [] }]);
   expect(cards(p.element)[0].querySelector(".tag")).toBeNull();
   expect(p.toasts).toEqual([["Saved and applied.", "success"]]);
+  expect(p.setupRefreshes()).toBe(1);
 });
 
 test("a failed refresh stays visible with the last plugin list and clears after recovery", () => {

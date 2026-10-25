@@ -71,7 +71,7 @@ entry points; use their focused tasks or test filters for scoped implementation 
   tests, RuboCop, RBS validation/conformance and installer checks. RBS loads the SDK and rho-env
   signatures, so drift in their typed surfaces is caught here.
 - Each other gem under `agents/rho/`: `bundle exec rake` and `bundle exec rake build` in the
-  affected gem. Its Rakefile owns the precise gate; `rho-webui`, `rho-ingress-telegram` and `rho-t3`
+  affected gem. Its Rakefile owns the precise gate; `rho-env`, `rho-webui`, `rho-ingress-telegram` and `rho-t3`
   include browser JavaScript tests run with Bun.
 - `cmctl`: `bundle exec rake` and `bundle exec rake build` (tests and RuboCop).
 - `e2e/protocol` and `e2e/products` each own a Gemfile, lockfile and `bundle exec rake`

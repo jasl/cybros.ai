@@ -43,11 +43,10 @@ class WebrtcStreamTest < Minitest::Test
   end
 
   def setup
-    @now = 0.0
     @gate = Gate.new
     @context = Rho::Env::ExecutionContext.new(realtime: @gate)
     @connection = Connection.new
-    @stream = Stream.new(connection: @connection, context: @context, window_bytes: 16, window_seconds: 30.0, clock: -> { @now })
+    @stream = Stream.new(connection: @connection, context: @context, window_bytes: 16)
     @receiver = Stream::Receiver.new
   end
 
@@ -55,8 +54,28 @@ class WebrtcStreamTest < Minitest::Test
     @stream.close
   end
 
+  def test_resize_is_bounded_and_applied_only_to_a_resumed_authorized_peer
+    sizes = []
+    @stream = Stream.new(connection: @connection, context: @context, resize: ->(cols, rows) { sizes << [cols, rows] })
+    frame = Stream::Protocol.encode(Stream::Resize.new(cols: 42, rows: 17))
+    @connection.incoming << frame
+    assert_raises(Rho::Env::Error) { @stream.poll }
+    request
+    @connection.incoming << frame
+    @stream.poll
+    assert_equal [[42, 17]], sizes
+    @gate.permitted = false
+    @connection.incoming << frame
+    @stream.poll
+    assert_equal [[42, 17]], sizes
+    [[1, 24], [501, 24], [80, 1], [80, 201]].each do |cols, rows|
+      invalid = JSON.generate(type: "resize", cols: cols, rows: rows)
+      assert_raises(Rho::Env::Error) { Stream::Protocol.decode(invalid) }
+    end
+  end
+
   def test_sustained_output_without_a_reader_keeps_only_the_bounded_tail
-    @stream = Stream.new(connection: @connection, context: @context, clock: -> { @now })
+    @stream = Stream.new(connection: @connection, context: @context)
     512.times do
       @stream.write_output("x" * (16 * 1024))
       @stream.poll
@@ -73,7 +92,7 @@ class WebrtcStreamTest < Minitest::Test
   end
 
   def test_overrun_recovers_live_output_while_the_producer_keeps_writing
-    @stream = Stream.new(connection: @connection, context: @context, window_bytes: 16 * 1024, clock: -> { @now })
+    @stream = Stream.new(connection: @connection, context: @context, window_bytes: 16 * 1024)
     32.times { @stream.write_output("a" * 1024) }
     request
     gap = @receiver.receive(@connection.sent.shift).first
@@ -105,7 +124,22 @@ class WebrtcStreamTest < Minitest::Test
     assert_equal 8, @receiver.offset
   end
 
-  def test_capacity_and_time_expiry_have_explicit_gap_events
+  def test_fresh_viewer_recovers_idle_shell_history_after_plugin_reactivation
+    @stream.write_output("shell history")
+    request
+    assert_equal "shell history", @receiver.receive(@connection.sent.shift).first.bytes
+    @connection.ready = false
+    100.times { @stream.poll }
+    @connection.connection_id = "reactivated"
+    @connection.ready = true
+    @receiver = Stream::Receiver.new
+    request
+    assert_equal "shell history", @receiver.receive(@connection.sent.shift).first.bytes
+    request
+    assert_empty @connection.sent
+  end
+
+  def test_capacity_eviction_has_explicit_gap_events
     @stream.write_output("a" * 10)
     @stream.write_output("b" * 10)
     request
@@ -114,11 +148,6 @@ class WebrtcStreamTest < Minitest::Test
     assert_equal "Output gap: 10 bytes are unavailable.", gap.message
     request
     assert_equal "b" * 10, @receiver.receive(@connection.sent.shift).first.bytes
-    @stream.write_output("expired")
-    @now = 30.0
-    request
-    gap = @receiver.receive(@connection.sent.shift).first
-    assert_equal [20, 27], [gap.from, gap.to]
     request
     assert_empty @connection.sent
   end
@@ -180,14 +209,13 @@ class WebrtcStreamTest < Minitest::Test
     assert_equal "pending", @receiver.receive(@connection.sent.shift).first.bytes
   end
 
-  def test_window_bounds_tiny_blocks_and_expires_even_without_a_reader
-    window = Stream::Window.new(max_bytes: 1024, max_age: 30.0, clock: -> { @now })
+  def test_window_bounds_tiny_blocks_and_clear_reports_missing_history
+    window = Stream::Window.new(max_bytes: 1024)
     300.times { window.append("x", retain: true) }
     assert_equal 256, window.retained_bytes
     gap = window.next_frame(0)
     assert_equal [0, 299], [gap.from, gap.to]
-    @now = 30.0
-    window.expire
+    window.clear
     assert_equal 0, window.retained_bytes
     assert_equal 300, window.next_frame(44).to
   end
@@ -221,7 +249,7 @@ class WebrtcStreamTest < Minitest::Test
   end
 
   def test_large_binary_output_is_framed_and_partial_resume_preserves_byte_offsets
-    window = Stream::Window.new(max_bytes: 16 * 1024, max_age: 30.0, clock: -> { @now })
+    window = Stream::Window.new(max_bytes: 16 * 1024)
     bytes = (0..255).to_a.pack("C*") * 64
     window.append(bytes, retain: true)
     first = window.next_frame(3)

@@ -6,7 +6,7 @@ const names = (rows) => rows.map((row) => row.cell);
 
 test("the catalog is closed and every slot is a list or keyed cell set", () => {
   expect(Object.keys(SLOTS).sort()).toEqual([
-    "bots.item.config", "conversation.header.utilities", "dock.tab", "main", "plugins.item.config", "settings.section", "sidebar.panellist",
+    "bots.item.config", "conversation.header.utilities", "dock.tab", "main", "plugins.item.config", "settings.section", "sidebar.panellist", "task.detail",
   ]);
   for (const spec of Object.values(SLOTS)) expect(["list", "keyed"]).toContain(spec.kind);
   const slots = createSlots();

@@ -1,7 +1,7 @@
 module Rho
   module Env
     class WebrtcConnection
-      def initialize: (executable: String, context: ExecutionContext, ?servers: Array[Hash[String, untyped]], ?clock: ^() -> Numeric) -> void
+      def initialize: (executable: String, context: ExecutionContext, ?servers: Array[Hash[String, untyped]], ?network: WebrtcTransport::Network, ?clock: ^() -> Numeric) -> void
       attr_reader connection_id: String?
       def pid: () -> Integer?
       def poll: () -> WebrtcTransport::Poll

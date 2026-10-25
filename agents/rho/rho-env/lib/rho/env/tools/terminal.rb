@@ -13,17 +13,18 @@ module Rho
         SCHEMA = { "type" => "object", "properties" => {}, "additionalProperties" => false }.freeze
         EFFECT_PROFILE = Bash::EFFECT_PROFILE
 
-        def self.configured(executable:, servers:)
+        def self.configured(executable:, servers:, network: WebrtcTransport::DEFAULT_NETWORK)
           tool = Class.new(self)
           constants(false).each { |name| tool.const_set(name, const_get(name)) }
-          tool.define_method(:initialize) { |env:| super(env: env, executable: executable, servers: servers) }
+          tool.define_method(:initialize) { |env:| super(env: env, executable: executable, servers: servers, network: network) }
           tool
         end
 
-        def initialize(env:, executable:, servers: [])
+        def initialize(env:, executable:, servers: [], network: WebrtcTransport::DEFAULT_NETWORK)
           @env = env
           @executable = executable
           @servers = servers
+          @network = network
         end
 
         def call(_args)
@@ -31,13 +32,27 @@ module Rho
           context = ExecutionContext.current
           raise Error, "Terminal requires a task realtime context" unless context&.realtime
 
-          connection = WebrtcConnection.new(executable: @executable, context: context, servers: @servers)
-          stream = WebrtcStream.new(connection: connection, context: context)
-          shell = Shell.new(root: @env.root)
-          ExecutionContext.with_cancel_signal(-> { shell.cancel }) do
+          connection = WebrtcConnection.new(executable: @executable, context: context, servers: @servers, network: @network)
+          shell = nil
+          size = [80, 24]
+          stream = WebrtcStream.new(connection: connection, context: context, resize: ->(cols, rows) {
+            size = [cols, rows]
+            shell&.resize(cols, rows)
+          })
+          ExecutionContext.with_cancel_signal(-> { shell&.cancel }) do
             loop do
               @env.raise_if_cancelled!
               packet = stream.poll
+              # Start only after the first viewer is authorized and has resumed.
+              # Otherwise the startup prompt is emitted while capture is forbidden.
+              unless shell
+                unless packet.ready && context.realtime.allowed?
+                  sleep(0.01)
+                  next
+                end
+                shell = Shell.new(root: @env.root)
+                shell.resize(*size)
+              end
               packet.data.each { |bytes| stream.acknowledge_input(shell.write(bytes, context: context)) }
               bytes = shell.read
               break if bytes.nil?
@@ -86,6 +101,11 @@ module Rho
               count == :wait_writable ? sleep(0.01) : offset += count
             end
             offset
+          end
+
+          def resize(cols, rows)
+            @reader.winsize = [rows, cols]
+            nil
           end
 
           def cancel

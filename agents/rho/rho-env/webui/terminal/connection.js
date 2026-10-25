@@ -1,9 +1,9 @@
-import { TerminalStream } from "./terminal_stream.js";
-import { realtimeConnection } from "./realtime_connection.js";
+import { TerminalStream } from "./stream.js";
+import { realtimeConnection } from "./realtime.js";
 
 export function terminalConnection({ output, gap, input = () => {}, ...options }) {
   const stream = new TerminalStream();
-  let access, connection, channel, rendering = false;
+  let access, connection, channel, rendering = false, size, sentSize;
   let inputTimer, receiptTimer, inputText = "", inputExpires = 0, inputPending;
   function clearInput() {
     clearTimeout(inputTimer);
@@ -11,6 +11,7 @@ export function terminalConnection({ output, gap, input = () => {}, ...options }
     inputText = "";
   }
   function abandonInput() {
+    sentSize = null;
     clearTimeout(receiptTimer);
     if (inputPending) input({ status: "unknown", id: inputPending.id });
     else if (inputText) input({ status: "unsent" });
@@ -44,10 +45,13 @@ export function terminalConnection({ output, gap, input = () => {}, ...options }
     } catch { if (!inputPending) input({ status: "unsent" }); access.reconnect(); }
   }
   function resume() {
-    if (!rendering && access.allowed() && channel?.readyState === "open" && channel.bufferedAmount < 16384) channel.send(stream.resume());
+    if (!rendering && access.allowed() && channel?.readyState === "open" && channel.bufferedAmount < 16384) {
+      channel.send(stream.resume());
+      if (size && size !== sentSize) { channel.send(size); sentSize = size; }
+    }
   }
   const link = realtimeConnection({ ...options, prepare(current, controls) {
-    access = controls; connection = current;
+    access = controls; connection = current; sentSize = null;
     const data = channel = current.createDataChannel("terminal", { negotiated: true, id: 0, ordered: true });
     data.binaryType = "arraybuffer";
     data.onopen = () => { if (controls.current()) controls.refresh(); };
@@ -70,6 +74,11 @@ export function terminalConnection({ output, gap, input = () => {}, ...options }
     };
   } });
   return { ...link,
+    resize(cols, rows) {
+      if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 2 || cols > 500 || rows < 2 || rows > 200) throw new Error("invalid terminal dimensions");
+      size = JSON.stringify({ type: "resize", cols, rows });
+      if (access) resume();
+    },
     send(text) {
       if (!access?.allowed() || channel?.readyState !== "open" || connection.connectionState === "disconnected") return false;
       if (!text) return true;

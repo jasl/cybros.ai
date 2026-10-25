@@ -69,6 +69,28 @@ The optional **Terminal** plugin (`rho.terminal`) serves an operator-only intera
 Bash tool on rho's Local environment. It is disabled by default and is not advertised
 to models. It uses the existing task claim, deadline renewal and Stop lifecycle.
 
+The distributed Docker image includes the helper. For the Docker stack on a LAN:
+
+- Open **Plugins → Terminal**. Leave **Transport helper** empty.
+- Set **Advertised IP address** to the Docker host's browser-reachable LAN IP,
+  for example `192.168.1.20`, save, then enable the plugin.
+- The stack publishes UDP ports `49160–49200` on `CYBROS_BIND`. Keep **First UDP port**
+  and **Last UDP port** at those defaults. Allow that range through the host firewall.
+  An HTTP reverse proxy alone does not carry this UDP traffic.
+- To choose another range, set `CYBROS_TERMINAL_UDP_MIN` and
+  `CYBROS_TERMINAL_UDP_MAX` in the stack's `.env`, recreate the rho container, and
+  set the same range in the Terminal plugin. Each live peer consumes a port;
+  widen the range if many terminals exhaust it.
+
+The plugin owns its address and port settings; the installer owns Docker's port
+mapping. No plugin is enabled automatically. Host installations can leave the
+advertised address empty. TURN remains available when the browser cannot reach
+the published address and ports.
+The Terminals entry appears when an eligible Runner announces the capability.
+Disabling the local plugin does not hide a terminal supplied by another Runner.
+
+For an installation without the bundled helper:
+
 1. Build the transport helper from the rho-env package's `transport/` directory,
    using the Go version declared in its `go.mod`:
 

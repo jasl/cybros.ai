@@ -117,6 +117,7 @@ module E2E
         <<~JS
           import { call, bearer } from '/kernel/api.js';
           import { terminalsPanel } from '/features/terminals/index.js';
+          import { terminalSession } from '/features/terminals/session.js';
           #{peer_script_source}
           const scope = #{JSON.generate(target)};
           bearer.set((await call('/auth/unlock', {method:'POST', body:{}})).bearer);
@@ -130,7 +131,15 @@ module E2E
           };
           let panel;
           function attach() {
-            panel = terminalsPanel({call: window.terminalCall}, {conversation:{workspace:scope.workspace_public_id}});
+            const shell = {call: window.terminalCall, dock: {
+              state: () => ({get: () => ({tabs: []})}),
+              open(key, {params}) {
+                panel.dispose();
+                panel = terminalSession(shell, {params, updateParams(next) { params = next; }});
+                document.querySelector('main').replaceChildren(panel.element);
+              }
+            }};
+            panel = terminalsPanel(shell, {conversation:{workspace:scope.workspace_public_id}});
             document.querySelector('main').replaceChildren(panel.element);
           }
           document.querySelector('#detach').onclick = () => { panel.dispose(); document.querySelector('main').replaceChildren(); };

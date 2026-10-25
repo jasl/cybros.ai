@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
-import { permissionChannel } from "../webui/kernel/permission_channel.js";
-import { realtimeConnection } from "../webui/kernel/realtime_connection.js";
+import { permissionChannel } from "../../webui/terminal/permission.js";
+import { realtimeConnection } from "../../webui/terminal/realtime.js";
 const wait = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
 
 test("a permission response spends the probe delay and never accepts another nonce or an overlong budget", () => {

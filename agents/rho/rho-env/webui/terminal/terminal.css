@@ -1,0 +1,24 @@
+/* The terminal screen uses the space left by transient alerts and mobile keys. */
+.terminal { text-autospace: no-autospace; display: flex; flex-direction: column; min-width: 0; height: 400px; margin-block: 1rem; }
+.terminal > .alert { flex: none; margin-bottom: 8px; }
+.terminal > .alert .alert__text { flex: 1; min-width: 0; }
+.terminal > .alert > .btn--icon { font: inherit; margin-block: -4px; }
+.terminal > .alert > .btn--icon .icon { width: 1em; height: 1em; margin: 0; }
+.terminal__screen { flex: 1; min-height: 0; overflow: hidden; padding: 8px; background: var(--code-block); color: var(--ink); border-radius: var(--radius-sm); }
+
+.terminals { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.terminals__head { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.terminals__head .field { flex: 1 1 180px; min-width: 0; }
+.terminals__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.terminals__guide { font: 400 13px/20px var(--font-ui); color: var(--ink-3); }
+
+.terminal-session { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 8px; }
+.terminal-session__host { display: flex; flex: 1; min-height: 0; }
+.terminal-session .terminal { flex: 1; height: auto; min-height: 0; margin: 0; }
+.terminals__history { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+
+.terminal__keys { display: none; flex: none; gap: 4px; padding-top: 6px; padding-bottom: env(safe-area-inset-bottom, 0px); }
+.terminal__keys button { min-width: 0; min-height: 44px; border: 0; border-radius: var(--radius-sm); background: var(--code-block); color: var(--ink-2); font: 500 12px/20px var(--font-ui); touch-action: manipulation; }
+.terminal__keys button.is-active { background: var(--accent); color: white; }
+.terminal__keys button:disabled { opacity: .4; }
+@media (max-width: 767px) { .terminal__keys { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); } }

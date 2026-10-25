@@ -89,4 +89,5 @@ export RHO_PREFIX=/opt/rho
 export PATH="$RHO_PREFIX/bin:$PATH"
 /opt/rho/ruby/current/bin/ruby -rbundler/setup "$(dirname "$0")/workspace_tools_smoke.rb" "$work"
 /opt/rho/ruby/current/bin/ruby -rbundler/setup "$(dirname "$0")/browser_smoke.rb" "$work"
+/opt/rho/ruby/current/bin/ruby -rbundler/setup "$(dirname "$0")/terminal_smoke.rb"
 printf '%s\n' 'coding, Cowork and rho-browser runtime smoke passed'

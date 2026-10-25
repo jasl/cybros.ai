@@ -3,13 +3,15 @@
     "id": "rho.terminal",
     "display_name": "Terminal",
     "category": "tools",
-    "description": "Open an interactive terminal on this Runner. Requires the compiled WebRTC transport helper.",
+    "description": "Open an interactive terminal on this Runner. Docker images include the transport helper. For Docker on a LAN, set Advertised IP address to the host IP and publish the configured UDP ports.",
     "configuration_version": 1,
     "configuration_schema": {
       "type": "object",
       "properties": {
         "executable": {
           "type": "string",
+          "title": "Transport helper",
+          "description": "Leave empty to use the bundled helper, or enter the absolute path of a compiled rho-webrtc executable.",
           "default": ""
         },
         "ice_servers": {
@@ -37,6 +39,27 @@
             ],
             "additionalProperties": false
           }
+        },
+        "advertised_ip": {
+          "type": "string",
+          "default": "",
+          "title": "Advertised IP address",
+          "description": "For Docker port forwarding, enter the host IP reachable by your browser. Leave empty for direct host networking or TURN."
+        },
+        "udp_port_min": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 49160,
+          "title": "First UDP port",
+          "description": "Must match the ports published by Docker or your firewall."
+        },
+        "udp_port_max": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 49200,
+          "title": "Last UDP port"
         }
       },
       "additionalProperties": false

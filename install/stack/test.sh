@@ -419,6 +419,9 @@ rho = services["rho"]
 assert rho["environment"]["RHO_PUBLIC_URL"] == "http://home.local:7777"
 assert rho["environment"]["RHO_NEXUS_PUBLIC_URL"] == "http://home.local:3300"
 assert rho["environment"]["RHO_NEXUS_URL"] == "http://nexus"
+udp = [port for port in rho["ports"] if port["protocol"] == "udp"]
+assert {port["target"] for port in udp} == set(range(49160, 49201))
+assert all(str(port["target"]) == port["published"] for port in udp)
 assert "RHO_INSTALLATION_FILE" not in rho["environment"]
 assert "RHO_ACCESS_PASSPHRASE" not in rho["environment"]
 assert "NEXUS_SETUP_SECRET" not in rho["environment"]

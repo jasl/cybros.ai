@@ -3,6 +3,8 @@ module Rho
     module Extensions
       module Terminal
         NAME: String
+        BUNDLED_EXECUTABLE: String
+        WEBUI_ROOT: String
         def self.register: (Api api) -> untyped
       end
     end
@@ -12,13 +14,14 @@ module Rho
         DESCRIPTION: nil
         SCHEMA: Hash[String, untyped]
         EFFECT_PROFILE: Hash[String, untyped]
-        def self.configured: (executable: String, servers: Array[Hash[String, untyped]]) -> singleton(Terminal)
-        def initialize: (env: ToolEnv, executable: String, ?servers: Array[Hash[String, untyped]]) -> void
+        def self.configured: (executable: String, servers: Array[Hash[String, untyped]], ?network: WebrtcTransport::Network) -> singleton(Terminal)
+        def initialize: (env: ToolEnv, executable: String, ?servers: Array[Hash[String, untyped]], ?network: WebrtcTransport::Network) -> void
         def call: (Hash[String, untyped]) -> Result
         class Shell
           def initialize: (root: String) -> void
           def read: () -> (String | :wait_readable | nil)
           def write: (String, context: ExecutionContext) -> Integer
+          def resize: (Integer, Integer) -> nil
           def cancel: () -> untyped
           def close: () -> void
         end

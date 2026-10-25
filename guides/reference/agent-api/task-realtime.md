@@ -298,11 +298,13 @@ stream.write_output(output_bytes)
 stream.close
 ```
 
-The window is in memory for this handler only. Defaults are at most 256 KiB, 30 seconds
-from capture, and 256 blocks. The oldest whole blocks are evicted when any bound is reached;
-`window_bytes:` and `window_seconds:` configure the first two bounds. It is not a durable
-transcript and does not survive handler exit. New peer generations share this window and
-retain the original PTY, claim, task deadline and Stop path.
+The window is in memory for this handler only, bounded by 256 KiB by default and
+256 blocks. The oldest whole blocks are evicted when either capacity is exceeded;
+`window_bytes:` configures the byte limit. Retained output does not expire with time,
+so a fresh viewer can recover an idle shell after reloading the page or re-enabling
+the Terminal plugin. It is not a durable transcript and does not survive handler exit.
+New peer generations share this window and retain the original PTY, claim, task
+deadline and Stop path.
 If a cursor has fallen into unavailable output, the gap advances it to the newest
 retained block, skipping older backlog explicitly. This lets a live viewer recover
 from an output flood instead of repeatedly chasing an evicted oldest block.
@@ -322,8 +324,10 @@ with protocol frames.
 
 `Output` events carry a byte `offset` and binary `bytes`. `Gap` events carry the unavailable
 half-open byte range `from...to` and a default display `message`, for example
-“Output gap: 32768 bytes are unavailable.” Display the gap separately from terminal bytes;
-do not write it to the PTY. The receiver trims duplicate and overlapping output and advances
+“Output gap: 32768 bytes are unavailable.” This is protocol metadata, not PTY input.
+rho's browser viewer clears its display and scrollback on an unrecoverable gap and shows
+a screen-cleared banner rather than a byte count; it keeps the original shell running.
+The receiver trims duplicate and overlapping output and advances
 its offset when returning events to the caller. Consume all events before requesting more
 or reusing that cursor. This is delivery to the caller, not proof of rendering or durable
 storage. A receiver belongs to one task's stream and must not be reused for a different task.
@@ -346,6 +350,7 @@ The DataChannel frames are JSON objects, bounded by the transport's 16 KiB messa
 | Direction | Frame | Fields |
 | --- | --- | --- |
 | Member → Runner | `resume` | `type`, nonnegative byte `offset` |
+| Member → Runner | `resize` | `type`, integer `cols` (2–500), integer `rows` (2–200) |
 | Member → Runner | `input` | `type`, positive `id`, base64 `data` |
 | Runner → Member | `output` | `type`, byte `offset`, base64 `data` |
 | Runner → Member | `gap` | `type`, byte `from`, byte `to` |
@@ -355,6 +360,13 @@ Offsets and input identifiers are at most `2**53 - 1`; a resume beyond captured 
 contain 1–8192 raw bytes. These frames travel only over the authenticated peer, never through
 Nexus HTTP or Cable. The member caller enforces its current local permission
 window, obtained through HTTP or the bounded relayed permission described above.
+
+A terminal viewer sends its current grid dimensions after `resume` and whenever
+its viewport changes. The Runner applies `resize` only while that peer is ready,
+resumed and authorized. Resizing changes the existing PTY, creates no work, and
+needs no input receipt. A replacement peer sends the current dimensions again.
+The built-in terminal starts its shell after the first authorized viewer resumes,
+so its initial prompt is captured under the same permission as later output.
 
 ### Input receipts
 

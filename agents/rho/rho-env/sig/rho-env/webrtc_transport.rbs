@@ -3,6 +3,14 @@ module Rho
     class WebrtcTransport
       class Unavailable < Error
       end
+      class Network < Data
+        attr_reader advertised_ip: String
+        attr_reader udp_port_min: Integer
+        attr_reader udp_port_max: Integer
+        def self.new: (advertised_ip: String, udp_port_min: Integer, udp_port_max: Integer) -> instance
+        def to_h: () -> Hash[Symbol, String | Integer]
+      end
+      DEFAULT_NETWORK: Network
       MAX_BYTES: Integer
       class Poll < Data
         attr_reader data: Array[String]
@@ -13,7 +21,7 @@ module Rho
       end
       def initialize: (executable: String, ?context: ExecutionContext?) -> void
       attr_reader pid: Integer?
-      def offer: (?servers: Array[Hash[String, untyped]], ?relay: bool) -> String
+      def offer: (?servers: Array[Hash[String, untyped]], ?relay: bool, ?network: Network) -> String
       def answer: (sdp: String, ?servers: Array[Hash[String, untyped]], ?relay: bool) -> String
       def remote: (sdp: String) -> nil
       def connect: (?servers: Array[Hash[String, untyped]], ?relay: bool) -> String

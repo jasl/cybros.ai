@@ -253,6 +253,7 @@ export function pluginForm(shell, initialProps) {
       else if (answer.plugin) draft.update(answer.plugin);
       say([pluginSaveMessage(answer), diagnosticsText(answer.diagnostics)].filter(Boolean).join(" "), answer.saved && answer.applied ? "success" : "warning");
       await shell.inventory.accept(answer);
+      await shell.setup.refresh();
     } catch (error) {
       if (error.name === "AbortError" || error.status === 401) return;
       const answer = error.details || {};
@@ -260,6 +261,7 @@ export function pluginForm(shell, initialProps) {
         draft.acknowledge(submitted, answer.plugin);
         say(pluginSaveMessage(answer), "warning");
         await shell.inventory.accept(answer);
+        await shell.setup.refresh();
       } else {
         uncertain = !error.status;
         say(uncertain ? t("plugin_settings.save_outcome_is_unknown_your_draft_is_kept") : error.message, "error");

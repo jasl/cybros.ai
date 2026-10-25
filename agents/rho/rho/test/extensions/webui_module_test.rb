@@ -86,6 +86,23 @@ class WebuiModuleTest < Minitest::Test
     assert_equal ["broken factory"], loaded.failures.map(&:message)
   end
 
+  def test_terminal_contributes_its_packaged_module_only_after_successful_activation
+    require "rho/env/extensions/terminal"
+    settings = { "plugins" => { "rho.terminal" => { "enabled" => true,
+      "configuration" => { "executable" => RbConfig.ruby } } } }
+    loaded = Rho::Extensions.load(host: host(settings), extensions: [Rho::Env::Extensions::Terminal])
+    assert_predicate loaded, :ok?
+    assert_equal ["rho.terminal"], loaded.webui_modules.map(&:extension)
+    root = loaded.webui_modules.first.root
+    %w[index.js panel.js task.js terminal.css vendor/xterm/xterm.js vendor/xterm/xterm.css vendor/xterm/LICENSE].each do |asset|
+      assert File.file?(File.join(root, asset)), asset
+    end
+    settings["plugins"]["rho.terminal"]["configuration"]["executable"] = "/missing/helper"
+    failed = Rho::Extensions.load(host: host(settings), extensions: [Rho::Env::Extensions::Terminal])
+    refute_predicate failed, :ok?
+    assert_empty failed.webui_modules
+  end
+
   def test_every_committed_extension_may_contribute_its_own_module
     owners = %w[test.first test.second].map do |name|
       extension(name) { |handle| handle.register_webui_module(root: browser_module(name)) }

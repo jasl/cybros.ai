@@ -422,6 +422,10 @@ jobs:
           working-directory: agents/rho/rho-env
           bundler-cache: true
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
       - name: Run the default task
         run: bundle exec rake
 

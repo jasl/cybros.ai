@@ -11,6 +11,7 @@ export const SLOTS = Object.freeze({
   "bots.item.config": Object.freeze({ kind: "list" }),
   "plugins.item.config": Object.freeze({ kind: "keyed" }),
   "dock.tab": Object.freeze({ kind: "keyed", meta: ["title"] }),
+  "task.detail": Object.freeze({ kind: "list" }),
   "conversation.header.utilities": Object.freeze({ kind: "list" }),
 });
 

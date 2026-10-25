@@ -98,17 +98,28 @@ A page admitted by the gate holds no Nexus account; Settings names how it got in
 
 ## Open a terminal
 
-Choose **Terminals** in the conversation header, select a Runner, then choose
-**New terminal**. The Runner must have the [Terminal plugin configured](../runners/deploy.md#interactive-terminals).
+Enable the **Terminal** plugin on the rho serving this browser page to show
+**Terminals** in the conversation header and tool chooser. Select a Runner, then
+choose **New terminal**. The selected Runner must also have the
+[Terminal plugin configured](../runners/deploy.md#interactive-terminals).
 The shell opens in that Runner's default work directory, independently of the
 conversation's environment. Each terminal has its own Run; no model call is needed.
 
-The panel shows pending approval, startup failures and ended tasks. Closing it leaves
-its terminal running. Reopen **Terminals** and select the recorded terminal to attach
-again; **Older terminals** reads earlier records from Nexus. **Stop terminal** ends
-that terminal's Run, shell and ordinary shell jobs. Conversation Stop does not stop
+Each new shell opens and selects its own terminal tab. Use the **New tab** (+) button
+to open the tool chooser; switching tabs keeps each shell and its output in place.
+Pending approval, startup failures and ended shells appear in their own tab. The tab's **×** stops
+that terminal's Run, shell and ordinary shell jobs, then closes the tab. If stopping
+fails, the tab stays open with an error so you can retry. Hiding the side panel or
+switching conversations leaves shells running. Open **Terminals**, choose **Refresh**,
+and select a running shell to reconnect; **Older terminals** reads earlier records from Nexus. Conversation Stop does not stop
 these independent terminals. Deliberately disowned jobs or programs that create a
 new session are outside the shell's job ownership.
+
+Disabling the Terminal plugin removes its browser controls and tabs without
+stopping accepted shells. Re-enable it and select a running shell to reconnect.
+
+On narrow screens, a compact bottom row provides Esc, Tab, Ctrl and arrow keys.
+Tap Ctrl, then type a letter to send a combination such as Ctrl+C or Ctrl+D.
 
 ## Attach to an interactive terminal
 
@@ -116,13 +127,15 @@ When an installed Runner tool owns a live PTY and publishes the
 [terminal stream protocol](../reference/agent-api/task-realtime.md#output-recovery),
 open its tool call in the conversation activity, then choose **Open terminal**.
 This attaches to that existing task; it does not launch a shell or turn an ordinary
-`bash` call into an interactive terminal. The terminal uses an 80-column screen;
-on a narrow display, scroll inside the screen horizontally.
+`bash` call into an interactive terminal. The screen and PTY resize to fit the panel.
 
-The connection label shows connection, automatic reconnection and permission pauses.
+A banner appears during connection, automatic reconnection and permission pauses.
 Typing is disabled while interaction is unavailable. Reconnection keeps the original
 PTY and task; input is never replayed. Retained output resumes from the last received
-byte. **Output gap** reports bytes that are no longer available.
+byte. A banner confirms reconnection. If some output cannot be restored, the viewer
+clears its screen and scrollback and explains this in a banner. The shell, environment
+variables and working directory are preserved; subsequent output appears on the cleared
+screen.
 
 The input status distinguishes Runner receipt from bytes written to the terminal.
 A successful write does not confirm command completion. If the connection or

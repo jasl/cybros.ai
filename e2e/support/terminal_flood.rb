@@ -62,13 +62,13 @@ module E2E
       @page.click_button "Close panel"
       @page.click_button "Reopen task"
       @page.find("[data-terminal-id=\"#{run_id}\"]").click
-      raise "flood reconnect failed" unless @page.has_css?(".terminal__status", text: "Connected", exact_text: true, wait: 25)
+      raise "flood reconnect failed" unless @page.has_css?('.terminal[data-connection="connected"]', wait: 25)
 
       await_bytes(128 * 1024)
       during_output(&work) if work
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       @page.click_button "Stop terminal"
-      raise "flood Stop failed" unless @page.has_css?(".terminal__status", text: "Connection closed", wait: 10)
+      raise "flood Stop failed" unless @page.has_css?('.terminal[data-connection="closed"]', wait: 10)
 
       seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       warn "TERMINAL_FLOOD_STOP_SECONDS #{seconds}"

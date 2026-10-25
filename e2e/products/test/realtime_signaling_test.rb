@@ -432,7 +432,7 @@ class RealtimeSignalingTest < Minitest::Test
           original_claim = context.claim_token
           page = viewer.page
           page.click_button "Open terminal"
-          assert page.has_css?(".terminal__status", text: "Connected", exact_text: true, wait: 20)
+          assert page.has_css?('.terminal[data-connection="connected"]', wait: 20)
           page.find(".xterm-screen").click
           page.driver.browser.action.send_keys("first", :enter).perform
           assert page.has_css?(".xterm-accessibility", text: "applied:first:pid=#{pid}", visible: :all, wait: 10)
@@ -441,7 +441,7 @@ class RealtimeSignalingTest < Minitest::Test
           Process.kill("TERM", connection.pid)
           assert page.has_css?(".terminal__status", text: "Reconnecting", wait: 10)
           await(seconds: 20) { connection.connection_id != first_connection }
-          assert page.has_css?(".terminal__status", text: "Connected", exact_text: true, wait: 20)
+          assert page.has_css?('.terminal[data-connection="connected"]', wait: 20)
           page.find(".xterm-screen").click
           page.driver.browser.action.send_keys("second", :enter).perform
           assert page.has_css?(".xterm-accessibility", text: "applied:second:pid=#{pid}", visible: :all, wait: 10)
@@ -462,12 +462,12 @@ class RealtimeSignalingTest < Minitest::Test
           refute context.cancelled?
           page.click_button "Reopen task"
           page.click_button "Open terminal"
-          assert page.has_css?(".terminal__status", text: "Connected", exact_text: true, wait: 25)
+          assert page.has_css?('.terminal[data-connection="connected"]', wait: 25)
           page.find(".xterm-screen").click
           page.driver.browser.action.send_keys("reattached", :enter).perform
           assert page.has_css?(".xterm-accessibility", text: "applied:reattached:pid=#{pid}", visible: :all, wait: 10)
           page.click_button "Stop terminal"
-          assert page.has_css?(".terminal__status", text: "Connection closed", wait: 10)
+          assert page.has_css?('.terminal[data-connection="closed"]', wait: 10)
           running.wait
           assert_equal :reaped, observations.pop
           refute_equal "canceled", @run.task("mainline").task.status
@@ -560,12 +560,12 @@ class RealtimeSignalingTest < Minitest::Test
                 running = reactor.async { task_run.call(run_public_id: @run.run_public_id, task_key: key, tool_name: "terminal") }
                 context = observations.pop
                 claim = context.claim_token
-                assert page.has_css?(".terminal__status", text: "Connected", exact_text: true, wait: 20)
+                assert page.has_css?('.terminal[data-connection="connected"]', wait: 20)
                 assert_browser_relay(page, transport: transport) if transport != "udp"
                 page.find(".xterm-screen").click
                 page.driver.browser.action.send_keys("printf 'SHELL:%s\\n' $$; pwd", :enter).perform
                 assert page.has_css?(".xterm-accessibility", text: root, visible: :all, wait: 10)
-                assert page.has_css?(".terminal__input", text: "command completion is not confirmed", wait: 10)
+                assert page.has_css?('.terminal[data-input-receipt="written"]', wait: 10)
                 pid = page.find(".xterm-accessibility", visible: :all).text(:all).match(/SHELL:(\d+)/)[1].to_i
                 if rejected_tls
                   viewer.configure_ice(rejected_tls.servers)
@@ -588,7 +588,7 @@ class RealtimeSignalingTest < Minitest::Test
                 page.click_button "Reopen task"
                 assert page.has_css?("[data-terminal-id=\"#{@run.run_public_id}\"]", wait: 10)
                 page.find("[data-terminal-id=\"#{@run.run_public_id}\"]").click
-                assert page.has_css?(".terminal__status", text: "Connected", exact_text: true, wait: 25)
+                assert page.has_css?('.terminal[data-connection="connected"]', wait: 25)
                 assert_browser_relay(page, transport: transport) if transport != "udp"
                 page.find(".xterm-screen").click
                 page.driver.browser.action.send_keys("printf 'SAME:%s\\n' $$", :enter).perform
@@ -624,7 +624,7 @@ class RealtimeSignalingTest < Minitest::Test
                 assert_operator flood.flood_and_reopen(@run.run_public_id, &work), :<, 5
                 assert_equal claim, context.claim_token
                 assert_empty observations
-                assert page.has_css?(".terminal__status", text: "Connection closed", wait: 10)
+                assert page.has_css?('.terminal[data-connection="closed"]', wait: 10)
                 running.wait
                 assert_raises(Errno::ESRCH) { Process.kill(0, pid) }
                 assert_equal "canceled", @run.task(key).task.status

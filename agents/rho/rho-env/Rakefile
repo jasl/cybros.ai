@@ -44,4 +44,9 @@ task :rbs do
   )
 end
 
-task default: %i[test rubocop rbs]
+desc "Test the Terminal WebUI module"
+task :test_js do
+  sh "bun", "test", "test/webui"
+end
+
+task default: %i[test test_js rubocop rbs]

@@ -16,7 +16,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 button:disabled { cursor: default; }
 a { color: var(--accent); text-decoration: none; }
 code, pre, kbd, .mono { font-family: var(--font-code); }
-pre, code, .mono, .code-block, .terminal, .diff { text-autospace: no-autospace; }
+pre, code, .mono, .code-block, .diff { text-autospace: no-autospace; }
 img { max-width: 100%; }
 details > summary { list-style: none; cursor: pointer; }
 details > summary::-webkit-details-marker { display: none; }

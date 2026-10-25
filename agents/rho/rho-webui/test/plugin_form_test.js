@@ -27,6 +27,7 @@ function form(initial = row(), answers = {}) {
   let refreshes = 0;
   const shell = {
     call: async (path, options) => { requests.push([path, options.method, options.body]); return answers.patch(options.body); },
+    setup: { refresh: async () => {} },
     inventory: { accept: async (answer) => accepted.push(answer), refresh: async () => { refreshes += 1; } },
   };
   let props = { plugin: initial, refresh: () => shell.inventory.refresh(), visible: true };
@@ -170,6 +171,7 @@ function catalogForm(initial, models) {
       if (path.startsWith("/models?")) { if (!models) throw new Error("member_plane_unavailable"); return { models }; }
       return { saved: true, applied: true, plugin: initial };
     },
+    setup: { refresh: async () => {} },
     inventory: { accept: async () => {}, refresh: async () => {} },
   };
   const view = pluginForm(shell, { plugin: initial, refresh: async () => {}, visible: true });

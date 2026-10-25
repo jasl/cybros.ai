@@ -104,3 +104,84 @@ test("the guide lists described tab types and needs a conversation before it can
   dock.element.querySelector(".dock__guide-entry").click();
   expect(dock.state.get().active).toBe("usage");
 });
+
+test("New tab opens the tool chooser without replacing or disposing a live panel", () => {
+  const { dock, seen } = harness();
+  dock.open("task", { id: "a", params: { taskKey: "a" } });
+  dock.element.querySelectorAll("button").find((button) => button.getAttribute("aria-label") === "New tab").click();
+  expect(dock.state.get().tabs.map((tab) => tab.id)).toEqual(["a", "new-tab"]);
+  expect(dock.state.get().active).toBe("new-tab");
+  expect(dock.element.querySelector(".dock__guide")).not.toBeNull();
+  expect(seen).toEqual([["mount", "a", "c-1"]]);
+  dock.element.querySelectorAll("button").find((button) => button.getAttribute("aria-label") === "New tab").click();
+  expect(dock.state.get().tabs).toHaveLength(2);
+  dock.closeTab("new-tab");
+  expect(dock.state.get().active).toBe("a");
+  expect(seen).toHaveLength(1);
+});
+
+
+test("panel actions stay on their own tab across selection and are removed with the tab", () => {
+  const { dock, slots } = harness();
+  const stopped = [];
+  slots.register("dock.tab", { key: "shell", title: (params) => params.name }, (props) => {
+    props.actions.append(el("button", { text: "Stop", onclick: () => stopped.push(props.params.name) }));
+    return { element: el("div", { text: "shell" }) };
+  });
+  dock.open("shell", { id: "a", params: { name: "first" } });
+  dock.open("shell", { id: "b", params: { name: "second" } });
+  dock.element.querySelectorAll(".dock__tab-actions button")[0].click();
+  expect(stopped).toEqual(["first"]);
+  expect(dock.state.get().tabs).toHaveLength(2);
+  dock.closeTab("a");
+  dock.element.querySelector(".dock__tab-actions button").click();
+  expect(stopped).toEqual(["first", "second"]);
+  dock.dispose();
+});
+
+test("closing waits for the panel and a refusal keeps its tab", async () => {
+  const { dock, slots } = harness();
+  let decide, requests = 0;
+  slots.register("dock.tab", { key: "shell", title: () => "Shell" }, (props) => {
+    props.beforeClose(() => { requests++; return new Promise((resolve) => { decide = resolve; }); });
+    return { element: el("div") };
+  });
+  dock.open("shell");
+  const closing = dock.closeTab("shell");
+  await dock.closeTab("shell");
+  expect(requests).toBe(1);
+  expect(dock.state.get().tabs).toHaveLength(1);
+  decide(false); await closing;
+  expect(dock.state.get().tabs).toHaveLength(1);
+  const retry = dock.closeTab("shell");
+  decide(true); await retry;
+  expect(dock.state.get().tabs).toHaveLength(0);
+  dock.dispose();
+});
+
+
+test("unloading removes all owned tabs and chooser entries without invoking Close", async () => {
+  const { dock, slots, selection } = harness();
+  let closes = 0, disposals = 0, decide;
+  const unregister = slots.register("dock.tab", { key: "extra", title: () => "Extra", description: () => "Extra tool" }, (props) => {
+    props.beforeClose(() => { closes++; return new Promise((resolve) => { decide = resolve; }); });
+    return { element: el("div"), dispose() { disposals++; } };
+  });
+  dock.open("extra", { id: "old" });
+  selection.set(context("c-2"));
+  dock.open("extra");
+  const closing = dock.closeTab("extra");
+  dock.open("task", { id: "kept" });
+  dock.element.querySelectorAll("button").find((button) => button.getAttribute("aria-label") === "New tab").click();
+  expect(dock.element.textContent).toContain("Extra tool");
+  unregister();
+  expect(dock.element.textContent).not.toContain("Extra tool");
+  expect(dock.state.get().tabs.map((tab) => tab.id)).toEqual(["kept", "new-tab"]);
+  decide(true); await closing;
+  expect(dock.state.get().tabs.map((tab) => tab.id)).toEqual(["kept", "new-tab"]);
+  selection.set(context("c-1"));
+  expect(dock.state.get().tabs).toEqual([]);
+  expect(closes).toBe(1);
+  expect(disposals).toBe(2);
+  dock.dispose();
+});

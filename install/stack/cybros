@@ -103,6 +103,8 @@ initialize() {
       write_setting CYBROS_BIND "${CYBROS_BIND:-127.0.0.1}"
       write_setting CYBROS_NEXUS_PORT "${CYBROS_NEXUS_PORT:-3300}"
       write_setting CYBROS_RHO_PORT "${CYBROS_RHO_PORT:-7777}"
+      write_setting CYBROS_TERMINAL_UDP_MIN "${CYBROS_TERMINAL_UDP_MIN:-49160}"
+      write_setting CYBROS_TERMINAL_UDP_MAX "${CYBROS_TERMINAL_UDP_MAX:-49200}"
       if [ -n "${WEB_CONCURRENCY:-}" ]; then write_setting WEB_CONCURRENCY "$WEB_CONCURRENCY"; fi
       write_setting RAILS_MAX_THREADS "${RAILS_MAX_THREADS:-1}"
       if [ -n "${RAILS_DB_POOL:-}" ]; then write_setting RAILS_DB_POOL "$RAILS_DB_POOL"; fi

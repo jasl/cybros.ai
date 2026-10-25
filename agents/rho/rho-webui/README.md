@@ -529,6 +529,8 @@ whole platform a module sees:
 | `ui.slots.register(name, options, component)` | contribute to a slot; returns a disposer |
 | `ui.call(path, { method, body, signal, conversation })` | the authenticated same-origin control API; a 401 signs the page out |
 | `ui.translator({ en: { … } })` | a `t(key, values, fallback)` over the module's own catalog with `{rho}`/`{nexus}` brand names |
+| `ui.uuidv7()` | create a public request identity |
+| `ui.isTerminal(status)` | whether a task status has ended |
 | `ui.el(tag, attrs, …children)` | element builder; text only, never HTML |
 | `ui.primitives` | buttons, fields, switch, segmented, alert, tag, disclosure, section card, list, link, menus, modals, `panelRow` (a sidebar row that opens a main panel) and `page` (the scaffold of a main panel); a button's visible text is its `.btn__label` span |
 | `ui.toast(text, { tone, action })` | a transient notice |
@@ -551,8 +553,11 @@ The slot catalog:
 | `settings.section` | keyed, `label()` required | `{ document, status, identity, visible, request, save, refresh }` | `general`, `presets`, `roles`, `advanced`, `deployment` |
 | `bots.item.config` | list (`id`, `order`) | `{ bot, refresh }` | channel modules contribute their own target forms |
 | `plugins.item.config` | keyed by plugin id | `{ plugin, refresh }` | the generic schema form |
-| `dock.tab` | keyed, `title(params)` required; `description()` lists it in the empty-panel guide | `{ conversation, params, close }` | `background`, `task`, `schedules`, `usage` |
+| `dock.tab` | keyed, `title(params)` required; `description()` lists it in the tool chooser; `requiresConversation: false` permits standalone tools; `fill: true` fills the pane | `{ conversation, params, updateParams, actions, beforeClose, close }` | `background`, `task`, `schedules`, `usage` |
+| `task.detail` | list | `{ task, target, conversation, actions }`; `task` and `target` are null while loading | none |
 | `conversation.header.utilities` | list, re-created per conversation | `{ conversation }` | `background`, `schedules`, `usage` |
+
+Dock panels may append controls to `actions` and register `beforeClose(async () => boolean)`. Returning `false` keeps the tab open; disposal on navigation does not invoke this user-close hook. Removing a registration removes its tabs and views without calling the user-close hook.
 
 Within a cell the lowest `priority` wins; the same priority twice is refused by
 name. A `main` page stays mounted behind the other panels and is told
@@ -561,7 +566,12 @@ re-instantiated (hidden) each time another is shown, so one that holds state
 — an open editor, a draft — implements it. Disposing a module removes every
 contribution it made. Module code is
 trusted installed code running same-origin with the page's bearer; there is no
-sandbox. `rho-ingress-telegram` is the shipped example: its `webui/` registers
+sandbox. The Terminal plugin in `rho-env/webui/terminal` owns its header entry,
+dock tabs, task-detail attachment, connection code, xterm and styles. It injects
+these through the handle only when active; WebUI does not import its code.
+Terminal tabs stop their shell before closing.
+
+`rho-ingress-telegram` is the shipped example: its `webui/` registers
 a `sidebar.panellist` row and a `main` page (`/panels/telegram`) so the plugin's
 status, setup and access lists are one click from the sidebar, plus the same
 body as `plugins.item.config` for `rho.ingress_telegram`. It uses its own `/telegram`

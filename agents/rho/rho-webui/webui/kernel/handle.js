@@ -1,3 +1,6 @@
+import { uuidv7 } from "./uuid.js";
+import { isTerminal } from "./format.js";
+
 // The `ui` handle is the whole platform a module sees. Everything it
 // registers is owned by the handle, so disposing the handle — because its
 // plugin stopped, changed version or the page signed out — removes every
@@ -20,6 +23,8 @@ export function createHandle({ id, slots, call, toast, navigate, dock, primitive
     // with its own controller.
     call: (path, options = {}) => call(path, { ...options, signal: options.signal ?? controller.signal }),
     translator,
+    uuidv7,
+    isTerminal,
     el,
     primitives,
     toast,

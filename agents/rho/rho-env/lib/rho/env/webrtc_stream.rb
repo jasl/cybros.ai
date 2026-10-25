@@ -7,11 +7,11 @@ module Rho
     # The existing handler owns this wrapper, its connection and its PTY.
     # Only output is recoverable; inputs are never queued for replay.
     class WebrtcStream
-      def initialize(connection:, context:, window_bytes: 256 * 1024, window_seconds: 30.0,
-        clock: -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) })
+      def initialize(connection:, context:, resize: nil, window_bytes: 256 * 1024)
         @connection = connection
         @context = context
-        @window = Window.new(max_bytes: window_bytes, max_age: window_seconds, clock: clock)
+        @resize = resize
+        @window = Window.new(max_bytes: window_bytes)
         @generation = nil
         @cursor = nil
         @resumed = false
@@ -34,7 +34,6 @@ module Rho
         @context.raise_if_cancelled!
         raise Error, "realtime stream closed" if @closed
 
-        @window.expire
         packet = @connection.poll
         if @generation != @connection.connection_id || !packet.ready
           @input_id = 0 if @generation != @connection.connection_id
@@ -52,6 +51,10 @@ module Rho
 
             @cursor = offset
             @resumed = true
+          in Resize(cols:, rows:)
+            raise Error, "terminal resize arrived before resume" unless @resumed
+
+            @resize&.call(cols, rows) if packet.ready && @context.realtime.allowed?
           in Input(id:, bytes: data)
             raise Error, "realtime input arrived before resume" unless @resumed
 

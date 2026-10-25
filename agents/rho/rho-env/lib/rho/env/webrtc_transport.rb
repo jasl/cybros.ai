@@ -8,6 +8,8 @@ module Rho
     # handle and closes it in ensure; it never owns or recreates the PTY.
     class WebrtcTransport
       class Unavailable < Error; end
+      Network = Data.define(:advertised_ip, :udp_port_min, :udp_port_max)
+      DEFAULT_NETWORK = Network.new(advertised_ip: "", udp_port_min: 0, udp_port_max: 0)
       MAX_BYTES = 16 * 1024
       Poll = Data.define(:data, :state, :pair, :ready)
 
@@ -26,8 +28,8 @@ module Rho
 
       attr_reader :pid
 
-      def offer(servers: [], relay: false)
-        request(op: "offer", servers: servers, relay: relay).fetch("sdp")
+      def offer(servers: [], relay: false, network: DEFAULT_NETWORK)
+        request(op: "offer", servers: servers, relay: relay, **network.to_h).fetch("sdp")
       end
 
       def answer(sdp:, servers: [], relay: false)

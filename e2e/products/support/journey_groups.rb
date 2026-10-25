@@ -17,7 +17,7 @@ module E2E
     }.freeze
     # The split groups have no measured timing yet; retain numeric scheduling order.
     WEIGHTS = GROUPS.to_h { |key, _| [key, 1] }.freeze
-    REALTIME = %w[realtime_signaling].freeze
+    REALTIME = %w[realtime_signaling rho_terminal_webui].freeze
     DIAGNOSTICS = %w[attachment_line_probe context_overflow_probe live_acp_agent live_acp_client live_approval live_browser live_cache_tier live_capture live_console_reads live_conversation live_debugging live_default_runner live_deferred_tools live_deliver_at live_exit_long live_exit_medium live_gallery live_grant live_guard_and_conventions live_human_in_the_loop live_intervention live_long_session live_mcp live_mcp_oauth live_memory_scopes live_named_agent live_processes live_repair live_result_dag live_rho_runner live_run live_side live_spawn live_streaming live_task_mail live_tool_discovery_smoke live_two_loops_browser live_until live_vision live_web_fetch manual_provider_smoke prompt_cache_probe stack_installation task_matrix_probe].freeze
     ONE_PER_GROUP = %w[rho_conversation workspace_dedication executor_plane rho_daemon].freeze
     SHARED_HUMAN_WRITERS = %w[memory_scopes].freeze

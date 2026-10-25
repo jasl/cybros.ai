@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"net"
 	"os"
 	"sync"
 	"time"
@@ -17,13 +18,16 @@ const maxBytes = 16 * 1024
 const maxBuffered = 64 * 1024
 
 type command struct {
-	Nonce   uint64             `json:"nonce"`
-	MaxAge  int                `json:"max_age_ms"`
-	Op      string             `json:"op"`
-	SDP     string             `json:"sdp"`
-	Data    string             `json:"data"`
-	Relay   bool               `json:"relay"`
-	Servers []webrtc.ICEServer `json:"servers"`
+	AdvertisedIP string             `json:"advertised_ip"`
+	UDPPortMin   uint16             `json:"udp_port_min"`
+	UDPPortMax   uint16             `json:"udp_port_max"`
+	Nonce        uint64             `json:"nonce"`
+	MaxAge       int                `json:"max_age_ms"`
+	Op           string             `json:"op"`
+	SDP          string             `json:"sdp"`
+	Data         string             `json:"data"`
+	Relay        bool               `json:"relay"`
+	Servers      []webrtc.ICEServer `json:"servers"`
 }
 type received struct {
 	data []byte
@@ -83,6 +87,20 @@ func (p *peer) call(c command) (map[string]any, error) {
 		}
 		settings := webrtc.SettingEngine{}
 		settings.SetIncludeLoopbackCandidate(true)
+		if err := settings.SetEphemeralUDPPortRange(c.UDPPortMin, c.UDPPortMax); err != nil {
+			return nil, err
+		}
+		if c.AdvertisedIP != "" {
+			if net.ParseIP(c.AdvertisedIP) == nil {
+				return nil, errors.New("advertised address must be an IP")
+			}
+			if err := settings.SetICEAddressRewriteRules(webrtc.ICEAddressRewriteRule{
+				External: []string{c.AdvertisedIP}, AsCandidateType: webrtc.ICECandidateTypeHost,
+				Mode: webrtc.ICEAddressRewriteReplace,
+			}); err != nil {
+				return nil, err
+			}
+		}
 		pc, err := webrtc.NewAPI(webrtc.WithSettingEngine(settings)).NewPeerConnection(config)
 		if err != nil {
 			return nil, err

@@ -4,10 +4,11 @@ module Rho
   module Env
     # Polled by the existing handler; owns only replaceable transport state.
     class WebrtcConnection
-      def initialize(executable:, context:, servers: [], clock: -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) })
+      def initialize(executable:, context:, servers: [], network: WebrtcTransport::DEFAULT_NETWORK, clock: -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) })
         @executable = executable
         @context = context
         @servers = servers
+        @network = network
         @clock = clock
         @peer = nil
         @connection_id = nil
@@ -31,7 +32,7 @@ module Rho
           return empty if @clock.call < @next_at
 
           @peer = WebrtcTransport.new(executable: @executable, context: @context)
-          sdp = @peer.offer(servers: @servers, relay: @relay)
+          sdp = @peer.offer(servers: @servers, relay: @relay, network: @network)
           @connection_id = @context.realtime.offer(sdp: sdp, reopen: false).connection_id
           @deadline = @clock.call + 10
           @state = "answering"

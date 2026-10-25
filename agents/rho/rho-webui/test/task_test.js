@@ -51,12 +51,12 @@ test("MCP task detail names its callable and remote account, retaining an identi
 function tab(answer) {
   const slots = createSlots();
   const requests = [];
-  const shell = { artifactBytes: async () => new Blob(), call: async (path, options = {}) => { requests.push([path, options.signal]); return answer(path); } };
+  const shell = { slots, artifactBytes: async () => new Blob(), call: async (path, options = {}) => { requests.push([path, options.signal]); return answer(path); } };
   register({ slots: { register: (name, options, component) => slots.register(name, options, component) } }, shell);
   const registration = slots.winner("dock.tab", "task");
   const panel = registration.component({ conversation: { id: "c-1", workspace: "w-1" }, params: { runId: "run-1", taskKey: "t-9", title: "bash" }, close: () => {} });
   document.body.append(panel.element);
-  return { registration, panel, requests };
+  return { registration, panel, requests, slots };
 }
 
 test("the task tab reads its task in the conversation's workspace, is titled by its call and is not offered in the guide", async () => {
@@ -117,7 +117,7 @@ test("an unavailable sealed request reports its error and can be retried without
   view.panel.dispose();
 });
 
-test("only a live tool task offers the terminal entry", async () => {
+test("tasks have no plugin controls without a contribution", async () => {
   for (const task of [
     { kind: "tool_task", status: "dispatched", expected: true },
     { kind: "tool_task", status: "completed", expected: false },
@@ -125,8 +125,32 @@ test("only a live tool task offers the terminal entry", async () => {
   ]) {
     const view = tab(() => ({ task }));
     await flush();
-    expect(view.panel.element.querySelectorAll("button").some((button) => button.textContent === "Open terminal")).toBe(task.expected);
+    expect(view.panel.element.querySelectorAll("button").some((button) => button.textContent === "Open terminal")).toBe(false);
     view.panel.dispose();
     view.panel.element.remove();
   }
+});
+
+
+test("task contributions receive resolved identity and updates and dispose on removal", async () => {
+  let status = "running";
+  const view = tab(() => ({ task: { kind: "tool_task", status } }));
+  const received = [];
+  let disposed = 0;
+  const remove = view.slots.register("task.detail", { id: "example" }, (props) => {
+    received.push(props);
+    return { element: document.createElement("div"), update(next) { received.push(next); }, dispose() { disposed++; } };
+  });
+  expect(received[0].task).toBeNull();
+  await flush();
+  expect(received.at(-1).target).toEqual({ public_id: "run-1", workspace_public_id: "w-1", task_key: "t-9" });
+  expect(received.at(-1).task.status).toBe("running");
+  status = "completed";
+  view.panel.element.querySelector(".task__head button").click();
+  await flush();
+  expect(received.at(-1).task.status).toBe("completed");
+  remove();
+  expect(disposed).toBe(1);
+  view.panel.dispose();
+  expect(disposed).toBe(1);
 });
