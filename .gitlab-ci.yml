@@ -17,7 +17,7 @@ default:
 variables:
   # Docker's latest published Ruby image as of 2026-10-24.
   # This image pin can lag .ruby-version and GitHub's ruby/setup-ruby release.
-  RUBY_VERSION: "4.0.8"
+  RUBY_VERSION: "4.0.9"
   BUN_VERSION: "1.4.4"
   BUNDLE_FROZEN: "true"
   DEBIAN_FRONTEND: noninteractive
@@ -164,7 +164,7 @@ agent_sdk_typescript:
   image: node:${NODE_VERSION}-bookworm
   parallel:
     matrix:
-      - NODE_VERSION: ["22", "24"]
+      - NODE_VERSION: ["24", "26"]
   cache:
     key: pnpm-${NODE_VERSION}
     paths:
