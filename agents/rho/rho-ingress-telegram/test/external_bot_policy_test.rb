@@ -32,7 +32,13 @@ class TelegramExternalBotPolicyTest < Minitest::Test
       refute result.fetch(:approval_rules).any? { |rule| rule.fetch("tool") == "*" }, style
       granted = result.fetch(:approval_rules).flat_map { |rule| rule.fetch("tool").split("|") }
       Rho::BotPolicy::DELEGATION_TOOLS.each do |canonical|
-        refute_includes granted, wires.fetch(canonical), "#{style}: an empty role/Bot directory grants no delegation"
+        wire = wires.fetch(canonical)
+        rules = result.fetch(:approval_rules).select { |rule| rule.fetch("tool").split("|").include?(wire) }
+        # A link grants fixed-endpoint messaging independently of the Bot directory.
+        # No direct send, request or spawn allow may come from an empty directory.
+        expected = canonical == "nexus.conversation.send" ?
+          [{ "tool" => wire, "path" => "link_public_id", "match" => "*", "verdict" => "allow" }] : []
+        assert_equal expected, rules, "#{style}: an empty role/Bot directory grants only link-scoped sending"
       end
       assert_includes granted, "memory_read", style
       assert_includes granted, "memory_write", style

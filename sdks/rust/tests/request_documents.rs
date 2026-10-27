@@ -255,7 +255,7 @@ fn decision_inference_request_serializes_the_public_workload_and_questions() {
             ..Default::default()
         },
         input: json!({"allowed": false}),
-        configuration: Field::Value(configuration.as_object().unwrap().clone().into()),
+        configuration: Field::Value(configuration.as_object().unwrap().clone()),
         ..Default::default()
     };
     assert_eq!(
