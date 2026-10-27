@@ -107,6 +107,7 @@ dedicated workspaces. Creating one does not establish a global default workspace
 
 ## Develop, verify and release
 
+- [Subagent conversation takeover design](plans/2026-10-27-conversation-takeover-design.md), [implementation plan](plans/2026-10-27-conversation-takeover-plan.md), and [first arbitration experiment](plans/2026-10-27-conversation-takeover-experiment.md): proposed in-place Human takeover, Stop/result-settlement races, and control limits when parent and child share one Agent identity; local Run locks fail the ancestor-Stop experiment, production takeover not implemented.
 - [Nexus development](../nexus/README.md#development) and the owning package READMEs: local runtimes and component checks.
 - [E2E verification](../e2e/README.md): GitHub smoke, full local acceptance and explicit installation journeys.
 - [Multi-language SDK acceptance](plans/2026-10-15-multilanguage-sdk-acceptance.md): verified Ruby, TypeScript and Rust surfaces, full E2E coverage and the accepted local API baseline.

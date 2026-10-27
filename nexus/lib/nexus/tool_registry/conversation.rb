@@ -1,7 +1,7 @@
 module Nexus
   module ToolRegistry
     # The conversation family's entries (`nexus.conversation.*`): `spawn`,
-    # `send`, `status`, `cancel`. ONE SLICE of the live table: the bytes
+    # `send`, `request`, `status`, `cancel`. ONE SLICE of the live table: the bytes
     # of each entry are the kernel's model-facing text and are pinned by
     # `contracts:generate` (tools.json); `LIVE` is the four slices in
     # order. `Tool` and the effect constants are the registry's own.
@@ -41,7 +41,8 @@ module Nexus
             `lifetime: "conversation"` delivers an unwaited report in a new turn
             after this reply, even if the child finishes sooner.
             Omit to inherit the calling work's lifetime; ordinary replies default
-            to conversation lifetime. Later messages are independent requests.
+            to conversation lifetime. Later {{send}} messages have no formal result
+            obligation; use {{request}} for another job with its own completion.
             `wake: "passive"` records an unwaited reply in your conversation
             history without starting another turn. Omit to inherit the calling
             work's wake mode; ordinary replies default to "auto". A waited reply
@@ -58,6 +59,8 @@ module Nexus
           parameters: {
             "type" => "object",
             "properties" => {
+              "establish_link" => { "type" => "boolean", "default" => false,
+                "description" => "Publish a bidirectional message link together with the child and its first request. Both agents must allow the new contact." },
               "prompt" => {
                 "type" => "string",
                 "description" =>
@@ -146,88 +149,54 @@ module Nexus
         # `agent` on `send` alone is WHO: the principal inside that
         # conversation the message is for.
         Tool.new(
-          canonical: "nexus.conversation.send",
-          name: "send",
-          template: <<~TEXT.strip,
-            Post a message into a conversation you spawned, or one you may
-            write in, except your parent or any ancestor conversation. To
-            report to your parent, finish your reply; it is returned automatically.
-            By default, it queues for a new reply after the current reply ends,
-            or starts one immediately if idle; a scheduled message also waits
-            until its delivery time. `steer: true` joins the running reply at
-            its next model boundary; it does not interrupt an in-flight model
-            request or tool. On an idle conversation it queues a new reply. `agent`
-            addresses one agent in that conversation; without it the
-            conversation's own agent replies. A reply, if any, reaches you
-            in a new turn after your current reply, even if it finishes sooner;
-            this message is not from the person. `wake: "passive"`
-            stores an owed reply in your conversation history without starting
-            another turn. It does not change delivery to the recipient; a steer
-            joining an existing reply keeps that reply's original wake policy.
-          TEXT
+          canonical: "nexus.conversation.request", name: "request",
+          template: "Queue a new request in an existing conversation. Its completion reports only the original execution. wait pauses for a finite interval; lifetime controls whether your final reply joins the work.",
           parameters: {
             "type" => "object",
             "properties" => {
-              "to" => {
-                "type" => "string",
-                "description" =>
-                  "The conversation: the label you gave it when you spawned it, or its public id.",
-              },
-              "agent" => {
-                "type" => "string",
-                "description" =>
-                  "The agent in that conversation this message is for, as its @handle " \
-                  "or its public id. Omit for the conversation's own agent.",
-              },
-              "message" => {
-                "type" => "string",
-                "description" => "The message, as the person would write it.",
-              },
-              "steer" => {
-                "type" => "boolean",
-                "default" => false,
-                "description" =>
-                  "true: join the running reply at its next model boundary, without interrupting " \
-                  "an in-flight model request or tool. false (the " \
-                  "default): deliver after that reply ends, or at once if nothing is running.",
-              },
-              # THE CLOCK ON THE MESSAGE: both spellings, because NO CLOCK
-              # REACHES THE MODEL — `deliver_in` is the form a clockless
-              # model can use, `deliver_at` for one that was told a
-              # wall-clock time; the text says which is which and never
-              # "prefer" (the paid window benches which one models reach
-              # for). Written as designed, never tuned here.
-              "deliver_in" => {
-                "type" => "string",
-                "description" =>
-                  "Deliver after this delay from now: 90s, 20m, 2h or 1d. Omit to deliver now. " \
-                  "Not with steer. Send to your own conversation to wake yourself later.",
-              },
-              "deliver_at" => {
-                "type" => "string",
-                "description" =>
-                  "Deliver at this time, as an ISO 8601 time with a UTC offset (2026-09-16T09:00:00Z). " \
-                  "Use it only when you were told the time; otherwise deliver_in. Not with steer.",
-              },
-              "wake" => {
-                "type" => "string",
-                "enum" => %w[auto passive],
-                "description" =>
-                  "auto: a later completion may start a new reply. " \
-                  "passive: record it in conversation history without starting a reply. " \
-                  "Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged.",
-              },
-              "model" => {
-                "type" => "string",
-                "description" =>
-                  "The model the reply runs on, as provider/model, when the agent " \
-                  "answering has none of its own. Omit for the model you are running on.",
-              },
+              "to" => { "type" => "string" }, "prompt" => { "type" => "string" },
+              "agent" => { "type" => "string" }, "model" => { "type" => "string" },
+              "wait" => { "type" => "boolean", "default" => false },
+              "lifetime" => { "type" => "string", "enum" => %w[turn conversation] },
+              "wake" => { "type" => "string", "enum" => %w[auto passive] },
+              "deliver_at" => { "type" => "string" }, "deliver_in" => { "type" => "string" },
             },
-            "required" => %w[to message],
-            "additionalProperties" => false,
+            "required" => %w[to prompt], "additionalProperties" => false,
           },
           effect_profile: GRAPH_WRITE,
+          executor: "Runs::ConversationRequest::Run", job: "Runs::ConversationToolJob",
+        ),
+        Tool.new(
+          canonical: "nexus.conversation.send",
+          name: "send",
+          template: "Send an ordinary message, with no formal result obligation. Use either a link from this exact conversation and agent, or a directly writable conversation. A queued message starts recipient-owned processing when the conversation is idle. Use {{request}} for new work with an exact result.",
+          parameters: {
+            "type" => "object",
+            "properties" => {
+              "to" => { "type" => "string" }, "agent" => { "type" => "string" },
+              "link_public_id" => { "type" => "string" },
+              "message" => { "type" => "string" },
+              "delivery_mode" => { "type" => "string", "enum" => %w[queue steer steer_now], "default" => "queue" },
+              "expected_steering_run_public_id" => { "type" => "string", "description" => "Required for steer and steer_now: the exact current execution at this endpoint." },
+              "on_target_end" => { "type" => "string", "enum" => %w[discard queue], "default" => "discard", "description" => "Only for guarded steers. Explicit queue fallback keeps this message if the target execution ends." },
+              "deliver_in" => { "type" => "string" }, "deliver_at" => { "type" => "string" },
+            },
+            "required" => ["message"], "additionalProperties" => false,
+          },
+          effect_profile: GRAPH_WRITE,
+          executor: "Runs::ConversationTool::Run", job: "Runs::ConversationToolJob",
+        ),
+        Tool.new(
+          canonical: "nexus.conversation.links", name: "links",
+          template: "List message links belonging to this exact conversation and answering agent. Shared peer addresses do not grant access to peer history or status. Pass next_after to continue a bounded page.",
+          parameters: {
+            "type" => "object", "properties" => {
+              "state" => { "type" => "string", "enum" => %w[active closed all], "default" => "active" },
+              "limit" => { "type" => "integer", "minimum" => 1, "maximum" => 100, "default" => 50 },
+              "after" => { "type" => "string" },
+            }, "additionalProperties" => false,
+          },
+          effect_profile: READ_ONLY_CLOSED,
           executor: "Runs::ConversationTool::Run", job: "Runs::ConversationToolJob",
         ),
         Tool.new(

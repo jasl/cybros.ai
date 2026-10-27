@@ -117,7 +117,7 @@ module SimpleInference
           response_format text verbosity
           reasoning reasoning_enabled reasoning_effort reasoning_summary
           include store
-          prompt_cache_key service_tier
+          prompt_cache_key prompt_cache_ttl service_tier
           max_output_tokens temperature top_p
         ].freeze
       end

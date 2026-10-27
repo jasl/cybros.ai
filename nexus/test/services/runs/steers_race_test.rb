@@ -254,15 +254,60 @@ class Runs::SteersRaceTest < ActiveSupport::TestCase
     stop_database_call(stopping) if stopping
   end
 
+  test "explicit queue fallback accepts once after the guarded target ends during admission" do
+    held = hold_row_lock(Run, @seam.run.id, before_commit: ->(locked) {
+      Runs::Transition.run(locked, status: "canceled", completed_at: Time.current)
+    })
+    accepting = start_database_call { guarded_steer(on_target_end: "queue") }
+    wait_until_waiting_on_lock(accepting.pid)
+    release_row_lock(held)
+    result = finish_database_call(accepting)
+
+    assert_predicate result, :accepted?
+    input = result.value.reload
+    assert_equal "queue", input.delivery_mode
+    assert_nil input.requested_delivery_mode, "member inputs do not carry communication intent"
+    assert_equal @seam.run.public_id, input.expected_steering_run_public_id
+    assert_equal "steering_target_changed", input.fallback_reason
+    assert_equal 1, Input.where(expected_steering_run_public_id: @seam.run.public_id).count
+  ensure
+    release_row_lock(held) if held&.thread&.alive?
+    stop_database_call(accepting) if accepting
+  end
+
+  test "target ending after explicit fallback acceptance releases the same input" do
+    accepted = nil
+    held = hold_open_transaction { accepted = guarded_steer(on_target_end: "queue") }
+    assert_predicate accepted, :accepted?
+    stopping = start_database_call do
+      run = Run.find(@seam.run.id)
+      run.with_lock { Runs::Transition.run(run, status: "canceled", completed_at: Time.current) }
+    end
+    wait_until_waiting_on_lock(stopping.pid)
+    release_row_lock(held)
+    finish_database_call(stopping)
+
+    input = accepted.value.reload
+    assert_equal "queue", input.delivery_mode
+    assert_nil input.requested_delivery_mode, "member inputs do not carry communication intent"
+    assert_equal @seam.run.public_id, input.expected_steering_run_public_id
+    assert_equal "steer_target_settled", input.fallback_reason
+    assert_nil input.steering_target_turn_id
+    assert_empty @conversation.event_items.where(item_type: "input_deleted")
+  ensure
+    release_row_lock(held) if held&.thread&.alive?
+    stop_database_call(stopping) if stopping
+  end
+
   private
 
-    def guarded_steer
+    def guarded_steer(on_target_end: "discard")
       Conversations::Inputs::Create.call(Conversations::Inputs::Create::Command.new(
         host: Conversation.find(@conversation.id), acting_user: @human, kind: "message", role: "user",
         entries: [{ "text" => "this loop only" }], visible_in_context: true,
         delivery_mode: "steer", context_mode: nil, context_options: nil,
         expected_context_revision: nil, expected_tail_turn_public_id: nil,
-        expected_steering_run_public_id: @seam.run.public_id,
+        expected_steering_run_public_id: @seam.run.public_id, on_target_end: on_target_end,
         provider_id: nil, model_ref: nil, reasoning_effort: nil, request_options: nil
       ))
     end

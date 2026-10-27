@@ -1,0 +1,710 @@
+{
+  "link_request": {
+    "agent_public_id": "01900000-0000-7000-8000-0000000000a2",
+    "peer_conversation_public_id": "01900000-0000-7000-8000-000000000072",
+    "peer_agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+  },
+  "link_public_id": "01900000-0000-7000-8000-000000000180",
+  "cases": [
+    {
+      "name": "link_accepted",
+      "operation": "link_create",
+      "status": 201,
+      "headers": {},
+      "body": {
+        "link": {
+          "public_id": "01900000-0000-7000-8000-000000000180",
+          "workspace_public_id": "019f0000-0000-7000-8000-000000000101",
+          "endpoint": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000070",
+            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+          },
+          "peer": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+          },
+          "state": "active",
+          "created_at": "2026-10-27T00:00:00Z",
+          "closed_at": null,
+          "close_reason": null
+        }
+      }
+    },
+    {
+      "name": "link_replayed",
+      "operation": "link_create",
+      "status": 201,
+      "headers": {
+        "Idempotency-Replayed": "true"
+      },
+      "body": {
+        "link": {
+          "public_id": "01900000-0000-7000-8000-000000000180",
+          "workspace_public_id": "019f0000-0000-7000-8000-000000000101",
+          "endpoint": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000070",
+            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+          },
+          "peer": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+          },
+          "state": "active",
+          "created_at": "2026-10-27T00:00:00Z",
+          "closed_at": null,
+          "close_reason": null
+        }
+      }
+    },
+    {
+      "name": "link_active_pair",
+      "operation": "link_create",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "link": {
+          "public_id": "01900000-0000-7000-8000-000000000180",
+          "workspace_public_id": "019f0000-0000-7000-8000-000000000101",
+          "endpoint": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000070",
+            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+          },
+          "peer": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+          },
+          "state": "active",
+          "created_at": "2026-10-27T00:00:00Z",
+          "closed_at": null,
+          "close_reason": null
+        }
+      }
+    },
+    {
+      "name": "link_mismatch",
+      "operation": "link_create",
+      "status": 409,
+      "headers": {},
+      "body": {
+        "error": {
+          "code": "idempotency_envelope_mismatch",
+          "message": "The key already names another request."
+        }
+      }
+    },
+    {
+      "name": "link_read",
+      "operation": "link_read",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "link": {
+          "public_id": "01900000-0000-7000-8000-000000000180",
+          "workspace_public_id": "019f0000-0000-7000-8000-000000000101",
+          "endpoint": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000070",
+            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+          },
+          "peer": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+          },
+          "state": "active",
+          "created_at": "2026-10-27T00:00:00Z",
+          "closed_at": null,
+          "close_reason": null
+        }
+      }
+    },
+    {
+      "name": "link_list",
+      "operation": "link_list",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "links": [
+          {
+            "public_id": "01900000-0000-7000-8000-000000000180",
+            "workspace_public_id": "019f0000-0000-7000-8000-000000000101",
+            "endpoint": {
+              "conversation_public_id": "01900000-0000-7000-8000-000000000070",
+              "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+            },
+            "peer": {
+              "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+              "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+            },
+            "state": "active",
+            "created_at": "2026-10-27T00:00:00Z",
+            "closed_at": null,
+            "close_reason": null
+          }
+        ],
+        "next_after": "opaque-link-cursor"
+      }
+    },
+    {
+      "name": "link_closed",
+      "operation": "link_close",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "link": {
+          "public_id": "01900000-0000-7000-8000-000000000180",
+          "workspace_public_id": "019f0000-0000-7000-8000-000000000101",
+          "endpoint": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000070",
+            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+          },
+          "peer": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "agent_public_id": "01900000-0000-7000-8000-0000000000a2"
+          },
+          "state": "closed",
+          "created_at": "2026-10-27T00:00:00Z",
+          "closed_at": "2026-10-27T00:01:00Z",
+          "close_reason": "explicit"
+        }
+      }
+    },
+    {
+      "name": "message_queued",
+      "operation": "inputs",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "inputs": [
+          {
+            "public_id": "01900000-0000-7000-8000-000000000080",
+            "queue_position": 0,
+            "state": "pending",
+            "kind": "direct_reply",
+            "role": "user",
+            "delivery_mode": "queue",
+            "origin": "agent",
+            "communication_kind": "message",
+            "link_public_id": "01900000-0000-7000-8000-000000000180",
+            "sender_conversation_public_id": "01900000-0000-7000-8000-000000000070",
+            "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+            "speaker": {
+              "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+              "handle": "lark",
+              "kind": "agent",
+              "display_name": "Lark"
+            },
+            "context_mode": "assembled",
+            "context_options": {
+              "history": {
+                "max_entries": 20
+              },
+              "inline": [
+                {
+                  "slot": "character",
+                  "text": "For this turn: be terse."
+                }
+              ]
+            },
+            "tool_names": [
+              "read_file"
+            ],
+            "approval_mode": "ask",
+            "text": "What is next?",
+            "attachments": [
+              {
+                "public_id": "01900000-0000-7000-8000-0000000000c1",
+                "filename": "diagram.png",
+                "content_type": "image/png",
+                "byte_size": 184213
+              }
+            ],
+            "lock_version": 0,
+            "created_at": "2026-08-31T00:00:04Z"
+          }
+        ],
+        "input_queue": {
+          "limit": 32,
+          "held": 1
+        }
+      }
+    },
+    {
+      "name": "message_consumed",
+      "operation": "turn",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "turn": {
+          "public_id": "01900000-0000-7000-8000-000000000073",
+          "callback_sources": [],
+          "position": 5,
+          "kind": "direct_reply",
+          "role": "user",
+          "status": "completed",
+          "visibility": "visible",
+          "inherited": false,
+          "origin": "agent",
+          "communication_kind": "message",
+          "link_public_id": "01900000-0000-7000-8000-000000000180",
+          "sender_conversation_public_id": "01900000-0000-7000-8000-000000000070",
+          "sender_run_public_id": "01900000-0000-7000-8000-0000000000b1",
+          "sender_task_key": "r2t0",
+          "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+          "speaker": {
+            "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+            "handle": "lark",
+            "kind": "agent",
+            "display_name": "Lark"
+          },
+          "created_at": "2026-08-31T00:00:14Z",
+          "input_public_id": "01900000-0000-7000-8000-000000000080"
+        }
+      }
+    },
+    {
+      "name": "message_discarded",
+      "operation": "events",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "events": [
+          {
+            "public_id": "01900000-0000-7000-8000-0000000000a1",
+            "sequence": 7,
+            "cursor": "Y3ZlaS03",
+            "type": "input_deleted",
+            "resource": {
+              "type": "conversation",
+              "public_id": "01900000-0000-7000-8000-000000000070"
+            },
+            "occurred_at": "2026-08-31T00:00:12.000Z",
+            "payload": {
+              "input_public_id": "01900000-0000-7000-8000-000000000080",
+              "queue_position": 0
+            }
+          }
+        ],
+        "pagination": {
+          "next_after": null,
+          "watermark": 7
+        }
+      }
+    },
+    {
+      "name": "strict_update_refused",
+      "operation": "task",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "task": {
+          "key": "r1t0",
+          "kind": "tool_task",
+          "lifetime": "conversation",
+          "wake": "auto",
+          "status": "completed",
+          "on_failure": "absorb",
+          "tool_name": "send",
+          "result": {
+            "is_error": true
+          },
+          "visibility": "visible",
+          "created_at": "2026-10-27T00:00:00Z",
+          "completed_at": "2026-10-27T00:01:00Z",
+          "output": "steering_target_changed",
+          "output_preview": "steering_target_changed",
+          "content": [
+            {
+              "type": "text",
+              "text": "steering_target_changed"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "request_accepted",
+      "operation": "task",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "task": {
+          "key": "r1t0",
+          "kind": "tool_task",
+          "lifetime": "conversation",
+          "wake": "auto",
+          "status": "completed",
+          "on_failure": "absorb",
+          "tool_name": "request",
+          "result": {
+            "is_error": false
+          },
+          "visibility": "visible",
+          "created_at": "2026-10-27T00:00:00Z",
+          "completed_at": "2026-10-27T00:01:00Z",
+          "output": "{\"input_public_id\":\"01900000-0000-7000-8000-000000000080\",\"conversation_public_id\":\"01900000-0000-7000-8000-000000000072\",\"answering_user_public_id\":\"01900000-0000-7000-8000-0000000000a2\",\"state\":\"pending\",\"delivery_mode\":\"queue\",\"deliver_at\":null,\"completion\":{\"run_public_id\":\"01900000-0000-7000-8000-0000000000b1\",\"task_key\":\"r1t0-delegation\"}}",
+          "output_preview": "{\"input_public_id\":\"01900000-0000-7000-8000-000000000080\",\"conversation_public_id\":\"01900000-0000-7000-8000-000000000072\",\"answering_user_public_id\":\"01900000-0000-7000-8000-0000000000a2\",\"state\":\"pending\",\"delivery_mode\":\"queue\",\"deliver_at\":null,\"completion\":{\"run_public_id\":\"01900000-0000-7000-8000-0000000000b1\",\"task_key\":\"r1t0-delegation\"}}",
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"input_public_id\":\"01900000-0000-7000-8000-000000000080\",\"conversation_public_id\":\"01900000-0000-7000-8000-000000000072\",\"answering_user_public_id\":\"01900000-0000-7000-8000-0000000000a2\",\"state\":\"pending\",\"delivery_mode\":\"queue\",\"deliver_at\":null,\"completion\":{\"run_public_id\":\"01900000-0000-7000-8000-0000000000b1\",\"task_key\":\"r1t0-delegation\"}}"
+            }
+          ],
+          "structured_content": {
+            "input_public_id": "01900000-0000-7000-8000-000000000080",
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+            "state": "pending",
+            "delivery_mode": "queue",
+            "deliver_at": null,
+            "completion": {
+              "run_public_id": "01900000-0000-7000-8000-0000000000b1",
+              "task_key": "r1t0-delegation"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "request_completed",
+      "operation": "task",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "task": {
+          "key": "r1t0-delegation",
+          "kind": "delegation_task",
+          "lifetime": "conversation",
+          "wake": "auto",
+          "status": "completed",
+          "on_failure": "absorb",
+          "result": {
+            "is_error": false
+          },
+          "visibility": "visible",
+          "created_at": "2026-10-27T00:00:00Z",
+          "completed_at": "2026-10-27T00:01:00Z",
+          "output": "Original result: completed",
+          "output_preview": "Original result: completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "Original result: completed"
+            }
+          ],
+          "structured_content": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "input_public_id": "01900000-0000-7000-8000-000000000080",
+            "turn_public_id": "01900000-0000-7000-8000-000000000073",
+            "variant_public_id": "01900000-0000-7000-8000-000000000091",
+            "run_public_id": "01900000-0000-7000-8000-0000000000b2",
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "name": "request_failed",
+      "operation": "task",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "task": {
+          "key": "r1t0-delegation",
+          "kind": "delegation_task",
+          "lifetime": "conversation",
+          "wake": "auto",
+          "status": "failed",
+          "on_failure": "absorb",
+          "result": {
+            "is_error": false
+          },
+          "visibility": "visible",
+          "created_at": "2026-10-27T00:00:00Z",
+          "completed_at": "2026-10-27T00:01:00Z",
+          "output": "Original result: failed",
+          "output_preview": "Original result: failed",
+          "content": [
+            {
+              "type": "text",
+              "text": "Original result: failed"
+            }
+          ],
+          "structured_content": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "input_public_id": "01900000-0000-7000-8000-000000000080",
+            "turn_public_id": "01900000-0000-7000-8000-000000000073",
+            "variant_public_id": "01900000-0000-7000-8000-000000000091",
+            "run_public_id": "01900000-0000-7000-8000-0000000000b2",
+            "status": "failed"
+          }
+        }
+      }
+    },
+    {
+      "name": "request_canceled",
+      "operation": "task",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "task": {
+          "key": "r1t0-delegation",
+          "kind": "delegation_task",
+          "lifetime": "conversation",
+          "wake": "auto",
+          "status": "failed",
+          "on_failure": "absorb",
+          "result": {
+            "is_error": false
+          },
+          "visibility": "visible",
+          "created_at": "2026-10-27T00:00:00Z",
+          "completed_at": "2026-10-27T00:01:00Z",
+          "output": "Original result: canceled",
+          "output_preview": "Original result: canceled",
+          "content": [
+            {
+              "type": "text",
+              "text": "Original result: canceled"
+            }
+          ],
+          "structured_content": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "input_public_id": "01900000-0000-7000-8000-000000000080",
+            "turn_public_id": "01900000-0000-7000-8000-000000000073",
+            "variant_public_id": "01900000-0000-7000-8000-000000000091",
+            "run_public_id": "01900000-0000-7000-8000-0000000000b2",
+            "status": "canceled"
+          }
+        }
+      }
+    },
+    {
+      "name": "request_canceled_before_materialization",
+      "operation": "task",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "task": {
+          "key": "r1t0-delegation",
+          "kind": "delegation_task",
+          "lifetime": "conversation",
+          "wake": "auto",
+          "status": "canceled",
+          "on_failure": "absorb",
+          "result": {
+            "is_error": false
+          },
+          "visibility": "visible",
+          "created_at": "2026-10-27T00:00:00Z",
+          "completed_at": "2026-10-27T00:01:00Z",
+          "output": "Canceled before starting",
+          "output_preview": "Canceled before starting",
+          "content": [
+            {
+              "type": "text",
+              "text": "Canceled before starting"
+            }
+          ],
+          "structured_content": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "input_public_id": "01900000-0000-7000-8000-000000000080",
+            "turn_public_id": null,
+            "variant_public_id": null,
+            "run_public_id": null,
+            "status": "canceled"
+          }
+        }
+      }
+    },
+    {
+      "name": "await_timeout",
+      "operation": "task",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "task": {
+          "key": "r1t0-await",
+          "kind": "await_task",
+          "lifetime": "conversation",
+          "wake": "auto",
+          "status": "timed_out",
+          "on_failure": "absorb",
+          "result": {
+            "is_error": false
+          },
+          "visibility": "visible",
+          "created_at": "2026-10-27T00:00:00Z",
+          "completed_at": "2026-10-27T00:01:00Z",
+          "output": "The finite wait expired",
+          "output_preview": "The finite wait expired",
+          "content": [
+            {
+              "type": "text",
+              "text": "The finite wait expired"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "result_after_timeout",
+      "operation": "task",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "task": {
+          "key": "r1t0-delegation",
+          "kind": "delegation_task",
+          "lifetime": "conversation",
+          "wake": "auto",
+          "status": "completed",
+          "on_failure": "absorb",
+          "result": {
+            "is_error": false
+          },
+          "visibility": "visible",
+          "created_at": "2026-10-27T00:00:00Z",
+          "completed_at": "2026-10-27T00:01:00Z",
+          "output": "The original request completed later",
+          "output_preview": "The original request completed later",
+          "content": [
+            {
+              "type": "text",
+              "text": "The original request completed later"
+            }
+          ],
+          "structured_content": {
+            "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "input_public_id": "01900000-0000-7000-8000-000000000080",
+            "turn_public_id": "01900000-0000-7000-8000-000000000073",
+            "variant_public_id": "01900000-0000-7000-8000-000000000091",
+            "run_public_id": "01900000-0000-7000-8000-0000000000b2",
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "name": "callback_result",
+      "operation": "inputs",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "inputs": [
+          {
+            "public_id": "01900000-0000-7000-8000-000000000080",
+            "queue_position": 0,
+            "state": "pending",
+            "kind": "direct_reply",
+            "role": "user",
+            "delivery_mode": "queue",
+            "origin": "child",
+            "sender_conversation_public_id": "01900000-0000-7000-8000-000000000072",
+            "callback_result": {
+              "conversation_public_id": "01900000-0000-7000-8000-000000000072",
+              "input_public_id": "01900000-0000-7000-8000-000000000080",
+              "turn_public_id": "01900000-0000-7000-8000-000000000073",
+              "variant_public_id": "01900000-0000-7000-8000-000000000091",
+              "run_public_id": "01900000-0000-7000-8000-0000000000b2",
+              "status": "completed",
+              "requester_speaker_public_id": "01900000-0000-7000-8000-0000000000a1"
+            },
+            "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+            "speaker": {
+              "user_public_id": "01900000-0000-7000-8000-0000000000a1",
+              "handle": "ada",
+              "kind": "human",
+              "display_name": "Ada"
+            },
+            "context_mode": "assembled",
+            "context_options": {
+              "history": {
+                "max_entries": 20
+              },
+              "inline": [
+                {
+                  "slot": "character",
+                  "text": "For this turn: be terse."
+                }
+              ]
+            },
+            "tool_names": [
+              "read_file"
+            ],
+            "approval_mode": "ask",
+            "text": "What is next?",
+            "attachments": [
+              {
+                "public_id": "01900000-0000-7000-8000-0000000000c1",
+                "filename": "diagram.png",
+                "content_type": "image/png",
+                "byte_size": 184213
+              }
+            ],
+            "lock_version": 0,
+            "created_at": "2026-08-31T00:00:04Z"
+          }
+        ],
+        "input_queue": {
+          "limit": 32,
+          "held": 1
+        }
+      }
+    },
+    {
+      "name": "strict_update_queued",
+      "operation": "inputs",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "inputs": [
+          {
+            "public_id": "01900000-0000-7000-8000-000000000080",
+            "queue_position": 0,
+            "state": "pending",
+            "kind": "direct_reply",
+            "role": "user",
+            "delivery_mode": "queue",
+            "expected_steering_run_public_id": "01900000-0000-7000-8000-0000000000b2",
+            "requested_delivery_mode": "steer_now",
+            "on_target_end": "queue",
+            "fallback_reason": "steering_target_changed",
+            "origin": "agent",
+            "communication_kind": "message",
+            "link_public_id": "01900000-0000-7000-8000-000000000180",
+            "sender_conversation_public_id": "01900000-0000-7000-8000-000000000070",
+            "answering_user_public_id": "01900000-0000-7000-8000-0000000000a2",
+            "speaker": {
+              "user_public_id": "01900000-0000-7000-8000-0000000000a2",
+              "handle": "lark",
+              "kind": "agent",
+              "display_name": "Lark"
+            },
+            "context_mode": "assembled",
+            "context_options": {
+              "history": {
+                "max_entries": 20
+              },
+              "inline": [
+                {
+                  "slot": "character",
+                  "text": "For this turn: be terse."
+                }
+              ]
+            },
+            "tool_names": [
+              "read_file"
+            ],
+            "approval_mode": "ask",
+            "text": "What is next?",
+            "lock_version": 0,
+            "created_at": "2026-08-31T00:00:04Z"
+          }
+        ],
+        "input_queue": {
+          "limit": 32,
+          "held": 1
+        }
+      }
+    }
+  ]
+}

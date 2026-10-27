@@ -498,6 +498,20 @@
       "sdk_supported": true
     },
     {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links",
+      "sdk_supported": true
+    },
+    {
+      "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links/{public_id}",
+      "plane": "member",
+      "method": "GET",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links/{public_id}",
+      "sdk_supported": true
+    },
+    {
       "id": "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory",
       "plane": "member",
       "method": "GET",
@@ -1317,6 +1331,20 @@
       "sdk_supported": true
     },
     {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links/{link_public_id}/closure",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links/{link_public_id}/closure",
+      "sdk_supported": true
+    },
+    {
       "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/memory",
       "plane": "member",
       "method": "POST",
@@ -1405,6 +1433,13 @@
       "plane": "member",
       "method": "POST",
       "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/store_entries",
+      "sdk_supported": true
+    },
+    {
+      "id": "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/takeover",
+      "plane": "member",
+      "method": "POST",
+      "path": "/agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/takeover",
       "sdk_supported": true
     },
     {

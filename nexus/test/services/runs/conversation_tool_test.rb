@@ -26,8 +26,8 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     @workspace = workspaces(:shared)
     DevModelLane.ensure_enabled!(@account)
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
-    declare_tools!(@agent, tools: [Nexus::Tools::DELEGATE_TASK, Nexus::Tools::SPAWN, Nexus::Tools::SEND,
-                                   Nexus::Tools::STATUS, Nexus::Tools::CANCEL, READ_TOOL])
+    declare_tools!(@agent, tools: [Nexus::Tools::DELEGATE_TASK, Nexus::Tools::SPAWN, Nexus::Tools::SEND, Nexus::Tools::REQUEST,
+                                   Nexus::Tools::STATUS, Nexus::Tools::CANCEL, READ_TOOL], default_model: "dev/mock-text")
   end
 
   def say!(text) = post_input!(@conversation, acting_user: @human, text: text)
@@ -86,9 +86,18 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     conversation.event_items.where(item_type: "input_accepted").order(:sequence).map(&:payload)
   end
 
-  def promise(call_key, child)
-    "its reply reaches you as <task_result task=\"#{call_key}\" conversation=\"#{child.public_id}\"> " \
-      "in a later message that is not from the person."
+  def assert_receipt(run, key, input)
+    receipt = Runs::TaskResultProjection.call(loop_node(run, key)).fetch("structured_content")
+    assert_equal input.public_id, receipt.fetch("input_public_id")
+    assert_equal input.host.public_id, receipt.fetch("conversation_public_id")
+    assert_equal input.answering_user.public_id, receipt.fetch("answering_user_public_id")
+    assert_equal input.state, receipt.fetch("state")
+    if input.deliver_at
+      assert_equal input.deliver_at.utc.iso8601, receipt["deliver_at"]
+    else
+      assert_nil receipt["deliver_at"]
+    end
+    assert_equal receipt, JSON.parse(tool_result(run, key))
   end
 
   test "a root cancellation stops spawned descendants after their Agent restricts access" do
@@ -131,19 +140,21 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
 
   # ── send ─────────────────────────────────────────────────────────────
 
-  test "send by label queues the sender's own row on its child and promises the reply" do
+  test "send by label preserves sender attribution without creating a result obligation" do
     run = spawning_loop(label: "reviewer")
     child = child_of(run)
     call_round!(run, "r2", ["send", { to: "reviewer", message: MORE }])
 
-    brief, row = rows_on(child).to_a
+    _brief, row = rows_on(child).to_a
     assert_equal %w[direct_reply user queue pending agent], [row.kind, row.role, row.delivery_mode, row.state, row.origin],
       "the sender's own word: a reply head, origin `agent`, never a kernel receipt"
     assert_equal @agent, row.authoring_user, "the AUTHOR is the sender; the kernel impersonates nobody"
     assert_equal @conversation.public_id, row.sender_conversation_public_id
     assert_equal MORE, row.text
-    assert_equal [brief.provider_id, brief.model_ref], [row.provider_id, row.model_ref],
-      "a reply head names its engine: the sending turn's frozen selection, as the brief does"
+    assert_equal ["dev", "mock-text"], [row.provider_id, row.model_ref],
+      "the receiver declares its own engine"
+    assert_equal "message", row.communication_kind
+    assert_nil loop_node(run, "r3t0").spawn_delegation
     assert_nil row.tool_names
     assert_equal 2, child.inputs.caller_authored.count, "a peer's send is caller-authored: bound-counted"
 
@@ -155,7 +166,7 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
 
     assert_equal "completed", loop_node(run, "r3t0").status
     refute tool_error?(run, "r3t0")
-    assert_equal "Sent to #{child.public_id} (queued); #{promise("r3t0", child)}", tool_result(run, "r3t0")
+    assert_receipt(run, "r3t0", rows_on(child).last)
     assert_enqueued_with(job: Conversations::Inputs::DrainJob, args: [child.id])
   end
 
@@ -168,7 +179,7 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     row = rows_on(other).sole
     assert_equal [@agent, "agent", @conversation.public_id, MORE],
       [row.authoring_user, row.origin, row.sender_conversation_public_id, row.text]
-    assert_equal "Sent to #{other.public_id} (queued).", tool_result(run, "r3t0")
+    assert_receipt(run, "r3t0", row)
   end
 
   test "a parent link without a spawn or scheduled source promises no automatic reply" do
@@ -180,10 +191,10 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     assert_nil child.spawn_node
     assert_not_predicate child, :scheduled_execution?
     assert_equal MORE, rows_on(child).sole.text
-    assert_equal "Sent to #{child.public_id} (queued).", tool_result(run, "r2t0")
+    assert_receipt(run, "r2t0", rows_on(child).sole)
   end
 
-  test "a later send to a child still relays after the original spawning turn was stopped" do
+  test "a later request to a child still reports after the original spawning turn was stopped" do
     original = spawning_loop(label: "reviewer")
     child = child_of(original)
     _original_child_turn, original_child_loop = running_child!(child)
@@ -194,14 +205,15 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     assert_empty rows_on(@conversation).where(origin: "child")
 
     _turn, later = open_turn!("Continue with the existing reviewer")
-    call_round!(later, "r1", ["send", { to: "reviewer", message: MORE, steer: true }])
+    call_round!(later, "r1", ["request", { to: "reviewer", prompt: MORE, lifetime: "conversation" }])
     assert_equal "pending", rows_on(child).sole.state, "steer on this idle child starts a fresh request"
-    assert_match "its reply reaches you", tool_result(later, "r2t0")
+    assert loop_node(later, "r2t0").spawn_delegation
+    finish_reply(later, "r2", "Waiting for the reviewer")
     child_turn, child_loop = running_child!(child)
     finish_reply(child_loop, "r1", "Review finished")
     assert_equal "completed", child_turn.reload.status
 
-    2.times { Runs::Spawn::Relay.call(conversation_id: child.id) }
+    2.times { Runs::Spawn::Relay.call; Runs::ResultDelivery.call(later.reload) }
     assert_equal 1, rows_on(@conversation).where(origin: "child").count
     mail = rows_on(@conversation).where(origin: "child").sole
     assert_includes mail.text, "Review finished"
@@ -211,7 +223,7 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     assert_not_nil child_turn.reload.relayed_at
   end
 
-  test "a later agent's queued send receives the child reply on its own execution surface" do
+  test "a later agent's queued request receives the child reply on its own execution surface" do
     original = spawning_loop(label: "reviewer", wait: true)
     child = child_of(original)
     _first_turn, first_loop = running_child!(child)
@@ -221,8 +233,8 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     finish_reply(original, "r2", "First request done")
 
     peer = create_agent_member(display_name: "Follow-up", agent_identifier: "follow-up")
-    declare_tools!(peer, tools: [Nexus::Tools::SEND, Nexus::Tools::STATUS, READ_TOOL],
-      approval_rules: [{ "tool" => "send|status", "verdict" => "allow" }], default_model: "dev/mock-unmetered")
+    declare_tools!(peer, tools: [Nexus::Tools::REQUEST, Nexus::Tools::STATUS, READ_TOOL],
+      approval_rules: [{ "tool" => "request|status", "verdict" => "allow" }], default_model: "dev/mock-unmetered")
     command = Conversations::Inputs::Create::Command.new(
       host: @conversation, acting_user: @human, kind: "direct_reply", role: "user",
       entries: [{ "text" => "Ask the existing reviewer one more question" }],
@@ -230,22 +242,22 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
       visible_in_context: true, context_mode: nil, context_options: nil,
       expected_context_revision: nil, expected_tail_turn_public_id: nil,
       provider_id: nil, model_ref: nil, reasoning_effort: nil, request_options: nil,
-      tool_names: %w[send status], approval_mode: "ask"
+      tool_names: %w[request status], approval_mode: "ask"
     )
     assert Conversations::Inputs::Create.call(command).accepted?
     _later_turn, later = running_child!(@conversation)
-    call_round!(later, "r1", ["status", { to: "reviewer" }], ["send", { to: "reviewer", message: MORE }])
+    call_round!(later, "r1", ["status", { to: "reviewer" }], ["request", { to: "reviewer", prompt: MORE, lifetime: "conversation" }])
     assert_equal "completed", loop_node(later, "r2t1").status
     finish_reply(later, "r2", "Waiting for the reviewer")
 
     child_turn, child_loop = running_child!(child)
     finish_reply(child_loop, "r1", "Follow-up review")
-    2.times { Runs::Spawn::Relay.call(conversation_id: child.id) }
+    2.times { Runs::Spawn::Relay.call; Runs::ResultDelivery.call(later.reload) }
 
     mail = rows_on(@conversation).where(origin: "child").sole
     assert_equal peer, mail.answering_user, "the follow-up is owed to the agent that sent it"
     assert_equal @human, mail.authoring_user, "kernel mail retains the sending execution's creator"
-    assert_equal ["dev", "mock-unmetered", "ask", %w[send status]],
+    assert_equal ["dev", "mock-unmetered", "ask", %w[request status]],
       [mail.provider_id, mail.model_ref, mail.approval_mode, mail.tool_names]
     assert_includes mail.text, '<task_result task="r2t1"'
     assert_equal [later.public_id, "r2t1"],
@@ -254,7 +266,7 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
 
     reply_turn, reply_loop = running_child!(@conversation)
     assert_equal peer, reply_turn.answering_user
-    assert_equal ["mock-unmetered", "ask", %w[send status]],
+    assert_equal ["mock-unmetered", "ask", %w[request status]],
       [reply_turn.active_variant.model_ref, reply_loop.approval_mode,
        Runs::BranchTools.names(loop_node(reply_loop, "r1"))]
   end
@@ -273,33 +285,36 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     finish_reply(child_loop, "r1", "Only the follow-up was answered")
 
     2.times { Runs::Spawn::Relay.call(conversation_id: child.id) }
-    assert_equal "dispatched", loop_node(run, "r2t0-spawn-1").status,
-      "the initial brief alone can settle its await; another request cannot stand in for it"
-    mail = rows_on(@conversation).where(origin: "child").sole
-    assert_includes mail.text, '<task_result task="r2t1"'
-    assert_not_nil child_turn.reload.relayed_at
+    assert_equal "failed", loop_node(run, "r2t0-spawn-1").status,
+      "removing the brief fails its own wait; an ordinary message cannot replace its result"
+    completion = loop_node(run, "r2t0").spawn_delegation
+    assert_equal "delegation_abandoned", completion.error_key
+    refute_includes completion.output_body.effective_text, "Only the follow-up was answered"
+    assert_empty rows_on(@conversation).where(origin: "child")
+    assert_nil child_turn.reload.relayed_at, "the ordinary message has no result obligation"
   end
 
-  test "stopping a later sending turn suppresses its child's reply even when the spawning turn completed" do
+  test "stopping a later requesting turn suppresses its child's reply even when the spawning turn completed" do
     original = spawning_loop(label: "reviewer")
     child = child_of(original)
     _original_child_turn, original_child_loop = running_child!(child)
     finish_reply(original_child_loop, "r1", "First review")
     finish_reply(original, "r2", "First request done")
     Runs::Spawn::Relay.call(conversation_id: child.id)
+    assert_equal [:delivered], Runs::ResultDelivery.call(original.reload)
     _receipt_turn, receipt_loop = running_child!(@conversation)
     finish_reply(receipt_loop, "r1", "First review received")
     assert original.reload.delivered?
 
     _turn, later = open_turn!("Review one more file")
-    call_round!(later, "r1", ["send", { to: "reviewer", message: MORE }])
+    call_round!(later, "r1", ["request", { to: "reviewer", prompt: MORE, lifetime: "conversation" }])
     child_turn, child_loop = running_child!(child)
     assert Conversations::Turns::Cancel.stop_tree(@conversation).accepted?
     settle_stopped_loops(later, child_loop)
     assert later.reload.canceled_unanswered?
     assert_equal "canceled", child_turn.reload.status
 
-    2.times { Runs::Spawn::Relay.call(conversation_id: child.id) }
+    2.times { Runs::Spawn::Relay.call; Runs::ResultDelivery.call(later.reload) }
     assert_not_nil child_turn.reload.relayed_at
     assert_empty rows_on(@conversation).where(origin: "child"),
       "a canceled request cannot restart the parent through the original completed spawn"
@@ -326,11 +341,11 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
   # THE INITIATOR'S MODEL ON `send`: the call's `model`, else the sending turn's, rides the row and
   # is read only when the addressee has no preset and no history there; a named model this account
   # may not run is refused at the call with the resolver's word.
-  test "send carries a named model to a conversation with no engine of its own, and an unauthorized one is refused" do
+  test "request carries a named model to a conversation with no engine of its own, and an unauthorized one is refused" do
     fresh = Conversation.create!(workspace: @workspace, creating_user: @human)
     run = spawning_loop
-    call_round!(run, "r2", ["send", { to: fresh.public_id, message: MORE, model: "dev/mock-unmetered" }],
-      ["send", { to: fresh.public_id, message: MORE, model: "dev/no-such-model" }])
+    call_round!(run, "r2", ["request", { to: fresh.public_id, prompt: MORE, model: "dev/mock-unmetered" }],
+      ["request", { to: fresh.public_id, prompt: MORE, model: "dev/no-such-model" }])
 
     row = rows_on(fresh).sole
     assert_equal ["dev", "mock-unmetered", nil], [row.provider_id, row.model_ref, row.reasoning_effort],
@@ -343,7 +358,7 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
 
   # THE ADDRESSEE'S ENGINE: the reply a `send` opens runs on the addressee's own preset, else the
   # target conversation's own model trio — its last reply turn's — else the sender's surface.
-  test "send answers on the addressee's preset, else the conversation's own engine, else the sender's" do
+  test "send answers on the receiver preset or conversation history without importing sender configuration" do
     fresh = Conversation.create!(workspace: @workspace, creating_user: @human)
     seasoned = Conversation.create!(workspace: @workspace, creating_user: @human)
     post_input!(seasoned, acting_user: @human, kind: "direct_reply", text: "hi", provider_id: "dev", model_ref: "mock-unmetered")
@@ -366,13 +381,13 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     call_round!(run, "r2", ["send", { to: seasoned.public_id, message: MORE }],
       ["send", { to: fresh.public_id, message: MORE }],
       ["send", { to: seasoned.public_id, agent: "@#{peer.handle}", message: MORE }],
-      ["send", { to: seasoned.public_id, agent: "@#{preset.handle}", message: MORE, model: "dev/mock-text" }])
+      ["send", { to: seasoned.public_id, agent: "@#{preset.handle}", message: MORE }])
 
     plain, addressed, own = rows_on(seasoned).to_a
     assert_equal %w[dev mock-unmetered], [plain.provider_id, plain.model_ref],
       "the addressee's conversation, the addressee's engine: its last reply turn's trio"
-    assert_equal %w[dev mock-text], rows_on(fresh).sole.then { |row| [row.provider_id, row.model_ref] },
-      "no turn to read: the sender's surface, the initiator's model"
+    assert_nil rows_on(fresh).sole.provider_id
+    assert_nil rows_on(fresh).sole.model_ref, "an unconfigured receiver must not import the sender model"
     assert_equal [peer, "dev", "mock-unmetered"], [addressed.answering_user, addressed.provider_id, addressed.model_ref],
       "an `agent` that never answered there: the conversation's last reply turn's trio, the one order's second step"
     assert_equal [preset, "dev", "mock-windowless", nil],
@@ -390,7 +405,7 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     policy.save!
 
     call_round!(run, "r2", ["send", { to: room.public_id, agent: "@#{peer.handle}", message: MORE }],
-      ["send", { to: room.public_id, agent: "@#{peer.handle}", message: MORE, model: "dev/mock-text-only" }])
+      ["request", { to: room.public_id, agent: "@#{peer.handle}", prompt: MORE, model: "dev/mock-text-only" }])
     refute tool_error?(run, "r3t0")
     assert tool_error?(run, "r3t1")
     assert_includes tool_result(run, "r3t1"), "model_not_authorized"
@@ -421,9 +436,9 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
       "the row's answerer is the named agent; the conversation's own answerer named is the plain send"
     assert_equal [@agent] * 3, [by_handle, by_id, own].map(&:authoring_user), "the author stays the sender"
     assert_equal [@conversation.public_id] * 3, [by_handle, by_id, own].map(&:sender_conversation_public_id)
-    assert_equal "Sent to #{room.public_id}, for @#{peer.handle} (queued).", tool_result(run, "r3t0")
-    assert_equal "Sent to #{room.public_id}, for @#{peer.handle} (queued).", tool_result(run, "r3t1")
-    assert_equal "Sent to #{room.public_id}, for @#{@agent.handle} (queued).", tool_result(run, "r3t2")
+    assert_receipt(run, "r3t0", by_handle)
+    assert_receipt(run, "r3t1", by_id)
+    assert_receipt(run, "r3t2", own)
     unknown = tool_result(run, "r3t3")
     assert_match(/\Aagent: "@nobody" names no member of this account\. The agents are: /, unknown)
     assert_includes unknown, "@#{peer.handle}"
@@ -441,7 +456,7 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     assert_equal %w[pending queue], [row.state, row.delivery_mode]
     assert_equal @agent, row.authoring_user
     assert_equal @conversation.public_id, row.sender_conversation_public_id
-    assert_equal "Sent to #{@conversation.public_id} (queued).", tool_result(run, "r3t0")
+    assert_receipt(run, "r3t0", row)
   end
 
   # THE MODEL HALF OF THE CLOCK: `deliver_in` — the form a clockless model can use — and
@@ -460,10 +475,8 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     assert_equal delayed.deliver_at, delayed.deliver_at.floor, "the resolved time is canonical: whole seconds"
     assert_equal Time.utc(2027, 1, 1, 1), dated.deliver_at, "an absolute time with an offset, held in UTC"
     assert_equal %w[pending pending], [delayed.state, dated.state]
-    assert_equal "Sent to #{child.public_id} (scheduled for #{delayed.deliver_at.utc.iso8601}); #{promise("r3t0", child)}",
-      tool_result(run, "r3t0")
-    assert_equal "Sent to #{child.public_id} (scheduled for 2027-01-01T01:00:00Z); #{promise("r3t1", child)}",
-      tool_result(run, "r3t1")
+    assert_receipt(run, "r3t0", delayed)
+    assert_receipt(run, "r3t1", dated)
     refute tool_error?(run, "r3t0")
 
     kicks = enqueued_jobs.select { |job| job[:job] == Conversations::Inputs::DrainJob && job[:args] == [child.id] }
@@ -471,7 +484,8 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     assert_includes kicks.map { |job| job[:at] }, dated.deliver_at.to_f
 
     receipt = ConversationCommandReceipt.find_by!(idempotency_key: "send:#{run.public_id}:r3t1")
-    envelope = { "send" => child.public_id, "agent" => nil, "text" => MORE, "steer" => false,
+    envelope = { "send" => child.public_id, "agent" => nil, "text" => MORE, "delivery_mode" => "queue",
+                 "expected_steering_run_public_id" => nil, "on_target_end" => nil, "link_public_id" => nil,
                  "deliver_at" => "2027-01-01T01:00:00Z" }
     assert_equal ConversationCommandReceipt.digest_for(operation: :input_create, envelope: envelope),
       receipt.request_digest, "the canonical string is digested: a replay naming another time mismatches"
@@ -484,7 +498,8 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
       ["send", { to: "reviewer", message: MORE, deliver_at: "2026-09-16T09:00:00" }],
       ["send", { to: "reviewer", message: MORE, deliver_in: "soon" }],
       ["send", { to: "reviewer", message: MORE, deliver_in: "1h", deliver_at: "2027-01-01T00:00:00Z" }],
-      ["send", { to: "reviewer", message: MORE, deliver_in: "1h", steer: true }],
+      ["send", { to: @conversation.public_id, message: MORE, deliver_in: "1h", delivery_mode: "steer",
+                 expected_steering_run_public_id: run.public_id }],
       ["send", { to: "reviewer", message: MORE, deliver_at: "2020-01-01T00:00:00Z" }],
       ["send", { to: "reviewer", message: MORE, deliver_at: "2099-01-01T00:00:00Z" }])
 
@@ -492,7 +507,7 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
       assert tool_error?(run, key), key
       assert_equal Run::TIME_REFUSED, tool_result(run, key), key
     end
-    assert_equal format(Run::NOT_SCHEDULABLE, child.public_id), tool_result(run, "r3t3")
+    assert_equal format(Run::NOT_SCHEDULABLE, @conversation.public_id), tool_result(run, "r3t3")
     assert_equal format(Run::IN_PAST, "2020-01-01T00:00:00Z", child.public_id), tool_result(run, "r3t4")
     assert_equal format(Run::TOO_FAR, "2099-01-01T00:00:00Z", child.public_id), tool_result(run, "r3t5")
     assert %w[r3t3 r3t4 r3t5].all? { |key| tool_error?(run, key) }
@@ -513,43 +528,31 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     assert_in_delta before + 20.minutes, row.deliver_at, 5
     assert_equal ["pending", "direct_reply", @agent, @conversation.public_id],
       [row.state, row.kind, row.authoring_user, row.sender_conversation_public_id]
-    assert_equal "Sent to #{@conversation.public_id} (scheduled for #{row.deliver_at.utc.iso8601}).",
-      tool_result(run, "r3t0")
+    assert_receipt(run, "r3t0", row)
     payload = accepted_payloads(@conversation).last
     assert_equal [row.deliver_at.utc.iso8601, "agent"], payload.values_at("deliver_at", "origin")
   end
 
-  test "steer: true binds to the reply running there; on an idle addressee it queues" do
+  test "the existing input steer binds to the running reply and never creates another result obligation" do
     run = spawning_loop(label: "reviewer")
     child = child_of(run)
     child_turn, child_loop = running_child!(child)
-    call_round!(run, "r2", ["send", { to: "reviewer", message: "stop: wrong file", steer: true }])
-
-    row = rows_on(child).sole
+    row = post_input!(child, acting_user: @agent, text: "stop: wrong file", delivery_mode: "steer")
     assert_equal %w[steering steer], [row.state, row.delivery_mode]
-    assert_equal child_turn, row.steering_target_turn, "bound to the child's running reply"
+    assert_equal child_turn, row.steering_target_turn
     assert_equal @agent, row.authoring_user
-    assert_equal "Sent to #{child.public_id} (steering); this joins the existing reply, which returns to the request that opened it.", tool_result(run, "r3t0")
-
-    # The next model boundary consumes the steer, but replaying its send
-    # keeps the accepted state and cannot promise another reply.
     call_round!(child_loop, "r1", ["status", { to: child.public_id }])
-    assert_empty rows_on(child)
-    call = loop_node(run, "r3t0")
-    accepted_text = tool_result(run, "r3t0")
-    Task.where(id: call.id).update_all(status: "running", completed_at: nil)
-    assert_equal :applied, Run.call(node: call.reload)
-    assert_equal accepted_text, tool_result(run, "r3t0")
     assert_empty rows_on(child)
     finish_reply(child_loop, "r2", "The original review, with the correction")
     2.times { Runs::Spawn::Relay.call(conversation_id: child.id) }
+    assert_empty rows_on(@conversation).where(origin: "child"), "formal mail waits for the requester's final reply"
+    finish_reply(run, "r2", "Waiting for the corrected review")
+    Runs::ResultDelivery.call(run.reload)
     assert_includes rows_on(@conversation).where(origin: "child").sole.text, '<task_result task="r2t0"'
     assert_not_nil child_turn.reload.relayed_at
-
     idle = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
-    call_round!(run, "r3", ["send", { to: idle.public_id, message: "hello", steer: true }])
-    assert_equal "pending", rows_on(idle).sole.state, "steer-on-idle is the door's queue fallback"
-    assert_equal "Sent to #{idle.public_id} (queued).", tool_result(run, "r4t0")
+    row = post_input!(idle, acting_user: @agent, text: "hello", delivery_mode: "steer")
+    assert_equal "pending", row.state, "the ordinary member input door retains its idle fallback"
   end
 
   test "the row is idempotent under a retried job: one send, one row" do
@@ -557,14 +560,12 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     child = child_of(run)
     call_round!(run, "r2", ["send", { to: "reviewer", message: MORE }])
     call = loop_node(run, "r3t0")
-    Task.where(id: call.id).update_all(status: "running", completed_at: nil)
-
-    assert_equal :applied, Run.call(node: call.reload)
+    assert_equal :not_running, Run.call(node: call.reload)
     assert_equal 2, rows_on(child).count, "the brief and ONE send"
-    assert_equal "Sent to #{child.public_id} (queued); #{promise("r3t0", child)}", tool_result(run, "r3t0")
+    assert_receipt(run, "r3t0", rows_on(child).last)
   end
 
-  test "a timed send retry reports its original accepted deadline after the clock advances" do
+  test "a timed send publishes input and task result atomically and replay retains its deadline" do
     run = spawning_loop(label: "reviewer")
     child = child_of(run)
     apply_via(attempt_for(run, "r2"), sse_success("working", tool_calls: [
@@ -576,20 +577,19 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     Runs::KernelTool.stub(:settle, ->(*) { raise IOError, "settlement interrupted" }) do
       assert_raises(IOError) { Runs::ConversationToolJob.perform_now(call.id) }
     end
-    input = rows_on(child).order(:queue_position).last
+    assert_equal 1, rows_on(child).count, "failed publication left only the original brief"
+    assert_equal "running", call.reload.status
+    assert_nil tool_result(run, "r3t0")
+    assert_equal :applied, Run.call(node: call)
+    input = rows_on(child).last
     deadline = input.deliver_at
-    assert_equal "running", call.status
-    assert_nil tool_result(run, "r3t0"), "the accepted input committed before the worker disappeared"
-
-    travel_to deadline + 1.second do
-      assert_equal :applied, Run.call(node: call.reload)
+    assert_receipt(run, "r3t0", input)
+    travel_to deadline + 25.hours do
+      Runs::ConversationToolJob.perform_now(call.id)
+      assert_receipt(run, "r3t0", input)
     end
-
-    refute tool_error?(run, "r3t0")
-    assert_equal "Sent to #{child.public_id} (scheduled for #{deadline.utc.iso8601}); #{promise("r3t0", child)}",
-      tool_result(run, "r3t0")
     assert_equal deadline, input.reload.deliver_at
-    assert_equal 2, rows_on(child).count, "the brief and one scheduled send"
+    assert_equal 2, rows_on(child).count
   end
 
   # ── send's refusals ──────────────────────────────────────────────────
@@ -653,7 +653,7 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     blocked_child = child_of(waited)
     assert_equal "dispatched", loop_node(waited, "r2t0-spawn-1").status
     _turn, blocked_loop = running_child!(blocked_child)
-    call_round!(blocked_loop, "r1", ["send", { to: @conversation.public_id, message: "done early", steer: true }])
+    call_round!(blocked_loop, "r1", ["send", { to: @conversation.public_id, message: "done early" }])
 
     assert_equal Run::PARENT_WAITING, tool_result(blocked_loop, "r2t0")
     assert tool_error?(blocked_loop, "r2t0")
@@ -686,18 +686,20 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     run = spawning_loop(label: "reviewer")
     child = child_of(run)
     reply!(child)
-    call_round!(run, "r2", ["status", { to: "reviewer" }])
-    assert_equal "conversation #{child.public_id} — idle; queue: 0 waiting; answered by @#{@agent.handle}. " \
-      "1 message from it waits for you, delivered when you end your turn.", tool_result(run, "r3t0")
-
-    call_round!(run, "r3", ["send", { to: "reviewer", message: MORE }])
-    reply!(child)
     stamped = ->(**fields) {
       Conversations::Inputs::Create.call(Conversations::Inputs::Create::Command.sent(
         host: @conversation, acting_user: @agent, entries: [{ "text" => "from the child" }],
         sender_conversation_public_id: child.public_id, **fields
       ))
     }
+    assert_equal "pending", stamped.call.value.state
+    call_round!(run, "r2", ["status", { to: "reviewer" }])
+    assert_equal "conversation #{child.public_id} — idle; queue: 0 waiting; answered by @#{@agent.handle}. " \
+      "1 message from it waits for you, delivered when you end your turn.", tool_result(run, "r3t0")
+
+    call_round!(run, "r3", ["send", { to: "reviewer", message: MORE }])
+    reply!(child)
+    assert_equal "pending", stamped.call.value.state
     assert_equal "steering", stamped.call(delivery_mode: "steer").value.state
     assert_equal "pending", stamped.call(deliver_at: 1.hour.from_now.utc.floor).value.state
     call_round!(run, "r4", ["status", { to: "reviewer" }])
@@ -740,10 +742,16 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
       "the tree: the child and the conversation it spawned"
 
     Runs::Spawn::RelayJob.perform_now(child.id)
+    assert_empty rows_on(@conversation).where(origin: "child"), "mail waits for the canceller's final reply"
+    finish_reply(run, "r3", "Stopped the child")
+    Runs::ResultDelivery.call(run.reload)
+    completion = loop_node(run, "r2t0").spawn_delegation
+    assert_equal "failed", completion.status
+    assert_equal "canceled", Runs::TaskResultProjection.call(completion).dig("structured_content", "status")
     mail = rows_on(@conversation).where(origin: "child").sole
-    assert_equal Runs::TaskResultEnvelope.child_reply(call_key: "r2t0", status: "canceled",
-      conversation_public_id: child.public_id, body: Runs::ResultDelivery.no_reply_text(child_turn)), mail.text,
-      "the canceled reply is still delivered, marked canceled"
+    assert_equal Runs::TaskResultEnvelope.child_reply(call_key: "r2t0", status: "failed",
+      conversation_public_id: child.public_id, body: completion.output_body.effective_text), mail.text,
+      "the canceled worker is still reported through its original completion"
 
     # A CASCADE CANCEL OWES NOTHING BELOW THE CANCELLER: the grandchild's canceled reply was owed to
     # the child's turn, which the same stop canceled — it is stamped, never mailed, so it never
@@ -753,7 +761,7 @@ class Runs::ConversationToolTest < ActiveJob::TestCase
     assert_empty rows_on(child).where(origin: "child"), "no mail on the canceled child"
     assert_equal 0, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id), "nothing wakes it"
     assert_equal 1, rows_on(@conversation).where(origin: "child").count,
-      "the canceller — its turn running — is still owed the child's canceled reply"
+      "the canceller receives the child's canceled result once after its final reply"
   end
 
   test "cancel of an idle conversation is a no-op sentence; of a read-level one, not_authorized" do

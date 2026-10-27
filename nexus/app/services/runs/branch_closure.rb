@@ -149,6 +149,6 @@ module Runs
     end
 
     def flat_call?(row) = BranchTools.flat_call?(row)
-    def spawn_call?(row) = row.kernel_tool_call?("spawn")
+    def spawn_call?(row) = row.kernel_tool_call?("spawn", "request")
   end
 end

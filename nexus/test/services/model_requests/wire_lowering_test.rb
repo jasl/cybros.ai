@@ -31,7 +31,7 @@ class ModelRequests::WireLoweringTest < ActiveSupport::TestCase
     codex = ModelRequests::WireLowering::TABLE.fetch("codex_responses")
     responses = ModelRequests::WireLowering::TABLE.fetch("openai_responses")
 
-    assert_equal responses.fetch(:options).except("max_output_tokens"), codex.fetch(:options)
+    assert_equal responses.fetch(:options).except("max_output_tokens", "prompt_cache_ttl"), codex.fetch(:options)
     assert_empty codex.fetch(:arguments)
     refute_includes ModelRequests::WireLowering.declared_wire_keys("codex_responses"), :max_output_tokens
   end

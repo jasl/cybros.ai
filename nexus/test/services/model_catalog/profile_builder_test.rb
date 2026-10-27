@@ -12,6 +12,49 @@ class ModelCatalog::ProfileBuilderTest < ActiveSupport::TestCase
   B = ModelCatalog::ProfileBuilder
   AF = SimpleInference::ApiFormat
 
+  test "TTL catalog defaults normalize without introducing a request default" do
+    catalog = ModelCatalog::FileBase.compile(root: Rails.root.join("config/model_catalog"), override_dir: nil)
+    ref = "openai_api/gpt-6-luna"
+    entry = catalog.models.fetch(ref)
+    profile = B.call(model_ref: ref, provider: catalog.providers.fetch("openai_api"), model: entry)
+    capabilities = ModelSelection::Resolver.new.send(:capability_snapshot, entry, profile)
+    normalize = ->(configuration) do
+      ModelSelection::Workloads::Configuration.normalize_configuration(configuration: configuration, capabilities: capabilities)
+    end
+    omitted = normalize.call({})
+    assert_nil omitted.refusal
+    assert_not omitted.value.request_options.key?(:prompt_cache_ttl)
+    selected = normalize.call(prompt_cache_ttl: "12h")
+    assert_nil selected.refusal
+    assert_equal "12h", selected.value.to_h.fetch("prompt_cache_ttl")
+    assert_equal :unsupported_generation_value, normalize.call(prompt_cache_ttl: "24h").refusal
+
+    configured = entry.deep_dup
+    configured["capabilities"]["generation_parameters"]["prompt_cache_ttl"]["default"] = "12h"
+    updated = B.call(model_ref: ref, provider: catalog.providers.fetch("openai_api"), model: configured)
+    capabilities = ModelSelection::Resolver.new.send(:capability_snapshot, configured, updated)
+    assert_equal "12h", normalize.call({}).value.to_h.fetch("prompt_cache_ttl")
+    assert_equal "30m", normalize.call(prompt_cache_ttl: "30m").value.to_h.fetch("prompt_cache_ttl")
+  end
+
+  test "catalog rejects TTL vocabulary on the wrong wire or disabled caching" do
+    [%w[anthropic_messages 12h], %w[openai_responses 1h], %w[codex_responses 30m]].each do |format, ttl|
+      entry = ModelCatalog::ModelDefinition.normalize({ "capabilities" => {
+        "generation_parameters" => { "prompt_cache_ttl" => { "allowed_values" => [ttl] } },
+      } }, model_ref: "p/m")
+      assert_raises(ModelCatalog::CompileError) do
+        B.call(model_ref: "p/m", provider: { "api_format" => format }, model: entry)
+      end
+    end
+    entry = ModelCatalog::ModelDefinition.normalize({ "capabilities" => {
+      "prompt_caching" => false,
+      "generation_parameters" => { "prompt_cache_ttl" => { "allowed_values" => ["30m"] } },
+    } }, model_ref: "p/m")
+    assert_raises(ModelCatalog::CompileError) do
+      B.call(model_ref: "p/m", provider: { "api_format" => "openai_responses" }, model: entry)
+    end
+  end
+
   test "a model that states nothing inherits its whole wire from the format" do
     profile = B.call(
       model_ref: "local/sample-text",

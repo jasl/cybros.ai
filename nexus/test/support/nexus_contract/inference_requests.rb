@@ -5,7 +5,7 @@ module Nexus
 
         def inference_requests
           basic, queued, full, truncated, failed, refused, switched, budget_spent, overloaded, with_files,
-            with_vectors = inference_request_presenter_fixtures
+            with_vectors, with_answers = inference_request_presenter_fixtures
           input_estimate = inference_request_input_estimate_fixture
           list_fixture = {
             "inference_requests" => [basic],
@@ -77,7 +77,7 @@ module Nexus
             # presence is its own signal.
             "result_projection_required" => %w[status],
             "result_projection_optional" =>
-              %w[output_text usage timing finish_quality refusal_category error reasoning output_files embeddings
+              %w[output_text usage timing finish_quality refusal_category error reasoning output_files embeddings answers
                  model_change],
             # What the run's latest execution replaced when the creator's
             # declared fallback ran a declined run again: the switch's own
@@ -88,6 +88,8 @@ module Nexus
             # The embedding workload's typed answer (C-U2): `[{index, vector}]`
             # in the provider's order, and `output_text` ABSENT there.
             "embedding_projection" => %w[index vector],
+            "decision_answer_projection_required" => %w[name type],
+            "decision_probability_projection" => %w[value probability label],
             # Only workloads that produce bytes expose these entries. Each download uses its output
             # index; there is no separate per-file identifier.
             "output_file_projection" => %w[index filename content_type byte_size],
@@ -136,6 +138,7 @@ module Nexus
             "valid_truncated_fixture" => { "inference_request" => truncated },
             "valid_image_fixture" => { "inference_request" => with_files },
             "valid_embedding_fixture" => { "inference_request" => with_vectors },
+            "valid_decision_fixture" => { "inference_request" => with_answers },
             "valid_failed_fixture" => { "inference_request" => failed },
             "valid_refused_fixture" => { "inference_request" => refused },
             "valid_switched_fixture" => { "inference_request" => switched },
@@ -343,7 +346,26 @@ module Nexus
             ])
           )
 
-          [basic, queued, full, truncated, failed, refused, switched, budget_spent, overloaded, with_files, with_vectors]
+          with_answers = terminal.merge(
+            "workload" => "decision",
+            "model" => { "provider_id" => "dev", "model_ref" => "dev/mock-decision" },
+            "result" => {
+              "status" => "completed",
+              "usage" => usage.merge("output_tokens" => 0),
+              "answers" => [
+                { "name" => "billing", "type" => "predicate", "probability" => 0.9 },
+                { "name" => "allowed", "type" => "choice", "choice" => false, "confidence" => 0.8,
+                  "probabilities" => [{ "value" => true, "probability" => 0.2 },
+                                      { "value" => false, "probability" => 0.8 }] },
+                { "name" => "urgency", "type" => "score", "score" => 0.75, "confidence" => 0.75,
+                  "probabilities" => [{ "label" => "low", "value" => 0, "probability" => 0.25 },
+                                      { "label" => "high", "value" => 1, "probability" => 0.75 }] },
+                { "name" => "restricted", "type" => "refusal" },
+              ],
+            }
+          )
+
+          [basic, queued, full, truncated, failed, refused, switched, budget_spent, overloaded, with_files, with_vectors, with_answers]
         end
 
         def inference_request_usage_fixture

@@ -33,6 +33,17 @@ class ModelProviders::TestConnectionTest < ActiveSupport::TestCase
     end
   end
 
+  test "decision tests use a fixed predicate on the native route" do
+    configure_model(api_format: "openai_decisions")
+    check_with(json_response(200, { "answers" => [
+      { "name" => "connection", "type" => "predicate", "probability" => 1.0 },
+    ] })) do |result, request|
+      assert_predicate result, :success?
+      assert_equal "https://provider.invalid/v1/decisions", request.fetch(:url)
+      assert_equal "predicate", JSON.parse(request.fetch(:body)).fetch("questions").sole.fetch("type")
+    end
+  end
+
   test "stream-only models consume the terminal response and omit unsupported token controls" do
     configure_model(api_format: "codex_responses")
 

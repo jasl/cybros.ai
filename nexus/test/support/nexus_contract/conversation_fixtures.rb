@@ -28,12 +28,12 @@ module Nexus
           turn_type = Data.define(:public_id)
           conversation_type = Data.define(
             :public_id, :workspace, :title, :lock_version, :answering_user, :archived_at, :billing_subject_key,
-            :parent_conversation_public_id, :spawn_node, :spawn_label, :forked_from_turn_public_id,
+            :taken_over_at, :taken_over_by_public_id, :parent_conversation_public_id, :spawn_node, :spawn_label, :forked_from_turn_public_id,
             :forked_from_variant_public_id, :side, :active_turn, :context_revision,
             :last_activity_at, :created_at, :updated_at, :metadata,
             :input_queue_limit, :memory_context
           ) do
-            def subagent? = !parent_conversation_public_id.nil?
+            def subagent? = !parent_conversation_public_id.nil? && taken_over_at.nil?
           end
           conversation = conversation_type.new(
             public_id: "01900000-0000-7000-8000-000000000070",
@@ -44,6 +44,8 @@ module Nexus
             # the door writes.
             answering_user: Data.define(:public_id).new(public_id: "01900000-0000-7000-8000-000000000003"),
             archived_at: nil,
+            taken_over_at: nil,
+            taken_over_by_public_id: nil,
             billing_subject_key: nil,
             parent_conversation_public_id: nil,
             spawn_node: nil,
@@ -135,16 +137,19 @@ module Nexus
               ],
             }
           )
-          [basic, full, spawned, forked]
+          taken_over = stringify_keys(AgentAPI::ConversationPresenter.basic(child.with(
+            taken_over_at: Time.utc(2026, 10, 27, 10), taken_over_by_public_id: conversation.answering_user.public_id
+          )))
+          [basic, full, spawned, forked, taken_over]
         end
 
         CONTRACT_INPUT_TYPE = Data.define(
           :public_id, :queue_position, :state, :kind, :role, :delivery_mode,
           :context_mode, :context_options, :tool_names, :approval_mode, :instructions, :blocked_reason,
           :host, :text, :lock_version, :created_at, :origin, :sender_conversation_public_id,
-          :speaker, :answering_user, :content_body, :deliver_at, :expected_steering_run_public_id, :callback_result, :steps
+          :speaker, :answering_user, :content_body, :deliver_at, :expected_steering_run_public_id, :callback_result, :steps, :communication_kind, :conversation_link, :requested_delivery_mode, :on_target_end, :fallback_reason
         ) do
-          def initialize(content_body: nil, deliver_at: nil, expected_steering_run_public_id: nil, callback_result: nil, steps: nil, **) = super
+          def initialize(requested_delivery_mode: nil, on_target_end: nil, fallback_reason: nil, communication_kind: nil, conversation_link: nil, content_body: nil, deliver_at: nil, expected_steering_run_public_id: nil, callback_result: nil, steps: nil, **) = super
         end
 
         # A body as the presenter reads it: its words and the pictures it binds — the `ContentBody`
@@ -280,13 +285,15 @@ module Nexus
           )))
         end
 
-        def input_fixture(expected_steering_run_public_id: nil, callback_result: nil, steps: nil)
+        def input_fixture(expected_steering_run_public_id: nil, callback_result: nil, steps: nil,
+                          communication_kind: nil, conversation_link: nil, requested_delivery_mode: nil,
+                          on_target_end: nil, fallback_reason: nil)
           stringify_keys(AgentAPI::ConversationPresenter.input(CONTRACT_INPUT_TYPE.new(
             # A conversation host renders the assembly fields; a loop host omits them.
             host: Conversation.new,
             # WHO SPOKE and WHO ANSWERS: the author's voice and the addressee — here a person's row
             # addressed to an agent.
-            speaker: Speaker.new(user: contract_person),
+            speaker: Speaker.new(user: communication_kind ? contract_agent : contract_person),
             answering_user: contract_agent,
             public_id: "01900000-0000-7000-8000-000000000080",
             queue_position: 0,
@@ -296,6 +303,7 @@ module Nexus
             delivery_mode: expected_steering_run_public_id ? "steer" : "queue",
             expected_steering_run_public_id: expected_steering_run_public_id,
             callback_result: callback_result,
+            communication_kind:, conversation_link:, requested_delivery_mode:, on_target_end:, fallback_reason:,
             steps: steps,
             context_mode: "assembled",
             # An inline entry naming a slot overrides that slot's registered document for the turn;
@@ -319,8 +327,8 @@ module Nexus
             # human's word, `agent` on a peer's, `task_result`/`child` on
             # the kernel's own mail; the sender stamp rides only the
             # stamped rows (conversations.md).
-            origin: callback_result ? "child" : "person",
-            sender_conversation_public_id: callback_result&.fetch("conversation_public_id")
+            origin: callback_result ? "child" : (communication_kind ? "agent" : "person"),
+            sender_conversation_public_id: callback_result&.fetch("conversation_public_id") || ("01900000-0000-7000-8000-000000000070" if communication_kind)
           )))
         end
 
@@ -335,18 +343,19 @@ module Nexus
         CONTRACT_TURN_TYPE = Data.define(
           :public_id, :position, :kind, :role, :status,
           :origin, :sender_conversation_public_id, :created_at,
-          :speaker, :answering_user, :sender_run_public_id, :sender_task_key, :input_public_id, :callback_sources, :reference
+          :speaker, :answering_user, :sender_run_public_id, :sender_task_key, :input_public_id, :callback_sources, :reference, :communication_kind, :conversation_link_public_id
         ) do
           def initialize(sender_run_public_id: nil, sender_task_key: nil, input_public_id: nil, callback_sources: [],
-                         reference: false, **) = super
+                         reference: false, communication_kind: nil, conversation_link_public_id: nil, **) = super
           def reference? = reference
         end
 
         # A peer's message as a settled turn: `origin: agent` and the sender stamp on the row; no
         # candidate, no reply.
-        def conversation_stamped_turn_fixture
+        def conversation_stamped_turn_fixture(communication_kind: nil, conversation_link_public_id: nil)
           stringify_keys(AgentAPI::ConversationPresenter.turn_block(
             CONTRACT_TURN_TYPE.new(
+              communication_kind:, conversation_link_public_id:,
               public_id: "01900000-0000-7000-8000-000000000073",
               position: 5,
               kind: "message",

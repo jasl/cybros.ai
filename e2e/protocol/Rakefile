@@ -5,7 +5,7 @@ module E2E
   LANE_ROOT = __dir__
   NEXUS_ROOT = File.expand_path("../../nexus", __dir__)
   WORLD_CLASS = NexusServer
-  SMOKE_JOURNEYS = %w[device_connection fake_executor].freeze
+  SMOKE_JOURNEYS = %w[device_connection fake_executor sdk_decisions].freeze
 end
 
 require_relative "../support/lane_tasks"

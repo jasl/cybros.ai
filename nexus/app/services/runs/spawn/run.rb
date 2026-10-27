@@ -1,18 +1,13 @@
 module Runs
   module Spawn
-    # Spawn creates a reusable child conversation, answered by the caller's
-    # own profile with empty context or by a named peer. The initial brief is
-    # the spawner's principal-authored Input. Conversation lifetime returns
-    # replies through mail; turn lifetime owns only this original execution
-    # through a DelegationTask. The optional finite wait controls the caller's
-    # next round independently of that completion obligation.
-    #
-    # Launch is resumable: create the uniquely linked child, append its optional
-    # await and turn-owned completion together, then publish the brief. The
-    # observations exist before any child can answer. Separate transactions
-    # preserve Conversation -> Loop -> Input/task lock order. Publication
-    # records the accepted Input UUID atomically under the source loop, so
-    # stop fences late work and receipt expiry cannot rebrief a consumed input.
+    # Spawn prepares completion and an optional finite await, then publishes
+    # its original brief. A linked spawn commits child, link and brief together.
+    # Every lifetime owns the original execution through a DelegationTask:
+    # turn lifetime requires its
+    # report before final delivery; conversation lifetime can mail it afterward.
+    # The optional wait controls the caller's next round independently.
+    # Publication retains the Input UUID under its source Run, so Stop fences
+    # late work and receipt expiry cannot rebrief a consumed input.
     class Run
       class Refused < StandardError; end
 
@@ -43,10 +38,26 @@ module Runs
         refusal = refusal_for(run, input)
         return settle(refusal, is_error: true) if refusal
 
-        child = child_for(run, input)
         prepare_observers(run, input)
-        post_brief(run, child, input)
-        settle(started_text(child, input))
+        if input["establish_link"]
+          answerer = answerer_for(run, input) || spawner(run)
+          Conversations::Links::Create.with_authority(workspace: run.workspace, agents: [spawner(run), answerer]) do
+            Conversations::SubagentTree.with_root(run.conversation) do |root|
+              run.conversation.lock! unless root.id == run.conversation.id
+              child = child_for(run, input)
+              grant = Conversations::Links::Create.call_locked(conversation: run.conversation.reload, agent: spawner(run),
+                peer_conversation: child, peer_agent: child.answering_user, acting_user: spawner(run))
+              raise Refused, "The spawn was refused: #{grant.outcome}." unless grant.accepted?
+
+              raise ActiveRecord::Rollback unless post_brief(run, child, input, link: grant.value)
+              grant.value.narrate(acting_user: spawner(run)) if grant.value.previously_new_record?
+            end
+          end
+        else
+          child = child_for(run, input)
+          post_brief(run, child, input)
+        end
+        :applied
       rescue Refused => error
         Delegations.launch_failed(call: @node, detail: error.message)
         settle(error.message, is_error: true)
@@ -54,7 +65,6 @@ module Runs
 
       private
 
-        def await_key = self.class.await_key(@node.node_key)
         def wait?(input) = KernelTool.wait?(input)
         # The profile whose engine made the call: the child's creator and,
         # without `agent`, its answerer. The loop's `creating_user` is the
@@ -66,6 +76,7 @@ module Runs
           return SIDE_SPAWNER if run.conversation.side?
           return EMPTY_PROMPT if String.try_convert(input["prompt"]).to_s.strip.empty?
           return INVALID_WAIT unless KernelTool.valid_wait?(input)
+          return "establish_link must be true or false." unless [nil, true, false].include?(input["establish_link"])
           return KernelTool::INVALID_LIFETIME unless KernelTool.valid_lifetime?(input)
           return KernelTool::INVALID_WAKE unless KernelTool.valid_wake?(input)
           if KernelTool.lifetime(@node, input) == "turn" && run.delivered?
@@ -104,11 +115,10 @@ module Runs
 
           answerer = answerer_for(run, input)
           parent = run.conversation
-          root = Conversations::SubagentTree.root(parent)
           # Birth and tree archive/unarchive share the lifecycle root: neither
           # command may miss a child committed after its descendant snapshot.
           # The one Conversation lock precedes child FK inserts; no Run is held.
-          result = root.with_lock(requires_new: true) do
+          result = Conversations::SubagentTree.with_root(parent, requires_new: true) do |root|
             parent.reload unless parent == root
             next Outcome.refused(:not_found) if parent.tombstoned?
 
@@ -173,42 +183,19 @@ module Runs
         # ── the await ──────────────────────────────────────────────────
 
         def prepare_observers(run, input)
-          return unless wait?(input) || KernelTool.lifetime(@node, input) == "turn"
-
           # Splice the finite wait before adding its independent completion;
           # otherwise a graph-authored spawn makes completion wait on itself.
           # Both appends share the source owner so a refused completion leaves
           # no await behind. Child birth and brief publication hold no Run here.
           run.with_lock(requires_new: true) do
-            append_await(run, input) if wait?(input)
-            if KernelTool.lifetime(@node, input) == "turn"
-              @delegation = Delegations.prepare(call: @node)
-              raise Refused, "The spawn was refused: delegation_canceled." unless @delegation
+            if wait?(input)
+              result = Delegations::Observers.append_await(call: @node, prompt: input["prompt"])
+              raise Refused, "The spawn was refused: #{result.outcome}." unless result.accepted?
             end
+            @delegation = Delegations.prepare(call: @node, lifetime: KernelTool.lifetime(@node, input),
+              wake: KernelTool.wake(@node, input))
+            raise Refused, "The spawn was refused: delegation_canceled." unless @delegation
           end
-        end
-
-        # A kernel-held await (`holder: :kernel`): tokened, so it parks
-        # `dispatched` off every inbox and is never a person's question;
-        # `absorb`, so its expiry runs the continuation with the detach
-        # sentence; the default clock (1 h, clamped per park).
-        def append_await(run, input)
-          return if run.tasks.exists?(node_key: await_key)
-
-          step = Tasks::Step::Ask.new(key: await_key, prompt: input["prompt"], on_failure: "absorb")
-          # A graph-authored call has no provider pairing. Its wait and result
-          # consumers follow the first reply, including non-model consumers.
-          result = Tasks::Append.call_locked(Tasks::Append::Command.kernel(
-            run: run, steps: [step], tip: KernelTool.branch_tip(@node),
-            origin: "kernel", expansion_parent: @node, holder: :kernel,
-            head: (KernelTool.continuation_of(@node)&.node_key if @node.tool_call_id),
-            replaces: (@node.node_key unless @node.tool_call_id)
-          ))
-          # A twin run appended it under the loop lock first.
-          return if result.applied? || result.outcome == :duplicate_task_key
-
-          detail = result.errors.first&.fetch("code", nil) || result.outcome
-          raise Refused, "The spawn was refused: #{detail}."
         end
 
         # ── the brief ──────────────────────────────────────────────────
@@ -216,40 +203,28 @@ module Runs
         # The brief is the spawner's own input, with the parent's stamp for
         # relay. A selected declaration carries its captured configuration
         # and effective selection, including reasoning. Identity-based spawn
-        # retains the addressee's ordinary configured-model ladder. The hosted
-        # receipt survives input collection, so a retried job posts one brief.
-        def post_brief(run, child, input)
-          return if @delegation&.delegated_input_public_id
-
-          parent = run.conversation
-          envelope = { "spawn" => child.public_id, "text" => input["prompt"] }
-          result = ConversationCommandReceipt::Idempotent.call(
-            account: run.account, workspace: run.workspace, acting_user: spawner(run),
-            operation: :input_create, idempotency_key: "spawn:#{run.public_id}:#{@node.node_key}",
-            host: child,
-            request_digest: ConversationCommandReceipt.digest_for(operation: :input_create, envelope: envelope)
-          ) do
-            accepted = Conversations::Inputs::Create.call(Conversations::Inputs::Create::Command.sent(
-              host: child, acting_user: spawner(run), kind: "direct_reply",
-              entries: [{ "text" => input["prompt"] }], delivery_mode: "queue",
-              sender_conversation_public_id: parent.public_id,
-              run_public_id: run.public_id, task_key: @node.node_key,
-              delegation: @delegation,
-              **brief_selection(input)
-            ))
-            next accepted unless accepted.accepted?
-
-            ConversationCommandReceipt::Idempotent::Success.new(
-              status: 202, body: { "input" => { "public_id" => accepted.value.public_id } }, host: child
-            )
+        # retains the addressee's ordinary configured-model ladder. The call's
+        # result survives input collection, so a retried job posts one brief.
+        def post_brief(run, child, input, link: nil)
+          accepted = Conversations::Inputs::Create.call(Conversations::Inputs::Create::Command.sent(
+            host: child, acting_user: spawner(run), kind: "direct_reply",
+            entries: [{ "text" => input["prompt"] }], delivery_mode: "queue", communication_kind: "request",
+            sender_conversation_public_id: run.conversation.public_id,
+            run_public_id: run.public_id, task_key: @node.node_key, delegation: @delegation,
+            **brief_selection(input)
+          )) do |row|
+            receipt = { "input_public_id" => row.public_id, "conversation_public_id" => child.public_id,
+              "answering_user_public_id" => row.answering_user.public_id, "state" => row.state,
+              "delivery_mode" => row.delivery_mode, "link_public_id" => link&.public_id,
+              "completion" => { "run_public_id" => run.public_id, "task_key" => @delegation.node_key } }
+            result = KernelTool.settle(@node, "#{started_text(child, input)}\n#{KernelTool.task_reference(@node)}",
+              title: "spawn", structured_content: receipt, locked: true)
+            raise Refused, result.to_s unless %i[applied idle].include?(result)
           end
-          if result.outcome == :refused
-            return if result.refusal.outcome == :delegation_published
+          return true if accepted.accepted?
+          return false if accepted.outcome == :communication_published
 
-            raise Refused, "The spawn was refused: #{result.refusal.outcome}."
-          elsif result.outcome == :mismatched
-            raise Refused, "The spawn was refused: idempotency_envelope_mismatch."
-          end
+          raise Refused, "The spawn was refused: #{accepted.outcome}."
         end
 
         def brief_selection(input) = @declaration ? @declaration.input_fields : KernelTool.initiator_model(@node, input)
@@ -260,7 +235,7 @@ module Runs
           name = child.public_id.dup
           name << " (label #{child.spawn_label})" if child.spawn_label
           who = "@#{child.answering_user.handle}"
-          if @delegation
+          if @delegation.lifetime == "turn"
             return "Spawned conversation #{name}, answered by #{who}; its result is owed before your final reply. " \
               "#{wait?(input) ? "Waiting for its first reply." : "Continue independent work while it runs."}"
           end

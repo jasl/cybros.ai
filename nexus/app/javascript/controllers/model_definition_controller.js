@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["inherit", "defaults", "facts", "emptyFacts", "limit", "limitHint", "boolean", "booleanHint",
-    "resetLimits", "limitsEdited", "restoreLimits", "mediaMode", "media", "mediaHint", "extraMedia"]
+    "resetLimits", "limitsEdited", "restoreLimits", "mediaMode", "media", "mediaHint", "extraMedia", "promptCache", "promptCacheSection"]
   static values = { definitions: Object, fallback: Object, emptyLimits: Boolean, otherLimits: Boolean,
     currentMedia: Array, messages: Object }
 
@@ -12,7 +12,7 @@ export default class extends Controller {
     this.definitionChanged()
   }
 
-  definitionChanged() {
+  definitionChanged(event) {
     const defaults = this.selectedDefaults()
     this.defaultsTarget.hidden = !Object.hasOwn(this.definitionsValue, this.inheritTarget.value)
     this.factsTarget.replaceChildren(...defaults.facts.map(fact => {
@@ -32,6 +32,21 @@ export default class extends Controller {
     for (const hint of this.booleanHintTargets) hint.textContent = defaults.booleans[hint.dataset.capability].hint
     this.paintLimits()
     this.paintMedia()
+    this.paintPromptCache(Boolean(event))
+  }
+
+  paintPromptCache(reset) {
+    const defaults = this.selectedDefaults().promptCache
+    const selected = reset ? defaults.default : this.promptCacheTarget.value
+    this.promptCacheSectionTarget.hidden = !defaults.supported
+    this.promptCacheTarget.disabled = !defaults.supported
+    this.promptCacheTarget.replaceChildren(...defaults.options.map(([label, value]) => {
+      const option = document.createElement("option")
+      option.textContent = label
+      option.value = value
+      option.selected = value === selected
+      return option
+    }))
   }
 
   limitsChanged() {

@@ -31,8 +31,10 @@ module Conversations
             kind: "direct_reply",
             role: "assistant",
             status: "running",
-            speaker: input.speaker,
-            control_owner_user: input.authoring_user,
+            speaker: input.communication_message? ? Speakers::Resolve.member(account: input.account, user: input.processing_user) : input.speaker,
+            control_owner_user: input.processing_user,
+            communication_kind: input.communication_kind,
+            conversation_link_public_id: input.conversation_link&.public_id,
             answering_user: input.answering_user,
             visibility: input.visible_in_context ? "visible" : "excluded_from_context",
             origin: input.origin,
@@ -40,6 +42,7 @@ module Conversations
             callback_sources: @independent_callback_sources || [input.callback_source].compact,
             sender_conversation_public_id: @independent_callback_sources ? nil : input.sender_conversation_public_id,
             sender_run_public_id: @independent_callback_sources ? nil : input.sender_run_public_id,
+            source_released_at: @independent_callback_sources ? nil : input.source_released_at,
             sender_task_key: @independent_callback_sources ? nil : input.sender_task_key,
           )
           variant = Variant.create!(
@@ -67,7 +70,7 @@ module Conversations
           invocation = ModelInvocation.create_for_selection(
             selection: selection,
             conversation: @conversation,
-            creating_user: input.authoring_user,
+            creating_user: input.processing_user,
             internal_creation_key: "conversation_reply:#{input.public_id}",
             request_options: reply_request_options(input, selection)
           )
@@ -115,7 +118,7 @@ module Conversations
 
           turn, variant = build_reply_turn(input, selection, source: "run")
           born = Turns::BackingRun.create(
-            conversation: @conversation, variant: variant, creating_user: input.authoring_user,
+            conversation: @conversation, variant: variant, creating_user: input.processing_user,
             steps: [seed_round(input, selection, configuration)],
             authored_steps: input.steps, append_key: input.public_id,
             tip: Runs::Tasks::Tip.seed(Runs::Tasks::Compile::ROUND).with(

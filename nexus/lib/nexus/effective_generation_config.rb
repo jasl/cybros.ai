@@ -5,9 +5,13 @@ module Nexus
     # catalog spelling (`output_format` may carry a plain string).
     def self.from_h(hash)
       values = hash.to_h do |name, value|
-        normalized = case value
-        when Hash then OutputFormat.from_h(value)
-        else value
+        normalized = if name.to_sym == :questions
+          SimpleInference::Decisions::Questions.from_array(value)
+        else
+          case value
+          when Hash then OutputFormat.from_h(value)
+          else value
+          end
         end
         [name.to_sym, normalized]
       end
@@ -33,6 +37,8 @@ module Nexus
 
       def serialized_value(value)
         case value
+        when SimpleInference::Decisions::Questions
+          value.to_a
         when OutputFormat
           value.to_h
         when String, Integer, Float, true, false, nil
@@ -44,6 +50,8 @@ module Nexus
 
       def request_value(value)
         case value
+        when SimpleInference::Decisions::Questions
+          value.to_a
         when OutputFormat
           value.request_options
         when String, Integer, Float, true, false, nil

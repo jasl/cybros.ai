@@ -71,6 +71,7 @@ module AgentAPI
             refusal_category: invocation.refusal_category,
             output_text: output_text(inference_request, invocation),
             embeddings: embeddings(inference_request, invocation),
+            answers: answers(inference_request, invocation),
             usage: UsageRecords::PublicUsage.render(receipt),
             timing: UsageRecords::PublicUsage.timing(receipt),
             error: error(invocation, receipt),
@@ -119,7 +120,7 @@ module AgentAPI
         # Absent on the embedding workload: its answer is the vectors below,
         # never a JSON document a caller has to parse out of the prose slot.
         def output_text(inference_request, invocation)
-          return nil if inference_request.workload == EMBEDDING
+          return nil if [EMBEDDING, "decision"].include?(inference_request.workload)
 
           response_text(invocation)
         end
@@ -136,6 +137,13 @@ module AgentAPI
           JSON.parse(text).fetch("embeddings").map do |row|
             { index: row.fetch("index"), vector: row.fetch("embedding") }
           end
+        end
+
+        def answers(inference_request, invocation)
+          return nil unless inference_request.workload == "decision"
+
+          text = response_text(invocation)
+          JSON.parse(text).fetch("answers") if text
         end
 
         def response_text(invocation)

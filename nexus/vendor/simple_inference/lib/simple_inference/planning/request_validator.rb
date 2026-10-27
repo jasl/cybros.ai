@@ -79,6 +79,12 @@ module SimpleInference
         Internal::Keys.shallow_symbolize(options)
       end
 
+      def validate_decisions_request(profile:, model:, questions:, options:)
+        ensure_workload(profile, "decision", surface: "decisions.create")
+        ensure_model_pin(profile, model)
+        Internal::Keys.shallow_symbolize(options).merge(questions: Decisions::Questions.from_array(questions))
+      end
+
       def ensure_workload(profile, workload, surface:)
         return if profile.workload == workload
 

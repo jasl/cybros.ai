@@ -47,7 +47,7 @@ module E2E
         def cancel? = tool == "cancel"
         def to = arguments.nil? ? nil : arguments["to"]
         def agent = arguments.nil? ? nil : arguments["agent"]
-        def steer? = send? && !arguments.nil? && arguments["steer"] == true
+        def steer? = send? && %w[steer steer_now].include?(argument("delivery_mode")) && argument("expected_steering_run_public_id").present?
       end
 
       # `declared` is the set's function definitions (alias facts included). `fixture` is the
@@ -132,7 +132,7 @@ module E2E
       # THE SP ROWS: the `spawn`/`send`/`status`/`cancel` texts are NEW model-facing bytes, measured
       # here by property and never tuned. SP0 a subagent spawn with no `agent` when told to hand
       # work to an agent one can keep talking to; SP1 `agent` naming the peer when the lead lists
-      # it; SP2 `send` with `steer: true` when told an agent is going wrong (the reach AND the
+      # it; SP2 `send` with exact-run steering when told an agent is going wrong (the reach AND the
       # flag); SP3 IS the task-vs-spawn line — two cells, a one-shot review is a `task` (SP3A) and a
       # persistent reviewer a `spawn` (SP3B); SP4 no `status` polling in the message that started
       # the spawn. The label rides SP2 and the public id SP5 (both spellings have benchmark cells).
@@ -203,6 +203,7 @@ module E2E
       )
 
       SP2_LABEL = "migrator".freeze
+      SP2_RUN = "01980000-0000-7000-8000-000000000001".freeze
       # The two config files SP2's premise names, as the move finds them.
       SP2_FILES = {
         "lib/config/legacy.rb" => "module Config\n  class Legacy\n    def self.load(path) = YAML.load_file(path)\n  end\nend\n",
@@ -213,11 +214,11 @@ module E2E
         id: "SP2", slug: "steer-going-wrong", fixture: SP2_FILES,
         text: "The agent you spawned under the label `migrator` to move the config loader is rewriting the wrong " \
               "file — it is editing lib/config/legacy.rb instead of lib/config/loader.rb. Correct it right now, " \
-              "before it goes further.",
+              "before it goes further. Its current Run UUID is #{SP2_RUN}.",
         scorer: lambda do |calls, _declared|
           sends = calls.select(&:send?)
           sent = sends.any?
-          steered = sends.any?(&:steer?)
+          steered = sends.any? { |call| call.steer? && call.argument("expected_steering_run_public_id") == SP2_RUN }
           to_is_the_label = sends.any? { |call| call.to == SP2_LABEL }
           no_cancel = calls.none?(&:cancel?)
           { "pass" => sent && steered && to_is_the_label && no_cancel,

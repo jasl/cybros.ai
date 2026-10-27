@@ -50,6 +50,7 @@ class Conversations::Compaction::ConsumedPairsTest < ActiveJob::TestCase
     cleared = Runs::RoundReplay::Pairing::CLEARED
     expected = [["call_a", cleared], ["call_b", cleared], ["call_c", bodies.last]]
     request = round_request_entries(r4.reload)
+    assert_equal instruction_entries(round_request_entries(loop_node(run, "r1"))), instruction_entries(request)
     assert_equal expected, paired_outputs(request),
       "row reconstruction clears both results r2 consumed or emitted, while the current fan stays whole"
     assert_equal %w[call_a call_b call_c], call_ids(request), "every cleared result keeps its call exactly once"
@@ -67,18 +68,40 @@ class Conversations::Compaction::ConsumedPairsTest < ActiveJob::TestCase
     refute_includes later.to_json, "the answer replaced by compaction"
   end
 
+  test "another summary preserves the same captured instructions and only its fresh pair" do
+    _conversation, _turn, run, bodies = consumed_pairs_history
+    r4 = loop_node(run, "r4")
+    complete_compaction_summary(r4, key: "second_summary", text: "SECOND SUMMARY")
+    schedule_loop!(run)
+
+    request = round_request_entries(r4.reload)
+    assert_equal instruction_entries(round_request_entries(loop_node(run, "r1"))), instruction_entries(request)
+    assert_equal [["call_c", bodies.last]], paired_outputs(request)
+    assert_includes request.to_json, "SECOND SUMMARY"
+    refute_includes request.to_json, "COMPACTED HISTORY"
+  end
+
   private
 
     # r2 first consumes A after a summary, then emits B. r3 consumes B
     # and emits C. At r4's wall r2 is eligible to clear, while C is fresh.
     def consumed_pairs_history
+      assert_predicate PromptDocuments::Write.call(anchor: { user: @agent }, slot: "system_prompt",
+        content: "Keep the captured system instruction.", role: "system"), :written?
+      assert_predicate PromptDocuments::Write.call(anchor: { workspace: @workspace }, slot: "character",
+        content: "Keep the captured developer instruction.", role: "developer"), :written?
       bodies = ["old A\n#{prose(12_000)}", "old B\n#{prose(1_000)}", "fresh C\n#{prose(4_000)}"]
       conversation, turn, run = run_backed_read!(body: bodies.first,
         words: "the answer replaced by compaction", compaction_policy: { "mode" => "kernel" })
+      captured = instruction_entries(round_request_entries(loop_node(run, "r1")))
+      assert_equal %w[system developer], captured.map { |entry| entry.fetch("role") }.uniq
+      assert_predicate PromptDocuments::Write.call(anchor: { user: @agent }, slot: "system_prompt",
+        content: "A later configuration must not enter this turn.", role: "system"), :written?
       r2 = loop_node(run, "r2")
       complete_compaction_summary(r2)
       schedule_loop!(run)
       first_read = round_request_entries(r2.reload)
+      assert_equal captured, instruction_entries(first_read), "summary replaces history, preserving captured instructions"
       assert_equal [["call_a", bodies.first]], paired_outputs(first_read),
         "the old pair reaches its first consumer beside the summary before any later prune"
       refute_includes first_read.to_json, "the answer replaced by compaction"
@@ -88,6 +111,10 @@ class Conversations::Compaction::ConsumedPairsTest < ActiveJob::TestCase
         paired_outputs(round_request_entries(loop_node(run, "r3")))
       read!(run, "call_c", "docs/current.txt", "read the current file", bodies.last)
       [conversation, turn, run, bodies]
+    end
+
+    def instruction_entries(entries)
+      entries.select { |entry| %w[system developer].include?(entry["role"]) }
     end
 
     def paired_outputs(entries)

@@ -167,7 +167,9 @@ class ResultDeliveryFallbackTest < Minitest::Test
         @chat.turns.list.items.find { |turn| turn.active_variant&.run_public_id }
       end
       @source_loop = @workspace.run(source_turn.active_variant.run_public_id)
-      await("the source never completed its tools") { @source_loop.fetch.status == "completed" }
+      # The reply finishes before the child answers; its completion obligation
+      # keeps the source Run alive until we release the child's ask below.
+      await("the source never delivered its reply") { @source_loop.fetch.turn.status == "completed" }
       @source_tasks = completed_tasks(@source_loop)
       assert_equal %w[memory_write spawn], @source_tasks.filter_map { |task| task.fetch(:tool_name) }
       @memory = @chat.memory.read(MEMORY_PATH)
@@ -242,6 +244,7 @@ class ResultDeliveryFallbackTest < Minitest::Test
     end
 
     def assert_completed_work_unchanged(mailed)
+      await("the source never settled its child completion") { @source_loop.fetch.status == "completed" }
       assert_equal @source_tasks, completed_tasks(@source_loop), "the parent's completed tools never rerun"
       assert_equal @child_tasks, completed_tasks(@child_loop), "the child's completed work never reruns"
       assert_equal [@child_turn_id], @child_chat.turns.list.items.map(&:public_id)
@@ -272,7 +275,8 @@ class ResultDeliveryFallbackTest < Minitest::Test
     end
 
     def completed_tasks(context)
-      context.fetch.tasks.map do |task|
+      # Completion observers settle after the child; snapshot the executed work.
+      context.fetch.tasks.reject { |task| task.kind == "delegation_task" }.map do |task|
         task.to_h.slice(:key, :kind, :status, :tool_name, :started_at, :completed_at)
       end
     end

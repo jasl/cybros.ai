@@ -12,11 +12,11 @@ module Rho
     KERNEL_TOOLS = %w[
       nexus.memory.read nexus.memory.write nexus.memory.edit nexus.memory.ls nexus.memory.grep nexus.memory.delete
       nexus.skill.load nexus.tools.search nexus.tools.call nexus.models.list nexus.human.ask nexus.graph.delegate_task nexus.graph.wait
-      nexus.conversation.spawn nexus.conversation.send nexus.conversation.status nexus.conversation.cancel
+      nexus.conversation.spawn nexus.conversation.send nexus.conversation.request nexus.conversation.links nexus.conversation.status nexus.conversation.cancel
       nexus.conversation.search nexus.conversation.read
     ].freeze
-    SUBAGENT_TOOLS = %w[nexus.conversation.spawn nexus.graph.delegate_task].freeze
-    DELEGATION_TOOLS = %w[nexus.conversation.spawn nexus.conversation.send].freeze
+    SUBAGENT_TOOLS = %w[nexus.conversation.spawn nexus.conversation.request nexus.graph.delegate_task].freeze
+    DELEGATION_TOOLS = %w[nexus.conversation.spawn nexus.conversation.send nexus.conversation.request].freeze
     MEMORY_CONTEXT_LIMIT = { "bindings" => [
       { "name" => "conversation", "source" => { "scope" => "conversation" }, "access" => "read_write" },
       { "name" => "speaker", "source" => { "scope" => "speaker" }, "access" => "read_write" },
@@ -92,9 +92,12 @@ module Rho
 
         def with_destinations(entry, send_targets, spawn_roles)
           case entry.fetch("canonical")
-          when "nexus.conversation.send"
+          when "nexus.conversation.send", "nexus.conversation.request"
             lines = send_targets.map { |row| "- #{row.public_id} (@#{row.handle}): #{row.description}" }
-            description = "Required. Pass one exact Bot UUID below; do not omit this argument or use an @handle.\n#{lines.join("\n") }"
+            description = "For direct addressing, pass one exact Bot UUID below; do not use an @handle.\n#{lines.join("\n") }"
+            if entry.fetch("canonical") == "nexus.conversation.send"
+              description += "\nFor a granted link, omit agent and to and pass link_public_id instead."
+            end
             with_selector(entry, "agent", description)
           when "nexus.conversation.spawn"
             lines = spawn_roles.map { |role| "- #{role.fetch("name")}: #{role.fetch("description")}" }
@@ -114,10 +117,15 @@ module Rho
         def approval_rules(declared, send_targets, spawn_roles, wire_names)
           ordinary = (declared - DELEGATION_TOOLS).map { |canonical| wire_names.fetch(canonical) }
           rules = ordinary.empty? ? [] : [{ "tool" => ordinary.join("|"), "verdict" => "allow" }]
-          if declared.include?("nexus.conversation.send")
+          (declared & %w[nexus.conversation.send nexus.conversation.request]).each do |canonical|
             rules.concat(send_targets.map do |row|
-              { "tool" => wire_names.fetch("nexus.conversation.send"), "path" => "agent", "match" => row.public_id, "verdict" => "allow" }
+              { "tool" => wire_names.fetch(canonical), "path" => "agent", "match" => row.public_id, "verdict" => "allow" }
             end)
+          end
+          if declared.include?("nexus.conversation.send")
+            # Nexus checks the fixed endpoint capability; this grants no history
+            # reads or request dispatch beyond the existing reach.
+            rules << { "tool" => wire_names.fetch("nexus.conversation.send"), "path" => "link_public_id", "match" => "*", "verdict" => "allow" }
           end
           if declared.include?("nexus.conversation.spawn")
             rules.concat(spawn_roles.map do |role|

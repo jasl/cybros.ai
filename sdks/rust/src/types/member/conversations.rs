@@ -84,6 +84,8 @@ pub struct ConversationSummary {
     pub archived_at: Option<String>,
     pub billing_subject: Option<String>,
     pub parent: Option<ConversationParent>,
+    pub taken_over_at: Option<String>,
+    pub taken_over_by_public_id: Option<String>,
     pub source_conversation_public_id: Option<String>,
     pub forked_from_turn_public_id: Option<String>,
     pub forked_from_variant_public_id: Option<String>,
@@ -126,6 +128,8 @@ pub struct Conversation {
     pub archived_at: Option<String>,
     pub billing_subject: Option<String>,
     pub parent: Option<ConversationParent>,
+    pub taken_over_at: Option<String>,
+    pub taken_over_by_public_id: Option<String>,
     pub source_conversation_public_id: Option<String>,
     pub forked_from_turn_public_id: Option<String>,
     pub forked_from_variant_public_id: Option<String>,
@@ -153,6 +157,9 @@ pub struct Conversation {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CallbackResult {
+    pub run_public_id: Option<String>,
+    pub status: Option<String>,
+
     pub conversation_public_id: String,
     pub input_public_id: String,
     pub turn_public_id: String,
@@ -176,6 +183,12 @@ pub struct CallbackSource {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Input {
+    pub communication_kind: Option<String>,
+    pub link_public_id: Option<String>,
+    pub requested_delivery_mode: Option<String>,
+    pub on_target_end: Option<String>,
+    pub fallback_reason: Option<String>,
+
     pub public_id: String,
     pub queue_position: i64,
     pub state: crate::types::names::InputState,
@@ -346,6 +359,9 @@ pub struct InputMaterialization {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Turn {
+    pub communication_kind: Option<String>,
+    pub link_public_id: Option<String>,
+
     pub input_public_id: Option<String>,
     pub callback_sources: Vec<CallbackSource>,
     pub sender_run_public_id: Option<String>,
@@ -468,4 +484,32 @@ pub struct RegeneratedTurn {
 pub enum Speaker {
     Member(ConversationSpeaker),
     Ingress(ConversationIngressSpeaker),
+}
+
+/// Fixed message grant; neither endpoint grants peer history access.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConversationLinkEndpoint {
+    pub conversation_public_id: String,
+    pub agent_public_id: String,
+    #[serde(flatten)]
+    pub extra: JsonObject,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConversationLink {
+    pub public_id: String,
+    pub workspace_public_id: String,
+    pub endpoint: ConversationLinkEndpoint,
+    pub peer: ConversationLinkEndpoint,
+    pub state: String,
+    pub created_at: String,
+    pub closed_at: Option<String>,
+    pub close_reason: Option<String>,
+    #[serde(flatten)]
+    pub extra: JsonObject,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConversationLinkPage {
+    #[serde(rename = "links")]
+    pub items: Vec<ConversationLink>,
+    pub next_after: Option<String>,
 }

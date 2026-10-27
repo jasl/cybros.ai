@@ -318,6 +318,9 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
     run.update!(completed_at: 100.days.ago)
     @account.update!(execution_details_retention_days: 90)
 
+    assert_equal 0, Conversations::ExecutionDetails::Prune.call(account: @account, batch: 20)[:pruned],
+      "the original result remains pinned until its completion is settled"
+    Runs::Delegations::Converge.call(child: child)
     assert_equal 1, Conversations::ExecutionDetails::Prune.call(account: @account, batch: 20)[:pruned]
     assert_empty run.tasks.reload
     assert_equal "mock-text", turn.active_variant.reload.model_ref, "the initial route stays immutable"
@@ -359,6 +362,9 @@ class Runs::SpawnDeclarationsTest < ActiveJob::TestCase
     fallback.model_invocation.update!(terminal_at: 100.days.ago)
     @account.update!(execution_details_retention_days: 90)
 
+    assert_equal 0, Conversations::ExecutionDetails::Prune.call(account: @account, batch: 20, kind: "invocations")[:pruned],
+      "the exact fallback remains pinned until its completion is settled"
+    Runs::Delegations::Converge.call(child: child)
     assert_equal 1, Conversations::ExecutionDetails::Prune.call(account: @account, batch: 20, kind: "invocations")[:pruned]
     assert_nil fallback.reload.model_invocation_id
     assert_equal "mock-unmetered", Runs::CurrentModel.for_variant(fallback).model_ref

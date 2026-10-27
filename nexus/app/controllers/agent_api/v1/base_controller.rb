@@ -46,6 +46,7 @@ class AgentAPI::V1::BaseController < ActionController::API
   ABSENCE_REFUSALS = %i[not_found already_tombstoned].freeze
   CONFLICT_REFUSALS = %i[
     conversation_archived subagent_follows_parent conversation_busy
+    not_subagent source_stopped conflicting_request_owner
     input_queue_full stale_context stale_timeline steering_target_changed
     variant_not_forkable steering_held queue_changed
     branch_required unsupported_turn_type variant_not_active variant_active
@@ -121,7 +122,7 @@ class AgentAPI::V1::BaseController < ActionController::API
     # A person who pressed the compaction button is owed the difference
     # between "already compacted", "nothing to compact" and "a reply is
     # running"; the automatic arm has one answer to all of them.
-    conversation_busy: "A direct reply or a summary is running; compact once it settles",
+    conversation_busy: "The conversation is busy; retry after the current operation settles",
     already_compacted: "The newest turn is already a summary",
     task_not_queued: "The running turn has no round left to compact before it is sent",
     compaction_disabled: "The turn's compaction policy is off",

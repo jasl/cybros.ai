@@ -26,6 +26,7 @@ class Workspace < ApplicationRecord
   # versions remain subject to the shared-version reclaim sweep.
   # The FK refuses an incomplete drain.
   has_many :memory_collections
+  has_many :conversation_links
   has_many :memory_documents, through: :memory_collections
   has_many :prompt_documents, dependent: :delete_all
 

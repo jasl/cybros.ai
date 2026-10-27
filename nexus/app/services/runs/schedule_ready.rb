@@ -30,10 +30,7 @@ module Runs
     class << self
       def call(run_id:)
         admitted = false
-        Run.transaction do
-          run = Run.lock.find_by(id: run_id)
-          next if run.nil?
-
+        Steers::Synchronize.call(run_id: run_id) do |run|
           if !run.terminal? && SourceWork.execution_stopped?(run)
             stop_forced(run)
           elsif !run.terminal? && !writable?(run)

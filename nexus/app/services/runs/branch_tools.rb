@@ -8,11 +8,11 @@ module Runs
   module BranchTools
     # The flat tools whose call key names the branch they made — wire
     # names, as the node's `tool_name` carries them under any alias.
-    FLAT_VERBS = %w[delegate_task ask spawn wait tool_call].freeze
+    FLAT_VERBS = %w[delegate_task ask spawn request wait tool_call].freeze
     # The flat tools whose tip a reader renders as the CALL's paired result: a
     # waited `task`'s branch, a waited `spawn`'s await. An ask's answer is read
     # material the await delivers, never a paired result.
-    PAIRED_VERBS = %w[delegate_task spawn wait tool_call].freeze
+    PAIRED_VERBS = %w[delegate_task spawn request wait tool_call].freeze
 
     Narrowed = Data.define(:definitions, :refused)
 

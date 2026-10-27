@@ -30,6 +30,9 @@ module Conversations
         Conversation.sides_of(member_ids).find_each { |side| Sides::Discard.call(side) }
         stamped = Conversation.where(id: member_ids, tombstoned_at: nil).to_a
         Conversation.where(id: stamped.map(&:id)).touch_all(:tombstoned_at)
+        ConversationLink.close_scope(
+          ConversationLink.where(first_conversation_id: member_ids).or(ConversationLink.where(second_conversation_id: member_ids)),
+          reason: "endpoint_deleted")
         # The feed's LAST item, in this transaction: the next poll is the
         # 404, the cable carries this one (NarrateEnd).
         NarrateEnd.call(stamped, reason: "tombstoned")

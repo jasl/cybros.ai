@@ -17,6 +17,7 @@ module User::Lifecycle
         :not_active
       else
         update!(status: :suspended, authority_generation: authority_generation + 1)
+        ConversationLink.close_for_principal(self)
         :suspended
       end
     end
@@ -64,6 +65,7 @@ module User::Lifecycle
           **(human? ? { managed_resource_shutdown_generation: managed_resource_shutdown_generation + 1 } : {})
         )
         revoke_agent_credentials if agent?
+        ConversationLink.close_for_principal(self)
         # Human-owned connections are configuration rows, not executors. The
         # indexed set update disables them atomically with removal and advances
         # optimistic versions; restore cannot silently reopen an external account.

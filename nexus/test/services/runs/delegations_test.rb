@@ -473,12 +473,11 @@ class Runs::DelegationsTest < ActiveJob::TestCase
 
   test "publication survives receipt expiry and consumption before a launch retry" do
     parent, call = prepare_launch
-    Runs::KernelTool.stub(:settle, ->(*) { raise "worker disappeared after publication" }) do
-      assert_raises(RuntimeError) { Runs::Spawn::Run.call(node: call) }
-    end
+    Runs::Spawn::Run.call(node: call)
     child = child_of(parent)
     published_id = child.inputs.sole.public_id
     assert_equal published_id, delegation(parent).delegated_input_public_id
+    assert_equal "completed", call.reload.status
     assert_ladder_order("delegated input materialization") { start_child(parent) }
     ConversationCommandReceipt.where(host: child).delete_all
     assert_empty child.inputs
@@ -539,7 +538,7 @@ class Runs::DelegationsTest < ActiveJob::TestCase
     assert_equal "completed", delegation(parent).reload.status
   end
 
-  test "nested turn cleanup preserves an explicit conversation lifetime grandchild" do
+  test "source Stop follows nested ownership regardless of the final reply lifetime" do
     parent = spawning_loop({ prompt: PROMPT, lifetime: "turn" })
     child, _turn, child_loop = start_child(parent)
     spawn_round!(child_loop, { prompt: "owned nested work" },
@@ -547,14 +546,14 @@ class Runs::DelegationsTest < ActiveJob::TestCase
     owned = child_of(child_loop)
     independent = child_of(child_loop, "r2t1")
     assert call_node(child_loop).spawn_delegation
-    assert_nil call_node(child_loop, "r2t1").spawn_delegation
+    assert_equal "conversation", call_node(child_loop, "r2t1").spawn_delegation.lifetime
     Runs::Stop.stop_now(parent)
     relay(child)
     relay(owned)
     relay(independent)
     assert_equal "canceling", child_loop.reload.status
     assert_empty owned.inputs
-    assert_equal 1, independent.inputs.count
+    assert_empty independent.inputs
     refute independent.tombstoned?
   end
 

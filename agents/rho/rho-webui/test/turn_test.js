@@ -341,3 +341,14 @@ test("recorded change cards follow their reply, survive repaint, and never fill 
   expect(transcript.element.querySelector(".git-review")).toBeNull();
   transcript.dispose();
 });
+
+for (const kind of ["message", "request"]) {
+  test(`received ${kind} stays distinct from the user's prompt and a formal result`, () => {
+    const node = turnRow({ public_id: "peer-turn", kind: "direct_reply", role: "assistant", status: "completed",
+      origin: "agent", communication_kind: kind, sender_conversation_public_id: "peer",
+      active_variant: { public_id: "peer-variant", prompt_text: "Please clarify", content: "Clarified" } }, deps());
+    expect(node.children[0].querySelector(".turn__speaker").textContent).toBe(`Received ${kind}`);
+    expect(node.textContent).not.toContain("Background task result");
+    expect(node.children[1].textContent).toContain("Clarified");
+  });
+}

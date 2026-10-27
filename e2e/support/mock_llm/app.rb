@@ -4,18 +4,19 @@ require "json"
 require "securerandom"
 require "stringio"
 require_relative "directives"
+require_relative "decisions"
 
 module E2E
   module MockLLM
     # THE FAKE PROVIDER, as a standalone rack app.
     #
-    # It answers the OpenAI-compatible wire the `dev` catalog lane declares,
-    # which is why that lane needs no protocol or parser of its own: five
-    # endpoints, one per shipped dev execution profile.
+    # It answers the OpenAI and TypeSafe wires the `dev` catalog lane declares,
+    # using the ordinary production protocol adapters.
     #
     # POST /v1/responses text_generation (SSE) POST /v1/embeddings embedding POST
     # /v1/images/generations image_generation POST /v1/audio/speech speech_generation POST
-    # /v1/audio/transcriptions transcription (multipart) GET /v1/models the catalogue, for probes
+    # /v1/audio/transcriptions transcription (multipart), /v1/decisions and /v1/systemone
+    # decision (JSON), GET /v1/models the catalogue, for probes
     #
     # **It is NOT mounted inside Nexus, and that is the point.** The
     # predecessor shipped this as eight controllers under
@@ -29,6 +30,8 @@ module E2E
     # because its dev lane used the chat wire; every alt2 dev text profile
     # rides `openai_responses`, so that endpoint would have no caller.
     class App
+      include Decisions
+
       SSE_HEADERS = {
         "content-type" => "text/event-stream",
         "cache-control" => "no-cache",
@@ -48,6 +51,8 @@ module E2E
         "mock-text-only" => "text_generation",
         "mock-unmetered" => "text_generation",
         "mock-priced" => "text_generation",
+        "mock-decision" => "decision",
+        "mock-system-one" => "decision",
         "mock-embedding" => "embedding",
         "mock-image" => "image_generation",
         "mock-speech" => "speech_generation",
@@ -85,6 +90,8 @@ module E2E
           case [method, path]
           in ["GET", "/v1/models"] then models_response
           in ["POST", "/v1/responses"] then responses(env)
+          in ["POST", "/v1/decisions"] then decisions(env, system_one: false)
+          in ["POST", "/v1/systemone"] then decisions(env, system_one: true)
           in ["POST", "/v1/embeddings"] then embeddings(env)
           in ["POST", "/v1/images/generations"] then images(env)
           in ["POST", "/v1/audio/speech"] then speech(env)

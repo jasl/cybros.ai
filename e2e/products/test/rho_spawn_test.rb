@@ -28,8 +28,6 @@ class RhoSpawnTest < Minitest::Test
   # turn is `r2t0` and its continuation `r2`; the mock scripts one call
   # per round, so a second call is `r3t0`, a third `r4t0`. Round 1's
   # sealed request is still `r1`.
-  # Keep the parent busy while its child replies and CLI observations inspect drain order.
-  PARENT_SLEEP = 35
   # THE MEMBER PLANE IS RATE-LIMITED PER CALLER (120 a minute on the loop
   # routes), and every case reads as the same steward: polls are paced.
   POLL = 1
@@ -222,8 +220,9 @@ class RhoSpawnTest < Minitest::Test
     assert_match(/^workspace: room #{Regexp.escape(@world.room_name)} \(#{Regexp.escape(@room)}\)$/, status,
       "under the knob the daemon adopted the steward's room and says so:\n#{status}")
 
+    brief = script([["ask", { "prompt" => "Release the child report?" }]], "child hello")
     conversation, _turn, loop = rho_do(script(
-      [["spawn", { "role" => "worker", "prompt" => "!mock -- child hello", "label" => "helper" }], ["bash", sleep_arguments(PARENT_SLEEP)]],
+      [["spawn", { "role" => "worker", "prompt" => brief, "label" => "helper", "lifetime" => "conversation", "wait" => false }]],
       "parent done", reply: "parent done"
     ))
     chat = @conversations.conversation(conversation)
@@ -236,6 +235,23 @@ class RhoSpawnTest < Minitest::Test
       "the spawn's settle names the child, its label and its answerer:\n#{started}"
 
     child_chat = @conversations.conversation(child.public_id)
+    child_turn = await_running_turn(child_chat, after: -1)
+    child_run = child_turn.active_variant.run_public_id
+    child_ask = await("the child did not hold its report", every: POLL) do
+      loop_row(child_run).fetch("tasks").find { |task| task["status"] == "awaiting_input" }
+    end
+    original = await_reply(chat, after: -1)
+    # A completion can outlive its initiating Turn. Hold a newer parent
+    # request while the original child finishes; no wall-clock race.
+    question = ["ask", { "prompt" => "Finish the current parent request?" }]
+    rho_say(conversation, script([question, question], "current done", reply: "current done"), mode: "queue")
+    current = await_running_turn(chat, after: original.position)
+    current_run = current.active_variant.run_public_id
+    current_ask = await("the current parent request did not park", every: POLL) do
+      loop_row(current_run).fetch("tasks").find { |task| task["status"] == "awaiting_input" }
+    end
+    answered, status = @daemon.cli("answer", child_run, child_ask.fetch("key"), "Release")
+    assert_predicate status, :success?, answered
     reply = await_reply(child_chat, after: -1)
     brief = sealed_texts(reply.active_variant.run_public_id, "r1").join("\n")
     assert_includes brief, envelope_opening(handle, profile, conversation),
@@ -269,11 +285,13 @@ class RhoSpawnTest < Minitest::Test
     refute_predicate exit_status, :success?, "a kernel row is immutable to the person:\n#{removed}"
     assert_includes removed, "kernel_input_immutable", "refused by name:\n#{removed}"
     word = rho_say(conversation, "!mock -- what did it say?", mode: "queue")
+    answered, status = @daemon.cli("answer", current_run, current_ask.fetch("key"), "Finish")
+    assert_predicate status, :success?, answered
 
     events = await_feed(conversation, "the mail and the queued word never opened their turns") do |items|
-      items if new_turns(items, except: [loop]).length >= 2
+      items if new_turns(items, except: [loop, current_run]).length >= 2
     end
-    woken, personal = new_turns(events, except: [loop])
+    woken, personal = new_turns(events, except: [loop, current_run])
     assert_equal mail_id, materialized(events, woken).dig("payload", "input_public_id"),
       "THE FIRST new turn is the kernel's: the child's reply drains ahead of the person's earlier word"
     assert_equal word, materialized(events, personal).dig("payload", "input_public_id"), "the SECOND is the person's"
@@ -299,9 +317,10 @@ class RhoSpawnTest < Minitest::Test
 
   def test_a_root_cancel_stops_a_spawned_child_hidden_from_the_human
     brief = script([["ask", { "prompt" => "May this child continue?" }]], "child finished")
-    conversation, _turn, first = rho_do(script([["spawn", { "role" => "worker", "prompt" => brief, "label" => "restricted" }]], "spawned"))
-    await_run_status(first, "completed")
+    conversation, _turn, first = rho_do(script([["spawn", { "role" => "worker", "prompt" => brief, "label" => "restricted", "lifetime" => "conversation", "wait" => false }]], "spawned"))
     chat = @conversations.conversation(conversation)
+    await_reply(chat, after: -1)
+    assert_equal "running", loop_row(first).fetch("status"), "the original completion remains owed after the foreground reply"
     child = await_child(chat, label: "restricted")
     child_chat = @conversations.conversation(child.public_id)
     running = await_running_turn(child_chat, after: -1)

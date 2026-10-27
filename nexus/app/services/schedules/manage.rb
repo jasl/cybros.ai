@@ -60,9 +60,10 @@ module Schedules
 
     # Dispatch uses the parent arbiter. Cancel also owns the pending child's
     # input, so acquire that host before a kernel caller locks its source Run.
+    # The parent lock permits child FK checks during reply materialization.
     # Delete narration comes last, after a coupled tool result has been written.
     def synchronize(command: nil)
-      @conversation.with_lock do
+      @conversation.with_lock("FOR NO KEY UPDATE") do
         @job.reload
         child = @job.last_execution_conversation if command == :cancel && !@job.canceled?
         if child

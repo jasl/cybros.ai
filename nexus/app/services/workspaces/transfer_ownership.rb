@@ -48,6 +48,7 @@ module Workspaces
           locked.lock_version = @lock_version
           locked.update!(owner: target)
           if previously.private?
+            ConversationLink.close_for_workspace_access(locked)
             ModelInvocation::Cancellation.call(
               scope: locked.model_work_losing_access(previously: previously),
               reason: "workspace_access_revoked"

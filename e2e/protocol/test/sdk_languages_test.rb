@@ -3,6 +3,7 @@ require "securerandom"
 require "stringio"
 require "bigdecimal"
 require "zlib"
+require "cgi"
 require "support/actor_provisioning"
 require "support/ceremony"
 require "support/sdk_process"
@@ -59,6 +60,44 @@ class SDKLanguagesTest < Minitest::Test
 
   def test_rust_member_with_typescript_executor_replays_and_recovers
     exercise_languages(member_language: :rust, executor_language: :typescript)
+  end
+
+  def test_conversation_communication_crosses_three_sdks
+    @member.profile.declare_configuration(kernel_tools: %w[nexus.conversation.send], default_model: "dev/mock-text",
+      approval_mode: "bypass", prompt_mechanism: "default",
+      tool_definitions: [], approval_rules: nil, compaction_policy: nil)
+    workspace = @member.workspaces.create(name: "Communication SDKs", idempotency_key: SecureRandom.uuid).workspace
+    @workspaces << workspace.public_id
+    scope = @member.workspace(workspace.public_id)
+    source = scope.conversation(scope.conversations.create(idempotency_key: SecureRandom.uuid).public_id)
+    target = scope.conversation(scope.conversations.create(idempotency_key: SecureRandom.uuid).public_id)
+    key = SecureRandom.uuid
+    grant = { agent_public_id: @agent.public_id, peer_conversation_public_id: target.public_id,
+      peer_agent_public_id: @agent.public_id, idempotency_key: key }
+    link = source.links.create(**grant)
+    assert source.links.create(**grant).replayed?
+    marker = "linked-#{SecureRandom.hex(5)}"
+    arguments = { link_public_id: link.public_id, message: "!mock -- #{marker}" }
+    prepared = drive(:typescript, "member_communicate", credential: @member_key,
+      workspace_public_id: workspace.public_id, conversation_public_id: source.public_id,
+      link_public_id: link.public_id, input_key: SecureRandom.uuid,
+      prompt: "!mock tool_call=send:#{CGI.escape(JSON.generate(arguments))} -- sent")
+    source_execution = await_materialization(prepared)
+    source_run = scope.run(source_execution.run_public_id)
+    await("linked send did not complete") { source_run.fetch.status == "completed" }
+    task = source_run.fetch.tasks.find { |row| row.tool_name == "send" }
+    refute_nil task
+    receipt = source_run.task(task.key).structured_content
+    assert_equal link.public_id, receipt.fetch("link_public_id")
+    assert_equal "queue", receipt.fetch("delivery_mode")
+    target_input = receipt.fetch("input_public_id")
+    target_arguments = { credential: @member_key, workspace_public_id: workspace.public_id,
+      conversation_public_id: target.public_id, input_public_id: target_input }
+    original = await_materialization(target_arguments.transform_keys(&:to_s))
+    recovered = drive(:rust, "member_observe", **target_arguments)
+    assert_execution(original, recovered, marker)
+    assert_equal original.turn_public_id, target.inputs.materialization(target_input).turn_public_id
+    assert_equal "closed", source.links.close(link.public_id).state
   end
 
   private

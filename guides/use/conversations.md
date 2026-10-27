@@ -147,3 +147,12 @@ branch task. A mainline task requires Conversation Stop; the panel reports that
 restriction instead of canceling other work. Conversation Stop retains its ordinary
 ownership of the execution. If Stop cannot be confirmed, the panel says so and lets
 you try again.
+
+## Independent subagent work
+
+Nexus supports [Human takeover](../reference/agent-api/conversations.md#human-takeover)
+through its public API using a Human member credential. It keeps the original conversation and
+running work, releases the old parent's request obligations, and makes the selected
+subtree independent. Stopping the old parent then leaves that work running; stopping
+the taken-over conversation still works. Birth provenance remains readable.
+Ruby, TypeScript and Rust SDKs expose `takeover` on the Conversation resource. Nexus and rho provide no takeover UI.

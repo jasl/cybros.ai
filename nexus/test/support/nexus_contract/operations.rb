@@ -21,15 +21,17 @@ module Nexus
             end
             route.verb.split("|").map do |method|
               id = "#{method} #{path}"
-              excluded = id == "POST /api/v1/admin/users/{user_public_id}/removal"
+              exclusion = if id == "POST /api/v1/admin/users/{user_public_id}/removal"
+                "Typed SDK admin User removal is intentionally excluded"
+              end
               {
                 "id" => id,
                 "plane" => plane,
                 "method" => method,
                 "path" => path,
-                "sdk_supported" => !excluded,
+                "sdk_supported" => exclusion.nil?,
               }.tap do |entry|
-                entry["exclusion"] = "Typed SDK admin User removal is intentionally excluded" if excluded
+                entry["exclusion"] = exclusion if exclusion
               end
             end
           end

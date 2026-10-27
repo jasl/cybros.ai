@@ -52,3 +52,16 @@ test('refresh and recovery share one incremental replay position instead of rere
   expect((await execution.recover())?.failure_reason).toBe('retained failure'); await execution.recover();
   expect(afters).toEqual([undefined, 'cursor-2', 'cursor-2']); expect(execution.position.sequence).toBe(2);
 });
+
+
+test('unavailable materialization remains unknown and never switches to the current head', async () => {
+  const source = readers({});
+  const calls: string[] = [];
+  source.materialization = async id => { calls.push(id); return null; };
+  source.variants = async () => { throw new Error('No original Turn is known'); };
+  source.run = async () => { throw new Error('No original Run is known'); };
+  const execution = new InputExecution(source, 'accepted-request-input');
+  expect(await execution.recover()).toBeNull();
+  expect(await execution.recover()).toBeNull();
+  expect(calls).toEqual(['accepted-request-input', 'accepted-request-input']);
+});

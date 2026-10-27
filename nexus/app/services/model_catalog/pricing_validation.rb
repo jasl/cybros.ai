@@ -27,7 +27,7 @@ module ModelCatalog
     # `cache_creation.ephemeral_1h_input_tokens` bills at; absent, the
     # one write rate covers both classes as before.
     BASIC_TEXT_OPTIONAL_RATE_KEYS = (
-      %w[cached_input_per_mtok cache_write_per_mtok cache_write_1h_per_mtok] + LONG_CONTEXT_RATE_KEYS
+      %w[cached_input_per_mtok cache_write_per_mtok cache_write_1h_per_mtok cache_write_12h_per_mtok] + LONG_CONTEXT_RATE_KEYS
     ).freeze
     CACHED_TEXT_RATE_KEYS = %w[
       input_cache_hit_per_mtok input_cache_miss_per_mtok output_per_mtok
@@ -237,7 +237,7 @@ module ModelCatalog
 
         workload = workloads.first
         case workload
-        when "text_generation"
+        when "text_generation", "decision"
           text_rate_keys(model_ref, profiles)
         when "image_generation"
           image_rate_keys(rates)

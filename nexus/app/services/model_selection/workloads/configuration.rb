@@ -24,6 +24,10 @@ module ModelSelection
             values[name] = normalized
           end
 
+          if capabilities.generation_parameters.key?(:questions) && !values.key?(:questions)
+            return Normalization.refused(:invalid_configuration)
+          end
+
           refusal = capability_limit_refusal(values, capabilities.limits)
           return Normalization.refused(refusal) if refusal
 
@@ -48,6 +52,8 @@ module ModelSelection
               value if present_string?(value)
             when :output_format
               normalize_output_format(value)
+            when :decision_questions
+              SimpleInference::Decisions::Questions.from_array(value)
             else
               raise ArgumentError, "unhandled generation parameter kind: #{parameter.kind}"
             end
@@ -65,6 +71,8 @@ module ModelSelection
             end
 
             [normalized, nil]
+          rescue SimpleInference::ValidationError, SimpleInference::CapabilityError
+            [nil, :invalid_generation_parameter]
           end
 
           def capability_limit_refusal(values, limits)

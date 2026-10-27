@@ -34,6 +34,38 @@ class RhoWebuiTest < Minitest::Test
   TEXT
   SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="50"><rect width="80" height="50" fill="#278b73"/></svg>'.freeze
 
+  def test_communication_links_close_independently_on_desktop_and_mobile
+    boot_console(width: 1400, height: 1000)
+    new_conversation
+    send_message(reply_prompt("Worker ready."))
+    assert @page.has_text?("Mock: Worker ready.", wait: WAIT)
+    target_id = URI(@page.current_url).path.split("/").last
+    new_conversation
+    send_message(reply_prompt("Requester ready."))
+    assert @page.has_text?("Mock: Requester ready.", wait: WAIT)
+    source_id = URI(@page.current_url).path.split("/").last
+    workspace = @daemon.member_client.workspace(@workspace_id)
+    source = workspace.conversation(source_id)
+    target = workspace.conversation(target_id)
+    link = source.links.create(agent_public_id: source.fetch.answering_user_public_id,
+      peer_conversation_public_id: target_id, peer_agent_public_id: target.fetch.answering_user_public_id,
+      idempotency_key: SecureRandom.uuid)
+    @page.find('button[data-tip="Background tasks"]').click
+    assert @page.has_css?('section[aria-label="Communication links"]', wait: WAIT)
+    assert @page.has_button?("Close communication", wait: WAIT)
+    assert @page.has_text?("does not stop either conversation or cancel accepted requests")
+    screenshot("communication-desktop")
+    resize_console(width: 390, height: 844)
+    assert @page.has_button?("Close communication", wait: WAIT)
+    assert_operator @page.evaluate_script("document.documentElement.scrollWidth"), :<=, 390
+    screenshot("communication-narrow")
+    @page.click_button "Close communication"
+    assert @page.has_text?("No active communication links.", wait: WAIT)
+    assert_equal "closed", source.links.fetch(link.public_id).state
+    assert_equal "completed", target.turns.list.items.last.status
+    assert_clean_console
+  end
+
   def test_memory_bindings_save_and_control_later_execution_on_desktop_and_mobile
     boot_console(width: 1400, height: 1000)
     new_conversation

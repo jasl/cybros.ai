@@ -8,6 +8,7 @@ module ModelCatalog
       "default" => nil, "minimum" => nil, "maximum" => nil, "allowed_values" => nil,
     }.freeze
     PARAMETER_PRESETS = {
+      "prompt_cache_ttl" => { "kind" => "string" }.freeze,
       "max_output_tokens" => { "kind" => "integer", "minimum" => 1 }.freeze,
       "verbosity" => {
         "kind" => "string", "default" => "low", "allowed_values" => %w[low medium high].freeze,

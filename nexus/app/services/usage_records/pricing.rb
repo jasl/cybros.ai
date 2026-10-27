@@ -74,9 +74,9 @@ module UsageRecords
           BigDecimal(text)
         end
 
-        # Four input classes — plain, cache read, and the two cache-write tiers — each rate
-        # defaulting to the one above it (the 1-hour write to the write rate, both writes and the
-        # read to the input rate); non-cached input subtracts the cache classes so a write is
+        # Plain input, cache reads, and cache writes split by TTL: extended writes
+        # default to the base write rate, and writes/reads to the input rate.
+        # Non-cached input subtracts the cache classes so a write is
         # never charged twice. The long-context tier multiplies the classes past the threshold;
         # the served tier's factor multiplies the whole.
         def token_cost(tokens, rates, tier_multipliers, service_tier)
@@ -101,11 +101,14 @@ module UsageRecords
           # The 1-hour share of the persisted creation sum: the wire's breakdown member, bounded
           # by the sum it belongs to.
           one_hour = [tokens.fetch(:cache_creation_1h_tokens).to_i, cache_creation].min
+          twelve_hours = [tokens.fetch(:cache_creation_12h_tokens).to_i, cache_creation - one_hour].min
+          cache_write_12h_rate = rates["cache_write_12h_per_mtok"] || cache_write_rate
 
           (input - cache_read - cache_creation) * input_rate +
             cache_read * cached_rate +
-            (cache_creation - one_hour) * cache_write_rate +
-            one_hour * cache_write_1h_rate
+            (cache_creation - one_hour - twelve_hours) * cache_write_rate +
+            one_hour * cache_write_1h_rate +
+            twelve_hours * cache_write_12h_rate
         end
 
         # The long-context tier: past the threshold the vendor prices the WHOLE request at its

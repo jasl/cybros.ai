@@ -16,7 +16,11 @@ module Conversations
 
           # A guarded correction belongs only to its original execution. Reuse
           # steer cancellation when that execution ends before consuming it.
-          guarded, queued = released.partition(&:expected_steering_run_public_id)
+          guarded, queued = released.partition do |input|
+            input.expected_steering_run_public_id && (input.on_target_end != "queue" ||
+              input.conversation_link&.closed? ||
+              Runs::SourceWork.stopped?(input.cancellation_source_public_id, Run.find_by(public_id: input.sender_run_public_id)))
+          end
           guarded.each { |input| Destroy.remove(input) }
           return released.length if queued.empty?
 
@@ -25,10 +29,14 @@ module Conversations
           # so both are spelled — the row changed, and the edit door's
           # `expected_lock_version` CAS must see that); the narration reads
           # only the loaded rows' `public_id` and `queue_position`, untouched.
-          inputs.where(id: queued.map(&:id)).update_all(
-            state: "pending", steering_target_turn_id: nil,
-            updated_at: Time.current, lock_version: Arel.sql("lock_version + 1")
-          )
+          explicit, ordinary = queued.partition(&:expected_steering_run_public_id)
+          changes = { state: "pending", steering_target_turn_id: nil,
+            updated_at: Time.current, lock_version: Arel.sql("lock_version + 1") }
+          inputs.where(id: ordinary.map(&:id)).update_all(changes) if ordinary.any?
+          if explicit.any?
+            inputs.where(id: explicit.map(&:id)).update_all(changes.merge(
+              delivery_mode: "queue", fallback_reason: "steer_target_settled"))
+          end
           narrate(host, queued)
           released.length
         end
@@ -46,6 +54,9 @@ module Conversations
                     "queue_position" => input.queue_position,
                     "state" => "pending",
                     "reason" => "steer_target_settled",
+                    "delivery_mode" => input.expected_steering_run_public_id ? "queue" : input.delivery_mode,
+                    "requested_delivery_mode" => input.requested_delivery_mode,
+                    "expected_steering_run_public_id" => input.expected_steering_run_public_id,
                   },
                 }
               end

@@ -127,7 +127,8 @@ class SubagentRolesTest < Minitest::Test
     assert_equal ["read"], tools.map { |tool| tool.dig("function", "name") }
     assert_equal @daemon.status.dig("identity", "runner_executor_public_id"), @conversations.conversation(child.public_id).fetch.default_runner&.executor_public_id
     assert_equal claims + 1, @daemon.claims.length
-    assert_includes sealed_texts(parent, "r2").join("\n"), "review complete"
+    request = agent_api("#{loop_path(parent)}/tasks/r2/request").fetch("request")
+    assert_includes JSON.generate(request.fetch("entries")), "review complete"
     assert_equal identities, principal_ids, "role publication and execution never mint a standing User"
   ensure
     @daemon.delete_definition("e2e-review")
@@ -204,8 +205,9 @@ class SubagentRolesTest < Minitest::Test
 
     def script(calls, remainder, reply: nil)
       spelled = calls.map { |name, arguments| "#{name}:#{CGI.escape(JSON.generate(arguments))}" }
-      answer = "reply=#{CGI.escape(reply)} " if reply
-      "!mock #{answer}tool_call=#{spelled.join(",")} -- #{remainder}"
+      # Role capture needs the scripted calls intact, not an echo of the growing
+      # tool directory that triggers the separate compaction journey.
+      "!mock usage=100:5 reply=#{CGI.escape(reply || remainder)} tool_call=#{spelled.join(",")} -- #{remainder}"
     end
 
     def rho_do(prompt)

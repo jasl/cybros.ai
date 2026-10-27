@@ -94,3 +94,29 @@ When a context will not fit, Nexus repairs it rather than reporting it: the kern
 Memory documents in the conversation's bound scopes are injected by the default prompt mechanism and read and written through kernel tools; see [Memory, store and uploads](memory-store-and-uploads.md). Keyword search and bounded history reads cover older context, and the [retention](../operate/retention-usage-budgets.md) window decides how long execution detail remains.
 
 The complete contract — field tables, response shapes, lifecycle, access, memory, compaction, feeds and status codes — is the [Conversations reference](../reference/agent-api/conversations.md), with [history search](../reference/agent-api/conversation-history.md), [reasoning replay](../reference/agent-api/conversation-reasoning.md) and [execution retention](../reference/agent-api/execution-retention.md) beside it.
+
+
+## Bidirectional work and original results
+
+Use `request` for work in an existing Conversation and keep the accepted Input UUID
+and completion Task address. Use `send` for ordinary messages. A worker can ask a
+question through a [Conversation link](../reference/agent-api/conversation-links.md)
+while its original request remains outstanding; the reply to that question does
+not replace the original request or satisfy its completion.
+
+For example, a requester sends “Review this patch” with `lifetime: "conversation"`.
+The worker sends “Which runtime?” through the link. A subsequent requester reply
+sends “Ruby” back. The caller still reads the completion Task returned by the
+original review request. If it needs to interrupt a particular running model
+boundary, it sends `delivery_mode: "steer_now"` with that exact
+`expected_steering_run_public_id` and `on_target_end: "fail"` or `"queue"`.
+A queued fallback retains the original Input UUID and records the fallback reason.
+
+A finite await timeout leaves the request running. Recovery reads the original
+completion Task or the accepted Input's execution helper; it never substitutes
+the Conversation's newest Turn or active manual regeneration. A missing
+materialization alone leaves the outcome unknown. Link closure cuts future and
+unconsumed linked messages; it does not cancel already consumed recipient work or
+an independent request. See [Run orchestration](../reference/agent-api/run-orchestration.md)
+for cancellation ownership and [SDK bindings](../reference/agent-api/conversation-links.md#sdk-bindings)
+for the three language surfaces.

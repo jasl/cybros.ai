@@ -719,6 +719,22 @@ jobs:
           working-directory: e2e/protocol
           bundler-cache: true
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: sdks/typescript/package.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build SDK drivers for offline protocol smoke
+        run: |
+          pnpm --dir sdks/typescript install --frozen-lockfile
+          pnpm --dir sdks/typescript run build
+          cargo build --manifest-path sdks/rust/Cargo.toml --locked --features realtime --example e2e_driver
+
       - name: Run protocol smoke checks
         working-directory: e2e/protocol
         env:

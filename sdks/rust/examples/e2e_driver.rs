@@ -56,6 +56,7 @@ async fn run(v: Value) -> Result<Value> {
             let reply=c.announce(&Announcement{services: ServiceAnnouncements { agent: cybros_agent::Field::Value(ServiceAnnouncement::default()), runner: cybros_agent::Field::Value(ServiceAnnouncement {tools:vec![AnnouncedTool{name:"sdk_echo".into(),effect_profile:EffectProfile{kind:EffectKind::ReadOnly,destructive:false,effect_scope:EffectScope::Closed,idempotency:Idempotency::Intrinsic,reconciliation:Reconciliation::None},input_schema:json!({"type":"object","properties":{"marker":{"type":"string"}},"required":["marker"]}).as_object().cloned().unwrap().into(),..Default::default()}],..Default::default()}), ..Default::default()} }).await?;
             Ok(json!({"executor_public_id":reply.body.executor.public_id}))
         }
+        "member_decision" => member_decision(&base, &v).await,
         "member_prepare" => {
             let c = Client::new(&base, required(&v, "credential")?)?;
             let marker = required(&v, "marker")?;
@@ -347,6 +348,47 @@ async fn observe(v: &Value, base: &str, action: &str) -> Result<Value> {
                 _ => {}
             }
             continue;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+async fn member_decision(base: &str, v: &Value) -> Result<Value> {
+    let client = Client::new(base, required(v, "credential")?)?;
+    let workspace = client.workspace(&required(v, "workspace_public_id")?)?;
+    let requests = workspace.inference_requests();
+    let created = requests
+        .create(
+            &CreateInferenceRequest {
+                workload: Workload::Decision,
+                model: ModelRequest {
+                    model: required(v, "model")?.into(),
+                    ..Default::default()
+                },
+                input: v["decision_input"].clone(),
+                configuration: serde_json::from_value::<cybros_agent::types::JsonObject>(
+                    json!({"questions": v["questions"]}),
+                )
+                .expect("decision configuration")
+                .into(),
+                ..Default::default()
+            },
+            &required(v, "input_key")?,
+        )
+        .await?;
+    let id = created.body.public_id;
+    let request = requests.inference_request(&id)?;
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let row = request.fetch().await?.body;
+        if let Some(result) = row.result {
+            return Ok(json!({"create_status": created.status, "public_id": id,
+                "fetched_public_id": row.public_id, "status": row.status,
+                "result_status": result.status, "answers": result.answers,
+                "usage": result.usage, "error": result.error}));
+        }
+        if tokio::time::Instant::now() >= deadline {
+            return Err(Error::Protocol("decision did not finish before deadline"));
         }
         tokio::time::sleep(Duration::from_millis(100)).await;
     }

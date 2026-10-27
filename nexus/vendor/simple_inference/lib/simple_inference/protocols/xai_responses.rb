@@ -53,7 +53,7 @@ module SimpleInference
       STATEFUL_CONTINUATION_KEYS = %w[previous_response_id conversation].freeze
 
       def self.request_option_keys
-        (superclass.request_option_keys - STATEFUL_CONTINUATION_KEYS.map(&:to_sym)).freeze
+        (superclass.request_option_keys - STATEFUL_CONTINUATION_KEYS.map(&:to_sym) - [:prompt_cache_ttl]).freeze
       end
 
       private

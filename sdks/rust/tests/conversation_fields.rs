@@ -103,3 +103,41 @@ async fn exact_field_has_explicit_location_and_continuation() {
     );
     assert!(server.try_next().is_none());
 }
+
+#[tokio::test]
+async fn takeover_preserves_typed_execution_and_birth_facts() {
+    let pack: Value = serde_json::from_str(include_str!(
+        "../../../contracts/nexus/v1/conversations.json"
+    ))
+    .unwrap();
+    let mut row = pack["valid_fixture"]["conversation"].clone();
+    row.as_object_mut().unwrap().extend(
+        pack["taken_over_child_fixture"]
+            .as_object()
+            .unwrap()
+            .clone(),
+    );
+    let mut server = Server::script(vec![Reply::json(
+        200,
+        serde_json::json!({ "conversation": row }).to_string(),
+    )])
+    .await;
+    let taken = Client::new(&server.url, "human-member")
+        .unwrap()
+        .workspace("workspace")
+        .unwrap()
+        .conversation("child")
+        .unwrap()
+        .takeover()
+        .await
+        .unwrap()
+        .body;
+    assert_eq!(taken.taken_over_at.as_deref(), Some("2026-10-27T10:00:00Z"));
+    assert_eq!(taken.parent.unwrap().label.as_deref(), Some("reviewer"));
+    let request = server.next().await;
+    assert_eq!(request.method, "POST");
+    assert_eq!(
+        request.path,
+        "/agent_api/v1/workspaces/workspace/conversations/child/takeover"
+    );
+}

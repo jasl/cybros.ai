@@ -109,6 +109,42 @@ pub struct InferenceRequestModelChange {
     pub extra: JsonObject,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum DecisionChoice {
+    Text(String),
+    Boolean(bool),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum DecisionProbabilityValue {
+    Choice(DecisionChoice),
+    Level(i64),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DecisionProbability {
+    pub value: DecisionProbabilityValue,
+    pub probability: f64,
+    pub label: Option<String>,
+    #[serde(flatten)]
+    pub extra: JsonObject,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DecisionAnswer {
+    pub name: String,
+    pub r#type: String,
+    pub probability: Option<f64>,
+    pub choice: Option<DecisionChoice>,
+    pub score: Option<f64>,
+    pub confidence: Option<f64>,
+    pub probabilities: Option<Vec<DecisionProbability>>,
+    #[serde(flatten)]
+    pub extra: JsonObject,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InferenceRequestResult {
     pub status: crate::types::names::InferenceStatus,
@@ -120,6 +156,7 @@ pub struct InferenceRequestResult {
     pub reasoning: Option<InferenceRequestReasoning>,
     pub output_files: Option<Vec<InferenceRequestFile>>,
     pub embeddings: Option<Vec<InferenceRequestEmbedding>>,
+    pub answers: Option<Vec<DecisionAnswer>>,
     pub refusal_category: Option<String>,
     pub model_change: Option<InferenceRequestModelChange>,
     #[serde(flatten)]

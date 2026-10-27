@@ -155,6 +155,15 @@ en:
         form:
           the_exact_model_id_accepted_by_the_provider_including: The exact model ID accepted by the provider,
             including any namespace.
+          prompt_cache_ttl: Prompt cache lifetime
+          prompt_cache_default: Use request or provider default
+          prompt_cache_hint: Applies when a request does not choose its own lifetime. The default keeps existing cache behavior. Longer lifetimes may cost more; breakpoint placement is unchanged.
+          prompt_cache_durations:
+            5m: 5 minutes
+            1h: 1 hour
+            30m: 30 minutes
+            12h: 12 hours
+            24h: 24 hours
           model_id: Model ID
           model_definition: Model definition
           model_definition_hint: Choose the model to inherit its context and capabilities. Enter only deployment differences below. Pricing is separate.

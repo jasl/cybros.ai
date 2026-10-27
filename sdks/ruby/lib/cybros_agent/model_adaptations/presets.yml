@@ -18,6 +18,8 @@ plain:
   nexus.human.ask: ask
   nexus.conversation.spawn: spawn
   nexus.conversation.send: send
+  nexus.conversation.request: request
+  nexus.conversation.links: links
   nexus.skill.load: skill
   nexus.image.generate: image_generate
 presets:
@@ -99,6 +101,8 @@ presets:
       # kernel's `to` (WHERE), never the kernel's `agent` (WHO), which
       # passes through under its own name. No map description: the
       # kernel's `to` sentence rides under `target`.
+      # This sends ordinary recipient-owned messages. request retains the separate
+      # formal-result obligation; link and exact steering fields pass through.
       - name: send_message
         canonical: nexus.conversation.send
         params: { target: { maps_to: to } }

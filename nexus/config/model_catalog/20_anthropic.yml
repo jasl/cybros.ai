@@ -148,6 +148,10 @@ models:
       reasoning_replay:
         format: anthropic_thinking
       generation_parameters:
+        # Keep the request-kind default: mainline 1h, other marked requests 5m. Override only for a known reuse window.
+        prompt_cache_ttl:
+          default: null
+          allowed_values: [5m, 1h]
         max_output_tokens:
           default: 128000
           maximum: 128000
@@ -186,6 +190,10 @@ models:
       reasoning_replay:
         format: anthropic_thinking
       generation_parameters:
+        # Keep the request-kind default: mainline 1h, other marked requests 5m. Override only for a known reuse window.
+        prompt_cache_ttl:
+          default: null
+          allowed_values: [5m, 1h]
         max_output_tokens:
           default: 128000
           maximum: 128000
@@ -258,6 +266,10 @@ models:
       reasoning_replay:
         format: anthropic_thinking
       generation_parameters:
+        # Keep the request-kind default: mainline 1h, other marked requests 5m. Override only for a known reuse window.
+        prompt_cache_ttl:
+          default: null
+          allowed_values: [5m, 1h]
         max_output_tokens:
           default: 128000
           maximum: 128000
@@ -299,6 +311,10 @@ models:
       # No `mid_conversation_system`: the vendor's guide lists the models
       # with the feature and Sonnet 5 is not among them.
       generation_parameters:
+        # Keep the request-kind default: mainline 1h, other marked requests 5m. Override only for a known reuse window.
+        prompt_cache_ttl:
+          default: null
+          allowed_values: [5m, 1h]
         max_output_tokens:
           default: 128000
           maximum: 128000

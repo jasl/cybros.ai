@@ -377,6 +377,17 @@ models:
           minimum: null
           maximum: null
           allowed_values: [3, 8]
+  dev/mock-decision:
+    api_format: openai_decisions
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "0.1"
+          output_per_mtok: "0"
+  dev/mock-system-one:
+    api_format: typesafe_system_one
 selectors:
   fast-text:
     - model: dev/mock-text

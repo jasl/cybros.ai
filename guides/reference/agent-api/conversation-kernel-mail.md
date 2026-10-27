@@ -115,7 +115,7 @@ it in that same archived Conversation; a woken turn with nothing to do simply en
 
 `origin` is on every input and on the turn it becomes: the row's source
 kind, one of four words — `person` (a human's word), `agent` (a peer's
-`send`), `task_result` (this receipt), `child` (a spawned conversation's
+`send`), `task_result` (this receipt), `child` (a worker conversation's
 reply).
 
 The kernel's two are the set every kernel rule reads — the read order,
@@ -147,62 +147,43 @@ row (a peer's `send`, the kernel's mail); plus `run_public_id` and
 `send`. The wake is narrated by the ordinary pair: `input_materialized`
 naming the receipt, `turn_status{run_public_id}` naming the woken run.
 
-### Spawned replies
+### Spawn and request results
 
-A turn-owned spawn's initial report settles a `delegation_task` in its
-originating run and is consumed before that reply becomes final. An
-immediate spawn wait is independent: expiration or cancellation does not
-release the completion obligation, and an open wait receives that same
-report exactly once. This result does not also become a kernel input. A
-held child remains repairable and outstanding, and its own questions and
-effect deadlines still apply. Later independent child requests keep their
-ordinary mail path.
+Every `spawn` and explicit `request` owns a `delegation_task` in its originating
+Run. It observes the accepted Input and its original execution, including the
+permitted fallback, never a later Turn or regeneration. The recurring recovery
+sweep visits completion Tasks; terminal kicks only reduce latency. Scheduled
+occurrences retain their separate original-reply relay over `turns.relayed_at`.
 
-**The cross-turn child-reply relay** is the `child` row's writer. A
-spawned child's settled reply turn (`direct_reply`, either engine — a
-run-backed turn or one model call) reaches its parent exactly once,
-level-triggered over the turn's own `relayed_at` marker: a recurring
-sweep every minute walks the spawned children's unrelayed terminal
-replies, and the converger's kick at both terminals is a latency hint.
+A turn-lifetime completion must be consumed before the requester reply becomes
+final. A conversation-lifetime completion can outlive that reply; an unread result
+becomes kernel mail after final delivery. The finite launch wait is independent:
+an open wait consumes the same result once, while an expired wait leaves the
+completion owed. A held worker remains repairable and outstanding. An ordinary
+`send`, including a message to a spawned or scheduled child, creates no completion.
 
-Only a reply the parent opened is owed. The turn's
-`sender_conversation_public_id` is the parent's: the brief, and every
-parent `send`, including a send to a scheduled execution child. A
-person's or a third agent's exchange in the child is theirs alone,
-stamped as nothing owed and never relayed. A cascade cancel owes nothing
-below the canceller: a reply owed to a parent execution owner that was
-stopped is stamped too, even if its original reply had already completed.
+A later `request` has its own owner and can report after the original spawning
+Run was stopped. Stopping that later source suppresses its pending result.
+Stopping the worker reports cancellation to a still-live requester. A grandchild's
+canceled result cannot wake a canceled child; a conversation-lifetime report to
+the canceller still waits for the canceller's final reply before becoming mail.
 
-This is the turn that sent the particular request, which can differ from
-the original spawning turn. A later `send` can therefore receive a reply
-after the spawning turn was canceled, while canceling that later request
-suppresses its reply even if the spawning turn completed. A grandchild's
-canceled reply never wakes the canceled child as a new turn, while the
-canceller — its own turn running — is still told what it canceled.
+Mail uses `origin: child`, the worker Conversation UUID as sender, and
+`run_public_id` / `task_key` identifying the original `spawn` or `request` call.
+Its text is `<task_result task="…" status="…" conversation="…">…`.
+The stored completion retains the exact Input, Turn, Variant and Run identities,
+so later worker activity or deletion of the original Turn cannot replace its result.
 
-The relay addresses the originating request's answerer
-(`answering_user_public_id` on the mail): the execution that issued the
-initial `spawn` or the later `send` opening this child turn. That can be
-a different agent or a different model configuration from the original
-spawner, and it does not follow the parent's active turn at delivery
-time. A steer joining an existing child turn retains its original reply
-owner.
+The recipient is the original request's answerer, even when a later requester
+uses a different Agent or model from the original spawner. The author is the
+requesting Run's creator. Mail reuses that Run's model selection, approval
+tightening and seed tools intersected with the current declaration, including an
+explicit empty set. It does not select the parent's current active Turn.
+A steer joining a worker Run preserves that Run's original completion obligation.
 
-Only the initial request's reply settles the spawning call's kernel-held
-await when one is parked (`wait: true`; the settle's `task_status` item on
-the parent's feed carries `resolved_by: {kind: "conversation",
-public_id}`). Other owed replies become kernel mail on the parent:
-`origin: child`, the child's `public_id` as the sender stamp,
-`run_public_id` and `task_key` identifying the `spawn` or `send` call that
-opened this child turn, and the text `<task_result task="…" status="…"
-conversation="…">…`. It is authored as task mail is — by the originating
-request run's creator, on that run's surface (its model selection, its
-approval tightening while still valid, and its seed's tools intersected
-with the current declaration, including an explicit empty set): the
-kernel relays its own receipt and impersonates nobody.
-
-A parent that is gone (tombstoned) owes nothing, and a full queue is
-retried on the sweep's clock.
+A tombstoned recipient receives no mail; queue-capacity refusals are retried by
+recovery. Accepted mail and its delivered marker commit together, and a result
+consumed through the original wait is never mailed again.
 
 ### Consumption inside a run
 

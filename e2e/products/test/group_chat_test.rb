@@ -76,6 +76,9 @@ class GroupChatTest < Minitest::Test
       steward = E2E::ActorProvisioning.world(base_url).rho_steward
       actor = E2E::StewardSession.actor(base_url: base_url, human: steward)
       home = Dir.mktmpdir("rho-group-chat-e2e")
+      # This journey inspects exact round history; compaction has its own journeys.
+      File.write(File.join(home, "settings.json"), JSON.generate(E2E::RhoDaemon.dev_settings(
+        plugins: { "rho.compaction" => { "enabled" => false } })), perm: 0o600)
       steward_client = CybrosAgent::Client.new(base_url: base_url, credential: steward.member_token)
       room_name = "Group room #{SecureRandom.hex(3)}"
       room = steward_client.workspaces.create(
@@ -200,7 +203,7 @@ class GroupChatTest < Minitest::Test
     b_handle = @world.peer_handle
     person = @world.steward_handle
 
-    output, status = @daemon.cli("do", "!mock -- b, you are the reviewer here", "--model", MODEL,
+    output, status = @daemon.cli("do", "!mock echo=content -- b, you are the reviewer here", "--model", MODEL,
       "--dir", @world.project, "--agent", "@#{b_handle}", "--runner", @world.shared_runner.executor_public_id)
     assert_predicate status, :success?, "rho do --agent failed:\n#{output}"
     assert_match(/^agent:\s+@#{Regexp.escape(b_handle)} \(#{Regexp.escape(b_profile)}\)$/, output, output)
@@ -217,8 +220,8 @@ class GroupChatTest < Minitest::Test
     owner_speaker = first.active_variant.memory_context.fetch("bindings").find { |binding| binding.fetch("source")["scope"] == "speaker" }.fetch("capture").fetch("speaker_public_id")
     owner_envelope = %(<message from="Owner" kind="ingress" speaker="#{owner_speaker}">)
     b_first = sealed_texts(loop_one, "r1").join("\n")
-    assert_includes b_first, "!mock -- b, you are the reviewer here"
-    assert_includes b_first, "#{owner_envelope}\n!mock -- b, you are the reviewer here\n</message>",
+    assert_includes b_first, "!mock echo=content -- b, you are the reviewer here"
+    assert_includes b_first, "#{owner_envelope}\n!mock echo=content -- b, you are the reviewer here\n</message>",
       "the opening word retains the owner's ingress identity on B's turn"
 
     # TURN 2 — A's. The send's `to` is this conversation: the row queues
@@ -231,7 +234,10 @@ class GroupChatTest < Minitest::Test
     loop_two = running.active_variant.run_public_id
     assert_equal a_profile, running.answering_user_public_id, "turn 2 is A's: the addressee, not the default"
     await_task_status(loop_two, "r2t0", "completed")
-    assert_equal "Sent to #{conversation} (queued).", task_result(loop_two, "r2t0"),
+    send_result = task_result(loop_two, "r2t0")
+    receipt = JSON.parse(send_result)
+    assert_equal [conversation, b_profile, "queue", "pending"],
+      receipt.values_at("conversation_public_id", "answering_user_public_id", "delivery_mode", "state"),
       "A's send into the conversation it answers in: queued, never refused"
     await_tool_running(loop_two, "bash")
 
@@ -299,7 +305,7 @@ class GroupChatTest < Minitest::Test
     # The mock echoes what it read, so A's final text carries its own send
     # result — it reaches B only INSIDE A's wrapped segment, never as a
     # tool-result entry: A's rounds are A's working, not B's history.
-    assert_equal ["user"], roles_carrying(loop_three, "r1", "Sent to #{conversation} (queued)."),
+    assert_equal ["user"], roles_carrying(loop_three, "r1", send_result),
       "A's send result rides B's wire only in A's wrapped final text, never as a result entry"
     assert_includes b_third, "#{owner_envelope}\n!mock tool_call=send", "the person keeps the same ingress attribution in history"
     refute_includes b_third, %(from="@#{person}"), "the steward has not spoken yet"
@@ -322,7 +328,7 @@ class GroupChatTest < Minitest::Test
     assert_includes a_fourth, "&lt;/message>", "THE ESCAPER: B's echo of its wrapped seed cannot close the envelope:\n#{a_fourth}"
     refute_includes a_fourth, %(<message from="@#{a_handle}"),
       "A never reads its own send as a message: the seed it spoke is skipped (it is the call in A's own rounds)"
-    assert_includes a_fourth, "Sent to #{conversation} (queued).", "A's own rounds — its send's result — are A's history"
+    assert_includes a_fourth, send_result, "A's own rounds — its send's result — are A's history"
     refute_includes a_fourth, %(from="@#{person}"), "the steward is A's controlling Human: bare on A's turn"
     assert_includes a_fourth, "!mock -- so, what did b say?"
 
@@ -478,6 +484,9 @@ class GroupChatTest < Minitest::Test
     def await_tool_running(loop, tool_name = nil)
       await("the slow tool never started on #{loop}", every: POLL) do
         row = loop_row(loop)
+        if %w[completed failed canceled].include?(row["status"])
+          flunk "run ended before #{tool_name} started: #{row.inspect}"
+        end
         row if row.fetch("tasks").any? do |task|
           task["kind"] == "tool_task" && %w[dispatched running].include?(task["status"]) &&
             (tool_name.nil? || task["tool_name"] == tool_name)

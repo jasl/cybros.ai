@@ -38,7 +38,7 @@ module Conversations
           scope = @conversations || Conversation.visible_to(@user, workspace: @workspace)
           scope = scope.unarchived if @archived == "exclude"
           scope = scope.archived if @archived == "only"
-          scope = scope.working.where(parent_conversation_id: nil) unless @include_auxiliary
+          scope = scope.working.lifecycle_roots unless @include_auxiliary
           if @answering_user_public_id
             scope = scope.where(answering_user_id: @user.account.users.where(public_id: @answering_user_public_id).select(:id))
           end

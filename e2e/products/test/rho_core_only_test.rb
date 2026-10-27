@@ -25,10 +25,10 @@ class RhoCoreOnlyTest < Minitest::Test
   PRELUDE = File.expand_path("../support/core_only_prelude.rb", __dir__)
   # Coding's runner tools; kernel declarations are listed separately below.
   CORE_TOOLS = %w[bash edit file_import file_publish find grep ls read write].freeze
-  # The kernel tools rho declares by default: the memory family, ask, delegate_task, the four conversation
+  # The kernel tools rho declares by default: the memory family, ask, delegate_task, the conversation
   # verbs, history reads, discovery/invocation and the `skill` load — declared whether or not this checkout holds a skill;
   # the kernel omits it at the wire alone while the catalog is empty.
-  KERNEL_TOOLS = %w[ask cancel memory_delete memory_edit memory_grep memory_ls memory_read memory_write send
+  KERNEL_TOOLS = %w[ask cancel links request memory_delete memory_edit memory_grep memory_ls memory_read memory_write send
                     session_read session_search skill spawn status delegate_task tool_search tool_call runners_list models_list].freeze
   EXTENSION_VERBS = %w[followers runs watch result follow graph attach processes env runner console do say stop].freeze
 

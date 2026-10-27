@@ -4,6 +4,16 @@ require_relative "../support/conversation_fixtures"
 class ApiConversationsTest < Minitest::Test
   include CybrosAgentTest::ConversationFixtures
 
+  def test_takeover_posts_once_and_returns_the_existing_conversation_projection
+    row = contract.fetch("valid_fixture").fetch("conversation").merge(contract.fetch("taken_over_child_fixture"))
+    result = chat([[200, {}, { "conversation" => row }]]).takeover
+    assert_equal "#{PATH}/takeover", request.fetch(:path)
+    assert_equal :post, request.fetch(:method)
+    assert_equal row.fetch("taken_over_by_public_id"), result.taken_over_by_public_id
+    refute_predicate result, :subagent?
+    assert_equal 1, @transport.requests.length
+  end
+
   def test_conversation_cost_limit_preserves_omission_decimal_precision_and_explicit_clear
     fixture = contract.fetch("valid_fixture")
     conversations([[201, {}, fixture]]).create(idempotency_key: "uncapped")
@@ -123,6 +133,16 @@ class ApiConversationsTest < Minitest::Test
     assert_nil row.parent.spawn_node_key, "a reaped call leaves the parent named"
     assert_nil row.parent.label
     assert_predicate row, :subagent?
+  end
+
+  def test_a_taken_over_child_preserves_birth_without_remaining_a_subagent
+    fixture = contract.fetch("taken_over_child_fixture")
+    page = conversations([[200, {}, { "conversations" => [fixture], "pagination" => { "next_after" => nil } }]]).list
+    row = page.items.first
+    refute_predicate row, :subagent?
+    assert_equal fixture.fetch("taken_over_at"), row.taken_over_at
+    assert_equal fixture.fetch("taken_over_by_public_id"), row.taken_over_by_public_id
+    assert_equal fixture.dig("parent", "public_id"), row.parent.public_id
   end
 
   def test_create_sends_the_callers_own_key_and_reports_a_replay

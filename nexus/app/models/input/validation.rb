@@ -104,7 +104,7 @@ module Input::Validation
     # DELETE a caller's freshness fence instead of refusing it: a raw value
     # that casts to nothing is an error, never an absence.
     def uuid_fences_must_parse
-      %i[expected_tail_turn_public_id sender_conversation_public_id].each do |column|
+      %i[expected_tail_turn_public_id expected_steering_run_public_id sender_conversation_public_id].each do |column|
         raw = read_attribute_before_type_cast(column)
         next if raw.nil? || public_send(column).present?
 

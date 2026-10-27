@@ -43,6 +43,10 @@
   are explicit lifecycle commands; archive cascades only where its contract says so.
 - Mark or document idempotency. A non-idempotent job states its duplicate-execution risk and
   mitigation. Schedule after commit when committed state is required.
+- Source-work and delegation recovery recheck the request's `source_released_at` after acquiring
+  its existing owner locks. A Human takeover commits release, completion and wait settlement
+  together; lost wakes use the existing scheduler and result-mail frontiers. It creates no
+  replacement execution, second result queue or automatic replay of the original brief.
 - Destructive payload changes need a drain or documented queue reset. Any temporary tolerance
   inside a rollout must obey `.ai/boundaries.md`'s No Compatibility Before Release, And What Is
   Not Dead Code rules; it never becomes a committed compatibility layer.

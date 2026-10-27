@@ -3,7 +3,7 @@ import { Inputs } from './inputs.js';
 import { delay, DurableFeed } from '../feeds.js';
 import { shape } from '../decode.js';
 import { Conflict, TimeoutError } from '../errors.js';
-import { nonempty, segment } from '../json.js';
+import { nonempty, object, segment } from '../json.js';
 import { Steps } from '../steps.js';
 import type { MutationOptions, RequestOptions } from '../http.js';
 import type { AppendTasks, CreateRun, EventOptions, ModelSelection, ResolveTask, RunList, ToolCall } from '../requests.js';
@@ -11,7 +11,11 @@ import type { FeedOptions } from '../feeds.js';
 export class Runs extends Resource {
   list(query: RunList = {}, options: RequestOptions = {}) { return this.paged('Run', 'runs', { ...options, query }); }
   fetch(id: string, options: RequestOptions = {}) { return this.one('Run', `/${segment(id)}`, 'run', options); }
-  create(input: CreateRun, options: MutationOptions) { return this.receipt('Run', 'run', { ...options, method: 'POST', body: { run: input }, success: [200, 201] }); }
+  async create(input: CreateRun, options: MutationOptions) {
+    nonempty(options?.idempotencyKey ?? '', 'idempotencyKey');
+    const response = await this.transport.call(this.path, { ...options, method: 'POST', body: { run: input }, success: [200, 201] });
+    return { run: shape('Run', response.data, 'run'), receipt: shape('AppendedTasks', response.data, 'receipt'), status: response.status, replayed: response.replayed || object(response.data).replayed === true, requestId: response.requestId };
+  }
   async startToolCall(input: ToolCall, options: MutationOptions) {
     const { run } = await this.create({ steps: [Steps.tool({ name: input.tool, key: 'call_tool', input: input.input ?? {}, ...(input.timeout_ms === undefined ? {} : { timeout_ms: input.timeout_ms }), route: { kind: 'runner', runner_executor_public_id: input.runner_executor_public_id } })], approval_mode: 'bypass', prompt_mechanism: 'raw', default_runner_executor_public_id: input.runner_executor_public_id, ...(input.approval_rules === undefined ? {} : { approval_rules: input.approval_rules }) }, options);
     const scope = new RunScope(this.transport, `${this.path}/${segment(run.public_id)}`);

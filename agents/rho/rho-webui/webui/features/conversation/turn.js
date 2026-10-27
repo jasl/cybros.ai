@@ -50,7 +50,7 @@ function callbackRow(turn, content, figures = []) {
 }
 
 function userRow(turn, content, figures) {
-  return el("article", { class: "turn turn--user", "data-turn-id": turn.public_id }, meta(turn, speaker(turn)),
+  return el("article", { class: "turn turn--user", "data-turn-id": turn.public_id }, meta(turn, turn.communication_kind ? (turn.communication_kind === "request" ? t("transcript.received_request") : t("transcript.received_message")) : speaker(turn)),
     el("div", { class: "turn__bubble" }, content ? prose(content) : placeholder(emptyTurnText(turn))), figures);
 }
 
@@ -89,7 +89,7 @@ export function turnRow(turn, { active = false, artifacts, activity }) {
   if (turn.kind === "message" && callback) return callbackRow(turn, content, figures);
   const body = turn.role === "user" ? userRow(turn, content, figures) : assistantRow(turn, variant, content, figures, { active, activity });
   if (turn.kind === "direct_reply" && variant.prompt_text) {
-    const prompt = { public_id: `${turn.public_id}:prompt`, role: "user" };
+    const prompt = { public_id: `${turn.public_id}:prompt`, role: "user", communication_kind: turn.communication_kind };
     return el("div", { class: "turn-pair" }, callback ? callbackRow(prompt, variant.prompt_text) : userRow(prompt, variant.prompt_text, []), body);
   }
   return body;

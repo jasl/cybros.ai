@@ -68,9 +68,9 @@ class Input < ApplicationRecord
   include ModelSelectionCapture
 
   attr_readonly :account_id, :host_type, :host_id, :public_id, :kind, :role,
-    :speaker_id, :authoring_user_id, :answering_user_id, :origin,
+    :conversation_link_id, :speaker_id, :authoring_user_id, :answering_user_id, :origin,
     :sender_conversation_public_id, :sender_run_public_id, :sender_task_key, :expected_steering_run_public_id,
-    :callback_result
+    :callback_result, :communication_kind, :requested_delivery_mode, :on_target_end
 
   attribute :public_id, default: -> { SecureRandom.uuid_v7 }
 
@@ -78,6 +78,7 @@ class Input < ApplicationRecord
   # The recipient whose waiting room this row waits in: a Conversation, or a
   # standalone Run hosting the same door.
   belongs_to :host, polymorphic: true
+  belongs_to :conversation_link, optional: true
   belongs_to :speaker, class_name: "Speaker"
   belongs_to :authoring_user, class_name: "User"
   # THE ADDRESSEE: who answers this turn — the User the door resolved
@@ -109,6 +110,10 @@ class Input < ApplicationRecord
   # Prefixed so `origin_agent?` never reads as `User#agent?` beside it.
   enum :origin, ORIGINS.index_by(&:itself), validate: true, scopes: false, prefix: :origin
   validates :delivery_mode, inclusion: { in: DELIVERY_MODES }
+  validates :requested_delivery_mode, inclusion: { in: DELIVERY_MODES }, allow_nil: true
+  validates :on_target_end, inclusion: { in: %w[discard queue] }, allow_nil: true
+  validates :fallback_reason, inclusion: { in: %w[steering_target_changed steer_target_settled] }, allow_nil: true
+  validates :communication_kind, inclusion: { in: %w[message request] }, allow_nil: true
   validate :delivery_mode_transition, on: :update
   validates :context_mode, inclusion: { in: CONTEXT_MODES }
   validates :queue_position, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
@@ -178,6 +183,13 @@ class Input < ApplicationRecord
   # blocking, passes the bin and is nobody's to change.
   def kernel_origin? = KERNEL_ORIGINS.include?(origin)
 
+  # Provenance stays with the sender. Once consumed, ordinary messages run
+  # under the recipient's control and private context, independently of Stop
+  # on the source execution.
+  def communication_message? = communication_kind == "message"
+  def cancellation_source_public_id = source_released_at ? nil : sender_run_public_id
+  def processing_user = communication_message? ? answering_user : authoring_user
+
   def execution_model_selection
     model_selection || ModelSelectionIntent.default("#{provider_id}/#{model_ref}")
   end
@@ -206,7 +218,7 @@ class Input < ApplicationRecord
       source ? host.effective_memory_context(execution_configuration: execution_configuration, configuration: source.memory_context) : { "bindings" => [] }
     else
       configuration = host.effective_memory_context(execution_configuration: execution_configuration)
-      if origin == "agent" && sender_run_public_id
+      if origin == "agent" && sender_run_public_id && !communication_message?
         source = Run.find_by(public_id: sender_run_public_id)
         inherited = source&.memory_context || { "bindings" => [] }
         MemoryContext.inherit(configuration: configuration, source: inherited,

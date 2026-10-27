@@ -11,7 +11,7 @@ class Runs::PassiveResultDeliveryTest < ActiveJob::TestCase
     @workspace = workspaces(:shared)
     DevModelLane.ensure_enabled!(@account)
     @conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
-    declare_tools!(@agent, tools: [Nexus::Tools::DELEGATE_TASK, Nexus::Tools::SPAWN, Nexus::Tools::SEND,
+    declare_tools!(@agent, tools: [Nexus::Tools::DELEGATE_TASK, Nexus::Tools::SPAWN, Nexus::Tools::SEND, Nexus::Tools::REQUEST,
       Nexus::ToolRegistry.function_definition("wait"), READ_TOOL])
   end
 
@@ -212,25 +212,25 @@ class Runs::PassiveResultDeliveryTest < ActiveJob::TestCase
                  "the log's lines\n</task_result>", @conversation.inputs.sole.text
   end
 
-  test "a spawned reply and a later send choose their own passive wake policy" do
+  test "a spawned reply and a later request choose their own passive wake policy" do
     _turn, run = open_reply("spawn a reviewer")
     call_round(run, "r1", "spawn", prompt: "review", wake: "passive")
     child = loop_node(run, "r2t0").spawned_conversation
     finish_round(run, "r2", "review pending")
     Conversations::Turns::Converge.call
     finish_child(child, "first report")
-    Runs::Spawn::Relay.call(conversation_id: child.id)
+    relay_results(child)
 
     assert_equal "message", @conversation.inputs.sole.kind
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id)
     assert_nil @conversation.reload.active_turn_id
 
     _next_turn, next_loop = open_reply("request details")
-    call_round(next_loop, "r1", "send", to: child.public_id, message: "more detail", wake: "auto")
+    call_round(next_loop, "r1", "request", to: child.public_id, prompt: "more detail", wake: "auto")
     finish_round(next_loop, "r2", "details pending")
     Conversations::Turns::Converge.call
     finish_child(child, "second report")
-    Runs::Spawn::Relay.call(conversation_id: child.id)
+    relay_results(child)
 
     mail = @conversation.inputs.sole
     assert_equal "direct_reply", mail.kind, "the later request overrides the original spawn policy"
@@ -239,32 +239,32 @@ class Runs::PassiveResultDeliveryTest < ActiveJob::TestCase
     assert_not_nil @conversation.reload.active_turn_id
   end
 
-  test "a fast spawned reply and a fast later send both wait for a supplementary turn" do
+  test "a fast spawned reply and a fast later request both wait for a supplementary turn" do
     turn, run = open_reply("spawn a reviewer")
     call_round(run, "r1", "spawn", prompt: "review")
     child = loop_node(run, "r2t0").spawned_conversation
     finish_child(child, "first fast report")
-    Runs::Spawn::Relay.call(conversation_id: child.id)
+    relay_results(child)
     assert_equal :conversation_busy, Conversations::Inputs::ApplyNext.call(conversation_id: @conversation.id).outcome
     assert_nil run.tasks.find_by(node_key: "w1")
     refute_includes request_text(loop_node(run, "r2")), "Mock: first fast report"
     finish_round(run, "r2", "original answer")
     Conversations::Turns::Converge.call
-    Runs::Spawn::Relay.call(conversation_id: child.id)
+    relay_results(child)
     assert_equal "Mock: original answer", turn.reload.active_variant.content_bodies.find_by!(role: "content").effective_text
 
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id)
     reply_loop = @conversation.reload.active_turn.active_variant.run
     schedule_loop!(reply_loop)
     assert_equal 1, request_text(loop_node(reply_loop, "r1")).scan(/Mock: first fast report/).length
-    call_round(reply_loop, "r1", "send", to: child.public_id, message: "more detail")
+    call_round(reply_loop, "r1", "request", to: child.public_id, prompt: "more detail")
     finish_child(child, "second fast report")
-    Runs::Spawn::Relay.call(conversation_id: child.id)
+    relay_results(child)
     assert_equal :conversation_busy, Conversations::Inputs::ApplyNext.call(conversation_id: @conversation.id).outcome
     refute_includes request_text(loop_node(reply_loop, "r2")), "Mock: second fast report"
     finish_round(reply_loop, "r2", "details requested")
     Conversations::Turns::Converge.call
-    Runs::Spawn::Relay.call(conversation_id: child.id)
+    relay_results(child)
 
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id)
     final_loop = @conversation.reload.active_turn.active_variant.run
@@ -279,12 +279,12 @@ class Runs::PassiveResultDeliveryTest < ActiveJob::TestCase
     child = loop_node(run, "r2t0").spawned_conversation
     assert_equal "queued", loop_node(run, "r2").status
     finish_child(child, "waited report")
-    Runs::Spawn::Relay.call(conversation_id: child.id)
+    relay_results(child)
     schedule_loop!(run)
     assert_includes round_request_entries(loop_node(run, "r2")).to_json, "Mock: waited report"
     finish_round(run, "r2", "answer using the report")
     Conversations::Turns::Converge.call
-    Runs::Spawn::Relay.call(conversation_id: child.id)
+    relay_results(child)
 
     assert_equal "completed", turn.reload.status
     assert_empty @conversation.inputs.reload
@@ -302,6 +302,16 @@ class Runs::PassiveResultDeliveryTest < ActiveJob::TestCase
   end
 
   private
+
+    def relay_results(child)
+      perform_enqueued_jobs(only: Runs::ResultDeliveryJob) do
+        Runs::Spawn::Relay.call(conversation_id: child.id)
+        Runs::Delegations.recovery_candidates(after_id: 0, limit: 200).each do |completion|
+          Runs::Delegations.converge(node: completion)
+        end
+        Run.joins(:turn).where(turns: { conversation_id: @conversation.id }).find_each { |run| Runs::ResultDelivery.call(run) }
+      end
+    end
 
     def open_reply(text)
       turn, run = materialize_loop_reply!(@conversation, agent: @agent, text: text)

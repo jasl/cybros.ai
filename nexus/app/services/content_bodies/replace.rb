@@ -12,6 +12,10 @@ module ContentBodies
 
     def self.call(...) = new(...).call
 
+    # Coupled publishers already hold the owner before another aggregate's
+    # task lock. Reuse that serialization without climbing the lock ladder.
+    def self.call_locked(...) = new(...).call(owner_locked: true)
+
     # Retained history combines already admitted material from many requests.
     # It has no cumulative request ceiling; the history reader funds its window.
     # Keep fragment addressing and adoption on the same writer as bounded bodies.
@@ -46,7 +50,7 @@ module ContentBodies
       @composed = composed || role == COMPOSED_ROLE
     end
 
-    def call
+    def call(owner_locked: false)
       refusal = bound_refusal
       return Result.refused(refusal) if refusal
 
@@ -54,7 +58,7 @@ module ContentBodies
 
       result = nil
       ContentBody.transaction(requires_new: true) do
-        body = locked_body
+        body = owner_locked ? find_or_create_body : locked_body
         result = replace_body(body)
         raise ActiveRecord::Rollback unless result.accepted?
       end
@@ -79,12 +83,11 @@ module ContentBodies
       # unique index: two concurrent first-writes for one (owner, role) would
       # otherwise both find nothing and both insert.
       def locked_body
-        @owner.with_lock do
-          body = @owner.content_bodies.find_by(role: @role)
-          next body if body
+        @owner.with_lock { find_or_create_body }
+      end
 
-          create_body
-        end
+      def find_or_create_body
+        @owner.content_bodies.find_by(role: @role) || create_body
       end
 
       def create_body

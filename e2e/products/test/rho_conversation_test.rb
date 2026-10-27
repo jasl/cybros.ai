@@ -252,6 +252,12 @@ class RhoConversationTest < Minitest::Test
     assert_includes continued, COMPACTION_HEADER, "and the summary follows it, in place of the history"
     assert_equal 1, continued.scan(marker).length, "the new result is consumed exactly once after the summary"
     assert_compaction_result_request(loop, marker)
+    instructions = %w[r1 r2].map do |key|
+      agent_api("#{loop_path(loop)}/tasks/#{key}/request").fetch("request").fetch("entries")
+        .select { |entry| %w[system developer].include?(entry["role"]) }
+    end
+    refute_empty instructions.first
+    assert_equal instructions.first, instructions.last, "compaction preserves the accepted instructions"
 
     # THE THREAD: the kernel's summarizer `k1` is on no page — off the mainline, under no call — and
     # the round it repaired carries the cut on its own row.
@@ -299,13 +305,16 @@ class RhoConversationTest < Minitest::Test
 
     said, status = @daemon.cli("say", conversation, "!mock -- what happened")
     assert_predicate status, :success?, "rho say failed:\n#{said}"
-    events = await_feed(conversation, "the next turn never completed") do |items|
-      items if items.any? { |item| item["type"] == "turn_status" && item.dig("payload", "status") == "completed" && item.dig("payload", "run_public_id") != loop }
+    input_id = said[/^queued:\s+(\S+)/, 1]
+    refute_nil input_id, said
+    accepted = await_feed(conversation, "the next input never materialized") do |items|
+      items.find { |item| item["type"] == "input_materialized" && item.dig("payload", "input_public_id") == input_id }
     end
-    second_loop = events.find { |item| item["type"] == "turn_status" && item.dig("payload", "status") == "completed" && item.dig("payload", "run_public_id") != loop }
-      .dig("payload", "run_public_id")
-    assert_includes task_output(second_loop, "r1"), ENVELOPE,
-      "turn 2's history rendered turn 1's dangling call with the kernel's envelope"
+    second_loop = accepted.dig("payload", "run_public_id")
+    refute_nil second_loop, accepted.inspect
+    await_run_status(second_loop, "completed")
+    assert_includes sealed_words(second_loop, "r1"), ENVELOPE,
+      "turn 2's request pairs turn 1's canceled call with the kernel's envelope"
   end
 
   # `say --approval ask` PARKS THE NEXT TURN'S COMMAND (ACP design r2 C2;

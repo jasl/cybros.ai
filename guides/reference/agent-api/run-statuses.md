@@ -176,7 +176,7 @@ limits.
 
 The switched step stays on the fallback for the rest of its turn, but
 work it starts — a composed member, a `delegate_task` delegate, the model
-a spawn or send names by default — begins on the model its lineage was
+a spawn or request names by default — begins on the model its lineage was
 configured with.
 
 ## Run statuses

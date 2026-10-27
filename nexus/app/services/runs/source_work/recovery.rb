@@ -40,11 +40,20 @@ module Runs
         return false unless input
 
         input.host.with_lock do
-          SourceWork.with_source(input.sender_run_public_id) do |source|
-            next false unless SourceWork.stopped?(input.sender_run_public_id, source)
-
-            input = input.host.inputs.lock.find_by(id: id)
+          link = input.conversation_link
+          link&.lock!("FOR SHARE")
+          target = input.expected_steering_run_public_id if input.steering?
+          SourceWork.with_sources([input.cancellation_source_public_id, target]) do |sources|
+            input = Input.lock.find_by(id: id)
             next false unless input
+
+            unless link&.closed? || SourceWork.stopped?(input.cancellation_source_public_id, sources[input.sender_run_public_id])
+              # The source frontier visits delayed, blocked and steering rows as
+              # well as due mail. Lost hints never leave a closed link's row held.
+              input.host.wake_drain if input.state == "pending" &&
+                (input.deliver_at.nil? || input.deliver_at <= DatabaseClock.now)
+              next false
+            end
 
             Conversations::Inputs::Destroy.remove(input)
             input.host.wake_drain
@@ -95,7 +104,7 @@ module Runs
 
         def recover_turn(id)
           turn = Turn.find_by(id: id)
-          return 0 unless turn && !turn.forked_from_turn_public_id
+          return 0 unless turn && !turn.source_released_at && !turn.forked_from_turn_public_id && turn.communication_kind != "message"
 
           original = turn.variants.find_by(position: 0)
           return 0 unless original

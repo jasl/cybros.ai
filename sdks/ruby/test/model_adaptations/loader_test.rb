@@ -33,6 +33,7 @@ class ModelAdaptationsLoaderTest < Minitest::Test
     assert_equal %w[nexus claude codex], PACK.presets.words
     assert_equal({ "nexus.graph.delegate_task" => "delegate_task", "nexus.graph.wait" => "wait", "nexus.human.ask" => "ask",
                    "nexus.conversation.spawn" => "spawn", "nexus.conversation.send" => "send",
+                   "nexus.conversation.request" => "request", "nexus.conversation.links" => "links",
                    "nexus.skill.load" => "skill", "nexus.image.generate" => "image_generate" }, PACK.presets.plain)
     assert PACK.rows.all?(&:gem?)
     assert_empty PACK.local_rows

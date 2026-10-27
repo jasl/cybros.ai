@@ -45,6 +45,7 @@ module Workspaces
 
           if locked.save
             if previously.account_wide? && locked.private?
+              ConversationLink.close_for_workspace_access(locked)
               ModelInvocation::Cancellation.call(
                 scope: locked.model_work_losing_access(previously: previously),
                 reason: "workspace_access_revoked"

@@ -4,7 +4,7 @@
 class ConversationCommandReceipt < ApplicationRecord
   include AgeReapable
 
-  OPERATIONS = %w[conversation_create input_create fork regeneration store_entry_create schedule_create].freeze
+  OPERATIONS = %w[conversation_create input_create fork regeneration store_entry_create schedule_create link_create].freeze
   RETENTION = 24.hours
 
   attr_readonly :account_id, :workspace_id, :host_type, :host_id, :acting_user_id,

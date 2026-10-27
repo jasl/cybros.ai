@@ -122,6 +122,21 @@ configuration:
   Null bounds mean no corresponding local range check; null `allowed_values`
   means the control is not enumerated. An absent parameter is unsupported.
   `output_format` lists semantic format kinds, never provider payload keys.
+- `prompt_cache_ttl`, when declared in `generation_parameters`, is a string
+  supplied through `configuration`, for example
+  `{"configuration":{"prompt_cache_ttl":"12h"}}`. Use the model's
+  `allowed_values`; unsupported durations are rejected before provider IO.
+  A null catalog default preserves omission. The shipped OpenAI GPT-6 and
+  OpenRouter OpenAI rows offer `30m` (recommended) and `12h`; 12-hour cache
+  writes cost more. Responses and compatible Chat lower these to
+  `prompt_cache_options.ttl`. Models explicitly declaring the older `24h`
+  option use `prompt_cache_retention` instead; it is not a GPT-6 option.
+  Native Anthropic rows offer `5m` and `1h`. Without an override, mainline
+  requests retain one-hour markers and other marked requests five-minute
+  markers. An override changes only their lifetime: stable/tail placement,
+  thinking-block exclusions, and marker-free summaries remain unchanged.
+  Other rows, including OpenRouter Anthropic, do not advertise configurable
+  TTL. This setting is a provider cache lifetime, not a deletion deadline.
 - `service_tiers` lists the declared tier values. No tier is selected by this
   listing; omitting a tier, or requesting `default`, leaves the provider's
   default in effect.

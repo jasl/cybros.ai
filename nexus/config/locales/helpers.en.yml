@@ -30,6 +30,7 @@ en:
         cached_input_per_mtok: Cached input per 1M tokens
         cache_write_per_mtok: Cache write per 1M tokens
         cache_write_1h_per_mtok: 1-hour cache write per 1M tokens
+        cache_write_12h_per_mtok: 12-hour cache write per 1M tokens
         input_cache_hit_per_mtok: Cache hit per 1M tokens
         input_cache_miss_per_mtok: Cache miss per 1M tokens
         per_image: Per image

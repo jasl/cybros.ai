@@ -287,10 +287,11 @@ conversation UUID remains the precise source for a tool-less execution. The
 main conversation consumes callbacks through its ordinary input door; callback
 acceptance itself does not bypass an ongoing reply.
 
-The execution child remains reusable. A later queued `send` from its parent
+The execution child remains reusable. A later queued `request` from its parent
 opens a separate reply obligation, correlated to that sending run and task and
 returned on its answerer, model, tools, approval and wake policy. It does not
-replace the scheduled answer or keep the occurrence unfinished. A steer joins
+replace the scheduled answer or keep the occurrence unfinished. An ordinary
+`send` creates no result obligation. A steer joins
 the existing turn and its original obligation. A person's independent exchange,
 a third-party request, or a grandchild's callback stays local to the child;
 none automatically becomes another scheduled report to the main conversation.

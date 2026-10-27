@@ -483,10 +483,14 @@ Rails.application.routes.draw do
               resources :archived, only: :index, module: :conversations, controller: "archived"
             end
             scope module: :conversations do
+              resources :links, only: [:index, :show, :create], param: :public_id do
+                resource :closure, only: :create, module: :links
+              end
               resource :history, only: :show
               resource :export, only: :show
               resource :archive, only: :create
               resource :unarchive, only: :create
+              resource :takeover, only: :create
               # The subagent followers, reachable only through their parent.
               resources :children, only: :index
               resources :schedules, only: [:index, :show, :create], param: :public_id do

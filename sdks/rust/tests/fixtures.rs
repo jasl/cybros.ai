@@ -20,6 +20,18 @@ fn decode<T: DeserializeOwned>(family: &str, key: &str, pointer: &str, errors: &
     }
 }
 #[test]
+fn taken_over_root_retains_typed_takeover_and_birth_facts() {
+    let row: m::ConversationSummary =
+        serde_json::from_value(fixture("conversations")["taken_over_child_fixture"].clone())
+            .unwrap();
+    assert_eq!(row.taken_over_at.as_deref(), Some("2026-10-27T10:00:00Z"));
+    assert_eq!(
+        row.taken_over_by_public_id.as_deref(),
+        Some("01900000-0000-7000-8000-000000000003")
+    );
+    assert_eq!(row.parent.unwrap().label.as_deref(), Some("reviewer"));
+}
+#[test]
 fn shared_wire_documents_decode_with_their_typed_fields() {
     let mut e = vec![];
     for key in [
@@ -119,6 +131,7 @@ fn shared_wire_documents_decode_with_their_typed_fields() {
         "valid_queued_fixture",
         "valid_image_fixture",
         "valid_embedding_fixture",
+        "valid_decision_fixture",
         "valid_failed_fixture",
         "valid_switched_fixture",
     ] {
@@ -215,4 +228,25 @@ fn shared_wire_documents_decode_with_their_typed_fields() {
     decode::<p::DeploymentLog>("platform_deployment", "valid_log_fixture", "/log", &mut e);
     decode::<p::UsageReport>("platform_usage", "valid_report_fixture", "/report", &mut e);
     assert!(e.is_empty(), "{}", e.join("\n"));
+}
+
+#[test]
+fn decision_answers_preserve_false_fractional_scores_refusal_and_zero_usage() {
+    let row: m::InferenceRequest = serde_json::from_value(
+        fixture("inference_requests")["valid_decision_fixture"]["inference_request"].clone(),
+    )
+    .unwrap();
+    assert_eq!(row.workload, "decision");
+    let result = row.result.unwrap();
+    assert!(result.output_text.is_none());
+    assert_eq!(result.usage.unwrap().output_tokens, Some(0));
+    let answers = result.answers.unwrap();
+    assert_eq!(answers[0].probability, Some(0.9));
+    assert_eq!(answers[1].choice, Some(m::DecisionChoice::Boolean(false)));
+    assert_eq!(answers[2].score, Some(0.75));
+    assert_eq!(
+        answers[2].probabilities.as_ref().unwrap()[0].value,
+        m::DecisionProbabilityValue::Level(0)
+    );
+    assert_eq!(answers[3].r#type, "refusal");
 }

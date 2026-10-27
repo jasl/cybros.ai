@@ -20,10 +20,12 @@ module CybrosAgent
     ].freeze
 
     # Talk to other conversations: spawn a child, send to a peer, read its
-    # state, stop it.
+    # state, stop it, request a reply, and manage message links.
     CONVERSATION = %w[
       nexus.conversation.spawn
       nexus.conversation.send
+      nexus.conversation.request
+      nexus.conversation.links
       nexus.conversation.status
       nexus.conversation.cancel
     ].freeze

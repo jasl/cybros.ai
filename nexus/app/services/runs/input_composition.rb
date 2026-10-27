@@ -382,6 +382,7 @@ module Runs
       # own sealed body is then the prefix the next continuation replays —
       # the one licensed bust, once per wall.
       def history
+        return captured_instructions(raw_model_source) if summary
         return [] if model_source.nil?
         return rows_history if @node.pruned_before
 
@@ -424,8 +425,21 @@ module Runs
 
       def read_by(round, oldest, material: [], paired: nil)
         summary = oldest ? round.arrived_summary : nil
-        lead = summary ? [user_message(summary_material_of(summary))] : []
+        lead = summary ? captured_instructions(self.class.source_round(round)) + [user_message(summary_material_of(summary))] : []
         lead + pair_elements(paired) + material + input_elements(round.input_value)
+      end
+
+      # Compaction replaces history, not the accepted turn's instructions.
+      # Read their sealed bytes so edits to prompt documents cannot enter
+      # an in-flight turn, including reconstruction after a later prune.
+      def captured_instructions(round)
+        body = round&.invocation_body("request")
+        return [] unless body
+
+        body.content_body_entries.filter_map do |entry|
+          payload = entry.content_fragment.payload
+          Nexus::TextInputMessage.from_h(payload) if %w[system developer].include?(payload["role"])
+        end
       end
 
       # The source's sealed request is the only faithful record —
@@ -483,10 +497,13 @@ module Runs
       end
 
       def prefix_bodies
+        return [raw_model_source&.invocation_body("request")] if summary
         return [] if model_source.nil?
         return [model_source.invocation_body("request")] unless @node.pruned_before
 
-        chain_rounds.map(&:input_body) + history_steer_bodies.values
+        oldest = chain_rounds.first
+        instructions = oldest&.arrived_summary ? [oldest.invocation_body("request")] : []
+        instructions + chain_rounds.map(&:input_body) + history_steer_bodies.values
       end
 
       # The output bodies of every result the history PAIRS: the mainline

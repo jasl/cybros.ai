@@ -1,5 +1,5 @@
-<% definitions = model_definition_defaults(form.model_definitions) %>
-<% fallback = model_definition_default({}) %>
+<% definitions = model_definition_defaults(form) %>
+<% fallback = model_definition_default({}, prompt_cache: model_prompt_cache_options(form, inherited: "")) %>
 <% defaults = definitions.fetch(form.inherit.to_s, fallback) %>
 <% limits_overridden = model_form_limits_overridden?(form) %>
 <%= form_with model: form, scope: :model_definition, url: admin_model_provider_model_definition_path(provider.fetch(:id)), method: creating ? :post : :patch, class: "space-y-5",
@@ -39,6 +39,14 @@
     <%= tag.p model_default_copy("definition_defaults_empty"), class: "mt-3 text-sm text-base-content/60", hidden: defaults.fetch("facts").any?, data: { model_definition_target: "emptyFacts" } %>
   <% end %>
   <%= render "capabilities", form: form, f: f, defaults: defaults, limits_overridden: limits_overridden %>
+  <%= tag.section class: "rounded-box border border-base-300 bg-base-200", hidden: !defaults.fetch("promptCache").fetch("supported"),
+    data: { model_definition_target: "promptCacheSection" } do %>
+    <%= render "shared/form_row", form: f, attribute: :prompt_cache_ttl, label: model_default_copy("prompt_cache_ttl"), description: model_default_copy("prompt_cache_hint") do %>
+      <%= f.select :prompt_cache_ttl, defaults.fetch("promptCache").fetch("options"), {}, class: "select select-sm w-full",
+        disabled: !defaults.fetch("promptCache").fetch("supported"),
+        aria: { invalid: form.errors[:prompt_cache_ttl].any?.to_s }, data: { model_definition_target: "promptCache" } %>
+    <% end %>
+  <% end %>
   <details class="rounded-box border border-base-300 bg-base-200" <%= "open" if form.pricing_mode == "custom" %>>
     <summary class="cursor-pointer p-4 text-sm font-medium"><%= t("admin.model_providers.model_definitions.form.optional_cost_estimate") %></summary>
     <p class="px-4 pb-3 text-xs leading-relaxed text-base-content/60"><%= t("admin.model_providers.model_definitions.form.pricing_helps_estimate_spending_it_is_optional_and_does") %></p>

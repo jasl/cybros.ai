@@ -1,11 +1,13 @@
 module Admin::ModelDefaultsHelper
-  def model_definition_defaults(definitions)
-    definitions.transform_values { |definition| model_definition_default(definition) }
+  def model_definition_defaults(form)
+    form.model_definitions.to_h do |name, definition|
+      [name, model_definition_default(definition, prompt_cache: model_prompt_cache_options(form, inherited: name))]
+    end
   end
 
   # The browser and the first render consume the same localized projection;
   # neither resolves or copies these defaults into the authored declaration.
-  def model_definition_default(definition)
+  def model_definition_default(definition, prompt_cache:)
     capabilities = definition.fetch("capabilities", {})
     limits = capabilities.fetch("limits", {})
     {
@@ -34,6 +36,19 @@ module Admin::ModelDefaultsHelper
         [key, defaults]
       end,
       "media" => model_default_media(capabilities),
+      "promptCache" => prompt_cache,
+    }
+  end
+
+  def model_prompt_cache_options(form, inherited:)
+    parameter = form.prompt_cache_parameter(inherited: inherited)
+    values = parameter ? parameter.fetch("allowed_values") : []
+    {
+      "options" => [[model_default_copy("prompt_cache_default"), ""], *values.map { |value|
+        [model_default_copy("prompt_cache_durations.#{value}"), value]
+      }],
+      "default" => parameter&.fetch("default").to_s,
+      "supported" => values.any?,
     }
   end
 

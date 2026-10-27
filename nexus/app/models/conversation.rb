@@ -95,7 +95,8 @@ class Conversation < ApplicationRecord
 
   validates :title, length: { maximum: 255 }, allow_nil: true
   validates :spawn_label, length: { maximum: 64 }, format: { with: SPAWN_LABEL_FORMAT },
-    uniqueness: { scope: :parent_conversation_id }, allow_nil: true
+    uniqueness: { scope: :parent_conversation_id, conditions: -> { where(taken_over_at: nil) } }, allow_nil: true,
+    if: -> { taken_over_at.nil? }
   validates :input_queue_limit, numericality: { only_integer: true, greater_than: 0 }
   validates :timeline_position_head,
     numericality: { only_integer: true, greater_than_or_equal_to: 0 }
@@ -171,9 +172,8 @@ class Conversation < ApplicationRecord
 
   def tombstoned? = tombstoned_at.present?
 
-  # A child `spawn` minted: it names the call. Distinct from `subagent?`
-  # only until the parent's reap nullifies the pair — the public-id
-  # snapshot survives, the node link does not.
+  # A child `spawn` minted: it names the call even after takeover. Parent
+  # reap nullifies this node link; the public-id birth snapshot survives.
   def spawned? = spawn_node_id.present?
 
   # The executor scope's member correlation: child and scheduled work use
@@ -222,8 +222,17 @@ class Conversation < ApplicationRecord
   end
 
   # A subagent is a lifecycle follower: the parent's verbs stamp the tree. The
-  # snapshot is the marker — the FK nullifies on parent reap.
-  def subagent? = parent_conversation_public_id.present?
+  # birth snapshot survives parent reap; takeover ends current membership.
+  def subagent? = parent_conversation_public_id.present? && taken_over_at.nil?
+
+  scope :lifecycle_roots, -> { where(parent_conversation_public_id: nil).or(where.not(taken_over_at: nil)) }
+  scope :subagents, -> { where.not(parent_conversation_public_id: nil).where(taken_over_at: nil) }
+
+  # The command holds the lifecycle root and request owners. Birth attribution
+  # remains intact; the one-way stamp ends only current lifecycle membership.
+  def take_over(by:, at:)
+    update!(taken_over_at: at, taken_over_by_public_id: by.public_id) unless taken_over_at
+  end
 
   # The Windows rule without groups, the ONE Ruby derivation: the creator
   # and the answerer are FULL by derivation (never a row); an entry names

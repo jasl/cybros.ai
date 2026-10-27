@@ -74,6 +74,9 @@ module Nexus
             "valid_discovery_listing_fixture" => { "tools" => AgentAPI::ToolPresenter.index.select do |row|
               %w[nexus.tools.search nexus.tools.call].include?(row.fetch(:canonical_name))
             end },
+            "valid_communication_listing_fixture" => { "tools" => AgentAPI::ToolPresenter.index.select do |row|
+              %w[nexus.conversation.spawn nexus.conversation.send nexus.conversation.request nexus.conversation.links].include?(row.fetch(:canonical_name))
+            end },
             "valid_assembly_fixture" => tool_assembly,
             "unknown_field_behavior" => "ignore",
           }

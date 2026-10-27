@@ -8,7 +8,8 @@ class Users::DeclareNamedAgentTest < ActiveSupport::TestCase
   include RunLaneTestHelper
   include RowLockTestHelper
 
-  uses_transaction :test_removal_that_locks_first_fences_an_in_flight_new_definition_declaration
+  uses_transaction :test_removal_that_locks_first_fences_an_in_flight_new_definition_declaration,
+    :test_redeclaration_and_reply_materialization_both_finish_without_a_user_FK_deadlock
 
   setup do
     @owner = users(:owner)
@@ -137,6 +138,50 @@ class Users::DeclareNamedAgentTest < ActiveSupport::TestCase
     stop_database_call(declaration) if declaration
     # This test commits across connections. Destroy through User so its prompt
     # documents leave before fixture reload replaces their owning rows.
+    profile&.named_agents&.destroy_all
+    profile&.destroy!
+  end
+
+  test "redeclaration and reply materialization both finish without a user FK deadlock" do
+    profile = create_agent_member(steward: @owner, agent_identifier: "declaration-reply-race")
+    configuration = CONFIGURATION.merge(tool_definitions: [], approval_mode: nil)
+    definition = declare(caller: profile, configuration: configuration).user
+    conversation = Conversation.create!(workspace: workspaces(:shared), creating_user: profile, answering_user: definition)
+    input = post_input!(conversation, acting_user: profile, kind: "direct_reply", text: "Reply during restart",
+      provider_id: "dev", model_ref: "mock-text")
+
+    # A reply INSERT pins its answering User before its control owner through
+    # FK checks. Hold that first principal while the restart declaration takes
+    # its caller lock and waits for the definition, then finish the real drain.
+    held = hold_row_lock(User, definition.id, before_commit: ->(_definition) {
+      result = Conversations::Inputs::ApplyNext.call(conversation_id: conversation.id)
+      assert_predicate result, :accepted?, result.outcome.inspect
+    })
+    declaration = start_database_call do
+      declare(caller: User.find(profile.id), configuration: configuration, system_prompt: "After restart")
+    end
+    wait_until_transitively_blocked_by(held.pid, declaration.pid)
+    release_row_lock(held)
+    held = nil
+    assert_equal :replaced, finish_database_call(declaration).outcome
+    declaration = nil
+
+    turn = conversation.turns.find_by!(input_public_id: input.public_id)
+    assert_equal definition.id, turn.answering_user_id
+    assert_equal profile.id, turn.control_owner_user_id
+    assert_not Input.exists?(id: input.id)
+    assert_equal "After restart", definition.prompt_documents.find_by!(slot: "system_prompt").content
+  ensure
+    stop_database_call(declaration) if declaration
+    release_row_lock(held) if held&.thread&.alive?
+    conversation&.model_invocations&.destroy_all
+    conversation&.memory_collections&.delete_all
+    conversation&.reload&.destroy!
+    definition&.memory_collections&.delete_all
+    profile&.memory_collections&.delete_all
+    speakers = Speaker.where(user_id: [profile&.id, definition&.id])
+    MemoryCollection.where(speaker_id: speakers.select(:id)).delete_all
+    speakers.delete_all
     profile&.named_agents&.destroy_all
     profile&.destroy!
   end

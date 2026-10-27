@@ -29,6 +29,7 @@ class Admin::ModelProviders::ModelForm
   attribute :limits_edited, :boolean, default: false
   attribute :input_modalities_mode, :string, default: "inherit"
   attribute :input_modalities, default: -> { [] }
+  attribute :prompt_cache_ttl, :string
   LIMIT_FIELDS.each { |key| attribute key, :string }
   BOOLEAN_FIELDS.each { |key| attribute key, :string }
   RATE_FIELDS.each { |key| attribute key, :string }
@@ -38,10 +39,12 @@ class Admin::ModelProviders::ModelForm
   validates(*BOOLEAN_FIELDS, inclusion: { in: %w[true false] }, allow_blank: true)
   validates :pricing_mode, inclusion: { in: %w[preserve none custom] }
   validates :input_modalities_mode, inclusion: { in: %w[inherit custom] }
+  validates :prompt_cache_ttl, inclusion: { in: ->(form) { form.prompt_cache_parameter&.fetch("allowed_values") || [] } }, allow_blank: true
 
   attr_reader :model_definitions
 
   def initialize(provider_id:, provider_definition:, definition: {}, model_definitions: {}, model: nil, lock_version: nil, cost_unit: nil, attributes: {})
+    attributes = attributes.to_h.transform_keys(&:to_s)
     @provider_id = provider_id
     @model_definitions = model_definitions
     @definition = definition.deep_dup
@@ -58,6 +61,7 @@ class Admin::ModelProviders::ModelForm
     }.merge(caps.slice(*BOOLEAN_FIELDS).transform_values(&:to_s)).merge(caps.fetch("limits", {}).slice(*LIMIT_FIELDS))
       .merge(pricing.dig("schedule", "rates") || {}).merge(attributes.to_h))
     self.input_modalities = input_modalities.reject { |kind| kind == "" }
+    self.prompt_cache_ttl = prompt_cache_parameter&.fetch("default") unless attributes.key?("prompt_cache_ttl")
   end
 
   def model_ref
@@ -76,10 +80,23 @@ class Admin::ModelProviders::ModelForm
     @definition.fetch("capabilities", {}).key?("limits") && original_limits.empty?
   end
 
+  def prompt_cache_parameter(inherited: inherit)
+    entry = @definition.except("inherit")
+    entry["inherit"] = inherited if model_definitions.key?(inherited)
+    resolved = ModelCatalog::ModelDefinition.normalize(entry, model_ref: model_ref, definitions: model_definitions)
+    caps = resolved.fetch("capabilities", {})
+    parameter = caps.dig("generation_parameters", "prompt_cache_ttl")
+    allowed = ModelRequests::WireLowering::CACHE_TTLS.fetch(@format, [])
+    if caps["prompt_caching"] != false && parameter && parameter["allowed_values"].present? &&
+        (parameter.fetch("allowed_values") - allowed).empty?
+      parameter
+    end
+  end
+
   def rate_fields
     validation = ModelCatalog::PricingValidation
     case SimpleInference::ApiFormat.workload(@format)
-    when "text_generation"
+    when "text_generation", "decision"
       if @format == "deepseek_responses"
         validation::CACHED_TEXT_RATE_KEYS
       else
@@ -114,6 +131,7 @@ class Admin::ModelProviders::ModelForm
     def write_capabilities(value)
       caps = value.fetch("capabilities", {}).deep_dup
       write_limits(caps)
+      write_prompt_cache_ttl(caps)
       BOOLEAN_FIELDS.each do |key|
         input = public_send(key)
         input.present? ? caps[key] = input == "true" : caps.delete(key)
@@ -124,6 +142,17 @@ class Admin::ModelProviders::ModelForm
         caps.delete("input_modalities")
       end
       caps.empty? ? value.delete("capabilities") : value["capabilities"] = caps
+    end
+
+    def write_prompt_cache_ttl(caps)
+      parameter = prompt_cache_parameter
+      # An unchanged selection must not materialize inherited defaults or
+      # turn an omitted default into an explicit null in the declaration.
+      if parameter && prompt_cache_ttl.to_s != parameter.fetch("default").to_s
+        parameters = caps["generation_parameters"] ||= {}
+        ttl = parameters["prompt_cache_ttl"] ||= {}
+        ttl["default"] = prompt_cache_ttl.presence
+      end
     end
 
     def write_limits(caps)

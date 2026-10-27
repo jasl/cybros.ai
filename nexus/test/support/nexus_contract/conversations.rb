@@ -31,7 +31,7 @@ module Nexus
         # predates — which is why the lists are published as fixtures to
         # read, never as sets to enumerate against.
         def conversations
-          basic, full, spawned, forked = conversation_presenter_fixtures
+          basic, full, spawned, forked, taken_over = conversation_presenter_fixtures
           guarded_input = input_fixture(expected_steering_run_public_id: "01900000-0000-7000-8000-000000000091")
           input = input_fixture
           steps_input = input_fixture(steps: [
@@ -230,6 +230,7 @@ module Nexus
             # THE PARENT FACTS: a spawned child's listing row — `parent` as one block; `/children`
             # lists these.
             "spawned_child_fixture" => spawned,
+            "taken_over_child_fixture" => taken_over,
             "forked_conversation_fixture" => forked,
             "parent_projection" => spawned.fetch("parent").keys,
             "valid_turns_fixture" => turns_fixture,

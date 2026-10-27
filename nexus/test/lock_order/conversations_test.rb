@@ -320,65 +320,68 @@ class ConversationsLockOrderTest < ActiveSupport::TestCase
       "the kernel-held await is appended tokened; the scheduler parks it `dispatched` later"
   end
 
-  # THE CHILD-REPLY RELAY: two paths, two transactions. The await path holds the parent LOOP, then
-  # the await it settles, then the narration cursor — with the turn's relay stamp inside the same
-  # transaction (turns is never explicitly locked, so the stamp is invisible here and
-  # pinned by spawn_relay_test's torn-stamp case). The mail path holds the parent CONVERSATION and
-  # its source loop, then the input body and cursor — kernel mail's own shape.
+  # Materialize the accepted input and finish its original execution so the
+  # completion observes the same Input/Turn/Variant/Run identity as production.
   def spawned_child_with_a_reply(wait:)
-    account = accounts(:cybros)
-    DevModelLane.ensure_enabled!(account)
     human = users(:member)
     agent = users(:agent)
+    declare_tools!(agent, tools: [Nexus::Tools::SPAWN, READ_TOOL])
     parent = Conversation.create!(workspace: workspaces(:shared), creating_user: human, answering_user: agent)
-    seam = create_run_backed_turn(conversation: parent, acting_user: human)
-    appended = Runs::Tasks::Append.call(Runs::Tasks::Append::Command.kernel(
-      run: seam.run, origin: "model",
-      steps: [Runs::Tasks::Step::Tool.new(key: "r1t0", name: "spawn",
-        input: { "prompt" => "review the models", "wait" => wait })],
-      tip: Runs::Tasks::Tip.seed(Runs::Tasks::Compile::BRANCH)
-    ))
-    assert_predicate appended, :applied?
-    call = seam.run.tasks.find_by!(node_key: "r1t0")
-    Task.where(id: call.id).update_all(status: "running", started_at: Time.current,
-      await_started_at: Time.current)
+    _turn, run = materialize_loop_reply!(parent, agent: human)
+    schedule_loop!(run)
+    run_loop_round!(run, sse_success("delegate", tool_calls: [{
+      id: "child", name: "spawn",
+      arguments: { prompt: "review the models", wait: wait, lifetime: "conversation" }.to_json,
+    }]))
+    call = loop_node(run, "r2t0")
     assert_equal :applied, Runs::Spawn::Run.call(node: call.reload)
-    Task.where(run_id: seam.run.id, node_key: "r1t0-spawn-1")
-      .update_all(status: "dispatched", started_at: Time.current, await_started_at: Time.current)
+    schedule_loop!(run)
+    finish_spawn_parent(run) unless wait
     child = Conversation.find_by!(spawn_node_id: call.id)
-    actor = Speakers::Resolve.member(account: account, user: agent)
-    turn = Turn.create!(
-      account: account, conversation: child, position: child.timeline_position_head,
-      kind: "direct_reply", role: "assistant", status: "completed", origin: "agent",
-      sender_conversation_public_id: parent.public_id,
-      sender_run_public_id: child.inputs.sole.sender_run_public_id,
-      sender_task_key: child.inputs.sole.sender_task_key,
-      speaker: actor, control_owner_user: agent
-    )
-    [parent, seam, child, turn]
+    input_public_id = child.inputs.sole.public_id
+    Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
+    turn = child.turns.find_by!(input_public_id: input_public_id)
+    child_run = turn.active_variant.run
+    schedule_loop!(child_run)
+    run_loop_round!(child_run, sse_success("review complete"))
+    Conversations::Turns::Converge.call
+    assert_predicate child_run.reload, :delivered?
+    assert_equal "running", call.spawn_delegation.status
+    [parent, run, child, turn]
   end
 
-  test "the relay's await path descends loop, task, cursor and never the conversation" do
-    parent, seam, child, turn = spawned_child_with_a_reply(wait: true)
+  def finish_spawn_parent(run)
+    run_loop_round!(run, sse_success("done delegating"))
+    Conversations::Turns::Converge.call
+    assert_predicate run.reload, :delivered?
+  end
+
+  test "the completion locks its child before source and target runs, tasks and cursors" do
+    parent, run, child, turn = spawned_child_with_a_reply(wait: true)
 
     sequences = assert_ladder_order("relay (await)") do
       assert_equal 1, Runs::Spawn::Relay.call(conversation_id: child.id)[:relayed]
     end
 
     seen = sequences.flatten
-    assert_operator seen.index("runs"), :<, seen.index("tasks")
-    assert_operator seen.index("tasks"), :<, seen.index("event_cursors")
-    assert_not_includes seen, "conversations", "the await path takes no conversation lock"
-    assert_equal "completed", seam.run.tasks.find_by!(node_key: "r1t0-spawn-1").status
+    %w[conversations runs tasks content_fragments event_cursors].each_cons(2) do |above, below|
+      assert_operator seen.index(above), :<, seen.index(below)
+    end
+    assert_equal 2, seen.count("runs"), "the source and original target execution both serialize completion"
+    assert_equal "completed", loop_node(run, "r2t0").spawn_await.status
+    assert_equal "completed", loop_node(run, "r2t0").spawn_delegation.status
     assert_not_nil turn.reload.relayed_at
     assert_equal 0, parent.inputs.count
   end
 
   test "the relay's mail path checks its source below the parent conversation and above the body" do
-    parent, _seam, child, turn = spawned_child_with_a_reply(wait: false)
+    parent, run, child, turn = spawned_child_with_a_reply(wait: false)
+
+    assert_equal 1, Runs::Spawn::Relay.call(conversation_id: child.id)[:relayed]
+    assert_equal 0, parent.inputs.count, "completion publication does not acquire the recipient to mail inline"
 
     sequences = assert_ladder_order("relay (mail)") do
-      assert_equal 1, Runs::Spawn::Relay.call(conversation_id: child.id)[:relayed]
+      assert_equal [:delivered], Runs::ResultDelivery.call(run.reload)
     end
 
     seen = sequences.flatten
@@ -391,21 +394,21 @@ class ConversationsLockOrderTest < ActiveSupport::TestCase
   end
 
   test "a late child reply releases the await lock before mailing the reply" do
-    parent, seam, child, turn = spawned_child_with_a_reply(wait: true)
-    await = seam.run.tasks.find_by!(node_key: "r1t0-spawn-1")
+    parent, run, child, turn = spawned_child_with_a_reply(wait: true)
+    await = loop_node(run, "r2t0").spawn_await
 
     travel_to(await.deadline_at + 1.second) do
-      sequences = assert_ladder_order("relay (expiry then mail)") do
+      expiry = assert_ladder_order("completion with expired await") do
         assert_equal 1, Runs::Spawn::Relay.call(conversation_id: child.id)[:relayed]
       end
-
-      expiry = sequences.find { |tables| tables.include?("tasks") }
-      mail = sequences.find { |tables| tables.include?("conversations") }
-      refute_nil expiry, "expiry owns the loop and its await"
-      refute_nil mail, "mail owns the recipient conversation"
-      assert_not_includes expiry, "conversations", "expiry releases its loop before the mail takes the conversation"
-      assert_operator sequences.index(expiry), :<, sequences.index(mail), "expiry and mail commit in separate transactions"
-      assert_operator mail.index("conversations"), :<, mail.index("runs")
+      assert_includes expiry.flatten, "tasks"
+      assert_equal 0, parent.inputs.count, "expiry and completion commit before recipient mail"
+      schedule_loop!(run)
+      finish_spawn_parent(run)
+      mail = assert_ladder_order("late completion mail") do
+        assert_equal [:delivered], Runs::ResultDelivery.call(run.reload)
+      end
+      assert_operator mail.flatten.index("conversations"), :<, mail.flatten.index("runs")
     end
 
     assert_equal "timed_out", await.reload.status
@@ -483,7 +486,7 @@ class ConversationsLockOrderTest < ActiveSupport::TestCase
     assert_operator seen.index("conversations"), :<, seen.index("runs")
     assert_operator seen.index("runs"), :<, seen.index("content_fragments")
     assert_operator seen.index("content_fragments"), :<, seen.index("event_cursors")
-    run = Run.sole
+    run = conversation.turns.sole.active_variant.run
     assert_equal "running", run.status
     assert_equal conversation, run.conversation
   end

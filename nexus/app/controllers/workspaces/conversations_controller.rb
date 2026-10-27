@@ -9,7 +9,7 @@ class Workspaces::ConversationsController < Work::BaseController
 
     @query = params[:query].to_s.strip
     scope = Conversation.visible_to(acting_user, workspace: @workspace).working
-      .where(parent_conversation_public_id: nil)
+      .lifecycle_roots
     @answerers = current_account.users.where(id: scope.select(:answering_user_id)).order(:display_name, :public_id)
       .pluck(:display_name, :public_id)
     if @query.present?

@@ -358,7 +358,7 @@ class Runs::SpawnTest < ActiveJob::TestCase
 
   # ── recovery: the job may run twice ──────────────────────────────────
 
-  test "a retried spawn does not repeat a brief the child already materialized" do
+  test "spawn rolls back brief publication if settlement fails and replays the committed task after receipt expiry" do
     _turn, run = open_turn!
     apply_via(attempt_for(run, "r1"), sse_success("delegating", tool_calls: [
       { id: "call_0", name: "spawn", arguments: { prompt: PROMPT }.to_json },
@@ -371,19 +371,25 @@ class Runs::SpawnTest < ActiveJob::TestCase
       assert_raises(IOError) { Runs::ConversationToolJob.perform_now(call.id) }
     end
     child = child_of(run)
-    assert_equal "running", call.status
-    assert_equal 1, child.inputs.count
-
-    assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
+    assert_equal "running", call.reload.status
     assert_empty child.inputs
-    turn = child.turns.sole
-    assert_equal @conversation.public_id, turn.sender_conversation_public_id
-
-    assert_no_difference "child.inputs.count" do
-      Runs::ConversationToolJob.perform_now(call.id)
-    end
+    assert_nil call.spawn_delegation.reload.delegated_input_public_id
+    Runs::ConversationToolJob.perform_now(call.id)
+    input_id = child.inputs.sole.public_id
+    assert_equal input_id, call.spawn_delegation.reload.delegated_input_public_id
     assert_equal "completed", call.reload.status
+    assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
+    turn = child.turns.sole
+    assert_equal input_id, turn.input_public_id
+
+    travel 26.hours do
+      ConversationCommandReceipt.where(host: child).delete_all
+      assert_no_difference "child.inputs.count" do
+        Runs::ConversationToolJob.perform_now(call.id)
+      end
+    end
     assert_equal [turn.id], child.turns.pluck(:id)
+    assert_equal input_id, Runs::TaskResultProjection.call(call).dig("structured_content", "input_public_id")
   end
 
   test "a retry before the input door resumes its exact brief after archive" do
@@ -412,7 +418,7 @@ class Runs::SpawnTest < ActiveJob::TestCase
     end
     assert_equal "completed", call.reload.status
     assert_equal PROMPT, child.inputs.sole.text
-    assert_equal 1, ConversationCommandReceipt.where(host: child).count
+    assert_equal child.inputs.sole.public_id, call.spawn_delegation.reload.delegated_input_public_id
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
     assert_predicate child.reload, :archived?
   end

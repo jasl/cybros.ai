@@ -4,7 +4,7 @@ module E2E
   # Mount the shipped task tab against a real daemon for a standalone tool
   # fixture. No model call or conversation authoring is needed for this boundary.
   class TerminalViewer
-    def initialize(base_url:, member_key:, application_key:, target:, create: false, ice_servers: [], relay_only: false, browser_driver: :e2e_headless_chrome)
+    def initialize(base_url:, member_key:, application_key:, target:, executable:, create: false, ice_servers: [], relay_only: false, browser_driver: :e2e_headless_chrome)
       @relay_only = relay_only
       @root = Dir.mktmpdir("rho-terminal-viewer")
       home = File.join(@root, "home")
@@ -15,7 +15,8 @@ module E2E
       File.write(File.join(webui, "index.html"), page_source)
       File.write(File.join(home, "settings.json"), JSON.generate(
         settings_version: Rho::Config::SETTINGS_VERSION, webui_root: webui, webui_access: "open", conversation_title_model: nil,
-        plugins: { "rho.webui" => { "configuration" => { "ice_servers" => ice_servers } } }
+        plugins: { "rho.webui" => { "configuration" => { "ice_servers" => ice_servers } },
+          "rho.terminal" => { "enabled" => true, "configuration" => { "executable" => executable } } }
       ), perm: 0o600)
       @daemon = RhoDaemon.new(base_url: base_url, home: home)
       @daemon.start
@@ -83,7 +84,7 @@ module E2E
           <!doctype html><html><head><link rel="icon" href="data:,"><meta name="viewport" content="width=device-width,initial-scale=1">
           <link rel="stylesheet" href="/styles/tokens.css"><link rel="stylesheet" href="/styles/base.css">
           <link rel="stylesheet" href="/styles/primitives.css"><link rel="stylesheet" href="/styles/panels.css">
-          <link rel="stylesheet" href="/vendor/xterm/xterm.css"></head><body><main></main>
+          </head><body><header id="actions"></header><main></main>
           <button id="detach">Close panel</button><button id="attach">Reopen task</button>
           <script type="module" src="/terminal_fixture.js"></script></body></html>
         HTML
@@ -113,14 +114,27 @@ module E2E
         JS
       end
 
-      def creation_script_source(target)
+      def module_script_source
         <<~JS
           import { call, bearer } from '/kernel/api.js';
-          import { terminalsPanel } from '/features/terminals/index.js';
-          import { terminalSession } from '/features/terminals/session.js';
+          import { el } from '/kernel/dom.js';
+          import { translator } from '/kernel/i18n.js';
+          import * as primitives from '/primitives/index.js';
+          import { createSlots } from '/kernel/slots.js';
+          import { createHandle } from '/kernel/handle.js';
           #{peer_script_source}
-          const scope = #{JSON.generate(target)};
           bearer.set((await call('/auth/unlock', {method:'POST', body:{}})).bearer);
+          const slots = createSlots();
+          const extensions = await call('/extensions');
+          const entry = extensions.plugins.find(row => row.id === 'rho.terminal').capabilities.webui;
+          const terminalModule = await import(entry);
+        JS
+      end
+
+      def creation_script_source(target)
+        <<~JS
+          #{module_script_source}
+          const scope = #{JSON.generate(target)};
           window.terminalCall = async (path, options) => {
             const result = await call(path, options);
             if (path === '/terminals' && options?.method === 'POST') {
@@ -130,19 +144,27 @@ module E2E
             return result;
           };
           let panel;
+          const actions = document.querySelector('#actions');
+          const dock = {
+            state: () => ({get: () => ({tabs: []})}),
+            open(key, {params}) {
+              panel.dispose();
+              panel = slots.winner('dock.tab', key).component({params,
+                updateParams(next) { params = next; },
+                beforeClose(stop) {
+                  actions.replaceChildren(primitives.button({label:'Stop terminal', onClick:stop}));
+                }});
+              document.querySelector('main').replaceChildren(panel.element);
+            }
+          };
+          const handle = createHandle({id:'rho.terminal', slots, call:window.terminalCall, dock, el, translator, primitives});
+          terminalModule.register(handle.ui);
           function attach() {
-            const shell = {call: window.terminalCall, dock: {
-              state: () => ({get: () => ({tabs: []})}),
-              open(key, {params}) {
-                panel.dispose();
-                panel = terminalSession(shell, {params, updateParams(next) { params = next; }});
-                document.querySelector('main').replaceChildren(panel.element);
-              }
-            }};
-            panel = terminalsPanel(shell, {conversation:{workspace:scope.workspace_public_id}});
+            actions.replaceChildren();
+            panel = slots.winner('dock.tab', 'terminals').component({conversation:{workspace:scope.workspace_public_id}});
             document.querySelector('main').replaceChildren(panel.element);
           }
-          document.querySelector('#detach').onclick = () => { panel.dispose(); document.querySelector('main').replaceChildren(); };
+          document.querySelector('#detach').onclick = () => { panel.dispose(); actions.replaceChildren(); document.querySelector('main').replaceChildren(); };
           document.querySelector('#attach').onclick = attach;
           attach();
         JS
@@ -150,16 +172,16 @@ module E2E
 
       def script_source(target)
         <<~JS
-          import { call, bearer } from '/kernel/api.js';
           import { register } from '/features/task/index.js';
-          #{peer_script_source}
+          #{module_script_source}
           const target = #{JSON.generate(target)};
-          bearer.set((await call('/auth/unlock', {method:'POST', body:{}})).bearer);
-          let factory, panel;
-          register({slots:{register(_name, _meta, component) { factory = component; }}}, {call});
+          const handle = createHandle({id:'rho.terminal', slots, call, el, translator, primitives});
+          terminalModule.register(handle.ui);
+          register({slots}, {call, slots});
+          let panel;
           function attach() {
-            panel = factory({conversation:{id:target.public_id,workspace:target.workspace_public_id},
-              params:{runId:target.public_id,taskKey:target.task_key}});
+            panel = slots.winner('dock.tab', 'task').component({conversation:{id:target.public_id,workspace:target.workspace_public_id},
+              params:{runId:target.public_id,taskKey:target.task_key}, actions:document.querySelector('#actions')});
             document.querySelector('main').replaceChildren(panel.element);
           }
           document.querySelector('#detach').onclick = () => { panel.dispose(); document.querySelector('main').replaceChildren(); };

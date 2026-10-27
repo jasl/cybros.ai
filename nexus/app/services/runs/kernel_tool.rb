@@ -130,11 +130,12 @@ module Runs
 
     # The kernel settles its own tool: no claim token exists, because the
     # work was never handed out.
-    def settle(node, text, title:, is_error: false)
-      Parks::Settle.call(
+    def settle(node, text, title:, is_error: false, structured_content: nil, locked: false)
+      settlement = Parks::Settle.new(
         node: node, trusted: true, outcome: "completed",
-        content: text, is_error: is_error, title: title
-      ).outcome
+        content: text, is_error: is_error, title: title, structured_content: structured_content
+      )
+      (locked ? settlement.settle_locked : settlement.call).outcome
     end
   end
 end

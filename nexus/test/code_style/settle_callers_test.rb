@@ -49,10 +49,9 @@ class SettleCallersTest < ActiveSupport::TestCase
     # both are timeout-only callers and submit no result content.
     "app/services/runs/tasks/approve.rb" => 1,
     "app/services/runs/tasks/deny.rb" => 1,
-    # The child-reply relay's await path: a waited spawn's kernel-held await settled TRUSTED with
-    # the child's reply text — a String the converger adopted — under one transaction with the
-    # turn's relay marker.
-    "app/services/runs/spawn/relay.rb" => 1,
+    # Completion publication already holds the source Run and await; its
+    # locked entrypoint parses the child's text through the same guard ladder.
+    "app/services/runs/delegations/settlement.rb" => 1,
     # An observer settles its kernel-held await with stored result text
     # and structure. Settle still enforces deadlines and content bounds;
     # an unstorable observation becomes an explicit failed task.
@@ -65,7 +64,7 @@ class SettleCallersTest < ActiveSupport::TestCase
       relative = Pathname.new(path).relative_path_from(Rails.root).to_s
       next if relative.end_with?("parks/settle.rb")
 
-      count = File.read(path).scan(/(?:Parks::)?Settle\.call\(/).length
+      count = File.read(path).scan(/(?:Parks::)?Settle\.(?:call|new|settle_locked)\(/).length
       found[relative] = count if count.positive?
     end
 

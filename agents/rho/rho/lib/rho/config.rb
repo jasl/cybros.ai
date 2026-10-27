@@ -21,7 +21,7 @@ module Rho
         nexus.graph.delegate_task nexus.human.ask
         nexus.memory.read nexus.memory.write nexus.memory.edit
         nexus.memory.ls nexus.memory.grep nexus.memory.delete
-        nexus.conversation.spawn nexus.conversation.send
+        nexus.conversation.spawn nexus.conversation.send nexus.conversation.request nexus.conversation.links
         nexus.conversation.status nexus.conversation.cancel
         nexus.conversation.search nexus.conversation.read
         nexus.skill.load nexus.tools.search nexus.tools.call

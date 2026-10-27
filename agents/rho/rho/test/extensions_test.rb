@@ -113,7 +113,7 @@ class RhoExtensionsTest < Minitest::Test
                     "GET /runs/events", "GET /conversations/input_materialization",
                     "GET /skills", "POST /skills/push", "GET /skills/show", "POST /skills/rm",
                     "POST /inference_requests", "GET /inference_requests", "POST /inference_requests/subscribe", "POST /inference_requests/unsubscribe", "GET /uploads/bytes",
-                    "GET /files/bytes", "GET /conversations/review", "POST /conversations/review/feedback", "GET /models", "GET /conversations", "GET /conversations/detail", "GET /conversations/artifacts", "GET /conversations/modes", "PATCH /conversations/modes",
+                    "GET /files/bytes", "GET /conversations/review", "POST /conversations/review/feedback", "GET /models", "GET /conversations", "GET /conversations/links", "POST /conversations/links/close", "GET /conversations/detail", "GET /conversations/artifacts", "GET /conversations/modes", "PATCH /conversations/modes",
                     "PATCH /conversations", "POST /conversations/archive", "POST /conversations/unarchive",
                     "GET /conversations/search", "GET /conversations/history", "POST /conversations/turns/edit",
                     "POST /conversations/turns/delete", "POST /conversations/turns/view",

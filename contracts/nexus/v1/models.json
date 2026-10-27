@@ -1,5 +1,6 @@
 {
   "workloads": [
+    "decision",
     "embedding",
     "image_generation",
     "speech_generation",

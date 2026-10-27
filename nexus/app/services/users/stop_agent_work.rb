@@ -73,20 +73,21 @@ module Users
         sql = Conversation.sanitize_sql_array([<<~SQL, ids])
           WITH RECURSIVE ancestry AS (
             SELECT id AS origin_id, id, parent_conversation_id, creating_user_id,
-              answering_user_id, spawn_node_id
+              answering_user_id, spawn_node_id, taken_over_at
             FROM conversations WHERE id IN (?)
             UNION ALL
             SELECT ancestry.origin_id, parent.id, parent.parent_conversation_id,
-              parent.creating_user_id, parent.answering_user_id, parent.spawn_node_id
+              parent.creating_user_id, parent.answering_user_id, parent.spawn_node_id, parent.taken_over_at
             FROM conversations AS parent
             INNER JOIN ancestry ON parent.id = ancestry.parent_conversation_id
+              AND ancestry.taken_over_at IS NULL
           )
           SELECT DISTINCT ancestry.origin_id
           FROM ancestry
           LEFT JOIN turns AS current_turn
             ON current_turn.conversation_id = ancestry.id
               AND current_turn.status IN ('pending', 'running')
-          LEFT JOIN tasks AS spawn_node ON spawn_node.id = ancestry.spawn_node_id
+          LEFT JOIN tasks AS spawn_node ON spawn_node.id = ancestry.spawn_node_id AND ancestry.taken_over_at IS NULL
           LEFT JOIN runs AS spawn_loop ON spawn_loop.id = spawn_node.run_id
           INNER JOIN users ON users.id IN (
             ancestry.creating_user_id, ancestry.answering_user_id,

@@ -1,4 +1,8 @@
 {
+    operation!("GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links", "GET", "/agent_api/v1/workspaces/fixture/conversations/fixture/links", member.workspace("fixture").unwrap().conversation("fixture").unwrap().links().list(&Default::default()));
+    operation!("POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links", "POST", "/agent_api/v1/workspaces/fixture/conversations/fixture/links", member.workspace("fixture").unwrap().conversation("fixture").unwrap().links().create(&Default::default(), "operation-key"));
+    operation!("GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links/{public_id}", "GET", "/agent_api/v1/workspaces/fixture/conversations/fixture/links/fixture", member.workspace("fixture").unwrap().conversation("fixture").unwrap().links().link("fixture").unwrap().fetch());
+    operation!("POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/links/{link_public_id}/closure", "POST", "/agent_api/v1/workspaces/fixture/conversations/fixture/links/fixture/closure", member.workspace("fixture").unwrap().conversation("fixture").unwrap().links().link("fixture").unwrap().close());
     operation!(
         "GET /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/export",
         "GET",
@@ -307,6 +311,17 @@
             .conversation("fixture")
             .unwrap()
             .archive()
+    );
+    operation!(
+        "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/takeover",
+        "POST",
+        "/agent_api/v1/workspaces/fixture/conversations/fixture/takeover",
+        member
+            .workspace("fixture")
+            .unwrap()
+            .conversation("fixture")
+            .unwrap()
+            .takeover()
     );
     operation!(
         "POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/cancellation",

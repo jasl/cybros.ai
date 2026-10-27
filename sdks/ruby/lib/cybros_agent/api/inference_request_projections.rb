@@ -56,9 +56,16 @@ module CybrosAgent
           output_files: [:optional_shapes, InferenceRequestFile],
           # Present on the embedding workload alone (C-U2).
           embeddings: [:optional_shapes, InferenceRequestEmbedding],
+          answers: [:optional_shapes, DecisionAnswer],
           # Present only on a run the creator's fallback ran again.
           model_change: [:optional_shape, InferenceRequestModelChange],
         },
+        DecisionAnswer => {
+          name: :string, type: :string, probability: :optional_number, choice: :json,
+          score: :optional_number, confidence: :optional_number,
+          probabilities: [:optional_shapes, DecisionProbability],
+        },
+        DecisionProbability => { value: :json, probability: :number, label: :optional_string },
         InferenceRequestEmbedding => { index: :integer, vector: :numbers },
         InferenceRequestModelChange => { from: :string, to: :string, reason: :string, category: :optional_string },
         InferenceRequestFile => { index: :integer, filename: :string, content_type: :string, byte_size: :integer },

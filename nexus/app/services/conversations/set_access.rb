@@ -54,6 +54,7 @@ module Conversations
         next Outcome.accepted(conversation) if unchanged?(conversation, entries)
 
         replace(conversation, entries)
+        ConversationLink.close_for_endpoint(conversation)
         narrate(conversation, entries)
         Outcome.accepted(conversation)
       end

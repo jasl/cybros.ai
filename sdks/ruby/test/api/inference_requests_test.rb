@@ -26,6 +26,21 @@ class ApiInferenceRequestsTest < Minitest::Test
     @transport.requests.fetch(index)
   end
 
+  def test_decision_answers_preserve_false_fractional_scores_refusals_and_zero_usage
+    row = inference_requests([[200, {}, contract.fetch("valid_decision_fixture")]]).fetch("id")
+    result = row.result
+    assert_equal "decision", row.workload
+    assert_nil result.output_text
+    assert_equal 0, result.usage.output_tokens
+    assert_equal 0.9, result.answers[0].probability
+    assert_equal false, result.answers[1].choice
+    assert_equal false, result.to_h.fetch(:answers)[1].fetch(:choice)
+    assert_equal 0.75, result.answers[2].score
+    assert_equal [0, 1], result.answers[2].probabilities.map(&:value)
+    assert_equal "refusal", result.answers[3].type
+    refute result.failed?
+  end
+
   def test_input_estimate_uses_the_pre_create_resource_and_typed_projection
     estimate = inference_requests([[200, {}, contract.fetch("valid_input_estimate_fixture")]])
       .estimate_input(

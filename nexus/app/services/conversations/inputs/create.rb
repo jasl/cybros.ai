@@ -29,12 +29,13 @@ module Conversations
         :provider_id, :model_ref, :reasoning_effort, :reasoning_enabled, :request_options, :tool_names, :approval_mode,
         :instructions, :answering_user_public_id, :speaker_public_id, :attachments, :deliver_at, :steps,
         :origin, :sender_conversation_public_id, :run_public_id, :task_key, :delegation, :callback_result,
-        :agent_configuration, :model_selection, :fallback_models, :executor_contexts) do
+        :agent_configuration, :model_selection, :fallback_models, :executor_contexts, :communication_kind, :conversation_link, :on_target_end) do
         def initialize(reasoning_enabled: nil, tool_names: nil, approval_mode: nil, instructions: nil, answering_user_public_id: nil,
                        attachments: nil, deliver_at: nil, steps: nil, speaker_public_id: nil, expected_steering_run_public_id: nil,
                        origin: nil, sender_conversation_public_id: nil, run_public_id: nil,
                        task_key: nil, delegation: nil, callback_result: nil,
-                       agent_configuration: nil, model_selection: nil, fallback_models: nil, executor_contexts: nil, **) = super
+                       agent_configuration: nil, model_selection: nil, fallback_models: nil, executor_contexts: nil,
+                       communication_kind: nil, conversation_link: nil, on_target_end: nil, **) = super
 
         # Kernel mail: a user-role row that always QUEUES — never a steer,
         # so a running turn finishes first and an idle conversation is woken
@@ -75,14 +76,15 @@ module Conversations
                       delivery_mode: "queue", kind: "message", run_public_id: nil, task_key: nil,
                       provider_id: nil, model_ref: nil, reasoning_effort: nil, reasoning_enabled: nil,
                       tool_names: nil, approval_mode: nil, answering_user_public_id: nil, deliver_at: nil,
-                      delegation: nil, agent_configuration: nil, model_selection: nil, fallback_models: nil)
+                      delegation: nil, agent_configuration: nil, model_selection: nil, fallback_models: nil,
+                      communication_kind: nil, conversation_link: nil, expected_steering_run_public_id: nil, on_target_end: nil)
           new(host:, acting_user:, kind:, role: "user", entries:,
               visible_in_context: true, delivery_mode:, context_mode: nil, context_options: nil,
               expected_context_revision: nil, expected_tail_turn_public_id: nil,
               provider_id:, model_ref:, reasoning_effort:, reasoning_enabled:, request_options: nil,
               tool_names:, approval_mode:, answering_user_public_id:, deliver_at:,
               origin: nil, sender_conversation_public_id:, run_public_id:, task_key:, delegation:,
-              agent_configuration:, model_selection:, fallback_models:)
+              agent_configuration:, model_selection:, fallback_models:, communication_kind:, conversation_link:, expected_steering_run_public_id:, on_target_end:)
         end
 
         # The kernel's own act, BY NAME: what the door's level and the bin
@@ -118,8 +120,8 @@ module Conversations
       TOO_FAR = :deliver_at_too_far
 
       class << self
-        def call(command)
-          new(command).call
+        def call(command, &accepted)
+          new(command).call(&accepted)
         end
       end
 
@@ -128,7 +130,8 @@ module Conversations
         @host = command.host
       end
 
-      def call
+      def call(&accepted)
+        @accepted = accepted
         # The door's standing: a caller writes at `full`; the kernel's own
         # mail is exempt from the level, never from the workspace — the
         # loop's creator may hold `read` while the answerer's engine mails
@@ -140,11 +143,27 @@ module Conversations
         result = nil
         # requires_new is load-bearing: under the receipt wrapper a bare
         # block joins its transaction and the Rollback is swallowed, committing a phantom row.
-        @host.with_lock(requires_new: true) do
-          Runs::SourceWork.with_source(@command.run_public_id) do |source|
+        ApplicationRecord.transaction(requires_new: true) do
+          if @command.conversation_link
+            @host.workspace.lock!("FOR KEY SHARE")
+            User.where(id: [@command.acting_user.id, @command.conversation_link.first_agent_id,
+              @command.conversation_link.second_agent_id]).order(:id).lock("FOR KEY SHARE").load
+          end
+          @host.lock!
+          if @command.conversation_link
+            @command.conversation_link.lock!("FOR SHARE")
+            return Outcome.refused(:conversation_link_closed) if @command.conversation_link.closed?
+          end
+          target = @host.steer_binding if @host.hosts_turns? && @command.expected_steering_run_public_id
+          target_run = target&.variants&.live&.find_by(status: Variant::ACTIVE_STATUSES)&.run
+          target_id = target_run&.public_id if target_run&.public_id == @command.expected_steering_run_public_id
+          Runs::SourceWork.with_sources([@command.run_public_id, target_id]) do |sources|
+            source = sources[@command.run_public_id]
             @source_run = source
             result = if Runs::SourceWork.stopped?(@command.run_public_id, source)
               Outcome.refused(:source_stopped)
+            elsif @accepted && source.tasks.find_by!(node_key: @command.task_key).terminal?
+              Outcome.refused(:communication_published)
             elsif @command.delegation
               @command.delegation.reload
               if @command.delegation.delegated_input_public_id
@@ -168,7 +187,12 @@ module Conversations
       private
 
         def writable?
-          if @command.kernel?
+          if @command.conversation_link
+            peer = @command.conversation_link.peer(
+              conversation: Conversation.find_by(public_id: @command.sender_conversation_public_id),
+              agent: @command.acting_user)
+            peer && peer.first == @host && peer.last.public_id == @command.answering_user_public_id
+          elsif @command.kernel?
             @host.workspace.writable_by?(@command.acting_user)
           else
             @host.writable_by?(@command.acting_user)
@@ -226,6 +250,7 @@ module Conversations
         end
 
         def messaging_refusal(addressee)
+          return if @command.conversation_link
           return unless @command.sent?
           return if @host.workspace.messaging_allowed?(sender: @command.acting_user, recipient: addressee)
           return if accepted_spawn_brief?(addressee)
@@ -262,6 +287,14 @@ module Conversations
         end
 
         def steering_mode_refusal
+          if @command.communication_kind == "message" && Input::STEERING_MODES.include?(@command.delivery_mode) &&
+              @command.expected_steering_run_public_id.nil?
+            return Outcome.refused(:steering_target_required)
+          end
+          if @command.on_target_end && (!@command.expected_steering_run_public_id ||
+              !%w[discard queue].include?(@command.on_target_end))
+            return Outcome.refused(:invalid_on_target_end)
+          end
           if @command.expected_steering_run_public_id && !Input::STEERING_MODES.include?(@command.delivery_mode)
             Outcome.refused(:steering_guard_requires_steer)
           end
@@ -273,16 +306,24 @@ module Conversations
         def accept_guarded(binding, addressee)
           variant = binding&.variants&.live&.find_by(status: Variant::ACTIVE_STATUSES)
           run = variant&.run
-          return Outcome.refused(:steering_target_changed) unless
+          return target_changed(addressee) unless
             run&.public_id == @command.expected_steering_run_public_id
 
           run.with_lock do
             if run.terminal? || run.status == "canceling" || run.delivered? || run.stopped_at
-              Outcome.refused(:steering_target_changed)
+              target_changed(addressee)
             else
               accept(binding, addressee)
             end
           end
+        end
+
+        def target_changed(addressee)
+          return Outcome.refused(:steering_target_changed) unless @command.on_target_end == "queue"
+          return Outcome.refused(:conversation_archived) if @host.archived?
+
+          @fallback_reason = "steering_target_changed"
+          accept(nil, addressee)
         end
 
         # THE CLOCK AT THE DOOR: a row's time is judged once, under the host
@@ -375,7 +416,10 @@ module Conversations
             kind: @command.kind,
             role: @command.role,
             state: binding ? "steering" : "pending",
-            delivery_mode: @command.delivery_mode,
+            delivery_mode: @fallback_reason ? "queue" : @command.delivery_mode,
+            requested_delivery_mode: (@command.delivery_mode if @command.communication_kind == "message"),
+            on_target_end: @command.on_target_end,
+            fallback_reason: @fallback_reason,
             context_mode: @command.context_mode || Input::DEFAULT_CONTEXT_MODE,
             context_options: @command.context_options || {},
             steering_target_turn: (binding if @host.hosts_turns?),
@@ -402,6 +446,8 @@ module Conversations
             sender_conversation_public_id: @command.sender_conversation_public_id,
             sender_run_public_id: @command.run_public_id,
             sender_task_key: @command.task_key,
+            communication_kind: @command.communication_kind,
+            conversation_link: @command.conversation_link,
             callback_result: @command.callback_result,
             deliver_at: @command.deliver_at,
             steps: @command.steps,
@@ -410,17 +456,22 @@ module Conversations
           return Outcome.refused(input.host_refusal) if input.host_refusal
           return Outcome.invalid(input) unless input.save
 
+          if @accepted
+            input.lock!
+            @source_run.tasks.find_by!(node_key: @command.task_key).lock!
+          end
           @command.delegation&.update!(delegated_input_public_id: input.public_id)
 
           message = compose_message
           return Outcome.refused(message.refusal) unless message.accepted?
 
-          body = ContentBodies::Replace.call(
+          body = ContentBodies::Replace.public_send(@accepted ? :call_locked : :call,
             owner: input, role: "input", entries: message.entries,
             uploads: message.uploads, readable_text: message.readable_text
           )
           return Outcome.refused(body.refusal) unless body.accepted?
 
+          @accepted&.call(input)
           @host.note_activity
           narrate(input)
           # The queue-default wake, for every accepted row — the kernel's
@@ -508,6 +559,8 @@ module Conversations
                 "queue_position" => input.queue_position,
                 "state" => input.state,
                 "delivery_mode" => input.delivery_mode,
+                "requested_delivery_mode" => input.requested_delivery_mode,
+                "fallback_reason" => input.fallback_reason,
                 "expected_steering_run_public_id" => input.expected_steering_run_public_id,
                 "kind" => input.kind,
                 "role" => input.role,

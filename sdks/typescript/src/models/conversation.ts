@@ -225,6 +225,8 @@ export interface ConversationSummary {
   archived_at: string | null;
   billing_subject: string | null;
   parent: ConversationParent | null;
+  taken_over_at: string | null;
+  taken_over_by_public_id: string | null;
   source_conversation_public_id: string | null;
   forked_from_turn_public_id: string | null;
   forked_from_variant_public_id: string | null;
@@ -245,6 +247,8 @@ export interface Conversation {
   archived_at: string | null;
   billing_subject: string | null;
   parent: ConversationParent | null;
+  taken_over_at: string | null;
+  taken_over_by_public_id: string | null;
   source_conversation_public_id: string | null;
   forked_from_turn_public_id: string | null;
   forked_from_variant_public_id: string | null;
@@ -337,6 +341,12 @@ export interface InputList {
 }
 
 export interface Input {
+  communication_kind: string | null;
+  link_public_id: string | null;
+  requested_delivery_mode: string | null;
+  on_target_end: string | null;
+  fallback_reason: string | null;
+
   public_id: string;
   queue_position: number;
   state: InputState;
@@ -384,6 +394,9 @@ export interface UploadRef {
 }
 
 export interface CallbackResult {
+  run_public_id: string | null;
+  status: string | null;
+
   conversation_public_id: string;
   input_public_id: string;
   turn_public_id: string;
@@ -407,6 +420,9 @@ export interface TurnPage {
 }
 
 export interface Turn {
+  communication_kind: string | null;
+  link_public_id: string | null;
+
   public_id: string;
   input_public_id: string | null;
   callback_sources: CallbackSource[];
@@ -617,7 +633,24 @@ export interface InferenceRequestResult {
   reasoning: InferenceRequestReasoning | null;
   output_files: InferenceRequestFile[] | null;
   embeddings: InferenceRequestEmbedding[] | null;
+  answers: DecisionAnswer[] | null;
   model_change: InferenceRequestModelChange | null;
+}
+
+export interface DecisionProbability {
+  value: string | boolean | number;
+  probability: number;
+  label: string | null;
+}
+
+export interface DecisionAnswer {
+  name: string;
+  type: string;
+  probability: number | null;
+  choice: string | boolean | null;
+  score: number | null;
+  confidence: number | null;
+  probabilities: DecisionProbability[] | null;
 }
 
 export interface InferenceRequestEmbedding {
@@ -755,3 +788,10 @@ export interface ResolvedMemoryBinding {
   state: string;
 }
 export interface MemoryBindings { bindings: ResolvedMemoryBinding[]; }
+
+export interface ConversationLinkEndpoint { conversation_public_id: string; agent_public_id: string; }
+export interface ConversationLink {
+  public_id: string; workspace_public_id: string; endpoint: ConversationLinkEndpoint; peer: ConversationLinkEndpoint;
+  state: string; created_at: string; closed_at: string | null; close_reason: string | null;
+}
+export interface ConversationLinkPage { items: ConversationLink[]; next_after: string | null; }

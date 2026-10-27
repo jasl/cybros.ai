@@ -264,3 +264,20 @@ never rewritten.
 | `422 Unprocessable Content` | `steering_guard_requires_steer` | `expected_steering_run_public_id` without a steering mode. |
 | `422 Unprocessable Content` | `principal_unknown`, `answerer_not_eligible` | The addressee is nobody's name, or may not answer here. |
 | `422 Unprocessable Content` | `validation_failed` | A field outside its vocabulary or its lane: a malformed `agent_configuration`, `model_selection` or `fallback_models`, a loosened `approval_mode`, a `tool_names` outside the assembled surface, `steps` on a kind that refuses them, `variables` outside `assembly`, `inline_position_unplaced`, `inline_role_unplaced`, `variable_undeclared`. The message names the field. |
+
+
+## Communication projections
+
+Inputs accepted through kernel `send` or `request` retain `communication_kind`
+and `link_public_id` when a link was used. Strict communication steering also
+exposes `requested_delivery_mode`, `on_target_end` and `fallback_reason` alongside
+the actual `delivery_mode` and `expected_steering_run_public_id`. These are
+server-owned provenance fields, not member-create impersonation parameters.
+Consumed Turns retain the communication kind, link UUID and sender stamps.
+
+Callback results identify the original Input, Turn and Variant. Formal completion
+mail can additionally carry `run_public_id` and terminal `status`; scheduled
+callbacks may omit those two fields. A request canceled before materialization
+reports nullable execution UUIDs in its completion Task's structured result.
+It creates no fictitious Turn or Variant. See
+[original-result recovery](conversation-links.md#recovering-the-original-result).

@@ -75,6 +75,7 @@ module E2E
       def peer_home
         unless @world.peer_daemon
           home = Dir.mktmpdir("rho-spawn-peer-e2e")
+          File.write(File.join(home, "settings.json"), JSON.generate(E2E::RhoDaemon.dev_settings(default_model: self.class::MODEL)), perm: 0o600)
           daemon = E2E::RhoDaemon.new(base_url: @base_url, home: home, env: { "RHO_WORKSPACE" => @room })
           @world.peer_home = home
           @world.peer_daemon = daemon

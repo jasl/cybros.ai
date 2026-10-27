@@ -241,3 +241,28 @@ fn conversation_cost_limit_response_preserves_precision_and_reached_state() {
         assert_eq!(conversation.cost_limit_reached, limit.is_some());
     }
 }
+
+#[test]
+fn decision_inference_request_serializes_the_public_workload_and_questions() {
+    let configuration = json!({"questions": [{
+        "name": "allowed", "type": "choice", "instructions": "Choose whether allowed",
+        "choices": [{"value": true}, {"value": false}]
+    }]});
+    let request = CreateInferenceRequest {
+        workload: Workload::Decision,
+        model: ModelRequest {
+            model: "fixture/decision".to_owned().into(),
+            ..Default::default()
+        },
+        input: json!({"allowed": false}),
+        configuration: Field::Value(configuration.as_object().unwrap().clone().into()),
+        ..Default::default()
+    };
+    assert_eq!(
+        to_value(request).unwrap(),
+        json!({
+            "workload": "decision", "model": {"model": "fixture/decision"},
+            "input": {"allowed": false}, "configuration": configuration
+        })
+    );
+}

@@ -10,10 +10,11 @@ const translated = (key, value) => copy[key].replace("%{value}", value)
 
 // The server supplies localized display data; these fixtures exercise how the
 // controller applies that data without turning it into authored form values.
-function defaults({ limits = {}, booleans = {}, media = null, facts = [] } = {}) {
+function defaults({ limits = {}, booleans = {}, media = null, facts = [], promptCache = { options: [[copy.prompt_cache_default, ""]], default: "", supported: false } } = {}) {
   const mediaValue = media?.length ? media.map(kind => copy.media_types[kind] || kind).join(", ") : copy.media_text_only
   return {
     facts,
+    promptCache,
     limits: Object.fromEntries(limitKeys.map(key => [key, Object.hasOwn(limits, key) ? {
       placeholder: String(limits[key]), inherited: translated("inherited_default", limits[key].toLocaleString("en")),
       overridden: translated("model_default_not_inherited", limits[key].toLocaleString("en")),
@@ -60,7 +61,7 @@ function withController(run, { inherit = "compact", limits = {}, emptyLimits = f
     booleanTargets: ["tool_calls", "streaming"].map(key => ({ value: "", options: [{ textContent: "" }], dataset: { capability: key } })),
     booleanHintTargets: ["tool_calls", "streaming"].map(key => ({ textContent: "", dataset: { capability: key } })),
     mediaModeTarget: { value: mediaMode }, mediaTargets: mediaKinds.map(value => ({ value, checked: media.includes(value), disabled: false })),
-    mediaHintTarget: element(), extraMediaTarget: element(),
+    mediaHintTarget: element(), extraMediaTarget: element(), promptCacheTarget: element(), promptCacheSectionTarget: element(),
   })
   const limit = key => controller.limitTargets.find(control => control.dataset.limit === key)
   const hint = key => controller.limitHintTargets.find(control => control.dataset.limit === key).textContent

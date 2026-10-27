@@ -117,7 +117,12 @@ export interface CreateSchedule extends Pick<InputConfiguration, 'executor_conte
   source_run_public_id?: string; source_task_key?: string;
 }
 export interface UpdateSchedule extends Partial<Omit<CreateSchedule, 'source_run_public_id' | 'source_task_key'>> { expected_lock_version: number; }
-export type Workload = 'text_generation' | 'embedding' | 'image_generation' | 'speech_generation' | 'transcription';
+export type DecisionQuestion =
+  | { name: string; type: 'predicate'; instructions: string }
+  | { name: string; type: 'choice'; instructions: string; choices: {value: string | boolean; description: string}[] }
+  | { name: string; type: 'score'; instructions: string; levels: {label: string; description: string}[] };
+
+export type Workload = 'decision' | 'text_generation' | 'embedding' | 'image_generation' | 'speech_generation' | 'transcription';
 export interface CreateInferenceRequest {
   workload: Workload; model: ModelSelection; input: JsonValue;
   configuration?: JsonObject; upload_public_ids?: string[]; billing_subject?: string | null;
@@ -141,3 +146,6 @@ export interface PlatformRunnerList extends ListOptions {
 }
 
 export interface ExecutorAnnouncement { services: Partial<Record<'agent' | 'runner' | 'tool_provider', ExecutorServiceAnnouncement>>; }
+
+export interface CreateConversationLink { agent_public_id: string; peer_conversation_public_id: string; peer_agent_public_id: string; }
+export interface ConversationLinkList { state?: 'active' | 'closed' | 'all'; after?: string; limit?: number; }

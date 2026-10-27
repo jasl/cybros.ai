@@ -1,4 +1,5 @@
 require_relative "openai_compatible"
+require_relative "prompt_cache"
 
 module SimpleInference
   module Protocols
@@ -30,7 +31,7 @@ module SimpleInference
           audio frequency_penalty logit_bias logprobs max_completion_tokens
           max_tokens metadata modalities n parallel_tool_calls prediction
           presence_penalty reasoning_enabled reasoning_effort seed service_tier stop store
-          temperature top_logprobs top_p user
+          temperature top_logprobs top_p user prompt_cache_ttl
         ].freeze
       end
 
@@ -276,7 +277,7 @@ module SimpleInference
             end
         end
 
-        reasoning_chat_options(normalized)
+        reasoning_chat_options(PromptCache.lower(normalized))
       end
 
       def reasoning_chat_options(options)

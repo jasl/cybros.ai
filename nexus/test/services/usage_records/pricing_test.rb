@@ -29,6 +29,19 @@ class UsageRecords::PricingTest < ActiveSupport::TestCase
     assert_equal BigDecimal("0.01095"), formula(counts, rates)
   end
 
+  test "OpenAI 12h writes use their measured share and never double charge" do
+    counts = UsageRecords::Tokens.read({
+      "input_tokens" => 1000, "output_tokens" => 0,
+      "input_tokens_details" => { "cached_tokens" => 200, "cache_write_tokens" => 600,
+        "cache_write_tokens_details" => { "ttl_12h_tokens" => 400 } },
+    }, adapter_profile: "openai_responses")
+    assert_equal 400, counts.fetch(:cache_creation_12h_tokens)
+    rates = decimals("input_per_mtok" => "2", "cached_input_per_mtok" => "0.2",
+      "cache_write_per_mtok" => "2.5", "cache_write_12h_per_mtok" => "5")
+    assert_equal BigDecimal("0.00294"), formula(counts, rates)
+    assert_equal BigDecimal("0.00344"), formula(counts.merge(cache_creation_12h_tokens: 900), rates)
+  end
+
   test "past the long-context threshold the whole request bills at the tier's multipliers" do
     rates = decimals("input_per_mtok" => "10", "output_per_mtok" => "50", "cached_input_per_mtok" => "1",
                      "long_context_threshold_tokens" => "272000",

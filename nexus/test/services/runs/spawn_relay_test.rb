@@ -100,7 +100,9 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
 
   def converge! = Conversations::Turns::Converge.call
 
-  def relay!(*args) = Runs::Spawn::RelayJob.perform_now(*args)
+  def relay!(*args)
+    perform_enqueued_jobs(only: [Runs::ResultDeliveryJob]) { Runs::Spawn::RelayJob.perform_now(*args) }
+  end
 
   def reply_turn(child) = child.turns.where(kind: "direct_reply", role: "assistant").order(:position).last
 
@@ -146,7 +148,7 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
     assert_equal 0, @conversation.inputs.count
 
     relay!(child.id)
-    mail = @conversation.inputs.sole
+    mail = @conversation.inputs.reload.sole
     assert_equal %w[direct_reply user queue pending child],
       [mail.kind, mail.role, mail.delivery_mode, mail.state, mail.origin],
       "a queued reply, never a steer; the kernel's own word `child`"
@@ -162,7 +164,7 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
     assert_equal ["child", run.public_id, "r2t0"], accepted.values_at("origin", "run_public_id", "task_key")
     assert_equal 0, @conversation.inputs.caller_authored.count, "not counted against the caller's bound"
     assert_not_nil child_turn.reload.relayed_at, "the durable marker"
-    assert_includes receipt_keys, "spawn:#{child.public_id}:#{child_turn.public_id}", "the receipt is the inner guard"
+    assert_includes receipt_keys, "mail:#{run.public_id}:#{call_node(run).spawn_delegation.node_key}", "the completion owns the one mail"
 
     relay!(child.id)
     relay!
@@ -235,7 +237,7 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
     assert_equal "completed", child_turn.reload.status
 
     relay!(child.id)
-    mail = @conversation.inputs.sole
+    mail = @conversation.inputs.reload.sole
     assert_equal spawn_envelope("r2t0", "completed", child, "Mock: looks fine"), mail.text
     assert_equal "child", mail.origin
     assert_not_nil child_turn.reload.relayed_at
@@ -258,7 +260,7 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
 
     relay!(child.id)
     assert_equal spawn_envelope("r2t0", "failed", child, declined_reply(invocation)),
-      @conversation.inputs.sole.text
+      @conversation.inputs.reload.sole.text
   end
 
   # The peer's declared fallback asked again and declined too: the parent
@@ -280,7 +282,7 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
 
     relay!(child.id)
     assert_equal spawn_envelope("r2t0", "failed", child, declined_reply(fallback.reload)),
-      @conversation.inputs.sole.text
+      @conversation.inputs.reload.sole.text
   end
 
   # The paired result and the `wait` tool read the same reply the same way,
@@ -305,7 +307,7 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
     assert_equal [expected, true, "failed"], [observed.text, observed.error, observed.data["status"]]
   end
 
-  test "only turns the parent opened are owed: a person's own reply in the child is stamped, never relayed" do
+  test "only the original request is owed: a person's own reply never enters the relay frontier" do
     _turn, run = spawning_parent!({ prompt: PROMPT })
     finish_parent!(run)
     child = child_of(run)
@@ -323,7 +325,7 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
     relay!(child.id)
 
     assert_equal 1, @conversation.inputs.count, "the person's exchange is theirs"
-    assert_not_nil persons.reload.relayed_at, "stamped as nothing owed, so the frontier shrinks"
+    assert_nil persons.reload.relayed_at, "ordinary work has no completion and never enters the result frontier"
   end
 
   test "a tombstoned parent owes nothing: the reply is stamped, not retried forever" do
@@ -352,7 +354,10 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
     relay.stub(:frontier, [child.id]) { relay.call }
 
     assert_empty @conversation.reload.inputs
-    assert_not_nil child_turn.reload.relayed_at, "the remaining parent link owes nothing"
+    assert_nil child_turn.reload.relayed_at, "the parent relation alone cannot publish a result"
+    relay!
+    assert_not_nil child_turn.reload.relayed_at, "the original completion still owns its exact result"
+    assert_equal 1, @conversation.inputs.count
   end
 
   # ── the await path ───────────────────────────────────────────────────
@@ -400,7 +405,7 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
     assert_equal "failed", await.status
     assert_not_nil child_turn.reload.relayed_at
     Runs::ScheduleReady.call(run_id: run.id)
-    assert_equal spawn_envelope("r2t0", "failed", child, Runs::ResultDelivery.no_reply_text(child_turn)),
+    assert_equal spawn_envelope("r2t0", "failed", child, call_node(run).spawn_delegation.output_body.effective_text),
       paired_results(run, "r2").fetch("call_0")
     assert_equal "canceled", child_turn.status, "the words name what the child's turn became"
   end
@@ -438,7 +443,7 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
 
     relay!(child.id)
     assert_equal "timed_out", await.reload.status
-    mail = @conversation.inputs.sole
+    mail = @conversation.inputs.reload.sole
     assert_equal spawn_envelope("r2t0", "completed", child, "Mock: #{REPLY}"), mail.text
     assert_not_nil child_turn.reload.relayed_at
   end
@@ -456,8 +461,13 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
       relay!(child.id)
 
       assert_equal "timed_out", await.reload.status, "the late settle itself expires the park"
+      assert_empty @conversation.inputs.reload, "conversation-lifetime mail waits for the requester's final reply"
+      assert_equal "completed", call_node(run).spawn_delegation.reload.status
+      Runs::ScheduleReady.call(run_id: run.id)
+      finish_parent!(run)
+      assert_equal [:delivered], Runs::ResultDelivery.call(run.reload)
       assert_equal 1, @conversation.inputs.count, "the reply must survive the expiry as mail"
-      mail = @conversation.inputs.sole
+      mail = @conversation.inputs.reload.sole
       assert_equal spawn_envelope("r2t0", "completed", child, "Mock: #{REPLY}"), mail.text
       assert_equal "child", mail.origin
       assert_not_nil child_turn.reload.relayed_at
@@ -467,8 +477,6 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
       relay!
       assert_equal [mail.id], @conversation.inputs.pluck(:id), "the reply is mailed only once"
 
-      Runs::ScheduleReady.call(run_id: run.id)
-      finish_parent!(run)
       assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id)
       woken_turn = @conversation.turns.order(:position).last
       assert_equal "child", woken_turn.origin
@@ -495,9 +503,14 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
       relay!(child.id)
 
       assert_equal "timed_out", await.reload.status
+      assert_empty @conversation.inputs.reload
+      assert_equal "failed", call_node(run).spawn_delegation.reload.status
+      Runs::ScheduleReady.call(run_id: run.id)
+      finish_parent!(run)
+      assert_equal [:delivered], Runs::ResultDelivery.call(run.reload)
       assert_equal 1, @conversation.inputs.count, "a failed reply is owed after expiry too"
-      mail = @conversation.inputs.sole
-      assert_equal spawn_envelope("r2t0", "failed", child, Runs::ResultDelivery.no_reply_text(child_turn)), mail.text
+      mail = @conversation.inputs.reload.sole
+      assert_equal spawn_envelope("r2t0", "failed", child, call_node(run).spawn_delegation.output_body.effective_text), mail.text
       assert_not_nil child_turn.reload.relayed_at
 
       relay!(child.id)
@@ -542,16 +555,19 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
 
     # Both real jobs have read the unrelayed turn before either may settle
     # its await. The ordinary kick and recovery pass meet at the loop owner.
+    adapter_state = [queue_adapter.perform_enqueued_jobs, queue_adapter.filter]
     held = hold_row_lock(Run, run.id)
     calls = [
-      start_database_call { relay!(child.id) },
-      start_database_call { relay! },
+      start_database_call { Runs::Spawn::RelayJob.perform_now(child.id) },
+      start_database_call { Runs::Spawn::RelayJob.perform_now },
     ]
     wait_until_transitively_blocked_by(held.pid, *calls.map(&:pid))
     release_row_lock(held)
     held = nil
     calls.each { |call| finish_database_call(call) }
     calls = []
+    assert_equal adapter_state, [queue_adapter.perform_enqueued_jobs, queue_adapter.filter],
+      "concurrent relays must not change the shared test adapter"
 
     assert_equal "completed", await.reload.status
     assert_equal "Mock: #{REPLY}", await.content_bodies.find_by!(role: "output").effective_text
@@ -586,7 +602,11 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
     child_turn = child_replies!(child)
     converge!
 
-    Runs::Spawn::Relay.stub(:stamp, ->(_turn) { raise "torn" }) do
+    append = Runs::Delegations::Settlement.method(:call)
+    Runs::Delegations::Settlement.stub(:call, ->(**arguments) {
+      append.call(**arguments)
+      raise "torn"
+    }) do
       assert_equal 0, Runs::Spawn::Relay.call(conversation_id: child.id)[:relayed]
     end
     assert_equal "dispatched", await.reload.status, "no settle without its marker"
@@ -608,15 +628,15 @@ class Runs::SpawnRelayTest < ActiveJob::TestCase
     clear_enqueued_jobs
 
     stub_const(Runs::Spawn::Relay, :BUDGET, 1) do
-      first_cursor = { "after_id" => first.id, "delegation_after_id" => 0,
-                       "children_done" => false, "delegations_done" => true,
+      first_cursor = { "after_id" => 0, "delegation_after_id" => call_node(run, "r2t0").spawn_delegation.id,
+                       "children_done" => true, "delegations_done" => false,
                        "variant_after_id" => 0, "variants_done" => true, "inputs_done" => false }
       assert_enqueued_jobs(1, only: Runs::Spawn::RelayJob) { relay! }
       first_cursor["input_after_id"] = @conversation.inputs.order(:id).last.id
       assert_enqueued_with(job: Runs::Spawn::RelayJob, args: [nil, first_cursor])
       assert_equal 1, @conversation.inputs.count
       assert_enqueued_jobs(1, only: Runs::Spawn::RelayJob) { relay!(nil, first_cursor) }
-      second_cursor = first_cursor.merge("after_id" => second.id,
+      second_cursor = first_cursor.merge("delegation_after_id" => call_node(run, "r2t1").spawn_delegation.id,
         "input_after_id" => @conversation.inputs.order(:id).last.id)
       assert_enqueued_with(job: Runs::Spawn::RelayJob, args: [nil, second_cursor])
       assert_equal 2, @conversation.inputs.count

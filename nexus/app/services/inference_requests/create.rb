@@ -46,7 +46,7 @@ module InferenceRequests
       # Coerced once, before the digest and before the boundary, so the
       # identity of a command is the command the grammar will actually judge —
       # a field it drops must not be able to turn a retry into a conflict.
-      @input = CoerceTextMessages.call(@command.input)
+      @input = @command.workload == "decision" ? @command.input : CoerceTextMessages.call(@command.input)
       @configuration = CoerceConfiguration.call(@command.configuration)
       @upload_public_ids = Array(@command.upload_public_ids).map do |public_id|
         ContentUpload.canonical_public_id(public_id)

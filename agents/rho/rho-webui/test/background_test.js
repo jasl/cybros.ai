@@ -40,6 +40,7 @@ function mount({ writable = true, answers = {} } = {}) {
       const method = options.method || "GET";
       const route = path.split("?")[0];
       requests.push({ method, route, query: new URLSearchParams(path.split("?")[1] || ""), body: options.body, conversation: options.conversation });
+      if (route === "/conversations/links" && !answers["GET /conversations/links"]) return { links: [], pagination: { next_after: null } };
       const handler = answers[`${method} ${route}`];
       if (!handler) throw new Error(`unexpected ${method} ${path}`);
       return handler(options.body, requests.at(-1));
@@ -65,7 +66,7 @@ test("the tab lists busy subagents and live tasks under Running, held tasks unde
   const t = mount({ answers: { "GET /runs/task": (_body, request) => ({ task: { key: request.query.get("task_key"), tool_name: request.query.get("task_key") === "r1t1" ? "bash" : null } }) } });
   await settle();
   const titles = t.element.querySelectorAll(".background__group-title").map((node) => node.textContent);
-  expect(titles).toEqual(["Running", "Waiting", "Subagents"]);
+  expect(titles).toEqual(["Running", "Waiting", "Subagents", "Communication links"]);
   const names = rows(t.element).map((row) => row.querySelector(".background__name").textContent);
   expect(names).toEqual(["research", "Model round", "bash", "Tool call", "review", "Morning check"]);
   expect(rows(t.element)[2].querySelector(".background__meta").textContent).toBe("r1t1 · running");
@@ -98,7 +99,7 @@ test("Stop on a subagent stops that child conversation; Stop on a task cancels i
 
   labelled(rows(t.element)[2], "Stop Tool call").dispatchEvent(new Event("click"));
   await settle();
-  expect(t.requests.filter((request) => request.route === "/stop")[1].body).toEqual({ public_id: "c-1", host_type: "conversation", workspace_public_id: "w-1", task_key: "r1t1" });
+  expect(t.requests.filter((request) => request.route === "/stop")[1].body).toEqual({ public_id: "run-1", host_type: "run", workspace_public_id: "w-1", task_key: "r1t1" });
 
   labelled(rows(t.element)[1], "Stop Model round").dispatchEvent(new Event("click"));
   await settle();
@@ -115,6 +116,44 @@ test("a read-only conversation reads the work but cannot stop it, and an idle co
   expect(t.element.querySelector(".empty-state__title").textContent).toBe("Nothing is running in the background");
   expect(t.element.querySelectorAll("button").find((node) => node.textContent === "Stop all work").hidden).toBe(true);
   expect(t.button.element.querySelector(".background-chip__count").hidden).toBe(true);
+  t.view.dispose();
+  t.button.dispose();
+});
+
+test("reused task keys resolve and stop on their own Run after a new reply starts", async () => {
+  const t = mount({ answers: {
+    "GET /runs/task": (_body, request) => ({ task: { tool_name: request.query.get("public_id") } }),
+    "POST /stop": () => ({ stopped: {} }),
+  } });
+  await settle();
+  const oldStop = labelled(rows(t.element)[2], "Stop run-1");
+  t.state.set({ ...t.state.get(), snapshot: snapshot({ run_public_id: "run-2" }) });
+  await settle();
+  expect(rows(t.element)[2].querySelector(".background__name").textContent).toBe("run-2");
+  oldStop.click();
+  await settle();
+  expect(t.requests.find((request) => request.route === "/stop").body.public_id).toBe("run-1");
+  expect(t.requests.filter((request) => request.route === "/runs/task" && request.query.get("public_id") === "run-2")).toHaveLength(3);
+  t.view.dispose();
+  t.button.dispose();
+});
+
+test("closing communication closes only the link and leaves accepted work visible", async () => {
+  const t = mount({ answers: {
+    "GET /runs/task": () => ({ task: {} }),
+    "GET /conversations/links": () => ({ links: [{ public_id: "link-1", peer: { conversation_public_id: "peer-1" } }], pagination: { next_after: null } }),
+    "POST /conversations/links/close": () => ({ link: { state: "closed" } }),
+  } });
+  await settle();
+  expect(t.element.textContent).toContain("does not stop either conversation or cancel accepted requests");
+  t.element.querySelectorAll("button").find((node) => node.textContent === "Close communication").click();
+  await settle();
+  const writes = t.requests.filter((request) => request.method === "POST");
+  expect(writes.map((request) => request.route)).toEqual(["/conversations/links/close"]);
+  expect(writes[0].body).toEqual({ public_id: "c-1", link_public_id: "link-1", workspace_public_id: "w-1" });
+  expect(t.element.querySelectorAll("[data-link-id]")).toHaveLength(0);
+  expect(rows(t.element).length).toBe(6);
+  expect(t.stopsAll).toEqual([]);
   t.view.dispose();
   t.button.dispose();
 });

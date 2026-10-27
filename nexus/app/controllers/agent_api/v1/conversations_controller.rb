@@ -4,7 +4,7 @@ class AgentAPI::V1::ConversationsController < AgentAPI::V1::Workspaces::BaseCont
   include AgentAPI::ConversationListing
 
   def index
-    scope = Conversation.visible_to(acting_user).working.where(parent_conversation_public_id: nil)
+    scope = Conversation.visible_to(acting_user).working.lifecycle_roots
       .includes(:active_turn, :answering_user, :workspace)
     scope = filter_conversation_answerer(scope)
     if params.key?(:archived)

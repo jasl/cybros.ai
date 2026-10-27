@@ -160,8 +160,9 @@ class Runs::DelegationReapTest < ActiveJob::TestCase
   test "workspace collection shares child retention and releases it after owned completion" do
     parent, call, child = spawn_scoped
     _turn, original = complete_child(child)
-    receipt = ConversationCommandReceipt.find_by!(host: child,
-      idempotency_key: "spawn:#{parent.public_id}:#{call.node_key}")
+    receipt = ConversationCommandReceipt.create!(host: child, account: @account, workspace: @workspace,
+      acting_user: @agent, operation: "input_create", idempotency_key: "independent-member-receipt",
+      request_digest: "a" * 64, response_status: 202, response_body: {})
     @workspace.update_columns(state: "deleted", deleted_at: 31.days.ago)
 
     # A one-row budget visits the newest child first. Its original
@@ -220,8 +221,9 @@ class Runs::DelegationReapTest < ActiveJob::TestCase
   test "workspace collection stops a publisher before reaping while its input is still pending" do
     parent, call, child = spawn_scoped
     input_id = call.spawn_delegation.delegated_input_public_id
-    receipt = ConversationCommandReceipt.find_by!(host: child,
-      idempotency_key: "spawn:#{parent.public_id}:#{call.node_key}")
+    receipt = ConversationCommandReceipt.create!(host: child, account: @account, workspace: @workspace,
+      acting_user: @agent, operation: "input_create", idempotency_key: "independent-member-receipt",
+      request_digest: "a" * 64, response_status: 202, response_body: {})
     @workspace.update_columns(state: "deleted", deleted_at: 31.days.ago)
 
     # The collector wins before the authority sweep has canceled this loop.

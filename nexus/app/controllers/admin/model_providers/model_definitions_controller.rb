@@ -49,7 +49,7 @@ class Admin::ModelProviders::ModelDefinitionsController < Admin::ModelProviders:
 
     def model_fields
       params.expect(model_definition: [:model, :model_id, :inherit, :display_name, :expected_lock_version, :pricing_mode,
-        :reset_limits, :limits_edited, :input_modalities_mode,
+        :reset_limits, :limits_edited, :input_modalities_mode, :prompt_cache_ttl,
         :pricing_unit, *Admin::ModelProviders::ModelForm::LIMIT_FIELDS, *Admin::ModelProviders::ModelForm::BOOLEAN_FIELDS,
         *Admin::ModelProviders::ModelForm::RATE_FIELDS, input_modalities: []])
     end

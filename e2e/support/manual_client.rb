@@ -1,9 +1,9 @@
 require "active_support/core_ext/object/blank"
 require "simple_inference"
 require_relative "../../nexus/app/services/model_invocations/apply_result"
+require_relative "../../nexus/lib/nexus/prompt_cache/breakpoints"
 require_relative "../../nexus/app/services/model_requests/wire_lowering"
 require_relative "../../nexus/app/services/usage_records/tokens"
-require_relative "../../nexus/lib/nexus/prompt_cache/breakpoints"
 require_relative "provider_lanes"
 
 module E2E

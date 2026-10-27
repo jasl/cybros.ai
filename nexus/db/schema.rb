@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_23_060000) do
+ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -217,6 +217,28 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_23_060000) do
     t.index ["workspace_id", "id"], name: "index_conversation_command_receipts_on_workspace_id_and_id"
   end
 
+  create_table "conversation_links", force: :cascade do |t|
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
+    t.bigint "account_id", null: false
+    t.bigint "workspace_id", null: false
+    t.bigint "first_conversation_id", null: false
+    t.bigint "first_agent_id", null: false
+    t.bigint "second_conversation_id", null: false
+    t.bigint "second_agent_id", null: false
+    t.datetime "closed_at"
+    t.string "close_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_conversation_links_on_account_id"
+    t.index ["first_agent_id"], name: "index_conversation_links_on_first_agent_id"
+    t.index ["first_conversation_id", "first_agent_id", "second_conversation_id", "second_agent_id"], name: "index_conversation_links_on_active_pair", unique: true, where: "(closed_at IS NULL)"
+    t.index ["first_conversation_id"], name: "index_conversation_links_on_first_conversation_id"
+    t.index ["public_id"], name: "index_conversation_links_on_public_id", unique: true
+    t.index ["second_agent_id"], name: "index_conversation_links_on_second_agent_id"
+    t.index ["second_conversation_id"], name: "index_conversation_links_on_second_conversation_id"
+    t.index ["workspace_id"], name: "index_conversation_links_on_workspace_id"
+  end
+
   create_table "conversations", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "workspace_id", null: false
@@ -259,13 +281,15 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_23_060000) do
     t.jsonb "model_selection"
     t.jsonb "fallback_models"
     t.decimal "cost_limit", precision: 38, scale: 18
+    t.datetime "taken_over_at"
+    t.uuid "taken_over_by_public_id"
     t.index ["account_id"], name: "index_conversations_on_account_id"
     t.index ["active_turn_id"], name: "index_conversations_on_active_turn_id"
     t.index ["answering_user_id"], name: "index_conversations_on_answering_user_id"
     t.index ["default_runner_executor_id"], name: "index_conversations_on_default_runner_executor_id"
     t.index ["forked_from_turn_public_id"], name: "index_conversations_on_forked_from_turn_public_id", where: "(forked_from_turn_public_id IS NOT NULL)"
     t.index ["id"], name: "index_conversations_reply_sources", where: "((spawn_node_id IS NOT NULL) OR (schedule_id IS NOT NULL))"
-    t.index ["parent_conversation_id", "spawn_label"], name: "index_conversations_on_parent_and_spawn_label", unique: true, where: "(spawn_label IS NOT NULL)"
+    t.index ["parent_conversation_id", "spawn_label"], name: "index_conversations_on_parent_and_spawn_label", unique: true, where: "((spawn_label IS NOT NULL) AND (taken_over_at IS NULL))"
     t.index ["parent_conversation_id"], name: "index_conversations_on_parent_conversation_id", where: "(parent_conversation_id IS NOT NULL)"
     t.index ["public_id"], name: "index_conversations_on_public_id", unique: true
     t.index ["schedule_id", "public_id"], name: "index_conversations_on_schedule_id_and_public_id"
@@ -535,9 +559,16 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_23_060000) do
     t.jsonb "agent_configuration"
     t.jsonb "model_selection"
     t.jsonb "fallback_models"
+    t.string "communication_kind"
+    t.bigint "conversation_link_id"
+    t.string "requested_delivery_mode"
+    t.string "on_target_end"
+    t.string "fallback_reason"
+    t.datetime "source_released_at"
     t.index ["account_id"], name: "index_inputs_on_account_id"
     t.index ["answering_user_id"], name: "index_inputs_on_answering_user_id"
     t.index ["authoring_user_id"], name: "index_inputs_on_authoring_user_id"
+    t.index ["conversation_link_id"], name: "index_inputs_on_conversation_link_id"
     t.index ["deliver_at", "id"], name: "index_inputs_due", where: "((deliver_at IS NOT NULL) AND ((state)::text = 'pending'::text) AND ((host_type)::text = 'Conversation'::text))"
     t.index ["host_type", "host_id", "queue_position"], name: "index_inputs_fifo", unique: true
     t.index ["id"], name: "index_inputs_source_frontier", where: "(sender_run_public_id IS NOT NULL)"
@@ -1267,6 +1298,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_23_060000) do
     t.index ["awaited_run_public_id"], name: "index_tasks_on_wait_target", where: "((awaited_task_key IS NOT NULL) AND ((status)::text = 'dispatched'::text))"
     t.index ["barrier_node_id"], name: "index_tasks_on_barrier_node_id"
     t.index ["claimed_by_executor_id"], name: "index_tasks_on_claimant", where: "((status)::text = 'dispatched'::text)"
+    t.index ["delegated_input_public_id"], name: "index_tasks_on_delegated_input", unique: true, where: "(delegated_input_public_id IS NOT NULL)"
     t.index ["expansion_parent_id"], name: "index_tasks_on_expansion_parent_id"
     t.index ["id"], name: "index_tasks_on_delegation_frontier", where: "(((type)::text = 'Tasks::DelegationTask'::text) AND ((status)::text = ANY (ARRAY['queued'::text, 'running'::text, 'canceled'::text, 'skipped'::text])))"
     t.index ["id"], name: "index_tasks_on_park_frontier", where: "((await_started_at IS NOT NULL) AND ((status)::text = ANY (ARRAY['running'::text, 'dispatched'::text, 'awaiting_input'::text, 'needs_approval'::text])))"
@@ -1323,6 +1355,9 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_23_060000) do
     t.string "sender_task_key", limit: 64
     t.uuid "input_public_id"
     t.jsonb "callback_sources", default: [], null: false
+    t.string "communication_kind"
+    t.uuid "conversation_link_public_id"
+    t.datetime "source_released_at"
     t.index ["account_id"], name: "index_turns_on_account_id"
     t.index ["active_variant_id"], name: "index_turns_on_active_variant_id"
     t.index ["answering_user_id"], name: "index_turns_on_answering_user_id"
@@ -1550,7 +1585,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_23_060000) do
     t.integer "lock_version", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.jsonb "messaging_policy", default: {"agents" => []}, null: false
+    t.jsonb "messaging_policy", default: { "agents" => [] }, null: false
     t.index ["account_id", "agent_identifier"], name: "index_workspaces_on_account_agent_identifier", where: "(agent_identifier IS NOT NULL)"
     t.index ["account_id"], name: "index_workspaces_on_account_id"
     t.index ["creator_id"], name: "index_workspaces_on_creator_id"
@@ -1593,6 +1628,12 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_23_060000) do
   add_foreign_key "conversation_command_receipts", "accounts"
   add_foreign_key "conversation_command_receipts", "users", column: "acting_user_id"
   add_foreign_key "conversation_command_receipts", "workspaces", on_delete: :cascade
+  add_foreign_key "conversation_links", "accounts"
+  add_foreign_key "conversation_links", "conversations", column: "first_conversation_id", on_delete: :cascade
+  add_foreign_key "conversation_links", "conversations", column: "second_conversation_id", on_delete: :cascade
+  add_foreign_key "conversation_links", "users", column: "first_agent_id"
+  add_foreign_key "conversation_links", "users", column: "second_agent_id"
+  add_foreign_key "conversation_links", "workspaces"
   add_foreign_key "conversations", "accounts"
   add_foreign_key "conversations", "conversations", column: "parent_conversation_id", on_delete: :nullify
   add_foreign_key "conversations", "executors", column: "default_runner_executor_id", on_delete: :nullify
@@ -1633,6 +1674,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_23_060000) do
   add_foreign_key "inference_requests", "users", column: "creating_user_id"
   add_foreign_key "inference_requests", "workspaces"
   add_foreign_key "inputs", "accounts"
+  add_foreign_key "inputs", "conversation_links"
   add_foreign_key "inputs", "speakers"
   add_foreign_key "inputs", "turns", column: "steering_target_turn_id"
   add_foreign_key "inputs", "users", column: "answering_user_id"

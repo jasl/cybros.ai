@@ -30,6 +30,16 @@ class CliTerminalTest < Minitest::Test
     terminal.report_stopped(terminal.core.stop(public_id, task_key, **arguments))
   end
 
+  def test_background_receipts_with_reused_task_keys_are_reported_once_per_input
+    seen = {}
+    terminal = cli
+    mails = %w[old new].map do |run|
+      { "task_key" => "r1t1", "run_public_id" => run, "input_public_id" => "receipt-#{run}", "origin" => "child" }
+    end
+    2.times { terminal.report_tasks({ "delivered_results" => mails }, seen) }
+    assert_equal 2, lines.count { |line| line.include?("delivered") }
+  end
+
   def lines = @out.string.lines.map(&:chomp)
 
   def reset_out = (@out = StringIO.new)

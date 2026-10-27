@@ -9,6 +9,27 @@ const member = (family: string, key: string, status = 200) => new Client(config(
 const platform = (family: string, key: string, status = 200) => new PlatformClient(config(fixture(family, key), status));
 const chat = (family: string, key: string) => member(family, key).workspace('workspace').conversation('conversation');
 const run = (key: string) => member('runs', key).workspace('workspace').run('run');
+test('takeover posts through the member resource and returns the full projection', async () => {
+  const row = { ...(fixture('conversations', 'valid_fixture') as { conversation: object }).conversation,
+    ...(fixture('conversations', 'taken_over_child_fixture') as object) };
+  const calls: { url: string; method: string | undefined }[] = [];
+  const client = new Client({ baseURL: 'http://nexus.example', credential: 'human-member', fetch: async (url, init) => {
+    calls.push({ url: String(url), method: init?.method });
+    return new Response(JSON.stringify({ conversation: row }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  } });
+  const taken = await client.workspace('workspace').conversation('child').takeover();
+  expect(taken.taken_over_at).toBe('2026-10-27T10:00:00Z');
+  expect(taken.parent?.label).toBe('reviewer');
+  expect(calls).toEqual([{ url: 'http://nexus.example/agent_api/v1/workspaces/workspace/conversations/child/takeover', method: 'POST' }]);
+});
+test('taken-over roots retain typed takeover and birth facts', async () => {
+  const row = fixture('conversations', 'taken_over_child_fixture');
+  const client = new Client(config({ conversations: [row], pagination: { next_after: null } }));
+  const item = (await client.conversations.list()).items[0]!;
+  expect(item.taken_over_at).toBe('2026-10-27T10:00:00Z');
+  expect(item.taken_over_by_public_id).toBe('01900000-0000-7000-8000-000000000003');
+  expect(item.parent?.label).toBe('reviewer');
+});
 test('Run listings preserve the Workspace public identifier', async () => {
   const client = new Client(config({ runs: [{ public_id: 'run', workspace_public_id: 'workspace', status: 'running' }], pagination: { next_after: null } }));
   const page = await client.workspace('workspace').runs.list();
@@ -151,4 +172,17 @@ test('an authored coordination ask carries an explicit indefinite wait', () => {
   expect(Steps.ask({ prompt: 'Wait for coordinator', indefinite: true })).toEqual({
     ask: { prompt: 'Wait for coordinator', indefinite: true },
   });
+});
+
+test('decision answers preserve false, fractional scores, per-question refusal and zero usage', async () => {
+  const row = await member('inference_requests', 'valid_decision_fixture').workspace('id').inferenceRequests.fetch('id');
+  expect(row.workload).toBe('decision');
+  expect(row.result?.output_text).toBeNull();
+  expect(row.result?.usage?.output_tokens).toBe(0);
+  const answers = row.result!.answers!;
+  expect(answers[0]!.probability).toBe(0.9);
+  expect(answers[1]!.choice).toBe(false);
+  expect(answers[2]!.score).toBe(0.75);
+  expect(answers[2]!.probabilities!.map(p => p.value)).toEqual([0, 1]);
+  expect(answers[3]!.type).toBe('refusal');
 });

@@ -19,18 +19,34 @@ module Runs
     def for_dispatch(child, sender_run_public_id, sender_task_key)
       return if sender_task_key.nil? || !child.hosts_turns?
 
-      call = child.spawn_node
-      return unless call && call.node_key == sender_task_key &&
-        call.run.public_id == sender_run_public_id
+      source = Run.find_by(public_id: sender_run_public_id)
+      call = source&.tasks&.find_by(node_key: sender_task_key)
+      node = call && for_call(call)
+      return unless node
 
-      for_call(call)
+      target_for(call, node) == child ? node : nil
+    end
+
+    def target_for(call, node = for_call(call))
+      return call.spawned_conversation if call.spawned_conversation
+      return unless node&.delegated_input_public_id
+
+      input = Input.find_by(public_id: node.delegated_input_public_id)
+      return input.host if input
+
+      turn = Turn.find_by(input_public_id: node.delegated_input_public_id, forked_from_turn_public_id: nil)
+      return turn.conversation if turn
+
+      receipt = TaskResultProjection.call(call)["structured_content"]
+      Conversation.find_by(workspace_id: call.run.workspace_id, public_id: receipt["conversation_public_id"]) if receipt
     end
 
     def original_turn(child, call)
-      child.turns.find_by(
-        sender_run_public_id: call.run.public_id,
-        sender_task_key: call.node_key, forked_from_turn_public_id: nil
-      )
+      node = for_call(call)
+      return child.turns.find_by(input_public_id: node.delegated_input_public_id, forked_from_turn_public_id: nil) if node&.delegated_input_public_id
+
+      child.turns.find_by(sender_run_public_id: call.run.public_id,
+        sender_task_key: call.node_key, forked_from_turn_public_id: nil)
     end
 
     def original_variant(turn)
@@ -60,10 +76,12 @@ module Runs
 
     def converge(node:)
       call = node.run.tasks.find_by(node_key: node.node_key.delete_suffix(SUFFIX))
-      child = call&.spawned_conversation
+      child = call && target_for(call, node)
       if child
-        Converge.call(child: child)
+        Converge.call(child: child, call: call)
       elsif !node.terminal? && call
+        return false if !call.terminal? && node.delegated_input_public_id.nil?
+
         node.run.with_lock do
           Settlement.call(node: node, call: call, text: "The delegated conversation was removed.",
             status: "failed", error_key: "delegation_abandoned")
@@ -75,14 +93,14 @@ module Runs
 
     # The caller holds the source Run while publishing its optional wait and
     # independent completion, so refusal rolls back that whole observation set.
-    def prepare(call:)
+    def prepare(call:, lifetime: "turn", wake: nil)
       existing = for_call(call)
       return existing if existing
 
-      step = Tasks::Step::Delegation.new(key: key(call.node_key), lifetime: "turn", detached: true)
+      step = Tasks::Step::Delegation.new(key: key(call.node_key), lifetime: lifetime, wake: wake, detached: true)
       result = Tasks::Append.call_locked(Tasks::Append::Command.kernel(
         run: call.run, steps: [step],
-        tip: KernelTool.branch_tip(call).with(detached: true, lifetime: "turn"), origin: "kernel",
+        tip: KernelTool.branch_tip(call).with(detached: true, lifetime: lifetime, wake: wake || call.wake), origin: "kernel",
         expansion_parent: call
       ))
       return for_call(call) if result.applied? || result.outcome == :duplicate_task_key
@@ -103,6 +121,20 @@ module Runs
 
     def owner_stopped?(delegation)
       delegation && (delegation.terminal? || delegation.run.stopped? || !delegation.run.graph_mutable?)
+    end
+
+    # Branch cancel already owns the requester Run. Record its one canceled
+    # outcome and release the finite wait; target cleanup remains with relay.
+    def cancel(node:)
+      call = node.run.tasks.find_by!(node_key: node.node_key.delete_suffix(SUFFIX))
+      child = target_for(call, node)
+      turn = child && original_turn(child, call)
+      variant = answering_variant(turn)
+      Settlement.call(node: node, call: call, child: child, status: "canceled",
+        text: "The request was canceled.", error_key: CancelBranch::REASON,
+        execution_identity: { "conversation_public_id" => child&.public_id, "input_public_id" => node.delegated_input_public_id,
+          "turn_public_id" => turn&.public_id, "variant_public_id" => variant&.public_id,
+          "run_public_id" => variant&.run&.public_id, "status" => "canceled" })
     end
 
     def launch_failed(call:, detail:)
@@ -131,6 +163,10 @@ module Runs
     end
 
     def retained?(run)
+      return true if Input.where(sender_run_public_id: run.public_id, source_released_at: nil).exists?
+      return true if run.tasks.where(type: ::Tasks::DelegationTask.sti_name, status: %w[queued running]).exists?
+      return true if !run.workspace.tombstoned? && ResultDelivery.pending?(run)
+
       unless run.standalone?
         turn = run.turn
         if owed_result?(turn)
@@ -142,7 +178,7 @@ module Runs
         status: %w[canceled skipped]).any? do |node|
         call_key = node.node_key.delete_suffix(SUFFIX)
         call = run.tasks.find_by(node_key: call_key)
-        child = call&.spawned_conversation
+        child = call && target_for(call, node)
         next false unless child && node.delegated_input_public_id
         next true if child.inputs.exists?(public_id: node.delegated_input_public_id)
 
@@ -153,6 +189,12 @@ module Runs
     end
 
     def retained_conversation?(conversation)
+      live_completion = "INNER JOIN tasks ON tasks.delegated_input_public_id = %s " \
+        "AND tasks.type = 'Tasks::DelegationTask' AND tasks.status IN ('queued', 'running')"
+      return true if conversation.inputs.joins(format(live_completion, "inputs.public_id")).exists?
+      return true if conversation.turns.where(forked_from_turn_public_id: nil)
+        .joins(format(live_completion, "turns.input_public_id")).exists?
+
       if conversation.schedule_id && conversation.scheduled_turn_public_id
         turn = conversation.turns.find_by(public_id: conversation.scheduled_turn_public_id)
         return true if turn && owed_result?(turn)

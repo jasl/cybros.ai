@@ -201,7 +201,7 @@ class ApiPublicContractPackTest < Minitest::Test
     plain = stored.reject { |block| block.key?("canonical") }.map { |block| block.dig("function", "name") }
     names = ->(list) { list.map { |block| block.dig("function", "name") } }
 
-    assert_equal %w[wait spawn send image_generate], plain, "the plain names the row keeps; task, ask and skill superseded"
+    assert_equal %w[wait spawn send request links image_generate], plain, "the plain names the row keeps; task, ask and skill superseded"
     assert_equal names.call(entries), names.call(aliases), "the row's aliases, in the tables' order"
     spellings = pack.presets.plain.values.to_h { |name| [name, name] }
       .merge(entries.to_h { |entry| [pack.presets.plain_name(entry.fetch("canonical")), entry.dig("function", "name")] })

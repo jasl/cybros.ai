@@ -38,6 +38,8 @@ module SimpleInference
       openai_audio_speech
       openai_audio_transcriptions
       openai_embeddings
+      openai_decisions
+      typesafe_system_one
       gemini_embeddings
     ].freeze
 
@@ -50,6 +52,8 @@ module SimpleInference
       audio_speech_http
       audio_transcriptions_http_multipart
       embeddings_http
+      decisions_http
+      systemone_http
       embed_content_http
     ].freeze
 
@@ -63,6 +67,7 @@ module SimpleInference
       speech_generation
       transcription
       embedding
+      decision
     ].freeze
 
     MODEL_RUNNER_ASYNC_HTTP_PAIR = ExecutionPair::MODEL_RUNNER_ASYNC_HTTP
@@ -88,7 +93,7 @@ module SimpleInference
     ].freeze
 
     INPUT_MODALITIES = %w[image audio video file].freeze
-    OUTPUT_MODALITIES = %w[text image audio embedding].freeze
+    OUTPUT_MODALITIES = %w[text image audio embedding decision].freeze
 
     PATH_WIRE_OPTION_KEYS = %i[
       responses_path

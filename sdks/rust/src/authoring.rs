@@ -338,6 +338,8 @@ impl Toolset {
             Self::Conversation => &[
                 "nexus.conversation.spawn",
                 "nexus.conversation.send",
+                "nexus.conversation.request",
+                "nexus.conversation.links",
                 "nexus.conversation.status",
                 "nexus.conversation.cancel",
             ],

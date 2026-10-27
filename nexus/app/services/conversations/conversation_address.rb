@@ -55,7 +55,7 @@ module Conversations
       def by_label(word)
         return nil unless word.match?(Conversation::SPAWN_LABEL_FORMAT)
 
-        visible.find_by(parent_conversation_id: @sender_conversation.id, spawn_label: word)
+        visible.subagents.find_by(parent_conversation_id: @sender_conversation.id, spawn_label: word)
       end
   end
 end

@@ -125,6 +125,20 @@ class HostFollowerBackgroundTest < Minitest::Test
     assert @run.backs?("old-run")
   end
 
+  def test_peer_message_keeps_the_current_ask_and_the_original_result_identity
+    advance_turn
+    emit("attention_required", @current, reason: "awaiting_human", blocked_task_keys: ["ask"])
+    emit("input_accepted", @old, origin: "agent", input_public_id: "question",
+      sender_conversation_public_id: "worker")
+    emit("input_accepted", @old, origin: "child", input_public_id: "result", task_key: "completion")
+
+    assert_equal "current-run", @run.snapshot.run_public_id
+    assert_equal ["ask"], @run.snapshot.attention.blocked_task_keys
+    assert_equal %w[question result], @run.snapshot.delivered_results.map { |mail| mail.fetch(:input_public_id) }
+    assert_equal ["old-run", "old-run"], @run.snapshot.delivered_results.map { |mail| mail.fetch(:run_public_id) }
+    assert_equal "worker", @run.snapshot.delivered_results.first.fetch(:sender_conversation_public_id)
+  end
+
   private
 
     def identity(turn, variant, run_id)

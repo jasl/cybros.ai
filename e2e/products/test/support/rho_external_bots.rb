@@ -130,6 +130,32 @@ module E2E
       assert_equal copied.fetch("public_id"), external_bot_row(copied).fetch("public_id")
     end
 
+    def test_external_bot_link_messages_preserve_request_history_and_memory_limits
+      external_connect(@alpha, chat_id: -201, users: [202])
+      external_connect(@beta, chat_id: -202, users: [202])
+      source, = external_message(@alpha, 1, 202, [], reply: "alpha-linked-ready")
+      target, = external_message(@beta, 2, 202, [], reply: "beta-linked-ready")
+      link = source.links.create(agent_public_id: @alpha.fetch("public_id"),
+        peer_conversation_public_id: target.public_id, peer_agent_public_id: @beta.fetch("public_id"),
+        idempotency_key: SecureRandom.uuid)
+      _, turn = external_message(@alpha, 3, 202, [
+        ["send", { "link_public_id" => link.public_id, "message" => external_script([], reply: "beta-linked-message") }],
+        ["send", { "link_public_id" => SecureRandom.uuid, "message" => "not delivered" }],
+        ["session_read", { "session_id" => target.public_id }],
+        ["request", { "to" => target.public_id, "agent" => @beta.fetch("public_id"), "prompt" => "not dispatched" }],
+        ["memory_read", { "path" => "agent/private.md" }],
+      ], reply: "alpha-linked-done")
+      external_tool_output(turn, "send")
+      assert_match(/not_found/, external_tool_output(turn, "send", occurrence: 1, error: true))
+      assert_match(/not_found/, external_tool_output(turn, "session_read", error: true))
+      assert_match(/unknown_conversation/, external_tool_output(turn, "request", error: true))
+      assert_match(/memory_scope_unavailable/, external_tool_output(turn, "memory_read", error: true))
+      received = external_turn(target, "beta-linked-message")
+      assert_equal "message", received.communication_kind
+      assert_equal source.public_id, received.sender_conversation_public_id
+      refute target.inputs.list.items.any? { |input| input.text == "not dispatched" }
+    end
+
     private
 
       def external_connect(bot, chat_id:, users:)

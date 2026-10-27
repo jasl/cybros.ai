@@ -2,6 +2,7 @@ import { el, icon } from "../../kernel/dom.js";
 import { t, statusText } from "../../kernel/i18n.js";
 import { isTerminal } from "../../kernel/format.js";
 import { alert, button, emptyState, iconButton } from "../../primitives/index.js";
+import { communicationPanel } from "./communication.js";
 
 const query = (path, values) => `${path}?${new URLSearchParams(values)}`;
 // Authored, and nothing spent on it yet: the task waits on a dependency or
@@ -49,6 +50,7 @@ const childName = (child) => child.label || child.title || child.public_id;
 // kinds and statuses, never tool names.
 function backgroundPanel(shell, initialProps) {
   let props = initialProps;
+  const communication = communicationPanel(shell, initialProps);
   const reads = new AbortController();
   const names = new Map();
   const failure = alert({ tone: "error" });
@@ -56,12 +58,12 @@ function backgroundPanel(shell, initialProps) {
   const body = el("div", { class: "background__body" });
   const element = el("section", { class: "background", "aria-label": t("background.title") },
     el("header", { class: "background__head" }, stopAll),
-    failure.element, body);
+    failure.element, body, communication.element);
   let busy = null;
 
   const alive = () => !reads.signal.aborted;
   const state = () => shell.conversations.state.get();
-  const target = (id) => ({ public_id: id, host_type: "conversation", ...(state().workspace ? { workspace_public_id: state().workspace } : {}) });
+  const target = (id, hostType = "conversation") => ({ public_id: id, host_type: hostType, ...(state().workspace ? { workspace_public_id: state().workspace } : {}) });
 
   function error(problem) {
     if (!alive() || problem.name === "AbortError" || problem.status === 401) return;
@@ -81,16 +83,16 @@ function backgroundPanel(shell, initialProps) {
     shell.conversations.refresh();
   }
 
-  // One read per task key: the name is stable for the task's lifetime.
-  function resolveName(task) {
+  // Task keys are local to a Run; a later reply can reuse the same key.
+  function resolveName(task, runId) {
     const { id, workspace } = state();
-    const work = backgroundWork(state());
-    if (!work.runId || names.has(task.task_key)) return;
-    names.set(task.task_key, null);
-    const values = { public_id: work.runId, task_key: task.task_key, ...(workspace ? { workspace_public_id: workspace } : {}) };
+    const key = `${runId}:${task.task_key}`;
+    if (!runId || names.has(key)) return;
+    names.set(key, null);
+    const values = { public_id: runId, task_key: task.task_key, ...(workspace ? { workspace_public_id: workspace } : {}) };
     shell.call(query("/runs/task", values), { signal: reads.signal, conversation: id })
-      .then(({ task: detail }) => { if (alive()) { names.set(task.task_key, detail); paint(); } })
-      .catch(() => { if (alive()) names.delete(task.task_key); });
+      .then(({ task: detail }) => { if (alive()) { names.set(key, detail); paint(); } })
+      .catch(() => { if (alive()) names.delete(key); });
   }
 
   const stopButton = (key, label, body) => {
@@ -99,14 +101,14 @@ function backgroundPanel(shell, initialProps) {
     return control;
   };
 
-  function taskRow(task, { stoppable }) {
-    resolveName(task);
-    const name = kindText(task, names.get(task.task_key));
+  function taskRow(task, { stoppable, runId }) {
+    resolveName(task, runId);
+    const name = kindText(task, names.get(`${runId}:${task.task_key}`));
     return el("div", { class: "background__row", "data-task-key": task.task_key },
       el("span", { class: "background__glyph" }, icon(task.kind === "model_task" ? "spark" : "tool")),
       el("span", { class: "background__text" }, el("span", { class: "background__name", text: name }),
         el("span", { class: "background__meta", text: `${task.task_key} · ${statusText(task.status)}` })),
-      stoppable ? stopButton(task.task_key, t("background.stop_task", { name }), { ...target(state().id), task_key: task.task_key }) : null);
+      stoppable && runId ? stopButton(task.task_key, t("background.stop_task", { name }), { ...target(runId, "run"), task_key: task.task_key }) : null);
   }
 
   function childRow(child, { stoppable }) {
@@ -124,12 +126,12 @@ function backgroundPanel(shell, initialProps) {
   function paint() {
     const current = state();
     const work = backgroundWork(current);
-    stopAll.hidden = !current.id || !current.detail?.active_turn_public_id;
+    stopAll.hidden = !current.id || (!current.detail?.active_turn_public_id && !work.running.length && !work.waiting.length && !work.busy.length);
     stopAll.disabled = !!current.stopping || !props.conversation.writable;
     if (!current.id) { body.replaceChildren(emptyState({ icon: "list", title: t("background.title"), description: t("shell.dock_guide_needs_conversation") })); return; }
     const sections = [
-      group(t("background.running"), [...work.busy.map((child) => childRow(child, { stoppable: true })), ...work.running.map((task) => taskRow(task, { stoppable: true }))]),
-      group(t("background.waiting"), work.waiting.map((task) => taskRow(task, { stoppable: true }))),
+      group(t("background.running"), [...work.busy.map((child) => childRow(child, { stoppable: true })), ...work.running.map((task) => taskRow(task, { stoppable: true, runId: work.runId }))]),
+      group(t("background.waiting"), work.waiting.map((task) => taskRow(task, { stoppable: true, runId: work.runId }))),
       group(t("background.idle_subagents"), work.idle.map((child) => childRow(child, { stoppable: false }))),
     ].filter(Boolean);
     body.replaceChildren(...(sections.length ? sections : [emptyState({ icon: "list", title: t("background.nothing_running"), description: t("background.guide") })]));
@@ -139,8 +141,8 @@ function backgroundPanel(shell, initialProps) {
   paint();
   return {
     element,
-    update(next) { props = next; paint(); },
-    dispose() { reads.abort(); for (const stop of stops) stop(); },
+    update(next) { props = next; communication.update(next); paint(); },
+    dispose() { reads.abort(); communication.dispose(); for (const stop of stops) stop(); },
   };
 }
 

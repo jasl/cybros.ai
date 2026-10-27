@@ -8,7 +8,7 @@ class AgentAPI::V1::Workspaces::Conversations::ChildrenController <
   def index
     conversation = find_listable_conversation(@workspace)
     scope = Conversation.visible_to(acting_user, workspace: @workspace)
-      .where(parent_conversation_id: conversation.id)
+      .subagents.where(parent_conversation_id: conversation.id)
       .includes(:active_turn, :answering_user, :spawn_node, :workspace)
     render_conversation_list(scope)
   end

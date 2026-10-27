@@ -28,6 +28,7 @@ macro_rules! vocabulary {
 }
 vocabulary!(Workload {
     TextGeneration,
+    Decision,
     Embedding,
     ImageGeneration,
     SpeechGeneration,

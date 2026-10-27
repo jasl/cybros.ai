@@ -196,6 +196,7 @@
 .background__name { font: 500 13px/20px var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: start; }
 .background__name--link { background: none; border: 0; padding: 0; color: var(--ink); cursor: pointer; }
 .background__name--link:hover { text-decoration: underline; }
+.background__help { font: 400 12px/18px var(--font-ui); color: var(--ink-3); }
 .background__meta { font: 400 12px/18px var(--font-ui); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .background-chip__count { font: 500 12px/16px var(--font-ui); min-width: 16px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: var(--ink-on-accent); text-align: center; }
 

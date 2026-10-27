@@ -182,6 +182,10 @@ module CybrosAgent
           hash[key].to_i
         end
 
+        def number(hash, key)
+          optional_number(hash, key) || raise(MalformedResponse, "expected #{key} number")
+        end
+
         def optional_number(hash, key)
           value = hash[key]
           return nil if value.nil?

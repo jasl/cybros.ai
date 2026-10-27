@@ -7,7 +7,7 @@ module RealtimeEvents
     # item that is a call to act, and the host's own end (a follower
     # narrowed to lifecycle must still hear that nothing further comes).
     # One list for both hosts of the hosted plane.
-    HOSTED_LIFECYCLE_TYPES = %w[turn_status attention_required conversation_ended].freeze
+    HOSTED_LIFECYCLE_TYPES = %w[turn_status attention_required conversation_ended conversation_taken_over].freeze
     LIFECYCLE_TYPES = {
       "inference_request" => %w[run_status result].freeze,
       "conversation" => HOSTED_LIFECYCLE_TYPES,

@@ -105,7 +105,7 @@ selection without persisting it. These fields are part of the create
 idempotency envelope. InferenceRequests do not accept an inline
 `agent_configuration`.
 
-- `input` is a string or an array of message objects; the coercion boundary
+- For `text_generation`, `input` is a string or an array of message objects; the coercion boundary
   inside the domain types it all-or-nothing.
 - For `image_generation`, `input` is the prompt string and `upload_public_ids`
   supplies the source images for an edit. Their submitted order and repeated
@@ -136,6 +136,74 @@ idempotency envelope. InferenceRequests do not accept an inline
   `422 input_media_too_large`. Neither is `content_too_large`, which is this
   platform's storage and envelope bound and says the server would not process
   the request at all.
+
+## Decisions
+
+Use `workload: "decision"` for named, typed classification questions. The shipped
+models are `openai_api/gpt-6-luna-decisions` (OpenAI Decisions) and
+`openrouter/jev-latest` (TypeSafe System One through OpenRouter). The latter uses
+the provider model ID `~typesafe/jev-latest`; it is a separate protocol from chat.
+
+```json
+{
+  "inference_request": {
+    "workload": "decision",
+    "model": { "model": "openai_api/gpt-6-luna-decisions" },
+    "input": { "ticket": "I was charged twice; please fix this today." },
+    "configuration": {
+      "questions": [
+        { "name": "billing", "type": "predicate", "instructions": "Is this a billing issue?" },
+        { "name": "category", "type": "choice", "instructions": "Choose the department.",
+          "choices": [{ "value": "billing", "description": "Charges and refunds" },
+                      { "value": "support", "description": "Technical help" }] },
+        { "name": "urgency", "type": "score", "instructions": "Rate the urgency.",
+          "levels": [{ "label": "low", "description": "Can wait" },
+                     { "label": "high", "description": "Needs attention today" }] }
+      ]
+    }
+  }
+}
+```
+
+`input` accepts text, a JSON object or a JSON array. Arrays are evidence data,
+not chat messages. Uploads, image evidence and TypeSafe `box` questions are not
+supported by this interface yet. Questions must have unique, nonempty names
+and instructions; each request takes 1–400 questions. Choices have at least
+two distinct values. OpenAI accepts string or boolean choice values; System One
+accepts strings. Scores have 2–10 distinct named levels.
+
+The terminal result exposes `answers` instead of `output_text`:
+
+```json
+{
+  "status": "completed",
+  "answers": [
+    { "name": "billing", "type": "predicate", "probability": 0.99 },
+    { "name": "category", "type": "choice", "choice": "billing", "confidence": 0.9,
+      "probabilities": [{ "value": "billing", "probability": 0.9 },
+                        { "value": "support", "probability": 0.1 }] },
+    { "name": "urgency", "type": "score", "score": 0.8, "confidence": 0.8,
+      "probabilities": [{ "label": "low", "value": 0, "probability": 0.2 },
+                        { "label": "high", "value": 1, "probability": 0.8 }] }
+  ]
+}
+```
+
+Answers follow submitted question order. Predicate probabilities range from
+0 to 1. Scores use zero-based level indices and may be fractional: they are
+the provider's weighted score, not an integer rank or a percentage. System One
+`noul` is normalized to `predicate`; its score indices use the same scale.
+An OpenAI per-question refusal is `{ "name": "...", "type": "refusal" }`.
+It leaves other answers intact and does not turn the entire request into a
+failed invocation or trigger model fallback.
+
+Usage, cost settlement, idempotency, events and cancellation use the same
+InferenceRequest lifecycle. OpenAI's zero output tokens remain zero; System
+One's reported output tokens remain recorded even when the route prices only
+input. The input estimate includes question text and is not an exact provider
+token count. Ruby, TypeScript and Rust SDKs create these requests through their
+existing InferenceRequests resource with `configuration.questions`, and read
+typed `result.answers`.
 
 ## Read
 

@@ -28,8 +28,10 @@ module AgentAPI
           billing_subject: conversation.billing_subject_key,
           # THE PARENT FACTS: a subagent names its parent, the `spawn` call
           # that minted it and its label as ONE block — the `/children`
-          # listing prints them; nil on a top-level row.
+          # listing prints them. Retained after takeover as birth provenance.
           parent: parent(conversation),
+          taken_over_at: conversation.taken_over_at,
+          taken_over_by_public_id: conversation.taken_over_by_public_id,
           source_conversation_public_id: source_conversation_public_id,
           forked_from_turn_public_id: conversation.forked_from_turn_public_id,
           forked_from_variant_public_id: conversation.forked_from_variant_public_id,
@@ -90,6 +92,9 @@ module AgentAPI
           role: input.role,
           delivery_mode: input.delivery_mode,
           expected_steering_run_public_id: input.expected_steering_run_public_id,
+          requested_delivery_mode: input.requested_delivery_mode,
+          on_target_end: input.on_target_end,
+          fallback_reason: input.fallback_reason,
           # The source kind, always present: `person` on a human's word,
           # `agent` on a peer's `send`, `task_result` on the receipt a
           # background task's answer became, `child` on a spawned
@@ -97,6 +102,8 @@ module AgentAPI
           # idle conversation and are immutable to the person; the
           # sender stamp rides only the stamped rows.
           origin: input.origin,
+          communication_kind: input.communication_kind,
+          link_public_id: input.conversation_link&.public_id,
           sender_conversation_public_id: input.sender_conversation_public_id,
           callback_result: input.callback_result,
           # WHO ANSWERS and WHO SPOKE: the addressee's id, and the author
@@ -149,7 +156,7 @@ module AgentAPI
         # nil with the spawning loop's reap while the parent's id — a
         # public-id snapshot — survives, as it does for every child.
         def parent(conversation)
-          return nil unless conversation.subagent?
+          return nil unless conversation.parent_conversation_public_id
 
           {
             public_id: conversation.parent_conversation_public_id,

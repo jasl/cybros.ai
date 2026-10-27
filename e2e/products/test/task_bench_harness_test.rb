@@ -64,15 +64,13 @@ class TaskBenchHarnessTest < Minitest::Test
       "codex re-spells image, spawn and send, and plain task stays"
     send_message = declared("codex").find { |entry| entry.dig("function", "name") == "send_message" }
     assert_equal "nexus.conversation.send", send_message["canonical"]
-    assert_equal %w[target agent message steer deliver_in deliver_at wake model],
+    assert_equal %w[target agent link_public_id message delivery_mode expected_steering_run_public_id on_target_end deliver_in deliver_at],
       send_message.dig("function", "parameters", "properties").keys,
-      "`target` (the reference's current spelling, C-S2) is the kernel's `to` (WHERE: what spawn_agent returned); " \
-      "the kernel's `agent` (WHO, r6), `deliver_in`/`deliver_at` (the clock, capabilities III item 12) and " \
-      "`model` (the initiator's, F-3) pass through under their own names"
-    assert_equal %w[target message], send_message.dig("function", "parameters", "required")
-    assert_equal Nexus::ToolRegistry.entry("send").parameters.dig("properties", "to", "description"),
-      send_message.dig("function", "parameters", "properties", "target", "description"),
-      "no description of rho's on the map: the kernel's `to` sentence rides under `target`"
+      "target maps to the Conversation address; link, strict steering and schedule fields pass through"
+    assert_equal %w[message], send_message.dig("function", "parameters", "required")
+    assert_equal Nexus::ToolRegistry.entry("send").parameters.dig("properties", "to"),
+      send_message.dig("function", "parameters", "properties", "target"),
+      "the address schema is unchanged by the alias"
     refute_includes send_message.inspect, "agent_id", "the V1 output field is gone"
     assert_equal DeclaredSet.names + %w[Agent AskUserQuestion Skill], DeclaredSet.names(style: "nexus+claude")
     assert_raises(ArgumentError) { DeclaredSet.names(style: "gemini") }
@@ -357,13 +355,18 @@ class TaskBenchHarnessTest < Minitest::Test
   end
 
   def test_sp2_wants_a_steered_send_to_the_label
-    good = Objectives::SP2.score([call("send", to: "migrator", message: "Stop: edit lib/config/loader.rb, not legacy.rb.", steer: true)], declared: declared)
+    good = Objectives::SP2.score([call("send", to: "migrator", message: "Stop: edit lib/config/loader.rb, not legacy.rb.", delivery_mode: "steer_now", expected_steering_run_public_id: "01980000-0000-7000-8000-000000000001")], declared: declared)
     assert good["pass"], good.inspect
     queued = Objectives::SP2.score([call("send", to: "migrator", message: "Wrong file.")], declared: declared)
     assert queued["sent"]
     refute queued["steered"], "a queued send lands after the damage"
-    wrong = Objectives::SP2.score([call("send", to: "loader", message: "Wrong file.", steer: true)], declared: declared)
+    wrong = Objectives::SP2.score([call("send", to: "loader", message: "Wrong file.", delivery_mode: "steer_now", expected_steering_run_public_id: "01980000-0000-7000-8000-000000000001")], declared: declared)
     refute wrong["to_is_the_label"]
+    refute Objectives::SP2.score([call("send", to: "migrator", message: "Wrong file.", steer: true)], declared: declared)["pass"],
+      "the removed boolean must not score as a supported live update"
+    refute Objectives::SP2.score([call("send", to: "migrator", message: "Wrong file.", delivery_mode: "steer_now",
+      expected_steering_run_public_id: "01980000-0000-7000-8000-000000000002")], declared: declared)["pass"],
+      "a different execution is not the correction target"
     canceled = Objectives::SP2.score([call("cancel", to: "migrator")], declared: declared)
     refute canceled["sent"]
     refute canceled["no_cancel"], "cancel throws the work away; the text asked for a correction"

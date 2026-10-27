@@ -72,6 +72,15 @@ module CybrosAgent
     # ordinal for the input it embeds, `vector` its numbers.
     InferenceRequestEmbedding = Data.define(:index, :vector)
 
+    DecisionProbability = Data.define(:value, :probability, :label) do
+      def to_h = super.compact
+    end
+
+    DecisionAnswer = Data.define(:name, :type, :probability, :choice, :score, :confidence, :probabilities) do
+      def to_h = super.merge(probabilities: probabilities&.map(&:to_h)).compact
+    end
+
+
     # What a run's latest execution replaced when the creator's declared
     # fallback ran a declined run again: the two models as catalog refs, the
     # reason (`model_refused`), and the provider's category — nil when it
@@ -97,9 +106,9 @@ module CybrosAgent
     # run again: every other member is then the fallback's execution.
     InferenceRequestResult = Data.define(
       :status, :finish_quality, :output_text, :usage, :timing, :error, :reasoning, :output_files,
-      :embeddings, :refusal_category, :model_change
+      :embeddings, :refusal_category, :model_change, :answers
     ) do
-      def initialize(embeddings: nil, refusal_category: nil, model_change: nil, **) = super
+      def initialize(embeddings: nil, refusal_category: nil, model_change: nil, answers: nil, **) = super
 
       def truncated? = %w[output_budget_exhausted context_window_exhausted].include?(finish_quality)
       def refused? = %w[refused blocked].include?(finish_quality)
@@ -113,6 +122,7 @@ module CybrosAgent
           reasoning: reasoning&.to_h,
           output_files: output_files&.map(&:to_h),
           embeddings: embeddings&.map(&:to_h),
+          answers: answers&.map(&:to_h),
           model_change: model_change&.to_h
         ).compact
       end

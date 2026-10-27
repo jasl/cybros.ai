@@ -60,7 +60,8 @@ module CybrosAgent
     # THE PARENT FACTS of a spawned child: the parent's id,
     # the `spawn` call's key — the id the spawning model read back, nil
     # once the spawning run is reaped — and the label the spawner gave
-    # it (nil when none). One block on both shapes; nil on a top-level row.
+    # it (nil when none). Retained after takeover as birth provenance;
+    # current membership also depends on taken_over_at.
     ConversationParent = Data.define(:public_id, :spawn_node_key, :label) do
       def to_h = super.compact
     end
@@ -75,13 +76,13 @@ module CybrosAgent
     # the child the kernel's `spawn` minted, listed through `children`.
     ConversationSummary = Data.define(
       :public_id, :workspace_public_id, :title, :lock_version, :answering_user_public_id, :archived_at, :billing_subject,
-      :parent, :source_conversation_public_id, :forked_from_turn_public_id,
+      :parent, :taken_over_at, :taken_over_by_public_id, :source_conversation_public_id, :forked_from_turn_public_id,
       :forked_from_variant_public_id, :side, :active_turn_public_id,
       :context_revision, :last_activity_at, :created_at, :updated_at
     ) do
       def archived? = !archived_at.nil?
       def busy? = !active_turn_public_id.nil?
-      def subagent? = !parent.nil?
+      def subagent? = !parent.nil? && taken_over_at.nil?
       def forked? = !forked_from_turn_public_id.nil?
       def side? = side
       def to_h = super.compact
@@ -115,7 +116,7 @@ module CybrosAgent
     # manage, including each root's public subject identifiers.
     Conversation = Data.define(
       :public_id, :workspace_public_id, :title, :lock_version, :answering_user_public_id, :archived_at, :billing_subject,
-      :parent, :source_conversation_public_id, :forked_from_turn_public_id,
+      :parent, :taken_over_at, :taken_over_by_public_id, :source_conversation_public_id, :forked_from_turn_public_id,
       :forked_from_variant_public_id, :side, :active_turn_public_id,
       :context_revision, :last_activity_at, :created_at, :updated_at,
       :metadata, :input_queue, :latest_event_cursor, :context, :usage_summary, :default_runner, :access,
@@ -125,7 +126,7 @@ module CybrosAgent
 
       def archived? = !archived_at.nil?
       def busy? = !active_turn_public_id.nil?
-      def subagent? = !parent.nil?
+      def subagent? = !parent.nil? && taken_over_at.nil?
       def forked? = !forked_from_turn_public_id.nil?
       def side? = side
       def to_h = super.compact
@@ -157,7 +158,10 @@ module CybrosAgent
     # The exact formal answer a worker returned. Later edits, regeneration or
     # activation in that conversation do not replace this result's sample.
     CallbackResult = Data.define(:conversation_public_id, :input_public_id, :turn_public_id,
-      :variant_public_id, :requester_speaker_public_id)
+      :variant_public_id, :requester_speaker_public_id, :run_public_id, :status) do
+      def initialize(run_public_id: nil, status: nil, **) = super
+      def to_h = super.except(:run_public_id, :status).merge({ run_public_id:, status: }.compact)
+    end
 
     # One consumed receipt's provenance. A parent summary can read several
     # results without becoming any one source's independently owned answer.
@@ -171,11 +175,13 @@ module CybrosAgent
       :public_id, :queue_position, :state, :kind, :role, :delivery_mode,
       :context_mode, :context_options, :tool_names, :approval_mode, :instructions, :blocked_reason, :text,
       :attachments, :steps, :lock_version, :created_at, :origin, :sender_conversation_public_id,
-      :answering_user_public_id, :speaker, :deliver_at, :expected_steering_run_public_id, :callback_result
+      :answering_user_public_id, :speaker, :deliver_at, :expected_steering_run_public_id, :callback_result,
+      :communication_kind, :link_public_id, :requested_delivery_mode, :on_target_end, :fallback_reason
     ) do
       def initialize(tool_names: nil, approval_mode: nil, instructions: nil, attachments: nil, steps: nil,
                      sender_conversation_public_id: nil, deliver_at: nil, expected_steering_run_public_id: nil,
-                     callback_result: nil, **) =
+                     callback_result: nil, communication_kind: nil, link_public_id: nil,
+                     requested_delivery_mode: nil, on_target_end: nil, fallback_reason: nil, **) =
         super
 
       def blocked? = state == "blocked"
@@ -276,10 +282,10 @@ module CybrosAgent
       :public_id, :position, :kind, :role, :status, :visibility, :inherited, :reference,
       :origin, :sender_conversation_public_id, :active_variant, :created_at,
       :answering_user_public_id, :speaker, :sender_run_public_id, :sender_task_key,
-      :input_public_id, :callback_sources, :running_variant
+      :input_public_id, :callback_sources, :running_variant, :communication_kind, :link_public_id
     ) do
       def initialize(origin: nil, speaker: nil, sender_run_public_id: nil, sender_task_key: nil,
-                     input_public_id: nil, callback_sources: [].freeze, running_variant: nil, reference: false, **) = super
+                     communication_kind: nil, link_public_id: nil, input_public_id: nil, callback_sources: [].freeze, running_variant: nil, reference: false, **) = super
       def inherited? = inherited == true
       def reference? = reference == true
       def task_result? = origin == "task_result"

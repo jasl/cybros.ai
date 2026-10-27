@@ -9,9 +9,9 @@ module SimpleInference
       # 2026-09-16, F21): a string contract enumerating low, medium, high.
       NAMES = %w[
         temperature max_output_tokens top_p top_k min_p seed frequency_penalty presence_penalty
-        output_format result_count voice format language dimensions verbosity
+        output_format result_count voice format language dimensions verbosity prompt_cache_ttl questions
       ].freeze
-      KINDS = %w[integer number string output_format].freeze
+      KINDS = %w[integer number string output_format decision_questions].freeze
       OUTPUT_FORMAT_VALUES = %w[text json_object json_schema].freeze
       ENUMERATED_KINDS = %w[string output_format].freeze
 
@@ -30,6 +30,10 @@ module SimpleInference
           end
         elsif !(allowed_values.is_a?(Array) && !allowed_values.empty? && allowed_values.uniq.length == allowed_values.length)
           raise SimpleInference::ConfigurationError, "#{label} allowed_values must be nil or a non-empty unique Array"
+        end
+
+        if kind == "decision_questions" && [default, minimum, maximum, allowed_values].any?
+          raise SimpleInference::ConfigurationError, "#{label} question payloads have no catalog default or numeric bounds"
         end
 
         validate_range(label, kind, minimum, maximum)

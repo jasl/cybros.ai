@@ -94,6 +94,24 @@ module CybrosAgent
       def to_h: () -> Hash[Symbol, untyped]
     end
 
+    class DecisionProbability < Data
+      attr_reader value: String | bool | Integer
+      attr_reader probability: Numeric
+      attr_reader label: String?
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    class DecisionAnswer < Data
+      attr_reader name: String
+      attr_reader type: String
+      attr_reader probability: Numeric?
+      attr_reader choice: (String | bool)?
+      attr_reader score: Numeric?
+      attr_reader confidence: Numeric?
+      attr_reader probabilities: Array[DecisionProbability]?
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
     class InferenceRequestResult < Data
       attr_reader status: String
       attr_reader finish_quality: String?
@@ -104,6 +122,7 @@ module CybrosAgent
       attr_reader reasoning: InferenceRequestReasoning?
       attr_reader output_files: Array[InferenceRequestFile]?
       attr_reader embeddings: Array[InferenceRequestEmbedding]?
+      attr_reader answers: Array[DecisionAnswer]?
       attr_reader refusal_category: String?
       attr_reader model_change: InferenceRequestModelChange?
 

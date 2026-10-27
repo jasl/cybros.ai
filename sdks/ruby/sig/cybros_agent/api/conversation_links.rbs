@@ -1,0 +1,36 @@
+module CybrosAgent
+  module Api
+    class ConversationLinkEndpoint < Data
+      attr_reader conversation_public_id: String
+      attr_reader agent_public_id: String
+    end
+    class ConversationLink < Data
+      attr_reader public_id: String
+      attr_reader workspace_public_id: String
+      attr_reader endpoint: ConversationLinkEndpoint
+      attr_reader peer: ConversationLinkEndpoint
+      attr_reader state: String
+      attr_reader created_at: String
+      attr_reader closed_at: String?
+      attr_reader close_reason: String?
+    end
+    class ConversationLinksContext
+      include WorkspaceProjections
+      include Fields
+      SHAPES: Hash[untyped, untyped]
+      def initialize: (dispatch: untyped, path: String) -> void
+      def list: (?state: String?, ?after: String?, ?limit: Integer?) -> Page[ConversationLink]
+      def fetch: (String) -> ConversationLink
+      def create: (agent_public_id: String, peer_conversation_public_id: String, peer_agent_public_id: String, idempotency_key: String) -> Created
+      def close: (String) -> ConversationLink
+      private
+      def link_path: (String) -> String
+      class Created < Data
+        attr_reader link: ConversationLink
+        attr_reader replayed: bool
+        def replayed?: () -> bool
+        def public_id: () -> String
+      end
+    end
+  end
+end

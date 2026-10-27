@@ -150,3 +150,15 @@ pub enum DeclarationRoute {
     },
 }
 request!(AssembleTools {} {default_runner_executor_public_id:String,configuration:AgentConfigurationRequest,conversation_public_id:String,agent_public_id:String});
+
+vocabulary!(ConversationLinkState {
+    Active,
+    Closed,
+    All
+});
+query!(ConversationLinkQuery {
+    state: ConversationLinkState,
+    after: String,
+    limit: u32
+});
+request!(CreateConversationLink { agent_public_id: String, peer_conversation_public_id: String, peer_agent_public_id: String } {});

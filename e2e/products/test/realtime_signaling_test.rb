@@ -374,14 +374,15 @@ class RealtimeSignalingTest < Minitest::Test
   end
 
   def test_browser_terminal_entry_reconnects_reports_gap_detaches_and_stops_original_pty
+    viewer = nil
     application_key = nil
     base_url, _path, _http, _session, member_key, _member, _transport, executor, key, workspace = prepare_realtime(detached: true, application_runner: false) do |http, session, path|
       application_key = issue_realtime_key(http, session, "#{path}/executor/api_keys")
     end
-    viewer = E2E::TerminalViewer.new(base_url: base_url, member_key: member_key, application_key: application_key,
-      target: { public_id: @run.run_public_id, task_key: key, workspace_public_id: workspace.public_id })
     address = Socket.ip_address_list.find { |candidate| candidate.ipv4? && !candidate.ipv4_loopback? }.ip_address
     E2E::WebrtcFixture.open(address: address) do |fixture|
+      viewer = E2E::TerminalViewer.new(base_url: base_url, member_key: member_key, application_key: application_key,
+        executable: fixture.binary, target: { public_id: @run.run_public_id, task_key: key, workspace_public_id: workspace.public_id })
       # Both peers need TURN candidates when an obscured browser host address
       # cannot be reached from the Runner's relay allocation.
       viewer.configure_ice(fixture.servers)
@@ -439,7 +440,7 @@ class RealtimeSignalingTest < Minitest::Test
           first_connection = connection.connection_id
           # Kill only the replaceable transport helper, not the PTY/handler.
           Process.kill("TERM", connection.pid)
-          assert page.has_css?(".terminal__status", text: "Reconnecting", wait: 10)
+          assert page.has_css?(".terminal .alert", text: "Reconnecting", wait: 10)
           await(seconds: 20) { connection.connection_id != first_connection }
           assert page.has_css?('.terminal[data-connection="connected"]', wait: 20)
           page.find(".xterm-screen").click
@@ -448,7 +449,7 @@ class RealtimeSignalingTest < Minitest::Test
           assert_equal original_claim, context.claim_token
           page.find(".xterm-screen").click
           page.driver.browser.action.send_keys("burst", :enter).perform
-          assert page.has_css?(".terminal__notice", text: "Output gap:", wait: 10)
+          assert page.has_css?(".terminal .alert", text: "Screen cleared because some output could not be restored.", wait: 10)
           assert page.has_css?(".xterm-accessibility", text: "burst-tail", visible: :all, wait: 10)
           directory = File.expand_path("../artifacts/terminal/#{Process.pid}", __dir__)
           FileUtils.mkdir_p(directory)
@@ -542,7 +543,7 @@ class RealtimeSignalingTest < Minitest::Test
             tools = Rho::Env::Toolsets.fixed(env: env, toolset: Rho::Env::Toolset.new(served))
             task_run = Rho::Env::TaskRun.new(executor: executor, pool: @pool, toolsets: tools, log: Log.new)
             viewer = E2E::TerminalViewer.new(base_url: base_url, member_key: member_key, application_key: application_key,
-              target: { workspace_public_id: workspace.public_id }, create: true,
+              executable: fixture.binary, target: { workspace_public_id: workspace.public_id }, create: true,
               ice_servers: fixture.servers, relay_only: transport != "udp", browser_driver: browser_driver)
             page = viewer.page
             assert page.has_button?("New terminal", disabled: false)

@@ -162,7 +162,7 @@ Conversation.
   write standing and uses the ordinary input receipt/wake path.
 - `origin` is closed source attribution: `person|agent|task_result|child`. Only the named
   `Input::KERNEL_ORIGINS` set confers kernel-mail behavior; origin presence or a
-  sender stamp does not. A principal's input, including an agent's `send`, may steer. Kernel
+  sender stamp does not. A member-authored input may steer; the model's `send` also supports exact-run `steer_now` with an explicit refusal or queue fallback. Kernel
   mail always queues, drains before principal inputs and then by arrival, and is immutable to
   the person (`kernel_input_immutable`). Its author is the requesting run's creator; the child
   or task identity is a separate kernel stamp, never impersonation of the child's answerer.
@@ -204,7 +204,7 @@ Conversation.
   bare voices against the current answerer so ordinary one-to-one histories retain their bytes.
 - The identity-based peer-sent or differently addressed path in `Conversations::AnswerEngine` uses the addressee's
   declared `default_model`, then that Agent's last reply model here, then the conversation's
-  last model, then the input's model. `spawn`/`send` carry the initiator's explicit model or its
+  last model, then the input's model. `spawn`/`request` carry the initiator's explicit model or its
   configured lineage model; invalid selection refuses `model_not_authorized`. An input carrying
   an agent configuration keeps its submitted model ahead of that declaration's default.
   Context estimate and queued materialization resolve captured selection intent and ordered
@@ -415,48 +415,54 @@ accepts the same tool, model, ask, step and observation operations from any runt
 
 - `spawn` creates a child Conversation, not a branch: `parent_conversation_id` names the parent,
   `spawn_node_id` uniquely identifies the originating call for recovery, and `spawn_label` is
-  unique per parent. Copy the parent's ACL carrier and billing; inherit the calling execution's
+  unique among current followers of each parent. Copy the parent's ACL carrier and billing; inherit the calling execution's
   frozen default Runner unless the call supplies an explicit Runner UUID or null. Anchor Agent
   memory on the child's answerer and Speaker memory on that answerer plus the inherited Speaker.
   The brief is the sender's ordinary input. A waited spawn parks a
   kernel-held tokened await with absorb policy; timeout detaches and notifies.
-- One conversation-tool job and run owner handle spawn/send/status/cancel. Address by child label
-  or visible public id; refuse unknown, side, or ancestor conversations and a child addressing
-  a parent that waits for it. `send` is the sender's idempotent input through the same door,
-  under its full standing, with optional queue/steer delivery. `agent:` selects the peer
-  answerer while `to:` selects the conversation; omission uses its default answerer.
-  `status` reports running/idle, queue depth, and answerer; `cancel` invokes the shared Stop
-  path. Parent identity, originating spawn key, and label appear on child reads and listings.
-- `send` and `spawn` additionally judge the recipient Agent's Public/Private setting in the
-  Workspace's messaging policy at new request acceptance. The sender is the calling run's
-  answering Agent, not its creator, credential holder, or input `origin`; the recipient is the
-  resolved answering Agent, including an
-  omitted `agent:` and the current reply targeted by an unnamed steer. Queue, delayed delivery,
-  and steer use the same check. A refused spawn leaves no child Conversation. Accepted inputs
-  are not rechecked against this policy when drained; replay and kernel result relay require
-  no new or reverse permission. `status`, `cancel`, history reads, and ordinary member-plane inputs keep their
-  existing authorization. Policy ownership and default/self-contact rules live in
-  `.ai/boundaries.md`; conversation reach below remains an independent execution scope.
+- One conversation-tool job dispatches spawn/send/request/links/status/cancel. Direct addresses use
+  child labels or visible public IDs and ordinary standing/reach checks. `send` accepts queue or exactly guarded steer/steer_now
+  delivery and owns no result obligation. `request` owns an exact completion Task and
+  refuses self-targets. Status and cancel retain their existing data-access gates.
+- Ordinary messages retain source attribution while pending; consumption transfers processing
+  ownership to the recipient answerer, including Speaker and memory selection. Source Stop
+  removes unconsumed work but does not cancel a consumed message's Run. Sender model and private
+  memory do not become recipient defaults. Requests retain source-owned cancellation semantics.
+- ConversationLink binds two exact Conversation/Agent pairs. Creation requires full standing
+  on both Conversations, eligible answerers and messaging permission in both directions.
+  The calling Run must match an endpoint; a link grants ordinary message delivery, never peer
+  reads, requests or cancellation. A guarded close conflicts with consumption's shared link
+  lock: close first drops the pending input; consumption first preserves recipient work.
+  Closing is irreversible; a later grant has a new UUID. Authority writers close affected grants
+  in their own transaction when an endpoint loses access, identity eligibility or its steward.
+  Public/Private changes and Archive preserve existing grants. Bounded Input recovery drops
+  pending closed-link messages even when delayed or blocked. Strict steering requires the exact
+  target Run; explicit queue fallback preserves the original Input and requested target.
+- Direct send, request and spawn judge the recipient's Workspace messaging policy at acceptance,
+  using the calling Run's answering Agent. Accepted direct Inputs and kernel result mail do not
+  require a new permission check. Linked messages use the granted endpoint relation instead.
+  Public/Private policy, history ACL and execution reach remain distinct contracts.
 - Conversation reach is an execution-level word, `workspace` (the default) or `subtree`,
   frozen per execution like memory bindings,
   confining the conversation verbs, `spawn`'s addressable set and the history tools to the
   run's own conversation and its spawned descendants. It is enforced at the one address
   resolver (`Conversations::ConversationAddress`) and the history funnel, and it is a scope
   word for an execution, never an agent kind or a product noun.
-- Child reply relay is level-triggered over `turns.relayed_at`; terminal kicks are
-  hints beside the recurring floor. It owes a reply only for a turn the parent opened, and
-  only the original spawn request may settle its await. A later send, including steer-on-idle
-  fallback, owns its own reply through frozen sender run/task, model, answerer, and tool/approval
-  surface. A steer into an existing child turn keeps that turn's one reply obligation.
-- A turn-owned spawn adds a kernel-only `delegation_task` detached from immediate continuation,
+- Scheduled reply relay is level-triggered over `turns.relayed_at`; spawn and request
+  results converge through their completion Tasks. Terminal kicks are hints beside the recurring floor. Spawn retains its original reply obligation. Later ordinary
+  messages create none. An explicit request adds a completion for either lifetime, bound to
+  its accepted Input and original execution, never a later Turn or regeneration. Completion
+  receipts expose public Input/Turn/Variant/Run identities and completed/failed/canceled status.
+  Acceptance and the launch Task result commit together; completed-job replay outlives the
+  hosted receipt. The existing bounded input recovery frontier also wakes due pending messages.
+- Every spawn and explicit request adds a kernel-only `delegation_task` detached from immediate continuation,
   independent of the finite spawn await. It has no executor inbox, token, deadline, or retry;
   it observes the original child's execution and absorbs non-success for synthesis.
   Publish it atomically with `delegated_input_public_id`, binding the child's original
   position-zero Turn execution, including concealed originals, never forks/edits/later sends
   or regeneration. The seed inherits turn lifetime unless explicitly overridden.
 - Repairable child holds remain outstanding; an edited unadjudicable original is stopped exactly
-  and produces non-success. Publish the completion result and original reply relay stamp
-  together. Switch queued await readers to completion while retaining their wait dependency,
+  and produces non-success. Publish the completion result and its delivery state together. Switch queued await readers to completion while retaining their wait dependency,
   so the report is consumed once. Cancellation removes the pending input or stops only that
   original execution, recursively through unsettled turn-owned delegations. Completed
   obligations release ownership. Send/steer imply no join.
@@ -464,6 +470,23 @@ accepts the same tool, model, ask, step and observation operations from any runt
   results until the obligation converges; hard deletion of an owed original Turn refuses
   `delegation_pending`. Never acquire a child Conversation lock while holding the parent run;
   convergence locks the target Conversation, then run ids in stable order.
+- Human takeover detaches the selected spawned Conversation's current lifecycle subtree in
+  place. Keep birth parent, spawn key, labels, attribution and all execution identities; the
+  once-written `taken_over_at` and `taken_over_by_public_id` end its lifecycle membership.
+  Current tree, label, list and reach readers exclude detached branches. Spawn rechecks its
+  root after locking, since an ancestor takeover can change the root while it waits.
+  In the same transaction, release queued and historical requests entering the branch from
+  the former tree through `source_released_at` on Input/Turn, carried across materialization.
+  Internal requests remain owned; unrelated live external requests refuse the command.
+  Close crossing links and discard their unconsumed messages and pending P-to-S direct
+  messages; consumed messages stay with
+  their receiver. Settle each still-pending completion through the existing result slot as
+  `completed` with `outcome: taken_over`, releasing waits without finishing the child Run.
+  Existing terminal results remain unchanged. A queued observer returns `conversation_busy`
+  until ordinary scheduling dispatches it. Source Stop or cancellation winning first refuses
+  release; takeover winning first makes later source cleanup inapplicable. A single
+  `conversation_taken_over` event narrates the lifecycle change. Direct target cancellation
+  and the same Agent's ordinary full ACL remain effective; takeover is not an ACL revocation.
 - A side conversation shares the live head's settled history and freezes the persisted current
   turn when the parent is running or held. Its owned reference turn seals the current seed,
   semantic model rounds, completed tool results, pending-work status and bound attachments;
@@ -976,7 +999,11 @@ execution.
 - Request kind stamps Anthropic cache policy in `request_options.prompt_cache`: conversation
   mainline/direct reply/regeneration gets one hour plus tail; branches, subagent conversations,
   standalone runs, and InferenceRequests get five minutes plus tail; summarizers get no marker.
-  `Nexus::PromptCache::RequestKind` owns that choice. Provider observations are optional
+  `Nexus::PromptCache::RequestKind` owns those defaults and placement eligibility.
+  Catalog-declared `configuration.prompt_cache_ttl` overrides the marked request's tier only;
+  it never enables summary markers or changes stable/tail placement. Other supported wires
+  lower their declared TTL vocabulary to request-level fields. Omission preserves wire defaults.
+  Provider observations are optional
   diagnostics, not regression authority.
 - Reasoning is history. Default replay is `all`: retain every trace the target wire can read in
   the form and position first carried. Protocol format determines representation; unreadable
@@ -1059,7 +1086,7 @@ execution.
   and access ceiling on the Run/Variant. Continuation, ordinary regeneration, sealed retries
   and kernel completion mail reuse the capture even when creating a new Run; missing capture
   disables memory instead of selecting defaults. Explicit new declaration selects again.
-  New send/spawn rebind relative roles and retain exact UUIDs under both sides' authority/limits.
+  New request/spawn rebind relative roles and retain exact UUIDs under both sides' authority/limits.
   Schedule Dispatch copies the current parent selection into the child; first materialization
   captures identity. Compaction uses its existing execution/input/sample capture, never fresh defaults.
 - Capture fixes identity, not content or permanent authority. Current source permissions,

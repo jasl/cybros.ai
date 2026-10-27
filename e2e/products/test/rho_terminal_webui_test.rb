@@ -108,10 +108,12 @@ class RhoTerminalWebuiTest < Minitest::Test
     assert @page.has_css?('.dock__pane:not([hidden]) .xterm-accessibility', text: "ARROW_KO", visible: :all, wait: 10)
     screenshot("terminal-mobile")
     resize_console(width: 1400, height: 1000)
+    assert @page.has_css?('.frame[data-dock="docked"]', wait: WAIT)
     @page.click_button "New tab", exact: true
     assert @page.has_css?(".dock__guide-entry", text: "Terminals")
     @page.click_link "Plugins", exact: true
     @page.click_button "Terminal", exact: true
+    assert @page.has_checked_field?("Terminal enabled", visible: :all, wait: WAIT)
     @page.uncheck "Terminal enabled", allow_label_click: true
     assert @page.has_text?("Saved and applied.", wait: WAIT)
     @page.click_button "New conversation"

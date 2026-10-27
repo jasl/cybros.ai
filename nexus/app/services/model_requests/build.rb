@@ -80,6 +80,12 @@ module ModelRequests
         return Result.refused(MEDIA_UNUSABLE) if media.nil?
         return Result.refused(OVER_INLINE_BOUND) if oversize_inlined?(media)
 
+        ttl = input.generation_config.request_options[:prompt_cache_ttl]
+        if ttl && (!profile.capability_enabled?("prompt_caching") ||
+            !profile.generation_parameters["prompt_cache_ttl"]&.allowed_values&.include?(ttl))
+          return Result.refused(INVALID_REQUEST)
+        end
+
         reserved = reserved_request_facts
         lowered = WireLowering.lower(
           adapter_profile: input.adapter_profile, generation_config: input.generation_config
@@ -176,16 +182,17 @@ module ModelRequests
 
       def request_for(input, uploads, media, arguments, options)
         case input.workload
-        when "text_generation" then responses(input, uploads, media, options)
+        when "text_generation" then responses(input, uploads, media, options, **arguments)
         when "image_generation" then images(input, uploads, media, options)
         when "speech_generation" then speech(input, arguments, options)
         when "transcription" then transcription(input, uploads, media, options)
         when "embedding" then embeddings(input, options)
+        when "decision" then decisions(input, options)
         else raise ArgumentError, "unmapped workload #{input.workload}"
         end
       end
 
-      def responses(input, uploads, media, options)
+      def responses(input, uploads, media, options, prompt_cache_ttl: nil)
         streaming = streaming?(input)
         wire_input, validated = SimpleInference::Planning::RequestValidator.validate_responses_request(
           profile: profile, model: input.wire_model,
@@ -196,7 +203,7 @@ module ModelRequests
         # Model prompt formats project this send's roles without rewriting the
         # sealed source. Place cache markers on that projection, and retain its
         # options: reusing the originals could add absorbed instructions twice.
-        placement = place_cache_breakpoints(wire_input, validated)
+        placement = place_cache_breakpoints(wire_input, validated, ttl: prompt_cache_ttl)
         client(streaming: streaming).responses.compile_from_validated(
           model: input.wire_model, input: placement.input, stream: streaming,
           **validated.merge(cache_instructions(placement))
@@ -246,6 +253,16 @@ module ModelRequests
         )
       end
 
+      def decisions(input, options)
+        validated = SimpleInference::Planning::RequestValidator.validate_decisions_request(
+          profile: profile, model: input.wire_model,
+          questions: options.fetch(:questions), options: options.except(:questions)
+        )
+        client(streaming: false).decisions.compile_from_validated(
+          model: input.wire_model, input: input.input.value, **validated
+        )
+      end
+
       def embeddings(input, options)
         validated = SimpleInference::Planning::RequestValidator.validate_embeddings_request(
           profile: profile, model: input.wire_model, options: options
@@ -262,16 +279,17 @@ module ModelRequests
       # reasoning as under any other history: the provider keeps prior-turn
       # thinking in the cached prefix, so the gate that once skipped it
       # turned the history cache off on exactly the loops where it pays.
-      # The tier and the tail are the request's KIND, stamped where it was
+      # The default tier and the tail are the request's KIND, stamped where it was
       # minted (Nexus::PromptCache::RequestKind) — never `@host` (the
-      # endpoint); a request of a kind that writes no marker is not marked.
-      def place_cache_breakpoints(wire_input, options)
+      # endpoint). An explicit TTL overrides only the tier; a kind that writes
+      # no marker is still not marked.
+      def place_cache_breakpoints(wire_input, options, ttl: nil)
         kind = request_kind
         placement = Nexus::PromptCache::Breakpoints.apply(
           instructions: options[:instructions],
           input: wire_input,
           capable: kind.marked? && WireLowering.explicit_cache_breakpoints?(profile),
-          tier: kind.tier,
+          tier: ttl || kind.tier,
           tail: kind.tail
         )
         log_placement(placement, kind)
@@ -441,7 +459,8 @@ module ModelRequests
       # table is the authority on which, and this asks it rather than
       # repeating the word.
       def missing_arguments?(input, arguments)
-        required = WireLowering::TABLE.dig(input.adapter_profile, :arguments).to_h.values
+        # TTL is an optional kernel argument; omission keeps the request-kind policy.
+        required = WireLowering::TABLE.dig(input.adapter_profile, :arguments).to_h.except("prompt_cache_ttl").values
         (required - arguments.keys).any?
       end
 

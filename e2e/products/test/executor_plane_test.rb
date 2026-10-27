@@ -145,13 +145,15 @@ class ExecutorPlaneTest < Minitest::Test
     })
     refute_nil said.dig("input", "public_id"), said.inspect
     events_path = "/agent_api/v1/workspaces/#{workspace_id}/conversations/#{conversation_id}/events?limit=200"
-    next_turn = await_result("the next turn never completed after HTTP cancellation") do
+    materialized = await_result("the next input never materialized after HTTP cancellation") do
       agent_api(events_path).fetch("events").find do |event|
-        event["type"] == "turn_status" && event.dig("payload", "status") == "completed" &&
-          event.dig("payload", "run_public_id") != loop_id
+        event["type"] == "input_materialized" &&
+          event.dig("payload", "input_public_id") == said.dig("input", "public_id")
       end
     end
-    next_loop = next_turn.dig("payload", "run_public_id")
+    next_loop = materialized.dig("payload", "run_public_id")
+    refute_nil next_loop, materialized.inspect
+    await_loop_completion(workspace_id, next_loop)
     assert_includes task_output(workspace_id, next_loop, "r1"),
       "<tool_use_error>The tool call was aborted before it completed. (run_canceled)</tool_use_error>"
     assert_equal 1, runner_snapshot.fetch("canceled"), "the canceled execution was counted once"

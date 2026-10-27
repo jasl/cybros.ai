@@ -30,10 +30,13 @@ export class ConversationScope extends Resource {
   export(options: RequestOptions = {}): Promise<Download> { return this.transport.download(this.path + '/export', options); }
   update(input: UpdateConversation, options: RequestOptions = {}) { return this.one('Conversation', '', 'conversation', { ...options, method: 'PATCH', body: { conversation: input } }); }
   archive(options: RequestOptions = {}) { return this.one('Conversation', '/archive', 'conversation', { ...options, method: 'POST' }); }
+  /** Requires a Human member credential; preserves the original execution. */
+  takeover(options: RequestOptions = {}) { return this.one('Conversation', '/takeover', 'conversation', { ...options, method: 'POST' }); }
   unarchive(options: RequestOptions = {}) { return this.one('Conversation', '/unarchive', 'conversation', { ...options, method: 'POST' }); }
   delete(options: RequestOptions = {}) { return this.empty('', { ...options, method: 'DELETE', success: [204] }); }
   cancel(options: RequestOptions = {}) { return this.empty('/cancellation', { ...options, method: 'POST', success: [202] }); }
   children(query: ConversationChildrenList = {}, options: RequestOptions = {}) { return this.paged('ConversationSummary', 'conversations', { ...options, query }, '/children'); }
+  get links() { return new ConversationLinks(this.transport, this.path + '/links'); }
   get inputs() { return new ConversationInputs(this.transport, this.path + '/inputs'); }
   get schedules() { return new Schedules(this.transport, this.path + '/schedules'); }
   get memoryCollections() { return new OwnedMemoryCollections(this.transport, this.path + '/memory_collections'); }
@@ -69,4 +72,11 @@ export class ConversationScope extends Resource {
       decisions: (id: string, options: RequestOptions) => new RunScope(this.transport, this.path.replace(/\/conversations\/[^/]+$/, '') + '/runs/' + segment(id)).decisions(options),
       run: (id: string, options: RequestOptions) => new RunScope(this.transport, this.path.replace(/\/conversations\/[^/]+$/, '') + '/runs/' + segment(id)).fetch(options) };
   }
+}
+
+export class ConversationLinks extends Resource {
+  list(query: import('../requests.js').ConversationLinkList = {}, options: RequestOptions = {}) { return this.one('ConversationLinkPage', '', undefined, { ...options, query }); }
+  fetch(id: string, options: RequestOptions = {}) { return this.one('ConversationLink', `/${segment(id)}`, 'link', options); }
+  create(input: import('../requests.js').CreateConversationLink, options: MutationOptions) { return this.receipt('ConversationLink', 'link', { ...options, method: 'POST', body: { link: input }, success: [200, 201] }); }
+  close(id: string, options: RequestOptions = {}) { return this.one('ConversationLink', `/${segment(id)}/closure`, 'link', { ...options, method: 'POST' }); }
 }

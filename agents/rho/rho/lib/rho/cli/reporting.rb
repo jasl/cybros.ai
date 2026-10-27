@@ -60,9 +60,10 @@ module Rho
         # its origin: the follower remembers a timed `person` row too.
         Array(row["delivered_results"]).each do |mail|
           key = mail["task_key"] || mail.fetch("input_public_id")
-          next if seen["delivered_results:#{key}"]
+          identity = mail["input_public_id"] || "#{mail["run_public_id"]}:#{key}"
+          next if seen["delivered_results:#{identity}"]
 
-          seen["delivered_results:#{key}"] = true
+          seen["delivered_results:#{identity}"] = true
           if mail["deliver_at"]
             @out.puts "scheduled: #{mail.fetch("input_public_id")} for #{mail["deliver_at"]}"
           else

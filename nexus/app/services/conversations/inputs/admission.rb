@@ -9,7 +9,8 @@ module Conversations
       # The kernel's privileges: no door admits them, no caller can
       # supply them — the controllers never build a command carrying
       # one, so nothing here needs refusing.
-      KERNEL_STAMPS = %i[origin sender_conversation_public_id run_public_id task_key delegation callback_result].freeze
+      KERNEL_STAMPS = %i[origin sender_conversation_public_id run_public_id task_key delegation callback_result
+                        conversation_link communication_kind on_target_end].freeze
 
       def self.refusal(host:, command:)
         supplied = command.to_h.compact.keys - PLUMBING - KERNEL_STAMPS

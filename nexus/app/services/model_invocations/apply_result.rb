@@ -341,6 +341,7 @@ module ModelInvocations
         when "text_generation" then result.output_text.presence
         when "transcription" then result.text.presence
         when "embedding" then JSON.generate(embedding_payload(result))
+        when "decision" then JSON.generate("answers" => result.answers.map(&:to_h))
         when "image_generation" then result.output_text.presence
         else nil
         end

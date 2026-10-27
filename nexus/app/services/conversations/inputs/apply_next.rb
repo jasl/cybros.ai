@@ -64,6 +64,14 @@ module Conversations
 
         def materialize_next
           outcome = ApplicationRecord.transaction(requires_new: true) do
+            # Pin actual FK principals before the host/link locks. Recheck the
+            # queue head below; a changed head is retried by the ordinary drain.
+            preview = Input.where(host_type: "Conversation", host_id: @conversation_id)
+              .where(state: %w[pending blocked]).merge(Input.due(DatabaseClock.now)).in_read_order.first
+            if preview&.conversation_link_id
+              preview.host.workspace.lock!("FOR KEY SHARE")
+              User.where(id: [preview.authoring_user_id, preview.answering_user_id]).order(:id).lock("FOR KEY SHARE").load
+            end
             @conversation = Conversation.lock.find_by(id: @conversation_id)
             next Outcome.refused(:not_available) if @conversation.nil? ||
               @conversation.tombstoned?
@@ -98,6 +106,17 @@ module Conversations
               head = candidates.find { |row| row.state == "blocked" || !held_behind?(row, tail) }
               next hold(candidates.first, tail.active_variant) if head.nil?
             end
+            if head.conversation_link_id
+              if preview&.id != head.id
+                DrainJob.perform_later(@conversation_id)
+                next Outcome.refused(:input_head_changed)
+              end
+              head.conversation_link.lock!("FOR SHARE")
+              if head.conversation_link.closed?
+                head.lock!
+                next Destroy.remove(head)
+              end
+            end
             next Outcome.refused(:input_blocked) if head.state == "blocked"
             # THE FENCE, RE-READ: the door judged the author once, and a
             # scheduled word can outlive that judgement by a week. The same
@@ -111,7 +130,7 @@ module Conversations
             # carries an existing capture and never performs a new selection.
             unless head.kernel_origin?
               context = MemoryDocuments::Context.new(workspace: @conversation.workspace, conversation: @conversation,
-                principal: head.authoring_user, configuration: memory_selection(head),
+                principal: head.processing_user, configuration: memory_selection(head),
                 agent: head.execution_agent, execution: true)
               if context.defaults_missing?
                 @memory_preparation = context
@@ -125,16 +144,16 @@ module Conversations
               head.selected_memory_context = context.capture
             end
             callbacks = callback_batch(head, candidates)
-            Runs::SourceWork.with_sources(callbacks.map(&:sender_run_public_id)) do |sources|
+            Runs::SourceWork.with_sources(callbacks.map(&:cancellation_source_public_id)) do |sources|
               delegation = Runs::Delegations.for_input(head)
               # A stopped dispatch never becomes a fresh runnable successor.
               # Materialization and exact cleanup share this Conversation lock.
-              if Runs::SourceWork.stopped?(head.sender_run_public_id, sources[head.sender_run_public_id]) ||
-                  Runs::Delegations.owner_stopped?(delegation)
+              if Runs::SourceWork.stopped?(head.cancellation_source_public_id, sources[head.sender_run_public_id]) ||
+                  (!head.source_released_at && Runs::Delegations.owner_stopped?(delegation))
                 head.lock!
                 Destroy.remove(head)
               else
-                @delegation_lifetime = delegation ? "turn" : "conversation"
+                @delegation_lifetime = delegation&.lifetime || "conversation"
                 @replaced_loop_id = tail&.live_run&.id
                 if head.kind == "message"
                   materialize(head)
@@ -143,7 +162,7 @@ module Conversations
                   # source locks. An ancestor cut may land between reads; do not
                   # re-read the head into an empty prefix after accepting it.
                   callbacks = [head] + callbacks.drop(1).take_while do |input|
-                    !Runs::SourceWork.stopped?(input.sender_run_public_id, sources[input.sender_run_public_id])
+                    !Runs::SourceWork.stopped?(input.cancellation_source_public_id, sources[input.sender_run_public_id])
                   end
                   materialize_callbacks(head, callbacks)
                 end
@@ -172,7 +191,7 @@ module Conversations
         # source availability belongs to this accepting application boundary.
         def memory_selection(input)
           selected = input.execution_memory_context
-          return selected unless input.origin == "agent" && input.sender_run_public_id
+          return selected unless input.origin == "agent" && input.sender_run_public_id && !input.communication_message?
 
           source = Run.find_by(public_id: input.sender_run_public_id)
           inherited = source ? MemoryDocuments::Context.inherit_from(source) : { "bindings" => [] }
@@ -180,7 +199,7 @@ module Conversations
             conversation_public_id: @conversation.public_id)
         end
 
-        def authorized?(head) = head.kernel_origin? || @conversation.writable_by?(head.authoring_user)
+        def authorized?(head) = head.kernel_origin? || head.conversation_link_id.present? || @conversation.writable_by?(head.authoring_user)
 
         # The drain gate behind a hold: only a caller-authored word typed AFTER
         # the settle repairs a hold; a pre-hold row and kernel mail wait for a
@@ -232,7 +251,9 @@ module Conversations
             role: input.role,
             status: "completed",
             speaker: input.speaker,
-            control_owner_user: input.authoring_user,
+            control_owner_user: input.processing_user,
+            communication_kind: input.communication_kind,
+            conversation_link_public_id: input.conversation_link&.public_id,
             # A message answers nothing: the conversation's answerer at
             # materialization.
             answering_user: @conversation.answering_user,
@@ -242,6 +263,7 @@ module Conversations
             callback_sources: [input.callback_source].compact,
             sender_conversation_public_id: input.sender_conversation_public_id,
             sender_run_public_id: input.sender_run_public_id,
+            source_released_at: input.source_released_at,
             sender_task_key: input.sender_task_key,
           )
           variant = Variant.create!(
@@ -293,7 +315,7 @@ module Conversations
           environment = @tool_assembly.environment
           if environment
             context = MemoryDocuments::Context.new(workspace: @conversation.workspace, conversation: @conversation,
-              principal: input.authoring_user, configuration: input.execution_memory_context, agent: input.execution_agent,
+              principal: input.processing_user, configuration: input.execution_memory_context, agent: input.execution_agent,
               execution: true)
             skills = if environment.key?("skills")
               # A receipt keeps its frozen catalog, but a receiver's narrowed
@@ -499,7 +521,7 @@ module Conversations
             assembled = ContextAssembly.assemble(
               memory_context: input.execution_memory_context,
               conversation: @conversation,
-              principal: input.authoring_user,
+              principal: input.processing_user,
               prompt: prompt,
               history_max_entries: history["max_entries"],
               history_token_budget: budget.value,

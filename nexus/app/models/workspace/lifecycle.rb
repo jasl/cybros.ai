@@ -18,6 +18,7 @@ module Workspace::Lifecycle
 
   def accept_delete
     update!(state: :deleting, deleted_at: Time.current)
+    ConversationLink.close_scope(conversation_links, reason: "endpoint_deleted")
     stop_model_work("workspace_deleted")
   end
 

@@ -19,7 +19,9 @@ module Schedules
       return :not_found unless @job
 
       @parent = @job.conversation
-      @parent.with_lock(requires_new: true) do
+      # Serialize commands without blocking the child's parent FK checks
+      # while its reply materializes under the child lock.
+      @parent.with_lock("FOR NO KEY UPDATE", requires_new: true) do
         @job.reload
         refusal = @by ? immediate_refusal : clock_refusal
         next refusal if refusal

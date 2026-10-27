@@ -4,7 +4,7 @@ import type { NestedFunctionTool, ToolAlias } from './requests.js';
 import { nonempty } from './json.js';
 const groups = {
   orchestration: ['nexus.graph.delegate_task', 'nexus.graph.wait', 'nexus.human.ask'],
-  conversation: ['nexus.conversation.spawn', 'nexus.conversation.send', 'nexus.conversation.status', 'nexus.conversation.cancel'],
+  conversation: ['nexus.conversation.spawn', 'nexus.conversation.send', 'nexus.conversation.request', 'nexus.conversation.links', 'nexus.conversation.status', 'nexus.conversation.cancel'],
   history: ['nexus.conversation.search', 'nexus.conversation.read'],
   memory: ['nexus.memory.read', 'nexus.memory.write', 'nexus.memory.edit', 'nexus.memory.ls', 'nexus.memory.grep', 'nexus.memory.delete'],
   discovery: ['nexus.tools.search', 'nexus.tools.call', 'nexus.runners.list', 'nexus.models.list'],

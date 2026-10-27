@@ -27,7 +27,7 @@ module CybrosAgentTest
       executor_operations.json
       uploads.json
       inference_requests.json
-      conversations.json
+      conversations.json communication.json
       schedules.json
       history.json
       runs.json

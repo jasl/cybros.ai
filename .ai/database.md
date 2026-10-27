@@ -159,7 +159,13 @@ Use the least blocking mechanism that proves the invariant, in order:
    race and why the weaker rungs cannot express it (a verb that answers which precondition failed
    cannot read that off a CAS's 0 rows changed); reviewers reject those sites without it. Never a
    recursive ancestor lock chain — read ancestor operability lock-free; stragglers are absorbed by
-   mark-then-cleanup.
+   mark-then-cleanup. Human Conversation takeover is the sole exception: after the lifecycle
+   root and target branch Conversations, lock the actual live request-owner closure, including
+   its source Run ancestors, in id order with `FOR NO KEY UPDATE NOWAIT`. Ordinary batch Stop
+   retains its single set update and has no row-order promise; sorting takeover's locks alone
+   cannot prevent a cycle. Any contention rolls back the entire takeover and returns
+   `conversation_busy`, without automatic command replay. This permission does not extend to
+   execution, cancellation, provider admission or ordinary cleanup readers.
 5. `with_advisory_lock` last, only for a short cross-row critical section no constraint can
    express; bounded timeouts on request paths, stable namespaced lock names. Each sanctioned use is
    pinned by a guard test.

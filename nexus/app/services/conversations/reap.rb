@@ -45,6 +45,7 @@ module Conversations
       id = conversation.id
       !ConversationAncestry.where(ancestor_conversation_id: id).exists? &&
         !Runs::Delegations.retained_conversation?(conversation) &&
+        !Input.where(conversation_link_id: ConversationLink.for_conversation(conversation).select(:id)).exists? &&
         !ModelInvocation.nonterminal.where(conversation_id: id).exists? &&
         !ModelInvocationAttempt.where(settlement_state: "pending").joins(:model_invocation)
           .where(model_invocations: { conversation_id: id }).exists?

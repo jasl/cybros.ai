@@ -4,6 +4,7 @@
     "admin_users.json",
     "analyses.json",
     "application_oauth.json",
+    "communication.json",
     "content_addressing.json",
     "conversations.json",
     "coverage.json",

@@ -6,6 +6,8 @@ module Rho
       module Conversations
         def self.register(api)
           api.register_route("GET", "/conversations") { |request, ctx| list(request, ctx) }
+          api.register_route("GET", "/conversations/links") { |request, ctx| links(request, ctx) }
+          api.register_route("POST", "/conversations/links/close") { |request, ctx| close_link(request, ctx) }
           api.register_route("GET", "/conversations/detail") { |request, ctx| detail(request, ctx) }
           api.register_route("GET", "/conversations/artifacts") { |request, ctx| artifacts(request, ctx) }
           api.register_route("GET", "/conversations/modes") { |request, ctx| ctx.conversation_modes(request) }
@@ -35,6 +37,28 @@ module Rho
         # opens it, and the open page's notice reads the same fact.
         def self.summary(row, ctx)
           row.to_h.merge(parent: row.parent&.to_h, ingresses: ctx.conversation_bindings(row.public_id)).compact
+        end
+
+        def self.links(request, ctx)
+          query = ControlServer.query(request)
+          public_id = query["public_id"].to_s
+          return Rho::Daemon::Refusal.malformed("public_id is required") if public_id.empty?
+
+          ctx.member_plane(request) do |client, workspace_public_id|
+            page = client.workspace(workspace_public_id).conversation(public_id).links.list(state: "active", after: query["after"])
+            [200, { links: page.items.map { |link| link.to_h.merge(endpoint: link.endpoint.to_h, peer: link.peer.to_h) },
+                    pagination: { next_after: page.next_after } }]
+          end
+        end
+
+        def self.close_link(request, ctx)
+          command(request, ctx) do |conversation, body|
+            public_id = body["link_public_id"].to_s
+            next Rho::Daemon::Refusal.malformed("link_public_id is required") if public_id.empty?
+
+            link = conversation.links.close(public_id)
+            [200, { link: link.to_h.merge(endpoint: link.endpoint.to_h, peer: link.peer.to_h) }]
+          end
         end
 
         def self.detail(request, ctx)

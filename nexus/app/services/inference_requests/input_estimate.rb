@@ -30,7 +30,7 @@ module InferenceRequests
     end
 
     def call
-      input = CoerceTextMessages.call(@command.input)
+      input = @command.workload == "decision" ? @command.input : CoerceTextMessages.call(@command.input)
       configuration = CoerceConfiguration.call(@command.configuration)
       upload_public_ids = Array(@command.upload_public_ids).map do |public_id|
         ContentUpload.canonical_public_id(public_id)
@@ -52,7 +52,7 @@ module InferenceRequests
       selection = prepared.selection
       counted = ModelRequests::TokenCount.count(
         profile: selection.execution_profile,
-        segments: Nexus::ModelRequestInput.text_segments(prepared.normalized.value)
+        segments: Nexus::ModelRequestInput.text_segments(prepared.normalized.value, generation_config: selection.generation_config)
       )
       return Result.refused(counted.refusal) unless counted.counted?
 

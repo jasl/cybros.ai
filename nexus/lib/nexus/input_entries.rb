@@ -31,6 +31,7 @@ module Nexus
         case workload
         when "text_generation" then text_input(entries)
         when "embedding" then entries.map { |payload| payload.fetch("text") }
+        when "decision" then DecisionInput.new(value: JSON.parse(entries.sole.fetch("text")))
         when "image_generation" then entries.first.fetch("text")
         when "speech_generation" then entries.sole.fetch("text")
         # The only workload whose text is optional: the audio rides as the
@@ -44,6 +45,7 @@ module Nexus
 
         def entry(element)
           case element
+          when Nexus::DecisionInput then { "text" => JSON.generate(element.value) }
           when Nexus::TextInputMessage then element.to_h
           when Nexus::ReasoningInputItem then element.to_h
           when Nexus::ToolCallInputItem then element.to_h

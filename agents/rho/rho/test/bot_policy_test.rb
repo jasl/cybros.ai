@@ -36,7 +36,7 @@ class BotPolicyTest < Minitest::Test
   def test_conversation_modes_narrow_only_the_bot_root_and_preserve_worker_and_approval_policy
     spawn = { "type" => "function", "function" => { "name" => "Worker" }, "canonical" => "nexus.conversation.spawn" }
     code = { "type" => "function", "function" => { "name" => "Code" }, "route" => { "tool_name" => "code" } }
-    original = configuration.merge(kernel_tools: ["nexus.graph.delegate_task", "nexus.conversation.status"],
+    original = configuration.merge(kernel_tools: ["nexus.graph.delegate_task", "nexus.conversation.request", "nexus.conversation.status"],
       tool_definitions: configuration.fetch(:tool_definitions) + [spawn, code], system_prompt: { "content" => "Help the person." })
     original[:delegation_catalog] = [{ "name" => "worker", "declaration" => { "tool_definitions" => [code], "runner_tool_names" => ["code"],
       "kernel_tools" => ["nexus.graph.delegate_task"] } }]
@@ -59,6 +59,20 @@ class BotPolicyTest < Minitest::Test
     refute_includes enabled.dig(:system_prompt, "content"), "Subagent is off"
   end
 
+  def test_requests_keep_the_same_exact_bot_target_boundary
+    original = configuration.merge(kernel_tools: ["nexus.conversation.request"])
+    wires = WIRES.merge("nexus.conversation.request" => "request")
+    result = Rho::BotPolicy.external(original, send_targets: [TARGET], spawn_roles: [], wire_names: wires)
+    assert_empty result.fetch(:kernel_tools)
+    request = result.fetch(:tool_definitions).find { |entry| entry["canonical"] == "nexus.conversation.request" }
+    assert_includes request.dig("params", "agent", "description"), TARGET.public_id
+    assert_includes result.fetch(:approval_rules),
+      { "tool" => "request", "path" => "agent", "match" => TARGET.public_id, "verdict" => "allow" }
+    refute result.fetch(:approval_rules).any? { |rule| rule["tool"] == "request" && rule["path"] == "link_public_id" }
+    assert_equal "subtree", result.fetch(:conversation_reach)
+    assert_equal Rho::BotPolicy::MEMORY_CONTEXT_LIMIT, result.fetch(:memory_context_limit)
+  end
+
   def test_external_policy_separates_spawn_roles_from_exact_bot_send_targets
     original = configuration
     before = Marshal.dump(original)
@@ -72,6 +86,7 @@ class BotPolicyTest < Minitest::Test
     assert_equal %w[send_message spawn], result.fetch(:tool_definitions).map { |entry| entry.dig("function", "name") }
     assert_equal [{ "tool" => "memory_read|memory_write|tool_search|models_list", "verdict" => "allow" },
                   { "tool" => "send_message", "path" => "agent", "match" => TARGET.public_id, "verdict" => "allow" },
+                  { "tool" => "send_message", "path" => "link_public_id", "match" => "*", "verdict" => "allow" },
                   { "tool" => "spawn", "path" => "declaration", "match" => "worker", "verdict" => "allow" },
                   { "tool" => "spawn", "path" => "declaration", "match" => "reviewer", "verdict" => "allow" }],
       result.fetch(:approval_rules)
@@ -141,7 +156,7 @@ class BotPolicyTest < Minitest::Test
     assert_equal({ "maps_to" => "to" }, send_alias.dig("params", "target"))
     assert_equal "agent", send_alias.dig("params", "agent", "maps_to")
     assert_includes send_alias.dig("params", "agent", "description"), TARGET.public_id
-    assert_includes send_alias.dig("params", "agent", "description"), "Required"
+    assert_includes send_alias.dig("params", "agent", "description"), "For direct addressing"
     assert_includes send_alias.dig("params", "agent", "description"), "@helper"
     assert_empty send_alias.fetch("omit")
     assert_equal "Send a message.", send_alias.fetch("description")
@@ -170,9 +185,10 @@ class BotPolicyTest < Minitest::Test
       result.fetch(:approval_rules)
   end
 
-  def test_empty_directories_and_undeclared_tools_grant_no_delegation
+  def test_empty_directories_allow_only_granted_links_and_undeclared_tools_grant_nothing
     result = Rho::BotPolicy.external(configuration, send_targets: [], spawn_roles: [], wire_names: WIRES)
-    assert_equal [{ "tool" => "memory_read|memory_write|tool_search|models_list", "verdict" => "allow" }], result.fetch(:approval_rules)
+    assert_equal [{ "tool" => "memory_read|memory_write|tool_search|models_list", "verdict" => "allow" },
+                  { "tool" => "send_message", "path" => "link_public_id", "match" => "*", "verdict" => "allow" }], result.fetch(:approval_rules)
 
     empty = configuration.merge(kernel_tools: [], tool_definitions: [])
     result = Rho::BotPolicy.external(empty, send_targets: [TARGET], spawn_roles: ROLES, wire_names: WIRES)

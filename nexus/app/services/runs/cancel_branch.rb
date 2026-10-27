@@ -57,6 +57,10 @@ module Runs
       running, parked = live.partition { |row| running_step_id(row) }
       terminalize_after_commit(running.map { |row| running_step_id(row) })
       parked.each do |row|
+        if row.delegation?
+          Delegations.cancel(node: row)
+          next
+        end
         Transition.node(row, status: "canceled", completed_at: Time.current,
           error_key: REASON, failure_resolution: RESOLUTION)
         Executors::Nudge.work_canceled(row)

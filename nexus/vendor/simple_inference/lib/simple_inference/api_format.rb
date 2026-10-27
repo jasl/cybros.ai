@@ -38,6 +38,8 @@ module SimpleInference
       "openai_audio_speech" => Protocols::OpenAIAudioSpeech,
       "openai_audio_transcriptions" => Protocols::OpenAIAudioTranscriptions,
       "openai_embeddings" => Protocols::OpenAIEmbeddings,
+      "openai_decisions" => Protocols::OpenAIDecisions,
+      "typesafe_system_one" => Protocols::TypeSafeSystemOne,
       "gemini_embeddings" => Protocols::GeminiEmbeddings,
     }.freeze
 
@@ -52,6 +54,7 @@ module SimpleInference
       "transcription" => 1800,
       "speech_generation" => 900,
       "embedding" => 300,
+      "decision" => 300,
     }.freeze
 
     # The conservative context window a model gets when it declares none. A
@@ -72,6 +75,8 @@ module SimpleInference
       "openai_audio_speech" => "speech_generation",
       "openai_audio_transcriptions" => "transcription",
       "openai_embeddings" => "embedding",
+      "openai_decisions" => "decision",
+      "typesafe_system_one" => "decision",
       "openai_images" => "image_generation",
       "openai_responses" => "text_generation",
       "openrouter_chat" => "text_generation",
@@ -102,6 +107,34 @@ module SimpleInference
     # https://ai.google.dev/gemini-api/docs/generate-content/document-processing
     # Files remain whole bytes; no fixed per-document token cost is known.
     DEFAULTS = {
+      "typesafe_system_one" => {
+        protocol_route: "systemone_http",
+        **UNARY_LANE,
+        output_modalities: %w[decision].freeze,
+        token_counter: nil,
+        reasoning_options: {},
+        generation_parameters: {
+          "questions" => { "kind" => "decision_questions", "default" => nil,
+            "minimum" => nil, "maximum" => nil, "allowed_values" => nil }.freeze,
+        }.freeze,
+        service_tiers: [],
+        input_media: {},
+        wire_options: {},
+      }.freeze,
+      "openai_decisions" => {
+        protocol_route: "decisions_http",
+        **UNARY_LANE,
+        output_modalities: %w[decision].freeze,
+        token_counter: nil,
+        reasoning_options: {},
+        generation_parameters: {
+          "questions" => { "kind" => "decision_questions", "default" => nil,
+            "minimum" => nil, "maximum" => nil, "allowed_values" => nil }.freeze,
+        }.freeze,
+        service_tiers: [],
+        input_media: {},
+        wire_options: {},
+      }.freeze,
       "anthropic_messages" => {
         protocol_route: "messages_http_sse",
         **STREAMING_LANE,

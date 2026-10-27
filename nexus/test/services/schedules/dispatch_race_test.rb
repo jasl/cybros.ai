@@ -4,7 +4,9 @@ require_relative "../../test_helpers/row_lock_test_helper"
 class Schedules::DispatchRaceTest < ActiveSupport::TestCase
   include RowLockTestHelper
 
-  uses_transaction :test_two_workers_waiting_at_the_same_parent_create_one_occurrence,
+  uses_transaction :test_cancel_while_the_scheduled_child_materializes_its_reply,
+    :test_run_now_while_the_scheduled_child_materializes_its_reply,
+    :test_two_workers_waiting_at_the_same_parent_create_one_occurrence,
     :test_cancel_winning_the_parent_arbiter_prevents_a_waiting_dispatch,
     :test_dispatch_winning_the_parent_arbiter_leaves_cancel_an_exact_waiting_input_to_remove
 
@@ -26,6 +28,7 @@ class Schedules::DispatchRaceTest < ActiveSupport::TestCase
     release_row_lock(@held) if @held
     @calls.each { |call| stop_database_call(call) }
     @job.execution_conversations.each do |conversation|
+      conversation.model_invocations.destroy_all
       conversation.memory_collections.delete_all
       conversation.destroy!
     end
@@ -68,7 +71,33 @@ class Schedules::DispatchRaceTest < ActiveSupport::TestCase
     assert_equal 1, child.event_items.where(item_type: "input_deleted").count
   end
 
+  test "cancel while the scheduled child materializes its reply" do
+    materialize_while { cancel }
+    assert_predicate finish_database_call(@calls.sole), :accepted?
+    assert_predicate @job.reload, :canceled?
+  end
+
+  test "run now while the scheduled child materializes its reply" do
+    materialize_while { Schedules::Manage.run_now(Schedule.find(@job.id), by: User.find(@user.id)) }
+    assert_equal :execution_in_progress, finish_database_call(@calls.sole).outcome
+    assert_equal 1, @job.execution_conversations.count
+  end
+
   private
+
+    def materialize_while(&command)
+      assert_equal :dispatched, dispatch
+      child = @job.reload.last_execution_conversation
+      @held = hold_row_lock(Conversation, child.id, before_commit: ->(_child) {
+        result = Conversations::Inputs::ApplyNext.call(conversation_id: child.id)
+        assert_predicate result, :accepted?
+      })
+      @calls << start_database_call(&command)
+      wait_until_transitively_blocked_by(@held.pid, @calls.sole.pid)
+      release_barrier
+      assert child.reload.scheduled_turn_public_id
+      assert_empty child.inputs
+    end
 
     def dispatch = Schedules::Dispatch.call(id: @job.id, cutoff: @cutoff)
 

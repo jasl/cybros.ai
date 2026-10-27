@@ -1,7 +1,10 @@
 import { Client, ExecutorClient, PlatformClient, Sessions, ApplicationOAuth, Steps, Unauthorized } from '@cybros/agent';
+import type { JsonValue, DecisionQuestion } from '@cybros/agent';
 import { RealtimeClient } from '@cybros/agent/realtime';
 import { readFileSync } from 'node:fs';
 interface Configuration {
+  model: string; decision_input: JsonValue; questions: DecisionQuestion[];
+  link_public_id: string; prompt: string;
   action: string; base_url: string; credential: string; marker: string; runner_public_id: string;
   workspace_key: string; conversation_key: string; input_key: string;
   workspace_public_id: string; conversation_public_id: string; input_public_id: string;
@@ -32,6 +35,29 @@ async function main(): Promise<object> {
     case 'executor_announce': {
       const description = await executor().announce({ services: { agent: { tools: [] }, runner: { tools: [{ name: 'sdk_echo', description: 'Echo one test marker', input_schema: { type: 'object', properties: { marker: { type: 'string' } }, required: ['marker'] }, effect_profile: { kind: 'read_only', destructive: false, effect_scope: 'closed', idempotency: 'intrinsic', reconciliation: 'none' } }] } } });
       return { executor_public_id: description.executor.public_id };
+    }
+    case 'member_communicate': {
+      const conversation = chat();
+      const link = await conversation.links.fetch(config.link_public_id, { signal });
+      if (link.state !== 'active') throw new Error('Link is not active');
+      const { input } = await conversation.inputs.create({ kind: 'direct_reply', text: config.prompt,
+        model: { model: 'dev/mock-text' } }, { idempotencyKey: config.input_key, signal });
+      return { workspace_public_id: config.workspace_public_id, conversation_public_id: config.conversation_public_id, input_public_id: input.public_id };
+    }
+    case 'member_decision': {
+      const requests = member().workspace(config.workspace_public_id).inferenceRequests;
+      const created = await requests.create({ workload: 'decision', model: { model: config.model },
+        input: config.decision_input, configuration: { questions: config.questions } },
+        { idempotencyKey: config.input_key, signal });
+      const id = created.inference_request.public_id;
+      while (true) {
+        signal.throwIfAborted();
+        const row = await requests.fetch(id, { signal });
+        if (row.result !== null) return { create_status: created.status, public_id: id,
+          fetched_public_id: row.public_id, status: row.status, result_status: row.result.status,
+          answers: row.result.answers, usage: row.result.usage, error: row.result.error };
+        await pause();
+      }
     }
     case 'member_prepare': {
       const client = member();

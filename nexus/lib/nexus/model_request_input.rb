@@ -22,13 +22,16 @@ module Nexus
       # The ordered text carried by one normalized request. Media remains
       # under its byte limits; tokenizing its encoded bytes would not estimate
       # the Provider's multimodal accounting.
-      def text_segments(input)
-        case input
+      def text_segments(input, generation_config: nil)
+        segments = case input
         when Array then input.flat_map { |element| element_segments(element) }
         when String then [input]
+        when DecisionInput then [JSON.generate(input.value)]
         when nil then []
         else raise ArgumentError, "unhandled model request input: #{input.class}"
         end
+        questions = generation_config&.fetch(:questions, nil)
+        questions ? segments + [JSON.generate(questions.to_a)] : segments
       end
 
       private
@@ -83,6 +86,6 @@ module Nexus
     # The ordered text this request carries for the profile/token-count
     # contract. Media stays under its own byte bound; tokenizing base64 would
     # not estimate the provider's multimodal input accounting.
-    def text_segments = self.class.text_segments(input)
+    def text_segments = self.class.text_segments(input, generation_config: generation_config)
   end
 end

@@ -302,7 +302,9 @@ class RhoSettingsTest < Minitest::Test
 
     question = CGI.escape(JSON.generate("prompt" => "Continue with the captured prompt?"))
     opened = @daemon.control(:post, "/conversations", body: {
-      "prompt" => "!mock tool_call=ask tool_args=#{question} -- ask before continuing",
+      # Keep this capture check independent of tool-directory growth and the
+      # separate compaction journey.
+      "prompt" => "!mock usage=100:5 reply=Ready tool_call=ask tool_args=#{question} -- ask before continuing",
       "working_directory" => @project, "approval_mode" => "bypass",
     })
     conversation = opened.fetch("conversation").fetch("public_id")

@@ -1,5 +1,5 @@
 module Tasks
-  # Observes the original execution of a turn-owned child request. It has no
+  # Observes the original execution of a published child request. It has no
   # external holder or deadline: the child execution owns its own clocks and
   # repair. Publication stores the accepted Input identity once, so transport
   # receipt expiry cannot publish a second brief.
@@ -16,7 +16,7 @@ module Tasks
 
     def delegation? = true
 
-    validates :lifetime, inclusion: { in: ["turn"] }
+    validates :lifetime, inclusion: { in: Task::LIFETIMES }
     validates :on_failure, inclusion: { in: ["absorb"] }
     validates :authored_by, inclusion: { in: ["kernel"] }
     validates :addressed_role, :addressed_executor_id, :timeout_ms, :await_timeout_ms,

@@ -45,6 +45,9 @@ module CybrosAgent
       # reversible and keeps the conversation readable; deleting refuses
       # while work is running and is expected to follow a cancel.
       def archive = shape(Conversation, @dispatch.call("#{path}/archive", method: :post), "conversation")
+      # Requires a Human member credential; preserves the original execution.
+      def takeover = shape(Conversation, @dispatch.call("#{path}/takeover", method: :post), "conversation")
+
       def unarchive = shape(Conversation, @dispatch.call("#{path}/unarchive", method: :post), "conversation")
 
       def delete
@@ -73,6 +76,8 @@ module CybrosAgent
       def execution(result, position: KernelFeed::Position.start)
         InputExecution.for_execution(execution: result, position:, **execution_readers)
       end
+
+      def links = ConversationLinksContext.new(dispatch: @dispatch, path: "#{path}/links")
 
       def schedules = SchedulesContext.new(dispatch: @dispatch, path: "#{path}/schedules")
 

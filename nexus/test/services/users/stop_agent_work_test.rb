@@ -257,7 +257,10 @@ class Users::StopAgentWorkTest < ActionDispatch::IntegrationTest
     child_loop = child.turns.sole.active_variant.run
     answer(commissioning, "r2", "done delegating")
     Conversations::Turns::Converge.call
-    assert_equal "completed", commissioning.reload.status
+    assert_predicate commissioning.reload, :delivered?
+    assert_equal "completed", commissioning.turn.reload.status
+    assert_equal "running", commissioning.status, "the child's completion keeps its source Run alive"
+    assert_equal "running", loop_node(commissioning, "r2t0").spawn_delegation.status
     _turn, current = materialize_loop_reply!(parent.reload, agent: @human)
     assert_equal :removed, @agent.remove
     clear_enqueued_jobs

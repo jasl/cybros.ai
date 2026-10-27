@@ -33,7 +33,9 @@ module Users
       outcome = nil
       # Removal uses this same parent before its instance definitions. Holding
       # it through declaration prevents a late create or restore escaping that cut.
-      @caller.with_lock do
+      # No caller key changes here. Permit reply FK checks while waiting for
+      # the definition, which that reply may already have pinned.
+      @caller.with_lock("FOR NO KEY UPDATE") do
         outcome = if @caller.execution_principal_eligible?
           declare
         else

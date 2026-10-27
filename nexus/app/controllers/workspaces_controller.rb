@@ -17,7 +17,7 @@ class WorkspacesController < Workspaces::BaseController
   def show
     @workspace = workspace
     @recent_conversations = Conversation.visible_to(Current.user, workspace: @workspace)
-      .working.where(parent_conversation_public_id: nil).unarchived
+      .working.lifecycle_roots.unarchived
       .order(last_activity_at: :desc, public_id: :desc).limit(5)
     @recent_runs = Run.visible_to(Current.user, workspace: @workspace).where(variant_id: nil)
       .includes(turn: :conversation).order(public_id: :desc).limit(5)

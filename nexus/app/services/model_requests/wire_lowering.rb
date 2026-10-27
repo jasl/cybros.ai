@@ -3,9 +3,15 @@ module ModelRequests
   # lane's wire spelling, keyed by `adapter_profile`. An unmapped key is
   # refused, never dropped or smuggled through `extra_body`.
   module WireLowering
-    # Two classes because the seam has two: required arguments and declared
+    # Two classes because the seam has two: construction arguments and declared
     # options. Identity mappings are written out so the table reads as a contract.
     TABLE = {
+      "openai_decisions" => {
+        arguments: {}.freeze, options: { "questions" => :questions }.freeze,
+      }.freeze,
+      "typesafe_system_one" => {
+        arguments: {}.freeze, options: { "questions" => :questions }.freeze,
+      }.freeze,
       # `service_tier` and `verbosity` are the two request-struct fields
       # both references carry (codex-rs ResponsesApiRequest, opencode
       # openai-responses.ts): the tier is a per-request fact Build lowers
@@ -14,6 +20,7 @@ module ModelRequests
       "openai_responses" => {
         arguments: {}.freeze,
         options: {
+          "prompt_cache_ttl" => :prompt_cache_ttl,
           "temperature" => :temperature,
           "max_output_tokens" => :max_output_tokens,
           "top_p" => :top_p,
@@ -22,8 +29,8 @@ module ModelRequests
           "verbosity" => :verbosity,
         }.freeze,
       }.freeze,
-      # The Responses row minus `max_output_tokens`: the codex protocol's
-      # declaration subtracts that one key (the pinned codex-rs request
+      # The Responses row minus `max_output_tokens` and `prompt_cache_ttl`: the codex
+      # protocol declaration subtracts those keys (the pinned codex-rs request
       # struct never carries it), and the declared-kwargs contract test
       # reads the subtraction.
       "codex_responses" => {
@@ -74,7 +81,7 @@ module ModelRequests
       # enabled thinking, implying its beta. Scoped by MODEL ID (fable-5-1,
       # opus-5-5), never by lane; this row is the register that says so.
       "anthropic_messages" => {
-        arguments: {}.freeze,
+        arguments: { "prompt_cache_ttl" => :prompt_cache_ttl }.freeze,
         options: {
           "temperature" => :temperature,
           "max_output_tokens" => :max_output_tokens,
@@ -113,6 +120,7 @@ module ModelRequests
       "openai_compatible_chat" => {
         arguments: {}.freeze,
         options: {
+          "prompt_cache_ttl" => :prompt_cache_ttl,
           "temperature" => :temperature,
           "max_output_tokens" => :max_output_tokens,
           "top_p" => :top_p,
@@ -123,6 +131,7 @@ module ModelRequests
       "openrouter_chat" => {
         arguments: {}.freeze,
         options: {
+          "prompt_cache_ttl" => :prompt_cache_ttl,
           "temperature" => :temperature,
           "max_output_tokens" => :max_output_tokens,
           "top_p" => :top_p,
@@ -132,6 +141,13 @@ module ModelRequests
           "seed" => :seed,
         }.freeze,
       }.freeze,
+    }.freeze
+
+    CACHE_TTLS = {
+      "anthropic_messages" => Nexus::PromptCache::Breakpoints::TIERS,
+      "openai_responses" => %w[30m 12h 24h].freeze,
+      "openai_compatible_chat" => %w[30m 12h 24h].freeze,
+      "openrouter_chat" => %w[30m 12h 24h].freeze,
     }.freeze
 
     EMPTY_LANE = { arguments: {}.freeze, options: {}.freeze }.freeze

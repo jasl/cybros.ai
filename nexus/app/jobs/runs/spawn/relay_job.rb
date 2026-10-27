@@ -1,5 +1,5 @@
-# Child hints reduce latency; recurring passes recover lost hints. Ordinary
-# replies and turn-owned completions have independent bounded cursors, so
+# Child hints reduce latency; recurring passes recover lost hints. Scheduled
+# replies and request completions have independent bounded cursors, so
 # retained children cannot starve new completion or cancellation work. Relay
 # owns its cross-conversation lock order and runs outside the turn converger's
 # transaction. A source hint uses the same continuation shell for only that

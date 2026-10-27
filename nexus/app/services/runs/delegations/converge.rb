@@ -4,22 +4,19 @@ module Runs
     # target is the published input or position-zero execution, never today's
     # child head.
     class Converge
-      def self.call(child:) = new(child).call
+      def self.call(child:, call: child.spawn_node) = new(child, call).call
 
-      def initialize(child)
-        @child = child
+      def initialize(child, call)
+        @child, @call = child, call
       end
 
       def call
-        # Ordinary conversation-lifetime replies keep their existing relay
-        # lock path. Only an actual completion obligation enters this owner;
-        # the authoritative lookup is repeated after taking the child lock.
-        call = @child.spawn_node
-        return false unless call && Delegations.for_call(call)
+        # Only a published request owns a completion; ordinary messages never
+        # enter this path. Repeat the owner lookup under the child lock.
+        return false unless @call && Delegations.for_call(@call)
 
         @child.with_lock do
-          @call = @child.spawn_node
-          next false unless @call
+          @call.reload
 
           @node = Delegations.for_call(@call)
           next false unless @node
@@ -41,7 +38,16 @@ module Runs
       private
 
         def converge
-          if @source.stopped?
+          # Release is a durable request fact, independent of the source's
+          # result retention and of any Stop that arrived after takeover.
+          released = if @turn
+            @turn.source_released_at
+          else
+            @child.inputs.where(public_id: @node.delegated_input_public_id).pick(:source_released_at)
+          end
+          if released
+            false
+          elsif SourceWork.stopped?(@source.public_id, @source)
             cleanup
           elsif %w[completed failed].include?(@node.status)
             false
@@ -106,7 +112,11 @@ module Runs
 
         def settle(text, status, error_key = nil)
           moved = Settlement.call(node: @node, call: @call, child: @child,
-            text: text, status: status, error_key: error_key)
+            text: text, status: status, error_key: error_key,
+            execution_identity: { "conversation_public_id" => @child.public_id, "input_public_id" => @node.delegated_input_public_id,
+              "turn_public_id" => @turn&.public_id, "variant_public_id" => @variant&.public_id,
+              "run_public_id" => @execution&.public_id,
+              "status" => error_key == "delegation_canceled" ? "canceled" : status })
           @turn&.stamp_relayed if moved
           moved
         end

@@ -12,7 +12,7 @@ class AgentAPI::V1::Workspaces::ConversationsController <
 
   def index
     scope = Conversation.visible_to(acting_user, workspace: @workspace)
-      .unarchived.where(parent_conversation_public_id: nil)
+      .unarchived.lifecycle_roots
       .includes(:active_turn, :answering_user, :workspace)
     scope = params[:side] == SIDE_FLAG ? scope.sides : scope.working
     render_conversation_list(filter_conversation_answerer(scope))

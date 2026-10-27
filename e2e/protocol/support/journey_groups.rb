@@ -7,7 +7,7 @@ module E2E
       3 => %w[inference_request_hosts inference_request_stream streaming attachments provider_floor schedules result_delivery_fallback replay_quality],
       4 => %w[inference_request_workloads device_connection inference_request_recovery inference_request_feed workspace_lifecycle workspace_removal],
       9 => %w[offline_agent],
-      10 => %w[sdk_languages standalone_sdk_agent],
+      10 => %w[sdk_languages sdk_decisions standalone_sdk_agent],
       13 => %w[fake_executor],
     }.freeze
     # The split groups have no measured timing yet; retain numeric scheduling order.

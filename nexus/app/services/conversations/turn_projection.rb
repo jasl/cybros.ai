@@ -73,6 +73,8 @@ module Conversations
           inherited: inherited,
           reference: (true if turn.reference?),
           origin: turn.origin,
+          communication_kind: turn.communication_kind,
+          link_public_id: turn.conversation_link_public_id,
           sender_conversation_public_id: turn.sender_conversation_public_id,
           sender_run_public_id: turn.sender_run_public_id,
           sender_task_key: turn.sender_task_key,

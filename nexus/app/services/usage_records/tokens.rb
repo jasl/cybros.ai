@@ -74,12 +74,16 @@ module UsageRecords
       total = usage_int("total_tokens", "total_token_count") ||
         (input.nil? && output.nil? ? nil : input.to_i + output.to_i)
 
-      # Beyond the persisted six: the 1-hour write share and the
+      # Beyond the persisted six: the extended-TTL write shares and the
       # image lane's token classes, read for settlement alone.
       { input_tokens: input, output_tokens: output, reasoning_tokens: reasoning,
         cache_read_tokens: cache_read, cache_creation_tokens: cache_creation,
         total_tokens: total,
         cache_creation_1h_tokens: self.class.wire_count(cache_creation_object["ephemeral_1h_input_tokens"]),
+        cache_creation_12h_tokens: usage_int(
+          %w[input_tokens_details cache_write_tokens_details ttl_12h_tokens],
+          %w[prompt_tokens_details cache_write_tokens_details ttl_12h_tokens]
+        ),
         text_input_tokens: usage_int("text_input_tokens"),
         image_input_tokens: usage_int("image_input_tokens"),
         image_output_tokens: usage_int("image_output_tokens") }

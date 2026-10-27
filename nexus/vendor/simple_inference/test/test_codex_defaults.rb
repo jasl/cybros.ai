@@ -157,7 +157,7 @@ class TestCodexDefaults < Minitest::Test
 
     refute_includes keys, :max_output_tokens
     assert_equal(
-      SimpleInference::Protocols::OpenAIResponses.request_option_keys - [:max_output_tokens],
+      SimpleInference::Protocols::OpenAIResponses.request_option_keys - %i[max_output_tokens prompt_cache_ttl],
       keys,
     )
     assert keys.frozen?

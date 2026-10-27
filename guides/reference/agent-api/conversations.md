@@ -37,6 +37,7 @@ execution detail expires.
 ## Routes
 
 ```http
+POST   /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/takeover
 GET    /agent_api/v1/workspaces/{workspace_public_id}/conversations
 GET    /agent_api/v1/workspaces/{workspace_public_id}/conversations/archived
 GET    /agent_api/v1/workspaces/{workspace_public_id}/conversations/{public_id}
@@ -284,7 +285,7 @@ Basic and Full projections both include `workspace_public_id` and `lock_version`
 locator when reading or controlling a historical conversation; the caller's
 currently selected workspace does not change its location.
 
-A subagent conversation (`parent` present) is a lifecycle follower:
+A subagent conversation (`parent` present and `taken_over_at` null) is a lifecycle follower:
 readable by id, listed only through its parent's `/children` — the nested
 resource, the Rails-native shape a follower has always been listed by,
 through the one read funnel, keyset-paged. There is no `?parent=` filter
@@ -424,13 +425,100 @@ Reclaiming a conversation also marks its hosted runs for deletion: their
 execution history follows the existing settlement and retention rules,
 and they never reappear as independent workspace-visible runs.
 
+## Human takeover
+
+### Endpoint
+
+```http
+POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/takeover
+```
+
+### Authentication
+
+This command requires a Human member-plane bearer and current full standing in the
+Conversation with writable Workspace access. Obtain the Human's member token through
+Nexus personal token settings and use it with the SDK's member client. Owner/admin
+status does not bypass the Conversation ACL. Agent member credentials receive
+`403 not_authorized`; Platform and executor credentials cannot authenticate this endpoint.
+Browser cookies alone do not authenticate it. No Nexus or rho takeover UI is provided.
+
+### Request
+
+No body fields or idempotency key are required. The target must be an unarchived
+spawned conversation; Side and scheduled executions are not eligible. The server
+derives the Human from the authenticated member credential, never from a submitted UUID or `origin`.
+
+### Response
+
+`200 {conversation: ...}` returns the existing Full projection. Basic and Full
+projections include nullable `taken_over_at` and `taken_over_by_public_id`. The
+`parent` block remains birth provenance. A non-null takeover stamp means that
+conversation is now a lifecycle root, appears in the ordinary conversation lists,
+and is absent from its old parent's children and label lookup. Repeat commands
+preserve the original Human, timestamp and single lifecycle event, while checking
+current access again.
+
+The same Conversation, Turn, Variant, Run, model attempt and tool claim continue.
+Pending and retained requests entering its current subtree from the former tree
+lose source cancellation ownership. Internal requests keep it. Pending requests
+from unrelated external conversations refuse takeover. Old source Stop and queued
+cleanup cannot cancel released work; direct Stop on the target remains effective.
+The same Agent keeps its ordinary full access, including explicitly addressing the
+target by UUID.
+
+Unsettled completion Tasks finish with `status: completed` and structured
+`outcome: taken_over`, retaining the exact `conversation_public_id`,
+`input_public_id`, nullable `turn_public_id`, `variant_public_id`, `run_public_id`,
+plus `taken_over_at` and `taken_over_by_public_id`. Existing normal results are
+unchanged. Existing wait/result-mail machinery releases obligations and delivers
+unread results; takeover does not replay work or start a replacement Run.
+
+Links crossing between the old tree and the detached subtree close with
+`close_reason: taken_over`; their unconsumed messages and queued direct messages
+from the former tree into the detached subtree are removed. Internal links and
+consumed messages remain. One `conversation_taken_over` event records the
+lifecycle change. Refresh the resource after an uncertain response before deciding
+whether to retry.
+
+### Status codes
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Taken over, or already taken over |
+| `401` | Missing, invalid, expired or wrong-plane credential |
+| `403 not_authorized` | Agent caller, or Human without full write standing |
+| `404 not_found` | Unknown, concealed or tombstoned |
+| `409 conversation_archived` | Affected branch is archived |
+| `409 not_subagent` | Target has no eligible spawn provenance |
+| `409 source_stopped` | A source cut or request cancellation already won |
+| `409 conflicting_request_owner` | Unrelated external work is still active or queued |
+| `409 conversation_busy` | Lock contention or published observers await dispatch; nothing changed |
+
+### SDK calls
+
+Use a member client configured with the Human's member credential. Each method returns
+the existing Full Conversation projection and propagates refusals without automatically
+retrying the command.
+
+```ruby
+human.workspace(workspace_id).conversation(conversation_id).takeover
+```
+
+```typescript
+await human.workspace(workspaceId).conversation(conversationId).takeover();
+```
+
+```rust
+human.workspace(workspace_id)?.conversation(conversation_id)?.takeover().await?;
+```
+
 ## Subagent conversations
 
 A subagent conversation is born by the kernel's `spawn` tool alone
 ([Runs](runs.md)), off the spawning run's conversation, never a branch.
-It is never a direct archive or delete target — the parent's verbs stamp
-the whole tree, and the parent's `POST …/cancellation` stops work derived
-from its execution owners, including their subagent requests.
+Until Human takeover, it is not a direct archive or delete target: the parent's verbs stamp
+the current lifecycle tree, and the parent's `POST …/cancellation` stops work derived
+from its execution owners, including their unreleased subagent requests.
 
 When the caller captures a [delegation catalog](profile-configuration.md#delegation-catalog),
 `spawn.declaration` selects a leaf configuration and the child retains the
@@ -454,7 +542,8 @@ reaped: `spawn_node_id` is unique, one child per call, and nullifies with
 the run.
 
 **`label`** is what `spawn` gave it, null when none: `[a-z0-9][a-z0-9_-]*`,
-at most 64 characters, unique among one parent's children.
+at most 64 characters, unique among one parent's current followers. Takeover releases
+the label for reuse; the independent conversation retains its birth label in `parent`.
 
 Without a captured delegation catalog, the child is created by the spawner's profile and answered by the chosen
 one — the creator's own (a subagent) or a named peer — through the same

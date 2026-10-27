@@ -152,6 +152,7 @@ module Nexus
       # at the family map's statuses.
       **[
         *%i[
+          not_subagent source_stopped conflicting_request_owner
           conversation_busy already_compacted task_not_queued compaction_disabled
           nothing_to_compact compaction_unavailable_under_raw arm_failed
         ],

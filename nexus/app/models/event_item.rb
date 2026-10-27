@@ -32,6 +32,8 @@ class EventItem < ApplicationRecord
     task_deadline_extended
     access_changed
     handle_changed
+    conversation_link_changed
+    conversation_taken_over
     conversation_ended
   ].freeze
 

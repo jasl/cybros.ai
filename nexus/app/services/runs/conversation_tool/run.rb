@@ -1,44 +1,7 @@
 module Runs
   module ConversationTool
-    # The three verbs on a conversation another agent answers,
-    # ONE executor keyed by the call's wire word:
-    #
-    # `send` — the SENDER's own row on the addressee through the one input
-    # door (`Command.sent`: author = the profile whose engine made the
-    # call, its kind on the row as `origin: agent`, this conversation's
-    # stamp — the kernel impersonates nobody). `to` is WHERE and `agent`
-    # is WHO: an optional principal inside that conversation, by
-    # @handle or public id, riding the door's one member
-    # `answering_user_public_id` — absent, the conversation's own
-    # answerer. A reply head on the ADDRESSEE's engine (`Conversations::AnswerEngine`'s
-    # one order, run at the door): the
-    # addressee's own preset, else its last reply turn's trio in the target
-    # conversation, else the conversation's last reply turn's, else THE
-    # INITIATOR'S model the row carries (`KernelTool.initiator_model`: the
-    # call's `model`, else the calling round's configured model). Queued by
-    # default; a STEER when the agent chose it and a reply is running there
-    # (the door's steer-on-idle falls back to queue). Standing is the
-    # sender's `full` on the addressee as the door judges it. A child whose
-    # parent is blocking on it (`wait: true`, the await parked) is told to
-    # answer instead (`parent_waiting`) — before the ancestor refusal,
-    # so the teaching sentence wins. Idempotent under a retried job by a
-    # hosted receipt keyed on the call. The settle promises a reply only
-    # for the sender's own child, whose owed turns the relay carries back.
-    #
-    # `status` — three facts the model can act on (every extra field is a
-    # model-facing name to measure): running or idle, the queue depth, who
-    # answers. And a fourth only when it holds: how many messages from that
-    # conversation wait in the CALLER's own queue — a reply relayed while
-    # the caller's turn runs sits there, not on the addressee, and is read
-    # when the caller ends its turn. The queue is the caller's
-    # conversation's, so a branch of its loop reads the same bytes. A read:
-    # an ancestor is admitted.
-    #
-    # `cancel` stops the addressee's executions and their dependent work,
-    # including background work, after the sender's `full` check. Child
-    # conversations remain reusable for independently requested work.
-    #
-    # Every refusal is an error envelope the round reads, named first.
+    # Ordinary messages preserve sender attribution but create recipient-owned
+    # work after consumption. Status and cancel retain their data-access gates.
     class Run
       class Refused < StandardError; end
 
@@ -97,6 +60,9 @@ module Runs
         return :not_mutable unless run.graph_mutable?
         return settle(format(NO_CONVERSATION, verb), is_error: true) if run.standalone?
 
+        return post_message if verb == "send"
+        return list_links if verb == "links"
+
         settle(answer)
       rescue Refused => error
         settle(error.message, is_error: true)
@@ -112,11 +78,9 @@ module Runs
         # loop's `creating_user` is the SPEAKER and may be a Human.
         def sender = run.answering_user
 
-        # The registry routes exactly the three verbs here; a fourth would
-        # be a registry entry with no arm, which is a bug, not a refusal.
+        # Message publication and link discovery settle their own structured results.
         def answer
           case verb
-          when "send" then post_message
           when "status" then status_line
           when "cancel" then cancel_tree
           else raise ArgumentError, "no conversation verb #{verb.inspect}"
@@ -150,7 +114,7 @@ module Runs
         # await is parked (gap 18's deadlock — a steer would wait for a
         # boundary that waits for the child). The reply is the answer.
         def parent_waiting?(candidate)
-          return false unless candidate.id == conversation.parent_conversation_id
+          return false unless conversation.subagent? && candidate.id == conversation.parent_conversation_id
 
           conversation.spawn_node&.spawn_await&.started? == true
         end
@@ -167,34 +131,46 @@ module Runs
             raise(Refused, self.class.principal_unknown(run.workspace, address))
         end
 
+        def list_links
+          state = input.fetch("state", "active")
+          raise Refused, "invalid_state" unless %w[active closed all].include?(state)
+          limit = Integer(input.fetch("limit", 50), exception: false)
+          raise Refused, "invalid_limit" unless limit && (1..100).cover?(limit)
+          after = input["after"]
+          raise Refused, "invalid_after" if after && !Input.uuid_shaped?(after)
+
+          scope = ConversationLink.where(first_conversation_id: conversation.id, first_agent_id: sender.id)
+            .or(ConversationLink.where(second_conversation_id: conversation.id, second_agent_id: sender.id))
+          scope = scope.active if state == "active"
+          scope = scope.where.not(closed_at: nil) if state == "closed"
+          scope = scope.where("conversation_links.public_id < ?", after) if after
+          rows = scope.includes(:workspace, :first_conversation, :second_conversation, :first_agent, :second_agent)
+            .order(public_id: :desc).limit(limit + 1).to_a
+          page = rows.first(limit)
+          result = { "links" => page.map { |link| ::Conversations::LinkProjection.call(link, conversation: conversation).as_json },
+            "next_after" => (page.last.public_id if rows.length > limit) }
+          KernelTool.settle(@node, JSON.generate(result), title: "links", structured_content: result)
+        end
+
         # ── send ─────────────────────────────────────────────────────
 
         def post_message
-          message = String.try_convert(input["message"]).to_s
+          message = input["message"].to_s
           raise Refused, EMPTY_MESSAGE if message.strip.empty?
-          raise Refused, KernelTool::INVALID_WAKE unless KernelTool.valid_wake?(input)
-
-          refusal = KernelTool.model_refusal(run, input)
-          raise Refused, refusal if refusal
-
-          addressee = target
-          agent = agent_for(run)
-          accepted = deliver(addressee, agent, message, input["steer"] == true, deliver_at_reading)
-          state = accepted.fetch("state")
-          sent = "Sent to #{addressee.public_id}#{agent ? ", for @#{agent.handle}" : ""}" \
-            " (#{settle_state(state, accepted.fetch("deliver_at"))})"
-          return "#{sent}." unless addressee.parent_conversation_id == conversation.id &&
-            (addressee.spawn_node.present? || addressee.scheduled_execution?)
-          if state == "steering"
-            return "#{sent}; this joins the existing reply, which returns to the request that opened it."
+          raise Refused, "unsupported_send_field" if (input.keys & %w[steer model wake]).any?
+          raise Refused, "invalid_delivery_mode" unless Input::DELIVERY_MODES.include?(input.fetch("delivery_mode", "queue"))
+          if input["link_public_id"]
+            raise Refused, "invalid_link_target" if input["to"] || input["agent"]
+            @link = ConversationLink.find_by(public_id: input["link_public_id"], workspace_id: run.workspace_id)
+            peer = @link&.peer(conversation: conversation, agent: sender)
+            raise Refused, "not_found" unless peer
+            raise Refused, "conversation_link_closed" if @link.closed?
+            addressee, agent = peer
+          else
+            addressee, agent = target, agent_for(run)
           end
-
-          if KernelTool.wake(@node, input) == "passive"
-            return "#{sent}; its reply is recorded in your conversation history without starting another turn."
-          end
-
-          "#{sent}; its reply reaches you as <task_result task=\"#{@node.node_key}\" " \
-            "conversation=\"#{addressee.public_id}\"> in a later message that is not from the person."
+          deliver(addressee, agent, message, input.fetch("delivery_mode", "queue"), deliver_at_reading)
+          :applied
         end
 
         # The hosted receipt around the door, keyed on the call: a job
@@ -202,8 +178,8 @@ module Runs
         # nothing twice (the `ResultDelivery` shape). Keep the accepted delivery
         # state and deadline in that receipt: replay must not promise a new
         # reply after a steer was consumed or move a relative deadline.
-        def deliver(addressee, agent, message, steer, delivery_time)
-          envelope = { "send" => addressee.public_id, "agent" => agent&.public_id, "text" => message, "steer" => steer }
+        def deliver(addressee, agent, message, delivery_mode, delivery_time)
+          envelope = { "send" => addressee.public_id, "agent" => agent&.public_id, "text" => message, "delivery_mode" => delivery_mode, "expected_steering_run_public_id" => input["expected_steering_run_public_id"], "on_target_end" => input["on_target_end"], "link_public_id" => @link&.public_id }
           envelope["deliver_at"] = delivery_time.time.utc.floor.iso8601 if delivery_time.time
           envelope["deliver_in_seconds"] = delivery_time.delay_seconds unless delivery_time.delay_seconds.nil?
           deliver_at = nil
@@ -214,7 +190,15 @@ module Runs
             request_digest: ConversationCommandReceipt.digest_for(operation: :input_create, envelope: envelope)
           ) do
             deliver_at = delivery_time.resolve(now: Time.current)&.utc&.floor
-            accepted = Conversations::Inputs::Create.call(command(addressee, agent, message, steer, deliver_at))
+            accepted = Conversations::Inputs::Create.call(command(addressee, agent, message, delivery_mode, deliver_at)) do |row|
+              receipt = { "input_public_id" => row.public_id, "conversation_public_id" => addressee.public_id,
+                "answering_user_public_id" => row.answering_user.public_id, "link_public_id" => @link&.public_id,
+                "delivery_mode" => row.delivery_mode, "expected_steering_run_public_id" => row.expected_steering_run_public_id,
+                "requested_delivery_mode" => row.requested_delivery_mode, "fallback_reason" => row.fallback_reason,
+                "deliver_at" => row.deliver_at&.utc&.iso8601, "state" => row.state }
+              outcome = KernelTool.settle(@node, JSON.generate(receipt), title: "send", structured_content: receipt, locked: true)
+              raise Refused, outcome.to_s unless %i[applied idle].include?(outcome)
+            end
             next accepted unless accepted.accepted?
 
             Sent.new(status: 202,
@@ -224,7 +208,9 @@ module Runs
           end
 
           case result.outcome
-          when :refused then raise Refused, door_refusal(result.refusal.outcome, addressee, agent, deliver_at)
+          when :refused
+            return if result.refusal.outcome == :communication_published
+            raise Refused, door_refusal(result.refusal.outcome, addressee, agent, deliver_at)
           when :mismatched then raise Refused, door_refusal(:idempotency_envelope_mismatch, addressee, agent)
           when :executed then result.response.body.fetch("input")
           when :replayed then result.receipt.response_body.fetch("input")
@@ -232,24 +218,17 @@ module Runs
           end
         end
 
-        def command(addressee, agent, message, steer, deliver_at)
+        def command(addressee, agent, message, delivery_mode, deliver_at)
           Conversations::Inputs::Create::Command.sent(
             host: addressee, acting_user: sender, kind: "direct_reply",
-            entries: [{ "text" => message }], delivery_mode: steer ? "steer" : "queue",
+            entries: [{ "text" => message }], delivery_mode: delivery_mode,
+            expected_steering_run_public_id: input["expected_steering_run_public_id"],
+            on_target_end: input["on_target_end"],
             sender_conversation_public_id: conversation.public_id,
             run_public_id: run.public_id, task_key: @node.node_key,
+            communication_kind: "message", conversation_link: @link,
             answering_user_public_id: agent&.public_id, deliver_at: deliver_at,
-            # The initiator's model rides the row; the door runs the one
-            # ladder for every sent row and keeps these words as its last rung.
-            **send_selection(addressee, agent)
           )
-        end
-
-        def send_selection(addressee, agent)
-          return KernelTool.initiator_model(@node, input) unless Conversations::AnswerEngine.captured_model?(addressee, addressee: agent)
-          return {} if input["model"].blank?
-
-          KernelTool.initiator_model(@node, input).merge(model_selection: ModelSelectionIntent.explicit(input["model"]))
         end
 
         # THE ONE PARSER: the SAME reader the member door calls —
@@ -264,15 +243,6 @@ module Runs
           raise Refused, TIME_REFUSED if reading.refusal
 
           reading
-        end
-
-        # `scheduled for <ISO>` on a scheduled row; `steering`/`queued`
-        # otherwise, preserved by the receipt after the input drains.
-        def settle_state(state, deliver_at)
-          return "steering" if state == "steering"
-          return "scheduled for #{deliver_at}" if deliver_at
-
-          "queued"
         end
 
         # The door's word, relayed by name: `not_authorized` is the level

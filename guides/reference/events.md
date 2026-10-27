@@ -1,6 +1,6 @@
 # Events
 
-One closed vocabulary of 25 event types is shared by conversations and standalone runs. Every item names its host as `resource: { type: "conversation" | "run", public_id }` and carries a host-local ascending sequence; not every type appears on every host.
+One closed vocabulary of event types is shared by conversations and standalone runs. Every item names its host as `resource: { type: "conversation" | "run", public_id }` and carries a host-local ascending sequence; not every type appears on every host.
 
 ## Durable events
 
@@ -29,6 +29,7 @@ One closed vocabulary of 25 event types is shared by conversations and standalon
 | `task_readdressed` | `task_key`, `role`, `executor_public_id`, `deadline_at`, `detail` | A held approval's agent delivery address was withdrawn; the person's door still answers |
 | `task_deadline_extended` | `task_key`, `deadline_at`, `by`, `timeout_ms` | A claimant extended its own park |
 | `access_changed` | `default`, `entries: [{ user_public_id, level }]`, `by`, `kind` | The access carrier was replaced |
+| `conversation_taken_over` | `conversation_public_id`, `parent_conversation_public_id`, `taken_over_by_public_id`, `taken_over_at` | A Human made a spawned conversation independent in place |
 | `conversation_ended` | `reason: archived \| tombstoned`, `conversation_public_id` | The last item a tombstoned feed carries |
 | `handle_changed` | `user_public_id`, `old`, `new` | A member was renamed; the one type that rides a member's own rows and neither host's feed |
 
@@ -45,7 +46,7 @@ Opaque cursors (`cvei`-prefixed on conversations), ascending sequences, `next_af
 | Channel | Subscription | Envelope |
 | --- | --- | --- |
 | Conversation events | `items: "events"` | `{ event }` — the durable items above |
-| | `items: "lifecycle"` | `{ event }` narrowed to `turn_status`, `attention_required`, `conversation_ended` |
+| | `items: "lifecycle"` | `{ event }` narrowed to `turn_status`, `attention_required`, `conversation_ended`, `conversation_taken_over` |
 | | `items: "progress"` | `{ frame }` — ephemeral tool and process output and kernel timings; nothing durable, nothing replayed |
 | Transcript | | Text deltas, resets and settled snapshots for a turn or task; no replay log |
 | Run events | | The same vocabulary at a standalone run's own address |

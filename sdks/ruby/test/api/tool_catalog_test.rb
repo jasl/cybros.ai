@@ -24,6 +24,21 @@ class ApiToolCatalogTest < Minitest::Test
     assert_raises(CybrosAgent::Api::UnknownKernelTool) { tools.definitions_for(["nexus.graph.spawn"]) }
   end
 
+  def test_communication_definitions_and_adaptations_use_the_kernel_catalog
+    fixture = CybrosAgentTest::ContractFixtures.pack("tools.json").fetch("valid_communication_listing_fixture")
+    served = fixture.fetch("tools")
+    canonical = served.map { |entry| entry.fetch("canonical_name") }
+    definitions = client([[200, {}, fixture]]).tools.definitions_for(canonical)
+    assert_equal served.map { |entry| entry.fetch("definition") }, definitions
+    pack = CybrosAgent::ModelAdaptations.load
+    templates = served.to_h { |entry| [entry.fetch("canonical_name"), entry.fetch("template")] }
+    entries = pack.apply(definitions, pack.row("codex"), templates: templates)
+    send_alias = entries.find { |entry| entry["canonical"] == "nexus.conversation.send" }
+    assert_equal "send_message", send_alias.dig("function", "name")
+    assert_includes entries.map { |entry| entry.dig("function", "name") }, "request"
+    assert_includes entries.map { |entry| entry.dig("function", "name") }, "links"
+  end
+
   # THE TEMPLATE: `GET /tools` serves the
   # macro-bearing SOURCE of each description beside the plain render, so a
   # pack's `recut` edits the kernel's bytes rather than a copy of them

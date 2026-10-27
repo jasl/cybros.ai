@@ -52,6 +52,14 @@ impl ConversationContext {
         Some("conversation")
     );
     command!(archive, POST, "archive", Conversation, Some("conversation"));
+    // Requires a Human member credential; preserves the original execution.
+    command!(
+        takeover,
+        POST,
+        "takeover",
+        Conversation,
+        Some("conversation")
+    );
     command!(
         unarchive,
         POST,
@@ -69,6 +77,7 @@ impl ConversationContext {
         "conversations"
     );
     child!(inputs, "inputs", ConversationInputs);
+    child!(links, "links", ConversationLinks);
     child!(schedules, "schedules", Schedules);
     child!(memory, "memory", Memory);
     child!(
@@ -338,4 +347,25 @@ impl ScheduleContext {
         ScheduleExecutionPage,
         None
     );
+}
+
+handle!(ConversationLinks);
+impl ConversationLinks {
+    query_get!(list, "", ConversationLinkQuery, ConversationLinkPage, None);
+    create!(
+        create,
+        "",
+        CreateConversationLink,
+        Some("link"),
+        ConversationLink,
+        Some("link")
+    );
+    pub fn link(&self, id: &str) -> Result<ConversationLinkContext> {
+        Ok(ConversationLinkContext(self.0.id(id)?))
+    }
+}
+handle!(ConversationLinkContext);
+impl ConversationLinkContext {
+    get!(fetch, "", ConversationLink, Some("link"));
+    command!(close, POST, "closure", ConversationLink, Some("link"));
 }

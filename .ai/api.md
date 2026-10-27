@@ -82,6 +82,12 @@ available independently of that read projection. Human Session endpoints provide
 resource management and recovery, not ordinary Conversation/input/steer/Schedule authoring,
 regeneration, activation, forks or upload staging. Those Agent API mechanisms remain available
 to applications and SDKs; Session upload bytes/preview reads remain authorized readers.
+Human takeover is a member-plane content command at
+`POST /agent_api/v1/workspaces/{workspace_public_id}/conversations/{conversation_public_id}/takeover`, returning the existing Conversation projection.
+It requires a Human member credential and current full Conversation standing; Agent,
+executor and Platform credentials cannot authorize takeover. The one-way stored fact makes
+repeat commands idempotent. SDKs expose it on their existing Conversation resource; no UI or
+separate browser Session command is provided.
 
 ### Application OAuth Login
 

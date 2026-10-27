@@ -66,6 +66,6 @@ The job carries `status`, `lock_version`, `next_run_at`, `last_enqueued_at`, `la
 
 The callback retains the child's original answer, including a provider fallback; later edits or regeneration in the child never substitute their text. The model-facing `<task_result>` envelope names the job, the child, the result status and `scheduled_for`, preceded by a `<prompt>` line with the first 80 characters of the original request. A held child with a repairable failure has no callback yet; repairing it still produces the result.
 
-The execution child remains reusable: a later `send` from the parent opens a separate reply obligation and never replaces the scheduled answer.
+The execution child remains reusable: a later `request` from the parent opens a separate reply obligation and never replaces the scheduled answer. An ordinary `send` creates no result obligation.
 
 The complete contract is the [Schedules reference](../reference/agent-api/schedules.md). See [Schedules](../use/schedules.md) for rho's browser, Telegram and CLI controls over the same resource.

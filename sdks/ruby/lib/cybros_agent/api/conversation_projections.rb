@@ -18,6 +18,8 @@ module CybrosAgent
         archived_at: :optional_string,
         billing_subject: :optional_string,
         parent: [:optional_shape, ConversationParent],
+        taken_over_at: :optional_string,
+        taken_over_by_public_id: :optional_string,
         source_conversation_public_id: :optional_string,
         forked_from_turn_public_id: :optional_string,
         forked_from_variant_public_id: :optional_string,
@@ -154,6 +156,8 @@ module CybrosAgent
           created_at: :string,
           # The source kind, on every input.
           origin: :string,
+          communication_kind: :optional_string, link_public_id: :optional_string,
+          requested_delivery_mode: :optional_string, on_target_end: :optional_string, fallback_reason: :optional_string,
           sender_conversation_public_id: :optional_string,
           callback_result: [:optional_shape, CallbackResult],
           # The addressee and the author, on every input.
@@ -170,6 +174,7 @@ module CybrosAgent
         CallbackResult => {
           conversation_public_id: :string, input_public_id: :string, turn_public_id: :string,
           variant_public_id: :string, requester_speaker_public_id: :optional_string,
+          run_public_id: :optional_string, status: :optional_string,
         },
         CallbackSource => {
           input_public_id: :string, origin: :string, sender_conversation_public_id: :optional_string,
@@ -182,6 +187,7 @@ module CybrosAgent
           after_position: [:optional_integer, "pagination", "after_position"],
         },
         Turn => {
+          communication_kind: :optional_string, link_public_id: :optional_string,
           public_id: :string,
           input_public_id: :optional_string,
           callback_sources: [:shapes_or_empty, CallbackSource],

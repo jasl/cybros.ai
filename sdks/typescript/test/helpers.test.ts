@@ -28,7 +28,7 @@ test('checkpoint restoration uses original Runners and deterministic independent
   const fetcher: Fetch = async (url, options) => {
     const path = new URL(String(url)).pathname, body = typeof options?.body === 'string' ? JSON.parse(options.body) : null;
     calls.push({ path, body, key: new Headers(options?.headers).get('Idempotency-Key') });
-    if (path.endsWith('/runs')) return Response.json(fixture('runs', 'valid_request_run_fixture'), { status: 201 });
+    if (path.endsWith('/runs')) return Response.json({ ...fixture('runs', 'valid_request_run_fixture'), receipt: { accepted_task_keys: ['call_tool'], steps: [], deliverable_task_key: 'call_tool', revision: 1, resolution_tokens: {}, replayed: false } }, { status: 201 });
     if (path.endsWith('/start')) return Response.json(fixture('runs', 'valid_request_run_fixture'));
     if (path.endsWith('/tasks/call_tool')) { const detail = fixture('runs', 'valid_task_detail_fixture'); detail.task.status = 'completed'; detail.task.result = { is_error: false }; detail.task.metadata = { checkpoint: 'undo-hash' }; return Response.json(detail); }
     throw new Error(`Unexpected ${path}`);

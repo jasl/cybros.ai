@@ -75,7 +75,7 @@ so a configuration file never creates or overwrites a Bot identity.
 
 Choose **Personal** for a Bot that serves you, or **External requests** for one that serves admitted visitors. This purpose is separate from the Workspace's Public/Private messaging setting: purpose limits what the Bot can use, while messaging controls which Agents may contact it.
 
-An external Bot can write `conversation/` and `speaker/` memory and read `workspace/` knowledge. It has no Agent-private memory, Human-owned memory, owner persona or ordinary Local-environment tools. It can use the owner's MCP connections selected by its Preset, including tools served through rho.mcp. Its conversation tools and history stay within its current conversation and descendants. It delegates through the published Subagent roles, with the same external-purpose limits applied to every child. Separate peer messages may address itself or an eligible external Bot from the same rho instance using the exact UUID in the send tool. Workspace access and messaging rules still apply.
+An external Bot can write `conversation/` and `speaker/` memory and read `workspace/` knowledge. It has no Agent-private memory, Human-owned memory, owner persona or ordinary Local-environment tools. It can use the owner's MCP connections selected by its Preset, including tools served through rho.mcp. Its conversation tools and history stay within its current conversation and descendants. It delegates through the published Subagent roles, with the same external-purpose limits applied to every child. Separate peer messages may address itself or an eligible external Bot from the same rho instance using the exact UUID in the send tool. Workspace access and messaging rules still apply. An explicitly granted communication link also permits messages to its fixed peer; it grants no peer history access, Memory access or request dispatch.
 
 External Bots retain a rules-based approval stage and all matching **deny** and **ask**
 rules. With a selected mode of **ask**, every selected MCP call requires approval;
@@ -151,6 +151,22 @@ overrides either choice for that task; it does not edit the Preset. The role's
 fallback list remains independent. Later unqualified messages to the child use
 the child's own current model and captured configuration. Those defaults also
 survive a fork or cleanup of the parent's execution details.
+
+## Messages, requests and stopping work
+
+Use `send_message` for an ordinary message and `request` for an assignment whose
+result must be tracked. A received message or request is labelled separately
+from your own words in the conversation. A later exchange with the same worker
+does not replace the original assignment's result.
+
+Open **Background tasks** to inspect work and active communication links.
+**Close communication** closes that link to messages. It does not block directly
+addressed requests or stop either Conversation. Accepted requests retain their
+original result.
+Use the Stop beside a task to cancel that task's branch on its original Run,
+or the Stop beside a Subagent to stop that child Conversation.
+**Stop all work** stops work in the open Conversation. These controls have
+different scopes; closing a link does not stop either Conversation.
 
 ## Read work in progress
 

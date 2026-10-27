@@ -1,6 +1,14 @@
 // Conversation copy: the panel and sidebar browser, composer, transcript,
 // activity, seat, hero, scheduled jobs, usage and the task tab.
 export default {
+  "communication.title": "Communication links",
+  "communication.help": "Closing a link prevents messages through it. It does not stop either conversation or cancel accepted requests.",
+  "communication.refresh": "Refresh links",
+  "communication.more": "More links",
+  "communication.close": "Close communication",
+  "communication.peer": "Linked conversation",
+  "communication.loading": "Loading links…",
+  "communication.empty": "No active communication links.",
   "question.yes": "Yes",
   "question.no": "No",
   "question.choose": "Choose an answer",
@@ -256,6 +264,8 @@ export default {
   "task.read_request": "Read sealed model request",
   "task.request_failed": "The sealed model request could not be loaded.",
   "task.sealed_request": "Sealed model request",
+  "transcript.received_message": "Received message",
+  "transcript.received_request": "Received request",
   "transcript.context_summary": "Context summary",
   "transcript.background_result": "Background task result",
   "transcript.current_response": "Current response",

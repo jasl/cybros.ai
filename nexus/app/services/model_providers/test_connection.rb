@@ -116,6 +116,9 @@ module ModelProviders
           else
             response
           end
+        when "decision"
+          client.decisions.create(model: model, input: "The number is two.",
+            questions: [{ name: "connection", type: "predicate", instructions: "Is the number two?" }])
         when "embedding"
           client.embeddings.create(model: model, input: "Connection test.")
         when "image_generation"
@@ -163,6 +166,7 @@ module ModelProviders
           return :provider_error if quality == SimpleInference::FinishQuality::ERROR
 
           response.output_text.present? || response.output_items.any?
+        when "decision" then response.answers.any?
         when "embedding" then response.embeddings.any?
         when "image_generation" then response.images.any?
         when "speech_generation" then response.audio.present?

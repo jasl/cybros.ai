@@ -42,11 +42,16 @@
   contact A. Paired and named Agents retain their own public identities even when one program's
   bearer serves them. Only the active Human Workspace owner replaces this policy, using the
   Workspace's `lock_version`; members with
-  Workspace data access may read it. The policy governs new `send` and `spawn` requests from a
+  Workspace data access may read it. The policy governs new directly addressed `send`, `request` and `spawn` calls from a
   run's answering Agent to the resolved recipient. It does not change ordinary Human/member
   inputs, Conversation standing, `status`, `cancel`, or history access. Previously accepted inputs
   continue, and kernel result mail requires no reverse permission. It is collaboration control,
   not data isolation, and grants no authority that the existing access predicates deny.
+  An explicitly created ConversationLink is a separate bilateral message grant for fixed
+  Conversation/Agent endpoints. It grants no history, request or cancel access. Explicit close and authority-writer cuts
+  permanently close the affected grant; restoring identity or access never reopens it.
+  Endpoint access loss, principal removal/suspension, steward transfer and Workspace access loss
+  close grants in the authority transaction. Messaging policy changes and Archive preserve them.
 - Conversation access: under the Workspace's access, every conversation carries one default
   level for every principal its entries
   do not name — `full | read | none`, born `full` — and one entry per named principal, of either
@@ -737,6 +742,12 @@ enforcement is `attr_readonly` on every such column; the taxonomy has exactly th
 A new model earns a place in shape 2 or 3 only with a written reason; the default is shape 1.
 
 **Lifecycle verbs are rare, and their cost is paid at the authority edge plus convergence.**
+Human Conversation takeover is a one-way release of lifecycle and request ownership, authorized
+by a Human member credential and full Conversation standing. It preserves execution and birth
+attribution, leaves ordinary member ACLs unchanged, and never treats `origin: person` or a
+Platform settings token as Human content authority. Its narrowly permitted source-owner lock
+cohort is specified in `database.md`; no other verb inherits that exception.
+
 Connect, disconnect, revoke, remove, restore,
 steward reassignment, and one day erase/incineration are administrative-frequency operations:
 

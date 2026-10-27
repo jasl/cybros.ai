@@ -82,7 +82,7 @@ module SimpleInference
       # zero-IO rejection (extra_body stays the caller's verbatim escape
       # hatch for explicit wire fields).
       def self.request_option_keys
-        (OpenAIResponses.request_option_keys - [:max_output_tokens]).freeze
+        (OpenAIResponses.request_option_keys - %i[max_output_tokens prompt_cache_ttl]).freeze
       end
 
       # Codex markers carry a family DEFAULT when a row omits them (the

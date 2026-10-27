@@ -77,7 +77,8 @@ module Rho
           def turn_entry(turn)
             variant = turn.active_variant
             { public_id: turn.public_id, position: turn.position, kind: turn.kind, role: turn.role,
-              input_public_id: turn.input_public_id, callback_sources: turn.callback_sources.map(&:to_h),
+              input_public_id: turn.input_public_id, communication_kind: turn.communication_kind,
+              link_public_id: turn.link_public_id, callback_sources: turn.callback_sources.map(&:to_h),
               status: turn.status, origin: turn.origin, inherited: turn.inherited, reference: turn.reference,
               sender_conversation_public_id: turn.sender_conversation_public_id,
               sender_run_public_id: turn.sender_run_public_id, sender_task_key: turn.sender_task_key,

@@ -8,7 +8,7 @@ module E2E
       4 => %w[rho_daemon rho_core_only group_chat processes progress rho_run model_management rho_setup capture_upload expiry],
       5 => %w[rho_telegram_bots ask_inbox executor_relay rho_telegram_controls],
       6 => %w[rho_telegram_group rho_telegram_permissions],
-      7 => %w[executor_plane turn conversation_regeneration conversation_background conversation_result_dag conversation_lifecycle variants conversation_view_state codemode],
+      7 => %w[executor_plane turn conversation_regeneration conversation_background conversation_communication conversation_result_dag conversation_lifecycle variants conversation_view_state codemode],
       8 => %w[rho_telegram rho_telegram_history rho_telegram_memory rho_telegram_commands],
       9 => %w[rho_telegram_workspace nexus_mcp],
       10 => %w[rho_telegram_media rho_telegram_delivery rho_acp_client],

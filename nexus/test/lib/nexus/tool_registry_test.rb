@@ -29,16 +29,18 @@ class Nexus::ToolRegistryTest < ActiveSupport::TestCase
   # The conversation family is LIVE whole under their bare wire words — never a mechanical
   # `conversation_send` spelling.
   test "the conversation verbs are live under their wire words" do
-    %w[spawn send status cancel].each do |wire|
+    %w[spawn send request links status cancel].each do |wire|
       assert_equal "nexus.conversation.#{wire}", Registry.resolve(wire), wire
       assert Registry.kernel_name?(wire), "#{wire} is un-authorable, and LIVE: it has its executor"
       refute Registry.overridable?(wire), "live under a reserved namespace: no provider serves it"
       assert_nil Registry.resolve("conversation_#{wire}"), "no mechanical spelling resolves"
     end
     assert_equal Runs::Spawn::Run, Registry.executor_for("spawn")
-    %w[send status cancel].each do |wire|
+    %w[send links status cancel].each do |wire|
       assert_equal Runs::ConversationTool::Run, Registry.executor_for(wire), "one executor keyed by verb"
     end
+    assert_equal Runs::ConversationRequest::Run, Registry.executor_for("request")
+    assert_equal Registry::READ_ONLY_CLOSED, Registry.effect_profile_for("links")
     assert_equal Registry::GRAPH_WRITE, Registry.effect_profile_for("send")
     assert_equal Registry::GRAPH_WRITE, Registry.effect_profile_for("cancel")
     assert_equal Registry::READ_ONLY_CLOSED, Registry.effect_profile_for("status"), "a read touches nothing"
@@ -110,7 +112,7 @@ class Nexus::ToolRegistryTest < ActiveSupport::TestCase
       assert_empty tool.template.scan(/`(?:task|ask|spawn|memory_\w+)`(?! attribute)/),
         "#{tool.name}: a backticked kernel name outside a macro would not follow an alias"
     end
-    assert_equal %w[wait delegate_task ask spawn send status cancel
+    assert_equal %w[wait delegate_task ask spawn request send links status cancel
                     memory_read memory_write memory_edit memory_ls memory_grep memory_delete skill session_search session_read
                     tool_search tool_call runners_list models_list image_generate read_schedules manage_schedule],
       KERNEL_WIRE_NAMES
@@ -118,7 +120,7 @@ class Nexus::ToolRegistryTest < ActiveSupport::TestCase
 
   test "the macros the texts use are the words the texts name as the tool, and no runner name is ever a macro" do
     macros = Registry::LIVE.values.flat_map { |tool| tool.template.scan(Registry::MACRO).flatten }.uniq.sort
-    assert_equal %w[ask cancel delegate_task memory_edit memory_write read_schedules send session_read session_search skill spawn status tool_call tool_search wait], macros,
+    assert_equal %w[ask cancel delegate_task memory_edit memory_write read_schedules request send session_read session_search skill spawn status tool_call tool_search wait], macros,
       "every macro is a kernel wire name; a runner's tool has no alias mechanism and never appears here"
     assert_includes Registry.entry("delegate_task").parameters.dig("properties", "tools", "description"),
       "including delegate_task", "a parameter description is a template too, rendered plain here"
@@ -127,8 +129,8 @@ class Nexus::ToolRegistryTest < ActiveSupport::TestCase
   test "parameter_names lists a tool's declared properties" do
     assert_equal %w[prompt model lifetime wake wait tools], Registry.entry("delegate_task").parameter_names
     assert_equal %w[prompt options multi fields], Registry.entry("ask").parameter_names
-    assert_equal %w[prompt agent declaration label lifetime wake wait default_runner_executor_public_id model model_selection fallback_models], Registry.entry("spawn").parameter_names
-    assert_equal %w[to agent message steer deliver_in deliver_at wake model], Registry.entry("send").parameter_names
+    assert_equal %w[establish_link prompt agent declaration label lifetime wake wait default_runner_executor_public_id model model_selection fallback_models], Registry.entry("spawn").parameter_names
+    assert_equal %w[to agent link_public_id message delivery_mode expected_steering_run_public_id on_target_end deliver_in deliver_at], Registry.entry("send").parameter_names
     assert_equal %w[task run_public_id timeout_ms], Registry.entry("wait").parameter_names
     assert_equal %w[to], Registry.entry("status").parameter_names
     assert_equal %w[to], Registry.entry("cancel").parameter_names
@@ -175,7 +177,7 @@ class Nexus::ToolRegistryTest < ActiveSupport::TestCase
     end
     reserved, rest = Registry::LIVE.keys.partition { |name| Registry.reserved_namespace?(name) }
     routed, overridable = rest.partition { |name| Registry.routed_by_source?(name) }
-    assert_equal %w[nexus.conversation.cancel nexus.conversation.read nexus.conversation.search nexus.conversation.send nexus.conversation.spawn nexus.conversation.status
+    assert_equal %w[nexus.conversation.cancel nexus.conversation.links nexus.conversation.read nexus.conversation.request nexus.conversation.search nexus.conversation.send nexus.conversation.spawn nexus.conversation.status
                     nexus.graph.delegate_task nexus.graph.wait nexus.human.ask nexus.image.generate nexus.models.list nexus.runners.list
                     nexus.schedules.manage nexus.schedules.read nexus.tools.call nexus.tools.search], reserved.sort
     assert_equal %w[nexus.memory.delete nexus.memory.edit nexus.memory.grep nexus.memory.ls
@@ -211,7 +213,7 @@ class Nexus::ToolRegistryTest < ActiveSupport::TestCase
     assert_includes tool.description, "call skill with the exact name"
     assert_empty tool.description.scan(/`[^`]+`/), "no backticked word: rho announces a tool named skill"
     assert_equal Registry.function_definition("skill"), Nexus::Tools::SKILL
-    assert_equal "skill", KERNEL_WIRE_NAMES.fetch(13)
+    assert_equal "skill", KERNEL_WIRE_NAMES.fetch(15)
   end
 
   # The override's two vocabularies: the namespaces a workspace may name, and the wire names a

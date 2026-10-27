@@ -5,12 +5,18 @@ module Runs
     class Settlement
       def self.call(...) = new(...).call
 
-      def initialize(node:, call:, text:, status:, error_key: nil, child: nil)
+      # A Human takeover has acquired all affected source Runs and completion /
+      # await rows before publishing any bodies. Do not descend to Task locks
+      # again when settling another request in that same transaction.
+      def self.call_locked(...) = new(...).call(tasks_locked: true)
+
+      def initialize(node:, call:, text:, status:, error_key: nil, child: nil, execution_identity: nil)
+        @execution_identity = execution_identity
         @node, @call, @text, @status, @error_key, @child = node, call, text, status, error_key, child
       end
 
-      def call
-        @node.lock!
+      def call(tasks_locked: false)
+        @node.lock! unless tasks_locked
         return false if @node.terminal?
         return false if @status == "completed" && @node.status == "queued"
 
@@ -19,7 +25,7 @@ module Runs
         # reports wait for dispatch; refused launches cancel this empty wait.
         return false if @status == "completed" && await&.status == "queued"
 
-        await&.lock!
+        await&.lock! unless tasks_locked
         replace_wait_reads(await) if await && !await.terminal?
         settle_wait(await) if await && !await.terminal?
         publish
@@ -62,11 +68,12 @@ module Runs
 
         def publish
           result = ContentBodies::Replace.call(owner: @node, role: "output",
-            entries: [{ "text" => @text }], readable_text: @text, seal: true)
+            entries: [{ "text" => @text }, ({ "structured" => @execution_identity } if @execution_identity)].compact, readable_text: @text, seal: true)
           if result.accepted?
             StampOutputPreview.call(@node)
             Transition.node(@node, status: @status, completed_at: Time.current,
-              error_key: @error_key, error_detail: (@text.first(256) unless @status == "completed"))
+              error_key: @error_key, error_detail: (@text.first(256) unless @status == "completed"),
+              failure_resolution: ("canceled" if @status == "canceled"))
           else
             Transition.node(@node, status: "failed", completed_at: Time.current,
               error_key: "delegation_result_unstorable", error_detail: result.refusal.to_s)

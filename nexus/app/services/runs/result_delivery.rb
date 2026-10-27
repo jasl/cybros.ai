@@ -15,13 +15,9 @@ module Runs
   # own job: the door takes the conversation lock, which the loop lock —
   # the quiescence site's — must never hold.
   #
-  # ONE KERNEL-MAIL WRITER: a spawned
-  # child's reply that finds no open await is mailed by the same code —
-  # `ResultDelivery.child_reply` — authored exactly as task mail is: the requesting
-  # loop's creator, addressed to that execution's answerer on its surface; the
-  # child's identity rides the sender stamp and the envelope's
-  # `conversation=`, and the row says `origin: child`. The kernel relays
-  # its own receipt and impersonates nobody.
+  # Spawn and request completions use the same task-mail writer. Their stored
+  # outcome retains the exact child identity, even after the child is deleted.
+  # An await consumes that completion; only an unread completion becomes mail.
   class ResultDelivery
     ORIGIN = Input::TASK_RESULT_ORIGIN
     CHILD_ORIGIN = Input::CHILD_ORIGIN
@@ -45,17 +41,6 @@ module Runs
       def recovery_candidates(after_id:, limit:)
         Task.where(detached: true, result_delivered_at: nil, status: Task::TERMINAL_STATUSES)
           .where(id: (after_id + 1)..).order(:id).limit(limit)
-      end
-
-      # The mail path of the child-reply relay: the loop that sent this
-      # request owns its reply, including a later send by another Agent.
-      # The turn keeps that request's task key after its input is consumed.
-      # Answers `:delivered`, or the door's refusal; the
-      # relay marker is stamped INSIDE the receipt's transaction (a crash
-      # between the accept and the stamp would otherwise re-deliver once
-      # the receipt expires) and again, guarded, on a replay.
-      def child_reply(run:, child:, turn:)
-        new(run).relay(child, turn)
       end
 
       # The clock's execution is a normal child, but has no old spawning
@@ -157,30 +142,6 @@ module Runs
       tips.map { |tip| mail(tip, boundary: boundary.key?(tip.node_key)) }
     end
 
-    # The child's reply as this loop's mail (see `ResultDelivery.child_reply`).
-    def relay(child, turn)
-      variant = turn.active_variant
-      text = TaskResultEnvelope.child_reply(
-        call_key: turn.sender_task_key, status: turn.status,
-        conversation_public_id: child.public_id, body: self.class.reply_text(turn, variant: variant)
-      )
-      key = "spawn:#{child.public_id}:#{turn.public_id}"
-      request = @run.tasks.find_by!(node_key: turn.sender_task_key)
-      wake = KernelTool.wake(request, request.tool_input)
-      result = receipt(
-        key: key, envelope: { "spawn" => child.public_id, "turn" => turn.public_id, "text" => text },
-        command: command(text, origin: CHILD_ORIGIN, sender: child, task_key: turn.sender_task_key, wake: wake,
-          callback_result: CallbackResult.for(child: child, turn: turn, variant: variant))
-      ) { turn.stamp_relayed }
-
-      case result.outcome
-      when :refused then refused(key, result.refusal)
-      else
-        turn.stamp_relayed
-        :delivered
-      end
-    end
-
     def relay_scheduled(child, turn, variant)
       key = "scheduled:#{child.public_id}:#{turn.public_id}"
       # The original request owns the brief even when a fallback supplies the
@@ -191,7 +152,7 @@ module Runs
         body: self.class.reply_text(turn, variant: variant), prompt: prompt, scheduled_for: child.scheduled_for)
       result = receipt(key: key, envelope: { "schedule" => child.schedule_public_id,
         "conversation" => child.public_id, "turn" => turn.public_id, "text" => text },
-        command: command(text, origin: CHILD_ORIGIN, sender: child,
+        command: command(text, origin: CHILD_ORIGIN, sender_public_id: child.public_id,
           task_key: child.schedule_public_id, wake: "auto",
           callback_result: CallbackResult.for(child: child, turn: turn, variant: variant, scheduled: true))) { turn.stamp_relayed }
       if result.outcome == :refused
@@ -210,10 +171,16 @@ module Runs
 
       def mail(tip, boundary: false)
         text = TaskResultEnvelope.for(tip, boundary: boundary)
+        identity = TaskResultProjection.call(tip)["structured_content"] if tip.delegation?
+        callback = if identity && identity["variant_public_id"]
+          identity.merge("requester_speaker_public_id" => CallbackResult.for_loop(@run))
+        end
         result = receipt(
           key: receipt_key(tip), envelope: { "mail" => tip.node_key, "text" => text },
-          command: command(text, origin: ORIGIN, sender: conversation,
-            task_key: TaskResultEnvelope.call_key(tip, boundary: boundary), wake: tip.wake)
+          command: command(text, origin: tip.delegation? ? CHILD_ORIGIN : ORIGIN,
+            sender_public_id: identity&.fetch("conversation_public_id", nil) || conversation.public_id,
+            task_key: TaskResultEnvelope.call_key(tip, boundary: boundary), wake: tip.wake,
+            callback_result: callback)
         ) { stamp(tip) }
 
         case result.outcome
@@ -244,12 +211,12 @@ module Runs
       # Addressed to the mailing loop's own answerer: a task A started
       # answers to A's turn, never to the conversation's default and
       # never to everyone.
-      def command(text, origin:, sender:, task_key:, wake:, callback_result: nil)
+      def command(text, origin:, sender_public_id:, task_key:, wake:, callback_result: nil)
         passive = wake == "passive"
         Conversations::Inputs::Create::Command.kernel(
           host: conversation, acting_user: creating_user, kind: passive ? "message" : "direct_reply",
           entries: [{ "text" => text }], origin: origin,
-          sender_conversation_public_id: sender.public_id,
+          sender_conversation_public_id: sender_public_id,
           run_public_id: @run&.public_id,
           task_key: task_key,
           callback_result: callback_result,

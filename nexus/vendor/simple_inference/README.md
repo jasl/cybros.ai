@@ -6,7 +6,7 @@ assembled by the caller. It speaks each provider's native wire protocol —
 OpenAI Responses, Codex Responses, DeepSeek native Responses, xAI Responses,
 OpenRouter Chat Completions lane, Anthropic Messages, Gemini
 `generateContent` / `embedContent`, plus OpenAI images, audio, and
-embeddings — and normalizes the results into one shape the kernel can meter,
+embeddings, OpenAI Decisions and TypeSafe System One — and normalizes the results into one shape the kernel can meter,
 persist, and replay.
 
 This gem serves this repository only. It is not published — the gemspec pins
@@ -62,7 +62,7 @@ client = SimpleInference::Client.new(
 )
 
 client.responses.create(model: "gpt-6-sol", input: "hi") # model must equal the pin
-# resources: responses / images / audio / embeddings
+# resources: responses / images / audio / embeddings / decisions
 ```
 
 `Client.new` recognizes exactly: `base_url`, `api_key`, `api_prefix`,
@@ -474,3 +474,37 @@ result normalization, and Fiber concurrency. No test performs network IO.
 ## License
 
 MIT. See [LICENSE](LICENSE.txt).
+
+## Typed decisions
+
+Build an execution profile with `adapter_profile: "openai_decisions"`,
+`workload: "decision"`, `model_pin: "gpt-6-luna"` and the matching
+`ApiFormat.defaults`, following the profile example above. Then:
+
+```ruby
+result = client.decisions.create(
+  model: "gpt-6-luna",
+  input: { ticket: "Duplicate charge" },
+  questions: [{ name: "billing", type: "predicate", instructions: "Is this about billing?" }]
+)
+result.answers.first.probability
+result.usage # provider counters, including reported zeros
+```
+
+For TypeSafe use `typesafe_system_one`, base URL `https://api.typesafe.ai`,
+and its model pin. OpenRouter uses the same format with base URL
+`https://openrouter.ai/api` and model pin `~typesafe/jev-latest`.
+The resource supports text or JSON evidence and predicate, choice and score
+questions. TypeSafe `noul` becomes predicate; scores retain zero-based,
+possibly fractional values. OpenAI boolean choices are preserved, while
+TypeSafe requires string choices. Per-question OpenAI refusals remain answers.
+Image evidence and TypeSafe box questions are not supported by this common
+interface. See the [Nexus decision contract](../../../guides/reference/agent-api/inference-requests.md#decisions)
+for question and answer shapes.
+
+Inside Nexus, callers use `InferenceRequests::Create::Command` with
+`workload: "decision"`, their workspace and creating user, a submitted model
+selection, `input`, and `configuration: { questions: [...] }`, then call
+`InferenceRequests::Create.call(command:, port: ModelSelection::Resolver.new)`.
+That path owns durable acceptance, billing and cancellation. Direct
+SimpleInference calls only execute the provider protocol.

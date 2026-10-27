@@ -342,10 +342,10 @@ class Schedules::RelayTest < ActiveJob::TestCase
     assert_equal "Mock: The second issue needs an index.", content(follow_up)
   end
 
-  test "a later parent send to a scheduled child returns once on that request's own surface" do
+  test "a later parent request to a scheduled child returns once on that request's own surface" do
     peer = create_agent_member(display_name: "Follow-up", agent_identifier: "scheduled-follow-up")
-    declare_tools!(peer, tools: [Nexus::Tools::SEND, Nexus::Tools::STATUS], approval_mode: "ask",
-      approval_rules: [{ "tool" => "send|status", "verdict" => "allow" }], default_model: "dev/mock-unmetered")
+    declare_tools!(peer, tools: [Nexus::Tools::REQUEST, Nexus::Tools::STATUS], approval_mode: "ask",
+      approval_rules: [{ "tool" => "request|status", "verdict" => "allow" }], default_model: "dev/mock-unmetered")
     job = create_job
     child, original = start_child(job)
     finish_loop(original.active_variant.run, REPLY)
@@ -358,8 +358,8 @@ class Schedules::RelayTest < ActiveJob::TestCase
     converge(received)
 
     _parent_turn, sender = materialize_loop_reply!(@conversation, agent: peer, text: "Ask for more detail.",
-      answering_user_public_id: peer.public_id, model_ref: "mock-unmetered", tool_names: ["send"])
-    send_round(sender, child)
+      answering_user_public_id: peer.public_id, model_ref: "mock-unmetered", tool_names: ["request"])
+    request_round(sender, child)
     call = loop_node(sender, "r2t0")
     result = call.content_bodies.find_by!(role: "output").effective_text
     assert_nil child.spawn_node
@@ -368,15 +368,19 @@ class Schedules::RelayTest < ActiveJob::TestCase
     assert_equal [@conversation.public_id, sender.public_id, call.node_key],
       [follow_up.sender_conversation_public_id, follow_up.sender_run_public_id, follow_up.sender_task_key]
     assert_not Schedules::Execution.unfinished?(child)
-    assert_not Runs::Delegations.owed_result?(follow_up)
+    assert Runs::Delegations.owed_result?(follow_up), "the explicit request owns a separate completion"
     finish_loop(follow_up.active_variant.run, "The requested detail.")
     converge(follow_up)
     clear_enqueued_jobs
 
     2.times { Runs::Spawn::RelayJob.perform_now }
+    assert_empty @conversation.inputs.reload, "conversation-lifetime results wait for the requester's final reply"
+    finish_loop(sender, "The follow-up is pending.", key: "r2")
+    converge(sender.turn)
+    2.times { Runs::ResultDelivery.call(sender.reload) }
     assert_equal 1, @conversation.inputs.count, "the later parent request is owed its own reply"
-    mail = @conversation.inputs.sole
-    assert_includes result, "its reply reaches you as <task_result task=\"r2t0\""
+    mail = @conversation.inputs.reload.sole
+    assert_equal call.spawn_delegation.node_key, JSON.parse(result).dig("completion", "task_key")
     assert_not_equal original_mail.public_id, mail.public_id
     assert_equal [peer, peer, "direct_reply", "child"],
       [mail.authoring_user, mail.answering_user, mail.kind, mail.origin]
@@ -386,20 +390,20 @@ class Schedules::RelayTest < ActiveJob::TestCase
     assert_not_equal original_mail.callback_result.fetch("requester_speaker_public_id"), mail.callback_result.fetch("requester_speaker_public_id")
     assert_equal follow_up.input_public_id, mail.callback_result.fetch("input_public_id")
     assert_equal follow_up.active_variant.public_id, mail.callback_result.fetch("variant_public_id")
-    assert_equal ["dev", "mock-unmetered", "ask", ["send"]],
+    assert_equal ["dev", "mock-unmetered", "ask", ["request"]],
       [mail.provider_id, mail.model_ref, mail.approval_mode, mail.tool_names]
     assert_includes mail.text, "<task_result task=\"r2t0\""
     assert_includes mail.text, "The requested detail."
     assert_not_nil follow_up.reload.relayed_at
-    assert_equal 0, Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id), "the sender is still replying"
+    assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id), "the result wakes a supplementary reply after final delivery"
     assert_equal 1, job.execution_conversations.count
     assert_equal original.public_id, child.scheduled_turn_public_id
     assert_equal 1, ConversationCommandReceipt.where(host: @conversation,
-      idempotency_key: "spawn:#{child.public_id}:#{follow_up.public_id}").count
+      idempotency_key: "mail:#{sender.public_id}:#{call.spawn_delegation.node_key}").count
   end
 
-  test "a later parent send with passive wake records the scheduled child's reply without opening a turn" do
-    declare_tools!(@agent, tools: [Nexus::Tools::SEND])
+  test "a later parent request with passive wake records the scheduled child's reply without opening a turn" do
+    declare_tools!(@agent, tools: [Nexus::Tools::REQUEST])
     child, original = start_child(create_job)
     finish_loop(original.active_variant.run, REPLY)
     converge(original)
@@ -409,7 +413,7 @@ class Schedules::RelayTest < ActiveJob::TestCase
     finish_loop(received.active_variant.run, "Received.")
     converge(received)
     _parent_turn, sender = materialize_loop_reply!(@conversation, agent: @agent, text: "Collect more detail.")
-    send_round(sender, child, wake: "passive")
+    request_round(sender, child, wake: "passive")
     result = loop_node(sender, "r2t0").content_bodies.find_by!(role: "output").effective_text
     finish_loop(sender, "The follow-up is pending.", key: "r2")
     converge(sender.turn)
@@ -418,10 +422,10 @@ class Schedules::RelayTest < ActiveJob::TestCase
     finish_loop(follow_up.active_variant.run, "Passive detail.")
     converge(follow_up)
 
-    2.times { relay(child) }
+    2.times { Runs::Spawn::RelayJob.perform_now; Runs::ResultDelivery.call(sender.reload) }
     assert_equal 1, @conversation.inputs.count, "passive wake still owes a result message"
     mail = @conversation.inputs.sole
-    assert_includes result, "its reply is recorded in your conversation history without starting another turn"
+    assert_equal loop_node(sender, "r2t0").spawn_delegation.node_key, JSON.parse(result).dig("completion", "task_key")
     assert_equal ["message", "child", sender.public_id, "r2t0"],
       [mail.kind, mail.origin, mail.sender_run_public_id, mail.sender_task_key]
     assert_includes mail.text, "Passive detail."
@@ -444,12 +448,13 @@ class Schedules::RelayTest < ActiveJob::TestCase
     converge(original)
     relay(child)
     first_mail = @conversation.inputs.sole
-    assert_not Schedules::Execution.unfinished?(child)
+    assert Schedules::Execution.unfinished?(child), "the original Run still owns a live completion"
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: grandchild.id)
     grandchild_turn = grandchild.reload.active_turn
     finish_loop(grandchild_turn.active_variant.run, "The investigation is complete.")
     converge(grandchild_turn)
     relay(grandchild)
+    assert_equal [:delivered], Runs::ResultDelivery.call(source.reload)
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
     supplement = child.reload.active_turn
     assert_equal ["child", grandchild.public_id], [supplement.origin, supplement.sender_conversation_public_id]
@@ -458,7 +463,7 @@ class Schedules::RelayTest < ActiveJob::TestCase
 
     2.times { relay(child) }
     assert_equal first_mail.public_id, @conversation.inputs.sole.public_id
-    assert_not_nil supplement.reload.relayed_at, "the local exchange owes no new parent reply"
+    assert_nil supplement.reload.relayed_at, "the local exchange never enters the scheduled original-reply frontier"
     assert_not Schedules::Execution.unfinished?(child)
   end
 
@@ -473,7 +478,7 @@ class Schedules::RelayTest < ActiveJob::TestCase
     _turn, sender = materialize_loop_reply!(other, agent: @agent, text: "Ask for detail.")
     send_round(sender, child)
     result = loop_node(sender, "r2t0").content_bodies.find_by!(role: "output").effective_text
-    assert_equal "Sent to #{child.public_id} (queued).", result
+    assert_equal [child.public_id, "queue", "pending"], JSON.parse(result).values_at("conversation_public_id", "delivery_mode", "state")
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
     follow_up = child.reload.active_turn
     finish_loop(follow_up.active_variant.run, "The third conversation's detail.")
@@ -483,12 +488,12 @@ class Schedules::RelayTest < ActiveJob::TestCase
 
     assert_equal first_mail.public_id, @conversation.inputs.sole.public_id
     assert_empty other.reload.inputs
-    assert_not_nil follow_up.reload.relayed_at
+    assert_nil follow_up.reload.relayed_at
     assert_not Schedules::Execution.unfinished?(child)
   end
 
   test "stopping the later parent request suppresses its reply without reopening the scheduled occurrence" do
-    declare_tools!(@agent, tools: [Nexus::Tools::SEND])
+    declare_tools!(@agent, tools: [Nexus::Tools::REQUEST])
     job = create_job
     child, original = start_child(job)
     finish_loop(original.active_variant.run, REPLY)
@@ -499,7 +504,7 @@ class Schedules::RelayTest < ActiveJob::TestCase
     finish_loop(received.active_variant.run, "Received.")
     converge(received)
     _turn, sender = materialize_loop_reply!(@conversation, agent: @agent, text: "Ask for detail.")
-    send_round(sender, child)
+    request_round(sender, child)
     assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
     follow_up = child.reload.active_turn
     finish_loop(follow_up.active_variant.run, "The requested detail.")
@@ -507,7 +512,7 @@ class Schedules::RelayTest < ActiveJob::TestCase
     stopped = Runs::Stop.call(Runs::Stop::Command.forced(run: sender, acting_user: @human))
     assert_predicate stopped, :accepted?
 
-    2.times { relay(child) }
+    2.times { Runs::Spawn::RelayJob.perform_now; Runs::ResultDelivery.call(sender.reload) }
 
     assert_empty @conversation.reload.inputs
     assert_not_nil follow_up.reload.relayed_at
@@ -580,13 +585,16 @@ class Schedules::RelayTest < ActiveJob::TestCase
 
     relay(child)
     assert_not Runs::Delegations.owed_result?(turn.reload)
+    assert Runs::Delegations.retained?(child_loop.reload), "pending callback still needs its source"
+    assert_includes @conversation.inputs.sole.text, "Mock: #{REPLY}"
+    assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id)
     assert_not Runs::Delegations.retained?(child_loop.reload)
     assert_not Runs::Delegations.retained_conversation?(child.reload)
     assert_equal 1, prune[:pruned]
     assert_not_nil child_loop.reload.details_pruned_at
     assert_empty child_loop.tasks
     assert_equal "Mock: #{REPLY}", content(turn)
-    assert_includes @conversation.inputs.sole.text, "Mock: #{REPLY}"
+    assert_includes @conversation.reload.active_turn.active_variant.content_bodies.find_by!(role: "prompt").effective_text, "Mock: #{REPLY}"
   end
 
   test "an unrelayed plain reply retains its model evidence until the callback is accepted" do
@@ -685,8 +693,12 @@ class Schedules::RelayTest < ActiveJob::TestCase
       apply_via(attempt_of(loop_node(run, key).selected_model_invocation_id), sse_success(text))
       Runs::ConvergeTerminalSteps.call
       schedule_loop!(run)
-      assert_equal "completed", run.reload.status
+      assert run.reload.delivered?, "the original reply is final even while detached completion remains live"
       run
+    end
+
+    def request_round(run, child, **fields)
+      call_round(run, "r1", "request", to: child.public_id, prompt: "Please supply the detail.", lifetime: "conversation", **fields)
     end
 
     def send_round(run, child, **fields)

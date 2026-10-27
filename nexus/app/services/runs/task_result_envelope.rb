@@ -92,7 +92,8 @@ module Runs
     def render
       if spawn_call
         return self.class.child_reply(call_key: call_key, status: @tip.status,
-          conversation_public_id: spawn_call.spawned_conversation&.public_id, body: body)
+          conversation_public_id: (TaskResultProjection.call(@tip)["structured_content"]&.fetch("conversation_public_id", nil) ||
+            spawn_call.spawned_conversation&.public_id), body: body)
       end
       return "<answer task=\"#{call_key}\">#{self.class.escape(body)}</answer>" if @tip.await? && !@tip.observing_task?
 
@@ -176,7 +177,7 @@ module Runs
         return @spawn_call if defined?(@spawn_call)
 
         call = (flat_call if @tip.await? || @tip.delegation?)
-        @spawn_call = (call if call&.tool_name == "spawn")
+        @spawn_call = (call if %w[spawn request].include?(call&.tool_name))
       end
 
       # The `task`/`ask`/`spawn` call whose namespace names the root, or

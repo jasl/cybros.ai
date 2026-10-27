@@ -497,6 +497,313 @@
       }
     ]
   },
+  "valid_communication_listing_fixture": {
+    "tools": [
+      {
+        "canonical_name": "nexus.conversation.spawn",
+        "name": "spawn",
+        "effect_profile": {
+          "kind": "write",
+          "destructive": false,
+          "effect_scope": "closed",
+          "idempotency": "intrinsic",
+          "reconciliation": "lookup"
+        },
+        "definition": {
+          "type": "function",
+          "function": {
+            "name": "spawn",
+            "description": "Open a conversation with another agent and give it a job. Without\n`agent` it is answered by a fresh copy of yourself with an empty\ncontext (a subagent); with `agent`, by that agent's own engine, tools\nand memory (a peer). Unlike `delegate_task`, a spawned conversation\npersists: you can `send` it more messages, read its `status`,\nand `cancel` it. Its reply reaches you as a `<task_result task=\"…\"\nconversation=\"…\">` message that is not from the person; `wait: true`\nwaits for the first reply. Use `delegate_task` for one bounded job that\nends with one answer; use `spawn` when the work needs another\nagent's tools or memory, or a back-and-forth.\n\nIf your execution supplies a delegation catalog, choose its name\nwith `declaration`; `agent` and an omitted declaration are unavailable.\nThe selected declaration supplies the child's tools, instructions,\nmemory limits and model policy under your own identity. Its model\neither follows this calling round's actual selection or uses the\ndeclaration's default. An explicit `model` overrides that choice.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\nchild's report before becoming final. That obligation survives an\nexpired or canceled immediate wait. The child's initial execution\ninherits turn lifetime; explicitly cross-turn work may remain afterward.\n`lifetime: \"conversation\"` delivers an unwaited report in a new turn\nafter this reply, even if the child finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Later send messages have no formal result\nobligation; use request for another job with its own completion.\n`wake: \"passive\"` records an unwaited reply in your conversation\nhistory without starting another turn. Omit to inherit the calling\nwork's wake mode; ordinary replies default to \"auto\". A waited reply\nand the turn-lifetime reporting obligation are unchanged.\n\nSpawn from what the person told you, in your FIRST message — do not\nlook around the project first to write a better brief: the agent has\ntools of its own and looks for itself — and do your own part beside\nit, in the same message:\n\n    \"Get an agent I can keep talking to onto the flaky login tests; meanwhile, what does the README say this service does?\"\n    → one message: spawn({label: \"login-tests\", prompt: \"The login tests are flaky. Find why, fix it, and answer with what you changed.\"}) beside your own read of the README.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "establish_link": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Publish a bidirectional message link together with the child and its first request. Both agents must allow the new contact."
+                },
+                "prompt": {
+                  "type": "string",
+                  "description": "The job, as the first message of the new conversation. It sees only this text, so name the files, the question, and what to answer with."
+                },
+                "agent": {
+                  "type": "string",
+                  "description": "The agent that answers the conversation, as its @handle or its public id. Omit for a fresh copy of yourself."
+                },
+                "declaration": {
+                  "type": "string",
+                  "description": "The name in your captured delegation catalog. Required when a catalog is declared; never combine with agent."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "A short name for the conversation, unique among the ones you spawned here (lowercase letters, digits, `_`, `-`). Optional."
+                },
+                "lifetime": {
+                  "type": "string",
+                  "enum": [
+                    "turn",
+                    "conversation"
+                  ],
+                  "description": "turn: consume the work's result before this reply becomes final. conversation: permit it to finish afterward. Omit to inherit; ordinary replies default to conversation. Independent of immediate waiting."
+                },
+                "wake": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "passive"
+                  ],
+                  "description": "auto: a later completion may start a new reply. passive: record it in conversation history without starting a reply. Omit to inherit; ordinary work defaults to auto. Waiting and lifetime are unchanged."
+                },
+                "wait": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "true: the next round waits for the first reply as this call's result. false (the default): the next round continues alongside the child. Lifetime independently controls whether final delivery waits."
+                },
+                "default_runner_executor_public_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Runner UUID for the new conversation; null clears the default. Omit to inherit the caller default when eligible."
+                },
+                "model": {
+                  "type": "string",
+                  "description": "The model the conversation runs on, as provider/model, when its agent has none of its own. With declaration, overrides its model policy and pins this route unless model_selection permits alternatives."
+                },
+                "model_selection": {
+                  "type": "object",
+                  "description": "Selection intent for this declared child. Keep explicit user model/provider constraints and only authorize requested alternatives.",
+                  "properties": {
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "default",
+                        "inherited",
+                        "explicit"
+                      ]
+                    },
+                    "model": {
+                      "type": "string",
+                      "description": "Initial provider/model constraint anchor."
+                    },
+                    "constraint": {
+                      "type": "string",
+                      "enum": [
+                        "any",
+                        "model",
+                        "provider",
+                        "route"
+                      ]
+                    },
+                    "alternatives": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "model",
+                    "constraint"
+                  ],
+                  "additionalProperties": false
+                },
+                "fallback_models": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Ordered provider/model recovery candidates for this declared child. Replaces its declaration list; [] disables fallback."
+                }
+              },
+              "required": [
+                "prompt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "template": "Open a conversation with another agent and give it a job. Without\n`agent` it is answered by a fresh copy of yourself with an empty\ncontext (a subagent); with `agent`, by that agent's own engine, tools\nand memory (a peer). Unlike `{{delegate_task}}`, a spawned conversation\npersists: you can `{{send}}` it more messages, read its `{{status}}`,\nand `{{cancel}}` it. Its reply reaches you as a `<task_result task=\"…\"\nconversation=\"…\">` message that is not from the person; `wait: true`\nwaits for the first reply. Use `{{delegate_task}}` for one bounded job that\nends with one answer; use `{{spawn}}` when the work needs another\nagent's tools or memory, or a back-and-forth.\n\nIf your execution supplies a delegation catalog, choose its name\nwith `declaration`; `agent` and an omitted declaration are unavailable.\nThe selected declaration supplies the child's tools, instructions,\nmemory limits and model policy under your own identity. Its model\neither follows this calling round's actual selection or uses the\ndeclaration's default. An explicit `model` overrides that choice.\n\n`lifetime: \"turn\"` requires this reply to consume and synthesize the\nchild's report before becoming final. That obligation survives an\nexpired or canceled immediate wait. The child's initial execution\ninherits turn lifetime; explicitly cross-turn work may remain afterward.\n`lifetime: \"conversation\"` delivers an unwaited report in a new turn\nafter this reply, even if the child finishes sooner.\nOmit to inherit the calling work's lifetime; ordinary replies default\nto conversation lifetime. Later {{send}} messages have no formal result\nobligation; use {{request}} for another job with its own completion.\n`wake: \"passive\"` records an unwaited reply in your conversation\nhistory without starting another turn. Omit to inherit the calling\nwork's wake mode; ordinary replies default to \"auto\". A waited reply\nand the turn-lifetime reporting obligation are unchanged.\n\nSpawn from what the person told you, in your FIRST message — do not\nlook around the project first to write a better brief: the agent has\ntools of its own and looks for itself — and do your own part beside\nit, in the same message:\n\n    \"Get an agent I can keep talking to onto the flaky login tests; meanwhile, what does the README say this service does?\"\n    → one message: {{spawn}}({label: \"login-tests\", prompt: \"The login tests are flaky. Find why, fix it, and answer with what you changed.\"}) beside your own read of the README."
+      },
+      {
+        "canonical_name": "nexus.conversation.request",
+        "name": "request",
+        "effect_profile": {
+          "kind": "write",
+          "destructive": false,
+          "effect_scope": "closed",
+          "idempotency": "intrinsic",
+          "reconciliation": "lookup"
+        },
+        "definition": {
+          "type": "function",
+          "function": {
+            "name": "request",
+            "description": "Queue a new request in an existing conversation. Its completion reports only the original execution. wait pauses for a finite interval; lifetime controls whether your final reply joins the work.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "prompt": {
+                  "type": "string"
+                },
+                "agent": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "wait": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "lifetime": {
+                  "type": "string",
+                  "enum": [
+                    "turn",
+                    "conversation"
+                  ]
+                },
+                "wake": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "passive"
+                  ]
+                },
+                "deliver_at": {
+                  "type": "string"
+                },
+                "deliver_in": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "to",
+                "prompt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "template": "Queue a new request in an existing conversation. Its completion reports only the original execution. wait pauses for a finite interval; lifetime controls whether your final reply joins the work."
+      },
+      {
+        "canonical_name": "nexus.conversation.send",
+        "name": "send",
+        "effect_profile": {
+          "kind": "write",
+          "destructive": false,
+          "effect_scope": "closed",
+          "idempotency": "intrinsic",
+          "reconciliation": "lookup"
+        },
+        "definition": {
+          "type": "function",
+          "function": {
+            "name": "send",
+            "description": "Send an ordinary message, with no formal result obligation. Use either a link from this exact conversation and agent, or a directly writable conversation. A queued message starts recipient-owned processing when the conversation is idle. Use request for new work with an exact result.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string"
+                },
+                "agent": {
+                  "type": "string"
+                },
+                "link_public_id": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "delivery_mode": {
+                  "type": "string",
+                  "enum": [
+                    "queue",
+                    "steer",
+                    "steer_now"
+                  ],
+                  "default": "queue"
+                },
+                "expected_steering_run_public_id": {
+                  "type": "string",
+                  "description": "Required for steer and steer_now: the exact current execution at this endpoint."
+                },
+                "on_target_end": {
+                  "type": "string",
+                  "enum": [
+                    "discard",
+                    "queue"
+                  ],
+                  "default": "discard",
+                  "description": "Only for guarded steers. Explicit queue fallback keeps this message if the target execution ends."
+                },
+                "deliver_in": {
+                  "type": "string"
+                },
+                "deliver_at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "template": "Send an ordinary message, with no formal result obligation. Use either a link from this exact conversation and agent, or a directly writable conversation. A queued message starts recipient-owned processing when the conversation is idle. Use {{request}} for new work with an exact result."
+      },
+      {
+        "canonical_name": "nexus.conversation.links",
+        "name": "links",
+        "effect_profile": {
+          "kind": "read_only",
+          "destructive": false,
+          "effect_scope": "closed",
+          "idempotency": "intrinsic",
+          "reconciliation": "none"
+        },
+        "definition": {
+          "type": "function",
+          "function": {
+            "name": "links",
+            "description": "List message links belonging to this exact conversation and answering agent. Shared peer addresses do not grant access to peer history or status. Pass next_after to continue a bounded page.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "closed",
+                    "all"
+                  ],
+                  "default": "active"
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100,
+                  "default": 50
+                },
+                "after": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "template": "List message links belonging to this exact conversation and answering agent. Shared peer addresses do not grant access to peer history or status. Pass next_after to continue a bounded page."
+      }
+    ]
+  },
   "valid_assembly_fixture": {
     "tool_definitions": [
       {

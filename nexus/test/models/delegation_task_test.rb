@@ -46,9 +46,13 @@ class DelegationTaskTest < ActiveJob::TestCase
 
   test "lifetime is immutable and only the kernel can author an absorbing completion obligation" do
     assert_raises(ActiveRecord::ReadonlyAttributeError) { @node.lifetime = "conversation" }
+    conversation_lifetime = @node.dup
+    conversation_lifetime.node_key = "conversation-completion"
+    conversation_lifetime.lifetime = "conversation"
+    assert_predicate conversation_lifetime, :valid?
     invalid = @node.dup
     invalid.node_key = "bad-delegation"
-    invalid.lifetime = "conversation"
+    invalid.lifetime = "unknown"
     invalid.authored_by = "author"
     invalid.on_failure = "halt"
     invalid.addressed_role = "tool_provider"

@@ -377,6 +377,56 @@ class MockLLMAppTest < Minitest::Test
 
   # ---- the unary endpoints ------------------------------------------------
 
+  def test_decision_wires_read_structured_evidence_and_preserve_zero_usage
+    evidence = { "eligible" => false, "color" => "blue", "rating" => 0.75 }
+    openai_questions = [
+      { name: "eligible", type: "predicate", instructions: "Read eligible." },
+      { name: "color", type: "choice", instructions: "Read color.",
+        choices: [{ value: "red", description: "Red" }, { value: "blue", description: "Blue" }] },
+      { name: "rating", type: "score", instructions: "Read rating.",
+        levels: [{ label: "low", description: "Low" }, { label: "high", description: "High" }] },
+    ]
+    status, _, body = post("/v1/decisions", model: "mock-decision",
+      input: [{ role: "user", content: [{ type: "input_json", data: evidence }] }], questions: openai_questions)
+    assert_equal 200, status
+    result = JSON.parse(body.join)
+    assert_equal %w[eligible color rating], result.fetch("answers").map { |answer| answer.fetch("name") }
+    assert_equal 0.0, result.dig("answers", 0, "probability")
+    assert_equal "blue", result.dig("answers", 1, "choice")
+    assert_equal [{ "value" => 0, "probability" => 0.25 }, { "value" => 1, "probability" => 0.75 }],
+      result.dig("answers", 2, "probabilities")
+    assert_equal [41, 0, 41], result.fetch("usage").values_at("input_tokens", "output_tokens", "total_tokens")
+
+    questions = {
+      eligible: { type: "noul", instructions: "Read eligible." },
+      color: { type: "choice", instructions: "Read color.", criteria: { red: "Red", blue: "Blue" } },
+      rating: { type: "score", instructions: "Read rating.", criteria: ["low: Low", "high: High"] },
+    }
+    status, _, body = post("/v1/systemone", model: "mock-system-one", state: evidence, questions:)
+    assert_equal 200, status
+    result = JSON.parse(body.join)
+    assert_equal 0.0, result.dig("answers", "eligible", "noul")
+    assert_equal({ "red" => 0.0, "blue" => 1.0 }, result.dig("answers", "color", "probabilities"))
+    assert_equal({ "0" => 0.25, "1" => 0.75 }, result.dig("answers", "rating", "probabilities"))
+    assert_equal 0.75, result.dig("answers", "rating", "score")
+    assert_equal [43, 7, 50], result.fetch("usage").values_at("input_tokens", "output_tokens", "total_tokens")
+
+    _, _, body = post("/v1/systemone", model: "mock-system-one",
+      state: { eligible: true, color: "red", rating: 0 }, questions:)
+    changed = JSON.parse(body.join).fetch("answers")
+    assert_equal 1.0, changed.dig("eligible", "noul")
+    assert_equal "red", changed.dig("color", "choice")
+    assert_equal 0, changed.dig("rating", "score")
+  end
+
+  def test_decision_routes_refuse_the_other_protocol_model
+    [["/v1/decisions", "mock-system-one"], ["/v1/systemone", "mock-decision"]].each do |path, model|
+      status, _, body = post(path, model:)
+      assert_equal 404, status
+      assert_equal "model_not_found", JSON.parse(body.join).dig("error", "code")
+    end
+  end
+
   def test_embeddings_answer_one_vector_per_input
     status, _, body = post("/v1/embeddings", model: "mock-embedding",
                            input: %w[alpha beta], dimensions: 4)

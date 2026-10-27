@@ -31,7 +31,7 @@ module Runs
 
     def source_of(variant)
       turn = variant.turn
-      return if turn.forked_from_turn_public_id || turn.sender_run_public_id.nil?
+      return if turn.source_released_at || turn.forked_from_turn_public_id || turn.sender_run_public_id.nil? || turn.communication_kind == "message"
       return unless variant.position.zero? || (variant.fallback? && variant.origin_variant&.position == 0)
 
       turn.sender_run_public_id
@@ -59,6 +59,8 @@ module Runs
           LEFT JOIN variants origin ON origin.id = variant.origin_variant_id
           LEFT JOIN runs parent ON parent.public_id = turn.sender_run_public_id
           WHERE turn.sender_run_public_id IS NOT NULL AND turn.forked_from_turn_public_id IS NULL
+            AND turn.source_released_at IS NULL
+            AND turn.communication_kind IS DISTINCT FROM 'message'
             AND (variant.position = 0 OR (variant.source = 'fallback' AND origin.position = 0))
         )
         SELECT EXISTS (SELECT 1 FROM ownership

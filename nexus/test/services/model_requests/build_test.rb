@@ -493,6 +493,41 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
     assert_equal "medium", payload.dig("reasoning", "effort")
   end
 
+  test "configured TTL overrides only the Anthropic tier and never enables summary markers" do
+    input = [user_message("hi"), user_message("next")]
+    options = { "max_output_tokens" => 1024, "prompt_cache" => Nexus::PromptCache::RequestKind.stamp("mainline") }
+    original = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5", request_options: options)
+    overridden = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5",
+      request_options: options.merge("prompt_cache_ttl" => "5m"))
+    assert_equal original.to_json.gsub(',"ttl":"1h"', ""), overridden.to_json
+    assert_not overridden.key?("prompt_cache_ttl")
+    branch = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5",
+      request_options: options.merge("prompt_cache_ttl" => "1h", "prompt_cache" => Nexus::PromptCache::RequestKind.stamp("branch")))
+    assert_equal original, branch
+
+    summary = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5",
+      request_options: options.merge("prompt_cache_ttl" => "1h", "prompt_cache" => Nexus::PromptCache::RequestKind.stamp("summary")))
+    assert_not_includes summary.to_json, "cache_control"
+  end
+
+  test "catalog TTL reaches native Responses and OpenRouter without changing the baseline" do
+    %w[openai_api/gpt-6-luna openrouter/openai/gpt-6-sol:exacto].each do |model_ref|
+      original = shipped_payload([user_message("hi")], model_ref: model_ref)
+      %w[30m 12h].each do |ttl|
+        configured = shipped_payload([user_message("hi")], model_ref: model_ref,
+          request_options: { "prompt_cache_ttl" => ttl })
+        assert_equal original.merge("prompt_cache_options" => { "ttl" => ttl }), configured
+      end
+    end
+  end
+
+  test "send refuses a TTL the current model does not declare" do
+    invocation, profile = tooled_invocation(api_format: "openai_responses",
+      request_options: { "prompt_cache_ttl" => "12h" })
+    result = build(invocation, profile: profile, base_url: "https://lane.example")
+    assert_equal ModelRequests::Build::INVALID_REQUEST, result.refusal
+  end
+
   private
 
     def user_message(text)

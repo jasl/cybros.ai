@@ -120,6 +120,13 @@ module ModelCatalog
         # opt-out, for a model known not to.
         def generation_parameters(format, caps)
           declared = Hash(caps["generation_parameters"])
+          if (ttl = declared["prompt_cache_ttl"])
+            allowed = ModelRequests::WireLowering::CACHE_TTLS.fetch(format, [])
+            if caps["prompt_caching"] == false || ttl["kind"] != "string" ||
+                Array(ttl["allowed_values"]).empty? || (Array(ttl["allowed_values"]) - allowed).any?
+              raise CompileError, "prompt_cache_ttl must enumerate supported TTLs for #{format} with prompt caching enabled"
+            end
+          end
           return declared.except("output_format") if declared["output_format"] == false
           return declared if declared.key?("output_format") ||
             !ModelRequests::WireLowering.carries_output_format?(format)

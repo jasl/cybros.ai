@@ -429,6 +429,8 @@ module Rho
       end
 
       module Conversations
+        def self.links: (untyped request, Daemon::Context ctx) -> untyped
+        def self.close_link: (untyped request, Daemon::Context ctx) -> untyped
         def self.register: (untyped api) -> untyped
         def self.list: (untyped request, Daemon::Context ctx) -> untyped
         def self.summary: (untyped row, Daemon::Context ctx) -> Hash[Symbol, untyped]

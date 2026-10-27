@@ -73,7 +73,8 @@ class Runs::SpawnOperationsTest < ActiveJob::TestCase
 
     assert_equal true, spawn.reload.output_summary.fetch("is_error")
     assert_includes spawn.output_body.effective_text, "delegation_canceled"
-    assert_empty spawn.spawned_conversation.inputs
+    assert_nil spawn.spawned_conversation
+    assert_empty Conversation.where(parent_conversation_id: @conversation.id)
     assert_nil spawn.spawn_await
     assert_nil spawn.spawn_delegation
     assert_predicate run.reload, :delivered?

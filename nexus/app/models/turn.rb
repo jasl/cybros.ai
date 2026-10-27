@@ -15,10 +15,10 @@ class Turn < ApplicationRecord
   # EXCLUDE capability); `hidden` leaves the timeline surface too.
   VISIBILITIES = %w[visible excluded_from_context hidden].freeze
 
-  attr_readonly :account_id, :conversation_id, :public_id, :position, :kind,
+  attr_readonly :conversation_link_public_id, :account_id, :conversation_id, :public_id, :position, :kind,
     :role, :speaker_id, :control_owner_user_id, :answering_user_id, :origin,
     :sender_conversation_public_id, :sender_run_public_id, :sender_task_key,
-    :forked_from_turn_public_id, :forked_from_variant_public_id, :input_public_id, :callback_sources
+    :forked_from_turn_public_id, :forked_from_variant_public_id, :input_public_id, :callback_sources, :communication_kind
 
   attribute :public_id, default: -> { SecureRandom.uuid_v7 }
 
@@ -53,6 +53,7 @@ class Turn < ApplicationRecord
   before_destroy :only_the_apex_hard_deletes, prepend: true
 
   validates :kind, inclusion: { in: KINDS }
+  validates :communication_kind, inclusion: { in: %w[message request] }, allow_nil: true
   validates :role, inclusion: { in: ROLES }
   enum :status, STATUSES.index_by(&:itself), validate: true, scopes: false
   validates :visibility, inclusion: { in: VISIBILITIES }

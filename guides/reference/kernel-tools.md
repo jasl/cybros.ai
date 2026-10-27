@@ -8,7 +8,9 @@ Tools the kernel serves itself. A kernel tool has a canonical `source.category.n
 | `nexus.graph.wait` | `wait` | Observe an existing task by run and task key with a finite timeout, without owning it |
 | `nexus.human.ask` | `ask` | Park a question for a person with a prompt and optional options; holds its branch until answered or expired |
 | `nexus.conversation.spawn` | `spawn` | Create a child conversation from a captured `declaration`, or use the generic identity path when no catalog is declared, and send its first request |
-| `nexus.conversation.send` | `send` | Address an input to another conversation, optionally selecting its answerer; no task dependency |
+| `nexus.conversation.send` | `send` | Deliver a recipient-owned ordinary message by address or Conversation link; exact-run steering is explicit |
+| `nexus.conversation.links` | `links` | Discover links for the calling Conversation and answering Agent |
+| `nexus.conversation.request` | `request` | Request work in an existing Conversation and observe its exact completion |
 | `nexus.conversation.status` | `status` | Read the status of a conversation or its work |
 | `nexus.conversation.cancel` | `cancel` | Request cancellation of work this run started |
 | `nexus.conversation.read` | `session_read` | Visible context, including unfinished turns; `include_execution` adds persisted execution progress |
@@ -28,7 +30,7 @@ Tools the kernel serves itself. A kernel tool has a canonical `source.category.n
 | `nexus.models.list` | `models_list` | Currently available model references, identities, capabilities and pricing; optional case-insensitive `query`, `limit` (default 20, maximum 100) and `offset` (default 0) return `models`, `total`, `offset` and nullable `next_offset` |
 | `nexus.skill.load` | `skill` | Load one skill's instructions from its accepted source |
 
-New `send` and `spawn` requests obey the recipient Agent's Public/Private setting in the Workspace's [Agent messaging policy](agent-api/workspaces.md#read-messaging), using the calling Run's answering Agent as the sender. Accepted work and kernel result replies retain their existing delivery rules; `status`, `cancel` and history reads keep their existing authorization.
+New directly addressed `send`, `request` and `spawn` calls obey the recipient Agent's Public/Private setting in the Workspace's [Agent messaging policy](agent-api/workspaces.md#read-messaging), using the calling Run's answering Agent as the sender. Accepted work and kernel result replies retain their existing delivery rules; `status`, `cancel` and history reads keep their existing authorization.
 
 The memory family is the one overridable family: a tool provider may take it over under the workspace's explicit opt-in, and must take the whole family.
 
@@ -87,3 +89,5 @@ tools and approval policy. The model supplies the future instruction and clock,
 not an identity or a new execution policy. The source Run is provenance; its
 completion or Stop does not cancel the schedule. Rules, dispatch and child
 results use the ordinary [Schedules](agent-api/schedules.md) resource.
+
+Linked messages use the fixed endpoints of a [Conversation link](agent-api/conversation-links.md); a link grants no peer history or execution control.

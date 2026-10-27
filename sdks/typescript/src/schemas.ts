@@ -1,5 +1,8 @@
 import type * as Models from "./models.js";
 export interface Shapes {
+  ConversationLinkEndpoint: Models.ConversationLinkEndpoint;
+  ConversationLink: Models.ConversationLink;
+  ConversationLinkPage: Models.ConversationLinkPage;
   RunCandidate: Models.RunCandidate;
   AnalysisCounters: Models.AnalysisCounters;
   AnalysisLatency: Models.AnalysisLatency;
@@ -175,6 +178,8 @@ export interface Shapes {
   InferenceRequest: Models.InferenceRequest;
   InferenceRequestModel: Models.InferenceRequestModel;
   InferenceRequestResult: Models.InferenceRequestResult;
+  DecisionAnswer: Models.DecisionAnswer;
+  DecisionProbability: Models.DecisionProbability;
   InferenceRequestEmbedding: Models.InferenceRequestEmbedding;
   InferenceRequestModelChange: Models.InferenceRequestModelChange;
   InferenceRequestFile: Models.InferenceRequestFile;

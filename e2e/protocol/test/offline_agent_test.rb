@@ -463,6 +463,55 @@ class OfflineAgentTest < Minitest::Test
       "the resumed priced attempt settles through the ordinary conversation ledger"
   end
 
+  def test_human_takeover_preserves_the_claimed_child_across_parent_stop_and_host_restart
+    marker = "takeover-#{SecureRandom.hex(8)}"
+    release = File.join(@world.project, "#{marker}.release")
+    @peer.client.profile.declare_configuration(**declaration(kernel_tools: ["nexus.conversation.spawn"]).transform_keys(&:to_sym),
+      approval_rules: [])
+    chat = conversation
+    child_prompt = script(["synthetic_wait", { "release" => File.basename(release), "text" => marker }])
+    _, _, parent = submit_tracked(chat, script(["spawn", {
+      "prompt" => child_prompt, "lifetime" => "turn", "wait" => true,
+    }]), declaration: declaration(kernel_tools: ["nexus.conversation.spawn"]))
+    child_row = await("the original spawned child") { chat.children.items.first }
+    child = @workspace.conversation(child_row.public_id)
+    turn = await("the child's original execution") do
+      child.turns.list.items.find { |row| row.active_variant&.run_public_id }
+    end
+    run = @workspace.run(turn.active_variant.run_public_id)
+    @runs << run
+    tool = await("the original claimed child tool") do
+      run.fetch.tasks.find { |task| task.tool_name == "synthetic_wait" && task.claimed_by && task.status == "dispatched" }
+    end
+    original = [child.public_id, turn.public_id, turn.active_variant.public_id, run.run_public_id, tool.key]
+    assert_raises(CybrosAgent::Api::Forbidden) { child.takeover }
+    E2E.hosts.stop
+    taken = @human.workspace(@workspace.public_id).conversation(child.public_id).takeover
+    assert_equal child.public_id, taken.public_id
+    refute_nil taken.taken_over_at
+    parent_state = parent.fetch
+    completion = parent_state.tasks.find { |task| task.kind == "delegation_task" }
+    assert_equal "completed", completion.status
+    assert_equal "taken_over", parent.task(completion.key).structured_content.fetch("outcome")
+    chat.cancel
+    E2E.hosts.start
+    File.write(release, "continue original tool")
+    completed = complete(run)
+    final = completed_turn(child, turn.public_id)
+    assert_equal original, [child.public_id, final.public_id, final.active_variant.public_id, completed.public_id, tool.key]
+    assert_equal "completed", run.task(tool.key).task.status
+    assert_includes task_text(run, tool.key), marker
+    assert_equal 1, @world.runner.claims.count { |claim| claim["run"] == run.run_public_id && claim["task"] == tool.key }
+    refute_predicate child.fetch, :subagent?
+    assert_equal chat.public_id, child.fetch.parent.public_id
+    refute_includes chat.children.items.map(&:public_id), child.public_id
+    assert_includes @workspace.conversations.list.items.map(&:public_id), child.public_id
+    assert_equal "taken_over", parent.task(completion.key).structured_content.fetch("outcome")
+  ensure
+    File.write(release, "release after test") if release
+    E2E.hosts.start
+  end
+
   private
 
     def declaration(**overrides)

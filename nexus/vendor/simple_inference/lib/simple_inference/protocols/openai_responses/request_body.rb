@@ -1,3 +1,5 @@
+require_relative "../prompt_cache"
+
 module SimpleInference
   module Protocols
     class OpenAIResponses
@@ -6,7 +8,7 @@ module SimpleInference
         private
 
         def responses_request_options(options)
-          normalized = nested_reasoning_effort_options(options, default_summary: reasoning_summary_default)
+          normalized = nested_reasoning_effort_options(PromptCache.lower(options), default_summary: reasoning_summary_default)
           validate_reasoning_options(normalized[:reasoning])
           apply_reasoning_capture_defaults(normalized)
           if bytes_only_input_media_lane? && normalized[:input].is_a?(Array)

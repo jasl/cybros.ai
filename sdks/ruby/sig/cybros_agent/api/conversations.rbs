@@ -69,6 +69,8 @@ module CybrosAgent
       attr_reader archived_at: String?
       attr_reader billing_subject: String?
       attr_reader parent: ConversationParent?
+      attr_reader taken_over_at: String?
+      attr_reader taken_over_by_public_id: String?
       attr_reader source_conversation_public_id: String?
       attr_reader forked_from_turn_public_id: String?
       attr_reader forked_from_variant_public_id: String?
@@ -121,6 +123,8 @@ module CybrosAgent
       attr_reader archived_at: String?
       attr_reader billing_subject: String?
       attr_reader parent: ConversationParent?
+      attr_reader taken_over_at: String?
+      attr_reader taken_over_by_public_id: String?
       attr_reader source_conversation_public_id: String?
       attr_reader forked_from_turn_public_id: String?
       attr_reader forked_from_variant_public_id: String?
@@ -151,6 +155,8 @@ module CybrosAgent
     end
 
     class CallbackResult < Data
+      attr_reader run_public_id: String?
+      attr_reader status: String?
       attr_reader conversation_public_id: String
       attr_reader input_public_id: String
       attr_reader turn_public_id: String
@@ -168,6 +174,11 @@ module CybrosAgent
     end
 
     class Input < Data
+      attr_reader communication_kind: String?
+      attr_reader link_public_id: String?
+      attr_reader requested_delivery_mode: String?
+      attr_reader on_target_end: String?
+      attr_reader fallback_reason: String?
       attr_reader public_id: String
       attr_reader queue_position: Integer
       attr_reader state: String
@@ -295,6 +306,8 @@ module CybrosAgent
     end
 
     class Turn < Data
+      attr_reader communication_kind: String?
+      attr_reader link_public_id: String?
       attr_reader input_public_id: String?
       attr_reader callback_sources: Array[CallbackSource]
       attr_reader sender_run_public_id: String?
@@ -456,6 +469,7 @@ module CybrosAgent
       def export: (untyped io) -> CybrosAgent::Response
       def update: (lock_version: Integer, ?title: String?, ?metadata: Hash[untyped, untyped], ?cost_limit: String?) -> Conversation
       def archive: () -> Conversation
+      def takeover: () -> Conversation
       def unarchive: () -> Conversation
       def delete: () -> nil
       def children: (?after: String?, ?limit: Integer?, ?order: String?, ?order_by: String?) -> Page[ConversationSummary]
@@ -466,6 +480,7 @@ module CybrosAgent
       def inputs: () -> ConversationInputsContext
       def input_execution: (String input_public_id, ?position: KernelFeed::Position) -> InputExecution
       def execution: (CybrosAgent::InputMaterialization::Result result, ?position: KernelFeed::Position) -> InputExecution
+      def links: () -> ConversationLinksContext
       def schedules: () -> SchedulesContext
       def turns: () -> TurnsContext
       def history: () -> ConversationHistoryContext

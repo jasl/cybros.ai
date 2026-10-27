@@ -51,6 +51,7 @@ module Nexus
           "memory_collections.json" => memory_collections,
           "inference_requests.json" => inference_requests,
           "conversations.json" => conversations,
+          "communication.json" => communication,
           "schedules.json" => schedules,
           "history.json" => history,
           "runs.json" => runs,
@@ -139,3 +140,5 @@ require_relative "nexus_contract/executor_operations"
 
 require_relative "nexus_contract/history"
 require_relative "nexus_contract/mcp_connections"
+
+require_relative "nexus_contract/communication"

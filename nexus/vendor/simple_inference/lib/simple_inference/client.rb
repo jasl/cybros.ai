@@ -30,6 +30,10 @@ module SimpleInference
       @embeddings ||= Resources::Embeddings.new(client: self)
     end
 
+    def decisions
+      @decisions ||= Resources::Decisions.new(client: self)
+    end
+
     def execute(compiled_request)
       compiled_request.execute(config)
     end

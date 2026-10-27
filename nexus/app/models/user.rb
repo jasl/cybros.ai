@@ -183,6 +183,7 @@ class User < ApplicationRecord
             self.applied_steward_shutdown_generation =
               target.managed_resource_shutdown_generation
             if save
+              ConversationLink.close_for_principal(self, reason: "steward_changed") if source_id != target.id
               # Discard the copy `shutdown_pending_for?` may have cached before
               # the Profile write; assigning would write the create-frozen FK.
               address.association(:agent).reset if address

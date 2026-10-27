@@ -175,6 +175,7 @@ export default defineConfig({
             { text: 'MCP connections', link: '/reference/agent-api/mcp-connections' },
             { text: 'Conversations', link: '/reference/agent-api/conversations' },
             { text: 'Conversation inputs', link: '/reference/agent-api/conversation-inputs' },
+            { text: 'Conversation links', link: '/reference/agent-api/conversation-links' },
             { text: 'Conversation input fields', link: '/reference/agent-api/conversation-input-fields' },
             { text: 'Kernel mail', link: '/reference/agent-api/conversation-kernel-mail' },
             { text: 'Conversation turns', link: '/reference/agent-api/conversation-turns' },

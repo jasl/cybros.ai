@@ -23,6 +23,7 @@ module ModelSelection
         "speech_generation" => :none,
         "transcription" => :exactly_one_audio,
         "embedding" => :none,
+        "decision" => :none,
       }.freeze
 
       class << self
@@ -37,6 +38,8 @@ module ModelSelection
             normalize_text_input(input)
           when "embedding"
             normalize_embedding_input(input)
+          when "decision"
+            normalize_decision_input(input)
           when "image_generation", "speech_generation"
             normalize_required_string_input(input)
           when "transcription"
@@ -205,6 +208,13 @@ module ModelSelection
             else
               Normalization.refused(:invalid_input)
             end
+          end
+
+          def normalize_decision_input(input)
+            evidence = SimpleInference::Decisions::Input.from_value(input)
+            Normalization.accepted(Nexus::DecisionInput.new(value: evidence.value))
+          rescue SimpleInference::ValidationError
+            Normalization.refused(:invalid_input)
           end
 
           def normalize_embedding_input(input)
@@ -413,6 +423,8 @@ module ModelSelection
               end
             when "embedding"
               value.sum(&:bytesize)
+            when "decision"
+              Nexus::CanonicalJson.bytesize(value.value)
             when "image_generation", "speech_generation"
               value.bytesize
             when "transcription"

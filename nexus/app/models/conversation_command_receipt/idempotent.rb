@@ -118,7 +118,7 @@ class ConversationCommandReceipt
         case @operation
         when "conversation_create"
           scope.where(workspace_id: @workspace.id)
-        when "input_create", "fork", "regeneration", "store_entry_create", "schedule_create"
+        when "input_create", "fork", "regeneration", "store_entry_create", "schedule_create", "link_create"
           raise ArgumentError, "#{@operation} needs its host" if @host.nil?
 
           scope.where(host: @host)

@@ -10,6 +10,8 @@ module Nexus
     WAIT = ToolRegistry.function_definition("wait")
     ASK = ToolRegistry.function_definition("ask")
     SPAWN = ToolRegistry.function_definition("spawn")
+    REQUEST = ToolRegistry.function_definition("request")
+    LINKS = ToolRegistry.function_definition("links")
     SEND = ToolRegistry.function_definition("send")
     STATUS = ToolRegistry.function_definition("status")
     CANCEL = ToolRegistry.function_definition("cancel")

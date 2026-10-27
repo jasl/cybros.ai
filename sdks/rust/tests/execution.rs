@@ -189,3 +189,36 @@ async fn waiting_timeout_does_not_cancel_server_work() {
     assert_eq!(server.next().await.method, "GET");
     assert!(server.try_next().is_none());
 }
+
+#[tokio::test]
+async fn missing_materialization_remains_unknown_without_a_new_request() {
+    let mut server = Server::script(vec![
+        reply(events(vec![], 1)),
+        Reply::json(404, r#"{"error":{"code":"not_found"}}"#),
+    ])
+    .await;
+    let client = Client::new(&server.url, "fixture").unwrap();
+    let mut observer = InputExecution::new(
+        &client,
+        "workspace",
+        "conversation",
+        "accepted-input",
+        Position {
+            sequence: 1,
+            cursor: Some("cursor-1".into()),
+        },
+    )
+    .unwrap();
+    assert!(observer.recover().await.unwrap().is_none());
+    for _ in 0..2 {
+        let request = server.next().await;
+        assert_eq!(request.method, "GET");
+        assert!(
+            request.path.contains("/events")
+                || request
+                    .path
+                    .contains("/inputs/accepted-input/materialization")
+        );
+    }
+    assert!(server.try_next().is_none());
+}

@@ -59,7 +59,7 @@ module Conversations
           # Terminal cleanup already owns this immutable target, potentially
           # below task/body locks. Share its loop lock before the input lock so
           # either deletion wins without asking cleanup to climb the ladder.
-          if input.expected_steering_run_public_id
+          if input.steering? && input.expected_steering_run_public_id
             Run.lock.find_by!(public_id: input.expected_steering_run_public_id)
           end
 
@@ -73,7 +73,7 @@ module Conversations
             next Outcome.refused(:not_found) unless input
 
             if delegation
-              Runs::Delegations::Settlement.call(node: delegation, call: @host.spawn_node,
+              Runs::Delegations::Settlement.call(node: delegation, call: delegation.run.tasks.find_by!(node_key: input.sender_task_key),
                 text: "The delegated input was removed before execution.", status: "failed",
                 error_key: "delegation_abandoned", child: @host)
             end

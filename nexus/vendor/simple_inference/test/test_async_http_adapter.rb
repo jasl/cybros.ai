@@ -146,6 +146,14 @@ class TestAsyncHTTPAdapter < Minitest::Test
     sse_request(server, url: "http://127.0.0.1:#{server.port}#{path}", **overrides)
   end
 
+  def observe_h2_reset(stream)
+    received = Async::Queue.new
+    stream.define_singleton_method(:receive_reset_stream) do |frame|
+      super(frame).tap { |code| received.enqueue(code) }
+    end
+    received
+  end
+
   def test_call_returns_the_envelope_contract
     server = ChunkedServer.new(content_type: "application/json", chunks: ["{\"ok\":true}"])
     adapter = SimpleInference::HTTPAdapters::AsyncHTTP.new
@@ -441,13 +449,16 @@ class TestAsyncHTTPAdapter < Minitest::Test
         aborted = true
       end
       request = request_seen.dequeue
+      reset_received = observe_h2_reset(request.stream)
       assert_same sibling_request.connection, request.connection,
                   "the sibling and canceled request must share one HTTP/2 connection"
 
       Fiber.scheduler.raise(victim_fiber, abort_error.new("cancel"))
       victim.wait
       assert aborted, "victim request must observe cancellation"
-      Async::Task.current.yield
+      # Local cancellation does not synchronize the peer's frame reader.
+      reset_code = task.with_timeout(1) { reset_received.dequeue }
+      assert_equal Protocol::HTTP2::Error::CANCEL, reset_code
 
       assert request.stream.closed?, "cancel must send RST_STREAM before response headers arrive"
       release_sibling.signal
@@ -465,7 +476,7 @@ class TestAsyncHTTPAdapter < Minitest::Test
 
   def test_aborting_after_h2_headers_resets_only_that_stream
     request_seen = Async::Queue.new
-    body_started = Async::Notification.new
+    body_received = Async::Queue.new
     sibling_started = Async::Notification.new
     release_sibling = Async::Notification.new
     sibling_request_seen = Async::Queue.new
@@ -485,7 +496,6 @@ class TestAsyncHTTPAdapter < Minitest::Test
 
       request_seen.enqueue(request)
       body = Protocol::HTTP::Body::Streamable.response(request) do |stream|
-        body_started.signal
         loop do
           stream.write("data: {}\n\n")
           sleep(0.05)
@@ -510,19 +520,24 @@ class TestAsyncHTTPAdapter < Minitest::Test
       aborted = false
       victim = task.async do
         victim_fiber = Fiber.current
-        adapter.call_stream(h2_request(server, path: "/after-headers")) { |_chunk| nil }
+        adapter.call_stream(h2_request(server, path: "/after-headers")) do |chunk|
+          body_received.enqueue(chunk)
+        end
       rescue abort_error
         aborted = true
       end
-      body_started.wait
+      # Server-side writes alone do not prove the client has received headers.
+      assert_equal "data: {}\n\n", task.with_timeout(1) { body_received.dequeue }
       request = request_seen.dequeue
+      reset_received = observe_h2_reset(request.stream)
       assert_same sibling_request.connection, request.connection,
                   "the sibling and canceled request must share one HTTP/2 connection"
 
       Fiber.scheduler.raise(victim_fiber, abort_error.new("cancel"))
       victim.wait
       assert aborted, "victim stream must observe cancellation"
-      task.yield
+      reset_code = task.with_timeout(1) { reset_received.dequeue }
+      assert_equal Protocol::HTTP2::Error::CANCEL, reset_code
 
       assert request.stream.closed?, "cancel must send RST_STREAM while the response body is active"
       release_sibling.signal

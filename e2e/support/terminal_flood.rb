@@ -37,7 +37,7 @@ module E2E
           const bytes = [...stats.values()].find(s => s.type === 'data-channel' && s.label === 'terminal')?.bytesReceived || 0;
           done({...flood, elapsedMs: performance.now()-flood.start, bytes: bytes-flood.bytesStart,
             heapEnd: performance.memory?.usedJSHeapSize,
-            notice: document.querySelector('.terminal__notice').textContent});
+            notice: [...document.querySelectorAll('.terminal .alert:not([hidden])')].map(element => element.textContent).join(' ')});
         });
       JS
       finish = Process.times

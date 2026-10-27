@@ -14,7 +14,7 @@ class AgentAPI::V1::Workspaces::InputsController < AgentAPI::V1::Workspaces::Bas
     inputs = host.inputs
       .where(state: Input::STATES)
       .in_read_order
-      .includes(:content_bodies, :answering_user, speaker: :user).to_a
+      .includes(:content_bodies, :answering_user, :conversation_link, speaker: :user).to_a
     ContentBody.preload_for_render(inputs.flat_map(&:content_bodies))
 
     render json: {
