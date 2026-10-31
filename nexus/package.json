@@ -10,7 +10,7 @@
   "dependencies": {
     "@hotwired/stimulus": "^3.2.2",
     "@hotwired/turbo-rails": "^8.0.23",
-    "@iconify-json/lucide": "^1.2.147",
+    "@iconify-json/lucide": "^1.2.148",
     "@iconify/tailwind4": "^1.2.3",
     "@tailwindcss/cli": "^4.3.3",
     "@tailwindcss/typography": "^0.5.20",
