@@ -13,5 +13,5 @@ gem "minitest", "~> 6.0"
 gem "async-websocket"
 
 gem "rbs", require: false
-gem "rubocop", "~> 1.21", require: false
+gem "rubocop", "~> 1.92", require: false
 gem "rubocop-rails-omakase", require: false
