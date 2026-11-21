@@ -38,6 +38,11 @@ module Runs
       def self.input(id)
         input = Input.find_by(id: id)
         return false unless input
+        # Ready input has its own durable frontier. This pass owns revocation,
+        # so only a closed link or a stopped owner needs a locked recheck.
+        public_id = input.cancellation_source_public_id
+        source = Run.find_by(public_id: public_id) if public_id
+        return false unless input.conversation_link&.closed? || SourceWork.stopped?(public_id, source)
 
         input.host.with_lock do
           link = input.conversation_link
@@ -47,13 +52,7 @@ module Runs
             input = Input.lock.find_by(id: id)
             next false unless input
 
-            unless link&.closed? || SourceWork.stopped?(input.cancellation_source_public_id, sources[input.sender_run_public_id])
-              # The source frontier visits delayed, blocked and steering rows as
-              # well as due mail. Lost hints never leave a closed link's row held.
-              input.host.wake_drain if input.state == "pending" &&
-                (input.deliver_at.nil? || input.deliver_at <= DatabaseClock.now)
-              next false
-            end
+            next false unless link&.closed? || SourceWork.stopped?(input.cancellation_source_public_id, sources[input.sender_run_public_id])
 
             Conversations::Inputs::Destroy.remove(input)
             input.host.wake_drain

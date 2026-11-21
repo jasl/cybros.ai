@@ -41,7 +41,7 @@ module Schedules
         end
 
         child, input = result.value
-        child.update!(scheduled_input_public_id: input.public_id)
+        child.update!(scheduled_input_public_id: input.public_id, scheduled_result_wake: @job.wake)
         advance(last_execution_conversation: child, last_input_public_id: input.public_id,
           last_enqueued_at: @cutoff, last_error_code: nil)
         :dispatched

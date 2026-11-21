@@ -1,3 +1,4 @@
+# @auth [PlatformBearer, BrowserSession]
 class API::V1::Admin::Users::BudgetsController < API::V1::Admin::BaseController
   include BudgetReading, BudgetWriting
 

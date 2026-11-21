@@ -14,7 +14,11 @@ class Settings::EmailsController < Settings::BaseController
     submitted = params.expect(email: [:current_password, :email])
     email = submitted[:email].to_s
 
-    if @identity.change_email(email, current_password: submitted[:current_password].to_s)
+    changed = @identity.change_email(email, current_password: submitted[:current_password].to_s) do
+      consume_sso_proof("settings_email")
+    end
+
+    if changed
       redirect_to settings_email_path, notice: t("settings.emails.update.updated")
     else
       @identity.email = email

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { Steps } from '../src/steps.js';
 import { readFileSync } from 'node:fs';
-import { Client, ExecutorClient, PlatformClient, Sessions, DeviceFlow, ApplicationOAuth, AuthorizationLost, MalformedResponse } from '../src/index.js';
+import { Client, ExecutorClient, PlatformClient, Sessions, DeviceFlow, TerminalDeviceFlow, ApplicationOAuth, AuthorizationLost, MalformedResponse } from '../src/index.js';
 function fixture(family: string, key: string): unknown { return (JSON.parse(readFileSync(new URL(`../../../contracts/nexus/v1/${family}.json`, import.meta.url), 'utf8')) as Record<string, unknown>)[key]; }
 function transport(data: unknown, status = 200): import("../src/http.js").Fetch { return (async () => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })); }
 const config = (data: unknown, status = 200) => ({ baseURL: 'http://nexus.example', credential: 'test-only', fetch: transport(data, status) });
@@ -121,6 +121,22 @@ describe('Shared Nexus response contracts through public resources', () => {
   for (const key of ['unknown_plane_fixture', 'unknown_scope_fixture', 'unknown_token_type_fixture', 'unknown_child_plane_fixture']) test(`reject Application OAuth ${key}`, async () => {
     const oauth = new ApplicationOAuth({ baseURL: 'http://nexus.example', fetch: transport(fixture('application_oauth', key)) });
     await expect(oauth.rotate('refresh')).rejects.toBeInstanceOf(AuthorizationLost);
+  });
+  test('terminal device login uses no machine claims and yields an API Session', async () => {
+    const requests: { path: string; fields: Record<string, string> }[] = [];
+    const responses = ['valid_device_authorization_fixture', 'terminal_session_response', 'valid_agent_token_fixture'];
+    const client = new TerminalDeviceFlow({ baseURL: 'https://nexus.example', fetch: async (url, init) => {
+      requests.push({ path: new URL(String(url)).pathname, fields: Object.fromEntries(new URLSearchParams(String(init?.body))) });
+      return Response.json(fixture('oauth', responses.shift()!));
+    } });
+    const auth = await client.requestAuthorization();
+    const session = await client.awaitCredentials(auth);
+    expect(session).toEqual(fixture('sessions', 'valid_create_fixture'));
+    expect(requests).toEqual([
+      { path: '/oauth/device_authorization', fields: fixture('oauth', 'terminal_authorization_request') },
+      { path: '/oauth/token', fields: { client_id: 'cybros-terminal', grant_type: 'urn:ietf:params:oauth:grant-type:device_code', device_code: auth.device_code } },
+    ]);
+    await expect(client.poll(auth)).rejects.toBeInstanceOf(AuthorizationLost);
   });
   test('Application OAuth lineages are independent', async () => {
     const oauth = new ApplicationOAuth({ baseURL: 'http://nexus.example', fetch: transport(fixture('application_oauth', 'valid_runtime_fixture')) });

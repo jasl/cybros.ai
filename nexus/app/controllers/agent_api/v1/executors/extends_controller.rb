@@ -7,11 +7,27 @@
 # loop), `not_claimant` (the address or the token is not the current
 # claimant's), `extension_too_long` — and a malformed extension is
 # unprocessable before any lock is taken.
+# @auth [ExecutorBearer]
 class AgentAPI::V1::Executors::ExtendsController < AgentAPI::V1::Executors::BaseController
   # The door's own conflicts, published by the contract pack; `not_claimant`
   # is the claim-keyed word the progress door shares.
   CONFLICTS = %i[not_extendable not_claimant extension_too_long].freeze
 
+  # @oas_include
+  # @summary Create extends
+  # @tags Executor, extends
+  # @parameter run_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter task_key(path) [!String] Resource selector.
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ExecutorsExtendsCreate
   def create
     run = find_addressable_loop
     timeout_ms = Integer(params[:timeout_ms], exception: false)

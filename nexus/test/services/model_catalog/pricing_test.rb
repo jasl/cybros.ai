@@ -459,7 +459,7 @@ class ModelCatalog::PricingTest < ActiveSupport::TestCase
   test "provider_reported_only rejects an unpinned decimal contract and native-unit mismatch" do
     Dir.mktmpdir do |root|
       write_fragment(root, providers: { "openrouter" => { "base_url" => "https://openrouter.ai/api", "api_format" => "openrouter_chat", "concurrency_limit" => 8 } }, models: {
-        "openrouter/moonshotai/kimi-k3:exacto" => {
+        "openrouter/vendor/test-model" => {
           "capabilities" => text_capabilities(
             limits: { "combined_input_output_tokens" => 200_000 }, input_modalities: []
           ),

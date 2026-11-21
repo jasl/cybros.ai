@@ -15,9 +15,7 @@ default:
   timeout: 20m
 
 variables:
-  # Docker's latest published Ruby image as of 2026-10-24.
-  # This image pin can lag .ruby-version and GitHub's ruby/setup-ruby release.
-  RUBY_VERSION: "4.0.9"
+  RUBY_VERSION: "4.0.10"
   BUN_VERSION: "1.4.4"
   BUNDLE_FROZEN: "true"
   DEBIAN_FRONTEND: noninteractive
@@ -172,6 +170,24 @@ nexus_test:
     paths:
       - nexus/log/test.log
 
+nexus_openapi:
+  extends: [.nexus, .postgres]
+  variables:
+    RAILS_ENV: test
+    PARALLEL_WORKERS: "1"
+  script:
+    - EDITOR=cat bin/rails credentials:edit
+    - bun install --frozen-lockfile
+    - bin/rails db:prepare
+    - bin/rails openapi:check
+    - bin/rails test test/controllers/openapi_test.rb
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - nexus/tmp/openapi.json
+      - nexus/log/test.log
+
 nexus_system_test:
   extends: [.nexus, .ruby_browsers, .postgres]
   variables:
@@ -214,30 +230,51 @@ agent_sdk_typescript:
   script:
     - pnpm run check
 
-agent_sdk_rust:
-  image: rust:1.99.1
+.rust:
   variables:
     CARGO_HOME: $CI_PROJECT_DIR/.cache/cargo
+    # Keep build caches small; CI does not need debugger data or incremental state.
+    CARGO_INCREMENTAL: "0"
+    CARGO_PROFILE_DEV_DEBUG: "0"
+    CARGO_PROFILE_TEST_DEBUG: "0"
   cache:
-    key: rust-1.99.1
+    key:
+      prefix: $CI_JOB_NAME_SLUG
+      files:
+        - sdks/rust/Cargo.lock
+        - sdks/rust/rust-toolchain.toml
     paths:
       - .cache/cargo/registry/
       - .cache/cargo/git/
       - sdks/rust/target/
   before_script:
-    - rustup component add rustfmt clippy
-    - rustup toolchain install 1.88.0 --profile minimal
     - cd sdks/rust
+
+agent_sdk_rust:
+  extends: .rust
+  # Includes rustfmt and Clippy, avoiding toolchain downloads during the job.
+  image:
+    name: cimg/rust:1.99.1
+    entrypoint: [""]
   script:
     - cargo fmt --all -- --check
     - cargo clippy --locked --all-targets --all-features -- -D warnings
     - cargo test --locked
     - cargo test --locked --all-features
     - RUSTDOCFLAGS='-D warnings' cargo doc --locked --no-deps --all-features
-    - cargo +1.88.0 check --locked --all-features
     # Local bin/ci allows a dirty checkout; CI packaging should reject one.
     - cargo package --locked
     - bin/package-smoke
+
+agent_sdk_rust_msrv:
+  extends: .rust
+  # Run the minimum compiler in its own image instead of downloading it each time.
+  image: rust:1.88.0-slim-bookworm
+  variables:
+    # Override rust-toolchain.toml so this job never installs the current compiler.
+    RUSTUP_TOOLCHAIN: "1.88.0"
+  script:
+    - cargo check --locked --all-features
 
 cmctl:
   extends: .gem

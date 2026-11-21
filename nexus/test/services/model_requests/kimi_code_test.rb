@@ -1,7 +1,7 @@
 require "test_helper"
 
 class ModelRequests::KimiCodeTest < ActiveSupport::TestCase
-  MODEL = "kimi_code/kimi-for-coding".freeze
+  MODEL = "kimi_code/k3.1-pro".freeze
 
   setup do
     @account = accounts(:cybros)
@@ -18,34 +18,34 @@ class ModelRequests::KimiCodeTest < ActiveSupport::TestCase
   test "the coding subscription exposes its own model window, vision and native replay" do
     profile = DevModelLane.profile_for(MODEL)
 
-    assert_equal "kimi-for-coding", profile.model_pin
+    assert_equal "k3.1-pro", profile.model_pin
     assert_equal "openai_compatible_chat", profile.adapter_profile
     assert_equal "api_key", profile.credential_lane
     assert_equal %w[image], profile.input_modalities
     assert_equal 1_048_576, profile.local_safety_limits.combined_input_output_tokens
-    assert_equal 32_768, profile.local_safety_limits.output_tokens
-    assert_equal 32_768, profile.generation_parameters.fetch("max_output_tokens").maximum
+    assert_nil profile.local_safety_limits.output_tokens
+    refute profile.generation_parameters.key?("max_output_tokens")
     assert_equal "chat_reasoning", ModelCatalog.current.models.fetch(MODEL).dig("capabilities", "reasoning_replay", "format")
     assert_nil ModelCatalog.current.models.fetch(MODEL)["pricing"]
   end
 
-  test "accepted Kimi requests compile the default, selected efforts and disabled thinking" do
-    [nil, "high", "max"].each do |effort|
+  test "accepted Kimi requests compile mandatory thinking and the selected effort" do
+    [nil, "low", "high", "max"].each do |effort|
       request = compile(effort: effort)
       body = JSON.parse(request.payload)
 
       assert_predicate request, :stream?
       assert_equal "/v1/chat/completions", request.path
-      assert_equal "kimi-for-coding", body.fetch("model")
+      assert_equal "k3.1-pro", body.fetch("model")
       assert_equal({ "type" => "enabled" }, body.fetch("thinking"))
-      assert_equal effort || "low", body.fetch("reasoning_effort")
-      assert_equal 128, body.fetch("max_tokens")
+      assert_equal effort || "high", body.fetch("reasoning_effort")
+      refute body.key?("max_tokens")
       assert_equal [{ "type" => "text", "text" => "hello" }], body.fetch("messages").sole.fetch("content")
     end
 
     body = JSON.parse(compile(enabled: false).payload)
-    assert_equal({ "type" => "disabled" }, body.fetch("thinking"))
-    assert_not body.key?("reasoning_effort")
+    assert_equal({ "type" => "enabled" }, body.fetch("thinking"))
+    assert_equal "high", body.fetch("reasoning_effort")
   end
 
   test "developer instructions become system messages in place on the coding wire" do
@@ -69,7 +69,7 @@ class ModelRequests::KimiCodeTest < ActiveSupport::TestCase
         workspace: workspaces(:shared), creating_user: users(:member), workload: "text_generation",
         submitted: Nexus::SubmittedModelSelection.new(model: MODEL,
           reasoning_effort: effort, reasoning_enabled: enabled),
-        configuration: { "max_output_tokens" => 128 },
+        configuration: {},
         input: input || [{ "role" => "user", "parts" => [{ "type" => "text", "text" => "hello" }] }],
         upload_public_ids: [], billing_subject: nil, idempotency_key: SecureRandom.uuid
       )

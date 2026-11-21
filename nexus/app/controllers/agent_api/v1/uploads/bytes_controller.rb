@@ -10,9 +10,27 @@
 # foreign, fileless and unreadable answer 404 alike: no oracle. The
 # conditional GET is `AttachmentRead`'s: the strong ETag of this kind, a
 # 304 before streaming.
+# @auth [MemberBearer]
 class AgentAPI::V1::Uploads::BytesController < AgentAPI::V1::BaseController
   include AgentAPI::V1::Uploads::AttachmentRead
 
+  # @oas_include
+  # @summary Read bytes
+  # @tags Member, bytes
+  # @parameter upload_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (200) #/components/responses/AgentApiV1UploadsBytesShow
+  # @response_ref (206) #/components/responses/AgentApiV1UploadsBytesShow
+  # @response_ref (304) #/components/responses/Empty
+  # @response_ref (416) #/components/responses/RangeError
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def show
     send_upload_bytes
   end

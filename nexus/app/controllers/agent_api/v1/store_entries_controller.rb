@@ -7,6 +7,21 @@
 # as themselves. The receipt is the host's (StoreHost): the profile host
 # keeps none, so a retried create there is `key_taken`, never a replay.
 class AgentAPI::V1::StoreEntriesController < AgentAPI::V1::Workspaces::BaseController
+  # @oas_include
+  # @summary List store entries
+  # @tags Member, store entries
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1StoreEntriesIndex
   def index
     host = find_store_host
     page = keyset_page(
@@ -20,12 +35,45 @@ class AgentAPI::V1::StoreEntriesController < AgentAPI::V1::Workspaces::BaseContr
     }
   end
 
+  # @oas_include
+  # @summary Read store entries
+  # @tags Member, store entries
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1StoreEntriesShow
   def show
     entry = find_entry
 
     render json: { store_entry: AgentAPI::StoreEntryPresenter.full(entry) }
   end
 
+  # @oas_include
+  # @summary Create store entries
+  # @tags Member, store entries
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter_ref #/components/parameters/IdempotencyKey
+  # @request_body_ref #/components/requestBodies/AgentApiV1StoreEntriesCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (201) #/components/responses/AgentApiV1StoreEntriesCreate
   def create
     host = find_store_host
     key = required_idempotency_key
@@ -60,6 +108,23 @@ class AgentAPI::V1::StoreEntriesController < AgentAPI::V1::Workspaces::BaseContr
     end
   end
 
+  # @oas_include
+  # @summary Update store entries
+  # @tags Member, store entries
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1StoreEntriesUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1StoreEntriesUpdate
   def update
     entry = find_entry
     value = json_value_param(:store_entry, :value)
@@ -72,6 +137,22 @@ class AgentAPI::V1::StoreEntriesController < AgentAPI::V1::Workspaces::BaseContr
     render_store_entry_result(result)
   end
 
+  # @oas_include
+  # @summary Destroy store entries
+  # @tags Member, store entries
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (200) #/components/responses/AgentApiV1StoreEntriesDestroy
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def destroy
     entry = find_entry
     lock_version = bounded_integer(params[:lock_version], :lock_version, range: LOCK_VERSION_RANGE)

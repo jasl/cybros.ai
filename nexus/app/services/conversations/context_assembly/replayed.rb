@@ -25,7 +25,34 @@ module Conversations
           decision = decided[index]
           decision ? land(segment, decision, profile) : segment
         end
+        price_claude_handoffs(landed, decided, replay.target, profile)
         [landed, reasons]
+      end
+
+      # A signed block and its later handoff both consume context. Charge the
+      # copy to the source segment: when the window drops it, both costs go.
+      def price_claude_handoffs(segments, decisions, target, profile)
+        return unless target.capability.format == "anthropic_thinking" && target.reasoning_enabled != false
+
+        lowest_reader = ModelReasoning::ClaudeHandoff.rank(target.provider_id, target.model_id)
+        return unless lowest_reader
+
+        segments.each_index.reverse_each do |index|
+          segment = segments[index]
+          trace = segment.trace
+          next unless segment.role == "assistant" && trace&.origin_format_variant == "anthropic_thinking"
+          producer = ModelReasoning::ClaudeHandoff.producer_rank(trace.origin_provider_id, trace.origin_model_id)
+          next unless producer
+
+          decision = decisions[index]
+          if producer > lowest_reader && %i[native_parts placed_parts].include?(decision&.kind)
+            texts = decision.payloads.filter_map { |payload| ModelReasoning::PortableSummary.from_payload(payload, origin: trace.native_origin) }
+            cost = texts.sum { |text| FillCost.call(text, profile) }
+            segments[index] = segment.with(replay_tokens: segment.replay_tokens + cost)
+          end
+          reader = ModelReasoning::ClaudeHandoff.rank(trace.origin_provider_id, trace.origin_model_id)
+          lowest_reader = [lowest_reader, reader].min if reader
+        end
       end
 
       # A turn is eligible only when its trace holds replay material —
@@ -42,6 +69,9 @@ module Conversations
       # host message. The landed segment carries what it costs.
       def land(segment, decision, profile)
         segment = sign_calls(segment, decision) if decision.call_payloads.any?
+        if !segment.pairs_only && (decision.message_payloads.any? || decision.kind == :placed_parts && segment.trace.message_markers.any?)
+          segment = place_message_blocks(segment, decision)
+        end
         landed = case decision.kind
         when :native_parts
           parts = decision.payloads.map do |payload|
@@ -49,14 +79,13 @@ module Conversations
               native_origin: segment.trace.native_origin)
           end
           segment.with(reasoning_parts: segment.reasoning_parts + parts)
-        when :native_item
-          placed = decision.ordinals.zip(decision.payloads).map do |ordinal, payload|
-            [ordinal, Nexus::ReasoningInputItem.new(type: "reasoning_item", payload: payload,
-              native_origin: segment.trace.native_origin)]
-          end
+        when :native_item, :placed_parts
+          placed = decision.placed_items(segment.trace.native_origin)
           leading, later = Runs::RoundReplay::Placement.split(placed, segment.first_slot)
           segment.with(reasoning_items: segment.reasoning_items + leading,
             trailing: Runs::RoundReplay::Placement.merge(segment.trailing, later))
+        when :summary
+          segment.with(parts: decision.summary_parts + segment.parts)
         when :drop then segment
         else raise ArgumentError, "unknown replay decision #{decision.kind}"
         end
@@ -69,7 +98,8 @@ module Conversations
       # landed texts ride the same fill math as everything else. Nothing
       # landed costs nothing.
       def cost(trace, decision, profile)
-        return 0 unless decision.replayed?
+        # Ordinary summary parts are already priced alongside the answer.
+        return 0 if decision.kind == :summary || !decision.replayed?
 
         captured = trace.reasoning_items.sum { |item| item["reasoning_tokens"].to_i }
         return captured if captured.positive?
@@ -92,6 +122,20 @@ module Conversations
         by_original = segment.call_items.zip(signed).to_h
         segment.with(call_items: signed,
           trailing: segment.trailing.map { |ordinal, element| [ordinal, by_original.fetch(element, element)] })
+      end
+
+      def place_message_blocks(segment, decision)
+        trace = segment.trace
+        # A direct reply carries its words on the host. A loop history has
+        # already placed the ordinary messages among calls at their ordinals.
+        ordinary = segment.trailing.filter_map { |_ordinal, element| element if element in Nexus::TextInputMessage }
+        text = ordinary.any? ? Nexus::ModelRequestInput.text_segments(ordinary).join : segment.texts.join
+        messages = Runs::RoundReplay::Placement.block_messages(trace, text, decision.message_payloads)
+        first_slot = segment.first_slot || trace.markers.map { |item| item.fetch("ordinal") }.min
+        ordinals = messages.map(&:first)
+        remaining = segment.trailing.reject { |ordinal, _| ordinals.include?(ordinal) }
+        segment.with(parts: [], first_slot: first_slot,
+          trailing: Runs::RoundReplay::Placement.merge(remaining, messages))
       end
     end
   end

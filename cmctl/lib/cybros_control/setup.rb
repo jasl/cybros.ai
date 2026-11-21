@@ -11,10 +11,11 @@ module CybrosControl
     include Catalog
 
     def initialize(url:, input: $stdin, output: $stdout, error: $stderr, env: ENV,
-                   prompt: nil, sessions: nil, clients: nil, sleeper: nil, clock: nil, client: nil)
+                   prompt: nil, sessions: nil, clients: nil, sleeper: nil, clock: nil, client: nil, device: false)
       @url = Config.base_url(url)
       @prompt = prompt || Prompt.new(input: input, output: output)
       @error = error
+      @device = device
       @sessions = sessions || ->(base_url) { CybrosAgent::Platform::Sessions.new(base_url: base_url) }
       @clients = clients || ->(base_url, token) { CybrosAgent::PlatformClient.new(base_url: base_url, credential: token) }
       @sleeper = sleeper || ->(seconds) { sleep(seconds) }
@@ -47,11 +48,15 @@ module CybrosControl
     private
 
       def sign_in
-        email = @prompt.ask("Nexus email")
-        password = @prompt.ask("Nexus password", secret: true)
-        raise UsageError, "Email and password must not be empty" if email.empty? || password.empty?
-
-        grant = @sessions.call(@url).create(email: email, password: password)
+        email = @prompt.ask("Nexus email (press Enter to sign in with your browser)") unless @device
+        sessions = @sessions.call(@url)
+        grant = if email.to_s.empty?
+          CybrosControl.login_with_device(sessions, @error)
+        else
+          password = @prompt.ask("Nexus password", secret: true)
+          raise UsageError, "Password must not be empty" if password.empty?
+          sessions.create(email: email, password: password)
+        end
         @session_public_id = grant.session.public_id
         @client = @clients.call(@url, grant.token)
       end

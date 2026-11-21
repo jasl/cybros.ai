@@ -1,6 +1,6 @@
 # Schedules
 
-A scheduled job stores a prompt, an explicit execution policy and a clock on a main conversation. At each due occurrence Nexus creates an ordinary child conversation and accepts its first input atomically with the schedule advance. The main conversation may keep working; the child's original answer returns through the asynchronous child-result input path and queues until the main conversation can answer.
+A scheduled job stores a prompt, an explicit execution policy and a clock on a main conversation. At each due occurrence Nexus creates an ordinary child conversation and accepts its first input atomically with the schedule advance. The main conversation can keep working. The child returns its original result through the conversation input queue, where it can request a reply or leave a message.
 
 For a later instruction in the **same** conversation, use a queued input with `deliver_at` instead. It waits for the turn boundary and runs once; an absolute time permits exact replay.
 
@@ -59,6 +59,22 @@ tools over this same resource; creation then captures the calling round's policy
 - Pause affects future occurrences; cancel also removes the last child's input if still queued. A running child uses the ordinary stop controls.
 
 States are `active`, `paused`, `canceled` and `completed`; `completed` means a one-time clock was dispatched, and its child may still be queued, running, blocked or failed. A stale edit returns `409 stale_object`; editing or resuming a terminal job returns `422 schedule_finished`.
+
+## Quiet monitoring
+
+Create a recurring check with `wake: "passive"` to record each successful result
+as a message in the parent conversation. It retains the exact child result
+and uses zero parent model calls. The child can read a file on an independent
+Runner while the submitting application is offline. When the check finds
+something that needs a response, it can call
+`manage_schedule(action: "set_result_wake", wake: "auto")` before finishing.
+Include `nexus.schedules.manage` in its captured tools if it needs this choice.
+Quiet checks using the saved default require no extra model round.
+
+The default is `auto`. Changing the schedule affects later occurrences. A
+repairable failure appears as `needs_attention` until resolved. A terminal
+failure or cancellation with an owed result requests a parent reply even when
+the saved mode is passive.
 
 ## Executions and callbacks
 

@@ -28,6 +28,35 @@ module Runs
     # round has no stage: the admission plane admits it.
 
     class << self
+      # A foreground task in progress or held for approval keeps the reply
+      # open. With no such holder the locked owner decides starvation,
+      # failures, follow-ups, hooks and delivery.
+      # Authority, source cuts and bound steering are checked by the caller.
+      def recovery_candidates(runs)
+        # Keep each EXISTS on this window's Run. Without OFFSET 0 PostgreSQL
+        # can hash every task matching a rare status across unrelated Runs.
+        tasks = Task.select("1").where("tasks.run_id = runs.id").offset(0)
+        live = tasks.live
+        foreground = live.where(status: Task::STARTED_STATUSES + Task::HELD_STATUSES)
+          .where("runs.variant_id IS NULL OR NOT tasks.detached OR tasks.lifetime <> 'conversation'")
+        live_mainline = live.mainline_models
+        running = runs.where(status: "running")
+        candidates = running.where.not(foreground.arel.exists)
+          .or(running.where(live.ready_to_start.arel.exists))
+          .or(running.where(live.unstarted_mcp_calls.arel.exists))
+          .or(running.where(live.waiting_on_tasks.arel.exists))
+          .or(running.where(Conversations::Compaction::Fallback.expired_delegates(tasks).arel.exists))
+          .or(running.where(delivered_at: nil).where(tasks.unmailed_results.arel.exists).where.not(live_mainline.arel.exists))
+
+        # AwaitTask validates that only a tokenless ask is awaiting_input.
+        # An already standing reason is only cleared by the arm that set it.
+        asks = live.where(status: "awaiting_input")
+        holds = live.where(status: Task::HELD_STATUSES)
+        candidates.or(running.where(attention_reason: nil).where(asks.or(holds).arel.exists))
+          .or(running.where(attention_reason: EvaluateQuiescence::ASKING_REASON).where.not(asks.arel.exists))
+          .or(running.where(attention_reason: EvaluateQuiescence::APPROVAL_REASON).where.not(holds.arel.exists))
+      end
+
       def call(run_id:)
         admitted = false
         Steers::Synchronize.call(run_id: run_id) do |run|
@@ -108,9 +137,7 @@ module Runs
         end
 
         def ready_nodes(run)
-          run.tasks
-            .where(status: "queued", remaining_dependencies: 0)
-            .order(:created_at, :id).to_a
+          run.tasks.ready_to_start.order(:created_at, :id).to_a
         end
 
         # The stage's verdict table, one function: `[:grant, origin]`,
@@ -455,12 +482,18 @@ module Runs
         end
 
         def resolve_selection(run, node)
+          # A manual retry may ask this route again. If live availability
+          # selects another route, spent automatic candidates stay excluded.
           reference = "#{node.provider_id}/#{node.model_ref}"
-          return [nil, :model_route_spent] if ModelFallback.spent_route?(node, reference)
-
+          excluded = if node.execution_generation.positive?
+            ModelFallback.switch_causes_of(node)
+              .map { |invocation| "#{invocation.provider_id}/#{invocation.model_ref}" }.excluding(reference)
+          else
+            []
+          end
           resolved = ModelFallback.recover(account: run.account, workload: node.workload,
             current: node, owner: node, configuration: node.request_options,
-            include_current: true, request_body: node.input_body) do |candidate|
+            excluded: excluded, include_current: true, request_body: node.input_body) do |candidate|
             fallback_input_refusal(run, node, candidate)
           end
           ModelFallback.record_skips(node, resolved.skips)
@@ -513,10 +546,7 @@ module Runs
           limit = selection.capabilities.limits.planning_input_bound
           return nil if limit.nil? || selection.execution_profile.token_counter.nil?
 
-          counted = ModelRequests::TokenCount.count(
-            profile: selection.execution_profile,
-            segments: Nexus::ModelRequestInput.text_segments(normalized.value.value)
-          )
+          counted = ModelRequests::TokenCount.for_input(selection, normalized.value.value)
           return nil unless counted.counted? && counted.tokens > limit
 
           OverWindow.new(refusal: :estimated_input_exceeds_model_limit, exact: counted.exact?,
@@ -541,6 +571,13 @@ module Runs
           profile = selection.execution_profile
           tail = Nexus::ModelRequestInput.text_segments(composed.tail.drop(composed.said_count)).sum do |text|
             Conversations::ContextAssembly::FillCost.call(text, profile)
+          end
+          # The source's receipt already includes historical handoffs. A
+          # new model may receive an additional summary with this round.
+          if profile.adapter_profile == "anthropic_messages" && record.wire_model_id != profile.model_pin
+            ModelReasoning::ClaudeHandoff.project(composed.elements, profile: profile, enabled: selection.reasoning.enabled) do |summaries|
+              tail += summaries.sum { |text| Conversations::ContextAssembly::FillCost.call(text, profile) }
+            end
           end
           occupancy = record.input_tokens + record.output_tokens.to_i + tail
           Conversations::Compaction::Overshoot.tokens(occupancy - limit) if occupancy > limit

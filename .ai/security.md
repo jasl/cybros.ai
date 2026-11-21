@@ -174,6 +174,14 @@ What that carve-out does **not** cover, and what stays in scope for review:
 
 ## Supported Authorization Semantics
 
+- Enterprise SSO treats the configured external provider and its stable subject
+  as the identity of a returning Human. Registration, explicit binding and
+  recovery retain their own confirmation and membership rules. Email matching
+  directs an existing member to their own account's sign-in settings. Settings
+  enforce local login-method coverage under the Account lock. Provider changes
+  affect subsequent sign-ins. Existing Nexus credentials use the usual member
+  authority and recovery-generation fences.
+
 - Installed agent programs and their identity/display-name claims are owner-selected software
   within the Account trust domain. Review normal mapping, credential-plane and fencing failures;
   software phishing, same-identifier claims and installation sourcing do not create a Nexus

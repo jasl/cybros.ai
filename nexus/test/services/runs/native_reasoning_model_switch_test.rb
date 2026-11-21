@@ -17,14 +17,11 @@ class Runs::NativeReasoningModelSwitchTest < ActiveJob::TestCase
     Accounts::ConfigureCostUnit.call(account: @account, cost_unit: "USD")
   end
 
-  # A trace another model produced contributes nothing on the next model's
-  # wire: no blob, and no fence standing in for it — the vendors drop what
-  # a model cannot read rather than render it as words.
-  test "Responses encrypted reasoning in a sealed continuation carries nothing across a model switch" do
+  test "a sealed Responses continuation projects only the display summary across a model switch" do
     enable_lane("openai_api")
     first = sse_success("Reading the file.", reasoning: PLAN, reasoning_encrypted: ENCRYPTED,
       tool_calls: [{ id: CALL_ID, name: "read_file", arguments: '{"path":"file"}' }])
-    same, crossed = switch_wires(origin: "openai_api/gpt-6.1-sol", target: "openai_api/gpt-6-luna",
+    same, crossed = switch_wires(origin: "openai_api/gpt-6.2-sol", target: "openai_api/gpt-6.1-terra",
       first: first, final: sse_success("The file has been read."))
 
     same_items = same.fetch("input")
@@ -37,8 +34,41 @@ class Runs::NativeReasoningModelSwitchTest < ActiveJob::TestCase
     assert_empty crossed_items.filter_map { |item| item["encrypted_content"] },
       "a later authored model must not inherit another model's encrypted reasoning from the sealed prefix"
     text = crossed_items.flat_map { |item| item.fetch("content", []) }.filter_map { |part| part["text"] }.join("\n")
-    assert_not_includes text, PLAN, "no summary crosses as words"
+    assert_includes text, "Prior model's reasoning summary:\n#{PLAN}"
     assert_includes text, "The file has been read."
+  end
+
+  test "switching a Run from Claude to Responses and back restores the original signed turn" do
+    enable_lane("anthropic")
+    enable_lane("openai_api")
+    claude = "anthropic/claude-fable-5-2"
+    run = seed(
+      model("first", "model" => selection(claude), "prompt" => "Select a route."),
+      model("review", "model" => selection("openai_api/gpt-6.2-sol"), "prompt" => "Review it."),
+      model("confirm", "model" => selection(claude), "prompt" => "Confirm.")
+    )
+    Runs::Start.call(Runs::Start::Command.new(run: run, acting_user: @human))
+    schedule_loop!(run)
+    blocks = [
+      { "type" => "thinking", "thinking" => PLAN, "signature" => SIGNATURE },
+      { "type" => "redacted_thinking", "data" => REDACTED },
+      { "type" => "text", "text" => "Selected." },
+    ]
+    run_loop_round!(run, anthropic_response(blocks, stop_reason: "end_turn"))
+
+    review = loop_attempt(run)
+    crossed = wire(review).to_json
+    assert_includes crossed, PLAN
+    assert_not_includes crossed, SIGNATURE
+    assert_not_includes crossed, REDACTED
+    apply_via(review, sse_success("Reviewed.", reasoning: "Checked the route.", reasoning_encrypted: ENCRYPTED))
+    Runs::ConvergeTerminalSteps.call
+    schedule_loop!(run)
+
+    restored = wire(loop_attempt(run))
+    assert_equal blocks, restored.fetch("messages").find { |message| message["role"] == "assistant" }.fetch("content")
+    assert_includes restored.to_json, "Checked the route."
+    assert_not_includes restored.to_json, ENCRYPTED
   end
 
   # The Responses wire labels the message it produced (`phase`) and asks
@@ -50,7 +80,7 @@ class Runs::NativeReasoningModelSwitchTest < ActiveJob::TestCase
     enable_lane("openai_api")
     first = sse_success("Reading the file.", phase: "commentary", reasoning: PLAN, reasoning_encrypted: ENCRYPTED,
       tool_calls: [{ id: CALL_ID, name: "read_file", arguments: '{"path":"file"}' }])
-    same, crossed = switch_wires(origin: "openai_api/gpt-6.1-sol", target: "openai_api/gpt-6-luna",
+    same, crossed = switch_wires(origin: "openai_api/gpt-6.2-sol", target: "openai_api/gpt-6.1-terra",
       first: first, final: sse_success("The file has been read."))
 
     items = same.fetch("input")
@@ -82,7 +112,7 @@ class Runs::NativeReasoningModelSwitchTest < ActiveJob::TestCase
       { "type" => "function_call", "id" => "fc_b", "call_id" => "call_b", "name" => "read_file",
         "arguments" => '{"path":"b"}' },
     ])
-    same, crossed = switch_wires(origin: "openai_api/gpt-6.1-sol", target: "openai_api/gpt-6-luna",
+    same, crossed = switch_wires(origin: "openai_api/gpt-6.2-sol", target: "openai_api/gpt-6.1-terra",
       first: first, final: sse_success("Both read."), settle: %w[r1t0 r1t1])
 
     items = same.fetch("input")
@@ -99,8 +129,8 @@ class Runs::NativeReasoningModelSwitchTest < ActiveJob::TestCase
 
     crossed_items = crossed.fetch("input")
     assert_empty crossed_items.filter_map { |item| item["encrypted_content"] }
-    assert_not_includes crossed.to_json, "plan one"
-    assert_not_includes crossed.to_json, "plan two"
+    assert_includes crossed_items.map { |item| item_text(item) }, "Prior model's reasoning summary:\nplan one"
+    assert_includes crossed_items.map { |item| item_text(item) }, "Prior model's reasoning summary:\nplan two"
     order = [
       crossed_items.index { |item| item_text(item) == "Reading both." },
       crossed_items.index { |item| item["call_id"] == "call_a" && item["type"] == "function_call" },
@@ -113,12 +143,17 @@ class Runs::NativeReasoningModelSwitchTest < ActiveJob::TestCase
   # Anthropic's own rule for a switch between its models: keep sending the
   # full history and let the API drop what the current model cannot read.
   # The sealed prefix passes every block to the next Anthropic model
-  # unchanged — signed, signature-only and redacted alike — and invents no text.
+  # unchanged, including signature-only and redacted blocks.
   test "Anthropic signed and redacted thinking passes unchanged to another Anthropic model" do
     same, crossed = anthropic_switch(thinking: PLAN)
 
     assert_anthropic_native(same, thinking: PLAN)
     assert_anthropic_native(crossed, thinking: PLAN)
+    summary = "Prior model's reasoning summary:\n#{PLAN}"
+    assert_not_includes same.to_json, "Prior model's reasoning summary"
+    message = crossed.fetch("messages").last
+    assert_equal "user", message.fetch("role")
+    assert_includes message.fetch("content").pluck("text"), summary
     assert_includes anthropic_blocks(crossed).filter_map { |part| part["text"] }.join("\n"), "The file has been read."
   end
 
@@ -127,7 +162,7 @@ class Runs::NativeReasoningModelSwitchTest < ActiveJob::TestCase
 
     assert_anthropic_native(same, thinking: "")
     assert_anthropic_native(crossed, thinking: "")
-    assert_not_includes crossed.to_json, "<think>"
+    assert_not_includes crossed.to_json, "Prior model's reasoning summary"
   end
 
   # A REFUSAL'S SWITCH REPLAYS LIKE ANY MODEL SWITCH: the refused round
@@ -148,13 +183,13 @@ class Runs::NativeReasoningModelSwitchTest < ActiveJob::TestCase
       "usage" => { "input_tokens" => 2, "output_tokens" => 0 },
     })
 
-    crossed = refusal_wire(origin: "anthropic/claude-opus-5-5", fallback: "openai_api/gpt-6-luna",
+    crossed = refusal_wire(origin: "anthropic/claude-opus-5-5", fallback: "openai_api/gpt-6.1-terra",
       first: first, refused: refused)
 
     items = crossed.fetch("input")
     assert_responses_pair(items)
     assert_not_includes crossed.to_json, SIGNATURE, "a foreign signature never rides the fallback's wire"
-    assert_not_includes crossed.to_json, PLAN, "nor its thinking as words"
+    assert_includes items.flat_map { |item| Array(item["content"]).pluck("text") }, "Prior model's reasoning summary:\n#{PLAN}"
   end
 
   test "a round refused on the Responses lane re-runs on the declared Anthropic fallback with its calls paired" do
@@ -163,7 +198,7 @@ class Runs::NativeReasoningModelSwitchTest < ActiveJob::TestCase
     first = sse_success("Reading the file.", reasoning: PLAN, reasoning_encrypted: ENCRYPTED,
       tool_calls: [{ id: CALL_ID, name: "read_file", arguments: '{"path":"file"}' }])
 
-    crossed = refusal_wire(origin: "openai_api/gpt-6.1-sol", fallback: "anthropic/claude-opus-5-5",
+    crossed = refusal_wire(origin: "openai_api/gpt-6.2-sol", fallback: "anthropic/claude-opus-5-5",
       first: first, refused: sse_refused("I can't help with that."))
 
     blocks = anthropic_blocks(crossed)
@@ -267,7 +302,7 @@ class Runs::NativeReasoningModelSwitchTest < ActiveJob::TestCase
         { "type" => "tool_use", "id" => CALL_ID, "name" => "read_file", "input" => { "path" => "file" } },
       ], stop_reason: "tool_use")
       final = anthropic_response([{ "type" => "text", "text" => "The file has been read." }], stop_reason: "end_turn")
-      switch_wires(origin: "anthropic/claude-opus-5-5", target: "anthropic/claude-sonnet-5", first: first, final: final)
+      switch_wires(origin: "anthropic/claude-opus-5-5", target: "anthropic/claude-sonnet-5-5", first: first, final: final)
     end
 
     # The Messages API's complete JSON response is also legal on the streaming

@@ -76,11 +76,8 @@ module SimpleInference
       # SSE and HTTP-429 variants.
       class UsageNotIncludedError < OpenAIResponses::ResponseFailedError; end
 
-      # The parent vocabulary minus max_output_tokens: the pinned codex-rs
-      # request struct never carries it, and the register's request-control
-      # inventory forbids silent omission — the declared spelling is a loud
-      # zero-IO rejection (extra_body stays the caller's verbatim escape
-      # hatch for explicit wire fields).
+      # Codex omits max_output_tokens. The subscription backend also rejects
+      # prompt_cache_options.ttl even on a valid Responses-Lite request.
       def self.request_option_keys
         (OpenAIResponses.request_option_keys - %i[max_output_tokens prompt_cache_ttl]).freeze
       end

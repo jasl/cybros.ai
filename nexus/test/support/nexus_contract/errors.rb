@@ -43,6 +43,7 @@ module Nexus
       "invalid_credentials" => 401,
       "local_recovery_required" => 403,
       "password_change_required" => 403,
+      "sso_required" => 403,
     }.freeze
     WORKSPACE_ERROR_STATUSES = {
       "invalid_access_mode" => 422,

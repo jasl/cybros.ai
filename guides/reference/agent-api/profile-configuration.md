@@ -41,7 +41,7 @@ tools, the selected Runner's announced model schemas and explicitly selected MCP
       "stop": { "tool": "review_completion", "timeout_ms": 30000, "max_continuations": 2 }
     },
     "default_model": "openrouter/z-ai/glm-5.3",
-    "fallback_models": ["openrouter/moonshotai/kimi-k3"]
+    "fallback_models": ["openrouter/moonshotai/kimi-k3.1-pro"]
   },
   "prompt_documents": {
     "system_prompt": { "content": "You are {{agent}}.", "role": "developer" },
@@ -271,8 +271,10 @@ on the standing profile declaration clears the list. The initial
 appended implicitly. Duplicate routes are visited only once.
 
 Each execution captures its effective list. Later profile edits cannot
-change accepted work, retry a spent route, or add another candidate to its
-chain. Candidate availability remains live: disabled providers or models
+change accepted work or add another candidate to its automatic recovery
+chain. An explicit task retry may ask the same model again through the
+[retry command](runs.md#retry-a-failed-task). Candidate availability remains
+live: disabled providers or models
 and missing credentials are skipped without provider IO or a failed
 attempt. The caller's captured model and provider constraints also apply.
 
@@ -313,8 +315,8 @@ identity inside the declaration.
     "system_prompt": { "content": "Check the supplied change.", "role": "developer" },
     "kernel_tools": ["nexus.memory.read"],
     "approval_mode": "ask",
-    "default_model": "openai_api/gpt-6.1-sol",
-    "fallback_models": ["anthropic/claude-sonnet-4-5"]
+    "default_model": "openai_api/gpt-6.2-sol",
+    "fallback_models": ["anthropic/claude-sonnet-5-5"]
   }
 }
 ```

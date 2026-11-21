@@ -1,4 +1,5 @@
 require "test_helper"
+require "digest"
 
 # THE CHILDREN TABLE AND THE CALL over the scripted agent: one resident child per (conversation,
 # agent) in its own process group, `initialize` once, `session/new` per
@@ -14,6 +15,30 @@ class ChildrenTest < Minitest::Test
     def tail(text) = tails << text
     def wait(_now = nil) = nil
     def flush(_now = nil) = false
+  end
+
+  PDF_ID = "019adc65-6be3-7000-8000-000000000001".freeze
+  SECOND_PDF_ID = "019adc65-6be3-7000-8000-000000000002".freeze
+  PDF = "%PDF-1.7\nDelegated document\n%%EOF\n".b.freeze
+
+  class AttachmentTask
+    attr_reader :downloads
+
+    def initialize(uploads)
+      @uploads = uploads
+      @downloads = []
+    end
+
+    def attachment(id, claim_token:)
+      mime, bytes, size = @uploads.fetch(id) { raise CybrosAgent::Api::NotFound, "attachment not found" }
+      CybrosAgent::Api::Upload.new(public_id: id, filename: "file", content_type: mime, byte_size: size || bytes.bytesize,
+        created_at: "2026-10-01T00:00:00Z")
+    end
+
+    def attachment_bytes(id, io, claim_token:)
+      @downloads << id
+      io.write(@uploads.fetch(id).fetch(1))
+    end
   end
 
   def setup
@@ -91,6 +116,63 @@ class ChildrenTest < Minitest::Test
       assert process_group_alive?(row.fetch("pgid")), "the child lives on past the call"
       assert_match(/event=acp\.child_spawned agent=plain conversation=conv-1 pid=\d+ pgid=\d+/, log_text)
       assert_match(/event=acp\.session_opened agent=plain conversation=conv-1 session=#{session}/, log_text)
+    end
+  end
+
+  def test_delegation_embeds_selected_pdfs_in_order_and_captures_only_metadata
+    load({ "pdf" => RhoAcpClientTest.raw_row("pdf") })
+    second_pdf = PDF + "\n"
+    task = AttachmentTask.new(PDF_ID => ["application/pdf", PDF], SECOND_PDF_ID => ["application/pdf", second_pdf])
+    uri = "nexus://uploads/#{PDF_ID}"
+    second_uri = "nexus://uploads/#{SECOND_PDF_ID}"
+    args = { "agent" => "pdf", "prompt" => "Read the documents", "attachments" => [second_uri, PDF_ID] }
+
+    call_with_attachments(args, task) do |result|
+      refute_predicate result, :is_error, result.content
+      wire = JSON.parse(result.content.lines.first.delete_prefix("echo: "))
+      assert_equal [
+        { "type" => "text", "text" => "Read the documents" },
+        { "type" => "resource", "uri" => second_uri, "mimeType" => "application/pdf", "sha256" => Digest::SHA256.hexdigest(second_pdf) },
+        { "type" => "resource", "uri" => uri, "mimeType" => "application/pdf", "sha256" => Digest::SHA256.hexdigest(PDF) },
+      ], wire
+      record = capture_lines(result.files.fetch(0)).find { |line| line.dig("message", "method") == "session/prompt" }
+      assert_equal [
+        { "uri" => second_uri, "mimeType" => "application/pdf", "size" => second_pdf.bytesize },
+        { "uri" => uri, "mimeType" => "application/pdf", "size" => PDF.bytesize },
+      ], record.dig("message", "params", "prompt").drop(1).map { |block| block.fetch("resource") }
+    end
+    assert_equal [SECOND_PDF_ID, PDF_ID], task.downloads
+  end
+
+  def test_a_child_without_embedded_context_receives_no_prompt_or_download
+    load({ "plain" => RhoAcpClientTest.raw_row("plain") })
+    task = AttachmentTask.new(PDF_ID => ["application/pdf", PDF])
+    call_with_attachments({ "agent" => "plain", "prompt" => "Read this", "attachments" => [PDF_ID] }, task) do |result|
+      assert_predicate result, :is_error
+      assert_match(/does not advertise embedded context/, result.content)
+      assert_empty task.downloads
+      assert_no_delegated_prompt
+    end
+  end
+
+  def test_an_unusable_upload_refuses_the_whole_prompt
+    load({ "pdf" => RhoAcpClientTest.raw_row("pdf") })
+    [
+      [nil, /attachment not found/, []],
+      [["text/plain", "not a document"], /is not a PDF/, []],
+      [["application/pdf", PDF, 16 * 1024 * 1024 + 1], /at most 16 MiB/, []],
+      [["application/pdf", PDF, PDF.bytesize + 1], /download was incomplete/, [SECOND_PDF_ID]],
+    ].each do |descriptor, message, downloads|
+      rows = { PDF_ID => ["application/pdf", PDF] }
+      rows[SECOND_PDF_ID] = descriptor if descriptor
+      task = AttachmentTask.new(rows)
+      call_with_attachments({ "agent" => "pdf", "prompt" => "Read both", "attachments" => [PDF_ID, SECOND_PDF_ID] }, task) do |result|
+        assert_predicate result, :is_error
+        assert_match message, result.content
+        assert_equal [PDF_ID, *downloads], task.downloads
+        assert_no_delegated_prompt
+      end
+      Rho::AcpClient.release("conv-1")
     end
   end
 
@@ -399,5 +481,23 @@ class ChildrenTest < Minitest::Test
       refute process_group_alive?(pgid)
       assert_equal false, Rho::AcpClient.kill(second), "a second kill has nothing to end"
     end
+  end
+
+  private
+
+  def call_with_attachments(args, task)
+    pool = Rho::Env::Pool.new(worker_threads: 1)
+    attachments = Rho::Env::ClaimAttachments.new(task: task, claim_token: "proof")
+    with_tool_env(attachments: attachments) do |env, _root, context|
+      yield pool.run(pool.reserve, context) { call(args, env) }
+    end
+  ensure
+    pool&.stop
+  end
+
+  def assert_no_delegated_prompt
+    row = sessions.fetch(0)
+    assert_equal 0, row.fetch("calls")
+    refute capture_lines(row.fetch("capture")).any? { |line| line.dig("message", "method") == "session/prompt" }
   end
 end

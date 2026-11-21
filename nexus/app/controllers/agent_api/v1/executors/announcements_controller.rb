@@ -6,9 +6,24 @@
 # shapes a round's tools list — the declaration is the model's fact — except
 # the `skill` entry's PRESENCE (omitted at the wire on the empty merge;
 # never its bytes).
+# @auth [ExecutorBearer]
 class AgentAPI::V1::Executors::AnnouncementsController < AgentAPI::V1::BaseController
   serves_plane :executor_transport
 
+  # @oas_include
+  # @summary Update announcements
+  # @tags Executor, announcements
+  # @request_body_ref #/components/requestBodies/AgentApiV1ExecutorsAnnouncementsUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ExecutorsAnnouncementsUpdate
   def update
     outcome = current_credential.executor.announce(services: services)
 

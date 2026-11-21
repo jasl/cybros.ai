@@ -394,11 +394,13 @@ Timeouts, disconnects and classified retryable server errors can advance to the 
 candidate after bounded retries on the current provider are exhausted. Preserve the existing
 rate-limit, cooldown and retry semantics and typed terminal failures; an arbitrary error is not
 recoverable merely because another candidate exists. Each resolved provider/model route enters
-the chain at most once; retries within that candidate remain bounded. The whole chain has one
+automatic recovery at most once; retries within that candidate remain bounded. The whole chain has one
 finite time and attempt budget, with existing Stop and cancellation ownership throughout.
 Switching candidates or recovering after restart cannot reset that budget or revive stopped
-work. Fallback replaces the failed model step without replaying completed tools or discarding
-their accepted results. Reuse the existing execution and retry owners for these facts.
+work. An explicit task retry may create a fresh bounded invocation on the selected model;
+it preserves spent automatic fallback history. Fallback replaces the failed model step without
+replaying completed tools or discarding their accepted results. Reuse the existing execution
+and retry owners for these facts.
 
 Nexus receives generic execution selections, candidates and recovery limits. It does not learn
 rho's setting names, Preset names or product policy. Use the existing Catalog to establish model

@@ -73,7 +73,7 @@ class PasswordsController < ApplicationController
       if @password_reset_token.start_with?(MemberRecoveryAuthorization::WIRE_PREFIX)
         authorization = MemberRecoveryAuthorization.find_by_secret(@password_reset_token)
 
-        if authorization&.consumable?
+        if authorization&.password? && !authorization.account.sso_only? && authorization.consumable?
           @recovery_authorization = authorization
           @identity = authorization.identity
         else

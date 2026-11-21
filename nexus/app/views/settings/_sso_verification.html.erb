@@ -1,0 +1,6 @@
+<% if verified %>
+  <p class="my-2 text-sm" role="status"><%= t("sso_identity.verified") %></p>
+<% else %>
+  <%= render "sso/verify_sources", providers: Current.identity.sso_connections.available.includes(:sso_provider).map(&:sso_provider),
+    action_name: action_name, target: Current.user.public_id, return_to: request.path %>
+<% end %>

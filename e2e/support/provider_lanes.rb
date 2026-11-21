@@ -53,7 +53,7 @@ module E2E
     end
 
     # A ref the catalog does not name is refused by name: a bare broker id such as
-    # `deepseek/deepseek-v4.1-flash` would otherwise read as the direct provider's model and be
+    # `deepseek/deepseek-v4.1-flash-1017` would otherwise read as the direct provider's model and be
     # sent to the wrong endpoint under a name that provider does not list.
     def route(model_ref)
       ref = model_ref.to_s

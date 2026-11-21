@@ -1,0 +1,4 @@
+<% providers.each do |provider| %>
+  <%= button_to t("sso.continue_with", provider: provider.name), sso_start_path(provider),
+        params: flow_params, class: "btn btn-outline btn-block", form: { data: { turbo: flow_params[:purpose] == "invitation" } } %>
+<% end %>

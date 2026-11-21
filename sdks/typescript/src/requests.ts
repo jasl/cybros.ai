@@ -113,7 +113,7 @@ export interface EditMemory extends ExistingMemoryVersion { path: string; old_te
 export interface GrepMemory { pattern: string; path?: string; ignore_case?: boolean; limit?: number; }
 export type ScheduleRuleInput = { kind: 'once'; run_at: string } | { kind: 'interval'; every_seconds: number; starts_at: string } | { kind: 'daily'; local_time: string; time_zone: string };
 export interface CreateSchedule extends Pick<InputConfiguration, 'executor_contexts' | 'model' | 'configuration' | 'model_selection' | 'fallback_models' | 'tool_names' | 'approval_mode'> {
-  prompt: string; rule: ScheduleRuleInput; name?: string; answering_user_public_id?: string; speaker_public_id?: string;
+  prompt: string; rule: ScheduleRuleInput; wake?: 'auto' | 'passive'; name?: string; answering_user_public_id?: string; speaker_public_id?: string;
   source_run_public_id?: string; source_task_key?: string;
 }
 export interface UpdateSchedule extends Partial<Omit<CreateSchedule, 'source_run_public_id' | 'source_task_key'>> { expected_lock_version: number; }

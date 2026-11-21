@@ -97,6 +97,7 @@ module Rho
         raise StoredConnectionError, "#{@root} has no recorded Agent session"
       end
 
+      document = document.merge("base_url" => Home.canonical_base_url(document["base_url"]))
       unless document["base_url"] == @home.base_url
         raise StoredConnectionError,
           "#{@root} was connected to a different Nexus than #{@home.base_url}"
@@ -123,6 +124,7 @@ module Rho
       document = session.read
       return self if document.nil?
 
+      document = document.merge("base_url" => Home.canonical_base_url(document["base_url"]))
       expected = {
         "version" => SESSION_VERSION,
         "base_url" => @home.base_url,

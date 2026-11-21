@@ -130,13 +130,13 @@ configuration:
   OpenRouter OpenAI rows offer `30m` (recommended) and `12h`; 12-hour cache
   writes cost more. Responses and compatible Chat lower these to
   `prompt_cache_options.ttl`. Models explicitly declaring the older `24h`
-  option use `prompt_cache_retention` instead; it is not a GPT-6 option.
-  Native Anthropic rows offer `5m` and `1h`. Without an override, mainline
-  requests retain one-hour markers and other marked requests five-minute
-  markers. An override changes only their lifetime: stable/tail placement,
-  thinking-block exclusions, and marker-free summaries remain unchanged.
-  Other rows, including OpenRouter Anthropic, do not advertise configurable
-  TTL. This setting is a provider cache lifetime, not a deletion deadline.
+  option use `prompt_cache_retention` instead. The Codex subscription routes
+  use automatic caching and omit the TTL control.
+  Native Anthropic and OpenRouter Claude rows offer `5m` and `1h`. Mainline
+  requests default to one hour and other marked requests to five minutes.
+  The native API uses per-block markers. On OpenRouter, a single request-level
+  `cache_control` tells the provider to advance the breakpoint. Summaries skip
+  the cache write even when the caller sets a lifetime.
 - `service_tiers` lists the declared tier values. No tier is selected by this
   listing; omitting a tier, or requesting `default`, leaves the provider's
   default in effect.
@@ -150,9 +150,51 @@ configuration:
 
 #### Reasoning effort by row
 
-The native Gemini Flash row is `gemini/gemini-3.8-flash`. It accepts
-`low`, `medium`, and `high` reasoning effort; `minimal` is rejected.
-OpenRouter's separately pinned Gemini row retains its own model reference.
+The OpenAI API and Codex subscription routes offer GPT-6.2 Astra, GPT-6.2 Sol
+and GPT-6.1 Terra. Nexus selects medium effort by default. All three accept
+low, medium, high, xhigh and max. Only the Terra API route accepts
+`reasoning_enabled: false`. Function calls use Responses. The API routes
+accept up to 922,000 input tokens and 128,000 output tokens, and plan to the
+272,000-input-token long-context price threshold. Codex plans to 272,000
+tokens for Astra and 500,000 for Sol and Terra.
+
+The direct Anthropic provider ships four Claude models. All four support
+`low`, `medium`, `high`, `xhigh` and `max` effort. Nexus selects `high` by
+default. Each has a 1M-token context window and a 128K-token output limit.
+Haiku accepts `reasoning_enabled: false`. Sonnet's native `between_tools`
+mode turns off up-front reasoning and still permits progress updates between
+tool calls. Fable and Opus always use adaptive thinking.
+
+| Direct Anthropic model | Earlier signed thinking it can use from these four | Anthropic Messages tool choices |
+| --- | --- | --- |
+| `anthropic/claude-fable-5-2` | All four models | Automatic or none |
+| `anthropic/claude-opus-5-5` | Opus, Sonnet, Haiku | Automatic or none |
+| `anthropic/claude-sonnet-5-5` | Sonnet, Haiku | Automatic or none |
+| `anthropic/claude-haiku-5-5` | Haiku | Automatic, none, any or a named tool |
+
+Nexus lets the model choose tools during an agent round. Tool choice is
+managed by the kernel. A forced call through the Haiku adapter starts the
+answer with the tool call. A single reply can
+contain several calls. Keep each result paired with its call ID. On the direct
+Claude API, an append-only sequence of tool results can reuse a cached prefix
+from 512 tokens. Inspect cache reads on the receiving model's usage receipt
+after switching models. [Anthropic preserved thinking](https://platform.claude.com/docs/en/build-with-claude/preserved-thinking)
+and [prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching).
+
+| Native Gemini model | Reasoning efforts | Default |
+| --- | --- | --- |
+| `gemini/gemini-4-argon` | `low`, `medium`, `high` | `medium` |
+| `gemini/gemini-4-carbon` | `low`, `medium`, `high` | `medium` |
+| `gemini/gemini-4-hydrogen` | `low`, `medium`, `high`, `xhigh` | `high` |
+| `gemini/gemini-4-neon` | `low`, `medium`, `high`, `xhigh` | `high` |
+
+All four share a 1,048,576-token window across input, thinking and output.
+Nexus streams one GenerateContent response per model round, with a ceiling
+of 65,536 output tokens. Gemini caches repeated prefixes implicitly. Keep
+instructions, tool declarations and earlier messages stable and append new
+tool results or user input at the end. The four Gemini 4 models can
+continue each other's signed history. Google measures cache hits per request.
+A model switch can require the new model to cache the prefix again.
 
 The shipped OpenAI API, Gemini, DeepSeek, xAI, and OpenRouter text models
 accept an optional positive integer `max_output_tokens`. Omitting it sends
@@ -168,12 +210,14 @@ output control.
 
 #### Attachments
 
-The shipped Codex subscription text models (`gpt-6-astra`, `gpt-6.1-sol`,
-`gpt-6-luna`) accept PNG, JPEG and WebP image attachments. Nexus prepares images
+The shipped Codex subscription text models (`gpt-6.2-astra`, `gpt-6.2-sol`,
+`gpt-6.1-terra`) accept PNG, JPEG and WebP image attachments. Nexus prepares images
 with a longest edge of 2048 pixels before sending them; larger uploads are resized,
 and the original upload is retained. This is a local preparation bound, not a
 provider image-size limit. Image generation uses the separate `image_generation`
-workload and model row. Codex subscription credentials do not enable the OpenAI
+workload. OpenAI API offers `gpt-image-2.6-sunburst` and `gpt-image-2.6-flare`.
+The Codex subscription image tool uses `codex_subscription/gpt-image-2` for
+both generation and editing. Codex subscription credentials do not enable the OpenAI
 API transcription or speech lanes.
 
 Native PDF input is the `file` input modality, restricted to
@@ -246,14 +290,14 @@ default. Applications must send that intent explicitly.
 
 ```json
 {
-  "model": { "model": "openai_api/gpt-6.1-sol" },
+  "model": { "model": "openai_api/gpt-6.2-sol" },
   "model_selection": {
     "source": "explicit",
-    "model": "openai_api/gpt-6.1-sol",
+    "model": "openai_api/gpt-6.2-sol",
     "constraint": "route",
-    "alternatives": ["anthropic/claude-sonnet-4-5"]
+    "alternatives": ["anthropic/claude-sonnet-5-5"]
   },
-  "fallback_models": ["anthropic/claude-sonnet-4-5"]
+  "fallback_models": ["anthropic/claude-sonnet-5-5"]
 }
 ```
 
@@ -311,13 +355,14 @@ bounded attempt budget; exhausting it may advance with
 `Retry-After` behavior within that budget. Text requests have at most
 three actual attempts per route. Availability skips are not attempts.
 
-Each resolved route enters the chain at most once. The captured finite
+Each resolved route enters automatic recovery at most once. The captured finite
 candidate list and existing execution deadline bound the whole recovery;
-a switch or restart does not reset that deadline. A task's authored retry
-count and a manual task retry cannot renew an exhausted provider route.
-Retrying a route already refused or exhausted returns `model_route_spent`.
-An explicit repair may name a different unspent route only when the
-captured constraints permit it.
+a switch or restart does not reset that deadline. Tasks cannot author an
+additional retry count. An explicit task retry creates a fresh bounded
+invocation on the current model or a replacement permitted by the captured
+constraints, even if that route was refused or exhausted. Prior invocation
+history remains: previously spent routes stay excluded from automatic
+fallback, and the captured list and existing execution deadline are retained.
 
 Content protection (`finish_quality: blocked`), abnormal generation
 finishes, actual provider authentication/request errors and unknown errors

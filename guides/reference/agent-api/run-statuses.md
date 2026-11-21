@@ -117,7 +117,6 @@ A failed task carries `error: {key, detail?}`.
 | `model_refused` | The provider declined the step, below |
 | `provider_overloaded` | The provider was overloaded on every attempt, below |
 | `provider_transient_exhausted` | Retryable transport, stream or server failures exhausted the route budget |
-| `model_route_spent` | A retry tried to renew a refused or exhausted route |
 | `attempt_budget_spent` | The attempt budget ended without an eligible recovery classification |
 | `conversation_cost_limit_reached` | The Conversation's known cost reached its limit before a priced attempt was admitted |
 | `model_capability_unavailable` | The model does not offer something the request asks for — declared tools on a lane without `tool_calls` |
@@ -151,9 +150,10 @@ failure standing.
 
 The round retains the provider's refusal evidence and billed usage.
 The task's `error.detail` describes the terminal outcome when no candidate
-can answer. Completed tools are not repeated. A manual retry cannot renew
-a refused route: `model_route_spent` refuses that repair; a different
-unspent route must satisfy the captured constraints.
+can answer. Completed tools are not repeated. An explicit task retry can
+ask the same model again with a fresh bounded invocation, or name a
+replacement permitted by the captured constraints. It retains spent
+automatic fallback history.
 
 ### provider_overloaded
 
@@ -167,8 +167,8 @@ After its bounded attempts are exhausted, this failure can advance to the
 next permitted captured fallback. `model_change` uses
 `reason: provider_overloaded`. Mixed retryable transport/server exhaustion
 uses `provider_transient_exhausted` instead. There is no result-mail-only
-switch to the recipient's current default, and a task retry cannot multiply
-a route's provider-attempt budget.
+switch to the recipient's current default. A manual task retry creates a
+fresh bounded invocation without replenishing spent automatic fallback routes.
 
 See [Model selection and recovery](models.md#model-selection-and-recovery)
 for availability skips, constraints, same-model identity and whole-chain

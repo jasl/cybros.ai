@@ -155,7 +155,8 @@ module ModelReasoning
       def message_marker(item, split)
         { "kind" => ASSISTANT_MESSAGE,
           "phase" => item["phase"].to_s.presence,
-          "text" => (joined_parts(item["content"], %w[text]) if split) }.compact
+          "provider_payload" => (item["provider_payload"] if api_format == "gemini_generate_content"),
+          "text" => (Array(item["content"]).filter_map { |part| part["text"] }.join if split) }.compact
       end
 
       # One marker per call the normalizer kept, keyed by its pairing id —

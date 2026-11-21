@@ -84,7 +84,10 @@ class Conversations::InputsApplyHoldTest < ActiveSupport::TestCase
     assert_equal :run_held, Conversations::Inputs::ApplyNext.call(conversation_id: @conversation.id).outcome
     assert_equal mail.public_id, blocked_items.sole.payload.fetch("input_public_id")
 
-    repair = accept!(text: "never mind, do this instead")
+    repair = nil
+    assert_enqueued_with(job: Conversations::Inputs::DrainJob, args: [@conversation.id]) do
+      repair = accept!(text: "never mind, do this instead")
+    end
     assert_predicate Conversations::Inputs::ApplyNext.call(conversation_id: @conversation.id), :accepted?
     assert_equal repair.public_id, materialized_items.sole.payload.fetch("input_public_id"),
       "the repair went ahead of the held receipt"

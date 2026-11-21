@@ -33,6 +33,8 @@ module E2E
           "input_schema" => { "type" => "object", "additionalProperties" => true })
         if name == "checkpoint_write"
           declaration["effect_profile"] = ECHO.fetch("effect_profile").merge("kind" => "write")
+        elsif name == "journal_append"
+          declaration["effect_profile"] = ECHO.fetch("effect_profile").merge("kind" => "write", "idempotency" => "none")
         end
         declaration
       end
@@ -68,7 +70,11 @@ module E2E
       def execute(door, claimed)
         input = claimed.task.tool_input.to_h
         metadata = {}
+        result = {}
         content = case claimed.task.tool_name
+        when "admit_scheduled_work"
+          result[:structured_content] = { "continue" => false }
+          "Acknowledged #{input.fetch("event")}"
         when "echo", "pool_echo"
           "echo:#{JSON.generate(input)}"
         when "checkpoint_write"
@@ -77,6 +83,10 @@ module E2E
         when "checkpoint_restore"
           @log.call("restored", input: input, executor_public_id: address.public_id)
           "synthetic restore"
+        when "journal_append"
+          File.open(File.join(@directory, "journal"), "a") { |file| file.puts(input.fetch("entry")) }
+          wait_for(door, claimed, seconds: 0, release: input["release"]) if input["release"]
+          "appended #{input.fetch("entry")}"
         when "read"
           File.read(File.expand_path(input.fetch("path"), @directory))
         when "attachment"
@@ -96,7 +106,7 @@ module E2E
         else
           raise "unexpected synthetic tool #{claimed.task.tool_name}"
         end
-        door.commit(claim_token: claimed.claim_token, outcome: "completed", is_error: false, content: content, metadata: metadata)
+        door.commit(claim_token: claimed.claim_token, outcome: "completed", is_error: false, content: content, metadata: metadata, **result)
         @log.call("committed", run: claimed.task.run_public_id, task: claimed.task.task_key)
       rescue Cancelled
         @log.call("cancelled", run: claimed.task.run_public_id, task: claimed.task.task_key)

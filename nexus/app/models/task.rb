@@ -149,6 +149,19 @@ class Task < ApplicationRecord
   validates :operation_context, bounded_json: { bound: :snapshot_bound, shape: Hash }, allow_nil: true
   validate :runner_target_is_a_tool_fact
 
+  # Keep this closed vocabulary visible when PostgreSQL plans a prepared
+  # query, so it can use the partial (run_id, status) index on live work.
+  scope :live, -> { where(Task.sanitize_sql_array(["tasks.status IN (?)", LIVE_STATUSES])) }
+  scope :ready_to_start, -> { where(status: "queued", remaining_dependencies: 0) }
+  scope :mainline_models, -> {
+    where(type: Tasks::ModelTask.sti_name).where("continuation_source IS DISTINCT FROM ?", Tasks::ModelTask::BRANCH)
+  }
+  scope :unstarted_mcp_calls, -> { where(status: "running", external_started_at: nil).where.not(mcp_connection_public_id: nil) }
+  scope :waiting_on_tasks, -> { where(status: "dispatched").where.not(awaited_task_key: nil) }
+  scope :unmailed_results, -> {
+    where(result_delivered_at: nil).where(Task.sanitize_sql_array(["tasks.detached AND tasks.status IN (?)", TERMINAL_STATUSES]))
+  }
+
   scope :cost_limit_failures, -> {
     where(type: Tasks::ModelTask.sti_name, error_key: Conversation::COST_LIMIT_REACHED,
       status: FAILURE_STATUSES, failure_resolution: nil)

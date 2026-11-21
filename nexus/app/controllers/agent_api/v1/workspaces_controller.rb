@@ -1,7 +1,21 @@
 # The Workspace collection on the member plane: keyset-listed,
 # browsable-scoped reads, receipt-idempotent creation, and owner-only
 # optimistic management.
+# @auth [MemberBearer]
 class AgentAPI::V1::WorkspacesController < AgentAPI::V1::Workspaces::BaseController
+  # @oas_include
+  # @summary List workspaces
+  # @tags Member, workspaces
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesIndex
   def index
     scope = state_scope(Workspace.data_accessible_to(acting_user))
     scope = dedication_scope(scope)
@@ -13,12 +27,41 @@ class AgentAPI::V1::WorkspacesController < AgentAPI::V1::Workspaces::BaseControl
     }
   end
 
+  # @oas_include
+  # @summary Read workspaces
+  # @tags Member, workspaces
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesShow
   def show
     workspace = find_browsable_workspace
 
     render json: { workspace: AgentAPI::WorkspacePresenter.full(workspace) }
   end
 
+  # @oas_include
+  # @summary Create workspaces
+  # @tags Member, workspaces
+  # @parameter_ref #/components/parameters/IdempotencyKey
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (201) #/components/responses/AgentApiV1WorkspacesCreate
   def create
     key = required_idempotency_key
     return if performed?
@@ -58,6 +101,21 @@ class AgentAPI::V1::WorkspacesController < AgentAPI::V1::Workspaces::BaseControl
     end
   end
 
+  # @oas_include
+  # @summary Update workspaces
+  # @tags Member, workspaces
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesUpdate
   def update
     workspace = find_browsable_workspace
     return unless reject_explicit_nulls(:workspace, %i[metadata])
@@ -79,6 +137,20 @@ class AgentAPI::V1::WorkspacesController < AgentAPI::V1::Workspaces::BaseControl
     render_workspace_result(result)
   end
 
+  # @oas_include
+  # @summary Destroy workspaces
+  # @tags Member, workspaces
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesDestroy
   def destroy
     workspace = find_browsable_workspace
     lock_version = bounded_integer(params[:lock_version], :lock_version, range: LOCK_VERSION_RANGE)

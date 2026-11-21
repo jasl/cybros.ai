@@ -36,7 +36,7 @@ module DeviceAuthorizations
       end
     end
 
-    def initialize(authorization:, connector:, account_wide: false,
+    def initialize(authorization:, connector:, browser_session: nil, account_wide: false,
                    expected_live_runner: nil)
       unless account_wide == true || account_wide == false
         raise ArgumentError, "account_wide must be boolean"
@@ -44,6 +44,7 @@ module DeviceAuthorizations
 
       @authorization = authorization
       @connector = connector
+      @browser_session = browser_session
       @account_wide = account_wide
       @expected_live_runner = expected_live_runner
     end
@@ -67,11 +68,27 @@ module DeviceAuthorizations
       def connect_pending(authorization)
         if authorization.expires_at <= Time.current
           expire(authorization)
+        elsif authorization.terminal_login?
+          connect_terminal(authorization)
         elsif authorization.runner_only_connection?
           connect_runner(authorization)
         else
           connect_agent(authorization)
         end
+      end
+
+      def connect_terminal(authorization)
+        connector = lock_connector
+        unless @browser_session && @browser_session.user_id == connector.id &&
+            @browser_session.user_authority_generation == connector.authority_generation &&
+            @browser_session.identity_recovery_generation == connector.identity.credential_recovery_generation &&
+            connector.active_human_member? && !connector.identity.local_recovery_pending? && !connector.identity.password_change_required?
+          return Result.blocked(:not_authorized)
+        end
+        return expire(authorization) if authorization.expires_at <= Time.current
+
+        authorization.record_connection(user: nil, connector: connector, expected_executor: nil)
+        Result.connected(authorization)
       end
 
       def connect_agent(authorization)

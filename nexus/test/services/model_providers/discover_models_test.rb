@@ -210,14 +210,12 @@ class ModelProviders::DiscoverModelsTest < ActiveSupport::TestCase
   end
 
   test "the directory deadline does not interrupt connection cleanup" do
-    closing = []
+    socket_closed = []
     connection_class = Class.new(HTTPX::Connection) do
       define_method(:purge_after_closed) do
-        super()
-        if state == :closing
-          closing << true
-          sleep 0.2
-        end
+        socket = io.to_io
+        sleep 0.2
+        super().tap { socket_closed << socket.closed? }
       end
       private :purge_after_closed
     end
@@ -243,7 +241,7 @@ class ModelProviders::DiscoverModelsTest < ActiveSupport::TestCase
       assert_equal :discovery_failed, result.outcome
       assert_empty result.models
       assert_equal 1, requests.size
-      assert_equal [true], closing, "the native request timeout must finish its connection close"
+      assert_equal [true], socket_closed, "the native request timeout must finish closing the socket"
       assert_operator elapsed, :<, 1
       assert_equal before, policy.reload.attributes
     end

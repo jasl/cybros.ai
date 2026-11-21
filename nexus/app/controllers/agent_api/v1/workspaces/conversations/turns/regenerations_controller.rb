@@ -4,10 +4,28 @@
 # block — its `run_public_id`, the feed's correlation key, its
 # empty rounds and its `runner_effects` — through the one presenter read every
 # deck door uses; an inference sibling has no loop and carries none.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Conversations::Turns::RegenerationsController <
       AgentAPI::V1::Workspaces::Conversations::BaseController
   include AgentAPI::V1::WorkspaceScoped
 
+  # @oas_include
+  # @summary Create regenerations
+  # @tags Member, regenerations
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter turn_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter_ref #/components/parameters/IdempotencyKey
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (202) #/components/responses/AgentApiV1WorkspacesConversationsTurnsRegenerationsCreate
   def create
     key = required_idempotency_key
     return if performed?

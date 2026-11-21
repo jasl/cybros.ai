@@ -361,7 +361,7 @@ PUT /api/v1/admin/model_providers/{provider_id}/model_visibility
 ```json
 {
   "command": {
-    "model": "openrouter/deepseek/deepseek-v4.1-flash",
+    "model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
     "visible": false,
     "expected_lock_version": 3
   }
@@ -414,7 +414,7 @@ PUT /api/v1/admin/model_providers/{provider_id}/model_availability
 ```json
 {
   "command": {
-    "model": "openrouter/deepseek/deepseek-v4.1-flash",
+    "model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
     "available": false,
     "expected_lock_version": 3
   }
@@ -448,7 +448,7 @@ POST /api/v1/admin/model_providers/{provider_id}/model_test
 ```json
 {
   "command": {
-    "model": "openrouter/deepseek/deepseek-v4.1-flash",
+    "model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
     "expected_lock_version": 3
   }
 }

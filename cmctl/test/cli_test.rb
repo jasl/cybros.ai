@@ -20,6 +20,23 @@ class CLITest < OperatorTest
     assert_equal TOKEN, @transport.requests.last.fetch(:credential)
   end
 
+  def test_login_without_an_email_uses_browser_authorization_and_persists_the_session
+    terminal_answers
+    @transport.answer(200, profile)
+    assert_equal 0, run_cli("login", "--url", "https://nexus.example")
+    assert_equal TOKEN, @config.read.token
+    assert_equal true, output.fetch("connected")
+    assert_includes @error.string, "BCDF-GHJK"
+    refute_includes @error.string, "synthetic-device-secret"
+    refute_includes @output.string, TOKEN
+    assert_equal %w[/oauth/device_authorization /oauth/token /api/v1/profile], @transport.requests.map { |request| request.fetch(:path) }
+  end
+
+  def test_device_login_refuses_combined_password_options
+    assert_equal 2, run_cli("login", "--url", "https://nexus.example", "--device", "--email", "owner@example.test")
+    assert_empty @transport.requests
+  end
+
   def test_non_admin_login_revokes_the_new_session_and_saves_nothing
     @transport.answer(201, { "token" => TOKEN, "token_type" => "Bearer", "session" => SESSION })
     @transport.answer(200, profile(role: "member"))

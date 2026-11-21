@@ -1,0 +1,15 @@
+<% turbo_page_requires_reload %>
+<%= render "layouts/shared/flash" %>
+<h1 class="text-xl font-semibold"><%= t("sso.confirm.#{@attempt.purpose}") %></h1>
+<dl class="my-4 space-y-2">
+  <dt><%= t("sso.source") %></dt><dd><%= @attempt.sso_provider.name %></dd>
+  <dt><%= t("sso.external_account") %></dt><dd><%= @attempt.display_name.presence || @attempt.subject %> (<%= @attempt.subject %>)</dd>
+  <dt><%= t("sso.nexus_account") %></dt><dd><%= @local_email %></dd>
+</dl>
+<%= form_with url: sso_confirmation_path(@attempt.public_id), data: { turbo: false } do |form| %>
+  <% if %w[login invitation].include?(@attempt.purpose) %>
+    <%= form.label :display_name, t("sso.display_name") %>
+    <%= form.text_field :display_name, value: @attempt.display_name, required: true, maxlength: User::DISPLAY_NAME_MAX_LENGTH, class: "input" %>
+  <% end %>
+  <%= form.submit t("sso.continue"), class: "btn btn-primary" %>
+<% end %>

@@ -94,15 +94,22 @@ class ResultDeliveryFallbackTest < Minitest::Test
     assert_equal rounds.map(&:public_id), round_results(mail_loop, key).map(&:public_id),
       "both model budgets exhaust the automatic fallback; no unbounded background retry"
 
-    spent = assert_raises(CybrosAgent::Api::Conflict) do
-      mail_loop.tasks_context(key).retry(model: ORIGINAL_MODEL)
+    retried = mail_loop.tasks_context(key).retry(model: FALLBACK_MODEL)
+    assert_equal key, retried.key
+    await("the same-model retry was never attempted") do
+      observed = round_results(mail_loop, key)
+      observed if observed.length > rounds.length
     end
-    assert_equal "model_route_spent", spent.code
-    assert_equal rounds.map(&:public_id), round_results(mail_loop, key).map(&:public_id)
-    assert_usage_attribution(mail_attempts: 6, mail_input: 0, mail_output: 0)
+    await_attention(mail_loop)
+    rounds = round_results(mail_loop, key)
+    assert_equal [ORIGINAL_MODEL, FALLBACK_MODEL, FALLBACK_MODEL],
+      rounds.map { |event| event.payload.fetch("model") },
+      "manual retry gets fresh attempts without reviving spent automatic routes"
+    assert_http_failure rounds.last
+    assert_usage_attribution(mail_attempts: 9, mail_input: 0, mail_output: 0)
 
-    # A person may choose an unspent route permitted by the captured intent;
-    # that real retry keeps this receipt and cannot replenish either old route.
+    # An explicit replacement also keeps this receipt and the spent
+    # automatic fallback history.
     retried = mail_loop.tasks_context(key).retry(model: RETRY_MODEL)
     assert_equal key, retried.key, "explicit retry owns the existing receipt task"
     await("the explicitly selected model was never attempted") do
@@ -111,7 +118,7 @@ class ResultDeliveryFallbackTest < Minitest::Test
     end
     after_retry = await_attention(mail_loop)
     final_rounds = round_results(mail_loop, key)
-    assert_equal [ORIGINAL_MODEL, FALLBACK_MODEL, RETRY_MODEL],
+    assert_equal [ORIGINAL_MODEL, FALLBACK_MODEL, FALLBACK_MODEL, RETRY_MODEL],
       final_rounds.map { |event| event.payload.fetch("model") },
       "explicit retry does not replenish the exhausted automatic fallback"
     assert_http_failure final_rounds.last
@@ -120,7 +127,7 @@ class ResultDeliveryFallbackTest < Minitest::Test
     assert_equal held.turn.public_id, after_retry.turn.public_id
     assert_receipt_preserved(mail_loop, key)
     assert_completed_work_unchanged(mailed)
-    assert_usage_attribution(mail_attempts: 9, mail_input: 0, mail_output: 0)
+    assert_usage_attribution(mail_attempts: 12, mail_input: 0, mail_output: 0)
     @chat.cancel
   end
 

@@ -1,6 +1,10 @@
 require "test_helper"
 
 class Runs::ScheduleSweepTest < ActiveJob::TestCase
+  include ActiveSupport::Testing::ConstantStubbing
+  include RunLaneTestHelper
+  include InvocationHarness
+
   test "both recovery sources stop at their indexed window above retained history" do
     now = Time.current
     common = { account_id: accounts(:cybros).id, workspace_id: workspaces(:shared).id,
@@ -120,7 +124,121 @@ class Runs::ScheduleSweepTest < ActiveJob::TestCase
     assert_equal 0, ModelInvocation.count
   end
 
+  test "a private workspace cuts parked work by creator and steward while its owner's work can resume" do
+    workspace = workspaces(:shared)
+    owner, member, agent = users(:owner, :member, :agent)
+    outside_agent = create_agent_member(steward: member)
+    conversation = Conversation.create!(workspace: workspace, creating_user: member, answering_user: agent)
+    spoken = create_run_backed_turn(conversation: conversation, acting_user: member).run
+    outsider, retained = [outside_agent, agent].map do |creator|
+      Run.create!(workspace: workspace, creating_user: creator, approval_mode: "bypass", status: "running")
+    end
+    [spoken, outsider, retained].each { |run| grow!(run, ask("gate"), ask("next")) }
+    [spoken, outsider, retained].each { |run| Runs::ScheduleJob.perform_now(run.id) }
+    assert_equal %w[dispatched dispatched dispatched], [spoken, outsider, retained].map { |run| loop_node(run, "gate").status }
+
+    result = Workspaces::UpdateAccessMode.call(workspace: workspace, by: owner, to: "private",
+      lock_version: workspace.lock_version)
+    assert_equal :updated, result.outcome
+    clear_enqueued_jobs
+    Runs::ScheduleSweepJob.perform_now
+
+    [spoken, outsider].each do |run|
+      assert_equal %w[canceled authority_lost], run.reload.values_at(:status, :failure_reason)
+      assert_equal %w[canceled canceled], run.tasks.order(:id).pluck(:status)
+    end
+    assert_equal "running", retained.reload.status
+    gate = loop_node(retained, "gate")
+    assert_equal "dispatched", gate.status
+    assert_equal "queued", loop_node(retained, "next").status
+    assert_predicate Runs::Parks::Settle.call(node: gate, claim_token: gate.resolution_token,
+      outcome: "completed", content: "approved"), :applied?
+    clear_enqueued_jobs
+    Runs::ScheduleSweepJob.perform_now
+    assert_equal "dispatched", loop_node(retained, "next").status
+  end
+
+  test "a paged sweep reaches a paused descendant of a stopped ancestor after all stop hints are lost" do
+    @account = accounts(:cybros)
+    @human = users(:member)
+    workspace = workspaces(:shared)
+    agent = users(:agent)
+    DevModelLane.ensure_enabled!(@account)
+    declare_tools!(agent)
+    source_room, middle_room, last_room = Array.new(3) do
+      Conversation.create!(workspace: workspace, creating_user: @human, answering_user: agent)
+    end
+    independent = Run.create!(workspace: workspace, creating_user: @human, approval_mode: "bypass", status: "paused")
+    _, source = materialize_loop_reply!(source_room, agent: @human)
+    schedule_loop!(source)
+    run_loop_round!(source, sse_success("first answer"))
+    middle = materialize_result(source, middle_room)
+    schedule_loop!(middle)
+    run_loop_round!(middle, sse_success("second answer"))
+    descendant = materialize_result(middle, last_room)
+    assert_predicate Runs::Pause.call(Runs::Pause::Command.graceful(run: descendant, acting_user: @human)), :accepted?
+    assert_predicate Runs::Stop.stop_now(source), :accepted?
+    clear_enqueued_jobs
+
+    stub_const(Runs::ScheduleSweep, :BATCH, 1) do
+      perform_enqueued_jobs(only: Runs::ScheduleSweepJob) { Runs::ScheduleSweepJob.perform_now }
+    end
+
+    assert_equal "paused", independent.reload.status
+    assert_equal "completed", middle.reload.status
+    assert_equal "canceled", descendant.reload.status
+    assert_equal "canceled", descendant.tasks.sole.status
+  end
+
+  test "a workspace restored after discovery preserves its unstarted Run while other ready work advances" do
+    workspace = workspaces(:shared)
+    owner = users(:owner)
+    member = users(:member)
+    unstarted, waiting, ready = [member, owner, owner].map do |creator|
+      seed(ask("gate"), workspace: workspace, creating_user: creator, default_runner_executor_public_id: nil)
+    end
+    [waiting, ready].each do |run|
+      assert_predicate Runs::Start.call(Runs::Start::Command.new(run: run, acting_user: owner)), :accepted?
+    end
+    Runs::ScheduleJob.perform_now(waiting.id)
+    gate = loop_node(waiting, "gate")
+    assert_equal "dispatched", gate.status
+    started_at = gate.started_at
+    assert_equal :updated, Workspaces::UpdateAccessMode.call(workspace: workspace, by: owner,
+      to: "private", lock_version: workspace.lock_version).outcome
+    clear_enqueued_jobs
+
+    restored = nil
+    schedule = Runs::ScheduleReady.method(:call)
+    before_lock = ->(run_id:) do
+      if run_id == unstarted.id
+        restored = Workspaces::UpdateAccessMode.call(workspace: workspace, by: owner,
+          to: "account_wide", lock_version: workspace.reload.lock_version).outcome
+      end
+      schedule.call(run_id: run_id)
+    end
+    Runs::ScheduleReady.stub(:call, before_lock) { Runs::ScheduleSweepJob.perform_now }
+
+    assert_equal :updated, restored, "the revoked Run was selected before the workspace reopened"
+    assert_equal "pending", unstarted.reload.status
+    assert_equal "queued", unstarted.tasks.sole.status
+    assert_equal ["dispatched", started_at], gate.reload.values_at(:status, :started_at)
+    assert_equal "dispatched", ready.tasks.sole.status
+  end
+
   private
+
+    def materialize_result(source, target)
+      result = Conversations::Inputs::Create.call(Conversations::Inputs::Create::Command.kernel(
+        host: target, acting_user: @human, entries: [{ "text" => "Background result." }],
+        origin: Input::TASK_RESULT_ORIGIN, sender_conversation_public_id: source.conversation.public_id,
+        run_public_id: source.public_id, task_key: "background", kind: "direct_reply",
+        provider_id: "dev", model_ref: "mock-text"))
+      assert_predicate result, :accepted?
+      turn = Conversations::Inputs::ApplyNext.call(conversation_id: target.id)
+      assert_predicate turn, :accepted?
+      turn.value.active_variant.run
+    end
 
     def idle_loops
       %w[pending paused needs_attention].map do |status|
@@ -144,6 +262,7 @@ class Runs::ScheduleSweepTest < ActiveJob::TestCase
       subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
         sql = payload[:sql].to_s
         next if payload[:cached]
+        next unless sql.match?(/ORDER BY "(?:runs|tasks)"\."id" ASC LIMIT/)
 
         if sql.start_with?('SELECT "runs"."id"') ||
             sql.start_with?('SELECT "tasks"."id", "tasks"."run_id"')

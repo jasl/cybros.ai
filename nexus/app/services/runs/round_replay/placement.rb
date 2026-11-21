@@ -30,13 +30,20 @@ module Runs
       # pairs; `calls` the round's call items in envelope order; `text` the
       # body's words, which a round of ONE message reads (a split answer
       # stores each message's own).
-      def call(trace:, natives:, calls:, text:, messages: true)
+      def call(trace:, natives:, calls:, text:, messages: true, message_payloads: {})
         trace ||= ModelReasoning::Trace.new(envelope: {})
         first_slot = trace.markers.map { |marker| marker.fetch("ordinal") }.min
         leading, later = split(natives, first_slot)
         placed_calls = place_calls(trace, calls)
-        phased = messages && trace.message_markers.any? { |marker| marker["phase"] }
-        placed_messages = phased ? run_messages(trace, text) : []
+        blocks = messages && trace.placed_message_blocks?
+        phased = blocks || (messages && trace.message_markers.any? { |marker| marker["phase"] })
+        placed_messages = if blocks
+          block_messages(trace, text, message_payloads)
+        elsif phased
+          run_messages(trace, text)
+        else
+          []
+        end
         Placed.new(
           leading: leading,
           trailing: merge(placed_calls, placed_messages, later),
@@ -58,6 +65,49 @@ module Runs
       # Placed pairs joined into one tail in ordinal order — unique by
       # construction (trace ordinals, then synthetic ones past the trace).
       def merge(*tails) = tails.flatten(1).sort_by(&:first)
+
+      # Preserve each text block's position among thinking and tool calls.
+      # A Gemini block may also carry signed Parts within that position.
+      def block_messages(trace, text, message_payloads = {})
+        markers = trace.message_markers
+        ordinary = markers.map do |marker|
+          parts = marker.dig("provider_payload", "parts")
+          parts ? parts.map { |part| part["text"] }.join : (markers.one? ? text.to_s : marker["text"].to_s)
+        end
+        # An edited or compacted answer owns its current words. Never
+        # resurrect the original signed text in their place.
+        if ordinary.join != text.to_s
+          return [] if text.blank?
+
+          part = Nexus::TextInputPart.new(type: Nexus::InputParts::TEXT, text: text)
+          return [[markers.first.fetch("ordinal"), Nexus::TextInputMessage.new(role: "assistant", parts: [part], native_origin: trace.claude_origin)]]
+        end
+
+        markers.zip(ordinary).filter_map do |marker, words|
+          ordinal = marker.fetch("ordinal")
+          native = message_payloads[ordinal]
+          parts = if native
+            native.filter_map do |part|
+              text_part(part.fetch("text", ""), part["thoughtSignature"], trace)
+            end
+          else
+            next if words.empty?
+
+            [text_part(words, nil, trace)]
+          end
+          [ordinal, Nexus::TextInputMessage.new(role: "assistant", parts: parts, native_origin: trace.claude_origin)]
+        end
+      end
+
+      def text_part(text, signature, trace)
+        return if text.empty? && !signature
+
+        # A whitespace-only native fragment is significant between words.
+        # Ordinary visible text keeps the same durable shape on every wire.
+        origin = trace.native_origin if signature || text.blank?
+        Nexus::TextInputPart.new(type: Nexus::InputParts::TEXT, text: text,
+          thought_signature: signature, native_origin: origin)
+      end
 
       # Marked calls at their markers' ordinals, the rest past the trace.
       def place_calls(trace, calls)

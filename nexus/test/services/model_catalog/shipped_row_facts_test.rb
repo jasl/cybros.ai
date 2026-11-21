@@ -38,31 +38,31 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
 
   test "catalog effort defaults follow the selected family policy and explicit exceptions" do
     {
-      "high" => %w[anthropic/claude-opus-5-5 anthropic/claude-fable-5 anthropic/claude-fable-5-1
-        anthropic/claude-sonnet-5 openrouter/anthropic/claude-sonnet-5:exacto openrouter/z-ai/glm-5.2:exacto],
-      "medium" => %w[openai_api/gpt-6-astra openai_api/gpt-6.1-sol openai_api/gpt-6-luna
-        codex_subscription/gpt-6-astra codex_subscription/gpt-6.1-sol codex_subscription/gpt-6-luna
-        openrouter/openai/gpt-6-sol:exacto],
-      "low" => %w[deepseek/deepseek-flash deepseek/deepseek-v4-pro openrouter/moonshotai/kimi-k3
-        openrouter/deepseek/deepseek-v4.1-flash openrouter/deepseek/deepseek-v4-pro-0813
-        openrouter/z-ai/glm-5.3 openrouter/z-ai/glm-5.3-flash openrouter/tencent/hy3:exacto],
-      "xhigh" => %w[openrouter/qwen/qwen3.8-max-0902 openrouter/qwen/qwen3.8-max-0902:exacto],
+      "high" => %w[anthropic/claude-fable-5-2 anthropic/claude-opus-5-5 anthropic/claude-sonnet-5-5
+        anthropic/claude-haiku-5-5 openrouter/anthropic/claude-fable-5.2 openrouter/anthropic/claude-opus-5.5
+        openrouter/anthropic/claude-sonnet-5.5 openrouter/anthropic/claude-haiku-5.5
+        openrouter/qwen/qwen4-max openrouter/qwen/qwen4-max:exacto],
+      "medium" => %w[openai_api/gpt-6.2-astra openai_api/gpt-6.2-sol openai_api/gpt-6.1-terra
+        codex_subscription/gpt-6.2-astra codex_subscription/gpt-6.2-sol codex_subscription/gpt-6.1-terra
+        openrouter/openai/gpt-6.2-sol openrouter/openai/gpt-6.2-astra openrouter/openai/gpt-6.1-terra],
+      "low" => %w[deepseek/deepseek-flash deepseek/deepseek-v4-pro openrouter/moonshotai/kimi-k3.1-pro
+        openrouter/deepseek/deepseek-v4.1-flash-1017 openrouter/deepseek/deepseek-v4-pro-0813
+        openrouter/z-ai/glm-5.3 openrouter/z-ai/glm-5.3-flash openrouter/tencent/hy4],
     }.each do |effort, refs|
       refs.each { |ref| assert_equal effort, shipped_reasoning(ref).fetch("default_effort"), ref }
     end
-    assert_equal %w[high xhigh], shipped_reasoning("openrouter/z-ai/glm-5.2:exacto").fetch("efforts")
   end
 
   test "the shipped catalog projects the closed facts WP7 consumes without invented surfaces" do
     candidate = ModelCatalog::FileBase.compile(
       root: Rails.root.join("config/model_catalog"), override_dir: nil
     )
-    codex = candidate.models.fetch("codex_subscription/gpt-6.1-sol").fetch("capabilities")
+    codex = candidate.models.fetch("codex_subscription/gpt-6.2-sol").fetch("capabilities")
     speech = candidate.models.fetch(
       "openai_api/gpt-4o-mini-tts-2025-12-15"
     ).fetch("capabilities")
 
-    assert_equal ["text"], shipped_profile("gemini/gemini-3.8-flash").output_modalities
+    assert_equal ["text"], shipped_profile("gemini/gemini-4-hydrogen").output_modalities
     # THE FEATURE BITS ARE THE WIRES' DEFAULTS, NOT PER-MODEL CLAIMS ON
     # EVIDENCE (owner 2026-09-16): every text lane has `tool_calls` on
     # because its protocol declares `tools`, `streaming` on because its
@@ -118,59 +118,76 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
     assert_empty candidate.selectors
   end
 
-  test "Sol 6.1 replaces Sol on the direct lanes with its own rates and reasoning vocabulary" do
-    %w[openai_api codex_subscription].each do |provider|
-      ref = "#{provider}/gpt-6.1-sol"
-      refute CATALOG.models.key?("#{provider}/gpt-6-sol")
-      profile = shipped_profile(ref)
-      assert_equal "gpt-6.1-sol", profile.model_pin
-      assert profile.capability_enabled?("tool_calls")
-
-      reasoning = shipped_reasoning(ref)
-      assert_equal %w[low medium high xhigh max], reasoning.fetch("efforts")
-      assert_equal "medium", reasoning.fetch("default_effort")
-      %w[none minimal].each do |effort|
-        _selected, refusal = Nexus::EffectiveReasoning.derive(reasoning, effort)
-        assert_equal :unsupported_reasoning_effort, refusal
+  test "OpenAI routes use the current model pins and list rates" do
+    rates_by_model = {
+      "gpt-6.2-astra" => %w[8 0.4 10 20 40],
+      "gpt-6.2-sol" => %w[2 0.1 2.5 5 10],
+      "gpt-6.1-terra" => %w[1 0.05 1.25 2.5 5],
+    }
+    rates_by_model.each do |name, (input, cached, write, long_write, output)|
+      %w[openai_api codex_subscription].each do |provider|
+        ref = "#{provider}/#{name}"
+        profile = shipped_profile(ref)
+        assert_equal name, profile.model_pin
+        assert profile.capability_enabled?("tool_calls"), ref
+        assert_equal 128_000, profile.local_safety_limits.output_tokens, ref
+        rates = CATALOG.models.fetch(ref).dig("pricing", "schedule", "rates")
+        assert_equal [input, cached, write, output],
+          rates.values_at("input_per_mtok", "cached_input_per_mtok", "cache_write_per_mtok", "output_per_mtok"), ref
       end
 
+      ref = "openai_api/#{name}"
       rates = CATALOG.models.fetch(ref).dig("pricing", "schedule", "rates")
-      assert_equal({ "input_per_mtok" => "2", "cached_input_per_mtok" => "0.1",
-                     "cache_write_per_mtok" => "2.5", "output_per_mtok" => "10" },
-        rates.slice("input_per_mtok", "cached_input_per_mtok", "cache_write_per_mtok", "output_per_mtok"))
-      assert_equal 128_000, profile.local_safety_limits.output_tokens
+      assert_equal [long_write, "272000", "2", "1.5"], rates.values_at("cache_write_12h_per_mtok",
+        "long_context_threshold_tokens", "long_context_input_multiplier", "long_context_output_multiplier"), ref
+      reasoning = shipped_reasoning(ref)
+      assert_equal %w[low medium high xhigh max], reasoning.fetch("efforts"), ref
+      %w[none minimal].each do |effort|
+        _selected, refusal = Nexus::EffectiveReasoning.derive(reasoning, effort)
+        assert_equal :unsupported_reasoning_effort, refusal, ref
+      end
+      off, refusal = Nexus::EffectiveReasoning.derive(reasoning, nil, enabled: false)
+      assert_nil refusal, ref
+      assert_equal name != "gpt-6.1-terra", off.enabled, ref
     end
 
-    rates = CATALOG.models.fetch("openai_api/gpt-6.1-sol").dig("pricing", "schedule", "rates")
-    assert_equal "272000", rates.fetch("long_context_threshold_tokens")
-    assert_equal "2", rates.fetch("long_context_input_multiplier")
-    assert_equal "1.5", rates.fetch("long_context_output_multiplier")
-    assert CATALOG.models.key?("openrouter/openai/gpt-6-sol:exacto"), "the broker has its own model identity"
+    %w[openai_api codex_subscription].each do |provider|
+      %w[gpt-6-astra gpt-6-sol gpt-6.1-sol gpt-6-luna].each do |retired|
+        refute CATALOG.models.key?("#{provider}/#{retired}")
+      end
+    end
   end
 
-  test "Gemini ships Flash and Argon with distinct windows and defaults" do
-    assert_equal %w[gemini-3.8-flash gemini-4-argon], CATALOG.model_definitions.keys.grep(/\Agemini-/).sort
-    assert_equal %w[gemini/gemini-3.8-flash gemini/gemini-4-argon], CATALOG.models.keys.grep(/gemini/).sort
+  test "the four shipped Gemini 4 profiles expose their serving limits, reasoning defaults and cache prices" do
+    models = {
+      "gemini-4-argon" => %w[medium 2 10 0.1],
+      "gemini-4-carbon" => %w[medium 2 10 0.1],
+      "gemini-4-hydrogen" => %w[high 1.5 7.5 0.075],
+      "gemini-4-neon" => %w[high 3 15 0.15],
+    }
+    assert_equal models.keys, CATALOG.model_definitions.keys.grep(/\Agemini-/).sort
+    assert_equal models.keys.map { |name| "gemini/#{name}" }, CATALOG.models.keys.grep(%r{\Agemini/}).sort
 
-    flash = shipped_profile("gemini/gemini-3.8-flash")
-    argon = shipped_profile("gemini/gemini-4-argon")
-    assert_equal 1_048_576, flash.local_safety_limits.input_tokens
-    assert_equal "low", shipped_reasoning("gemini/gemini-3.8-flash").fetch("default_effort")
-    assert_equal "gemini-4-argon", argon.model_pin
-    assert_equal %w[image file], argon.input_modalities
-    assert_equal({ "combined_input_output_tokens" => 1_048_576, "output_tokens" => 65_536 },
-      CATALOG.models.fetch("gemini/gemini-4-argon").dig("capabilities", "limits"))
-    assert_equal "medium", shipped_reasoning("gemini/gemini-4-argon").fetch("default_effort")
-    assert_equal({ "input_per_mtok" => "2", "output_per_mtok" => "10", "cached_input_per_mtok" => "0.1" },
-      CATALOG.models.fetch("gemini/gemini-4-argon").dig("pricing", "schedule", "rates"))
+    models.each do |name, (effort, input_price, output_price, cache_price)|
+      ref = "gemini/#{name}"
+      profile = shipped_profile(ref)
+      entry = CATALOG.models.fetch(ref)
+      assert_equal name, profile.model_pin
+      assert_equal %w[image file], profile.input_modalities, ref
+      assert_equal({ "combined_input_output_tokens" => 1_048_576, "output_tokens" => 65_536 },
+        entry.dig("capabilities", "limits"), ref)
+      assert_equal effort, shipped_reasoning(ref).fetch("default_effort"), ref
+      assert_equal({ "input_per_mtok" => input_price, "output_per_mtok" => output_price, "cached_input_per_mtok" => cache_price },
+        entry.dig("pricing", "schedule", "rates"), ref)
+    end
   end
 
   # The broker supplies capability vocabulary; catalog policy selects low
   # for these open-weight models when the caller omits an effort.
   test "the broker rows carry the inventory's reasoning vocabulary" do
     %w[
-      openrouter/deepseek/deepseek-v4.1-flash openrouter/z-ai/glm-5.3-flash
-      openrouter/z-ai/glm-5.3 openrouter/moonshotai/kimi-k3
+      openrouter/deepseek/deepseek-v4.1-flash-1017 openrouter/z-ai/glm-5.3-flash
+      openrouter/z-ai/glm-5.3 openrouter/moonshotai/kimi-k3.1-pro
     ].each do |model_ref|
       reasoning = shipped_reasoning(model_ref)
       refute_nil reasoning, "#{model_ref} states no reasoning vocabulary"
@@ -191,48 +208,35 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
     assert profile.input_media.key?("image"), "the openrouter_chat image register bounds the upload"
   end
 
-  # The vendor's model pages: adaptive thinking with `effort` on the whole
-  # Claude 5 family, text and images in; fable-5-1 (the references'
-  # default Fable model, alignment 2026-09-16 F14) beside them. The catalog
-  # selects high across the family, including Opus 5.5 whose provider default
-  # is medium.
-  test "the Anthropic rows state the family's thinking vocabulary and vision" do
-    _selected, refusal = Nexus::EffectiveReasoning.derive(shipped_reasoning("anthropic/claude-sonnet-5"), "low")
-    assert_nil refusal, "claude-sonnet-5 refuses an in-family effort"
-    _selected, refusal = Nexus::EffectiveReasoning.derive(shipped_reasoning("anthropic/claude-fable-5-1"), "max")
-    assert_nil refusal, "claude-fable-5-1 refuses the page's `max`"
-    selected, refusal = Nexus::EffectiveReasoning.derive(shipped_reasoning("anthropic/claude-opus-5-5"), nil)
-    assert_nil refusal, "claude-opus-5-5 refuses an effort-less turn"
-    assert_equal "high", selected.effort, "an effort-less turn runs at the catalog default"
+  test "the four direct Claude models support adaptive thinking, PDFs and the Messages output ceiling" do
+    models = %w[claude-fable-5-2 claude-opus-5-5 claude-sonnet-5-5 claude-haiku-5-5]
+    assert_equal models.sort, CATALOG.models.keys.grep(%r{\Aanthropic/}).map { |ref| ref.delete_prefix("anthropic/") }.sort
 
-    %w[anthropic/claude-opus-5-5 anthropic/claude-sonnet-5 anthropic/claude-fable-5 anthropic/claude-fable-5-1].each do |model_ref|
-      assert_equal %w[image file], shipped_profile(model_ref).input_modalities, "#{model_ref} accepts images and PDFs"
-    end
-  end
+    models.each do |model|
+      ref = "anthropic/#{model}"
+      profile = shipped_profile(ref)
+      reasoning = shipped_reasoning(ref)
+      assert_equal %w[low medium high xhigh max], reasoning.fetch("efforts"), ref
+      assert_equal %w[image file], profile.input_modalities, ref
+      assert_equal 1_000_000, profile.local_safety_limits.input_tokens, ref
+      parameter = profile.generation_parameters.fetch("max_output_tokens")
+      assert_equal 128_000, parameter.default, ref
+      assert_equal 128_000, parameter.maximum, ref
+      assert_equal true, profile.wire_option(:mid_conversation_system), ref
+      assert_equal "drop_block", profile.wire_option(:thinking_binding), ref
+      assert_empty profile.service_tiers, ref
 
-  # THE OUTPUT CEILING RIDES AS `max_tokens` (F1): the Messages protocol
-  # refuses a request without `max_output_tokens`, and both references send
-  # the model's limit, so every Anthropic row states it as the control's
-  # default (128,000, the vendor's max output) — a plain turn carries it.
-  # The fable-5-1 row's two wire facts (F10/F11), which the opus-5-5 row
-  # shares (the vendor's Opus 5.5 pages, read 2026-09-26: thinking blocks
-  # prefix-bound as on Fable 5.1, no Priority Tier), and the family's
-  # mid-conversation system fact reach the profile's wire options.
-  test "the Anthropic rows default max_output_tokens to the vendor's ceiling and state their wire facts" do
-    %w[anthropic/claude-opus-5-5 anthropic/claude-fable-5 anthropic/claude-fable-5-1 anthropic/claude-sonnet-5].each do |ref|
-      parameter = shipped_profile(ref).generation_parameters.fetch("max_output_tokens")
-      assert_equal 128_000, parameter.default, "#{ref}: a plain turn must carry the ceiling"
-      assert_equal 128_000, parameter.maximum
+      modes = model == "claude-sonnet-5-5" ? %w[adaptive between_tools] : %w[adaptive]
+      assert_equal modes, profile.reasoning_option_values(:modes), ref
+      off, refusal = Nexus::EffectiveReasoning.derive(reasoning, nil, enabled: false)
+      assert_nil refusal, ref
+      assert_equal model != "claude-haiku-5-5", off.enabled, ref
+      if model == "claude-haiku-5-5"
+        assert_nil profile.wire_option(:forced_tool_choice), ref
+      else
+        assert_equal false, profile.wire_option(:forced_tool_choice), ref
+      end
     end
-    %w[anthropic/claude-opus-5-5 anthropic/claude-fable-5 anthropic/claude-fable-5-1].each do |ref|
-      assert_equal true, shipped_profile(ref).wire_option(:mid_conversation_system), "#{ref}: role: system is a wire message"
-    end
-    assert_nil shipped_profile("anthropic/claude-sonnet-5").wire_option(:mid_conversation_system), "not on Sonnet 5 (the vendor)"
-    %w[anthropic/claude-fable-5-1 anthropic/claude-opus-5-5].each do |ref|
-      assert_equal "drop_block", shipped_profile(ref).wire_option(:thinking_binding), ref
-      assert_empty shipped_profile(ref).service_tiers, "#{ref}: Priority Tier unsupported"
-    end
-    assert_nil shipped_profile("anthropic/claude-fable-5").wire_option(:thinking_binding), "scoped by model id"
   end
 
   # EVERY REASONING ROW REPLAYS IN ITS WIRE'S OWN FIELD: a row that reasons
@@ -250,7 +254,7 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
       refute_equal "none", capability.format, "#{ref} replays nothing"
       assert_includes Nexus::ReasoningReplayCapability::NATIVE_FORMATS, capability.format, ref
     end
-    %w[openrouter/moonshotai/kimi-k3 openrouter/z-ai/glm-5.3 openrouter/qwen/qwen3.8-max-0902:exacto].each do |ref|
+    %w[openrouter/moonshotai/kimi-k3.1-pro openrouter/z-ai/glm-5.3 openrouter/qwen/qwen4-max:exacto].each do |ref|
       assert_equal "chat_reasoning", replay_format(ref), ref
     end
     %w[deepseek/deepseek-flash deepseek/deepseek-v4-pro].each do |ref|
@@ -268,11 +272,11 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
     end
     assert_equal %w[
       deepseek/deepseek-flash deepseek/deepseek-v4-pro
-      kimi_code/k3 kimi_code/k3-256k kimi_code/k3.1-pro kimi_code/k3.1-pro-highspeed
-      moonshot/kimi-k3 moonshot/kimi-k3.1-pro moonshot/kimi-k3.1-pro-highspeed
-      moonshot_global/kimi-k3 moonshot_global/kimi-k3.1-pro moonshot_global/kimi-k3.1-pro-highspeed
+      kimi_code/k3.1-pro kimi_code/k3.1-pro-highspeed
+      moonshot/kimi-k3.1-pro moonshot/kimi-k3.1-pro-highspeed
+      moonshot_global/kimi-k3.1-pro moonshot_global/kimi-k3.1-pro-highspeed
       openrouter/deepseek/deepseek-v4-pro-0813
-      openrouter/deepseek/deepseek-v4.1-flash openrouter/moonshotai/kimi-k3
+      openrouter/deepseek/deepseek-v4.1-flash-1017 openrouter/moonshotai/kimi-k3.1-pro
     ], required.keys.sort
   end
 
@@ -280,7 +284,7 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
   # reasoning items, since the kernel replays them all — the codex rows'
   # knob, authored as the request's rather than as a vendor default.
   test "the GPT-6 API rows ask for every turn's reasoning to be rendered" do
-    %w[openai_api/gpt-6.1-sol openai_api/gpt-6-luna openai_api/gpt-6-astra].each do |ref|
+    %w[openai_api/gpt-6.2-sol openai_api/gpt-6.1-terra openai_api/gpt-6.2-astra].each do |ref|
       reasoning = shipped_reasoning(ref)
       assert_equal %w[all_turns], reasoning.fetch("contexts"), ref
       selected, refusal = Nexus::EffectiveReasoning.derive(reasoning, nil)
@@ -297,27 +301,27 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
     end
   end
 
-  # gpt-6-astra on both OpenAI lanes (F15): the page's five efforts (no `none`), text and images in
+  # gpt-6.2-astra on both OpenAI lanes (F15): the page's five efforts (no `none`), text and images in
   # on the API row; medium as the catalog default on both lanes; the tiers each source
   # declares; `text.verbosity` as a stated row default on every gpt
   # row of both lanes (F21) so a plain turn carries `low`.
   test "the astra rows select medium, and every gpt row states a verbosity" do
-    %w[openai_api/gpt-6-astra codex_subscription/gpt-6-astra].each do |ref|
+    %w[openai_api/gpt-6.2-astra codex_subscription/gpt-6.2-astra].each do |ref|
       reasoning = shipped_reasoning(ref)
       assert_equal %w[low medium high xhigh max], reasoning.fetch("efforts"), ref
       _selected, refusal = Nexus::EffectiveReasoning.derive(reasoning, "xhigh")
       assert_nil refusal, "#{ref} refuses the page's `xhigh`"
     end
-    assert_equal "medium", shipped_reasoning("openai_api/gpt-6-astra").fetch("default_effort")
-    assert_equal "medium", shipped_reasoning("codex_subscription/gpt-6-astra").fetch("default_effort")
-    assert_equal %w[image file], shipped_profile("openai_api/gpt-6-astra").input_modalities
-    assert_equal %w[image], shipped_profile("codex_subscription/gpt-6-astra").input_modalities
-    assert_equal %w[flex priority], shipped_profile("openai_api/gpt-6-astra").service_tiers
-    assert_equal %w[priority], shipped_profile("codex_subscription/gpt-6-astra").service_tiers
+    assert_equal "medium", shipped_reasoning("openai_api/gpt-6.2-astra").fetch("default_effort")
+    assert_equal "medium", shipped_reasoning("codex_subscription/gpt-6.2-astra").fetch("default_effort")
+    assert_equal %w[image file], shipped_profile("openai_api/gpt-6.2-astra").input_modalities
+    assert_equal %w[image], shipped_profile("codex_subscription/gpt-6.2-astra").input_modalities
+    assert_equal %w[priority fast ultrafast], shipped_profile("openai_api/gpt-6.2-astra").service_tiers
+    assert_equal %w[priority ultrafast], shipped_profile("codex_subscription/gpt-6.2-astra").service_tiers
 
     %w[
-      openai_api/gpt-6-astra openai_api/gpt-6.1-sol openai_api/gpt-6-luna
-      codex_subscription/gpt-6-astra codex_subscription/gpt-6.1-sol codex_subscription/gpt-6-luna
+      openai_api/gpt-6.2-astra openai_api/gpt-6.2-sol openai_api/gpt-6.1-terra
+      codex_subscription/gpt-6.2-astra codex_subscription/gpt-6.2-sol codex_subscription/gpt-6.1-terra
     ].each do |ref|
       verbosity = shipped_profile(ref).generation_parameters.fetch("verbosity")
       assert_equal "low", verbosity.default, "#{ref}: a plain turn carries text.verbosity low"
@@ -325,13 +329,13 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
     end
   end
 
-  # The image rows (F17/F18/F23): the two 2.5 snapshots and the codex-named
+  # The image rows (F17/F18/F23): the two 2.6 models and the codex-named
   # gpt-image-2 take an image in (the edits route), answer an image, and
   # the codex lane's image row rides the codex base with its marker.
   test "the image rows take an image in and the codex image row carries the codex marker" do
     %w[
-      openai_api/gpt-image-2-2026-04-21 openai_api/gpt-image-2.5-sunburst-2026-09-08
-      openai_api/gpt-image-2.5-flare-2026-09-08 codex_subscription/gpt-image-2
+      openai_api/gpt-image-2.6-sunburst
+      openai_api/gpt-image-2.6-flare codex_subscription/gpt-image-2
     ].each do |ref|
       profile = shipped_profile(ref)
       assert_equal "openai_images", profile.adapter_profile, ref
@@ -344,35 +348,59 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
     assert_equal "/images/generations", codex.wire_option(:images_path)
     assert_equal "/images/edits", codex.wire_option(:images_edits_path)
     assert_equal "json", codex.wire_option(:images_edits_encoding)
-    assert_nil shipped_profile("openai_api/gpt-image-2.5-flare-2026-09-08").wire_option(:originator), "a plain row carries no marker"
+    refute codex.generation_parameters.key?("complexity")
+    %w[gpt-image-2.6-flare gpt-image-2.6-sunburst].each do |name|
+      api = shipped_profile("openai_api/#{name}")
+      assert_nil api.wire_option(:originator)
+      complexity = api.generation_parameters.fetch("complexity")
+      assert_equal %w[low medium high], complexity.allowed_values
+      assert_nil complexity.default
+    end
   end
 
-  # The broker's inventory of 2026-09-16 lists `qwen/qwen3.8-max-0902`, not
-  # the bare `qwen3.8-max`: the row is re-pinned to the id the inventory
-  # carries and now states the facts that read carries (vision, reasoning).
-  test "the qwen3.8-max row is pinned to the broker's dated id" do
-    refute CATALOG.models.key?("openrouter/qwen/qwen3.8-max:exacto"), "the bare id is not in the inventory"
-    profile = shipped_profile("openrouter/qwen/qwen3.8-max-0902:exacto")
-    assert_equal %w[image], profile.input_modalities
-    _selected, refusal = Nexus::EffectiveReasoning.derive(shipped_reasoning("openrouter/qwen/qwen3.8-max-0902:exacto"), nil)
-    assert_nil refusal, "an effort-less turn selects the broker's default"
+  test "Qwen4 Max and its quality-sorted route accept image input and optional thinking" do
+    %w[qwen4-max qwen4-max:exacto].each do |name|
+      ref = "openrouter/qwen/#{name}"
+      assert_equal "qwen/#{name}", shipped_profile(ref).model_pin
+      assert_equal %w[image], shipped_profile(ref).input_modalities
+      assert_equal %w[low high xhigh], shipped_reasoning(ref).fetch("efforts")
+      assert shipped_reasoning(ref).fetch("disable_supported")
+    end
   end
 
-  # The vendor's model pages for the gpt-6.1-sol and gpt-6-luna tiers (read
-  # 2026-09-26): reasoning effort on the Responses wire, text and images in;
-  # the same tiers on the Codex subscription wire carry the same vocabulary
-  # the wire knows.
-  test "the gpt-6.1-sol and gpt-6-luna rows state the vendor's reasoning and vision on both wires" do
+  test "the broker exposes current OpenAI, Claude and Gemini routes on its chat wire" do
+    {
+      "openai" => %w[gpt-6.2-astra gpt-6.2-sol gpt-6.1-terra],
+      "anthropic" => %w[claude-fable-5.2 claude-opus-5.5 claude-sonnet-5.5 claude-haiku-5.5],
+      "google" => %w[gemini-4-argon gemini-4-carbon gemini-4-hydrogen gemini-4-neon],
+    }.each do |vendor, models|
+      prefix = "openrouter/#{vendor}/"
+      assert_equal models.sort, CATALOG.models.keys.filter_map { |ref| ref.delete_prefix(prefix) if ref.start_with?(prefix) }.sort
+      models.each do |model|
+        ref = "#{prefix}#{model}"
+        profile = shipped_profile(ref)
+        assert_equal "#{vendor}/#{model}", profile.model_pin, ref
+        assert_equal "openrouter_chat", profile.adapter_profile, ref
+        assert_equal ["image"], profile.input_modalities, ref
+        assert_equal "chat_reasoning", replay_format(ref), ref
+        assert profile.capability_enabled?("tool_calls"), ref
+        disabled, = Nexus::EffectiveReasoning.derive(shipped_reasoning(ref), nil, enabled: false)
+        assert_equal !%w[claude-haiku-5.5 gpt-6.1-terra].include?(model), disabled.enabled, ref
+      end
+    end
+  end
+
+  test "the gpt-6.2-sol and gpt-6.1-terra rows state the vendor's reasoning and vision on both wires" do
     %w[
-      openai_api/gpt-6.1-sol openai_api/gpt-6-luna
-      codex_subscription/gpt-6.1-sol codex_subscription/gpt-6-luna
+      openai_api/gpt-6.2-sol openai_api/gpt-6.1-terra
+      codex_subscription/gpt-6.2-sol codex_subscription/gpt-6.1-terra
     ].each do |model_ref|
       _selected, refusal = Nexus::EffectiveReasoning.derive(shipped_reasoning(model_ref), "high")
       assert_nil refusal, "#{model_ref} refuses the vendor's `high`"
     end
 
     { "openai_api" => %w[image file], "codex_subscription" => %w[image] }.each do |provider, modalities|
-      %w[gpt-6.1-sol gpt-6-luna].each do |model|
+      %w[gpt-6.2-sol gpt-6.1-terra].each do |model|
         model_ref = "#{provider}/#{model}"
         assert_equal modalities, shipped_profile(model_ref).input_modalities, model_ref
       end
@@ -383,40 +411,33 @@ class ModelCatalog::ShippedRowFactsTest < ActiveSupport::TestCase
   # 272,000 input tokens every input class bills 2x and output 1.5x for the
   # whole request (the model pages, read 2026-09-26), so the kernel fits and
   # compacts to 272,000 there — the figure Codex's own models.json plans to
-  # on the same models — while the 1,050,000 window stays the hard bound.
+  # on Astra. Sol and Terra have separate subscription planning bounds.
   test "the gpt-6 API and broker rows plan to the long-context price step" do
-    %w[openai_api/gpt-6-astra openai_api/gpt-6.1-sol openai_api/gpt-6-luna openrouter/openai/gpt-6-sol:exacto].each do |model_ref|
+    %w[openai_api/gpt-6.2-astra openai_api/gpt-6.2-sol openai_api/gpt-6.1-terra openrouter/openai/gpt-6.2-sol openrouter/openai/gpt-6.2-astra openrouter/openai/gpt-6.1-terra].each do |model_ref|
       limits = CATALOG.models.fetch(model_ref).dig("capabilities", "limits")
       rates = CATALOG.models.fetch(model_ref).dig("pricing", "schedule", "rates")
       assert_equal 272_000, limits.fetch("effective_input_tokens"), model_ref
       assert_equal rates.fetch("long_context_threshold_tokens").to_i, limits.fetch("effective_input_tokens"), model_ref
-      assert_equal 1_050_000, limits.fetch("combined_input_output_tokens"), model_ref
+      assert_equal 922_000, limits.fetch("input_tokens"), model_ref
+      assert_equal 128_000, limits.fetch("output_tokens"), model_ref
     end
   end
 
-  # THE TWO SCORING ROWS AGAINST THE BROKER'S CARDS (C-1, `/api/v1/models`
-  # read 2026-09-17): `z-ai/glm-5.3` lists `input_modalities` text alone,
-  # so the row declares no image ingress and the kernel's index line
-  # stands in for a PNG; `moonshotai/kimi-k3` lists text, image and video,
-  # a 1 048 576 window, 943 718 max completion, and the card's per-token
-  # prices are 0.000003 / 0.000015 / 0.0000003 — per million, the
-  # fallback rates the row carries (the 2026-09-13 headline was one
-  # endpoint's 2.648138063 / 13.28272425 / 0.30264435; the card moved).
-  test "the glm-5.3 and kimi-k3 rows state the broker's cards of 2026-09-17" do
+  test "GLM and Kimi expose their broker context windows and image support" do
     glm = shipped_profile("openrouter/z-ai/glm-5.3")
     assert_equal [], glm.input_modalities, "the broker lists text alone for z-ai/glm-5.3"
-    assert_equal 1_310_720, glm.local_safety_limits.input_tokens
+    assert_equal 1_048_576, CATALOG.models.fetch("openrouter/z-ai/glm-5.3").dig("capabilities", "limits", "combined_input_output_tokens")
 
-    kimi = shipped_profile("openrouter/moonshotai/kimi-k3")
-    assert_equal %w[image], kimi.input_modalities, "the broker lists image for moonshotai/kimi-k3"
+    kimi = shipped_profile("openrouter/moonshotai/kimi-k3.1-pro")
+    assert_equal %w[image], kimi.input_modalities, "the broker lists image for moonshotai/kimi-k3.1-pro"
     assert kimi.input_media.key?("image"), "the openrouter_chat image register bounds the upload"
-    assert_equal 1_048_576, kimi.local_safety_limits.input_tokens
+    assert_equal 1_048_576, CATALOG.models.fetch("openrouter/moonshotai/kimi-k3.1-pro").dig("capabilities", "limits", "combined_input_output_tokens")
     assert_equal 943_718, kimi.local_safety_limits.output_tokens
 
-    rates = CATALOG.models.fetch("openrouter/moonshotai/kimi-k3").dig("pricing", "schedule", "rates")
+    rates = CATALOG.models.fetch("openrouter/moonshotai/kimi-k3.1-pro").dig("pricing", "schedule", "rates")
     assert_equal(
-      { "input_per_mtok" => "3", "output_per_mtok" => "15", "cached_input_per_mtok" => "0.3" },
-      rates, "kimi-k3's fallback rates are the card's per-million prices"
+      { "input_per_mtok" => "0.253", "output_per_mtok" => "8.8", "cached_input_per_mtok" => "0.18" },
+      rates, "Kimi's fallback rates are the card's per-million prices"
     )
   end
 

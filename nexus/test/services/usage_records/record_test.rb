@@ -338,7 +338,7 @@ class UsageRecords::RecordTest < ActiveJob::TestCase
           "prompt_tokens_details" => { "cached_tokens" => 90, "cache_write_tokens" => 5 },
         },
       }))
-    ).create(model: "moonshotai/kimi-k3", input: "Hello")
+    ).create(model: "moonshotai/kimi-k3.1-pro", input: "Hello")
 
     record = UsageRecords::Record.call(
       attempt: attempt, outcome: outcome_with_result(outcome, provider_result), status: "succeeded"
@@ -475,18 +475,18 @@ class UsageRecords::RecordTest < ActiveJob::TestCase
   end
 
   # THE SHIPPED ROWS CARRY THEIR CACHE RATES: the rows this deployment actually bills — the broker's
-  # glm-5.3 read rate, the two Anthropic rows' published read and 5-minute write rates — settle
+  # glm-5.3 read rate, the Anthropic rows' published read and 5-minute write rates — settle
   # cached input and cache writes at the row's own numbers, never at the input rate. The arithmetic
   # is `token_cost`'s: 1000 input of which 200 were read from cache and 100 written to it, 50 out.
   test "the shipped cache rates settle cached input and cache writes at the row's rate" do
     Accounts::ConfigureCostUnit.call(account: @account, cost_unit: "USD")
     expected = {
-      # 700 × 2 + 200 × 0.2 + 100 × 2.5 + 50 × 10 per-mtok units
-      "anthropic/claude-sonnet-5" => BigDecimal("0.00219"),
-      # 700 × 10 + 200 × 1 + 100 × 12.5 + 50 × 50
-      "anthropic/claude-fable-5" => BigDecimal("0.01095"),
-      # no write rate authored: 800 × 1.4 + 200 × 0.26 + 0 + 50 × 4.4 (the write class is the input rate)
-      "openrouter/z-ai/glm-5.3" => BigDecimal("0.001392"),
+      # 700 × 2 + 200 × 0.1 + 100 × 2.5 + 50 × 10 per-mtok units
+      "anthropic/claude-sonnet-5-5" => BigDecimal("0.00217"),
+      # 700 × 8 + 200 × 0.2 + 100 × 10 + 50 × 40
+      "anthropic/claude-fable-5-2" => BigDecimal("0.00864"),
+      # no write rate authored: 800 × 0.0699 + 200 × 0.0689 + 50 × 1.4 (the write class is the input rate)
+      "openrouter/z-ai/glm-5.3" => BigDecimal("0.0001397"),
     }
 
     expected.each do |model_ref, cost|
@@ -499,6 +499,21 @@ class UsageRecords::RecordTest < ActiveJob::TestCase
       end
 
       assert_equal cost, record.cost_amount, model_ref
+    end
+  end
+
+  test "Haiku prices the whole request above 100k input including cache reads and both write tiers" do
+    pricing = shipped_pricing("anthropic/claude-haiku-5-5")
+    # The same prefix with one extra uncached token crosses the price threshold.
+    { 100 => "0.001035", 101 => "0.0051755" }.each do |uncached, expected|
+      usage = { "input_tokens" => uncached, "cache_read_input_tokens" => 99_800,
+                "cache_creation_input_tokens" => 100,
+                "cache_creation" => { "ephemeral_5m_input_tokens" => 40, "ephemeral_1h_input_tokens" => 60 },
+                "output_tokens" => 20 }
+      tokens = UsageRecords::Tokens.read(usage, adapter_profile: "anthropic_messages")
+      assert_equal BigDecimal(expected), UsageRecords::Pricing.formula(
+        tokens: tokens, rates: pricing.rates, tier_multipliers: pricing.tier_multipliers, service_tier: nil
+      )
     end
   end
 
@@ -958,7 +973,7 @@ class UsageRecords::RecordTest < ActiveJob::TestCase
     result = openrouter_result(cost: "0.123456789012345684", is_byok: false)
     outcome = retargeted_outcome(
       attempt, outcome,
-      model_ref: "openrouter/anthropic/claude-sonnet-5:exacto", result: result
+      model_ref: "openrouter/anthropic/claude-sonnet-5.5", result: result
     )
 
     record = UsageRecords::Record.call(
@@ -983,7 +998,7 @@ class UsageRecords::RecordTest < ActiveJob::TestCase
       result = openrouter_result(cost: "0.9", is_byok: byok_evidence)
       outcome = retargeted_outcome(
         attempt, outcome,
-        model_ref: "openrouter/anthropic/claude-sonnet-5:exacto", result: result
+        model_ref: "openrouter/anthropic/claude-sonnet-5.5", result: result
       )
 
       record = UsageRecords::Record.call(
@@ -1159,7 +1174,7 @@ class UsageRecords::RecordTest < ActiveJob::TestCase
         adapter: InvocationHarness::FakeAdapter.new(
           status: 200, headers: { "content-type" => "application/json" }, body: body
         )
-      ).create(model: "anthropic/claude-sonnet-5:exacto", input: "Hello")
+      ).create(model: "anthropic/claude-sonnet-5.5", input: "Hello")
     end
 
     # `cost_in_usd_ticks: nil` answers without the provider's amount, the

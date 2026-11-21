@@ -39,6 +39,7 @@
   <section class="space-y-4" aria-labelledby="schedule-instructions">
     <h2 id="schedule-instructions" class="font-medium"><%= t("schedules_console.saved_instructions") %></h2>
     <dl class="grid gap-4 text-sm sm:grid-cols-2">
+      <div><dt class="text-base-content/60"><%= t("schedules_console.default_wake") %></dt><dd><%= t("schedules_console.wake_modes.#{@job.wake}") %></dd></div>
       <div><dt class="text-base-content/60"><%= t("schedules_console.creator") %></dt><dd><%= @job.creating_user.display_name %></dd></div>
       <div><dt class="text-base-content/60"><%= t("schedules_console.answerer") %></dt><dd><%= @job.answering_user.display_name %></dd></div>
       <div><dt class="text-base-content/60"><%= t("schedules_console.model") %></dt><dd class="wrap-anywhere"><%= @projection.fetch(:model).fetch(:model) %></dd></div>

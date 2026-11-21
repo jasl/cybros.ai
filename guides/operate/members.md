@@ -4,7 +4,7 @@ An installation is one Account. Users are the people who sign in: owners, admini
 
 ## Add a human member
 
-An active owner or administrator adds a human through an invitation or a temporary password. Both create a new member; neither restores a removed one.
+An active owner or administrator can invite a human to join. In mixed login mode they can also issue a temporary password. An installation with enterprise sign-in can admit eligible users through an explicitly configured provider. [Enterprise sign-in](enterprise-sign-in.md)
 
 ### Invite by link or email
 
@@ -15,7 +15,7 @@ Open **Administration → Invitations** (`/admin/invitations`), enter the email 
 - With SMTP and a job worker configured, creation requests an email and **Resend** renews the invitation for seven days (at least 60 seconds apart). "Email requested" records the request, not delivery.
 - Revoking invalidates every copy of the link.
 
-The recipient chooses a display name and password on the join page; acceptance creates the identity and consumes the invitation atomically.
+The recipient accepts from the join page using an enabled enterprise provider or, in mixed mode, a display name and password. Acceptance creates the identity and consumes the invitation atomically.
 
 ### Create with a temporary password
 
@@ -23,7 +23,7 @@ Open **Administration → Users → Add user** (`/admin/users/new`), choose the 
 
 ## Password recovery
 
-Neither procedure restores a suspended or removed member, changes a role or signs anyone in.
+Password recovery is available in mixed mode. Email reset requires an existing local password. For a lost external identity, follow [SSO reconnection](enterprise-sign-in.md#reconnect-a-member). Neither password procedure restores a suspended or removed member, changes a role or signs anyone in.
 
 **Email reset.** The member opens `/passwords/new`, submits their email and follows the link to `/passwords/edit?token=…`. The link is valid for 15 minutes. A successful reset invalidates earlier browser and API sessions and the member's personal access tokens. Email reset needs configured outbound mail and a running job worker; the response never reveals whether an address exists.
 
@@ -43,7 +43,7 @@ Agent and executor credentials have their own lifecycle; recovery is not a shutd
 
 - Owners and administrators: account-wide settings, invitations, member removal, model providers, retention, budgets, system upgrade.
 - Every human: their own profile, email and password under **Settings**, personal access tokens and API sessions, their agents (steward) and runners (manager), and the workspaces they own.
-- Changing an email requires the current password and invalidates outstanding reset links. An ordinary password change invalidates earlier sessions and tokens but keeps the current browser signed in.
+- Changing an email requires the current password or verification with a connected provider and invalidates outstanding reset links. An ordinary password change invalidates earlier sessions and tokens but keeps the current browser signed in.
 
 ## Suspend and remove
 

@@ -8,6 +8,7 @@ module Runs
         "list" => [], "show" => %w[job_id], "history" => %w[job_id],
         "create" => %w[prompt rule], "update" => %w[job_id expected_lock_version],
         "pause" => %w[job_id], "resume" => %w[job_id], "cancel" => %w[job_id],
+        "set_result_wake" => %w[wake],
       }.freeze
 
       def self.call(node:) = new(node).call
@@ -27,7 +28,7 @@ module Runs
 
         action = @input["action"].to_s
         reading = Nexus::ToolRegistry.resolve(@node.tool_name) == "nexus.schedules.read"
-        allowed = reading ? %w[list show history] : %w[create update pause resume cancel]
+        allowed = reading ? %w[list show history] : %w[create update pause resume cancel set_result_wake]
         return refuse(:invalid_action) unless allowed.include?(action)
         missing = ACTION_FIELDS.fetch(action) - @input.keys
         return refuse(:missing_fields, missing.join(", ")) unless missing.empty?
@@ -70,6 +71,7 @@ module Runs
         end
 
         def manage(action)
+          return set_result_wake if action == "set_result_wake"
           return create if action == "create"
 
           job = find_job
@@ -85,7 +87,7 @@ module Runs
                 version = Integer(@input["expected_lock_version"], exception: false)
                 next refuse(:invalid_lock_version) unless version && version >= 0
 
-                manager.revise_locked(@input.slice("name", "prompt", "rule"), by: @actor,
+                manager.revise_locked(@input.slice("name", "prompt", "rule", "wake"), by: @actor,
                   expected_lock_version: version)
               end
               settle_outcome(outcome)
@@ -103,9 +105,28 @@ module Runs
                 next settle_outcome(intent) unless intent.accepted?
 
                 result = ::Schedules::Create.create_locked(conversation: @conversation, creating_user: @actor,
-                  attributes: intent.value.merge(@input.slice("name", "prompt", "rule")))
+                  attributes: intent.value.merge(@input.slice("name", "prompt", "rule", "wake")))
                 settle_outcome(result)
               end
+            end
+          end
+        end
+
+        def set_result_wake
+          wake = @input.fetch("wake")
+          return refuse(:invalid_wake) unless Task::WAKE_MODES.include?(wake)
+          return refuse(:invalid_target) if @input.key?("job_id")
+
+          @conversation.with_lock do
+            executing do
+              turn = @run.turn
+              unless @conversation.scheduled_execution? && @conversation.scheduled_turn_public_id == turn.public_id &&
+                  Delegations.answering_variant(turn)&.id == @run.variant_id && !@run.delivered?
+                next refuse(:scheduled_execution_required)
+              end
+
+              @conversation.update!(scheduled_result_wake: wake)
+              settle({ wake: wake, input_public_id: @conversation.scheduled_input_public_id })
             end
           end
         end

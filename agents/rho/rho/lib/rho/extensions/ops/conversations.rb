@@ -12,6 +12,7 @@ module Rho
           api.register_route("GET", "/conversations/artifacts") { |request, ctx| artifacts(request, ctx) }
           api.register_route("GET", "/conversations/modes") { |request, ctx| ctx.conversation_modes(request) }
           api.register_route("PATCH", "/conversations/modes") { |request, ctx| ctx.conversation_modes(request, write: true) }
+          api.register_route("POST", "/conversations/prepare-input-policy") { |request, ctx| prepare_input_policy(request, ctx) }
           api.register_route("PATCH", "/conversations") { |request, ctx| update(request, ctx) }
           api.register_route("POST", "/conversations/archive") { |request, ctx| archive(request, ctx) }
           api.register_route("POST", "/conversations/unarchive") { |request, ctx| unarchive(request, ctx) }
@@ -103,6 +104,38 @@ module Rho
               []
             end
             [200, { published_artifacts: files.map(&:to_h) }]
+          end
+        end
+
+        def self.prepare_input_policy(request, ctx)
+          body = ControlServer.json_body(request)
+          fields = %w[workspace_public_id public_id]
+          unknown = body.keys - fields
+          return Daemon::Refusal.malformed("unknown fields: #{unknown.join(", ")}") unless unknown.empty?
+          missing = fields.find { |key| String.try_convert(body[key]).to_s.strip.empty? }
+          return Daemon::Refusal.parameter_missing(missing) if missing
+
+          public_id = body.fetch("public_id")
+          ctx.member_plane(workspace_public_id: body.fetch("workspace_public_id")) do |client, workspace_public_id|
+            workspace = client.workspace(workspace_public_id)
+            document = workspace.conversation(public_id).fetch
+            if document.side? || document.archived?
+              next Daemon::Refusal.new(status: 409, code: "input_policy_unavailable",
+                message: "Input policy preparation requires an active, non-side conversation")
+            end
+            if document.metadata[BotSettings::CONVERSATION_METADATA_KEY] || ctx.conversation_bindings(public_id).any?
+              next Daemon::Refusal.new(status: 409, code: "ingress_bound", message: "Continue this conversation in its channel")
+            end
+
+            policy = ctx.conversation_tool_names(public_id, workspace, client: client, document: document, include_contexts: true)
+            next policy if policy in Daemon::Refusal
+            # The shared selector passes foreign answerers through for schedules.
+            # A prepared Human input needs an explicit allowlist, including an empty one.
+            if policy.fetch(:tool_names).nil?
+              next Daemon::Refusal.new(status: 409, code: "input_policy_unavailable", message: "The answerer belongs to another agent")
+            end
+
+            [200, policy]
           end
         end
 

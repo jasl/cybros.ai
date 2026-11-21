@@ -958,13 +958,13 @@ originating candidate's captured declaration.
 
 ```ruby
 chat.inputs.create(idempotency_key: SecureRandom.uuid,
-  text: "Review this change", model: "openai_api/gpt-6.1-sol",
+  text: "Review this change", model: "openai_api/gpt-6.2-sol",
   agent_configuration: {
     "prompt_mechanism" => "default",
     "system_prompt" => { "content" => "Review the supplied change." },
     "fallback_models" => []
   },
-  model_selection: { "source" => "explicit", "model" => "openai_api/gpt-6.1-sol",
+  model_selection: { "source" => "explicit", "model" => "openai_api/gpt-6.2-sol",
     "constraint" => "route", "alternatives" => [] },
   fallback_models: [])
 ```
@@ -1011,7 +1011,7 @@ swiping back is free:
 ```ruby
 regeneration_key = SecureRandom.uuid # save before submitting; reuse after a lost response
 regenerated = chat.turns.regenerate(turn.public_id, idempotency_key: regeneration_key,
-  model: "anthropic/claude-sonnet-4-5")
+  model: "anthropic/claude-sonnet-5-5")
 regenerated.replayed?                # true when Nexus replayed a prior acceptance
 deck = chat.turns.variants(turn.public_id)   # every live candidate, active flagged
 chat.turns.activate(turn.public_id, deck.items.first.public_id)
@@ -1383,6 +1383,9 @@ global = client.schedules.list(workspace_public_id: workspace_id, status: "pause
 Rules are `once` with `run_at`, `interval` with `every_seconds` and
 `starts_at`, or `daily` with `local_time` and `time_zone`. Instants are ISO
 8601 strings with a zone; daily rules retain their named IANA time zone.
+Create and update accept `wake: "passive"` to record successful results without
+calling the parent model. The default is `"auto"`. Each execution exposes its
+own `wake` value, including an override chosen by its original child run.
 Create also accepts `name`, `reasoning_enabled`, `reasoning_effort`, `configuration`, `tool_names`,
 `approval_mode`, `to`, `speaker_public_id`, `model_selection` and `fallback_models`. Model-created jobs may
 record the immutable pair `source_run_public_id` and `source_task_key`
@@ -1437,7 +1440,7 @@ runs = client.workspace(workspace_id).runs
 created = runs.create(
   steps: CybrosAgent::Steps.build { |s|
     s.model "fix the failing test", key: "work",
-            model: { "model" => "openrouter/deepseek/deepseek-v4.1-flash" }, tools: tool_declarations
+            model: { "model" => "openrouter/deepseek/deepseek-v4.1-flash-1017" }, tools: tool_declarations
   },
   # THE SHELL a standalone Run is created with. `approval_mode` is
   # REQUIRED — `bypass`, `ask` or `rules` — nothing is silently defaulted
@@ -1702,11 +1705,12 @@ Automatic recovery uses the execution's captured ordered `fallback_models`
 and `model_selection` constraints. A classifier refusal or exhausted
 retryable provider failure can move the task back to `waiting` on the
 next eligible route. `task.model_change` describes the switch while
-`task.model` names the current route. A refused or exhausted route stays
-spent: manual retry returns `model_route_spent` for that route, and an
-explicit repair must name another unspent route permitted by the captured
-constraints. Neither a profile edit nor a retry resets the original
-deadline, and result mail has no extra current-default fallback.
+`task.model` names the current route. An explicit task retry creates a
+fresh bounded invocation on the same model or a replacement permitted by
+the captured constraints. Prior invocation history remains, so spent
+routes stay excluded from automatic fallback. Neither a profile edit nor a
+retry resets the original execution deadline, and result mail has no extra
+current-default fallback.
 A switched mainline round's continuations inherit the fallback for the rest of
 that turn, and the loop's `turn.model` says so. STAY ON IT: that field is
 the model to send the next input on — a caller that sends its next turn on
@@ -2229,7 +2233,7 @@ after applying the pack, as rho does for its deferred skill aliases.
 |---|---|
 | `format` | `1` |
 | `row` | the id (`default`, `glm-5.3`, `kimi-k3`, `claude`, `codex`) |
-| `models` | the row's model PATTERNS (*Model patterns*, below), each tested on the REFERENCE: the kernel's `ref` minus its lane segment (`openrouter/z-ai/glm-5.3` → `z-ai/glm-5.3`; `gpt-6.1-sol` under `openai_api` and `codex_subscription` alike). An entry is EXACT (`z-ai/glm-5.3`) or a PREFIX ending in one `*` after a separator (`claude-*`, `z-ai/glm-5.3:*`). A variant is covered only when a row writes it: `openrouter/anthropic/claude-sonnet-5:exacto` resolves to `default` until an entry spells `anthropic/claude-sonnet-5:exacto` or a stem whose `*` spans the variant. `[]` on `default` and on a row an application reaches only by naming it (rho's `adaptations: <id>`: the e2e harness's `bench-*`, `mock` and `sweep` rows). An entry appears once per row, and once across the rows of one source; a repeat is a load error |
+| `models` | the row's model PATTERNS (*Model patterns*, below), each tested on the REFERENCE: the kernel's `ref` minus its lane segment (`openrouter/z-ai/glm-5.3` → `z-ai/glm-5.3`; `gpt-6.2-sol` under `openai_api` and `codex_subscription` alike). An entry is EXACT (`z-ai/glm-5.3`) or a PREFIX ending in one `*` after a separator (`claude-*`, `z-ai/glm-5.3:*`). A variant is covered only when a row writes it: `openrouter/anthropic/claude-sonnet-5.5:exacto` resolves to `default` until an entry spells `anthropic/claude-sonnet-5.5:exacto` or a stem whose `*` spans the variant. `[]` on `default` and on a row an application reaches only by naming it (rho's `adaptations: <id>`: the e2e harness's `bench-*`, `mock` and `sweep` rows). An entry appears once per row, and once across the rows of one source; a repeat is a load error |
 | `tool_style` | words of `presets.yml`, the row's universe: a plain name is withheld only when `nexus` is absent AND an active preset supersedes it; then each active preset's aliases in `words` order |
 | `tool_descriptions` | RENAMED alias entries with their own text (the same grammar as a preset alias; the "alias with its own description" the kernel renders) — never a same-name variant, which the kernel refuses `alias_name_reserved`. `[]` on every gem row today |
 | `summarizer_prompt` | the text an application writes into the profile's `summarizer` slot; `null` → the kernel's default |

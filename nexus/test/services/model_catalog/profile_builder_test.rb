@@ -14,7 +14,7 @@ class ModelCatalog::ProfileBuilderTest < ActiveSupport::TestCase
 
   test "TTL catalog defaults normalize without introducing a request default" do
     catalog = ModelCatalog::FileBase.compile(root: Rails.root.join("config/model_catalog"), override_dir: nil)
-    ref = "openai_api/gpt-6-luna"
+    ref = "openai_api/gpt-6.1-terra"
     entry = catalog.models.fetch(ref)
     profile = B.call(model_ref: ref, provider: catalog.providers.fetch("openai_api"), model: entry)
     capabilities = ModelSelection::Resolver.new.send(:capability_snapshot, entry, profile)

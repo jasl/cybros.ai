@@ -17,7 +17,7 @@ module E2E
   # A small paid prototype diagnostic, not product E2E: real model choices over
   # fictional Runner metadata and shell results, with one sample per cell.
   class RunnerAffinitySmoke
-    MODELS = (ToolDiscoverySmoke.models + %w[gemini/gemini-3.8-flash xai/grok-4.7]).freeze
+    MODELS = (ToolDiscoverySmoke.models + %w[gemini/gemini-4-hydrogen xai/grok-4.7]).freeze
     CASES = [["runners", "clear"], ["environments", "clear"],
       ["runners", "already_current"], ["runners", "ambiguous"]].freeze
     OUTPUT_TOKENS = 4096

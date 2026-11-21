@@ -17,6 +17,7 @@ The flags are defaults for new sessions: the approval mode (`bypass` is rho's ow
 ## In the session
 
 - Each editor session maps to a conversation. Turns, streamed answers, tool results and artifacts flow back through the protocol.
+- Editors can send PDFs as ACP embedded resources with `mimeType: "application/pdf"` and a base64 `blob`. Each decoded PDF can be up to 16 MiB. Nexus keeps the original bytes as a conversation attachment. The selected model determines how it reads the file. [PDF input and model limits](../reference/agent-api/uploads.md)
 - Questions and tool approvals are relayed to the editor's permission prompts.
 - The `code_mode` option offers `on` and `off` and reloads the saved choice when a session resumes. The global default sets the initial choice for a new conversation and does not change existing conversations.
 - Ending the editor process releases the session's live members; the kernel's turns keep running and remain in the conversation.
@@ -24,3 +25,5 @@ The flags are defaults for new sessions: the approval mode (`bypass` is rho's ow
 ## Delegating to other ACP agents
 
 The separate `rho.acp-client` plugin lets rho act as an ACP client: another agent an operator configures becomes a `delegate_agent` tool. The child's permission requests pass through rho's own approval floor and are never auto-granted. The plugin is disabled by default; enable it under **Plugins** and configure the agents' commands there. See [Plugins and code mode](plugins-and-code-mode.md).
+
+The tool's optional `attachments` list takes Nexus upload references (`nexus://uploads/<public_id>`) or upload UUIDs. It forwards selected PDFs readable by the current executor claim to a child that advertises embedded context. Each PDF can be up to 16 MiB. The downloadable delegation transcript records the upload URI, MIME type, and decoded size.

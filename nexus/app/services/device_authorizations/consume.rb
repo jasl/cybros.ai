@@ -36,6 +36,8 @@ module DeviceAuthorizations
       end
     end
 
+    TerminalSession = Data.define(:outcome, :session, :secret)
+
     class << self
       def call(...)
         new(...).call
@@ -123,6 +125,23 @@ module DeviceAuthorizations
         else
           Result.minted(bundle: runner_bundle(lineage))
         end
+      end
+
+      def consume_terminal(authorization)
+        connector = authorization.connected_by
+        # Session freezes these exact observed rows. A later suspension or
+        # recovery fences issuance even if it commits during the insert.
+        unless connector.active_human_member? &&
+            connector.authority_generation == authorization.connected_by_authority_generation &&
+            human_login_authority_live?(authorization, connector)
+          return invalidate(authorization)
+        end
+
+        issued = Sessions::Start.issue_api_session(
+          connector, user_agent: authorization.request_user_agent, ip_address: authorization.request_ip
+        )
+        authorization.record_consumption(executor: nil, access_token: nil, refresh_token: nil)
+        TerminalSession.new(:session_issued, issued.session, issued.secret)
       end
 
       def runner_mintable?(authorization, existing)
@@ -231,6 +250,7 @@ module DeviceAuthorizations
           # classification. Consumed replay is the sole invalid_grant state.
           next locked_state_result(authorization) unless authorization.connected?
           next expire_connected(authorization) if authorization.expires_at <= Time.current
+          next consume_terminal(authorization) if authorization.terminal_login?
           next consume_runner(authorization) if authorization.runner_only_connection?
 
           references = lock_references(authorization)
@@ -348,7 +368,7 @@ module DeviceAuthorizations
       end
 
       def human_login_authority_live?(authorization, connector)
-        return true unless authorization.application_connection?
+        return true unless authorization.application_connection? || authorization.terminal_login?
 
         identity = connector.identity
         authorization.connected_by_identity_recovery_generation == identity.credential_recovery_generation &&

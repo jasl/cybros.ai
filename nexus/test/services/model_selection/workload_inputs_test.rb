@@ -40,6 +40,22 @@ class ModelSelection::WorkloadInputsTest < ActiveSupport::TestCase
     end
   end
 
+  test "a signed empty Gemini answer part requires its source in a raw conversation entry" do
+    raw = { "type" => "text", "text" => "", "thought_signature" => "signature" }
+    origin = { "provider_id" => "gemini", "model_id" => "gemini-4-neon", "api_format" => "gemini_generate_content" }
+    [nil, "gemini", origin.except("model_id"), origin].each do |source|
+      entries = [{ "role" => "assistant", "parts" => [raw.merge("native_origin" => source)] }]
+      messages = Nexus::InputEntries.from(entries: entries, workload: "text_generation")
+      result = normalize(workload: "text_generation", input: messages)
+      if source == origin
+        assert_predicate result, :accepted?
+        assert_equal entries, Nexus::InputEntries.for(result.value.value)
+      else
+        assert_equal :invalid_input, result.refusal
+      end
+    end
+  end
+
   test "embedding normalizes scalar and ordered strings to one ordered batch" do
     scalar = normalize(workload: "embedding", input: "alpha")
     batch = normalize(workload: "embedding", input: ["alpha", "beta"])

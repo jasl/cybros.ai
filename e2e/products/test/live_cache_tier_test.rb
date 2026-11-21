@@ -8,8 +8,7 @@ require "support/live_journey"
 # prefix. Unit coverage owns marker placement and pricing arithmetic; this journey observes current
 # provider behavior without asserting a monetary total.
 #
-# THE PREFIX CROSSES THE MINIMUM BY CONSTRUCTION: Sonnet 5 caches
-# nothing under 1024 tokens (silently: `cache_creation_input_tokens: 0`),
+# Sonnet 5.5 caches prefixes of at least 512 tokens,
 # so the first task text carries a passage of its own well past it —
 # rho's system slots and tool declarations ride ahead of it in the same
 # prefix, but the lane does not lean on their size. The 1-hour share is
@@ -22,7 +21,7 @@ require "support/live_journey"
 # stop, its own patience $1. Out of the sweep and the graded lanes.
 #   E2E_LIVE=1 rake live_cache_tier
 class LiveCacheTierTest < Minitest::Test
-  MODEL = ENV.fetch("E2E_CACHE_TIER_MODEL", "anthropic/claude-sonnet-5").freeze
+  MODEL = ENV.fetch("E2E_CACHE_TIER_MODEL", "anthropic/claude-sonnet-5-5").freeze
   COST_STOP_USD = 1.0
   # Two facts a tool-less reply can only take from the passage: the
   # colour turn 1 asks for, the animal turn 2 asks for.

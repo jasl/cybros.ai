@@ -199,10 +199,7 @@ module Conversations
         )
         return Outcome.refused(normalized.refusal) unless normalized.accepted?
 
-        counted = ModelRequests::TokenCount.count(
-          profile: selection.execution_profile,
-          segments: Nexus::ModelRequestInput.text_segments(normalized.value.value)
-        )
+        counted = ModelRequests::TokenCount.for_input(selection, normalized.value.value)
         return Outcome.refused(counted.refusal) unless counted.counted?
         # Preview still renders an oversized requested model so the caller can
         # inspect its budget. An automatic alternative must fit before selection.

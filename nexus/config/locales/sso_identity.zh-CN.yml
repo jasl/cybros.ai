@@ -1,0 +1,13 @@
+zh-CN:
+  sso_identity:
+    sso_required: 请使用企业登录方式。
+    invite_required: 请通过邀请让成员使用企业身份加入。
+    password_unavailable: 此账号要求使用企业登录方式。
+    owner_login_required: 该管理员须先完成登录方式设置，才能接任所有者。
+    verified: 已为本次操作验证身份。
+    reconnect: 恢复成员并要求重新绑定
+    reconnect_required: 该成员需要可用的登录方式。请选择恢复并重新绑定，然后在部署主机上签发成员恢复链接。
+    restored_for_recovery: 成员已恢复，等待重新绑定。请在部署主机上通过 member_recovery:mint_sso 签发链接。
+  errors:
+    messages:
+      sso_required: 请使用企业登录方式。

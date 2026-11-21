@@ -5,7 +5,9 @@
 # calls an agent program.
 module OAuth::DeviceHelper
   def device_grant_subject(grant)
-    if grant.tool_provider_connection?
+    if grant.terminal_login?
+      t("oauth.device.subjects.terminal")
+    elsif grant.tool_provider_connection?
       t("oauth.device.subjects.tool_provider")
     elsif grant.runner_only_connection?
       t("oauth.device.subjects.runner")

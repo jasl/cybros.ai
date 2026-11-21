@@ -219,6 +219,11 @@ async fn schedules_have_workspace_and_exact_candidate_routes() {
         .unwrap()
         .body;
     assert!(!page.items[0].workspace_public_id.is_empty());
+    assert_eq!(page.items[0].wake.as_str(), "passive");
+    assert_eq!(
+        page.items[0].last_execution.as_ref().unwrap().wake.as_str(),
+        "auto"
+    );
     assert!(
         page.items[0]
             .last_execution

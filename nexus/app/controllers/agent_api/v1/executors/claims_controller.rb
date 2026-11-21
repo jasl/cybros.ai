@@ -5,11 +5,28 @@
 # settle over the current holder. One clock, no heartbeat. A POST refusal is
 # a reachable conflict — including the loop's principal losing standing,
 # a fact about the ROW's loop and not this credential's authorization.
+# @auth [ExecutorBearer]
 class AgentAPI::V1::Executors::ClaimsController < AgentAPI::V1::Executors::BaseController
   CLAIM_READ_RATE_LIMIT = 600
 
   prepend_before_action :no_store, only: :show
 
+  # @oas_include
+  # @summary Read claims
+  # @tags Executor, claims
+  # @parameter run_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter task_key(path) [!String] Resource selector.
+  # @parameter_ref #/components/parameters/ClaimToken
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ExecutorsClaimsShow
   def show
     # The claim read carries its proof only in this header (executor.md,
     # "Read an existing claim"), never in a URL or the response.
@@ -27,6 +44,21 @@ class AgentAPI::V1::Executors::ClaimsController < AgentAPI::V1::Executors::BaseC
     render json: { claim: { active: node.status == "dispatched" } }
   end
 
+  # @oas_include
+  # @summary Create claims
+  # @tags Executor, claims
+  # @parameter run_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter task_key(path) [!String] Resource selector.
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ExecutorsClaimsCreate
   def create
     run = find_addressable_loop
     result = Executors::Claim.call(Executors::Claim::Command.new(

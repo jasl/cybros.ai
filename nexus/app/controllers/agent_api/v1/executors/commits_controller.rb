@@ -4,9 +4,26 @@
 # that ran and errored (data the continuation reads); `outcome: "failed"`
 # could not run and takes on_failure. Write-once: a second commit under the
 # same token after the settle is `idle`.
+# @auth [ExecutorBearer]
 class AgentAPI::V1::Executors::CommitsController < AgentAPI::V1::Executors::BaseController
   include AgentAPI::V1::SettlementRendering
 
+  # @oas_include
+  # @summary Create commits
+  # @tags Executor, commits
+  # @parameter run_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter task_key(path) [!String] Resource selector.
+  # @request_body_ref #/components/requestBodies/AgentApiV1ExecutorsCommitsCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ExecutorsCommitsCreate
   def create
     run = find_addressable_loop
     fields = params.permit(:outcome, :claim_token, :result_type, :title, :is_error)

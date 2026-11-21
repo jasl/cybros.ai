@@ -116,7 +116,7 @@ module SimpleInference
     BOOLEAN_WIRE_OPTION_KEYS = %i[
       use_responses_lite stream_only
       stream_include_usage default_store encrypted_reasoning_include
-      mid_conversation_system
+      mid_conversation_system forced_tool_choice
     ].freeze
 
     # originator / responses_lite_header: the codex non-credential protocol
@@ -162,7 +162,7 @@ module SimpleInference
     REASONING_OPTION_KINDS = %w[efforts modes contexts summaries budgets default_enabled].freeze
     REASONING_OPTION_VALUES = {
       "efforts" => %w[none minimal low medium high xhigh max ultra],
-      "modes" => %w[standard pro adaptive],
+      "modes" => %w[standard pro adaptive between_tools],
       "contexts" => %w[auto current_turn all_turns],
       "summaries" => %w[none auto concise detailed summarized omitted],
       "budgets" => %w[none manual_mode_only reasoning_max_tokens],

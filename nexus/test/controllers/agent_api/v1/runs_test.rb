@@ -307,19 +307,50 @@ class AgentAPI::V1::RunsTest < ActionDispatch::IntegrationTest
     @workspace.update_column(:state, "active")
   end
 
-  test "a retried create replays over the wire and an overlong key is a 400" do
-    payload = { run: { approval_mode: "bypass", steps: [{ model: { key: "seed", model: MODEL, prompt: "s" } }] } }
-    post loops_path, headers: auth("cr-1"), as: :json, params: payload
+  test "a create replays by its full digest key" do
+    key = Digest::SHA256.hexdigest("checkpoint lookup")
+    payload = { run: { approval_mode: "bypass", steps: [{ ask: { key: "gate", prompt: "Continue?" } }] } }
+    post loops_path, headers: auth(key), as: :json, params: payload
     assert_response :created
     original = response.parsed_body.dig("run", "public_id")
+    receipt = response.parsed_body.fetch("receipt")
 
-    post loops_path, headers: auth("cr-1"), as: :json, params: payload
-    assert_response :success
+    post loops_path, headers: auth(key), as: :json, params: payload
+    assert_response :ok
     assert response.parsed_body["replayed"]
     assert_equal original, response.parsed_body.dig("run", "public_id")
+    assert_equal receipt, response.parsed_body.fetch("receipt")
 
-    post loops_path, headers: auth("x" * 40), as: :json, params: payload
+    post loops_path, headers: auth(key), as: :json, params: {
+      run: { approval_mode: "bypass", steps: [{ ask: { key: "gate", prompt: "Stop?" } }] },
+    }
+    assert_response :conflict
+    assert_equal "idempotency_envelope_mismatch", response.parsed_body.dig("error", "code")
+
+    post loops_path, headers: auth(key.first(32) + "0" * 32), as: :json, params: payload
+    assert_response :created
+    assert_not_equal original, response.parsed_body.dig("run", "public_id")
+  end
+
+  test "run creation accepts 255 bytes and task append retains its own key limit" do
+    payload = { run: { approval_mode: "bypass", steps: [{ ask: { key: "gate", prompt: "Continue?" } }] } }
+    key = "界" * 85
+    post loops_path, headers: auth(key), as: :json, params: payload
+    assert_response :created
+    tasks_path = "#{loops_path}/#{response.parsed_body.dig("run", "public_id")}/tasks"
+
+    assert_no_difference [-> { Run.count }, -> { RunCreateReceipt.count }] do
+      post loops_path, headers: auth(key + "a"), as: :json, params: payload
+    end
     assert_response :bad_request
+    assert_equal "parameter_invalid", response.parsed_body.dig("error", "code")
+
+    append = { steps: [{ ask: { key: "later", prompt: "Continue?" } }] }
+    post tasks_path, headers: auth("x" * 37), as: :json, params: append
+    assert_response :bad_request
+    assert_equal "parameter_invalid", response.parsed_body.dig("error", "code")
+    post tasks_path, headers: auth("x" * 36), as: :json, params: append
+    assert_response :created
   end
 
   test "a replayed create recovers the seed receipt and its answer token after later appends" do

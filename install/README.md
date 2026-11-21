@@ -89,7 +89,7 @@ $RHO_PREFIX/                       ~/.local/share/rho ($XDG_DATA_HOME/rho); the 
   bin/jq bin/uv bin/uvx            full, dev
   bin/rho-playwright               dev: Node + playwright-core, the browsers dir scoped inside this script
   bin/python3                      full, dev — ONLY when the host had no python3 (a uv shim)
-  ruby/4.0.9/  ruby/current        Homebrew's portable Ruby bottle, Homebrew's layout; the lock's bundler inside
+  ruby/<version>/  ruby/current    Homebrew's portable Ruby bottle, Homebrew's layout; the lock's bundler inside
   versions/<app>-checkout-r<ruby>/ the packaged gem trees + vendor/bundle (bundle install --deployment --prefer-local); `.ruby` = the pair, `.commit` = the checkout's HEAD
   current -> versions/…            with `ruby/current`, always moved together (update, rollback)
   lib/playwright/{node,package}/   dev: Node 24 (never on PATH) and playwright-core at the gem's version
@@ -133,10 +133,9 @@ Environment or flag; the flag wins.
 guards (bash, not POSIX mode, not root outside a container, darwin/linux × arm64/x64, macOS ≥ 11,
 glibc ≥ 2.17 and not musl) → prerequisites checked, never installed (`git` ≥ 2.7, `/bin/bash`,
 `curl`|`wget`, `tar`, a sha256 tool, `cc` + `c++` + `make` — the apt/Xcode line is printed) → the plan, RETURN →
-the lock → the portable Ruby (fetched from ghcr by its sha, unpacked, smoke-tested) → the lock's bundler
-`gem install`ed into it, always (the locks say 4.0.23; without this, a different bottle default lets
-`bundle install` fetch it silently and `-rbundler/setup` run on the wrong one) → the gems: the packaged
-trees copied out of the checkout, `bundle install --deployment --prefer-local --without development test`
+the lock → the portable Ruby (fetched from ghcr by its sha, unpacked, smoke-tested) → ensure the
+lockfile's Bundler is installed in that Ruby (the bottle can ship a different version) → the gems:
+the packaged trees copied out of the checkout, `bundle install --deployment --prefer-local --without development test`
 (`--prefer-local`: a default gem the lock pins at the portable Ruby's own version — openssl above all —
 is used from the Ruby, never fetched and built beside its static OpenSSL, where conflicting symbols can break TLS), seeded from the
 previous version's `vendor/bundle` when it was built against the same Ruby, then `current` and

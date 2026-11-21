@@ -1,10 +1,27 @@
 # The variant deck: read a reachable turn's live candidates, conceal or
 # restore one of a LOCAL turn's own. The deck's listing is `.live` — a
 # concealed row's content_preview never rides a payload.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Conversations::Turns::VariantsController <
       AgentAPI::V1::Workspaces::Conversations::BaseController
   include AgentAPI::V1::WorkspaceScoped
 
+  # @oas_include
+  # @summary List variants
+  # @tags Member, variants
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter turn_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsTurnsVariantsIndex
   def index
     conversation = find_listable_conversation(@workspace)
     reach = ::Conversations::TurnReach.resolve(
@@ -48,6 +65,23 @@ class AgentAPI::V1::Workspaces::Conversations::Turns::VariantsController <
     }
   end
 
+  # @oas_include
+  # @summary Read variants
+  # @tags Member, variants
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter turn_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsTurnsVariantsShow
   def show
     conversation = find_listable_conversation(@workspace)
     result = ::Conversations::Reader.new(conversation, user: acting_user).variant(
@@ -56,6 +90,24 @@ class AgentAPI::V1::Workspaces::Conversations::Turns::VariantsController <
       turn: { public_id: result.entry.turn.public_id, inherited: result.entry.inherited } }
   end
 
+  # @oas_include
+  # @summary Update variants
+  # @tags Member, variants
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter turn_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesConversationsTurnsVariantsUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsTurnsVariantsUpdate
   def update
     conversation = find_listable_conversation(@workspace)
     fields = params.expect(variant: [:concealed])

@@ -160,7 +160,7 @@ of retrying. Compare the remote skill with your intended change before running a
 it advances through the execution's captured `fallback_models`, subject to its
 model/provider constraints and each candidate's availability; `rho watch`
 prints the move on the status that moved, `waiting  r2  — switched from
-anthropic/claude-opus-5-5 to openai_api/gpt-6.1-sol (model_refused: cyber)`. A
+anthropic/claude-opus-5-5 to openai_api/gpt-6.2-sol (model_refused: cyber)`. A
 step that STOOD — no eligible fallback remains, or content
 `blocked` — prints the category, who declined and the way on: `failed  r2
 (model_refused: cyber — declined by anthropic/claude-opus-5-5; `rho retry

@@ -1,10 +1,25 @@
 # One resource with the workload in the payload. Create is receipt-idempotent
 # and asynchronous by contract (202; completion by polling, replay or the
 # cable); refusals come typed from the domain — the symbol is the error code.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::InferenceRequestsController < AgentAPI::V1::Workspaces::BaseController
   include AgentAPI::V1::WorkspaceScoped
   include AgentAPI::InferenceRequestInputParameters
 
+  # @oas_include
+  # @summary List inference requests
+  # @tags Member, inference requests
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesInferenceRequestsIndex
   def index
     scope = workload_scope(
       InferenceRequest.where(workspace_id: @workspace.id).listable.includes(:model_invocation)
@@ -17,12 +32,44 @@ class AgentAPI::V1::Workspaces::InferenceRequestsController < AgentAPI::V1::Work
     }
   end
 
+  # @oas_include
+  # @summary Read inference requests
+  # @tags Member, inference requests
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesInferenceRequestsShow
   def show
     inference_request = find_listable_inference_request(@workspace)
 
     render json: { inference_request: AgentAPI::InferenceRequestPresenter.full(inference_request) }
   end
 
+  # @oas_include
+  # @summary Create inference requests
+  # @tags Member, inference requests
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter_ref #/components/parameters/IdempotencyKey
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesInferenceRequestsCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesInferenceRequestsCreate
+  # @response_ref (202) #/components/responses/AgentApiV1WorkspacesInferenceRequestsCreate
   def create
     key = required_idempotency_key
     return if performed?
@@ -49,6 +96,21 @@ class AgentAPI::V1::Workspaces::InferenceRequestsController < AgentAPI::V1::Work
   # Terminal-only tombstone: running work refuses 409 — cleanup never cancels
   # on the caller's behalf; a tombstoned row was already absent, so a second
   # DELETE is the listable scope's 404.
+  # @oas_include
+  # @summary Destroy inference requests
+  # @tags Member, inference requests
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (204) #/components/responses/AgentApiV1WorkspacesInferenceRequestsDestroy
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def destroy
     inference_request = find_listable_inference_request(@workspace)
     return unless authorize_writable(@workspace)

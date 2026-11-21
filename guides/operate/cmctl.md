@@ -5,19 +5,21 @@ cmctl is the human operator command line for Nexus. It drives the same settings 
 ## Log in
 
 ```sh
-cmctl login --url http://localhost:3300 --email operator@example.com
+cmctl login --url http://localhost:3300
 cmctl status
 cmctl providers
 cmctl models --workload text_generation
 ```
 
-Login prompts for the password without echo and saves only the API session and server URL in `~/.cmctl/session.json` (mode `0600`). `CMCTL_HOME` or `--home DIR` selects another connection; each home holds one login. A temporary password must first be changed in the Nexus browser.
+Open the link printed by cmctl, compare the code, and approve the terminal in your Nexus browser. You can sign in using your enterprise login. For password login on installations that allow it, pass `--email operator@example.com` and enter your password at the hidden prompt. Login saves only the API session and server URL in `~/.cmctl/session.json` (mode `0600`). `CMCTL_HOME` or `--home DIR` selects another connection; each home holds one login. A temporary password must first be changed in the Nexus browser.
 
 ## Guided setup
 
 ```sh
 cmctl setup --url http://localhost:3300
 ```
+
+At the email prompt, press Enter for browser login or enter your Nexus email for password login. Use `cmctl setup --url URL --device` to go straight to browser login.
 
 The wizard — also included in `rho setup` and the stack's `./cybros setup` — signs in as an owner or administrator for this command only, preserves the separate saved cmctl login, and revokes its own API session on exit. It walks through selecting or adding a provider, installing or rotating a key or following the Codex subscription's browser flow, discovering or entering models, setting context limits and tool support, and optional prices. It runs no paid inference.
 

@@ -30,9 +30,10 @@ module SimpleInference
       # chunk), prompt feedback, and the terminal finishReason.
       class StreamFold
         attr_accessor :output_items, :latest_usage_metadata, :prompt_feedback, :finish_reason
-        attr_reader :events_seen
+        attr_reader :events_seen, :allow_snapshots
 
-        def initialize
+        def initialize(allow_snapshots:)
+          @allow_snapshots = allow_snapshots
           @output_items = []
           @latest_usage_metadata = nil
           @prompt_feedback = {}
@@ -43,15 +44,14 @@ module SimpleInference
         def count_event = @events_seen += 1
       end
 
-      # Supported FinishReason vocabulary: the released SDK's original
-      # 18 values plus the documented signature/response errors used by 3.8.
-      # https://ai.google.dev/api/generate-content#FinishReason (2026-10-05)
+      # GenerateContent's candidate finish reasons on the Gemini API.
+      # https://aistudio.google.com/api-reference/generate-content/generate-content
       FINISH_REASONS = %w[
         FINISH_REASON_UNSPECIFIED STOP MAX_TOKENS SAFETY RECITATION LANGUAGE
         OTHER BLOCKLIST PROHIBITED_CONTENT SPII MALFORMED_FUNCTION_CALL
         IMAGE_SAFETY UNEXPECTED_TOOL_CALL TOO_MANY_TOOL_CALLS
         IMAGE_PROHIBITED_CONTENT NO_IMAGE IMAGE_RECITATION IMAGE_OTHER
-        MISSING_THOUGHT_SIGNATURE MALFORMED_RESPONSE
+        MISSING_THOUGHT_SIGNATURE MALFORMED_RESPONSE ESCALATION PUP_LIMITED_DISABLED CONTINUATION
       ].freeze
 
       # The frozen 8-value BlockedReason enum (python-genai types.BlockedReason)
@@ -66,16 +66,9 @@ module SimpleInference
       ].freeze
       PROMPT_BLOCK_PREFIX = "PROMPT_".freeze
 
-      # The frozen 3.x reasoning vocabulary: reasoning_effort maps 1:1 onto
-      # thinkingConfig.thinkingLevel (register "Reasoning contracts v1").
-      # Everything outside it — including "none" (no disable level exists on
-      # 3.x) — is a loud local rejection, never a nearest-level guess.
-      # This is the WIRE GATE — the gemini registry row's
-      # `reasoning_options` efforts are the other fact with the other job
-      # (the reviewed per-lane catalog subset offered at selection), which
-      # may narrow this set but never exceed it (pinned by
-      # test_reasoning_wire_gates).
-      THINKING_LEVELS = %w[minimal low medium high].freeze
+      # The GenerateContent thinkingLevel vocabulary. Each model's catalog
+      # row narrows this to the levels it supports.
+      THINKING_LEVELS = %w[minimal low medium high xhigh].freeze
 
       # Register-frozen local rejections for this lane: Google marks explicit
       # temperature/topP/topK deprecated/ignored on gemini-3.6-flash, and the
@@ -135,7 +128,7 @@ module SimpleInference
         body = finalize_wire_body(build_request_body(input: input, declared: declared), extra_body)
 
         compile_json_request(path: stream_generate_content_path(model), body: body, stream: true) do |connection_config, compiled|
-          stream_from_compiled(connection_config, compiled)
+          stream_from_compiled(connection_config, compiled, allow_snapshots: !model.to_s.start_with?("gemini-4-"))
         end
       end
 
@@ -143,13 +136,13 @@ module SimpleInference
         compile_stream(model: model, input: input, **options).execute(config)
       end
 
-      def stream_from_compiled(connection_config, compiled)
+      def stream_from_compiled(connection_config, compiled, allow_snapshots: true)
         SimpleInference::Responses::Stream.new do |&emit|
           streamed_tool_call_arguments = {}
           emitted_tool_call_done = {}
 
           result =
-            stream_result(connection_config: connection_config, compiled: compiled) do |delta, reasoning_delta, reasoning_item_id, output_items|
+            stream_result(connection_config:, compiled:, allow_snapshots:) do |delta, reasoning_delta, reasoning_item_id, output_items|
               unless delta.empty?
                 emit.call(
                   SimpleInference::Responses::Events::TextDelta.new(
@@ -202,7 +195,7 @@ module SimpleInference
 
         candidate = Array(body["candidates"]).first || {}
         parts = candidate.dig("content", "parts")
-        output_items = normalize_output_items(parts)
+        output_items = coalesce_text_items(normalize_output_items(parts))
         finish_reason = validate_finish_reason(candidate["finishReason"])
 
         SimpleInference::Responses::Result.new(
@@ -219,11 +212,11 @@ module SimpleInference
         )
       end
 
-      def stream_result(connection_config:, compiled:)
+      def stream_result(connection_config:, compiled:, allow_snapshots:)
         full = +""
         reasoning_full = +""
         last_body = nil
-        fold = StreamFold.new
+        fold = StreamFold.new(allow_snapshots:)
 
         response =
           compiled_stream_response(compiled, config: connection_config) do |_event_name, body|
@@ -233,11 +226,11 @@ module SimpleInference
 
             parts = Array(body.dig("candidates", 0, "content", "parts"))
             snapshot_text = extract_text(parts)
-            delta = incremental_delta(snapshot_text, full)
+            delta = allow_snapshots ? incremental_delta(snapshot_text, full) : snapshot_text
             full << delta unless delta.empty?
             snapshot_reasoning = extract_thought_text(parts)
-            reasoning_delta = incremental_delta(snapshot_reasoning, reasoning_full)
-            reasoning_full << reasoning_delta unless reasoning_delta.empty?
+            reasoning_delta = allow_snapshots ? incremental_delta(snapshot_reasoning, reasoning_full) : snapshot_reasoning
+            reasoning_full << reasoning_delta if allow_snapshots
 
             if block_given?
               yield(
@@ -292,7 +285,15 @@ module SimpleInference
 
       def observe_stream_result(fold, body)
         parts = Array(body.dig("candidates", 0, "content", "parts"))
-        fold.output_items = merge_output_items(fold.output_items, normalize_output_items(parts))
+        items = normalize_output_items(parts)
+        # GenerateContent streams new Parts. In particular, two equal text
+        # fragments or equal id-less calls in different Gemini 4 chunks are
+        # both real. Older compatible hosts also send cumulative snapshots.
+        if fold.allow_snapshots
+          merge_output_items(fold.output_items, items)
+        else
+          coalesce_text_items(items, fold.output_items)
+        end
         fold.latest_usage_metadata = body["usageMetadata"] if body["usageMetadata"]
         fold.prompt_feedback = normalized_prompt_feedback(body["promptFeedback"]) if body.key?("promptFeedback")
         fold
@@ -443,17 +444,16 @@ module SimpleInference
         # id-less name fallback would collapse two distinct same-name calls.
         claimed = []
 
-        coalesce_text_items(Array(incoming_items)).each do |item|
+        batch_start = merged.size
+        coalesce_text_items(incoming_items).each do |item|
           item_type = item["type"].to_s
 
           unless item_type == "function_call"
-            index =
-              if %w[message reasoning].include?(item_type)
-                merged.find_index { |candidate| candidate["type"].to_s == item_type }
-              end
-
-            if index
-              merged[index] = accumulate_text_item(merged[index], item)
+            # Only contiguous fragments belong to the same output item. A
+            # cumulative gateway can resend its earlier part past a call.
+            index = merged.rindex { |candidate| candidate["type"] == item_type }
+            if index && index < batch_start && (index == merged.size - 1 || cumulative_text?(merged[index], item))
+              merged[index] = merge_text_items(merged[index], item, allow_snapshot: true)
             else
               merged << item
             end
@@ -468,7 +468,7 @@ module SimpleInference
               same_call_id = candidate["call_id"].to_s != "" && candidate["call_id"].to_s == item["call_id"].to_s
               same_id || same_call_id
             end
-          index ||= name_fallback_merge_index(merged, item, claimed)
+          index ||= name_fallback_merge_index(merged, item, claimed) unless item["call_id"]
 
           if index
             merged[index] = merged[index].merge(item)
@@ -482,71 +482,55 @@ module SimpleInference
         merged
       end
 
-      # Join a batch's sibling message parts (and reasoning parts) into ONE
-      # item per type BEFORE the cross-chunk fold — the same granularity
-      # stream_result uses for output_text (extract_text joins the chunk's
-      # parts, THEN computes one delta). Folding part-by-part would delta
-      # each sibling against text the previous sibling just added, so a
-      # repeated or prefix-shaped sibling ("ha","ha") would read as a
-      # cumulative resend and get swallowed from the persisted item.
-      def coalesce_text_items(items)
-        first_index = {}
-        coalesced = []
-
+      # Within one chunk the parts are siblings, even if their text repeats.
+      # Across chunks a gateway may resend a cumulative snapshot. In either
+      # case preserve signed parts with their original text and boundaries.
+      def coalesce_text_items(items, grouped = [])
         items.each do |item|
-          type = item["type"].to_s
-
-          unless %w[message reasoning].include?(type)
-            coalesced << item
-            next
-          end
-
-          index = first_index[type]
-          if index
-            coalesced[index] = join_sibling_text_items(coalesced[index], item)
+          if %w[message reasoning].include?(item["type"]) && grouped.last&.fetch("type") == item["type"]
+            grouped[-1] = merge_text_items(grouped.last, item, allow_snapshot: false)
           else
-            first_index[type] = coalesced.length
-            coalesced << item
+            grouped << item
           end
         end
-
-        coalesced
+        grouped
       end
 
-      # Sibling parts of one chunk are distinct fragments by definition —
-      # plain concatenation, exactly like extract_text's join.
-      def join_sibling_text_items(existing, incoming)
-        if existing["type"].to_s == "message"
-          combined = message_item_text(existing) + message_item_text(incoming)
-          existing.merge("content" => [{ "type" => "output_text", "text" => combined }])
+      def cumulative_text?(existing, incoming)
+        previous = item_text(existing)
+        !previous.empty? && item_text(incoming).start_with?(previous)
+      end
+
+      def merge_text_items(existing, incoming, allow_snapshot:)
+        return incoming if allow_snapshot && cumulative_text?(existing, incoming)
+
+        text = item_text(existing) + item_text(incoming)
+        if existing["type"] == "message"
+          merged = existing.merge("content" => [{ "type" => "output_text", "text" => text }])
         else
-          combined = existing["text"].to_s + incoming["text"].to_s
-          existing.merge(incoming).merge("text" => combined)
+          merged = existing.merge(incoming).merge("text" => text)
         end
+        if existing["signature"] || incoming["signature"]
+          parts = native_text_parts(existing) + native_text_parts(incoming)
+          merged["provider_payload"] = { "parts" => parts }
+          merged["signature"] = incoming["signature"] || existing["signature"]
+        elsif merged["type"] == "reasoning"
+          merged["provider_payload"] = { "thought" => true, "text" => text }
+        end
+        merged
       end
 
-      # Gemini streams text in TWO shapes: cumulative snapshot resends (each
-      # chunk carries the full text so far) and incremental fragments (each
-      # chunk carries only new text — the current default). Folding every
-      # chunk into ONE message/reasoning item via incremental_delta handles
-      # both: a snapshot contributes only its unseen suffix, a fragment
-      # appends whole — so the persisted item text stays identical to the
-      # accumulated output_text (the kernel replays output_items as trace).
-      # A per-chunk field like thoughtSignature keeps last-writer-wins.
-      def accumulate_text_item(existing, incoming)
-        if existing["type"].to_s == "message"
-          existing_text = message_item_text(existing)
-          combined = existing_text + incremental_delta(message_item_text(incoming), existing_text)
-          existing.merge("content" => [{ "type" => "output_text", "text" => combined }])
-        else
-          existing_text = existing["text"].to_s
-          combined = existing_text + incremental_delta(incoming["text"].to_s, existing_text)
-          existing.merge(incoming).merge("text" => combined)
-        end
+      def item_text(item)
+        return item["text"] if item["type"] == "reasoning"
+
+        item.fetch("content").first.fetch("text")
       end
 
-      def message_item_text(item)
-        Array(item["content"]).filter_map { |part| part["text"] }.join
+      def native_text_parts(item)
+        payload = item["provider_payload"]
+        return payload.fetch("parts") { [payload] } if payload
+
+        [{ "text" => item_text(item) }]
       end
 
       # The id-less merge fallback: Gemini's cumulative streaming re-sends a
@@ -634,16 +618,19 @@ module SimpleInference
               "signature" => thought_signature_of(normalized),
               "provider_payload" => normalized,
             }.compact
-          elsif normalized["text"]
+          elsif normalized["text"] || thought_signature_of(normalized)
+            signature = thought_signature_of(normalized)
             {
               "type" => "message",
+              "signature" => signature,
+              "provider_payload" => ({ "parts" => [normalized] } if signature),
               "content" => [
                 {
                   "type" => "output_text",
                   "text" => normalized["text"].to_s,
                 },
               ],
-            }
+            }.compact
           end
         end
       end

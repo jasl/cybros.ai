@@ -36,7 +36,7 @@ class ManualClientHarnessTest < Minitest::Test
     assert_equal "z-ai/glm-5.3-flash", route.model
     assert_equal Lanes::Lane.new(provider_id: "openrouter", format: "openrouter_chat",
       base_url: "https://openrouter.ai/api", key_name: "OPENROUTER_API_KEY"), route.lane
-    assert_equal "moonshotai/kimi-k3", Lanes.route("openrouter/moonshotai/kimi-k3").model
+    assert_equal "moonshotai/kimi-k3.1-pro", Lanes.route("openrouter/moonshotai/kimi-k3.1-pro").model
   end
 
   # THE DIRECT xAI LANE: `xai/grok-4.7` on the official API, the catalog's `xai_responses` wire at
@@ -54,15 +54,15 @@ class ManualClientHarnessTest < Minitest::Test
       client.execution_profile.then { |profile| [profile.provider_id, profile.adapter_profile, profile.model_pin] }
   end
 
-  # A BARE BROKER ID NAMES NO LANE: `deepseek/deepseek-v4.1-flash` is the broker's id for the model,
+  # A BARE BROKER ID NAMES NO LANE: `deepseek/deepseek-v4.1-flash-1017` is the broker's id for the model,
   # and read as a ref its first segment would send it to the direct API under a name the catalog
   # does not list — refused by name, like every id the catalog does not name, before a call is paid.
   def test_an_id_the_catalog_does_not_name_is_refused_by_name
-    %w[deepseek/deepseek-v4.1-flash z-ai/glm-5.3 nobody/some-model].each do |id|
+    %w[deepseek/deepseek-v4.1-flash-1017 z-ai/glm-5.3 nobody/some-model].each do |id|
       error = assert_raises(ArgumentError) { Lanes.route(id) }
       assert_includes error.message, id.inspect
     end
-    oauth = assert_raises(ArgumentError) { Lanes.route("codex_subscription/gpt-6-luna") }
+    oauth = assert_raises(ArgumentError) { Lanes.route("codex_subscription/gpt-6.1-terra") }
     assert_match(/no e2e key/, oauth.message, "a catalog provider whose key the harness never reads has no manual lane")
   end
 
@@ -73,11 +73,11 @@ class ManualClientHarnessTest < Minitest::Test
     assert_equal "DEEPSEEK_API_KEY", Lanes.key_name_for("deepseek/deepseek-flash")
     assert_equal "deepseek", Lanes.provider_of("deepseek/deepseek-flash")
     assert_equal "OPENROUTER_API_KEY", Lanes.key_name_for("openrouter/z-ai/glm-5.3-flash")
-    assert_equal "OPENAI_API_KEY", Lanes.key_name_for("openai_api/gpt-6-luna"), "the catalog's provider id"
-    assert_equal "GEMINI_API_KEY", Lanes.key_name_for("gemini/gemini-3.8-flash"), "the catalog's provider id"
+    assert_equal "OPENAI_API_KEY", Lanes.key_name_for("openai_api/gpt-6.1-terra"), "the catalog's provider id"
+    assert_equal "GEMINI_API_KEY", Lanes.key_name_for("gemini/gemini-4-hydrogen"), "the catalog's provider id"
     assert_nil Lanes.key_name_for("nobody/some-model")
     assert_equal({ "openrouter" => "OPENROUTER_API_KEY", "deepseek" => "DEEPSEEK_API_KEY" },
-      Lanes.provider_keys_for(%w[openrouter/z-ai/glm-5.3 openrouter/moonshotai/kimi-k3 deepseek/deepseek-flash]))
+      Lanes.provider_keys_for(%w[openrouter/z-ai/glm-5.3 openrouter/moonshotai/kimi-k3.1-pro deepseek/deepseek-flash]))
     assert_equal({ "nobody" => nil }, Lanes.provider_keys_for(%w[nobody/some-model]))
   end
 
@@ -170,7 +170,7 @@ class ManualClientHarnessTest < Minitest::Test
     input = [{ "role" => "user", "content" => "do it" }]
     opted_out = Client.client(lane: Lanes.route("anthropic/claude-opus-5-5").lane, model: "claude-opus-5-5", env: KEYS,
       capabilities: %w[streaming tool_calls])
-    [opted_out, *%w[openrouter/z-ai/glm-5.3 openai_api/gpt-6.1-sol deepseek/deepseek-flash].map { |ref| Client.for(Lanes.route(ref), env: KEYS) }]
+    [opted_out, *%w[openrouter/z-ai/glm-5.3 openai_api/gpt-6.2-sol deepseek/deepseek-flash].map { |ref| Client.for(Lanes.route(ref), env: KEYS) }]
       .each do |client|
         assert_equal({ instructions: "SYSTEM", input: input }, Client.cached(client, instructions: "SYSTEM", input: input),
           client.execution_profile.profile_id)
@@ -184,7 +184,7 @@ class ManualClientHarnessTest < Minitest::Test
   def test_the_benchs_cache_key_rides_only_the_wires_that_route_by_one
     input = [{ "role" => "user", "content" => "do it" }]
     env = KEYS.merge("E2E_BENCH_CACHE_KEY" => "bench/arm/openai_api")
-    keyed = %w[openai_api/gpt-6.1-sol].to_h { |ref| [ref, "bench/arm/openai_api"] }
+    keyed = %w[openai_api/gpt-6.2-sol].to_h { |ref| [ref, "bench/arm/openai_api"] }
     unkeyed = %w[openrouter/z-ai/glm-5.3 deepseek/deepseek-flash anthropic/claude-opus-5-5].to_h { |ref| [ref, nil] }
 
     keyed.merge(unkeyed).each do |ref, key|
@@ -195,14 +195,14 @@ class ManualClientHarnessTest < Minitest::Test
       assert_equal({ "prompt_cache_key" => key }.compact, body.slice("prompt_cache_key"), ref)
     end
 
-    sol = Client.for(Lanes.route("openai_api/gpt-6.1-sol"), env: KEYS)
+    sol = Client.for(Lanes.route("openai_api/gpt-6.2-sol"), env: KEYS)
     assert_equal({ instructions: "SYSTEM", input: input }, Client.cached(sol, instructions: "SYSTEM", input: input, env: KEYS),
       "no benchmark key, no routing key")
   end
 
   # The task probe sends its cache key on the wire and records the call's duration and usage.
   def test_the_benchmarks_cache_key_and_timing_reach_the_task_record
-    route = Lanes.route("openai_api/gpt-6.1-sol")
+    route = Lanes.route("openai_api/gpt-6.2-sol")
     wire = RecordingAdapter.new(sol_answer)
     task = with_env("E2E_BENCH_CACHE_KEY" => "bench/arm/openai_api") do
       E2E::TaskBench::Sample.call(client: Client.for(route, env: KEYS, adapter: wire), route: route, style: "nexus",
@@ -225,7 +225,7 @@ class ManualClientHarnessTest < Minitest::Test
         "choices" => [{ "index" => 0, "finish_reason" => "stop", "message" => { "role" => "assistant", "content" => "ok" } }] })
     assert_equal({ "input_tokens" => 4_000, "output_tokens" => 96, "cost" => 0.002, "is_byok" => false }, broker.fetch("usage"))
 
-    served = facts(Lanes.route("openai_api/gpt-6.1-sol"),
+    served = facts(Lanes.route("openai_api/gpt-6.2-sol"),
       { "id" => "resp_1", "object" => "response", "status" => "completed", "output" => [], "service_tier" => "flex",
         "usage" => { "input_tokens" => 900, "output_tokens" => 40 } })
     assert_equal({ "input_tokens" => 900, "output_tokens" => 40, "service_tier" => "flex" }, served.fetch("usage"))
@@ -258,7 +258,7 @@ class ManualClientHarnessTest < Minitest::Test
     assert_equal({ "input_tokens" => 9_170, "output_tokens" => 300, "cache_read_tokens" => 9_000,
                    "cache_creation_tokens" => 150 }, anthropic.fetch("usage"))
 
-    responses = facts(Lanes.route("openai_api/gpt-6.1-sol"),
+    responses = facts(Lanes.route("openai_api/gpt-6.2-sol"),
       { "id" => "resp_1", "object" => "response", "status" => "completed", "output" => [],
         "usage" => { "input_tokens" => 9_000, "input_tokens_details" => { "cached_tokens" => 8_192 }, "output_tokens" => 40 } })
     assert_equal({ "input_tokens" => 9_000, "output_tokens" => 40, "cache_read_tokens" => 8_192 }, responses.fetch("usage"))

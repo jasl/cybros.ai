@@ -1,6 +1,7 @@
 # The append door over HTTP: the envelope carries steps in written order
 # plus the concurrency fences — `expected_revision` CAS and the
 # Idempotency-Key whose receipt replays under the loop lock.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Runs::TasksController <
       AgentAPI::V1::Workspaces::Runs::BaseController
   include AgentAPI::V1::WorkspaceScoped
@@ -12,6 +13,22 @@ class AgentAPI::V1::Workspaces::Runs::TasksController <
   # The old grammar's envelope words, refused by name at the top of the tree.
   REFUSED_ENVELOPE_WORDS = %w[tasks deliverable].freeze
 
+  # @oas_include
+  # @summary Create tasks
+  # @tags Member, tasks
+  # @parameter run_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (201) #/components/responses/AgentApiV1WorkspacesRunsTasksCreate
+  # @response_ref (410) #/components/responses/APIError
   def create
     # Growth is a WRITE: the same gate every write door in this family
     # holds (live workspace + access + the dedication fence + the hosting
@@ -66,6 +83,23 @@ class AgentAPI::V1::Workspaces::Runs::TasksController <
     end
   end
 
+  # @oas_include
+  # @summary Read tasks
+  # @tags Member, tasks
+  # @parameter key(path) [!String] Resource selector.
+  # @parameter run_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesRunsTasksShow
+  # @response_ref (410) #/components/responses/APIError
   def show
     run = find_listable_loop(@workspace)
     node = run.tasks.find_by!(node_key: params.fetch(:key))

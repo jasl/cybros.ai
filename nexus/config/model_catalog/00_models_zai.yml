@@ -2,18 +2,6 @@ schema_version: cybros.model_catalog.v1
 # Explicit model facts shared by provider routes. Serving limits may override
 # the complete limits block; protocol options and pricing stay on each route.
 model_definitions:
-  glm-5.2:
-    token_counter:
-      kind: huggingface
-      tokenizer_id: zai-org/GLM-5.2
-    capabilities:
-      limits:
-        combined_input_output_tokens: 200000
-      reasoning:
-        disable_supported: true
-        efforts: [high, xhigh]
-        default_effort: high
-        default_enabled: true
   glm-5.3-flash:
     # These official GLM releases have byte-identical tokenizer.json files;
     # config/tokenizers.json pins their shared vocabulary once.

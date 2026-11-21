@@ -5,6 +5,7 @@ use crate::{
     credentials::{Anonymous, Plane, SecretString},
     error::CredentialFailure,
     transport::{ClientOptions, Headers, Transport},
+    types::platform::{Session, SessionGrant, SessionTokenType},
 };
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde::{Deserialize, Serialize};
@@ -17,6 +18,7 @@ pub enum AuthorizationBranch {
     Agent,
     Runner,
     Application,
+    Terminal,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AgentClaims {
@@ -192,6 +194,7 @@ impl TokenGrant {
                 self.access_token.is_none() && self.executor_access_token.is_some()
             }
             AuthorizationBranch::Application => self.platform_access_token.is_some(),
+            AuthorizationBranch::Terminal => false,
         };
         if valid {
             Ok(())
@@ -203,11 +206,11 @@ impl TokenGrant {
     }
 }
 #[derive(Clone, Debug)]
-pub enum Poll {
+pub enum Poll<Grant = TokenGrant> {
     Pending,
     SlowDown,
     Throttled { retry_after: Duration },
-    Authorized(TokenGrant),
+    Authorized(Grant),
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cancellation {
@@ -235,6 +238,20 @@ impl OAuthClient {
         application: bool,
         options: ClientOptions,
     ) -> Result<Self> {
+        let client_id = if application {
+            "cybros-application"
+        } else {
+            "cybros-first-party-connector"
+        };
+        Self::with_client_id(base_url, public_url, options, client_id)
+    }
+
+    fn with_client_id(
+        base_url: &str,
+        public_url: &str,
+        options: ClientOptions,
+        client_id: &'static str,
+    ) -> Result<Self> {
         let request_timeout = options.request_timeout;
         let transport = Transport::new(base_url, Arc::new(Anonymous), Plane::Platform, options)?;
         let public = Transport::new(
@@ -247,13 +264,9 @@ impl OAuthClient {
         Ok(Self {
             transport,
             public_url: public,
-            application,
+            application: client_id == "cybros-application",
             request_timeout,
-            client_id: if application {
-                "cybros-application"
-            } else {
-                "cybros-first-party-connector"
-            },
+            client_id,
         })
     }
     pub fn authorization_url(
@@ -341,13 +354,18 @@ impl OAuthClient {
                 None => return Err(Error::Configuration("device connection requires claims")),
             }
         };
+        self.start_device(self.claims(claims, Some(mode))?, branch)
+            .await
+    }
+
+    async fn start_device(
+        &self,
+        fields: Vec<(String, String)>,
+        branch: AuthorizationBranch,
+    ) -> Result<Authorization> {
         let started = tokio::time::Instant::now();
         let (status, headers, value) = self
-            .post(
-                "/oauth/device_authorization",
-                self.claims(claims, Some(mode))?,
-                None,
-            )
+            .post("/oauth/device_authorization", fields, None)
             .await?;
         if status != 200 {
             return Err(oauth_error(status, &headers, &value));
@@ -390,6 +408,23 @@ impl OAuthClient {
         Ok(target.to_string())
     }
     pub async fn poll(&self, authorization: &Authorization) -> Result<Poll> {
+        self.poll_with(authorization, |value| {
+            self.decode_initial(value, authorization.branch)
+        })
+        .await
+    }
+
+    fn decode_initial(&self, value: Value, branch: AuthorizationBranch) -> Result<TokenGrant> {
+        let grant = TokenGrant::decode(value, self.application)?;
+        grant.validate_branch(branch)?;
+        Ok(grant)
+    }
+
+    async fn poll_with<T>(
+        &self,
+        authorization: &Authorization,
+        decode: impl Fn(Value) -> Result<T>,
+    ) -> Result<Poll<T>> {
         let remaining = authorization.remaining();
         if remaining.is_zero() {
             return Err(Error::ObservationTimeout {
@@ -419,9 +454,7 @@ impl OAuthClient {
             });
         }
         if status == 200 {
-            let grant = TokenGrant::decode(value, self.application)?;
-            grant.validate_branch(authorization.branch)?;
-            return Ok(Poll::Authorized(grant));
+            return decode(value).map(Poll::Authorized);
         }
         if status == 429 {
             return Ok(Poll::Throttled {
@@ -441,10 +474,21 @@ impl OAuthClient {
         }
     }
     pub async fn await_credentials(&self, authorization: &Authorization) -> Result<TokenGrant> {
+        self.await_with(authorization, |value| {
+            self.decode_initial(value, authorization.branch)
+        })
+        .await
+    }
+
+    async fn await_with<T>(
+        &self,
+        authorization: &Authorization,
+        decode: impl Fn(Value) -> Result<T>,
+    ) -> Result<T> {
         let mut interval = Duration::from_secs(authorization.interval);
         let mut failures = 0;
         loop {
-            let delay = match self.poll(authorization).await {
+            let delay = match self.poll_with(authorization, &decode).await {
                 Ok(Poll::Authorized(grant)) => return Ok(grant),
                 Ok(Poll::SlowDown) => {
                     failures = 0;
@@ -604,6 +648,74 @@ impl OAuthClient {
         Ok((status, headers, value))
     }
 }
+/// Signs a person into a terminal and issues a revocable Human API Session.
+#[derive(Clone)]
+pub struct TerminalDeviceFlow(OAuthClient);
+
+impl TerminalDeviceFlow {
+    pub fn new(base_url: &str) -> Result<Self> {
+        OAuthClient::with_client_id(
+            base_url,
+            base_url,
+            ClientOptions::default(),
+            "cybros-terminal",
+        )
+        .map(Self)
+    }
+
+    pub async fn request_authorization(&self) -> Result<Authorization> {
+        self.0
+            .start_device(
+                vec![("client_id".into(), self.0.client_id.into())],
+                AuthorizationBranch::Terminal,
+            )
+            .await
+    }
+
+    pub async fn poll(&self, authorization: &Authorization) -> Result<Poll<SessionGrant>> {
+        self.0.poll_with(authorization, Self::decode).await
+    }
+
+    pub async fn await_credentials(&self, authorization: &Authorization) -> Result<SessionGrant> {
+        self.0.await_with(authorization, Self::decode).await
+    }
+
+    pub async fn cancel_authorization(
+        &self,
+        authorization: &Authorization,
+    ) -> Result<Cancellation> {
+        self.0.cancel_authorization(authorization).await
+    }
+
+    fn decode(value: Value) -> Result<SessionGrant> {
+        #[derive(Deserialize)]
+        struct Response {
+            access_token: SecretString,
+            token_type: SessionTokenType,
+            expires_in: u64,
+            session: Session,
+        }
+        let invalid = || Error::Credential {
+            kind: CredentialFailure::AuthorityLost,
+        };
+        let response: Response = serde_json::from_value(value).map_err(|_| invalid())?;
+        if response.session.kind != "api"
+            || response.session.public_id.is_empty()
+            || response.session.expires_at.is_empty()
+            || response.access_token.expose().is_empty()
+            || response.expires_in == 0
+        {
+            return Err(invalid());
+        }
+        Ok(SessionGrant {
+            session: response.session,
+            token: response.access_token,
+            token_type: response.token_type,
+            extra: Default::default(),
+        })
+    }
+}
+
 fn oauth_error(status: u16, headers: &reqwest::header::HeaderMap, value: &Value) -> Error {
     Error::Api {
         status,

@@ -280,8 +280,9 @@ fallback to the recipient's current default. The mail turn uses a run even
 for a tool-less profile. Recovery covers the whole mail run's main reply
 path, not independently selected model branches. Exhaustion holds the run
 at `needs_attention`, preserving its received prompt and failed task.
-An explicit task retry retains spent route budgets and the original
-deadline. See [Model selection and recovery](models.md#model-selection-and-recovery) and
+An explicit task retry creates a fresh bounded invocation on the selected
+model while retaining spent automatic fallback history and the original
+execution deadline. See [Model selection and recovery](models.md#model-selection-and-recovery) and
 [result delivery](../../build/orchestration.md#how-results-come-back)
 for the recovery and ownership rules.
 If the seed could not be prepared until retry, an implicit history-window

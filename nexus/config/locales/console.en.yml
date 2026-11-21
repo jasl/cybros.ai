@@ -96,7 +96,9 @@ en:
   oauth:
     authorization_invalid: Invalid authorization request
     device:
+      terminal_consent_html: This terminal will sign in as %{name} and can use the Nexus API with your current permissions. You can revoke this session in Settings.
       subjects:
+        terminal: terminal
         tool_provider: tools provider
         runner: runner
         agent: agent program

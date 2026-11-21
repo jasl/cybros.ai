@@ -32,6 +32,10 @@ class IngressBindingTest < Minitest::Test
     assert_equal 409, status
     assert_equal "ingress_bound", body.dig(:error, :code)
     assert_empty api.writes
+    policy = request(daemon, :post, "/conversations/prepare-input-policy", token: bearer(daemon),
+      body: { public_id: "c-1", workspace_public_id: "ws-1" })
+    assert_equal "409", policy.code, policy.body
+    assert_equal "ingress_bound", JSON.parse(policy.body).dig("error", "code")
 
     # This is a product guard for the WebUI, not another Nexus permission.
     assert_equal "200", request(daemon, :patch, "/conversations", token: bearer(daemon),

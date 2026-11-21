@@ -1,9 +1,26 @@
 # PUT /api/v1/admin/model_providers/{id}/lane. Enabling creates the policy row,
 # so `expected_lock_version` is null for an untouched lane; a stale version is
 # a conflict, never a last-writer-wins overwrite.
+# @auth [PlatformBearer, BrowserSession]
 class API::V1::Admin::ModelProviders::LanesController < API::V1::Admin::ModelProviders::BaseController
   LOCK_VERSION_RANGE = (0..2_147_483_647)
 
+  # @oas_include
+  # @summary Update lanes
+  # @tags Platform, lanes
+  # @parameter model_provider_id(path) [!String] Resource selector.
+  # @request_body_ref #/components/requestBodies/ApiV1AdminModelProvidersLanesUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ApiV1AdminModelProvidersLanesUpdate
+  # @response_ref (503) #/components/responses/APIError
   def update
     fields = params.expect(command: [:enabled, :expected_lock_version])
     enabled = fields[:enabled]

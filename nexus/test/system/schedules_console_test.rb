@@ -20,6 +20,7 @@ class SchedulesConsoleJourneyTest < ApplicationSystemTestCase
     assert_selector("body", visible: :all) { |body| body.native != previous_body }
     click_link "Inbox review", exact: true
     assert_text "Saved instructions"
+    assert_text "Ask the parent to respond"
     assert_text "Review the inbox"
     click_button "Pause schedule"
     assert_button "Resume schedule"

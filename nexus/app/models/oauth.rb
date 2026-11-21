@@ -5,6 +5,7 @@ module OAuth
   DEVICE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code".freeze
   CODE_GRANT_TYPE = "authorization_code".freeze
   APPLICATION_CLIENT_ID = "cybros-application".freeze
+  TERMINAL_CLIENT_ID = "cybros-terminal".freeze
   APPLICATION_SCOPE = "application".freeze
   REFRESH_GRANT_TYPE = "refresh_token".freeze
 

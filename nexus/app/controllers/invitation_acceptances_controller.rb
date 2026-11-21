@@ -23,10 +23,15 @@ class InvitationAcceptancesController < ApplicationController
 
     case result.outcome
     when :accepted
-      # Signing the new member in happens outside the acceptance transaction:
-      # a session failure leaves the member created, and they sign in normally.
-      start_new_session_for(result.member.identity)
-      redirect_to root_path
+      # Acceptance survives a later Session failure. The password-based
+      # browser sign-in must still be permitted when its Session is issued.
+      policy = result.member.account
+      started = policy.with_lock { start_new_session_for(result.member.identity) unless policy.sso_only? }
+      if started
+        redirect_to root_path
+      else
+        redirect_to new_session_path, notice: t("sso_identity.sso_required")
+      end
     when :member_already_exists
       redirect_to new_session_path, alert: t("invitation_acceptances.create.member_already_exists")
     when :rejected
@@ -44,7 +49,9 @@ class InvitationAcceptancesController < ApplicationController
     def set_invitation
       @invitation = Invitation.find_by_acceptance_token(params[:token].to_s)
 
-      if @invitation.nil?
+      if @invitation
+        @login_providers = @invitation.account.sso_providers.where(enabled: true).listed
+      else
         render :invalid, status: :not_found
       end
     end

@@ -8,6 +8,7 @@ CI.run do
     step "Style: Ruby", "bin/rubocop"
     step "Architecture", "bundle exec archspec check"
     step "Zeitwerk", "bin/rails zeitwerk:check"
+    step "OpenAPI", "env RAILS_ENV=test bin/rails openapi:check"
     step "Solid Queue configuration", "env RAILS_ENV=test bin/jobs check"
     step "Style: JavaScript", "bun run lint:js"
     step "Tests: JavaScript", "bun run test:js"

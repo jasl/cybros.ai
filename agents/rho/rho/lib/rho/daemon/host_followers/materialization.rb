@@ -46,9 +46,9 @@ module Rho
           end
 
           def materialized_ids(value)
-            { turn: ( { public_id: value.turn } if value.turn),
-              variant: ( { public_id: value.variant } if value.variant),
-              run: ( { public_id: value.run_public_id } if value.run_public_id) }.compact
+            { turn: ({ public_id: value.turn } if value.turn),
+              variant: ({ public_id: value.variant } if value.variant),
+              run: ({ public_id: value.run_public_id } if value.run_public_id) }.compact
           end
 
           def turn_in_flight?(run)

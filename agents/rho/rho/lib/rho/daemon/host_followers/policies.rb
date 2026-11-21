@@ -52,15 +52,15 @@ module Rho
           end
         end
 
-        # Human-authored schedules snapshot the same tools as a new turn.
+        # Human-authored inputs and schedules snapshot the same tools as a new turn.
         # A model-authored schedule already carries its calling round's freeze.
-        def conversation_tool_names(public_id, workspace, client:, to: nil, tool_names: nil, include_contexts: false)
+        def conversation_tool_names(public_id, workspace, client:, to: nil, tool_names: nil, include_contexts: false, document: nil)
           names = tool_names.nil? ? nil : Array.try_convert(tool_names)
           return Refusal.malformed("tool_names must be a list") if !tool_names.nil? && names.nil?
 
           host = Rho::Host::Conversation.new(public_id: public_id)
           hosted = host.context(workspace)
-          document = hosted.fetch
+          document ||= hosted.fetch
           addressee = to.nil? ? nil : resolve_answerer(client, workspace.public_id, to)
           return addressee if addressee in Refusal
 

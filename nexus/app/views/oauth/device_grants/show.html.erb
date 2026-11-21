@@ -17,6 +17,7 @@
     <p class="mt-1 font-mono text-2xl tracking-widest"><%= @grant.formatted_user_code %></p>
   </div>
 
+  <% unless @grant.terminal_login? %>
   <section>
     <h2 class="mb-3 text-sm font-medium text-base-content/70"><%= runner ? machine : t("oauth.device_grants.show.agent_program") %></h2>
     <div class="rounded-box border border-base-300 bg-base-200">
@@ -28,8 +29,11 @@
       <% end %>
     </div>
   </section>
+  <% end %>
 
-  <% if @grant.application_connection? %>
+  <% if @grant.terminal_login? %>
+    <p><%= t("oauth.device.terminal_consent_html", name: tag.strong(Current.user.display_name)) %></p>
+  <% elsif @grant.application_connection? %>
     <p><%= t("oauth.device_grants.show.application_access_html", name: tag.strong(Current.user.display_name)) %></p>
   <% end %>
 
@@ -39,7 +43,7 @@
       <%= t("oauth.device_grants.show.connect_this_only_if_you_started_it_yourself_just", subject: (subject)) %>
       <% if @grant.mode_login? %>
         <%= t("oauth.device_grants.show.your_existing_agent_and_runner_connection_will_keep_running") %>
-      <% else %>
+      <% elsif !@grant.terminal_login? %>
       <%= t("oauth.device_grants.show.if_the_same_subject_is_already_connected_then_once", subject: (subject)) %>
       <% end %>
       <%= t("oauth.device_grants.show.if_someone_sent_you_this_code_or_this_link") %>

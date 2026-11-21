@@ -63,6 +63,9 @@ class PromptCacheProbeTest < Minitest::Test
 
     assert_equal ROUNDS, rounds.size, "the model must call the tool on rounds 1 and 2 (one item each) so round 3 is a continuation " \
                                       "over two replayed answers; it answered without a call: #{rounds.last[:text].inspect}"
+    assert_equal ITEMS, rounds.flat_map { |round| round[:calls].map { |call| arguments_of(call).fetch("number") } }
+    assert_empty rounds.last[:calls]
+    assert_equal ITEMS, rounds.last[:text].scan(/\d+/).map(&:to_i)
     first = rounds.first[:usage]
     assert_operator first[:cache_creation].to_i, :>, 0,
       "round one must WRITE the marked prefix — the system block and the corpus under the tail marker"
@@ -128,7 +131,8 @@ class PromptCacheProbeTest < Minitest::Test
     end
 
     def request_options(placement)
-      { input: placement.input, instructions: placement.instructions, tools: [TOOL], reasoning_effort: "low", max_output_tokens: 2048 }
+      { input: placement.input, instructions: placement.instructions, tools: [TOOL], parallel_tool_calls: false,
+        reasoning_effort: "low", max_output_tokens: 2048 }
     end
 
     def send_round(client, model, input)
@@ -147,23 +151,17 @@ class PromptCacheProbeTest < Minitest::Test
     # share, the cache read, the cache write.
     def prompt_tokens(usage) = usage[:input].to_i + usage[:cache_read].to_i + usage[:cache_creation].to_i
 
-    # THE KERNEL'S REPLAY in the gem's input grammar (`RoundReplay`, the
-    # ReplayLadder's `native_parts`): the answer's thinking blocks verbatim
-    # — signature and all; a redacted one as its opaque data — then its
-    # text, as one assistant entry; each call as a `function_call` item.
+    # Keep thinking, text and calls in the order Claude emitted them.
     def replay(round)
-      parts = round[:items].flat_map do |item|
+      round[:items].map do |item|
         case item["type"]
-        when "reasoning" then [{ "type" => "thinking", "thinking" => item["text"].to_s, "signature" => item["signature"] }]
-        when "redacted_thinking" then [{ "type" => "redacted_thinking", "data" => item["data"] }]
-        when "message" then Array(item["content"]).map { |part| { "type" => "text", "text" => part["text"].to_s } }
-        else []
+        when "function_call" then item.slice("type", "call_id", "name", "arguments")
+        when "message" then { "role" => "assistant", "content" => item.fetch("content") }
+        when "reasoning", "redacted_thinking"
+          { "role" => "assistant", "content" => [item.fetch("provider_payload")] }
+        else raise "unexpected Messages output item #{item.fetch("type")}"
         end
       end
-      calls = round[:calls].map do |call|
-        { "type" => "function_call", "call_id" => call["call_id"], "name" => call["name"], "arguments" => call["arguments"] }
-      end
-      [{ "role" => "assistant", "content" => parts }] + calls
     end
 
     # The tool's results, one per call, as `function_call_output` items —
@@ -186,7 +184,8 @@ class PromptCacheProbeTest < Minitest::Test
     # the tool's result.
     def scripted_inputs(salt)
       answers = ITEMS.each_with_index.map do |number, i|
-        items = [{ "type" => "reasoning", "text" => "look item #{number} up", "signature" => "sig-r#{i + 1}" },
+        thinking = { "type" => "thinking", "thinking" => "look item #{number} up", "signature" => "sig-r#{i + 1}" }
+        items = [{ "type" => "reasoning", "provider_payload" => thinking },
                  { "type" => "message", "content" => [{ "type" => "output_text", "text" => "Looking up #{number}." }] }]
         calls = [{ "type" => "function_call", "call_id" => "toolu_r#{i + 1}", "name" => "lookup_item", "arguments" => JSON.generate({ "number" => number }) }]
         { items: items + calls, calls: calls }

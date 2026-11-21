@@ -166,8 +166,8 @@ module Runs
           end
 
           # Provider failures reach here after the invocation's own route
-          # budget. A node retry cannot renew that budget or retry terminal
-          # authentication/request errors.
+          # budget. Only an explicit task retry asks the route again;
+          # automatic recovery never retries terminal authentication/request errors.
           verdict = recovery_switch(run, node, invocation)
           return if verdict&.switched?
 

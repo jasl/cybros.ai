@@ -132,15 +132,15 @@ class TaskBenchHarnessTest < Minitest::Test
     assert_equal baseline, DeclaredSet.instructions(candidate: agent), "an entry changes no instruction"
 
     samples = [
-      { "objective" => "T2", "model" => "moonshotai/kimi-k3", "style" => "nexus", "sample" => 1, "pass" => true, "called" => { "delegate_task" => 1 } },
-      { "objective" => "T2", "model" => "moonshotai/kimi-k3", "style" => "nexus", "candidate" => hint.key, "sample" => 1, "pass" => false,
+      { "objective" => "T2", "model" => "moonshotai/kimi-k3.1-pro", "style" => "nexus", "sample" => 1, "pass" => true, "called" => { "delegate_task" => 1 } },
+      { "objective" => "T2", "model" => "moonshotai/kimi-k3.1-pro", "style" => "nexus", "candidate" => hint.key, "sample" => 1, "pass" => false,
         "called" => { "bash" => 2 } },
     ]
     Dir.mktmpdir("bench") do |dir|
       E2E::TaskBench::Report.write_offline(samples, dir: dir)
-      assert_equal %w[results-task-moonshotai-kimi-k3-nexus-kimi-k3-test-hint.md results-task-moonshotai-kimi-k3-nexus.md],
+      assert_equal %w[results-task-moonshotai-kimi-k3.1-pro-nexus-kimi-k3-test-hint.md results-task-moonshotai-kimi-k3.1-pro-nexus.md],
         Dir.children(dir).grep(/\Aresults-/).sort, "one table per (model × style × candidate)"
-      table = File.read(File.join(dir, "results-task-moonshotai-kimi-k3-nexus-kimi-k3-test-hint.md"), encoding: Encoding::UTF_8)
+      table = File.read(File.join(dir, "results-task-moonshotai-kimi-k3.1-pro-nexus-kimi-k3-test-hint.md"), encoding: Encoding::UTF_8)
       assert_includes table, "style `nexus`, candidate `kimi-k3/test-hint`"
       assert_includes table, "| T2 background-suite | 0/1 | 1 |"
       refute_includes table, "\"candidate\"", "the key is the table's, not a property column"
@@ -177,7 +177,7 @@ class TaskBenchHarnessTest < Minitest::Test
   # the cap it ran under beside the provider's finish.
   def test_the_output_cap_is_the_one_table_both_benches_read
     assert_equal 16_384, E2E::OutputCaps.for("z-ai/glm-5.3")
-    assert_equal 16_384, E2E::OutputCaps.for("moonshotai/kimi-k3")
+    assert_equal 16_384, E2E::OutputCaps.for("moonshotai/kimi-k3.1-pro")
     assert_equal 4096, E2E::OutputCaps.for("z-ai/glm-5.3-flash")
     assert_equal 4096, E2E::OutputCaps.for("x/y")
     # The direct frontier lanes (wire ids): the vendors' own floor for
@@ -185,7 +185,7 @@ class TaskBenchHarnessTest < Minitest::Test
     # 5.5's adaptive thinking counts against max_tokens.
     # Grok 4.7 reasons always, and its reasoning counts against
     # max_output_tokens (xAI's Responses reference).
-    %w[claude-opus-5-5 gpt-6.1-sol gpt-6-luna grok-4.7].each do |model|
+    %w[claude-opus-5-5 gpt-6.2-sol gpt-6.1-terra grok-4.7].each do |model|
       assert_equal 32_768, E2E::OutputCaps.for(model), model
     end
     assert_equal 2048, E2E::OutputCaps.for("z-ai/glm-5.3", { "E2E_BENCH_MAX_OUTPUT_TOKENS" => "2048" })

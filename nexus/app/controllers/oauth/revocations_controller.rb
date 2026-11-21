@@ -9,6 +9,17 @@ class OAuth::RevocationsController < OAuth::MachineController
 
   rescue_from OAuth::InvalidRequest, with: -> { render_oauth_error(:invalid_request) }
 
+  # @oas_include
+  # @summary Create revocations
+  # @tags OAuth, revocations
+  # @no_auth
+  # @request_body_ref #/components/requestBodies/OauthRevocationsCreate
+  # @response_ref (200) #/components/responses/OauthRevocationsCreate
+  # @response_ref (400) #/components/responses/OAuthError
+  # @response_ref (409) #/components/responses/OAuthError
+  # @response_ref (415) #/components/responses/OAuthError
+  # @response_ref (429) #/components/responses/OAuthError
+  # @response_ref (500) #/components/responses/ServerError
   def create
     return render_oauth_error(:invalid_client) unless OAuth::Client.registered?(scalar_field(:client_id))
 

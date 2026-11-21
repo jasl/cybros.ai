@@ -28,6 +28,8 @@ class Conversations::Inputs::WakeDueFairnessTest < ActiveSupport::TestCase
       end
     end
 
+    drains = performed_jobs.select { |job| job[:job] == Conversations::Inputs::DrainJob }
+    assert_equal [[idle.id]], drains.map { |job| job[:args] }
     assert_predicate seam.run.reload, :paused?
     assert Input.exists?(older.id), "the paused room's own queue stays pending"
     missed = Input.exists?(later.id)

@@ -116,7 +116,7 @@ module Rho
       root = File.expand_path(root)
       canonical = canonical_base_url(base_url)
       bound = bound_address(root: root)
-      if bound && bound != canonical
+      if bound && canonical_base_url(bound) != canonical
         raise ConfigurationError,
           "#{root} is connected to #{bound}; it cannot also be #{canonical}. " \
           "Use a different RHO_HOME for a different Nexus."
@@ -136,8 +136,10 @@ module Rho
       nil
     end
 
-    # Same address, same home — whatever the operator typed. A daemon
-    # started with a trailing slash must take the same lock as one started
+    # Same address, same home — whatever the operator typed. HTTP localhost
+    # uses IPv4 loopback so a local IPv4-only Nexus is reachable without DNS
+    # address-family selection. HTTPS keeps its hostname for certificate checks.
+    # A daemon started with a trailing slash must take the same lock as one started
     # without it, or both run against one account at once.
     def self.canonical_base_url(value)
       uri = URI.parse(value.to_s)
@@ -146,7 +148,9 @@ module Rho
       end
 
       scheme = uri.scheme.downcase
-      canonical = +"#{scheme}://#{uri.host.downcase}"
+      host = uri.host.downcase
+      host = "127.0.0.1" if scheme == "http" && host == "localhost"
+      canonical = +"#{scheme}://#{host}"
       canonical << ":#{uri.port}" unless uri.port == DEFAULT_PORTS[scheme]
       canonical << uri.path.chomp("/")
       canonical

@@ -24,7 +24,8 @@ class DaemonConfigurationTest < Minitest::Test
   end.freeze
   # Conversation work and history reads are declared by default; the
   # history tools retain their conventional session names on the wire.
-  CONVERSATION = { "spawn" => "spawn", "send" => "send", "status" => "status", "cancel" => "cancel",
+  CONVERSATION = { "spawn" => "spawn", "send" => "send", "request" => "request", "links" => "links",
+                   "status" => "status", "cancel" => "cancel",
                    "search" => "session_search", "read" => "session_read" }.map do |verb, name|
     { "canonical_name" => "nexus.conversation.#{verb}", "name" => name, "effect_profile" => {},
       "definition" => { "type" => "function",

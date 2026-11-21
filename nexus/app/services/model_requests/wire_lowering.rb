@@ -29,10 +29,7 @@ module ModelRequests
           "verbosity" => :verbosity,
         }.freeze,
       }.freeze,
-      # The Responses row minus `max_output_tokens` and `prompt_cache_ttl`: the codex
-      # protocol declaration subtracts those keys (the pinned codex-rs request
-      # struct never carries it), and the declared-kwargs contract test
-      # reads the subtraction.
+      # Codex omits the output cap. The subscription service rejects explicit cache TTLs.
       "codex_responses" => {
         arguments: {}.freeze,
         options: {
@@ -48,7 +45,7 @@ module ModelRequests
       # edits route when it is present.
       "openai_images" => {
         arguments: {}.freeze,
-        options: { "result_count" => :n, "images" => :images }.freeze,
+        options: { "result_count" => :n, "images" => :images, "complexity" => :complexity }.freeze,
       }.freeze,
       "openai_audio_speech" => {
         arguments: { "voice" => :voice }.freeze,
@@ -73,13 +70,9 @@ module ModelRequests
       # deliberate: only Gemini declares `seed`, and Gemini rejects
       # `temperature`/`top_p`/`top_k`/`n` locally.
       #
-      # The anthropic row's `thinking_binding` is a WIRE-OPTION fact,
-      # not a control: the row's `wire_options: { thinking_binding:
-      # drop_block }` reaches the protocol's construction keyword through
-      # `ApiFormat.protocol_for`, and the protocol lowers it into
-      # `thinking.block_binding.prefix_mismatch_behavior` on adaptive and
-      # enabled thinking, implying its beta. Scoped by MODEL ID (fable-5-1,
-      # opus-5-5), never by lane; this row is the register that says so.
+      # A model's thinking_binding wire option reaches the protocol through
+      # ApiFormat.protocol_for. The adapter puts it on adaptive or manual
+      # thinking requests and supplies the required beta header.
       "anthropic_messages" => {
         arguments: { "prompt_cache_ttl" => :prompt_cache_ttl }.freeze,
         options: {
@@ -147,7 +140,7 @@ module ModelRequests
       "anthropic_messages" => Nexus::PromptCache::Breakpoints::TIERS,
       "openai_responses" => %w[30m 12h 24h].freeze,
       "openai_compatible_chat" => %w[30m 12h 24h].freeze,
-      "openrouter_chat" => %w[30m 12h 24h].freeze,
+      "openrouter_chat" => %w[5m 1h 30m 12h 24h].freeze,
     }.freeze
 
     EMPTY_LANE = { arguments: {}.freeze, options: {}.freeze }.freeze
@@ -203,9 +196,8 @@ module ModelRequests
       "openai_compatible_chat" => %w[text json_object json_schema].freeze,
       "openrouter_chat" => %w[text json_object json_schema].freeze,
     }.freeze
-    # Explicit `cache_control` breakpoints are ONE wire's feature; every
-    # other family caches implicitly on prefix stability and the kernel
-    # marks nothing there.
+    # Only Anthropic Messages takes kernel-placed per-block breakpoints.
+    # OpenRouter's Anthropic routes request automatic placement at the root.
     CACHE_BREAKPOINT_FORMATS = %w[anthropic_messages].freeze
     # A prompt cache KEY is two wires' feature: OpenAI routes its prefix
     # cache by `prompt_cache_key` on the Responses and the codex lanes
@@ -298,8 +290,7 @@ module ModelRequests
       end
 
       # PROMPT CACHING IS EVERY TEXT WIRE'S PROPERTY: the provider caches a
-      # stable prefix on every text lane — Anthropic through the
-      # kernel-placed breakpoints, the rest implicitly — and no other
+      # stable prefix on every text lane, and no other
       # workload has a prompt to cache. The one fact behind the catalog's
       # `prompt_caching` default; `false` on a row is the opt-out.
       def carries_prompt_caching?(adapter_profile)

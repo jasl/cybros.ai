@@ -197,7 +197,7 @@ module ModelRequests
         wire_input, validated = SimpleInference::Planning::RequestValidator.validate_responses_request(
           profile: profile, model: input.wire_model,
           input: responses_items(input.input, uploads.index_by(&:public_id), media),
-          options: options.merge(cache_key(input)),
+          options: broker_cache_options(options).merge(cache_key(input)),
           streaming: streaming
         )
         # Model prompt formats project this send's roles without rewriting the
@@ -298,6 +298,19 @@ module ModelRequests
 
       def request_kind = Nexus::PromptCache::RequestKind.of(@invocation.request_options)
 
+      # Only OpenRouter models advertising Anthropic lifetimes accept its
+      # automatic breakpoint. Leave the OpenAI cache vocabulary on its own path.
+      def broker_cache_options(options)
+        return options unless profile.adapter_profile == "openrouter_chat"
+
+        kind = request_kind
+        ttl = options[:prompt_cache_ttl] || kind.tier
+        return options unless Nexus::PromptCache::Breakpoints::TIERS.include?(ttl) &&
+          profile.generation_parameters["prompt_cache_ttl"]&.allowed_values&.include?(ttl)
+
+        kind.marked? ? options.merge(prompt_cache_ttl: ttl) : options.except(:prompt_cache_ttl)
+      end
+
       def cache_instructions(placement)
         placement.instructions.nil? ? {} : { instructions: placement.instructions }
       end
@@ -333,71 +346,34 @@ module ModelRequests
       # an item list, only some a naked string.
       def responses_items(value, uploads, media)
         case value
-        when Array then value.filter_map { |element| responses_element(element, uploads, media) }
+        when Array then replayed_input(value, uploads, media)
         else [{ "role" => "user", "content" => [text_part(value)] }]
         end
       end
 
-      # The protocols place and stitch role-less items; inherited native
-      # reasoning first follows the current target's replay boundary.
-      def responses_element(element, uploads, media)
-        case element
-        when Nexus::ToolCallInputItem
-          tool_call_payload(element)
-        when Nexus::ReasoningInputItem
-          reasoning_payload(element)
-        when Nexus::ToolResultInputItem
-          element.payload
-        else responses_item(element, uploads, media)
+      def replayed_input(value, uploads, media)
+        projected = ModelReasoning::InputProjection.call(value, profile: profile, enabled: @invocation.reasoning_enabled)
+        projected.map do |element|
+          case element
+          when Nexus::TextInputMessage then responses_item(element, uploads, media)
+          else element.payload
+          end
         end
       end
 
-      # A later model may inherit a sealed prefix containing another model's
-      # signed call. Keep the neutral pair; native material belongs to its origin.
-      def tool_call_payload(item)
-        origin = item.native_origin
-        return item.payload if origin.nil?
-
-        native_origin_matches?(origin) ? item.payload : item.payload.except("provider_payload")
-      end
-
-      def native_origin_matches?(origin, require_same_model: true)
-        origin["api_format"] == profile.adapter_profile &&
-          ModelReasoning::ReplayLadder.origin_miss(origin: origin, provider_id: profile.provider_id,
-            model_id: profile.model_pin, reasoning_enabled: @invocation.reasoning_enabled,
-            require_same_model: require_same_model).nil?
-      end
-
-      # Native reasoning inside a sealed prefix meets the ladder's own rule
-      # for its origin's format (ReplayLadder.same_model?): read by this
-      # target, or nothing — never a portable rendering of another model's.
-      def reasoning_payload(item)
-        origin = item.native_origin
-        return item.payload if origin.nil?
-
-        format = ModelReasoning::TraceBuilder::ORIGIN_FORMAT_VARIANTS[origin["api_format"]]
-        item.payload if native_origin_matches?(origin,
-          require_same_model: ModelReasoning::ReplayLadder.same_model?(format))
-      end
-
-      # An assistant message's `phase` is a word of one wire grammar, so it
-      # rides only to the wire AND the lane that wrote it — a later model on
-      # that lane keeps it, every other wire drops it silently (the message
-      # is still the message). It is appended after the content, and only to
-      # a message that carries one, so no other message's bytes move. The
-      # chat wire's reasoning is a field of the message beside its content
-      # (Nexus::ReasoningInputPart::CHAT_FIELDS), never a content part; a message that holds
-      # only that field carries no content key, and a round's calls fold
-      # onto it.
       def responses_item(message, uploads, media)
-        lifted, rest = message.parts.partition { |part| chat_reasoning?(part) }
-        parts = rest.filter_map { |part| responses_part(part, uploads, media) }
-        fields = lifted.filter_map { |part| reasoning_payload(part) }.to_h { |payload| chat_reasoning_field(payload) }
-        return nil if parts.empty? && fields.empty?
-
+        fields = {}
+        parts = message.parts.filter_map do |part|
+          if chat_reasoning?(part)
+            key, value = chat_reasoning_field(part.payload)
+            fields[key] = value
+            next
+          end
+          responses_part(part, uploads, media)
+        end
         item = parts.any? ? { "role" => message.role, "content" => parts } : { "role" => message.role }
         item = item.merge(fields)
-        message.phase && phase_lane?(message.native_origin) ? item.merge("phase" => message.phase) : item
+        message.phase ? item.merge("phase" => message.phase) : item
       end
 
       def chat_reasoning?(part)
@@ -407,11 +383,6 @@ module ModelRequests
       def chat_reasoning_field(payload)
         type = payload.fetch("type")
         [type, payload.fetch(Nexus::ReasoningInputPart::CHAT_FIELDS.fetch(type))]
-      end
-
-      def phase_lane?(origin)
-        origin.present? && origin["api_format"] == profile.adapter_profile &&
-          origin["provider_id"] == profile.provider_id
       end
 
       def responses_part(part, uploads, media)
@@ -424,11 +395,10 @@ module ModelRequests
           else
             { "type" => IMAGE_PART, "image_url" => prepared }
           end
-        when Nexus::InputParts::REASONING
-          # The neutral block shape (thinking / redacted_thinking / thought)
-          # the protocol lowers natively.
-          reasoning_payload(part)
-        else text_part(part.text)
+        when Nexus::InputParts::REASONING then part.payload
+        else
+          text = text_part(part.text)
+          part.thought_signature ? text.merge("thoughtSignature" => part.thought_signature) : text
         end
       end
 

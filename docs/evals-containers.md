@@ -160,7 +160,7 @@ Nexus binds 127.0.0.1 and no bridge reaches it); on this Mac a bridge with `host
   never a raise; the record's `facts.reward` carries the number.
 - **The configured cells.** `bench.yml` pins 21 tasks. The default cell selects
   `deepseek/deepseek-flash` at 3 runs per task; the optional cell accepts
-  `openrouter/moonshotai/kimi-k3` and `openrouter/z-ai/glm-5.3`, also at 3 runs. Optional models
+  `openrouter/moonshotai/kimi-k3.1-pro` and `openrouter/z-ai/glm-5.3`, also at 3 runs. Optional models
   run only when explicitly selected. `E2E_EVALS_RUNS` may narrow those counts for a smoke.
   Each run uses the corpus deadline and the $20 family stop threshold. Across 63 runs, the sum
   of those thresholds is $1,260 per model; polling and in-flight calls can overshoot, so this is
@@ -176,7 +176,7 @@ Nexus binds 127.0.0.1 and no bridge reaches it); on this Mac a bridge with `host
     bundle exec rake "evals[chess-best-move,deepseek/deepseek-flash]"
   # the optional comparison cell (kimi-k3, n=3, $20/run stop threshold)
   E2E_LIVE=1 E2E_EVALS_TB_CORPUS=$PWD/references/terminal-bench-2 E2E_EVALS_LABEL=tb-kimi \
-    bundle exec rake "evals[terminal-bench/*,openrouter/moonshotai/kimi-k3]"
+    bundle exec rake "evals[terminal-bench/*,openrouter/moonshotai/kimi-k3.1-pro]"
   ```
 
   The wall: each task's group builds its own derived image the first time (an emulated amd64 installer

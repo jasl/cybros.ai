@@ -396,6 +396,33 @@ class Runs::ConversationCommunicationTest < ActiveJob::TestCase
     refute @target.turns.where(input_public_id: ids).exists?
   end
 
+  test "the schedule sweep withdraws ordinary steering when its link closes or its sender stops" do
+    link = Conversations::Links::Create.call(conversation: @source, agent: @sender,
+      peer_conversation: @target, peer_agent: @recipient, acting_user: @human).value
+    _, source = materialize_loop_reply!(@source, agent: @sender)
+    _, target = materialize_loop_reply!(@target, agent: @recipient)
+    schedule_loop!(source)
+    schedule_loop!(target)
+    call_tool(source, "send", link_public_id: link.public_id, message: "Linked correction",
+      delivery_mode: "steer", expected_steering_run_public_id: target.public_id)
+    linked = @target.inputs.sole
+    call_tool(source, "send", to: @target.public_id, message: "Independent correction",
+      delivery_mode: "steer", expected_steering_run_public_id: target.public_id)
+    unlinked = @target.inputs.where(conversation_link_id: nil).sole
+
+    link.close
+    clear_enqueued_jobs
+    Runs::ScheduleSweepJob.perform_now
+    assert_not Input.exists?(linked.id)
+    assert_equal "steering", unlinked.reload.state
+
+    assert_predicate Runs::Stop.stop_now(source), :accepted?
+    clear_enqueued_jobs
+    Runs::ScheduleSweepJob.perform_now
+    assert_not Input.exists?(unlinked.id)
+    assert_equal "running", target.reload.status
+  end
+
   test "a single formal result starts a requester-owned supplementary reply and Stop cuts that reply" do
     _turn, source = materialize_loop_reply!(@source, agent: @sender)
     schedule_loop!(source)

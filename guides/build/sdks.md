@@ -72,6 +72,9 @@ InputExecution correlates that Input with its original Turn, Variant and Run.
 It follows that candidate's automatic fallback and never substitutes a later
 input or manual regeneration. A manual regeneration is observed from its own
 returned identity. Standalone Runs use Run state, events and task results.
+If a standalone Run creation response is lost, retry with the same request
+and idempotency key to recover the Run and its seed receipt. A full SHA-256
+hex digest fits the [Run creation key limit](../reference/agent-api/runs.md#idempotency).
 
 Durable feeds recover through HTTP replay and advance the position only after
 successful consumption. Reconnection and sequence gaps resume replay; expired

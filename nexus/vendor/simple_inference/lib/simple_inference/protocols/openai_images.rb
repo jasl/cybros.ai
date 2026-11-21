@@ -20,6 +20,8 @@ module SimpleInference
       # (codex-api/src/images.rs, ext/image-generation tool.rs). An unlisted
       # value is a loud pre-IO rejection.
       QUALITY_VOCABULARY = %w[auto low medium high xhigh max standard hd].freeze
+      # GPT Image 2.6 controls planning separately from rendering quality.
+      COMPLEXITY_VOCABULARY = %w[low medium high].freeze
       # Size is the documented enum across both families OR, for the 2.5
       # variants, an arbitrary WIDTHxHEIGHT under the page's rule below. No
       # per-row "declares an enum" switch: a provider answers a bad dall-e
@@ -53,7 +55,7 @@ module SimpleInference
       # wire fields ride extra_body.
       def self.request_option_keys
         %i[
-          background moderation n output_compression output_format
+          background complexity moderation n output_compression output_format
           quality response_format size style user
           images mask
         ].freeze
@@ -173,6 +175,7 @@ module SimpleInference
       # The pinned option surface — every rejection here is pre-IO and loud.
       def validate_option_surface(declared)
         validate_requested_count(declared[:n]) if declared.key?(:n)
+        validate_vocabulary(:complexity, declared[:complexity], COMPLEXITY_VOCABULARY) if declared.key?(:complexity)
         validate_vocabulary(:quality, declared[:quality], QUALITY_VOCABULARY) if declared.key?(:quality)
         validate_size(declared[:size]) if declared.key?(:size)
         validate_response_format(declared[:response_format]) if declared.key?(:response_format)

@@ -35,7 +35,7 @@ not take an `Idempotency-Key` because it writes nothing.
 {
   "input_estimate": {
     "workload": "text_generation",
-    "model": { "model": "openai_api/gpt-6.1-sol", "reasoning_enabled": true, "reasoning_effort": "medium" },
+    "model": { "model": "openai_api/gpt-6.2-sol", "reasoning_enabled": true, "reasoning_effort": "medium" },
     "input": "say hi",
     "configuration": {},
     "upload_public_ids": []
@@ -51,10 +51,10 @@ this process:
   "input_estimate": {
     "input_tokens": 12,
     "tokenizer_exact": true,
-    "catalog_input_token_limit": 1050000,
+    "catalog_input_token_limit": 922000,
     "model": {
       "provider_id": "openai_api",
-      "model_ref": "gpt-6.1-sol",
+      "model_ref": "gpt-6.2-sol",
       "reasoning_effort": "medium",
       "reasoning_enabled": true
     }
@@ -87,7 +87,7 @@ write checks.
 {
   "inference_request": {
     "workload": "text_generation",
-    "model": { "model": "openai_api/gpt-6.1-sol", "reasoning_enabled": true, "reasoning_effort": "medium" },
+    "model": { "model": "openai_api/gpt-6.2-sol", "reasoning_enabled": true, "reasoning_effort": "medium" },
     "input": "say hi",
     "configuration": {},
     "upload_public_ids": [],
@@ -110,7 +110,10 @@ idempotency envelope. InferenceRequests do not accept an inline
 - For `image_generation`, `input` is the prompt string and `upload_public_ids`
   supplies the source images for an edit. Their submitted order and repeated
   occurrences are preserved on every provider attempt. An empty list requests
-  image generation without source images.
+  image generation without source images. The OpenAI GPT Image 2.6 models
+  accept `configuration.complexity` (`low`, `medium`, or `high`) for
+  both generation and editing. This controls planning before rendering. The
+  provider defaults to `high` when the field is omitted.
 - For `text_generation`, `upload_public_ids` may name images or PDFs admitted
   by the selected model and its wire. PDFs require the `file` input modality
   and carry original `application/pdf` bytes. Unsupported types refuse
@@ -165,12 +168,36 @@ the provider model ID `~typesafe/jev-latest`; it is a separate protocol from cha
 }
 ```
 
-`input` accepts text, a JSON object or a JSON array. Arrays are evidence data,
-not chat messages. Uploads, image evidence and TypeSafe `box` questions are not
-supported by this interface yet. Questions must have unique, nonempty names
-and instructions; each request takes 1–400 questions. Choices have at least
-two distinct values. OpenAI accepts string or boolean choice values; System One
-accepts strings. Scores have 2–10 distinct named levels.
+`input` accepts text, a JSON object or a JSON array of evidence. A decision
+request takes 1–400 predicate, choice or score questions, each with a unique
+nonempty name and nonempty instructions. Choices have at least two distinct
+values. OpenAI accepts string or boolean choice values. System One accepts
+strings. Scores have 2–10 distinct named levels.
+
+For `openrouter/jev-latest`, put inline PNG or JPEG evidence directly in the
+`input` array. For example, a predicate can ask whether the pictured item is
+damaged. Replace `<base64>` below with the encoded image bytes. The decision
+workload accepts images in this Jev evidence format and rejects Nexus upload
+IDs. Jev applies its own limits on image dimensions and file size.
+[OpenRouter image requirements](https://openrouter.ai/docs/guides/community/multimodal-decisions)
+
+```json
+{
+  "inference_request": {
+    "workload": "decision",
+    "model": { "model": "openrouter/jev-latest" },
+    "input": [
+      "Inspect the item in the photo.",
+      { "type": "image_url", "image_url": { "url": "data:image/png;base64,<base64>" } }
+    ],
+    "configuration": {
+      "questions": [
+        { "name": "damage", "type": "predicate", "instructions": "Is the item visibly damaged?" }
+      ]
+    }
+  }
+}
+```
 
 The terminal result exposes `answers` instead of `output_text`:
 

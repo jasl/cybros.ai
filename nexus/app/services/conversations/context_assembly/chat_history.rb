@@ -372,7 +372,7 @@ module Conversations
           def content_segments(turn, body, trace, carries, opening: [])
             text = body&.effective_text
             attachments = body ? body.upload_parts : []
-            return opening if text.blank? && attachments.empty?
+            return opening if text.blank? && attachments.empty? && !trace&.signed_messages&.any?
 
             text = if compaction_summary?(turn)
               "#{COMPACTION_HEADER}\n\n#{text}"
@@ -381,7 +381,8 @@ module Conversations
             else
               text
             end
-            parts = Segment.text_parts(text.presence) + AttachmentLine.parts(attachments, carries: carries)
+            words = trace&.signed_messages&.any? ? text : text.presence
+            parts = Segment.text_parts(words) + AttachmentLine.parts(attachments, carries: carries)
             opening + [Segment.plain(turn.role, nil, parts: parts, trace: trace, phase: trace&.assistant_phase)]
           end
 
@@ -455,7 +456,7 @@ module Conversations
             return nil unless paired
 
             Segment.round("assistant", nil, calls: paired.call_items,
-              trailing: paired.trailing, first_slot: paired.first_slot, results: paired.result_items, trace: trace,
+              trailing: paired.trailing, first_slot: paired.first_slot, results: paired.result_items, trace: trace, pairs_only: true,
               picture_parts: AttachmentLine.parts(paired.picture_uploads, carries: carries))
           end
 
@@ -489,7 +490,7 @@ module Conversations
 
             rendered = Runs::RoundReplay.call(round, fan_by_call_id: fan, tips_by_call_key: tips,
               cleared: cleared, reference: reference, receipts: receipts)
-            return nil if rendered.empty?
+            return nil if rendered.empty? && !trace&.signed_messages&.any?
 
             Segment.round(turn.role, rendered.text, calls: rendered.call_items, trailing: rendered.trailing,
               first_slot: rendered.first_slot, results: rendered.result_items, trace: trace,

@@ -31,9 +31,29 @@ class ContentBodyNativeReasoningTest < ActiveSupport::TestCase
       { "text" => "<think>Thought</think>" },
       { "role" => "assistant", "parts" => [{ "type" => "text", "text" => "<think>Thought</think>" }] },
       { "metadata" => { "type" => "reasoning_item" } },
+      { "type" => "tool_call_item", "payload" => { "type" => "function_call", "name" => "lookup" } },
     ])
 
     assert_not_predicate body, :native_reasoning?
+  end
+
+  test "a signed empty answer trailer alone marks a replay-bearing body" do
+    body = body_with([{ "role" => "assistant", "parts" => [
+      { "type" => "text", "text" => "Answer" },
+      { "type" => "text", "text" => "", "thought_signature" => "signed-trailer" },
+    ] }])
+
+    assert_predicate body, :native_reasoning?
+  end
+
+  test "a signed function call alone marks a replay-bearing body" do
+    body = body_with([{ "type" => "tool_call_item", "payload" => {
+      "type" => "function_call", "provider_payload" => {
+        "functionCall" => { "name" => "lookup", "args" => {} }, "thoughtSignature" => "signed-call",
+      },
+    } }])
+
+    assert_predicate body, :native_reasoning?
   end
 
   test "an empty body has no native reasoning" do

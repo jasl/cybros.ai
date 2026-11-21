@@ -1,6 +1,22 @@
+# @auth [ExecutorBearer]
 class AgentAPI::V1::Executors::RealtimesController < AgentAPI::V1::Executors::BaseController
   include AgentAPI::RealtimeSignaling
 
+  # @oas_include
+  # @summary Read realtimes
+  # @tags Executor, realtimes
+  # @parameter run_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter task_key(path) [!String] Resource selector.
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ExecutorsRealtimesShow
   def show
     run = find_addressable_loop
     node = realtime_task(run)
@@ -9,6 +25,21 @@ class AgentAPI::V1::Executors::RealtimesController < AgentAPI::V1::Executors::Ba
     render json: { realtime: Executors::Realtime.new(node, credential: current_credential).projection }
   end
 
+  # @oas_include
+  # @summary Update realtimes
+  # @tags Executor, realtimes
+  # @parameter run_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter task_key(path) [!String] Resource selector.
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ExecutorsRealtimesUpdate
   def update
     fields = signal_parameters
     previous = params[:previous_connection_id]&.to_s

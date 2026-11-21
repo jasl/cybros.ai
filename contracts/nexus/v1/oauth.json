@@ -41,6 +41,19 @@
     "runner_display_name": "Fixture runner",
     "executor_kind": "runner"
   },
+  "terminal_authorization_request": {
+    "client_id": "cybros-terminal"
+  },
+  "terminal_session_response": {
+    "access_token": "fixture-session-token",
+    "token_type": "Bearer",
+    "expires_in": 2592000,
+    "session": {
+      "public_id": "01900000-0000-7000-8000-000000000010",
+      "kind": "api",
+      "expires_at": "2026-08-29T00:00:00Z"
+    }
+  },
   "device_token_request": {
     "client_id": "cybros-first-party-connector",
     "grant_type": "urn:ietf:params:oauth:grant-type:device_code",

@@ -9,7 +9,14 @@ class Identity < ApplicationRecord
   has_one :user
   has_many :sessions, dependent: :destroy
 
+  has_many :sso_connections, dependent: :delete_all
+
+  # Only SSO registration can create a passwordless Identity. Existing members
+  # may retain an absent digest, but no password writer can clear an existing one.
+  attr_accessor :sso_registration
+
   has_secure_password
+  validate :allow_absent_sso_password
 
   class << self
     # BCrypt cannot represent NUL and silently ignores bytes after its
@@ -36,7 +43,13 @@ class Identity < ApplicationRecord
   def authenticate_password(unencrypted_password)
     return false unless self.class.bcrypt_compatible_password?(unencrypted_password)
 
-    super
+    if password_digest.nil?
+      # Match authenticate_by's work for an unknown email address.
+      self.class.new(password: unencrypted_password)
+      false
+    else
+      super
+    end
   end
   alias_method :authenticate, :authenticate_password
 
@@ -68,7 +81,7 @@ class Identity < ApplicationRecord
     return :invalid_input unless digest
 
     # Re-resolving the token inside the lock is the final acceptance decision.
-    with_lock do
+    with_login_policy_lock do
       if self.class.find_by_password_reset_token(token) != self || !password_resettable?
         :superseded
       else
@@ -84,24 +97,17 @@ class Identity < ApplicationRecord
 
   # An address held by an open Invitation is rejected rather than stranding it.
   # Outstanding reset tokens die with the old address.
-  def change_email(new_email, current_password:)
-    unless authenticate(current_password)
-      errors.add(:current_password, :invalid)
-      return false
-    end
-
-    if Invitation.exists?(email: self.class.normalize_value_for(:email, new_email))
-      errors.add(:email, :held_by_invitation)
-      return false
-    end
-
+  def change_email(new_email, current_password:, &sso_proof)
+    password_verified = current_password.present? && authenticate(current_password)
     verified_digest = password_digest
 
-    # Email changes invalidate reset links, and a completed reset invalidates
-    # this password proof. Serialize those writes without holding a lock for BCrypt.
-    with_lock do
-      if password_digest != verified_digest
+    with_login_policy_lock do |policy|
+      allowed = (!policy.sso_only? && password_verified && password_digest == verified_digest) || sso_proof&.call
+      if !allowed
         errors.add(:current_password, :invalid)
+        false
+      elsif Invitation.exists?(email: self.class.normalize_value_for(:email, new_email))
+        errors.add(:email, :held_by_invitation)
         false
       else
         update(email: new_email)
@@ -112,20 +118,22 @@ class Identity < ApplicationRecord
   # Current-password proof, then mutation, generation advance and exactly one
   # replacement Session as one outcome; every earlier Session is fenced.
   # Returns the replacement Session, or nil with errors on the record.
-  def change_password(current_password:, password:, password_confirmation:, presented_session:, user_agent: nil, ip_address: nil)
+  def change_password(current_password:, password:, password_confirmation:, presented_session:, user_agent: nil, ip_address: nil, &sso_proof)
     digest = prepare_password_digest(password, password_confirmation)
     return unless digest
 
-    unless authenticate(current_password)
-      errors.add(:current_password, :invalid)
-      return
-    end
-
+    password_verified = current_password.present? && authenticate(current_password)
     verified_digest = password_digest
 
-    # Short locks, no BCrypt inside; Identity then User. A concurrent
-    # revoke/reap wins by making the guarded DELETE affect zero rows.
-    with_lock do
+    with_login_policy_lock do |policy|
+      if policy.sso_only?
+        errors.add(:base, :sso_required)
+        next
+      end
+      unless (password_verified && password_digest == verified_digest) || sso_proof&.call
+        errors.add(:current_password, :invalid)
+        next
+      end
       member = if presented_session
         User.lock.find_by(id: presented_session.user_id, identity_id: id, status: :active)
       end
@@ -161,8 +169,8 @@ class Identity < ApplicationRecord
 
     # The lock is the final acceptance point; the reload lets a repeated
     # consume observe the first winner's consumed_at.
-    with_lock do
-      if !authorization.reload.consumable? || authorization.identity_id != id || !user&.human? || !user.active?
+    with_login_policy_lock do |policy|
+      if policy.sso_only? || !authorization.reload.password? || !authorization.consumable? || authorization.identity_id != id || !user&.human? || !user.active?
         :superseded
       else
         authorization.update!(consumed_at: Time.current)
@@ -176,10 +184,34 @@ class Identity < ApplicationRecord
     end
   end
 
+  # The SSO callback holds Account, Identity and User locks, and has written
+  # the proven connection in this transaction. A conveyed temporary password
+  # was never chosen by the member and must not survive as a permanent fallback.
+  def complete_sso_recovery(authorization:, connection:)
+    unless local_recovery_pending? && authorization.sso_connection? && authorization.identity_id == id &&
+        authorization.consumable? && connection.persisted? && connection.identity_id == id
+      raise ArgumentError, "SSO recovery requires a current authorization and its restored identity connection"
+    end
+
+    @discarding_recovered_temporary_password = password_change_required?
+    self.password_digest = nil if @discarding_recovered_temporary_password
+    update!(password_change_required: false, local_recovery_pending_at: nil)
+    authorization.update!(consumed_at: Time.current)
+  ensure
+    @discarding_recovered_temporary_password = false
+  end
+
   # One eligibility rule for scheduling reset mail and for consuming a reset
   # token: an active human member whose local-recovery fence is clear.
   def password_resettable?
-    user.present? && user.human? && user.active? && !local_recovery_pending?
+    password_digest.present? && !account.sso_only? && user&.human? && user.active? && !local_recovery_pending?
+  end
+
+  def login_path_configured?(policy)
+    return false if local_recovery_pending?
+    return !policy.sso_only? if password_change_required?
+
+    (!policy.sso_only? && password_digest.present?) || sso_connections.available.exists?
   end
 
   def local_recovery_pending?
@@ -187,6 +219,23 @@ class Identity < ApplicationRecord
   end
 
   private
+
+    # Policy changes and email reservations serialize on Account. Identity then
+    # decides whether a reset or an already verified credential won the race.
+    def with_login_policy_lock
+      policy = account
+      policy.with_lock do
+        lock!
+        yield policy
+      end
+    end
+
+    def allow_absent_sso_password
+      allowed = new_record? ? sso_registration : !will_save_change_to_password_digest? || @discarding_recovered_temporary_password
+      if password_digest.nil? && allowed
+        errors.delete(:password, :blank)
+      end
+    end
 
     def password_is_bcrypt_compatible
       # Rails' own secure-password validator supplies :password_too_long for

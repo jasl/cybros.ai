@@ -1,9 +1,27 @@
 # Fork over HTTP: idempotent on the SOURCE conversation, the child
 # rendered through the caller's current scope.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Conversations::ForksController <
       AgentAPI::V1::Workspaces::Conversations::BaseController
   include AgentAPI::V1::WorkspaceScoped
 
+  # @oas_include
+  # @summary Create forks
+  # @tags Member, forks
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter_ref #/components/parameters/IdempotencyKey
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesConversationsForksCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (201) #/components/responses/AgentApiV1WorkspacesConversationsForksCreate
   def create
     key = required_idempotency_key
     return if performed?

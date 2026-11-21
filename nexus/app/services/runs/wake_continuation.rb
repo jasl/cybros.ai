@@ -63,8 +63,7 @@ module Runs
       # (`Delivery.settled`) and nothing live holds back.
       def sinks(run)
         standalone = run.standalone?
-        rows = unread_rows(run, standalone: standalone)
-          .where(detached: true, status: Task::TERMINAL_STATUSES, result_delivered_at: nil)
+        rows = unread_rows(run, standalone: standalone).unmailed_results
           .order(:completed_at, :id).to_a
         Delivery.settled(run, rows, standalone: standalone)
       end

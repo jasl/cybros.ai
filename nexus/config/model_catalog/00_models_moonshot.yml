@@ -3,8 +3,8 @@ schema_version: cybros.model_catalog.v1
 # the complete limits block; protocol options and pricing stay on each route.
 model_definitions:
   # https://platform.kimi.com/docs/guide/kimi-k3-1-pro-quickstart
-  # Read 2026-10-24: API-accessible; weights are not yet published. Do not
-  # invent a Hugging Face tokenizer/weight repository from the model name.
+  # The published moonshotai/Kimi-K3.1-Pro tokenizer uses tiktoken.model,
+  # outside the packaged Hugging Face JSON tokenizer register.
   kimi-k3.1-pro:
     display_name: Kimi K3.1 Pro
     capabilities:
@@ -15,15 +15,4 @@ model_definitions:
         disable_supported: false
         efforts: [low, high, max]
         default_effort: high
-        default_enabled: true
-  kimi-k3:
-    capabilities:
-      input_modalities: [image]
-      limits:
-        input_tokens: 1048576
-        output_tokens: 943718
-      reasoning:
-        disable_supported: true
-        efforts: [low, high, max]
-        default_effort: low
         default_enabled: true

@@ -34,6 +34,32 @@ class HomeTest < Minitest::Test
     refute_equal home("https://nexus.example").base_url, home("https://nexus.example/kernel").base_url
   end
 
+  def test_localhost_and_ipv4_loopback_share_an_http_binding
+    %w[localhost 127.0.0.1].each do |host|
+      root = File.join(@root, host)
+      resolved = home("http://#{host}:3000", root: root).prepare
+      binding = Rho::StateFile.new(resolved.binding_path)
+      binding.write(binding.read.merge("base_url" => "http://#{host}:3000"))
+      original = File.read(resolved.binding_path)
+
+      %w[localhost LOCALHOST 127.0.0.1].each do |spelling|
+        reopened = home("http://#{spelling}:3000/", root: root).prepare
+        assert_equal "http://127.0.0.1:3000", reopened.base_url
+      end
+      assert_equal original, File.read(resolved.binding_path)
+    end
+  end
+
+  def test_loopback_equivalence_preserves_other_address_components
+    home("http://localhost:3000").prepare
+
+    %w[http://127.0.0.1:3001 https://127.0.0.1:3000 http://127.0.0.1:3000/kernel
+      http://127.0.0.2:3000 http://[::1]:3000 http://localhost.example:3000].each do |different|
+      assert_raises(Rho::ConfigurationError) { home(different) }
+    end
+    assert_equal "https://localhost:3000", Rho::Home.canonical_base_url("https://localhost:3000")
+  end
+
   def test_an_address_that_is_not_an_absolute_http_url_is_refused
     ["nexus.example", "ftp://nexus.example", "", "https://"].each do |bad|
       assert_raises(Rho::ConfigurationError) { home(bad) }

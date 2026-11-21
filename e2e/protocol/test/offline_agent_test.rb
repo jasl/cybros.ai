@@ -16,9 +16,9 @@ require "support/peer_program"
 require "support/runner_grant"
 require "support/steward_session"
 
-# A paired Agent declares its behavior and submits from a separate process
-# which exits at the input receipt. Only Nexus and an independent Runner/MCP
-# server advance the work. There is no rho application or observer-side loop.
+# A paired Agent submits from a process that exits at the input receipt. Nexus
+# runs the workflow and addresses each tool to its owning service. The tests
+# control independent executor processes and observe recovery over the SDK.
 class OfflineAgentTest < Minitest::Test
   MODEL = E2E::CatalogOverlay::MCP_MODEL
   POLL = 1
@@ -342,6 +342,67 @@ class OfflineAgentTest < Minitest::Test
     E2E.hosts.start
   end
 
+  def test_an_offline_application_requires_explicit_recovery_of_its_claimed_and_unclaimed_writes
+    Dir.mktmpdir("e2e-offline-application") do |home|
+      application = E2E::FakeExecutorProcess.new(base_url: @base_url, home: home, directory: home,
+        credential: @peer.executor_credential, kind: :agent, tools: ["journal_append"])
+      begin
+        application.start
+        address = application.executor_public_id
+        entries = %w[first second]
+        writes = entries.map { |key| journal_step(key, release: "continue") }
+        chat = conversation
+        _, tracking, run = submit_tracked(chat, "!mock reply=accepted -- Record the entries",
+          declaration: declaration, steps: [{ "parallel" => [[
+            journal_step("before"), { "parallel" => writes },
+            { "model" => { "key" => "report", "model" => { "model" => MODEL },
+              "prompt" => "!mock reply=entries-reviewed -- Report the reviewed entries" } },
+          ]] }])
+        journal = File.join(home, "journal")
+        claimed = await("one concurrent append to reach the journal before committing its result") do
+          lines = File.readlines(journal, chomp: true) if File.exist?(journal)
+          lines.last if lines&.size == 2
+        end
+        application.kill!
+        unclaimed = (entries - [claimed]).fetch(0)
+        assert_equal ["before", claimed], File.readlines(journal, chomp: true)
+        assert_equal "completed", run.task("before").task.status
+
+        held = await("both application deliveries to expire with the application offline") do
+          snapshot = tracking.recover
+          snapshot if snapshot&.needs_attention?
+        end
+        assert_equal tracking.result, held.execution
+        started = run.task(claimed).task
+        pending = run.task(unclaimed).task
+        assert_equal ["uncertain", "tool_uncertain", address],
+          [started.status, started.error.fetch("key"), started.claimed_by.executor_public_id]
+        assert_equal ["timed_out", "tool_timeout", nil], [pending.status, pending.error.fetch("key"), pending.claimed_by]
+        [started, pending].each do |task|
+          assert_equal ["agent", address], [task.addressed_to.role, task.addressed_to.executor_public_id]
+        end
+
+        File.write(File.join(home, "continue"), "")
+        application.start
+        assert_equal address, application.executor_public_id
+        transport = CybrosAgent::ExecutorClient.new(base_url: @base_url, credential: @peer.executor_credential)
+        assert_empty transport.inbox.list.items.select { |item| item.run_public_id == run.run_public_id }
+        assert_predicate tracking.recover, :needs_attention?
+        member_run = @human.workspace(@workspace.public_id).run(run.run_public_id)
+        member_run.tasks_context(claimed).abandon
+        member_run.tasks_context(unclaimed).retry
+        completed = complete(run)
+        assert_equal "completed", completed.tasks.find { |task| task.key == unclaimed }.status
+        assert_equal "uncertain", run.task(claimed).task.status
+        assert_includes completed_turn(chat, held.execution.turn).text, "entries-reviewed"
+        assert_equal ["before", claimed, unclaimed], File.readlines(journal, chomp: true)
+        assert_equal [unclaimed], application.claims.map { |row| row.fetch("task") }
+      ensure
+        application.stop
+      end
+    end
+  end
+
   def test_a_published_image_and_its_continuation_survive_a_kernel_restart
     marker = "image-restart-#{SecureRandom.hex(8)}"
     release = File.join(@world.project, "#{marker}.release")
@@ -513,6 +574,13 @@ class OfflineAgentTest < Minitest::Test
   end
 
   private
+
+    def journal_step(key, release: nil)
+      input = { "entry" => key }
+      input["release"] = release if release
+      { "tool" => { "key" => key, "name" => "journal_append", "input" => input,
+        "timeout_ms" => 10_000, "on_failure" => "halt" } }
+    end
 
     def declaration(**overrides)
       {

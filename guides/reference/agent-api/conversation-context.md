@@ -38,7 +38,7 @@ advisory, write-free, never a provider call.
 {
   "context_estimate": {
     "prompt": "and this question",
-    "model": { "model": "openai_api/gpt-6.1-sol" },
+    "model": { "model": "openai_api/gpt-6.2-sol" },
     "history": { "max_entries": 20, "token_budget_share": 0.5 }
   }
 }
@@ -164,7 +164,12 @@ grammar's `commentary` or `final_answer` — beside the `native_origin`
 (`provider_id`, `model_id`, `api_format`) that licenses it. The compiler
 resends `phase` only to a target whose `api_format` and `provider_id`
 both equal the origin's, and drops it silently on every other wire. An
-unlabelled message carries neither key.
+unlabelled Claude assistant message or tool call can carry its producer in
+`native_origin`, which lets Nexus reconstruct earlier model switches.
+
+A Gemini text part can carry a `thought_signature` beside its
+`native_origin`, including when its text is empty. The sealed request and
+rendered estimate preserve the signed part at its original position.
 
 **`storage`** is the seal's one measure: the canonical bytes of each
 entry, summed, against the seal's bound. Over it the preview still
@@ -213,7 +218,7 @@ POST /agent_api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/com
 ### Request
 
 ```json
-{ "compaction": { "model": "openai_api/gpt-6.1-sol", "reasoning_enabled": false, "reasoning_effort": "low" } }
+{ "compaction": { "model": "openai_api/gpt-6.1-terra", "reasoning_enabled": false, "reasoning_effort": "low" } }
 ```
 
 All fields are optional. Unnamed, the model is the conversation's own —

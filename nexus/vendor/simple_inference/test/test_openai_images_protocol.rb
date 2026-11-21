@@ -130,6 +130,22 @@ class TestOpenAIImagesProtocol < Minitest::Test
     assert_includes error.message, "extra_body"
   end
 
+  def test_planning_complexity_on_generation_and_edit
+    adapter = CapturingAdapter.new
+    protocol = build_protocol(adapter: adapter)
+    protocol.generate(model: "gpt-image-2.6-sunburst", prompt: "diagram", complexity: "high", quality: "low")
+    body = JSON.parse(adapter.last_request.fetch(:body))
+    assert_equal "high", body.fetch("complexity")
+    assert_equal "low", body.fetch("quality")
+
+    protocol.generate(model: "gpt-image-2.6-flare", prompt: "recolor", images: [png_media], complexity: "low")
+    assert_includes multipart_text(adapter.last_request), %(name="complexity"\r\n\r\nlow)
+
+    assert_raises(SimpleInference::ValidationError) do
+      build_protocol(adapter: ExplodingAdapter.new).generate(model: "gpt-image-2.6-flare", prompt: "x", complexity: "max")
+    end
+  end
+
   def test_extra_body_merges_string_keyed_fields_verbatim
     adapter = CapturingAdapter.new
     protocol = build_protocol(adapter: adapter)

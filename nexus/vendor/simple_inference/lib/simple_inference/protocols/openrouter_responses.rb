@@ -81,7 +81,15 @@ module SimpleInference
       # guard keeps inherited translation drift (a superclass injecting the
       # field) from ever reaching this lane's wire.
       def chat_options(options)
-        pinned = super
+        # The broker's Anthropic TTLs select a moving cache breakpoint. Its
+        # OpenAI TTLs use the inherited prompt_cache_options/retention fields.
+        ttl = options[:prompt_cache_ttl]
+        if %w[5m 1h].include?(ttl)
+          marker = { type: "ephemeral" }
+          marker[:ttl] = ttl if ttl == "1h"
+          options = options.except(:prompt_cache_ttl).merge(cache_control: marker)
+        end
+        pinned = super(options)
         reject_stream_options(pinned.merge(provider: PROVIDER_BLOCK))
       end
 

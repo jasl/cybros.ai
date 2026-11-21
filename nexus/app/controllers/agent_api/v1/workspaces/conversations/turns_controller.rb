@@ -1,6 +1,7 @@
 # The timeline read: a position window through the ONE shared funnel —
 # inherited entries included, concealment enforced by the funnel, content
 # batched so a page is a bounded number of queries, not one per turn.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Conversations::TurnsController <
       AgentAPI::V1::Workspaces::Conversations::BaseController
   include AgentAPI::V1::WorkspaceScoped
@@ -8,6 +9,21 @@ class AgentAPI::V1::Workspaces::Conversations::TurnsController <
   DEFAULT_LIMIT = 20
   MAX_LIMIT = 100
 
+  # @oas_include
+  # @summary List turns
+  # @tags Member, turns
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsTurnsIndex
   def index
     conversation = find_listable_conversation(@workspace)
 
@@ -28,6 +44,22 @@ class AgentAPI::V1::Workspaces::Conversations::TurnsController <
     }
   end
 
+  # @oas_include
+  # @summary Read turns
+  # @tags Member, turns
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsTurnsShow
   def show
     conversation = find_listable_conversation(@workspace)
     entry = conversation.timeline.entry(public_id: params.fetch(:public_id),
@@ -37,6 +69,23 @@ class AgentAPI::V1::Workspaces::Conversations::TurnsController <
     render json: { turn: AgentAPI::ConversationPresenter.turn_entries([entry]).sole }
   end
 
+  # @oas_include
+  # @summary Update turns
+  # @tags Member, turns
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesConversationsTurnsUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsTurnsUpdate
   def update
     conversation = find_listable_conversation(@workspace)
     fields = params.permit(turn: %i[visibility concealed]).fetch(:turn)
@@ -61,6 +110,22 @@ class AgentAPI::V1::Workspaces::Conversations::TurnsController <
     end
   end
 
+  # @oas_include
+  # @summary Destroy turns
+  # @tags Member, turns
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (204) #/components/responses/AgentApiV1WorkspacesConversationsTurnsDestroy
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def destroy
     conversation = find_listable_conversation(@workspace)
 

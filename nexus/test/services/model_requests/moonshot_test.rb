@@ -1,7 +1,7 @@
 require "test_helper"
 
 class ModelRequests::MoonshotTest < ActiveSupport::TestCase
-  MODELS = %w[kimi-k3 kimi-k2.6 kimi-k2.7-code kimi-k2.7-code-highspeed].freeze
+  PRO_MODELS = %w[kimi-k3.1-pro kimi-k3.1-pro-highspeed].freeze
 
   setup do
     @account = accounts(:cybros)
@@ -15,80 +15,56 @@ class ModelRequests::MoonshotTest < ActiveSupport::TestCase
     assert_predicate enabled, :done?
   end
 
-  test "the platform exposes four independent model ids and their own windows" do
+  test "the China platform exposes both K3.1 Pro model IDs with a shared one-million-token window" do
     rows = ModelCatalog.current.models.keys.grep(%r{\Amoonshot/})
-    assert_equal MODELS.map { "moonshot/#{_1}" }.sort, rows.sort
+    assert_equal PRO_MODELS.map { "moonshot/#{_1}" }.sort, rows.sort
 
-    MODELS.each do |model|
+    PRO_MODELS.each do |model|
       profile = DevModelLane.profile_for("moonshot/#{model}")
-      limit = model == "kimi-k3" ? 1_048_576 : 262_144
 
       assert_equal model, profile.model_pin
       assert_equal "moonshot", profile.provider_id
       assert_equal "openai_compatible_chat", profile.adapter_profile
       assert_equal %w[image], profile.input_modalities
-      assert_equal limit, profile.local_safety_limits.combined_input_output_tokens
-      assert_equal limit, profile.local_safety_limits.output_tokens
-      assert_equal limit, profile.generation_parameters.fetch("max_output_tokens").maximum
-      assert_equal "chat_reasoning", ModelCatalog.current.models.fetch("moonshot/#{model}").dig("capabilities", "reasoning_replay", "format")
+      assert_equal 1_048_576, profile.local_safety_limits.combined_input_output_tokens
+      replay = ModelCatalog.current.models.fetch("moonshot/#{model}").fetch("capabilities").fetch("reasoning_replay")
+      assert_equal "chat_reasoning", replay.fetch("format")
+      assert replay.fetch("required_for_tool_rounds")
     end
     assert_not ModelProviderCredential.exists?(account: @account, provider_id: "kimi_code")
     assert_not ModelProviderConfig.exists?(account: @account, provider_id: "kimi_code")
   end
 
-  test "K3 sends its efforts without a thinking switch even when disabling is requested" do
-    [nil, "high", "max"].each do |effort|
-      body = payload("kimi-k3", effort: effort)
+  test "an explicit output cap is unavailable on the China platform" do
+    PRO_MODELS.each do |model|
+      ref = "moonshot/#{model}"
+      assert_nil DevModelLane.profile_for(ref).local_safety_limits.output_tokens
+      selection = DevModelLane.resolve(workload: "text_generation", account: @account,
+        model: ref, configuration: { max_output_tokens: 128 })
+      assert_equal :unsupported_generation_parameter, selection.refusal, ref
+    end
+  end
 
-      assert_equal effort || "low", body.fetch("reasoning_effort")
+  test "both K3.1 Pro speeds default to max and honor explicit reasoning efforts" do
+    PRO_MODELS.each do |model|
+      [nil, "low", "high", "max"].each do |effort|
+        body = payload(model, effort: effort)
+        assert_equal effort || "max", body.fetch("reasoning_effort")
+        assert_not body.key?("thinking")
+        assert_not body.key?("max_tokens")
+      end
+      body = payload(model, enabled: false)
+      assert_equal "max", body.fetch("reasoning_effort")
       assert_not body.key?("thinking")
     end
-    assert_equal "low", payload("kimi-k3", enabled: false).fetch("reasoning_effort")
   end
 
-  test "K2.6 opts into preserved thinking and can independently disable reasoning" do
-    body = payload("kimi-k2.6")
-    assert_equal({ "type" => "enabled", "keep" => "all" }, body.fetch("thinking"))
-    assert_not body.key?("reasoning_effort")
-
-    body = payload("kimi-k2.6", enabled: false)
-    assert_equal({ "type" => "disabled" }, body.fetch("thinking"))
-    assert_not body.key?("reasoning_effort")
-    assert_nil DevModelLane.profile_for("kimi_code/kimi-for-coding").wire_option(:thinking_keep)
-  end
-
-  test "both K2.7 speeds always reason without sending unsupported controls" do
-    %w[kimi-k2.7-code kimi-k2.7-code-highspeed].each do |model|
-      [nil, false].each do |enabled|
-        body = payload(model, enabled: enabled)
-        assert_not body.key?("thinking")
-        assert_not body.key?("reasoning_effort")
-      end
+  test "both regional API speeds and the coding subscription can run without a catalog price" do
+    %w[moonshot/kimi-k3.1-pro moonshot/kimi-k3.1-pro-highspeed moonshot_global/kimi-k3.1-pro
+      moonshot_global/kimi-k3.1-pro-highspeed kimi_code/k3.1-pro kimi_code/k3.1-pro-highspeed].each do |ref|
+      pricing = ModelCatalog::EffectivePricing.project(entry: ModelCatalog.current.models.fetch(ref), account_unit: "USD")
+      assert_predicate pricing, :unmetered?, ref
     end
-  end
-
-  test "each platform model prices its own cache and output counts independently of the subscription" do
-    tokens = UsageRecords::Tokens.read({
-      "prompt_tokens" => 1_000_000, "completion_tokens" => 100_000,
-      "prompt_tokens_details" => { "cached_tokens" => 200_000, "cache_write_tokens" => 100_000 },
-      "completion_tokens_details" => { "reasoning_tokens" => 60_000 },
-    }, adapter_profile: "openai_compatible_chat")
-    expected = { "kimi-k3" => "3.96", "kimi-k2.6" => "1.192",
-                 "kimi-k2.7-code" => "1.198", "kimi-k2.7-code-highspeed" => "2.396" }
-
-    expected.each do |model, amount|
-      pricing = ModelCatalog::EffectivePricing.project(
-        entry: ModelCatalog.current.models.fetch("moonshot/#{model}"), account_unit: "USD"
-      )
-      assert_predicate pricing, :priced?
-      assert_equal BigDecimal(amount), UsageRecords::Pricing.formula(
-        tokens: tokens, rates: pricing.rates, tier_multipliers: pricing.tier_multipliers, service_tier: nil
-      ), model
-    end
-    subscription = ModelCatalog::EffectivePricing.project(
-      entry: ModelCatalog.current.models.fetch("kimi_code/kimi-for-coding"), account_unit: "USD"
-    )
-    assert_predicate subscription, :unmetered?
   end
 
   private
@@ -99,7 +75,7 @@ class ModelRequests::MoonshotTest < ActiveSupport::TestCase
         workspace: workspaces(:shared), creating_user: users(:member), workload: "text_generation",
         submitted: Nexus::SubmittedModelSelection.new(model: ref,
           reasoning_effort: effort, reasoning_enabled: enabled),
-        configuration: { "max_output_tokens" => 128 },
+        configuration: {},
         input: [{ "role" => "user", "parts" => [{ "type" => "text", "text" => "hello" }] }],
         upload_public_ids: [], billing_subject: nil, idempotency_key: SecureRandom.uuid
       )
@@ -115,7 +91,6 @@ class ModelRequests::MoonshotTest < ActiveSupport::TestCase
       assert_equal "/v1/chat/completions", built.request.path
       JSON.parse(built.request.payload).tap do |body|
         assert_equal model, body.fetch("model")
-        assert_equal 128, body.fetch("max_tokens")
         assert_equal true, body.dig("stream_options", "include_usage")
       end
     end

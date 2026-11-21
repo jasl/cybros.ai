@@ -1,3 +1,5 @@
+require "base64"
+require "stringio"
 require "rho/env"
 require "rho/acp"
 require_relative "policy"
@@ -43,11 +45,12 @@ module Rho
       STOP_TIMED_OUT = "timed_out".freeze
       STOP_REFUSED = "refused".freeze
 
-      def initialize(session:, prompt:, env:, home:, log:, clock:)
+      def initialize(session:, prompt:, env:, home:, log:, clock:, attachments: [])
         @session = session
         @child = session.child
         @row = session.child.row
         @prompt = prompt
+        @attachments = attachments
         @env = env
         @home = home
         @log = log
@@ -65,11 +68,14 @@ module Rho
 
       def run
         @child.hold(@env) do
+          blocks = [{ "type" => Methods::ContentBlock::TEXT, "text" => @prompt.scrub }]
+          blocks.concat(pdf_blocks) unless @attachments.empty?
+          @env.raise_if_cancelled!
           @session.calls += 1
           @session.last_prompt_at = @clock.call
           pending = @child.request(Methods::SESSION_PROMPT, {
             "sessionId" => @session.acp_id,
-            "prompt" => [{ "type" => Methods::ContentBlock::TEXT, "text" => @prompt.to_s.scrub }],
+            "prompt" => blocks,
           })
           wall = monotonic + (@row.timeout_ms / 1000.0)
           outcome = Rho::Env::ExecutionContext.with_cancel_signal(-> { @cancel_requested = true }) do
@@ -80,6 +86,44 @@ module Rho
       end
 
       private
+
+        def pdf_blocks
+          capabilities = Hash.try_convert(@child.capabilities.fetch("promptCapabilities", {}))
+          unless capabilities&.fetch("embeddedContext", false) == true
+            raise Refused, "ACP agent #{@row.key.inspect} does not advertise embedded context for PDF attachments"
+          end
+
+          reader = Rho::Env::ExecutionContext.current&.attachments
+          raise Refused, "Delegating PDF attachments requires an active executor claim" unless reader
+
+          @attachments.map do |reference|
+            public_id = Rho::Env::ClaimAttachments.public_id(reference)
+            raise Refused, "Expected a Nexus attachment reference or upload UUID" unless public_id
+
+            pdf_block(reader, public_id)
+          end
+        end
+
+        def pdf_block(reader, public_id)
+          uri = "#{CybrosAgent::Api::ResourceLink::URI_PREFIX}#{public_id}"
+          io = StringIO.new("".b)
+          upload = reader.read(public_id, io) do |descriptor|
+            if descriptor.content_type != Methods::PDF_MIME_TYPE
+              raise Refused, "Attachment #{uri} is not a PDF"
+            end
+            unless (1..Methods::PDF_BLOB_MAX_BYTES).cover?(descriptor.byte_size)
+              raise Refused, "Attachment #{uri} must be a nonempty PDF of at most 16 MiB"
+            end
+          end
+          unless io.size == upload.byte_size
+            raise Refused, "Attachment #{uri} download was incomplete"
+          end
+
+          { "type" => Methods::ContentBlock::RESOURCE,
+            "resource" => { "uri" => uri, "mimeType" => Methods::PDF_MIME_TYPE, "blob" => Base64.strict_encode64(io.string) } }
+        rescue CybrosAgent::Error, IOError => error
+          raise Refused, "Could not read attachment #{uri}: #{error.message}"
+        end
 
         def monotonic = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 

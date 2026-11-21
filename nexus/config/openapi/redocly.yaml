@@ -1,0 +1,7 @@
+extends:
+  - minimal
+rules:
+  struct: error
+  no-unresolved-refs: error
+  operation-operationId-unique: error
+  security-defined: error

@@ -5,7 +5,7 @@ module Nexus
 
         def schedules
           full, execution = schedule_fixtures
-          intent = full.slice("name", "prompt", "rule", "model", "configuration", "tool_names", "approval_mode",
+          intent = full.slice("name", "prompt", "rule", "wake", "model", "configuration", "tool_names", "approval_mode",
             "answering_user_public_id", "speaker_public_id", "source_run_public_id", "source_task_key",
             "model_selection", "fallback_models")
           {
@@ -19,7 +19,7 @@ module Nexus
             "valid_fixture" => { "schedule" => full },
             "valid_list_fixture" => { "schedules" => [full], "pagination" => { "next_after" => nil } },
             "valid_create_request" => { "schedule" => intent },
-            "valid_update_request" => { "schedule" => { "expected_lock_version" => 2, "prompt" => "Report progress" } },
+            "valid_update_request" => { "schedule" => { "expected_lock_version" => 2, "prompt" => "Report progress", "wake" => "auto" } },
             "valid_executions_fixture" => { "executions" => [execution],
               "pagination" => { "next_after" => nil, "last_cursor" => "scheduled-execution-tail" } },
             "unknown_status_fixture" => { "schedule" => full.merge("status" => UNKNOWN_VALUE_FIXTURE) },
@@ -42,7 +42,7 @@ module Nexus
               workspace: Workspace.new(public_id: "01999000-0000-7000-8000-000000000010")),
             creating_user: User.new(public_id: "01999000-0000-7000-8000-000000000003"),
             answering_user: User.new(public_id: "01999000-0000-7000-8000-000000000008"),
-            name: "Morning summary", prompt: "Summarize unread email", status: "active", lock_version: 2,
+            name: "Morning summary", wake: "passive", prompt: "Summarize unread email", status: "active", lock_version: 2,
             rule: { "kind" => "daily", "local_time" => "09:00", "time_zone" => "Asia/Shanghai" },
             provider_id: "dev", model_ref: "mock-text", reasoning_effort: "medium", reasoning_enabled: true, configuration: {},
             model_selection: ModelSelectionIntent.explicit("dev/mock-text"), fallback_models: [],

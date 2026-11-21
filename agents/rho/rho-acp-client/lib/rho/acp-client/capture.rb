@@ -7,7 +7,8 @@ module Rho
     # between rho and one child, one JSON object a line, appended to
     # `<artifacts_dir>/acp/<agent>-<session>.jsonl` under the work dir
     # keyed by root — never the project — every string in it through the
-    # row's redaction. `out` is what rho sent, `in` what the child sent,
+    # row's redaction. Outgoing PDF blobs are recorded by URI, MIME type and size.
+    # `out` is what rho sent, `in` what the child sent,
     # `note` a fact of rho's own (a permission decision, a kill). The file
     # rides the result as a `resource_link` (`rho fetch` reads it) and
     # `rho acp-agents logs SESSION` prints it. A probe passes no capture
@@ -34,6 +35,9 @@ module Rho
       def line(direction, message, **fields)
         record = { "at" => @clock.call.utc.iso8601(3), "dir" => direction.to_s }
         record.merge!(@redact.structure(fields.transform_keys(&:to_s)))
+        if record.fetch("dir") == "out" && message&.fetch("method", nil) == Rho::Acp::Methods::SESSION_PROMPT
+          message = prompt_metadata(message)
+        end
         record["message"] = @redact.structure(message) unless message.nil?
         write(record)
       end
@@ -48,6 +52,20 @@ module Rho
       end
 
       private
+
+        def prompt_metadata(message)
+          params = message.fetch("params")
+          blocks = params.fetch("prompt").map do |block|
+            resource = block["resource"]
+            next block unless resource && resource["mimeType"] == Rho::Acp::Methods::PDF_MIME_TYPE
+
+            # The sender uses strict base64, including padding.
+            blob = resource.fetch("blob")
+            byte_size = (blob.bytesize / 4) * 3 - blob[-2, 2].count("=")
+            block.merge("resource" => resource.except("blob").merge("size" => byte_size))
+          end
+          message.merge("params" => params.merge("prompt" => blocks))
+        end
 
         def write(record)
           text = "#{JSON.generate(record)}\n"

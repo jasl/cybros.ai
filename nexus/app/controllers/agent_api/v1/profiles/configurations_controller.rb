@@ -1,9 +1,24 @@
 # PUT /agent_api/v1/profile/configuration — the one writer of the Agent
 # Profile's standing declaration: a whole replacement the profile itself
 # makes, answered with the profile it now reads back as.
+# @auth [MemberBearer]
 class AgentAPI::V1::Profiles::ConfigurationsController < AgentAPI::V1::BaseController
   serves_plane :member
 
+  # @oas_include
+  # @summary Update configurations
+  # @tags Member, configurations
+  # @request_body_ref #/components/requestBodies/AgentApiV1ProfilesConfigurationsUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ProfilesConfigurationsUpdate
   def update
     credential = current_credential
     outcome = Users::ConfigureAgent.call(user: credential.user, configuration: declaration, **prompt_documents)

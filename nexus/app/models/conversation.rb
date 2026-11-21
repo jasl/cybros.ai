@@ -294,10 +294,8 @@ class Conversation < ApplicationRecord
   # words must never bind to it. No such turn means queue.
   def steer_binding = turns.active.where(kind: "direct_reply").first
 
-  # The kick, now or at a time: a scheduled row rides the receipt's own
-  # path, `DrainJob` set to run when the row is due; `at: nil` is the
-  # immediate kick every other acceptance sends. Level-triggered, so a kick
-  # that outlives its row drains a room with nothing due.
+  # An immediate wake drains ready inputs while the room is idle.
+  # A future input retains a precise wake at its own due time.
   def wake_drain(at: nil) = Conversations::Inputs::DrainJob.set(wait_until: at).perform_later(id)
   def note_activity = update!(last_activity_at: Time.current)
 

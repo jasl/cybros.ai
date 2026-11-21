@@ -43,9 +43,10 @@ class ModelAdaptationsLoaderTest < Minitest::Test
       assert_equal [[], nil], [row.tool_descriptions, row.summarizer_prompt], "#{row.id}: a description or summarizer text on a gem row today"
       assert_equal [], row.lead_hints, "#{row.id}: a hint on a gem row"
     end
-    assert_equal({ "glm-5.3" => ["z-ai/glm-5.3"], "kimi-k3" => ["moonshotai/kimi-k3"],
-                   "claude" => %w[claude-opus-5-5 claude-fable-5 claude-fable-5-1 claude-sonnet-5],
-                   "codex" => %w[gpt-6-astra gpt-6.1-sol gpt-6-luna], "default" => [] },
+    assert_equal({ "glm-5.3" => ["z-ai/glm-5.3"], "kimi-k3" => %w[moonshotai/kimi-k3.1-pro kimi-k3.1-pro kimi-k3.1-pro-highspeed k3.1-pro k3.1-pro-highspeed],
+                   "claude" => %w[claude-fable-5-2 claude-opus-5-5 claude-sonnet-5-5 claude-haiku-5-5
+                                 anthropic/claude-fable-5.2 anthropic/claude-opus-5.5 anthropic/claude-sonnet-5.5 anthropic/claude-haiku-5.5],
+                   "codex" => %w[gpt-6.2-astra gpt-6.2-sol gpt-6.1-terra openai/gpt-6.2-astra openai/gpt-6.2-sol openai/gpt-6.1-terra], "default" => [] },
       PACK.rows.to_h { |row| [row.id, row.models] })
     assert_equal({ "glm-5.3" => ["nexus"], "kimi-k3" => ["nexus"], "claude" => ["claude"], "codex" => ["codex"], "default" => ["nexus"] },
       PACK.rows.to_h { |row| [row.id, row.tool_style] })
@@ -59,8 +60,8 @@ class ModelAdaptationsLoaderTest < Minitest::Test
     row = PACK.row("kimi-k3")
     assert_equal [], row.lead_hints
     assert_equal ["nexus"], row.tool_style
-    assert_equal ["moonshotai/kimi-k3"], row.models
-    %w[openrouter/moonshotai/kimi-k3 or/moonshotai/kimi-k3].each do |ref|
+    %w[openrouter/moonshotai/kimi-k3.1-pro or/moonshotai/kimi-k3.1-pro moonshot/kimi-k3.1-pro
+      moonshot_global/kimi-k3.1-pro-highspeed kimi_code/k3.1-pro kimi_code/k3.1-pro-highspeed].each do |ref|
       assert_equal "kimi-k3", PACK.for(ref).id, ref
       assert_empty PACK.for(ref).hint_texts, ref
     end
@@ -75,19 +76,21 @@ class ModelAdaptationsLoaderTest < Minitest::Test
     assert_equal "z-ai/glm-5.3", CybrosAgent::ModelPattern.reference("openrouter/z-ai/glm-5.3")
     assert_equal "glm-5.3", PACK.for("openrouter/z-ai/glm-5.3").id
     assert_equal "glm-5.3", PACK.for("or/z-ai/glm-5.3").id, "an operator-named lane"
-    assert_equal "kimi-k3", PACK.for("openrouter/moonshotai/kimi-k3").id
+    assert_equal "kimi-k3", PACK.for("openrouter/moonshotai/kimi-k3.1-pro").id
     assert_equal "claude", PACK.for("anthropic/claude-opus-5-5").id
-    assert_equal "claude", PACK.for("anthropic/claude-fable-5-1").id, "the references' default Fable model (2026-09-16)"
-    assert_equal "codex", PACK.for("openai_api/gpt-6.1-sol").id
-    assert_equal "codex", PACK.for("codex_subscription/gpt-6.1-sol").id, "both lanes reach one row by the reference key"
-    assert_equal "codex", PACK.for("openai_api/gpt-6-astra").id, "codex's priority-1 model (2026-09-16)"
-    assert_equal "codex", PACK.for("codex_subscription/gpt-6-astra").id
+    assert_equal "claude", PACK.for("anthropic/claude-fable-5-2").id
+    assert_equal "codex", PACK.for("openai_api/gpt-6.2-sol").id
+    assert_equal "codex", PACK.for("codex_subscription/gpt-6.2-sol").id, "both lanes reach one row by the reference key"
+    assert_equal "codex", PACK.for("openai_api/gpt-6.2-astra").id
+    assert_equal "codex", PACK.for("codex_subscription/gpt-6.2-astra").id
     assert_equal "default", PACK.for("anthropic/claude-mythos-5-1").id, "Glasswing-only: never on the row"
     assert_equal "default", PACK.for("openrouter/z-ai/glm-5.3-flash").id, "a floor: never the strong tier's row"
-    assert_equal "default", PACK.for("openrouter/deepseek/deepseek-v4.1-flash").id
+    assert_equal "default", PACK.for("openrouter/deepseek/deepseek-v4.1-flash-1017").id
     assert_equal "default", PACK.for("deepseek/deepseek-flash").id, "the direct floor"
-    assert_equal "default", PACK.for("openrouter/anthropic/claude-sonnet-5:exacto").id, "a variant is covered only when a row writes it"
-    assert_equal "default", PACK.for("openrouter/openai/gpt-6-sol:exacto").id
+    assert_equal "claude", PACK.for("openrouter/anthropic/claude-sonnet-5.5").id
+    assert_equal "codex", PACK.for("openrouter/openai/gpt-6.2-sol").id
+    assert_equal "default", PACK.for("openrouter/anthropic/claude-sonnet-5.5:exacto").id, "a variant is covered only when a row writes it"
+    assert_equal "default", PACK.for("openrouter/openai/gpt-6.2-sol:exacto").id
     assert_equal "default", PACK.for("codex_subscription/gpt-image-2").id, "an image model on the codex lane: no row names it"
     assert_equal "default", PACK.for("dev/mock-text").id
     assert_equal "default", PACK.for(nil).id
@@ -294,8 +297,8 @@ class ModelAdaptationsLoaderTest < Minitest::Test
       pack = load_pack(PackFixture::GEM_DIR, extra: [path])
       assert_equal "mine", pack.for("openrouter/z-ai/glm-5.3").id, "the operator's override beats the gem's exact entry"
       assert_equal "mine", pack.for("openrouter/z-ai/glm-5.3-flash").id, "the operator's own deployment"
-      assert_equal "kimi-k3", pack.for("openrouter/moonshotai/kimi-k3").id
-      assert_predicate pack.for("openrouter/moonshotai/kimi-k3"), :gem?, "the gem row, untouched by the operator's"
+      assert_equal "kimi-k3", pack.for("openrouter/moonshotai/kimi-k3.1-pro").id
+      assert_predicate pack.for("openrouter/moonshotai/kimi-k3.1-pro"), :gem?, "the gem row, untouched by the operator's"
       assert_equal "claude", pack.for("anthropic/claude-opus-5-5").id
     end
     PackFixture.with_local_row("wide", PackFixture.row_yaml("wide", models: ["claude-*"])) do |wide, _dir|
@@ -304,7 +307,7 @@ class ModelAdaptationsLoaderTest < Minitest::Test
           pack = load_pack(PackFixture::GEM_DIR, extra: extra)
           assert_equal "opus", pack.for("anthropic/claude-opus-5-5").id, extra.inspect
           assert_equal "wide", pack.for("anthropic/claude-sonnet-5").id, extra.inspect
-          assert_equal "codex", pack.for("openai_api/gpt-6.1-sol").id
+          assert_equal "codex", pack.for("openai_api/gpt-6.2-sol").id
         end
       end
     end
@@ -321,16 +324,16 @@ class ModelAdaptationsLoaderTest < Minitest::Test
   # local row wins the tie.
   def test_a_gem_row_rewritten_as_a_local_row_of_its_id_moves_no_reference
     gem = { "default" => PackFixture.default_row_yaml, "fam" => PackFixture.row_yaml("fam", models: ["moonshotai/kimi-*"]),
-            "k3" => PackFixture.row_yaml("k3", models: ["moonshotai/kimi-k3"]) }
+            "k3" => PackFixture.row_yaml("k3", models: ["moonshotai/kimi-k3.1-pro"]) }
     PackFixture.with_pack(rows: gem) do |dir|
       PackFixture.with_local_row("fam", PackFixture.row_yaml("fam", models: ["moonshotai/kimi-*"])) do |path, _dir|
         pack = load_pack(dir, extra: [path])
-        assert_equal %w[k3 gem], [pack.for("lane/moonshotai/kimi-k3").id, pack.for("lane/moonshotai/kimi-k3").source]
+        assert_equal %w[k3 gem], [pack.for("lane/moonshotai/kimi-k3.1-pro").id, pack.for("lane/moonshotai/kimi-k3.1-pro").source]
         assert_equal %w[fam local], [pack.for("lane/moonshotai/kimi-k4").id, pack.for("lane/moonshotai/kimi-k4").source]
       end
     end
-    refs = %w[openrouter/z-ai/glm-5.3 openrouter/z-ai/glm-5.3-flash openrouter/moonshotai/kimi-k3 anthropic/claude-opus-5-5
-              openai_api/gpt-6.1-sol codex_subscription/gpt-6-astra deepseek/deepseek-flash dev/mock-text]
+    refs = %w[openrouter/z-ai/glm-5.3 openrouter/z-ai/glm-5.3-flash openrouter/moonshotai/kimi-k3.1-pro anthropic/claude-opus-5-5
+              openai_api/gpt-6.2-sol codex_subscription/gpt-6.2-astra deepseek/deepseek-flash dev/mock-text]
     PACK.gem_rows.each do |row|
       copy = PackFixture.row_yaml(row.id, models: row.models.to_a, tool_style: row.tool_style.to_a,
         lead_hints: row.lead_hints.map(&:to_h))

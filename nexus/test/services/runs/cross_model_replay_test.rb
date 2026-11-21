@@ -3,7 +3,7 @@ require "test_helper"
 class Runs::CrossModelReplayTest < ActiveJob::TestCase
   include InvocationHarness
 
-  ORIGIN_MODEL = "gemini/gemini-3.8-flash".freeze
+  ORIGIN_MODEL = "gemini/gemini-4-hydrogen".freeze
   TARGET_MODEL = "gemini/review-target".freeze
   SIGNATURE = "origin-model-tool-signature".freeze
   READ_TOOL = {
@@ -68,7 +68,7 @@ class Runs::CrossModelReplayTest < ActiveJob::TestCase
       parts = wire_parts(attempt)
       assert_equal ["call_read"], parts.filter_map { |part| part.dig("functionCall", "id") }
       assert_equal ["call_read"], parts.filter_map { |part| part.dig("functionResponse", "id") }
-      assert_empty parts.filter_map { |part| part["thoughtSignature"] },
+      assert_equal ["skip_thought_signature_validator"], parts.filter_map { |part| part["thoughtSignature"] },
         "the sealed prefix contains the origin model's signed call, which must not reach another model"
     end
   end

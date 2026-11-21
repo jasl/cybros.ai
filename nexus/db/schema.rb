@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
+ActiveRecord::Schema[8.2].define(version: 2026_11_21_004000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -55,6 +55,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
     t.datetime "updated_at", null: false
     t.integer "execution_details_retention_days", default: 90
     t.datetime "maintenance_started_at"
+    t.boolean "sso_only", default: false, null: false
     t.index "(true)", name: "index_accounts_singleton", unique: true
     t.index ["public_id"], name: "index_accounts_on_public_id", unique: true
   end
@@ -283,6 +284,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
     t.decimal "cost_limit", precision: 38, scale: 18
     t.datetime "taken_over_at"
     t.uuid "taken_over_by_public_id"
+    t.string "scheduled_result_wake", default: "auto", null: false
     t.index ["account_id"], name: "index_conversations_on_account_id"
     t.index ["active_turn_id"], name: "index_conversations_on_active_turn_id"
     t.index ["answering_user_id"], name: "index_conversations_on_answering_user_id"
@@ -436,7 +438,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
   create_table "identities", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "email", limit: 255, null: false
-    t.string "password_digest", null: false
+    t.string "password_digest"
     t.integer "credential_recovery_generation", default: 0, null: false
     t.datetime "local_recovery_pending_at"
     t.boolean "password_change_required", default: false, null: false
@@ -565,11 +567,11 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
     t.string "on_target_end"
     t.string "fallback_reason"
     t.datetime "source_released_at"
+    t.index "host_type, state, COALESCE(deliver_at, created_at), id", name: "index_inputs_pending_due"
     t.index ["account_id"], name: "index_inputs_on_account_id"
     t.index ["answering_user_id"], name: "index_inputs_on_answering_user_id"
     t.index ["authoring_user_id"], name: "index_inputs_on_authoring_user_id"
     t.index ["conversation_link_id"], name: "index_inputs_on_conversation_link_id"
-    t.index ["deliver_at", "id"], name: "index_inputs_due", where: "((deliver_at IS NOT NULL) AND ((state)::text = 'pending'::text) AND ((host_type)::text = 'Conversation'::text))"
     t.index ["host_type", "host_id", "queue_position"], name: "index_inputs_fifo", unique: true
     t.index ["id"], name: "index_inputs_source_frontier", where: "(sender_run_public_id IS NOT NULL)"
     t.index ["public_id"], name: "index_inputs_on_public_id", unique: true
@@ -627,12 +629,15 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
     t.datetime "superseded_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "purpose", default: "password", null: false
+    t.bigint "lost_sso_provider_id"
     t.index ["account_id"], name: "index_member_recovery_authorizations_on_account_id"
     t.index ["consumed_at", "id"], name: "index_member_recovery_authorizations_on_consumed_evidence", where: "(consumed_at IS NOT NULL)"
     t.index ["expires_at", "id"], name: "index_member_recovery_authorizations_on_unconsumed_expiry", where: "((consumed_at IS NULL) AND (superseded_at IS NULL))"
     t.index ["identity_id"], name: "index_member_recovery_authorizations_on_current", unique: true, where: "((consumed_at IS NULL) AND (superseded_at IS NULL))"
     t.index ["identity_id"], name: "index_member_recovery_authorizations_on_identity_id"
     t.index ["lookup_id"], name: "index_member_recovery_authorizations_on_lookup_id", unique: true
+    t.index ["lost_sso_provider_id"], name: "index_member_recovery_authorizations_on_lost_sso_provider_id"
     t.index ["superseded_at", "id"], name: "index_member_recovery_authorizations_on_superseded_evidence", where: "(superseded_at IS NOT NULL)"
     t.index ["user_id"], name: "index_member_recovery_authorizations_on_user_id"
   end
@@ -1011,7 +1016,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
     t.bigint "workspace_id", null: false
     t.bigint "creating_user_id", null: false
     t.bigint "run_id", null: false
-    t.string "idempotency_key", limit: 36, null: false
+    t.string "idempotency_key", limit: 255, null: false
     t.string "request_digest", limit: 64, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -1122,6 +1127,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
     t.jsonb "model_selection"
     t.jsonb "fallback_models"
     t.jsonb "agent_configuration"
+    t.string "wake", default: "auto", null: false
     t.index ["account_id"], name: "index_schedules_on_account_id"
     t.index ["answering_user_id"], name: "index_schedules_on_answering_user_id"
     t.index ["conversation_id", "public_id"], name: "index_schedules_on_conversation_id_and_public_id"
@@ -1169,6 +1175,84 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
     t.index ["account_id", "channel_key", "external_id"], name: "index_speakers_on_natural_key", unique: true
     t.index ["public_id"], name: "index_speakers_on_public_id", unique: true
     t.index ["user_id"], name: "index_speakers_on_user_id"
+  end
+
+  create_table "sso_attempts", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "sso_provider_id", null: false
+    t.bigint "session_id"
+    t.bigint "member_recovery_authorization_id"
+    t.uuid "public_id", null: false
+    t.uuid "invitation_public_id"
+    t.string "purpose", null: false
+    t.string "phase", null: false
+    t.string "state_digest", null: false
+    t.string "browser_digest", null: false
+    t.string "nonce", null: false
+    t.text "code_verifier"
+    t.integer "provider_version", null: false
+    t.text "redirect_uri", null: false
+    t.text "return_path"
+    t.string "action_name"
+    t.string "action_target"
+    t.string "subject"
+    t.string "email"
+    t.string "display_name"
+    t.boolean "password_proved", default: false, null: false
+    t.boolean "email_verified", default: false, null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_sso_attempts_on_account_id"
+    t.index ["expires_at", "id"], name: "index_sso_attempts_on_expires_at_and_id"
+    t.index ["member_recovery_authorization_id"], name: "index_sso_attempts_on_member_recovery_authorization_id"
+    t.index ["public_id"], name: "index_sso_attempts_on_public_id", unique: true
+    t.index ["session_id"], name: "index_sso_attempts_on_session_id"
+    t.index ["sso_provider_id"], name: "index_sso_attempts_on_sso_provider_id"
+    t.index ["state_digest"], name: "index_sso_attempts_on_state_digest", unique: true
+  end
+
+  create_table "sso_connections", force: :cascade do |t|
+    t.bigint "sso_provider_id", null: false
+    t.bigint "identity_id", null: false
+    t.string "subject", limit: 512, null: false
+    t.string "display_name", limit: 255
+    t.integer "admission_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["identity_id", "sso_provider_id"], name: "index_sso_connections_on_identity_id_and_sso_provider_id", unique: true
+    t.index ["sso_provider_id", "subject"], name: "index_sso_connections_on_sso_provider_id_and_subject", unique: true
+  end
+
+  create_table "sso_providers", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.uuid "public_id", default: -> { connection.database_version >= 180_000 ? "uuidv7()" : "uuid_generate_v7()" }, null: false
+    t.string "name", limit: 100, null: false
+    t.string "protocol", null: false
+    t.string "issuer", limit: 1024, null: false
+    t.string "client_id"
+    t.text "client_secret"
+    t.text "authorization_endpoint"
+    t.text "token_endpoint"
+    t.text "userinfo_endpoint"
+    t.text "trusted_origins"
+    t.string "scopes", default: "openid profile email", null: false
+    t.string "token_auth_method", default: "client_secret_basic", null: false
+    t.string "subject_field", default: "id", null: false
+    t.string "email_field", default: "email"
+    t.string "email_verified_field", default: "email_verified"
+    t.string "name_field", default: "name"
+    t.string "required_group"
+    t.boolean "jit", default: false, null: false
+    t.boolean "enabled", default: false, null: false
+    t.integer "admission_version", default: 0, null: false
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "tested_at"
+    t.text "pending_configuration"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "issuer"], name: "index_sso_providers_on_account_id_and_issuer", unique: true
+    t.index ["public_id"], name: "index_sso_providers_on_public_id", unique: true
   end
 
   create_table "store_entries", force: :cascade do |t|
@@ -1308,9 +1392,9 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
     t.index ["run_id", "lifecycle_event"], name: "index_tasks_on_lifecycle_event", where: "(lifecycle_event IS NOT NULL)"
     t.index ["run_id", "node_key"], name: "index_tasks_on_run_id_and_node_key", unique: true
     t.index ["run_id", "status"], name: "index_tasks_on_detached_frontier", where: "detached"
+    t.index ["run_id", "status"], name: "index_tasks_on_live_run_status", where: "((status)::text = ANY (ARRAY['queued'::text, 'needs_approval'::text, 'running'::text, 'dispatched'::text, 'awaiting_input'::text]))"
     t.index ["run_id", "status"], name: "index_tasks_on_run_id_and_status"
     t.index ["run_id", "tool_call_id"], name: "index_tasks_on_tool_call_id", where: "(tool_call_id IS NOT NULL)"
-    t.index ["run_id"], name: "index_tasks_on_run_id"
     t.index ["run_id"], name: "index_tasks_on_runner_writes", where: "(first_runner_write IS NOT NULL)"
     t.index ["selected_model_invocation_id"], name: "index_tasks_on_selected_model_invocation_id"
     t.index ["target_executor_id"], name: "index_tasks_on_target_executor_id"
@@ -1685,6 +1769,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
   add_foreign_key "mcp_connections", "users", column: "owner_id"
   add_foreign_key "member_recovery_authorizations", "accounts"
   add_foreign_key "member_recovery_authorizations", "identities"
+  add_foreign_key "member_recovery_authorizations", "sso_providers", column: "lost_sso_provider_id", on_delete: :nullify
   add_foreign_key "member_recovery_authorizations", "users"
   add_foreign_key "memory_collections", "accounts"
   add_foreign_key "memory_collections", "conversations"
@@ -1751,6 +1836,13 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_27_120000) do
   add_foreign_key "sessions", "users"
   add_foreign_key "speakers", "accounts"
   add_foreign_key "speakers", "users"
+  add_foreign_key "sso_attempts", "accounts", on_delete: :cascade
+  add_foreign_key "sso_attempts", "member_recovery_authorizations", on_delete: :cascade
+  add_foreign_key "sso_attempts", "sessions", on_delete: :cascade
+  add_foreign_key "sso_attempts", "sso_providers", on_delete: :cascade
+  add_foreign_key "sso_connections", "identities", on_delete: :cascade
+  add_foreign_key "sso_connections", "sso_providers", on_delete: :cascade
+  add_foreign_key "sso_providers", "accounts"
   add_foreign_key "store_entries", "accounts"
   add_foreign_key "store_entries", "conversations"
   add_foreign_key "store_entries", "users"

@@ -63,12 +63,14 @@ module Runs
         end
 
         def removed_addressees(ids)
-          Task.where(id: ids, status: Executor::Convergence::UNCLAIMED_PARKED_STATUSES, claimed_at: nil)
+          # All parks addressed to the same executor share its shutdown state.
+          parks = Task.where(id: ids, status: Executor::Convergence::UNCLAIMED_PARKED_STATUSES, claimed_at: nil)
             .where.not(addressed_executor_id: nil)
-            .select(:id, :type, :run_id, :status, :claimed_at, :addressed_executor_id)
-            .includes(addressed_executor: [:manager, { agent: :steward }])
-            .select { |node| addressee_removed?(node) }
-            .map { |node| Candidate.new(id: node.id, run_id: node.run_id) }
+          addresses = Executor.where(id: parks.select(:addressed_executor_id))
+            .includes(:manager, agent: :steward)
+          removed = addresses.select { |executor| removed?(executor) }
+          parks.where(addressed_executor_id: removed.map(&:id)).pluck(:id, :run_id)
+            .map { |id, run_id| Candidate.new(id: id, run_id: run_id) }
         end
 
         def addressee_removed?(node)
@@ -76,8 +78,10 @@ module Runs
             Executor::Convergence::UNCLAIMED_PARKED_STATUSES.include?(node.status)
 
           executor = node.addressed_executor
-          executor && (executor.revoked? || executor.shutdown_pending?)
+          executor && removed?(executor)
         end
+
+        def removed?(executor) = executor.revoked? || executor.shutdown_pending?
 
         def reconcile(candidate)
           run = nil

@@ -1,6 +1,7 @@
 # The loop's door: the one inputs body over the listable LOOP row — never its
 # host, so a loop-backed loop is refused under its own lock rather than silently
 # forwarded. The refusal names the door it should have knocked on.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Runs::InputsController <
       AgentAPI::V1::Workspaces::InputsController
   include AgentAPI::V1::WorkspaceScoped

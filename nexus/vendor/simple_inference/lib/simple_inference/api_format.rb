@@ -146,7 +146,7 @@ module SimpleInference
         }.freeze,
         reasoning_options: {
           "efforts" => %w[low medium high xhigh max].freeze,
-          "modes" => %w[adaptive].freeze,
+          "modes" => %w[adaptive between_tools].freeze,
           "summaries" => %w[summarized omitted].freeze,
           "budgets" => %w[manual_mode_only].freeze,
         }.freeze,
@@ -214,7 +214,16 @@ module SimpleInference
         }.freeze,
         generation_parameters: {},
         service_tiers: [],
-        input_media: {},
+        # DeepSeek permits at most 4096 pixels per side with 15+ images and
+        # bills at most 1024 tokens per image after its own preprocessing.
+        # https://api-docs.deepseek.com/guides/vision/
+        input_media: {
+          "image" => {
+            "mime_allowlist" => %w[image/jpeg image/png image/gif image/webp].freeze,
+            "max_dimension" => 4096,
+            "token_cost" => 1024,
+          }.freeze,
+        }.freeze,
         wire_options: {
           responses_path: "/responses",
         }.freeze,
@@ -244,7 +253,7 @@ module SimpleInference
           "safety_factor" => "2.5",
         }.freeze,
         reasoning_options: {
-          "efforts" => %w[minimal low medium high].freeze,
+          "efforts" => %w[minimal low medium high xhigh].freeze,
           "budgets" => %w[none].freeze,
         }.freeze,
         generation_parameters: {},

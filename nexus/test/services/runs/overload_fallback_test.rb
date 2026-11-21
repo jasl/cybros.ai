@@ -51,6 +51,62 @@ class Runs::OverloadFallbackTest < ActiveJob::TestCase
     assert_equal "provider_transient_exhausted", step.output_summary.dig("model_change", "reason")
   end
 
+  test "manual retry makes a fresh same-model invocation after transient exhaustion" do
+    declare_tools!(@agent, fallback_models: [])
+    run = seed(model("m", "prompt" => "go"), creating_user: @agent)
+    start_loop(run)
+    overload!(run, "m", statuses: [500, 500, 500])
+    step = node(run, "m")
+    original = step.selected_model_invocation
+    request = original.content_bodies.find_by!(role: "request").entry_payloads
+    assert_equal "provider_transient_exhausted", step.error_key
+    assert_equal "needs_attention", run.reload.status
+
+    retried = Runs::Tasks::Retry.call(Runs::Tasks::Retry::Command.new(
+      run: run, task_key: "m", acting_user: @human
+    ))
+    assert_predicate retried, :accepted?
+    schedule(run)
+
+    assert_equal ["running", "mock-text", nil], step.reload.values_at(:status, :model_ref, :error_key)
+    assert_nil run.reload.attention_reason
+    fresh = step.selected_model_invocation
+    assert_not_equal original.id, fresh.id
+    assert_equal request, fresh.content_bodies.find_by!(role: "request").entry_payloads
+    assert_equal [3, 0], step_invocations(step).map { |invocation| invocation.attempts.count }
+
+    run_step!(run, "m", sse_success("recovered"))
+
+    assert_equal "completed", step.reload.status
+    assert_equal "completed", run.reload.status
+    assert_equal [3, 1], step_invocations(step).map { |invocation| invocation.attempts.count }
+    assert_equal "failed", original.reload.status, "the first invocation remains historical failure evidence"
+  end
+
+  test "explicit same-model retry has bounded fresh attempts without reviving exhausted fallbacks" do
+    run = seed(model("m", "prompt" => "go"), creating_user: @agent)
+    start_loop(run)
+    overload!(run, "m")
+    overload!(run, "m")
+    step = node(run, "m")
+    assert_equal "needs_attention", run.reload.status
+
+    retried = Runs::Tasks::Retry.call(Runs::Tasks::Retry::Command.new(
+      run: run, task_key: "m", acting_user: @human, model: { "model" => "dev/mock-unmetered" }
+    ))
+    assert_predicate retried, :accepted?
+    schedule(run)
+    assert_equal %w[running mock-unmetered], step.reload.values_at(:status, :model_ref)
+
+    overload!(run, "m")
+    schedule(run)
+
+    assert_equal %w[failed provider_overloaded], step.reload.values_at(:status, :error_key)
+    assert_equal "needs_attention", run.reload.status
+    assert_equal %w[mock-text mock-unmetered mock-unmetered], step_invocations(step).pluck(:model_ref)
+    assert_equal [3, 3, 3], step_invocations(step).map { |invocation| invocation.attempts.count }
+  end
+
   test "a fallback overloaded in turn stands, naming both causes, and nothing runs a third time" do
     run = seed(model("m", "prompt" => "go"), creating_user: @agent)
     start_loop(run)
@@ -65,6 +121,29 @@ class Runs::OverloadFallbackTest < ActiveJob::TestCase
                  "no remaining configured fallback can take this request (no_selectable_fallback), so nothing re-ran it",
       step.error_detail
     assert_equal 2, step_invocations(step).count
+  end
+
+  test "manual retry cannot select a spent fallback when its current model becomes unavailable" do
+    declare_tools!(@agent, fallback_models: %w[dev/mock-unmetered dev/mock-text])
+    run = seed(model("m", "prompt" => "go"), creating_user: @agent)
+    start_loop(run)
+    overload!(run, "m")
+    overload!(run, "m")
+    step = node(run, "m")
+    policy = ModelProviderConfig.find_by!(account: @account, provider_id: "dev")
+    policy.set_model_visibility("dev/mock-unmetered", visible: false)
+    policy.save!
+
+    retried = Runs::Tasks::Retry.call(Runs::Tasks::Retry::Command.new(
+      run: run, task_key: "m", acting_user: @human
+    ))
+    assert_predicate retried, :accepted?
+    schedule(run)
+
+    assert_equal %w[failed mock-unmetered], step.reload.values_at(:status, :model_ref)
+    assert_equal "needs_attention", run.reload.status
+    assert_equal %w[mock-text mock-unmetered], step_invocations(step).pluck(:model_ref)
+    assert_equal [3, 3], step_invocations(step).map { |invocation| invocation.attempts.count }
   end
 
   # THE CONFIGURED MODEL OF THE LINEAGE: the mainline moved to the fallback because its model was

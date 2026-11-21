@@ -205,6 +205,8 @@ module Rho
       ELICITATION_CAPABILITY_KEYS = %w[form url].freeze
       AGENT_CAPABILITY_KEYS = %w[loadSession promptCapabilities mcpCapabilities sessionCapabilities auth].freeze
       PROMPT_CAPABILITY_KEYS = %w[image audio embeddedContext].freeze
+      PDF_MIME_TYPE = "application/pdf".freeze
+      PDF_BLOB_MAX_BYTES = 16 * 1024 * 1024
       MCP_CAPABILITY_KEYS = %w[http sse].freeze
       SESSION_CAPABILITY_KEYS = %w[list delete additionalDirectories resume close].freeze
 

@@ -24,6 +24,7 @@ module CybrosAgent
       attr_reader variant_public_id: String?
       attr_reader run_public_id: String?
       attr_reader scheduled_for: String
+      attr_reader wake: String
       attr_reader status: String
       attr_reader created_at: String
       def to_h: () -> Hash[Symbol, untyped]
@@ -34,6 +35,7 @@ module CybrosAgent
       attr_reader name: String?
       attr_reader prompt: String
       attr_reader rule: ScheduleRule
+      attr_reader wake: String
       attr_reader model: ScheduleModel?
       attr_reader model_selection: Hash[String, untyped]?
       attr_reader fallback_models: Array[String]?
@@ -80,12 +82,12 @@ module CybrosAgent
       def list: (?after: String?, ?limit: Integer?, ?order: String?, ?status: String?) -> Page[Schedule]
       def fetch: (String public_id) -> Schedule
       def create: (prompt: String, rule: Hash[untyped, untyped], idempotency_key: String,
-        ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?, ?configuration: Hash[untyped, untyped]?,
+        ?wake: String, ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?, ?configuration: Hash[untyped, untyped]?,
         ?executor_contexts: Hash[String, untyped]?, ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?speaker_public_id: String?,
         ?source_run_public_id: String?, ?source_task_key: String?,
         ?model_selection: Hash[String, untyped]?, ?fallback_models: Array[String]?) -> Created
       def update: (String public_id, expected_lock_version: Integer, ?prompt: String, ?rule: Hash[untyped, untyped],
-        ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?, ?configuration: Hash[untyped, untyped]?,
+        ?wake: String, ?name: String?, ?model: String?, ?reasoning_effort: String?, ?reasoning_enabled: bool?, ?configuration: Hash[untyped, untyped]?,
         ?executor_contexts: Hash[String, untyped]?, ?tool_names: Array[String]?, ?approval_mode: String?, ?to: String?, ?speaker_public_id: String?,
         ?model_selection: Hash[String, untyped]?, ?fallback_models: Array[String]?) -> Schedule
       def pause: (String public_id) -> Schedule

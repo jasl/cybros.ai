@@ -136,6 +136,11 @@ separate browser Session command is provided.
 
 ### First-Party Device Flow
 
+- The public `cybros-terminal` client approves a Human terminal through the same device code
+  and browser consent ceremony. It takes no Agent or Runner claims and issues only a
+  separately revocable API Session with its ordinary fixed lifetime. Revocation uses
+  `DELETE /api/v1/session`. cmctl uses this door for browser-based login and temporary setup.
+
 - The retained connector client's device flow follows `guides/reference/oauth/device-flow.md`.
   It is a
   connection ceremony: its optional scalar OAuth `scope` is accepted and ignored, with no

@@ -99,6 +99,24 @@ class Conversations::ContextAssemblyFitTest < ActiveJob::TestCase
     assert_equal 1, landed.sole.reasoning_parts.length, "the signed block rides"
     assert_equal 210, landed.sole.replay_tokens
     assert_equal Assembly::FillCost.call("done", profile) + 210, Assembly::FillCost.segment(landed.sole, profile)
+
+    # Returning to Opus restores its native thinking after a Haiku turn.
+    # The readable summary carried at the historical downgrade is still
+    # present, so the source turn must fund both.
+    haiku = ModelReasoning::Trace.new(envelope: envelope.merge("origin_model_id" => "claude-haiku-5-5", "items" => []))
+    lower_reply = Assembly::Segment.plain("assistant", "continued", trace: haiku)
+    switched, = Assembly::Replayed.decide([segment, lower_reply], replay: Assembly::Replay.new(mode: "all", target: target),
+      profile: profile)
+    summary = "Prior model's reasoning summary:\na forty-character summary of a long plan"
+    assert_equal 210 + Assembly::FillCost.call(summary, profile), switched.first.replay_tokens
+
+    # A previous strong turn outside the last-turn replay is neither
+    # transmitted nor priced as a handoff.
+    haiku_with_thought = lower_reply.with(trace: ModelReasoning::Trace.new(envelope: envelope.merge("origin_model_id" => "claude-haiku-5-5")))
+    limited, = Assembly::Replayed.decide([segment, haiku_with_thought], replay: Assembly::Replay.new(mode: "last_turn", target: target),
+      profile: profile)
+    assert_equal [0, 210], limited.map(&:replay_tokens)
+    assert_empty limited.first.reasoning_parts
   end
 
   # A STATED BOUND COUNTS THE TRACES TOO: history and the reasoning it carries share the one fit, so

@@ -1,0 +1,5 @@
+<% content_for :title, @provider.name %>
+<div class="max-w-2xl space-y-5">
+  <h1 class="text-2xl font-semibold"><%= t("sso.edit_named", provider: @provider.name) %></h1>
+  <%= render "form", provider: @provider, form_record: @form, url: admin_sso_provider_path(@provider), method: :patch %>
+</div>

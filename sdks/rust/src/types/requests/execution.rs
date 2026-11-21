@@ -90,8 +90,9 @@ impl Default for ScheduleRuleRequest {
         }
     }
 }
-request!(CreateSchedule {prompt:String,rule:ScheduleRuleRequest} {executor_contexts:JsonObject,name:String,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,model_selection:ModelSelection,fallback_models:Vec<String>,source_run_public_id:String,source_task_key:String});
-request!(UpdateSchedule {expected_lock_version:i64} {executor_contexts:JsonObject,name:String,prompt:String,rule:ScheduleRuleRequest,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,memory_context:MemoryContext,model_selection:ModelSelection,fallback_models:Vec<String>});
+vocabulary!(ScheduleWake { Auto, Passive });
+request!(CreateSchedule {prompt:String,rule:ScheduleRuleRequest} {wake:ScheduleWake,executor_contexts:JsonObject,name:String,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,model_selection:ModelSelection,fallback_models:Vec<String>,source_run_public_id:String,source_task_key:String});
+request!(UpdateSchedule {expected_lock_version:i64} {wake:ScheduleWake,executor_contexts:JsonObject,name:String,prompt:String,rule:ScheduleRuleRequest,model:ModelRequest,configuration:JsonObject,tool_names:Vec<String>,approval_mode:ApprovalMode,answering_user_public_id:String,speaker_public_id:String,memory_context:MemoryContext,model_selection:ModelSelection,fallback_models:Vec<String>});
 request!(AnnouncedTool {name:String,effect_profile:EffectProfile} {timeout_ms:u64,description:String,input_schema:JsonObject,mcp:JsonObject});
 request!(AnnouncedDocument {name:String,description:String} {});
 request!(ServiceAnnouncement {tools:Vec<AnnouncedTool>} {environment:JsonObject,documents:Vec<AnnouncedDocument>});

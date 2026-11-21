@@ -2,11 +2,11 @@ module CybrosAgent
 
   module DeviceFlow
     type request_params = Hash[Symbol, String]
-    type branch = :agent | :runner | :application
+    type branch = :agent | :runner | :application | :terminal
     type runner_claims = { identifier: String, display_name: String }
     type cancellation_outcome = :canceled | :consumed
     type plane = "member" | "executor_transport"
-    type credential_result = Credentials | ApplicationOAuth::Credentials
+    type credential_result = Credentials | ApplicationOAuth::Credentials | Platform::SessionGrant
     type poll_outcome = Pending | SlowDown | Throttled | credential_result
 
 
@@ -51,12 +51,12 @@ module CybrosAgent
       attr_reader expires_in: Integer
       attr_reader deadline_monotonic: Numeric
       attr_reader branch: branch
-      attr_reader executor_kind: String
+      attr_reader executor_kind: String?
 
-      def self.new: (String device_code, String user_code, String verification_uri, String verification_uri_complete, Integer interval, Integer expires_in, Numeric deadline_monotonic, branch branch, String executor_kind) -> instance
-                  | (device_code: String, user_code: String, verification_uri: String, verification_uri_complete: String, interval: Integer, expires_in: Integer, deadline_monotonic: Numeric, branch: branch, executor_kind: String) -> instance
-      def self.[]: (String device_code, String user_code, String verification_uri, String verification_uri_complete, Integer interval, Integer expires_in, Numeric deadline_monotonic, branch branch, String executor_kind) -> instance
-                 | (device_code: String, user_code: String, verification_uri: String, verification_uri_complete: String, interval: Integer, expires_in: Integer, deadline_monotonic: Numeric, branch: branch, executor_kind: String) -> instance
+      def self.new: (String device_code, String user_code, String verification_uri, String verification_uri_complete, Integer interval, Integer expires_in, Numeric deadline_monotonic, branch branch, String? executor_kind) -> instance
+                  | (device_code: String, user_code: String, verification_uri: String, verification_uri_complete: String, interval: Integer, expires_in: Integer, deadline_monotonic: Numeric, branch: branch, executor_kind: String?) -> instance
+      def self.[]: (String device_code, String user_code, String verification_uri, String verification_uri_complete, Integer interval, Integer expires_in, Numeric deadline_monotonic, branch branch, String? executor_kind) -> instance
+                 | (device_code: String, user_code: String, verification_uri: String, verification_uri_complete: String, interval: Integer, expires_in: Integer, deadline_monotonic: Numeric, branch: branch, executor_kind: String?) -> instance
       def self.members: () -> [:device_code, :user_code, :verification_uri, :verification_uri_complete, :interval, :expires_in, :deadline_monotonic, :branch, :executor_kind]
 
       def members: () -> [:device_code, :user_code, :verification_uri, :verification_uri_complete, :interval, :expires_in, :deadline_monotonic, :branch, :executor_kind]

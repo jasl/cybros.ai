@@ -3,9 +3,9 @@
 A scheduled job stores a prompt, an explicit execution policy, and a clock on a
 main conversation. At each due occurrence Nexus creates a new ordinary child
 conversation and accepts its first input atomically with the schedule advance.
-The main conversation may continue working. The child's original answer returns
-through the existing asynchronous child-result input path, which queues until
-the main conversation can answer.
+The main conversation can keep working. The child's original result arrives
+through the conversation input queue. Its wake policy determines whether a
+successful result requests a reply or becomes a message.
 
 A job's own paths start at
 `/agent_api/v1/workspaces/:workspace_public_id/conversations/:conversation_public_id/schedules`.
@@ -226,8 +226,17 @@ creation/update timestamps. The deterministic response fixtures are in
 child and omit deleted children. A hidden latest child makes `last_execution`
 null; the job's own accepted-input snapshot remains unchanged.
 
+Create and update accept `schedule.wake` with values `auto` (the create
+default) or `passive`. The schedule projects its current default. Each child
+captures that value at dispatch and the original executing run can override it
+using `manage_schedule`. The execution's `wake` reports its chosen success
+policy. A passive success appends a source-linked `message` to the parent
+without calling its model. An automatic result requests a `direct_reply`.
+Terminal unsuccessful results with an outstanding callback always request a
+reply. A recoverable hold remains visible on the execution until repaired.
+
 Each execution row contains `child_conversation_public_id`, `input_public_id`,
-`turn_public_id`, `variant_public_id`, `run_public_id`, `scheduled_for`, `status`, and
+`turn_public_id`, `variant_public_id`, `run_public_id`, `scheduled_for`, `wake`, `status`, and
 `created_at`. The input UUID is present from atomic birth. Before materialization,
 the turn, variant, and run UUIDs are null. A tool-less reply has a turn and model invocation
 but may never have a run. Those missing identities remain null. `scheduled_for`

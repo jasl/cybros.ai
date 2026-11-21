@@ -43,30 +43,45 @@ module Runs
     def stopped_source?(run)
       return false if run.standalone?
 
-      # Each recursive step follows immutable ownership to an older execution,
-      # through indexed variant/turn keys and the source loop's unique UUID.
-      # Completed intermediate owners remain in this chain: no live-work scan
-      # or asynchronous propagation is needed to fence their pending receipts.
-      sql = ApplicationRecord.sanitize_sql_array([<<~SQL, run.public_id, run.id])
+      stopped_source_ids([run.id]).any?
+    end
+
+    # Carry each inspected Run's identity through its own chain. A missing
+    # parent still revokes the child. A completed, unstopped intermediate
+    # owner still passes its ancestor's Stop on. The same query fences one
+    # execution under lock and discovers cuts for a bounded recovery page.
+    def stopped_source_ids(run_ids)
+      return [] if run_ids.empty?
+
+      sql = ApplicationRecord.sanitize_sql_array([<<~SQL, run_ids, run_ids.length])
         WITH RECURSIVE ownership AS (
-          SELECT id, variant_id, stopped_at, status
-          FROM runs WHERE public_id = ?
+          SELECT id AS root_id, id, variant_id, stopped_at, status
+          FROM runs WHERE id IN (?)
           UNION ALL
-          SELECT parent.id, parent.variant_id, parent.stopped_at, parent.status
+          (SELECT child.root_id, parent.id, parent.variant_id, parent.stopped_at, parent.status
           FROM ownership child
-          JOIN variants variant ON variant.id = child.variant_id
-          JOIN turns turn ON turn.id = variant.turn_id
-          LEFT JOIN variants origin ON origin.id = variant.origin_variant_id
-          LEFT JOIN runs parent ON parent.public_id = turn.sender_run_public_id
-          WHERE turn.sender_run_public_id IS NOT NULL AND turn.forked_from_turn_public_id IS NULL
-            AND turn.source_released_at IS NULL
-            AND turn.communication_kind IS DISTINCT FROM 'message'
-            AND (variant.position = 0 OR (variant.source = 'fallback' AND origin.position = 0))
+          CROSS JOIN LATERAL (
+            -- Keep lookup rooted at this child even if most historical turns have a sender.
+            SELECT turn.sender_run_public_id
+            FROM variants variant
+            JOIN turns turn ON turn.id = variant.turn_id
+            LEFT JOIN variants origin ON origin.id = variant.origin_variant_id
+            WHERE variant.id = child.variant_id
+              AND turn.sender_run_public_id IS NOT NULL AND turn.forked_from_turn_public_id IS NULL
+              AND turn.source_released_at IS NULL
+              AND turn.communication_kind IS DISTINCT FROM 'message'
+              AND (variant.position = 0 OR (variant.source = 'fallback' AND origin.position = 0))
+            OFFSET 0
+          ) source
+          LEFT JOIN runs parent ON parent.public_id = source.sender_run_public_id
+          -- One parent at most per child. Bound the estimate of each recursive
+          -- generation by its roots to avoid JIT compilation on an ordinary page.
+          LIMIT ?)
         )
-        SELECT EXISTS (SELECT 1 FROM ownership
-          WHERE ((stopped_at IS NOT NULL OR status IN ('canceling', 'canceled')) AND id <> ?) OR id IS NULL)
+        SELECT DISTINCT root_id FROM ownership
+        WHERE id IS NULL OR (id <> root_id AND (stopped_at IS NOT NULL OR status IN ('canceling', 'canceled')))
       SQL
-      ApplicationRecord.lease_connection.select_value(sql)
+      ApplicationRecord.lease_connection.select_values(sql)
     end
 
     def stopped_variant_source?(variant)

@@ -9,20 +9,26 @@
 
   <%= render "layouts/shared/flash" %>
 
-  <%= form_with url: session_path do |form| %>
-    <%= hidden_field_tag :return_to, params[:return_to] if params[:return_to].present? %>
-    <fieldset class="fieldset">
-      <%= form.label :email, t("sessions.new.email"), class: "label" %>
-      <%= form.email_field :email, required: true, autofocus: true, autocomplete: "username", placeholder: t("sessions.new.enter_your_email_address"), value: params[:email], class: "input w-full" %>
+  <%= render "sso/login_options", providers: @login_providers, flow_params: { purpose: "login", return_to: params[:return_to] } %>
 
-      <%= form.label :password, t("sessions.new.password"), class: "label mt-2" %>
-      <%= form.password_field :password, required: true, autocomplete: "current-password", placeholder: t("sessions.new.enter_your_password"), maxlength: 72, class: "input w-full" %>
+  <% if @sso_only %>
+    <p class="text-sm text-base-content/70"><%= t("sso.contact_admin") %></p>
+  <% else %>
+    <%= form_with url: session_path do |form| %>
+      <%= hidden_field_tag :return_to, params[:return_to] if params[:return_to].present? %>
+      <fieldset class="fieldset">
+        <%= form.label :email, t("sessions.new.email"), class: "label" %>
+        <%= form.email_field :email, required: true, autofocus: true, autocomplete: "username", placeholder: t("sessions.new.enter_your_email_address"), value: params[:email], class: "input w-full" %>
 
-      <%= form.submit t("sessions.new.sign_in"), class: "btn btn-primary btn-block mt-4" %>
-    </fieldset>
+        <%= form.label :password, t("sessions.new.password"), class: "label mt-2" %>
+        <%= form.password_field :password, required: true, autocomplete: "current-password", placeholder: t("sessions.new.enter_your_password"), maxlength: 72, class: "input w-full" %>
+
+        <%= form.submit t("sessions.new.sign_in"), class: "btn btn-primary btn-block mt-4" %>
+      </fieldset>
+    <% end %>
+
+    <p class="text-center text-sm text-base-content/60">
+      <%= link_to t("sessions.new.forgot_password"), new_password_path, class: "link link-hover" %>
+    </p>
   <% end %>
-
-  <p class="text-center text-sm text-base-content/60">
-    <%= link_to t("sessions.new.forgot_password"), new_password_path, class: "link link-hover" %>
-  </p>
 </div>

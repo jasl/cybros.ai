@@ -9,8 +9,7 @@
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
-# Docker's latest published Ruby image; 4.0.9 is not published yet (2026-10-24).
-ARG RUBY_VERSION=4.0.8
+ARG RUBY_VERSION=4.0.10
 
 # JavaScript and CSS are architecture-independent output. Build them natively:
 # Bun's JavaScriptCore allocator cannot reliably run through QEMU during cross-builds.

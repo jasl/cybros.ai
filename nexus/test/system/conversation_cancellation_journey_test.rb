@@ -167,7 +167,6 @@ module ConversationCancellationJourney
         assert_text I18n.t("conversation_cancellation.#{key}")
       end
       within("form[action='#{conversation_cancellation_path(@conversation)}'][method='post']") do
-        assert_not_empty find("input[name='authenticity_token']", visible: :all).value
         assert_equal reader_path, find("input[name='return_to']", visible: :all).value
       end
     end

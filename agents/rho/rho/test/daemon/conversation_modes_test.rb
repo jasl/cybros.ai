@@ -19,6 +19,36 @@ class DaemonConversationModesTest < Minitest::Test
       end
   end
 
+  def test_input_policy_returns_an_empty_allowlist_and_inherits_a_captured_environment
+    api = CapturedApi.new(user_public_id: IDENTITY.user_public_id, tools: NexusDoubles::KERNEL_CATALOG,
+      trace: NexusDoubles::RUNNING_TRACE, events: [])
+    daemon = member_ready(boot(config: catalog_config("kernel_tools" => [])), api)
+    address = { workspace_public_id: "ws-1", public_id: "child-1" }
+    change = request(daemon, :patch, "/conversations/modes", token: bearer(daemon), body: address.merge(subagent: false))
+    assert_equal "200", change.code, change.body
+    policy = request(daemon, :post, "/conversations/prepare-input-policy", token: bearer(daemon), body: address)
+    assert_equal "200", policy.code, policy.body
+    assert_equal({ "tool_names" => [] }, JSON.parse(policy.body))
+    assert_equal "child-1", api.tool_assemblies.last.fetch("conversation_public_id")
+    assert_empty api.inputs
+    assert_empty daemon.lineage.followers
+  end
+
+  def test_input_policy_requires_the_address_and_refuses_overrides_and_a_foreign_answerer
+    api = kernel_api(user_public_id: "other-answerer", events: [])
+    daemon = member_ready(boot, api)
+    path = "/conversations/prepare-input-policy"
+    address = { public_id: "c-1", workspace_public_id: "ws-1" }
+    [address.except(:workspace_public_id), address.except(:public_id), address.merge(workspace_public_id: []),
+     address.merge(text: "Submit"), address.merge(tool_names: []), address.merge(speaker_public_id: "someone")].each do |invalid|
+      assert_equal "400", request(daemon, :post, path, token: bearer(daemon), body: invalid).code
+    end
+    foreign = request(daemon, :post, path, token: bearer(daemon), body: address)
+    assert_equal "409", foreign.code, foreign.body
+    assert_equal "input_policy_unavailable", JSON.parse(foreign.body).dig("error", "code")
+    assert_empty api.inputs
+  end
+
   def test_subagent_off_narrows_a_captured_child_after_the_live_kernel_selection_is_cleared
     api = CapturedApi.new(user_public_id: IDENTITY.user_public_id, tools: NexusDoubles::KERNEL_CATALOG,
       trace: NexusDoubles::RUNNING_TRACE, events: [])

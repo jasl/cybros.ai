@@ -1,0 +1,52 @@
+<% content_for :title, t("sso.login_methods") %>
+<%= render layout: "settings/shell", locals: { current: :sso_connections } do %>
+  <section class="space-y-3">
+    <h2 class="text-lg font-medium"><%= t("sso.login_methods") %></h2>
+    <p><%= t(Current.account.sso_only? ? "sso.policy_sso" : "sso.policy_mixed") %></p>
+    <% if !Current.account.sso_only? %>
+      <%= link_to t(@local_password ? "sso.manage_password" : "sso.set_password"), settings_password_path, class: "link" %>
+    <% end %>
+    <% if @sources.empty? %><p><%= t("sso.no_providers") %></p><% end %>
+    <% @sources.each do |provider| %>
+      <% connection = @connections[provider.id] %>
+      <article class="space-y-2 rounded-box border border-base-300 p-4">
+        <h3 class="font-medium"><%= provider.name %></h3>
+        <p class="break-all text-sm"><%= provider.issuer %> · <%= t(provider.enabled? ? "sso.enabled" : "sso.disabled") %></p>
+        <% if connection %>
+          <% if provider.enabled? && !@available_ids.include?(provider.id) %>
+            <p class="text-sm"><%= t("sso.admission_changed", provider: provider.name) %></p>
+          <% end %>
+          <p><%= t("sso.connected_as", name: connection.display_name.presence || connection.subject) %></p>
+        <% end %>
+        <% retained = @available_ids.reject { |id| id == provider.id }.map { |id| @connections.fetch(id).sso_provider } %>
+        <% if connection && !@local_password && retained.empty? %>
+          <button type="button" class="btn btn-sm" disabled><%= t("sso.disconnect") %></button>
+          <p class="text-sm"><%= t("sso.last_method") %></p>
+        <% else %>
+          <% selected = @selected_id == provider.public_id %>
+          <details <%= "open" if selected %>>
+            <summary class="cursor-pointer"><%= t(connection ? "sso.disconnect" : "sso.connect") %></summary>
+            <div class="mt-3 space-y-2">
+              <% if selected && @verified %>
+                <p role="status"><%= t("sso_identity.verified") %></p>
+              <% else %>
+                <p class="text-sm"><%= t("sso.verify") %></p>
+                <%= render "sso/verify_sources", providers: retained, action_name: connection ? "sso_disconnect" : "sso_connect", target: provider.public_id, return_to: settings_sso_connections_path(provider: provider.public_id) %>
+              <% end %>
+              <%= form_with url: connection ? settings_sso_connection_path(provider) : sso_start_path(provider),
+                    method: connection ? :delete : :post, data: { turbo: false } do |form| %>
+                <%= form.hidden_field :purpose, value: "connect", id: nil unless connection %>
+                <%= form.hidden_field :return_to, value: settings_sso_connections_path, id: nil unless connection %>
+                <% if @local_password && !(selected && @verified) %>
+                  <%= form.label :current_password, t("sso.current_password"), for: "sso-password-#{provider.public_id}", class: "label" %>
+                  <%= form.password_field :current_password, id: "sso-password-#{provider.public_id}", autocomplete: "current-password", class: "input input-sm" %>
+                <% end %>
+                <%= form.submit t(connection ? "sso.disconnect" : "sso.connect"), class: "btn btn-sm" %>
+              <% end %>
+            </div>
+          </details>
+        <% end %>
+      </article>
+    <% end %>
+  </section>
+<% end %>

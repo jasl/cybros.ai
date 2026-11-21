@@ -6,16 +6,10 @@ module E2E
   # the kernel marked. Same gating as the OpenAI smoke — paid, local,
   # opt-in.
   module ManualAnthropic
-    # A THINKING model of the Claude 5 family (the catalog's
-    # `20_anthropic.yml` rows: adaptive thinking, `anthropic_thinking`
-    # replay) — the cache probe replays its own reasoning across a tool
-    # loop, the case the kernel's tail marker was skipped on (the cache
-    # audit of 2026-09-16, prefix-1); the cheapest of the three.
-    DEFAULT_MODEL = "claude-sonnet-5".freeze
-    # Anthropic's minimum cacheable prefix is model-class-dependent
-    # (1024/2048/4096 tokens); under it nothing caches at all — silently,
-    # with no charge and no benefit. The probe's corpus must clear the
-    # largest of them on its own or it proves nothing.
+    # Use the least expensive shipped Claude model for the paid tool loop.
+    # All four direct profiles support adaptive thinking and cache prefixes
+    # from 512 tokens. Each trial uses a fresh corpus above that threshold.
+    DEFAULT_MODEL = "claude-haiku-5-5".freeze
 
     # The probes that DECLARE TOOLS need the lane to admit them; the
     # cache probe needed the marker to be legal. Both are properties
@@ -52,8 +46,6 @@ module E2E
     def corpus(salt)
       line = "Reference item %04d for run #{salt}: the quick brown fox " \
              "jumps over the lazy dog and files a report.\n"
-      # ~12 tokens a line; 600 lines clears the largest minimum prefix
-      # with room to spare.
       (1..600).map { |n| format(line, n) }.join
     end
   end

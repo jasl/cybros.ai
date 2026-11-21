@@ -27,13 +27,29 @@ module ModelReasoning
     # native material that rides its call even when no thought does.
     def signed_calls = call_markers.select { |item| item["provider_payload"] }
 
+    def signed_messages = message_markers.select { |item| item["provider_payload"] }
+
+    def placed_message_blocks?
+      return false unless %w[anthropic_thinking gemini_thought].include?(origin_format_variant)
+
+      first = message_markers.first
+      first && (signed_messages.any? || message_markers.many? || call_markers.any? ||
+        reasoning_items.any? { |item| item["kind"] != "token_accounting" && item.fetch("ordinal") > first.fetch("ordinal") })
+    end
+
     # Whether a replay has anything to carry, so eligibility reads this and
     # never the trace's presence.
-    def replay_material? = reasoning_items.any? || signed_calls.any?
+    def replay_material? = reasoning_items.any? || signed_calls.any? || signed_messages.any?
 
     # The answer's label on a wire that states one: the last message's
     # phase, since a folded answer ends with its final words. Nil elsewhere.
     def assistant_phase = message_markers.last&.dig("phase")
+
+    # A text-only or tool-only Claude reply still identifies the recipient of
+    # the preceding handoff when a later request rebuilds the conversation.
+    def claude_origin
+      native_origin if origin_format_variant == "anthropic_thinking"
+    end
 
     def native_origin
       { "provider_id" => origin_provider_id,

@@ -72,6 +72,7 @@ export default defineConfig({
             { text: 'Models and providers', link: '/operate/models-and-providers' },
             { text: 'Reuse a model definition', link: '/operate/model-definitions' },
             { text: 'Users', link: '/operate/members' },
+            { text: 'Enterprise sign-in', link: '/operate/enterprise-sign-in' },
             { text: 'Inspect and recover work', link: '/operate/work-console' },
             { text: 'Export retained data', link: '/operate/export-data' },
             { text: 'Read and cancel Conversation inputs', link: '/operate/read-conversation-inputs' },
@@ -152,6 +153,7 @@ export default defineConfig({
           text: 'Agent API v1',
           collapsed: false,
           items: [
+            { text: 'OpenAPI description', link: '/reference/openapi' },
             { text: 'Common contract', link: '/reference/agent-api' },
             { text: 'Profile', link: '/reference/agent-api/profile' },
             { text: 'Agent configuration', link: '/reference/agent-api/profile-configuration' },

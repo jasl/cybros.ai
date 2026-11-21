@@ -61,30 +61,25 @@ class TestGeminiRequests < Minitest::Test
     end
   end
 
-  # Frozen reasoning contract (register "Reasoning contracts v1"): the gemini
-  # lane's wire vocabulary is thinkingConfig.thinkingLevel ∈ minimal|low|
-  # medium|high. Every accepted effort maps 1:1 onto that closed set.
   def test_create_maps_each_accepted_reasoning_effort_to_thinking_level
-    %w[minimal low medium high].each do |effort|
+    %w[minimal low medium high xhigh].each do |effort|
       adapter = capturing_gemini_adapter
       protocol = SimpleInference::Protocols::GeminiGenerateContent.new(
         base_url: "https://generativelanguage.googleapis.com", api_key: "secret", adapter: adapter
       )
 
-      protocol.create(model: "gemini-3.7-flash", input: "Hello", reasoning_effort: effort)
+      model = effort == "minimal" ? "gemini-3.6-flash" : "gemini-4-hydrogen"
+      protocol.create(model: model, input: "Hello", reasoning_effort: effort)
 
       thinking_config = JSON.parse(adapter.last_request.fetch(:body)).dig("generationConfig", "thinkingConfig")
       assert_equal effort, thinking_config.fetch("thinkingLevel")
       assert_equal true, thinking_config.fetch("includeThoughts")
-      refute thinking_config.key?("thinkingBudget"), "3.x reasoning must never emit the 2.5-era thinkingBudget"
+      refute thinking_config.key?("thinkingBudget")
     end
   end
 
-  # Efforts outside the frozen 3.x thinkingLevel vocabulary (none, xhigh, max,
-  # typos) are loud local rejections with zero outbound IO — there is no
-  # thinkingBudget disable path and no silent nearest-level mapping.
   def test_create_rejects_reasoning_effort_outside_the_frozen_thinking_level_vocabulary
-    %w[none xhigh max bogus].each do |effort|
+    %w[none max bogus].each do |effort|
       adapter = capturing_gemini_adapter
       protocol = SimpleInference::Protocols::GeminiGenerateContent.new(
         base_url: "https://generativelanguage.googleapis.com", api_key: "secret", adapter: adapter
@@ -101,16 +96,16 @@ class TestGeminiRequests < Minitest::Test
     end
   end
 
-  def test_omitted_reasoning_effort_sends_no_thinking_config
+  def test_omitted_reasoning_effort_gets_summaries_at_the_model_default_level
     adapter = capturing_gemini_adapter
     protocol = SimpleInference::Protocols::GeminiGenerateContent.new(
       base_url: "https://generativelanguage.googleapis.com", api_key: "secret", adapter: adapter
     )
 
-    protocol.create(model: "gemini-3.7-flash", input: "Hello")
+    protocol.create(model: "gemini-4-neon", input: "Hello")
 
     body = JSON.parse(adapter.last_request.fetch(:body))
-    assert_nil body.dig("generationConfig", "thinkingConfig"), "the server-side default (medium) applies when unset"
+    assert_equal({ "includeThoughts" => true }, body.dig("generationConfig", "thinkingConfig"))
   end
 
   # Register "All-workload request-control" frozen disposition: this lane

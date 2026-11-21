@@ -52,6 +52,16 @@ class AccountOwnershipTest < ActiveSupport::TestCase
     assert_equal :owner_protected, @member.reload.change_role(to: :member)
   end
 
+  test "a temporary password or pending member recovery blocks ownership transfer" do
+    @member.change_role(to: :admin)
+    @member.identity.update!(password_change_required: true)
+    assert_equal :target_not_eligible, @account.transfer_ownership(to: @member, by: @owner)
+    @member.identity.update!(password_change_required: false)
+    assert_equal :issued, MemberRecoveryAuthorizations::Issue.call(user: @member).outcome
+    assert_equal :target_not_eligible, @account.transfer_ownership(to: @member, by: @owner)
+    assert_equal @owner, @account.owner
+  end
+
   test "a demotion accepted first defeats a stale transfer" do
     @member.change_role(to: :admin)
     target = @member.reload

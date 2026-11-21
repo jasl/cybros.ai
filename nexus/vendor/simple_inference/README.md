@@ -498,9 +498,10 @@ The resource supports text or JSON evidence and predicate, choice and score
 questions. TypeSafe `noul` becomes predicate; scores retain zero-based,
 possibly fractional values. OpenAI boolean choices are preserved, while
 TypeSafe requires string choices. Per-question OpenAI refusals remain answers.
-Image evidence and TypeSafe box questions are not supported by this common
-interface. See the [Nexus decision contract](../../../guides/reference/agent-api/inference-requests.md#decisions)
-for question and answer shapes.
+OpenRouter Jev also reads inline PNG and JPEG images in JSON evidence. Supply
+an `image_url` part with a base64 data URL in the top-level `input` array.
+The public contract includes an image request and the supported question and
+answer shapes. [Nexus decision contract](../../../guides/reference/agent-api/inference-requests.md#decisions)
 
 Inside Nexus, callers use `InferenceRequests::Create::Command` with
 `workload: "decision"`, their workspace and creating user, a submitted model

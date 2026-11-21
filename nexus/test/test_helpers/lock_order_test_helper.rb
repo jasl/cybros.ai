@@ -87,6 +87,9 @@ module LockOrderTestHelper
   # improvised one.
   FOUNDATION_LOCK_LADDER = %w[
     usage_records
+    accounts
+    sso_attempts
+    invitations
     identities
     device_authorizations
     workspaces

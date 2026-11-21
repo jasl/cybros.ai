@@ -28,6 +28,11 @@ en:
     command_scope: Pause stops future runs. Work already started continues. Run now starts an extra run without changing the schedule. If the response is lost, check the history before trying again.
     cancel_confirmation: Cancel this schedule and remove its waiting input? Work that has already started continues; use its ordinary Stop control to stop it.
     read_only: You can read this schedule, but cannot change it.
+    default_wake: Default for successful results
+    execution_wake: On success
+    wake_modes:
+      auto: Ask the parent to respond
+      passive: Record in the parent conversation
     saved_instructions: Saved instructions
     creator: Created by
     answerer: Answering agent

@@ -51,7 +51,7 @@ module Conversations
           result = locked_update
           raise ActiveRecord::Rollback unless result.accepted?
         end
-        if result.accepted?
+        if result.accepted? && !result.value.steering?
           # Rescheduling a head can free ready rows behind it immediately.
           @host.wake_drain
           at = wake_at

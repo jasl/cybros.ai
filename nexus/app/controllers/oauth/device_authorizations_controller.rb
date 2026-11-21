@@ -8,6 +8,17 @@ class OAuth::DeviceAuthorizationsController < OAuth::MachineController
 
   rescue_from OAuth::InvalidRequest, with: -> { render_oauth_error(:invalid_request) }
 
+  # @oas_include
+  # @summary Create device authorizations
+  # @tags OAuth, device authorizations
+  # @no_auth
+  # @request_body_ref #/components/requestBodies/OauthDeviceAuthorizationsCreate
+  # @response_ref (400) #/components/responses/OAuthError
+  # @response_ref (409) #/components/responses/OAuthError
+  # @response_ref (415) #/components/responses/OAuthError
+  # @response_ref (429) #/components/responses/OAuthError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/OauthDeviceAuthorizationsCreate
   def create
     return render_oauth_error(:invalid_client) unless OAuth::Client.registered?(scalar_field(:client_id))
 
@@ -21,7 +32,7 @@ class OAuth::DeviceAuthorizationsController < OAuth::MachineController
 
     account = Account.first
     if account.nil?
-      if connection.application?
+      if connection.application? || connection.terminal?
         render json: {
           error: "initialization_required",
           initialization_uri: setup_url(**Rails.application.routes.default_url_options),

@@ -5,16 +5,46 @@
 # principals listing renders it plus its scope, description, declarer and
 # configuration block. The segment is constrained to the handle grammar in
 # the routes, so a name outside it never reaches here.
+# @auth [MemberBearer]
 class AgentAPI::V1::Profiles::AgentsController < AgentAPI::V1::BaseController
   serves_plane :member
   include AgentAPI::V1::Profiles::NamedAgents
 
   before_action :require_agent
 
+  # @oas_include
+  # @summary List agents
+  # @tags Member, agents
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ProfilesAgentsIndex
   def index
     render json: { agents: listing.map { |row| named_agent(row) } }
   end
 
+  # @oas_include
+  # @summary Update agents
+  # @tags Member, agents
+  # @parameter name(path) [!String] Resource selector.
+  # @request_body_ref #/components/requestBodies/AgentApiV1ProfilesAgentsUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ProfilesAgentsUpdate
+  # @response_ref (201) #/components/responses/AgentApiV1ProfilesAgentsUpdate
   def update
     outcome = Users::DeclareNamedAgent.call(caller: acting_user, name: params[:name], **declaration)
 
@@ -30,6 +60,20 @@ class AgentAPI::V1::Profiles::AgentsController < AgentAPI::V1::BaseController
     end
   end
 
+  # @oas_include
+  # @summary Destroy agents
+  # @tags Member, agents
+  # @parameter name(path) [!String] Resource selector.
+  # @response_ref (204) #/components/responses/AgentApiV1ProfilesAgentsDestroy
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def destroy
     row = own_definitions.find_by(agent_identifier: composed_identifier(params[:name]))
     return render_refusal(:not_found) if row.nil?

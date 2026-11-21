@@ -13,7 +13,7 @@ module Rho
       # yet: the verb that follows it, this gem's own.
       PENDING_HINT = "`rho watch` follows it".freeze
 
-      MODEL_DESC = "Which model drives it, as provider/reference (e.g. openrouter/qwen3-coder); " \
+      MODEL_DESC = "Which model drives it, as provider/reference (e.g. openrouter/z-ai/glm-5.3); " \
                    "default: the daemon's `default_model` setting".freeze
 
       DO_OPTIONS = {

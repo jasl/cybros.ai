@@ -405,7 +405,7 @@ class Conversations::ReplyLaneTest < ActiveJob::TestCase
       "an explicit caller mode wins over the downgrade — re-enabling is one intent away"
   end
 
-  test "after a model switch the earlier reasoning carries nothing: no foreign blob, no fence" do
+  test "a new model receives the prior display summary and answer as assistant history" do
     accept!(kind: "direct_reply", text: "first ask", provider: "dev", model: "mock-text")
     drain!
     apply_via(admitted_reply_attempt,
@@ -421,9 +421,8 @@ class Conversations::ReplyLaneTest < ActiveJob::TestCase
     assert_nil entries.find { |p| p["type"] == "reasoning_item" },
       "an encrypted blob never crosses a model boundary"
     assistant = entries.find { |p| p["role"] == "assistant" }
-    assert_equal [{ "type" => "text", "text" => "Mock: one" }], assistant.fetch("parts"),
-      "the answer rides as it was; its thinking reads as nothing on the other model"
-    assert_not_includes entries.to_json, "the plan"
+    assert_equal ["Prior model's reasoning summary:\nthe plan", "Mock: one"], assistant.fetch("parts").pluck("text")
+    assert_not_includes entries.to_json, "gAAA-blob"
   end
 
   # The per-request history intent: the caller speaks in bounds — entries up, or a share of the

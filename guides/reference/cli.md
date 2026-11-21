@@ -6,6 +6,11 @@ Three command-line tools, each with its own home and credentials. `COMMAND help`
 
 The agent's control plane. In the Docker stack, run it as `./cybros rho …` from the installation directory.
 
+`--nexus-url URL` selects Nexus; later commands default to the address saved in
+`RHO_HOME`. Each home binds to one Nexus. For HTTP URLs, `localhost` and
+`127.0.0.1` are equivalent, and rho connects through `127.0.0.1`. The scheme,
+port and path must still match. HTTPS retains the hostname for certificate checks.
+
 | Command | Purpose |
 | --- | --- |
 | `rho server [--bind] [--port] [--display-name]` | Start the foreground daemon |
@@ -36,7 +41,7 @@ conversation and title model choices, then read them back:
 
 ```sh
 rho models
-rho settings '{"default_model":"kimi_code/kimi-for-coding","conversation_title_model":"deepseek/deepseek-flash"}'
+rho settings '{"default_model":"kimi_code/k3.1-pro","conversation_title_model":"deepseek/deepseek-flash"}'
 rho settings
 ```
 
@@ -96,8 +101,8 @@ The human operator CLI over the Platform API; see [cmctl](../operate/cmctl.md).
 
 | Command | Purpose |
 | --- | --- |
-| `cmctl login --url URL --email EMAIL`, `cmctl logout`, `cmctl status` | The saved operator session |
-| `cmctl setup --url URL` | Guided provider and model setup |
+| `cmctl login --url URL [--device | --email EMAIL]`, `cmctl logout`, `cmctl status` | The saved operator session |
+| `cmctl setup --url URL [--device]` | Guided provider and model setup |
 | `cmctl providers`, `cmctl provider add\|edit\|show\|enable\|disable\|discover\|reset ID`, `cmctl provider key set ID` | Provider connections and keys |
 | `cmctl models [--available] [--workload …]`, `cmctl model add\|edit\|hide\|unhide\|test\|invalidate\|restore\|remove\|reset REF` | Model definitions |
 | `cmctl account cost-unit UNIT`, `cmctl account retention [DAYS\|off]` | Account settings |

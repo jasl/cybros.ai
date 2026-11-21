@@ -64,6 +64,13 @@ module Nexus
               "runner_display_name" => "Fixture runner",
               "executor_kind" => Executor::MACHINE_KINDS.first,
             },
+            "terminal_authorization_request" => { "client_id" => OAuth::TERMINAL_CLIENT_ID },
+            "terminal_session_response" => {
+              "access_token" => "fixture-session-token",
+              "token_type" => "Bearer",
+              "expires_in" => Session::LIFETIME.to_i,
+              "session" => sessions.fetch("valid_show_fixture").fetch("session"),
+            },
             "device_token_request" => {
               "client_id" => OAuth::DEVICE_CLIENT_ID,
               "grant_type" => OAuth::DEVICE_GRANT_TYPE,

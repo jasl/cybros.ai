@@ -40,7 +40,7 @@ module Runs
           # the same shape as the wake above.
           return if Conversations::Compaction::Arm.fallback(run)
 
-          nodes = run.tasks.where(status: Task::LIVE_STATUSES).to_a
+          nodes = run.tasks.live.to_a
           # Started, not live: only begun work holds a loop open. Counting
           # `queued` here would kill the starvation arm and the announce split.
           started = nodes.select(&:started?)

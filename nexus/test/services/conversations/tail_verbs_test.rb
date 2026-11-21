@@ -289,7 +289,7 @@ class Conversations::TailVerbsTest < ActiveJob::TestCase
     entries = request.content_body_entries.map { |e| e.content_fragment.payload }
     assert_nil entries.find { |p| p["type"] == "reasoning_item" },
       "a model override reassembles; the model-bound blob never ships to a foreign model"
-    assert_not_includes entries.to_json, "the plan", "and the other model's thinking reads as nothing, not as text"
+    assert_includes entries.flat_map { |entry| Array(entry["parts"]).pluck("text") }, "Prior model's reasoning summary:\nthe plan"
   end
 
   test "the fallback keeps the newest segment whatever its size, and narrates its trim" do

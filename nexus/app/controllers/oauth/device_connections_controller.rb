@@ -10,6 +10,7 @@ class OAuth::DeviceConnectionsController < OAuth::BrowserController
     result = DeviceAuthorizations::Connect.call(
       authorization: grant,
       connector: Current.user,
+      browser_session: Current.session,
       account_wide: account_wide,
       expected_live_runner: expected_live_runner
     )

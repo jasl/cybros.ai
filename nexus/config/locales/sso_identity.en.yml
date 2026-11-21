@@ -1,0 +1,13 @@
+en:
+  sso_identity:
+    sso_required: Use an enterprise sign-in method.
+    invite_required: Invite the member to join through enterprise sign-in.
+    password_unavailable: Your account requires enterprise sign-in.
+    owner_login_required: This administrator must complete sign-in setup before receiving ownership.
+    verified: Your sign-in has been verified for this change.
+    reconnect: Restore and require SSO reconnection
+    reconnect_required: This member needs a login method. Choose restore and reconnect, then issue a member recovery link on the deployment host.
+    restored_for_recovery: Member restored for reconnection. Issue a member_recovery:mint_sso link on the deployment host.
+  errors:
+    messages:
+      sso_required: Use an enterprise sign-in method.

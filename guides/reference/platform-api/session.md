@@ -25,7 +25,9 @@ need not have run yet.
 POST /api/v1/session
 ```
 
-This endpoint is unauthenticated. It verifies an active human member's email
+When the installation requires enterprise SSO, this endpoint returns `403 sso_required` for every email address. New terminal logins use the browser device flow. Existing Sessions retain their lifetime and can still be inspected or revoked. [Human terminal login](../oauth/device-flow.md#human-terminal-login)
+
+In mixed mode this endpoint is unauthenticated. It verifies an active human member's email
 and current password and, on success, creates an API-kind Session.
 
 ### Body parameters
@@ -110,6 +112,7 @@ header.
 | `401 Unauthorized` | `invalid_credentials` | Email/password authentication failed or the member is not active. |
 | `403 Forbidden` | `local_recovery_required` | The otherwise-valid Identity is fenced pending deployment-local recovery. No Session is created. |
 | `403 Forbidden` | `password_change_required` | The temporary password must first be changed in the web console. No Session is created. |
+| `403 Forbidden` | `sso_required` | Enterprise sign-in is required. Use the browser device flow for terminal login. |
 | `429 Too Many Requests` | `rate_limited` | The login limit was exhausted. The response includes `Retry-After`. |
 
 ## Get the current Session

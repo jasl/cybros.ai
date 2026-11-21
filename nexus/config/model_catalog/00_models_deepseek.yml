@@ -3,10 +3,13 @@ schema_version: cybros.model_catalog.v1
 # the complete limits block; protocol options and pricing stay on each route.
 model_definitions:
   deepseek-v4.1-flash:
+    # DeepSeek-V4.1-Flash-1017 revision 08c8657f02291e11b6f6b63e0e16014f8e748518
+    # publishes the same tokenizer.json bytes as this pinned Flash vocabulary.
     token_counter:
       kind: huggingface
       tokenizer_id: deepseek-ai/DeepSeek-V4.1-Flash
     capabilities:
+      input_modalities: [image]
       limits:
         # SHARED by DeepSeek's own wording: "The total length of input tokens
         # and generated tokens is limited by the model's context length."

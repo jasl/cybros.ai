@@ -2,6 +2,7 @@
 # surface through their parent, the bin has its own view), never a side
 # (`?side=1` lists sides only; any other value is the default). Show stays
 # browsable for archived rows; tombstones conceal as absence everywhere.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::ConversationsController <
       AgentAPI::V1::Workspaces::BaseController
   include AgentAPI::ConversationListing
@@ -10,6 +11,20 @@ class AgentAPI::V1::Workspaces::ConversationsController <
 
   SIDE_FLAG = "1".freeze
 
+  # @oas_include
+  # @summary List conversations
+  # @tags Member, conversations
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsIndex
   def index
     scope = Conversation.visible_to(acting_user, workspace: @workspace)
       .unarchived.lifecycle_roots
@@ -18,12 +33,43 @@ class AgentAPI::V1::Workspaces::ConversationsController <
     render_conversation_list(filter_conversation_answerer(scope))
   end
 
+  # @oas_include
+  # @summary Read conversations
+  # @tags Member, conversations
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsShow
   def show
     conversation = find_listable_conversation(@workspace, param: :public_id)
 
     render json: { conversation: AgentAPI::ConversationPresenter.full(conversation, acting_user: acting_user) }
   end
 
+  # @oas_include
+  # @summary Create conversations
+  # @tags Member, conversations
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter_ref #/components/parameters/IdempotencyKey
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesConversationsCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (201) #/components/responses/AgentApiV1WorkspacesConversationsCreate
   def create
     key = required_idempotency_key
     return if performed?
@@ -74,6 +120,22 @@ class AgentAPI::V1::Workspaces::ConversationsController <
     end
   end
 
+  # @oas_include
+  # @summary Update conversations
+  # @tags Member, conversations
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesConversationsUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsUpdate
   def update
     conversation = find_listable_conversation(@workspace, param: :public_id)
     return unless authorize_writable(conversation)
@@ -104,6 +166,21 @@ class AgentAPI::V1::Workspaces::ConversationsController <
     end
   end
 
+  # @oas_include
+  # @summary Destroy conversations
+  # @tags Member, conversations
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (204) #/components/responses/AgentApiV1WorkspacesConversationsDestroy
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def destroy
     conversation = find_listable_conversation(@workspace, param: :public_id)
     return unless authorize_writable(conversation)

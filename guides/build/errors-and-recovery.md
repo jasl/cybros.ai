@@ -45,7 +45,6 @@ Task statuses: `waiting | needs_approval | running | dispatched | awaiting_input
 | `provider_model_unavailable` | Provider HTTP 401, 403 or 404 | Fix credentials, enablement or the model reference |
 | `provider_context_overflow`, `context_overflow` | The request did not fit | Arms a compaction repair rather than a retry |
 | `model_refused` | Classifier refusal or content protection | A classifier refusal may advance to the next permitted captured candidate; a content block cannot |
-| `model_route_spent` | A retry named an already refused or exhausted route | Choose a different unspent route permitted by the captured intent |
 | `conversation_cost_limit_reached` | Known Conversation cost reached its limit before priced admission | Raise or clear the limit, then retry the failed task |
 | `model_capability_unavailable` | The model lacks something the request needs, e.g. tools | Choose another model |
 | `await_failed`, `await_timeout` | A parked question or wait failed or expired | Decide the hold |
@@ -53,8 +52,11 @@ Task statuses: `waiting | needs_approval | running | dispatched | awaiting_input
 | `run_canceled` | A stop took the row before it started | — |
 
 Model recovery uses bounded provider attempts and the captured fallback list;
-steps cannot add a retry budget. Neither manual retry nor a later profile edit
-renews a refused or exhausted route. See [Model selection and recovery](../reference/agent-api/models.md#model-selection-and-recovery).
+steps cannot add a retry budget. An explicit task retry creates a fresh
+bounded invocation, including on the same refused or exhausted model.
+It retains prior invocation history, so spent automatic fallback routes
+remain spent. Later profile edits do not change the captured chain.
+See [Model selection and recovery](../reference/agent-api/models.md#model-selection-and-recovery).
 Ordinary failures use `propagate` (skip not-yet-started descendants), `absorb`
 (settle immediately) or `halt` (hold for repair). A model task's cost-limit
 refusal uses effective `halt`, while preserving its declared policy.

@@ -37,20 +37,22 @@ class ModelCatalog::ModelDefinitionsDataTest < ActiveSupport::TestCase
 
   test "shared OpenAI definitions retain the API and subscription media and service choices" do
     catalog = shipped_catalog
-    %w[gpt-6-astra gpt-6.1-sol gpt-6-luna].each do |name|
+    %w[gpt-6.2-astra gpt-6.2-sol gpt-6.1-terra].each do |name|
       api = profile_for(catalog, "openai_api/#{name}")
       subscription = profile_for(catalog, "codex_subscription/#{name}")
 
-      assert_equal api.local_safety_limits, subscription.local_safety_limits
+      assert_equal 128_000, subscription.local_safety_limits.output_tokens
       api_limits = Nexus::ModelCapabilityLimits.from_catalog(entry: catalog.models.fetch("openai_api/#{name}"), profile: api)
       subscription_limits = Nexus::ModelCapabilityLimits.from_catalog(entry: catalog.models.fetch("codex_subscription/#{name}"), profile: subscription)
+      assert_equal 922_000, api_limits.input_token_bound
+      assert_equal 872_000, subscription_limits.input_token_bound
       assert_equal 272_000, api_limits.planning_input_bound
-      expected_bound = name == "gpt-6.1-sol" ? 500_000 : 272_000
+      expected_bound = name == "gpt-6.2-astra" ? 272_000 : 500_000
       assert_equal expected_bound, subscription_limits.planning_input_bound
       assert_equal %w[image file], api.input_modalities
       assert_equal ["image"], subscription.input_modalities
-      assert_equal %w[flex priority], api.service_tiers
-      assert_equal ["priority"], subscription.service_tiers
+      assert_equal(name == "gpt-6.1-terra" ? %w[flex priority fast] : %w[priority fast ultrafast], api.service_tiers)
+      assert_equal(name == "gpt-6.1-terra" ? %w[priority] : %w[priority ultrafast], subscription.service_tiers)
       assert_equal %w[auto concise detailed], api.reasoning_options.fetch("summaries")
       assert_equal %w[none auto concise detailed], subscription.reasoning_options.fetch("summaries")
       refute catalog.model_definitions.fetch(name).key?("token_counter")
@@ -60,8 +62,8 @@ class ModelCatalog::ModelDefinitionsDataTest < ActiveSupport::TestCase
   test "shared DeepSeek definitions retain each serving lane's complete context window" do
     catalog = shipped_catalog
     {
-      "deepseek-flash" => ["deepseek-v4.1-flash", 384000],
-      "deepseek-v4-pro" => ["deepseek-v4-pro-0813", 393216],
+      "deepseek-flash" => ["deepseek-v4.1-flash-1017", 393216],
+      "deepseek-v4-pro" => ["deepseek-v4-pro-0813", 943718],
     }.each do |direct_name, (model_name, broker_output)|
       direct_ref = "deepseek/#{direct_name}"
       broker_ref = "openrouter/deepseek/#{model_name}"
@@ -69,13 +71,18 @@ class ModelCatalog::ModelDefinitionsDataTest < ActiveSupport::TestCase
       broker = catalog.models.fetch(broker_ref).fetch("capabilities")
 
       assert_equal({ "combined_input_output_tokens" => 1048576, "output_tokens" => 393216 }, direct.fetch("limits"))
-      assert_equal({ "input_tokens" => 1048576, "output_tokens" => broker_output }, broker.fetch("limits"))
+      assert_equal({ "combined_input_output_tokens" => 1048576, "output_tokens" => broker_output }, broker.fetch("limits"))
       assert_equal %w[minimal low medium high xhigh max], direct.dig("reasoning", "efforts")
       assert_equal %w[low high max], broker.dig("reasoning", "efforts")
       assert_equal "responses_reasoning_text", direct.dig("reasoning_replay", "format")
       assert_equal "chat_reasoning", broker.dig("reasoning_replay", "format")
       assert_equal profile_for(catalog, direct_ref).token_counter, profile_for(catalog, broker_ref).token_counter
     end
+
+    flash = profile_for(catalog, "deepseek/deepseek-flash")
+    assert_equal ["image"], flash.input_modalities
+    assert_includes flash.input_media.fetch("image").mime_allowlist, "image/png"
+    assert_empty profile_for(catalog, "deepseek/deepseek-v4-pro").input_modalities
   end
 
   private

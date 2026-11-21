@@ -7,6 +7,9 @@ class SessionsController < ApplicationController
     with: -> { redirect_to new_session_path(return_to: return_to_url), alert: t("sessions.create.rate_limited") }
 
   def new
+    account = Account.sole
+    @sso_only = account.sso_only?
+    @login_providers = account.sso_providers.where(enabled: true).listed
   end
 
   def create
@@ -24,6 +27,8 @@ class SessionsController < ApplicationController
     when :authenticated
       adopt_session authentication.session
       redirect_to after_authentication_url
+    when :sso_required
+      redirect_to new_session_path(return_to: return_to_url), alert: t("sso_identity.sso_required")
     when :local_recovery_required
       redirect_to new_session_path(return_to: return_to_url), alert: t("sessions.create.local_recovery_required")
     when :invalid_credentials

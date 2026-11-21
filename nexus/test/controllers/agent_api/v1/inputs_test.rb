@@ -4,6 +4,25 @@ require_relative "../../../test_helpers/conversation_api_test_helper"
 class AgentAPI::V1::InputsTest < ActionDispatch::IntegrationTest
   include ConversationAPITestHelper
 
+  test "an immediate reply with a lost wake starts once after receipt replay and periodic recovery" do
+    conversation = create_conversation!
+    body = { input: { kind: "direct_reply", text: "Investigate this", model: { model: "dev/mock-text" } } }
+    post inputs_path(conversation), headers: auth("immediate-reply"), as: :json, params: body
+    assert_response :accepted
+    id = response.parsed_body.dig("input", "public_id")
+    clear_enqueued_jobs
+
+    post inputs_path(conversation), headers: auth("immediate-reply"), as: :json, params: body
+    assert_response :accepted
+    assert_equal "true", response.headers["Idempotency-Replayed"]
+    perform_enqueued_jobs(only: Conversations::Inputs::DrainJob) do
+      2.times { Conversations::Inputs::WakeDueJob.perform_now }
+    end
+
+    assert_equal id, conversation.turns.sole.input_public_id
+    assert_predicate conversation.turns.sole, :running?
+  end
+
   test "executor contexts are captured, editable while queued, and part of the receipt digest" do
     conversation = create_conversation!
     target = SecureRandom.uuid_v7

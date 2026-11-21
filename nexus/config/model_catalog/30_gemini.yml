@@ -15,43 +15,71 @@ providers:
       text_generation: 3
       embedding: 1
 models:
-  # Native Gemini 3.8 Flash uses the existing GenerateContent wire. Its model
-  # page lists images/PDFs, 1,048,576 input and 65,536 output tokens, and
-  # low/medium/high thinking only; minimal is rejected on this model.
-  # https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash
-  # Read 2026-10-05. Video/audio have no native input surface here.
-  gemini/gemini-3.8-flash:
-    inherit: gemini-3.8-flash
-    # Standard USD/Mtok rates through 2026-12-31, from Google's pricing page
-    # (read 2026-10-05): https://ai.google.dev/gemini-api/docs/pricing
+  # Streaming GenerateContent supports one 65,536-token response per request.
+  # Longer output requires continuation. https://aistudio.google.com/docs/long-decode
+  # Standard paid-tier USD rates per million tokens, including implicit cache reads.
+  # Argon and Carbon introductory rates run through 2026-11-30. From 2026-12-01
+  # Google lists 4 for input, 20 for output and 0.2 for cached input.
+  # https://aistudio.google.com/docs/pricing
+  gemini/gemini-4-argon:
+    inherit: gemini-4-argon
     pricing:
       account_unit: USD
       schedule:
         kind: catalog_only
         rates:
-          input_per_mtok: "0.75"
-          output_per_mtok: "3.75"
+          input_per_mtok: "2"
+          output_per_mtok: "10"
+          cached_input_per_mtok: "0.1"
     capabilities:
+      limits:
+        combined_input_output_tokens: 1048576
+        output_tokens: 65536
       generation_parameters:
         max_output_tokens:
           maximum: 65536
-      # Authored 2026-08-29 from the vendor's thinking documentation
-      # (ai.google.dev): thought summaries ride multi-step work and stay
-      # absent on trivial prompts. Unsigned thought replay only — a foreign
-      # signature is a 400 from Google, so the signed rung is a same-model
-      # replay (runs/round_replay.rb), not a claim.
       reasoning_replay:
         format: gemini_thought
-  # Argon shares 1,048,576 tokens across input, thinking and output.
-  # This GenerateContent streaming lane supports one 65,536-token response;
-  # longer output requires a separate client-side continuation mechanism.
-  # https://aistudio.google.com/docs/long-decode (read 2026-10-19)
-  gemini/gemini-4-argon:
-    inherit: gemini-4-argon
-    # Introductory USD/Mtok rates through 2026-11-30. From 2026-12-01,
-    # Google lists input 4, output 20 and cached input 0.2; update manually.
-    # https://aistudio.google.com/learn/gemini-4-argon-developer-guide
-    # Read 2026-10-19. Implicit cached input receives a 95% discount.
+  gemini/gemini-4-hydrogen:
+    inherit: gemini-4-hydrogen
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "1.5"
+          output_per_mtok: "7.5"
+          cached_input_per_mtok: "0.075"
+    capabilities:
+      limits:
+        combined_input_output_tokens: 1048576
+        output_tokens: 65536
+      generation_parameters:
+        max_output_tokens:
+          maximum: 65536
+      reasoning_replay:
+        format: gemini_thought
+  gemini/gemini-4-neon:
+    inherit: gemini-4-neon
+    pricing:
+      account_unit: USD
+      schedule:
+        kind: catalog_only
+        rates:
+          input_per_mtok: "3"
+          output_per_mtok: "15"
+          cached_input_per_mtok: "0.15"
+    capabilities:
+      limits:
+        combined_input_output_tokens: 1048576
+        output_tokens: 65536
+      generation_parameters:
+        max_output_tokens:
+          maximum: 65536
+      reasoning_replay:
+        format: gemini_thought
+  gemini/gemini-4-carbon:
+    inherit: gemini-4-carbon
     pricing:
       account_unit: USD
       schedule:

@@ -12,10 +12,10 @@ module CybrosAgent
         ScheduleExecution => {
           child_conversation_public_id: :string, input_public_id: :optional_string,
           turn_public_id: :optional_string, variant_public_id: :optional_string, run_public_id: :optional_string,
-          scheduled_for: :string, status: :string, created_at: :string,
+          scheduled_for: :string, wake: :string, status: :string, created_at: :string,
         },
         Schedule => {
-          public_id: :string, name: :optional_string, prompt: :string, rule: [:shape, ScheduleRule],
+          public_id: :string, name: :optional_string, prompt: :string, rule: [:shape, ScheduleRule], wake: :string,
           model: [:optional_shape, ScheduleModel], configuration: :optional_json_object,
           agent_configuration: :optional_json_object,
           model_selection: :optional_json_object, fallback_models: :optional_string_list,

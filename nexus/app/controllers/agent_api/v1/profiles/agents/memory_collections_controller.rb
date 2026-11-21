@@ -1,3 +1,4 @@
+# @auth [MemberBearer]
 class AgentAPI::V1::Profiles::Agents::MemoryCollectionsController < AgentAPI::V1::Profiles::MemoryCollectionsController
   include AgentAPI::V1::Profiles::NamedAgents
   before_action :require_agent

@@ -51,6 +51,21 @@ async fn run(v: Value) -> Result<Value> {
     let action = required(&v, "action")?;
     let base = required(&v, "base_url")?;
     match action.as_str() {
+        "member_create_run" => {
+            let client = Client::new(&base, required(&v, "credential")?)?;
+            let workspace = client.workspace(&required(&v, "workspace_public_id")?)?;
+            let request: CreateRun = serde_json::from_value(v["run"].clone())
+                .map_err(|_| Error::Configuration("invalid Run creation request"))?;
+            let created = workspace
+                .runs()
+                .create(&request, &required(&v, "run_key")?)
+                .await?
+                .body;
+            Ok(
+                json!({ "run_public_id": created.run.public_id, "receipt": created.receipt,
+                "replayed": created.replayed }),
+            )
+        }
         "executor_announce" => {
             let c = ExecutorClient::new(&base, required(&v, "credential")?)?;
             let reply=c.announce(&Announcement{services: ServiceAnnouncements { agent: cybros_agent::Field::Value(ServiceAnnouncement::default()), runner: cybros_agent::Field::Value(ServiceAnnouncement {tools:vec![AnnouncedTool{name:"sdk_echo".into(),effect_profile:EffectProfile{kind:EffectKind::ReadOnly,destructive:false,effect_scope:EffectScope::Closed,idempotency:Idempotency::Intrinsic,reconciliation:Reconciliation::None},input_schema:json!({"type":"object","properties":{"marker":{"type":"string"}},"required":["marker"]}).as_object().cloned().unwrap().into(),..Default::default()}],..Default::default()}), ..Default::default()} }).await?;

@@ -16,6 +16,7 @@ class AgentAPI::V1::SchedulesTest < ActionDispatch::IntegrationTest
     row = response.parsed_body.fetch("schedule")
     assert_equal Nexus::Contract.pack.fetch("schedules.json").fetch("projection").sort, row.keys.sort
     assert_equal "active", row.fetch("status")
+    assert_equal "auto", row.fetch("wake")
     assert_equal @conversation.public_id, row.fetch("conversation_public_id")
     assert_equal @human.public_id, row.fetch("creating_user_public_id")
     assert_nil row["last_execution"]
@@ -35,7 +36,7 @@ class AgentAPI::V1::SchedulesTest < ActionDispatch::IntegrationTest
   test "read and optimistic edits preserve the execution identity and policy" do
     job = create_job
     patch "#{jobs_path}/#{job.public_id}", headers: auth, as: :json,
-      params: { schedule: { prompt: "new instructions", expected_lock_version: job.lock_version,
+      params: { schedule: { prompt: "new instructions", wake: "passive", expected_lock_version: job.lock_version,
         creating_user_id: users(:owner).id, status: "canceled" } }
     assert_response :success
     assert_equal "new instructions", job.reload.prompt
@@ -51,6 +52,7 @@ class AgentAPI::V1::SchedulesTest < ActionDispatch::IntegrationTest
     get "#{jobs_path}/#{job.public_id}", headers: auth
     assert_response :success
     assert_equal "new instructions", response.parsed_body.dig("schedule", "prompt")
+    assert_equal "passive", response.parsed_body.dig("schedule", "wake")
   end
 
   test "a declared child schedule captures its model intent and list while explicit equal selection pins the route" do
@@ -274,6 +276,10 @@ class AgentAPI::V1::SchedulesTest < ActionDispatch::IntegrationTest
       post jobs_path, headers: auth("bad-rule"), as: :json,
         params: { schedule: fields.merge(rule: { kind: "daily", local_time: "25:00", time_zone: "Moon" }) }
       assert_response :unprocessable_entity
+      post jobs_path, headers: auth("bad-wake"), as: :json, params: { schedule: fields.merge(wake: "sometimes") }
+      assert_response :unprocessable_entity
+      post jobs_path, headers: auth("malformed-wake"), as: :json, params: { schedule: fields.merge(wake: ["passive"]) }
+      assert_response :bad_request
       post jobs_path, headers: auth("bad-tools"), as: :json,
         params: { schedule: fields.merge(tool_names: "read_file") }
       assert_response :bad_request
@@ -320,8 +326,17 @@ class AgentAPI::V1::SchedulesTest < ActionDispatch::IntegrationTest
 
     job = jobs.first
     assert_equal :dispatched, Schedules::Dispatch.call(id: job.id, cutoff: @at)
-    get "#{jobs_path}/#{job.public_id}/executions", headers: auth
+    child = job.reload.last_execution_conversation
+    post inputs_path(child), headers: auth("later-message"), as: :json,
+      params: { input: { kind: "message", role: "user", text: "For our later conversation" } }
+    assert_response :accepted
+    loaded = 0
+    count_inputs = ->(*, payload) { loaded += payload.fetch(:record_count) if payload.fetch(:class_name) == "Input" }
+    ActiveSupport::Notifications.subscribed(count_inputs, "instantiation.active_record") do
+      get "#{jobs_path}/#{job.public_id}/executions", headers: auth
+    end
     assert_response :success
+    assert_operator loaded, :<=, 1, "execution history only needs the scheduled input"
     execution = response.parsed_body.fetch("executions").sole
     assert_equal Nexus::Contract.pack.fetch("schedules.json").fetch("execution_projection").sort, execution.keys.sort
     assert_equal "queued", execution.fetch("status")

@@ -23,21 +23,10 @@ module User::Lifecycle
     end
   end
 
-  def reactivate
+  def reactivate(reconnect: false)
     return :not_applicable if agent?
 
-    # A lifecycle move inside the model, not a CAS: the verb names which
-    # precondition failed, which 0 rows changed cannot say.
-    with_lock do
-      if !suspended?
-        :not_suspended
-      else
-        # No generation advance: pre-suspension credentials stay dead under
-        # their superseded snapshots and must be re-minted.
-        update!(status: :active)
-        :reactivated
-      end
-    end
+    resume_human_access(from: :suspended, outcome: :reactivated, reconnect: reconnect)
   end
 
   def remove
@@ -83,7 +72,9 @@ module User::Lifecycle
     end
   end
 
-  def restore
+  def restore(reconnect: false)
+    return resume_human_access(from: :removed, outcome: :restored, reconnect: reconnect) if human?
+
     # The steward's liveness is read on another row and the verb names it
     # (`:shutdown_pending`); a CAS on `status` alone could not.
     with_lock do
@@ -101,6 +92,26 @@ module User::Lifecycle
   end
 
   private
+
+    def resume_human_access(from:, outcome:, reconnect:)
+      account.with_lock do
+        identity.lock!
+        lock!
+        next :"not_#{from}" unless status == from.to_s
+
+        if !identity.login_path_configured?(account)
+          next :login_method_required unless reconnect
+
+          identity.update!(local_recovery_pending_at: Time.current,
+            credential_recovery_generation: identity.credential_recovery_generation + 1)
+          update!(status: :active)
+          :restored_for_recovery
+        else
+          update!(status: :active)
+          outcome
+        end
+      end
+    end
 
     # Removal fences both Agent planes atomically while retaining its address
     # for reconnect. Work stops asynchronously.

@@ -3,14 +3,42 @@
 # kernel-mode compaction summarizer), a Human holds `persona`; anything
 # else is refused by name before any row is touched. No fence and no
 # workspace: the users row is the caller's and the lock.
+# @auth [MemberBearer]
 class AgentAPI::V1::Profiles::PromptDocumentsController < AgentAPI::V1::BaseController
   serves_plane :member
 
+  # @oas_include
+  # @summary List prompt documents
+  # @tags Member, prompt documents
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ProfilesPromptDocumentsIndex
   def index
     render json: { prompt_documents:
       AgentAPI::PromptDocumentPresenter.listing(acting_user.prompt_documents.order(:slot)) }
   end
 
+  # @oas_include
+  # @summary Read prompt documents
+  # @tags Member, prompt documents
+  # @parameter slot(path) [!String] Resource selector.
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ProfilesPromptDocumentsShow
   def show
     return unless slot_held?
 
@@ -20,6 +48,21 @@ class AgentAPI::V1::Profiles::PromptDocumentsController < AgentAPI::V1::BaseCont
     render json: { prompt_document: AgentAPI::PromptDocumentPresenter.full(document) }
   end
 
+  # @oas_include
+  # @summary Update prompt documents
+  # @tags Member, prompt documents
+  # @parameter slot(path) [!String] Resource selector.
+  # @request_body_ref #/components/requestBodies/AgentApiV1ProfilesPromptDocumentsUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ProfilesPromptDocumentsUpdate
   def update
     return unless slot_held?
 
@@ -35,6 +78,20 @@ class AgentAPI::V1::Profiles::PromptDocumentsController < AgentAPI::V1::BaseCont
     render json: { prompt_document: AgentAPI::PromptDocumentPresenter.full(result.document) }
   end
 
+  # @oas_include
+  # @summary Destroy prompt documents
+  # @tags Member, prompt documents
+  # @parameter slot(path) [!String] Resource selector.
+  # @response_ref (204) #/components/responses/AgentApiV1ProfilesPromptDocumentsDestroy
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def destroy
     return unless slot_held?
 

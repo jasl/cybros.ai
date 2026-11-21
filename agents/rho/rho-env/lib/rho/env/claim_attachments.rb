@@ -6,8 +6,11 @@ module Rho
     class ClaimAttachments
       # Match the existing progress wait cadence for ordinary tool handlers.
       POLL_SECONDS = 0.25
-      Request = Data.define(:public_id, :io, :answer)
-      private_constant :Request
+      UPLOAD_ID = /\A(?:nexus:\/\/uploads\/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\z/i
+      Request = Data.define(:public_id, :io, :validate, :answer)
+      private_constant :UPLOAD_ID, :Request
+
+      def self.public_id(reference) = reference[UPLOAD_ID, 1]&.downcase
 
       def initialize(task:, claim_token:)
         @task = task
@@ -15,9 +18,10 @@ module Rho
         @pending = Thread::Queue.new
       end
 
-      def read(public_id, io)
+      # The optional descriptor check runs on the reactor before streaming any bytes.
+      def read(public_id, io, &validate)
         answer = Thread::Queue.new
-        @pending << Request.new(public_id: public_id, io: io, answer: answer)
+        @pending << Request.new(public_id: public_id, io: io, validate: validate, answer: answer)
         loop do
           ExecutionContext.current&.raise_if_cancelled!
           result = answer.pop(timeout: POLL_SECONDS)
@@ -35,6 +39,7 @@ module Rho
         return unless request
 
         upload = @task.attachment(request.public_id, claim_token: @claim_token)
+        request.validate&.call(upload)
         @task.attachment_bytes(request.public_id, request.io, claim_token: @claim_token)
         request.answer << { upload: upload }
       rescue StandardError => error

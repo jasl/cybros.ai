@@ -16,6 +16,9 @@ require_relative "test_helpers/media_fixtures"
 require_relative "test_helpers/limits_of"
 require_relative "test_helpers/memory_test_helper"
 require_relative "support/nexus_contract"
+require_relative "test_helpers/openapi_test_helper"
+
+ActionDispatch::IntegrationTest.include OpenapiResponseAssertions
 
 # Re-boot the catalog with the test-owned override directory. This is the
 # ordinary override seam — the same compile path production runs with config.d

@@ -43,15 +43,6 @@ module Runs
         .or(scope.where(failure_reason_key: SWITCH_REASONS)).order(:id).to_a
     end
 
-    def spent_route?(node, reference)
-      return false if node.execution_generation.zero?
-
-      switch_causes_of(node).any? do |invocation|
-        (invocation.refused? || invocation.transient_exhausted?) &&
-          "#{invocation.provider_id}/#{invocation.model_ref}" == reference
-      end
-    end
-
     def recover(account:, workload:, current:, owner:, configuration:, excluded: [], request_body: nil,
                 include_current: false, &accept_candidate)
       ModelSelection::Recovery.resolve(account: account, workload: workload,

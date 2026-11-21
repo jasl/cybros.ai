@@ -21,11 +21,11 @@ module CybrosAgent
         shape(Schedule, @dispatch.call(job_path(public_id)), "schedule")
       end
 
-      def create(prompt:, rule:, idempotency_key:, name: UNSET, model: UNSET, reasoning_effort: UNSET, reasoning_enabled: UNSET,
+      def create(prompt:, rule:, idempotency_key:, wake: UNSET, name: UNSET, model: UNSET, reasoning_effort: UNSET, reasoning_enabled: UNSET,
                  configuration: UNSET, executor_contexts: UNSET, tool_names: UNSET, approval_mode: UNSET, to: UNSET, speaker_public_id: UNSET,
                  source_run_public_id: UNSET, source_task_key: UNSET, model_selection: UNSET, fallback_models: UNSET)
         required_string(idempotency_key, "idempotency_key")
-        body = fields(prompt:, rule:, name:, model: optional_fields(model:, reasoning_effort:, reasoning_enabled:),
+        body = fields(prompt:, rule:, wake:, name:, model: optional_fields(model:, reasoning_effort:, reasoning_enabled:),
           configuration:, executor_contexts:, tool_names:, approval_mode:, answering_user_public_id: to, speaker_public_id:,
           source_run_public_id:, source_task_key:, model_selection:, fallback_models:)
         result = @dispatch.call_accepting(path, method: :post, body: { "schedule" => body },
@@ -35,10 +35,10 @@ module CybrosAgent
 
       # Omission keeps a field. Explicit nil is sent for Nexus to judge.
       # A stale version remains a conflict; the SDK never retries a mutation.
-      def update(public_id, expected_lock_version:, prompt: UNSET, rule: UNSET, name: UNSET,
+      def update(public_id, expected_lock_version:, prompt: UNSET, rule: UNSET, wake: UNSET, name: UNSET,
                  model: UNSET, reasoning_effort: UNSET, reasoning_enabled: UNSET, configuration: UNSET, executor_contexts: UNSET, tool_names: UNSET,
                  approval_mode: UNSET, to: UNSET, speaker_public_id: UNSET, model_selection: UNSET, fallback_models: UNSET)
-        body = fields(expected_lock_version:, prompt:, rule:, name:,
+        body = fields(expected_lock_version:, prompt:, rule:, wake:, name:,
           model: optional_fields(model:, reasoning_effort:, reasoning_enabled:), configuration:,
           executor_contexts:, tool_names:, approval_mode:, answering_user_public_id: to, speaker_public_id:, model_selection:, fallback_models:)
         shape(Schedule, @dispatch.call(job_path(public_id), method: :patch,

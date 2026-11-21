@@ -148,6 +148,9 @@ module Rho
             rendered = Content.render(@params["prompt"], dir: attachment_dir)
             begin
               word = Commands.surface_word(rendered.text)
+              if rendered.pdf? && (word || @session.held)
+                raise Refusal.invalid_params("PDF attachments require a new conversation turn")
+              end
               return Commands.run(@agent, @session, @core, word, self) if word
 
               turn, run_id = @session.held ? answer_held(rendered.text) : open(rendered)

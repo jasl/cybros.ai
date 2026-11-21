@@ -613,13 +613,8 @@ class TestHTTPXAdapter < Minitest::Test
   end
 
   def test_proxy_connect_request_inherits_stream_accessor
-    begin
-      require "httpx/plugins/proxy/http"
-    rescue LoadError
-      skip "httpx/plugins/proxy/http not available"
-    end
-
-    klass = ::HTTPX::Plugins::Proxy::HTTP::ConnectRequest
+    # The proxy plugin builds its CONNECT request class from the session's options.
+    klass = ::HTTPX.plugin(:proxy).class.default_options.connect_request_class
     assert klass.method_defined?(:stream)
     assert klass.method_defined?(:stream=)
   end

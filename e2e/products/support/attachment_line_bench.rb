@@ -83,7 +83,7 @@ module E2E
   # those are the hand-read cells re-classed by the rule, not a per-row re-stamp; the verb re-stamps
   # a readout that is on disk.
   module AttachmentLineBench
-    FLOOR_MODELS = %w[deepseek/deepseek-v4.1-flash z-ai/glm-5.3-flash].freeze
+    FLOOR_MODELS = %w[deepseek/deepseek-v4.1-flash-1017 z-ai/glm-5.3-flash].freeze
     # The broker's `architecture.input_modalities` on 2026-09-12: glm-5.3
     # lists text alone — the one strong-tier text-only row.
     STRONG_TEXT_ONLY = %w[z-ai/glm-5.3].freeze

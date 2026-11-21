@@ -51,7 +51,7 @@ class DeviceAuthorization < ApplicationRecord
   enum :connection_mode, %w[connect login].index_by(&:itself),
     default: :connect, validate: true, scopes: false, prefix: :mode
 
-  validates :client_id, inclusion: { in: [OAuth::DEVICE_CLIENT_ID, OAuth::APPLICATION_CLIENT_ID] }
+  validates :client_id, inclusion: { in: [OAuth::DEVICE_CLIENT_ID, OAuth::APPLICATION_CLIENT_ID, OAuth::TERMINAL_CLIENT_ID] }
   validates :grant_type, inclusion: { in: %w[device_code] }, unless: :application_connection?
   validates :connection_mode, inclusion: { in: %w[connect] }, unless: :application_connection?
   validates :redirect_uri, presence: true, length: { maximum: 2048 }, if: :authorization_code?
@@ -65,14 +65,17 @@ class DeviceAuthorization < ApplicationRecord
     length: { maximum: Executor::DISPLAY_NAME_MAX_LENGTH }, allow_nil: true
   validates :requested_executor_display_name,
     presence: true, length: { maximum: Executor::DISPLAY_NAME_MAX_LENGTH },
-    unless: :runner_only_connection?
+    if: :agent_connection?
   validates :requested_executor_display_name, absence: true, if: :runner_only_connection?
   validates :interval, numericality: { only_integer: true, greater_than_or_equal_to: 1 }
   validates :expected_executor_status,
     inclusion: { in: Executor.statuses.keys }, allow_nil: true
-  # Every shape but B names its agent; a row naming neither identifier is
-  # not a shape at all.
-  validates :agent_identifier, :agent_display_name, presence: true, unless: :runner_only_connection?
+  # Machine requests must name an Agent or standalone Runner.
+  validates :agent_identifier, :agent_display_name, presence: true, unless: -> { runner_only_connection? || terminal_login? }
+  with_options if: :terminal_login? do
+    validates :agent_identifier, :agent_display_name, :requested_executor_display_name, :registration_identifier,
+      :runner_display_name, :requested_executor_kind, :selected_assignment_scope, absence: true
+  end
   # Branch B names the machine kind it wants, frozen at issuance like the
   # identifier; an Agent connection's kind is the branch's own.
   with_options if: :runner_only_connection? do
@@ -95,6 +98,10 @@ class DeviceAuthorization < ApplicationRecord
 
   def application_connection?
     client_id == OAuth::APPLICATION_CLIENT_ID
+  end
+
+  def terminal_login?
+    client_id == OAuth::TERMINAL_CLIENT_ID
   end
 
   def runner_only_connection?
@@ -126,7 +133,7 @@ class DeviceAuthorization < ApplicationRecord
       user: user,
       connected_by: connector,
       connected_by_authority_generation: connector.authority_generation,
-      connected_by_identity_recovery_generation: (connector.identity.credential_recovery_generation if application_connection?),
+      connected_by_identity_recovery_generation: (connector.identity.credential_recovery_generation if application_connection? || terminal_login?),
       selected_assignment_scope: selected_assignment_scope,
       user_authority_generation: user&.authority_generation,
       expected_executor_public_id: expected_executor&.public_id,

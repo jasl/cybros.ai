@@ -4,6 +4,15 @@ require_relative "../test_helpers/lock_order_test_helper"
 class AuthorityLockOrderTest < ActiveSupport::TestCase
   include LockOrderTestHelper
 
+  test "reactivating a human checks available sign-in methods under account and identity locks" do
+    member = users(:member)
+    assert_equal :suspended, member.suspend
+    sequences = assert_ladder_order("reactivate a member") do
+      assert_equal :reactivated, member.reactivate
+    end
+    assert_includes sequences, %w[accounts identities users]
+  end
+
   test "the full agent ceremony acquires every lock in ladder order" do
     sequences = assert_ladder_order("issue → connect → consume") do
       connect_agent_session(steward: users(:owner), agent_identifier: "install-guard")

@@ -62,6 +62,25 @@ class SDKLanguagesTest < Minitest::Test
     exercise_languages(member_language: :rust, executor_language: :typescript)
   end
 
+  def test_run_creation_replays_full_length_keys_across_three_sdks
+    workspace = @member.workspaces.create(name: "Run replay SDKs", idempotency_key: SecureRandom.uuid).workspace
+    @workspaces << workspace.public_id
+    languages = %i[ruby typescript rust]
+    languages.zip(languages.rotate).each do |writer, reader|
+      key = SecureRandom.hex(32)
+      original = create_sdk_run(writer, workspace.public_id, key)
+      refute original.fetch("replayed")
+      assert_equal ["seed"], original.fetch("receipt").fetch("accepted_task_keys")
+
+      replay = create_sdk_run(reader, workspace.public_id, key)
+      assert replay.fetch("replayed")
+      assert_equal original.fetch("run_public_id"), replay.fetch("run_public_id")
+      # The typed SDKs default the seed's optional replay flag to false.
+      assert_equal({ "replayed" => false }.merge(original.fetch("receipt")),
+        { "replayed" => false }.merge(replay.fetch("receipt")))
+    end
+  end
+
   def test_conversation_communication_crosses_three_sdks
     @member.profile.declare_configuration(kernel_tools: %w[nexus.conversation.send], default_model: "dev/mock-text",
       approval_mode: "bypass", prompt_mechanism: "default",
@@ -101,6 +120,16 @@ class SDKLanguagesTest < Minitest::Test
   end
 
   private
+
+    def create_sdk_run(language, workspace_id, key)
+      run = { approval_mode: "bypass", steps: [{ model: { key: "seed", model: { model: "dev/mock-text" }, prompt: "Hello" } }] }
+      if language == :ruby
+        created = @member.workspace(workspace_id).runs.create(**run, idempotency_key: key)
+        { "run_public_id" => created.run.public_id, "receipt" => created.receipt, "replayed" => created.replayed? }
+      else
+        drive(language, "member_create_run", credential: @member_key, workspace_public_id: workspace_id, run:, run_key: key)
+      end
+    end
 
     def exercise_languages(member_language:, executor_language:)
       assert_language_authentication(member_language)

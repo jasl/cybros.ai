@@ -35,17 +35,19 @@ module Conversations
     # — 0 on every segment that carries none. Reasoning is history, priced
     # with its turn in the one fit.
     Segment = Data.define(:role, :parts, :trace, :reasoning_parts, :reasoning_items,
-      :call_items, :result_items, :picture_parts, :trailing, :first_slot, :phase, :alone, :replay_tokens) do
+      :call_items, :result_items, :picture_parts, :trailing, :first_slot, :phase, :alone, :replay_tokens, :pairs_only) do
+      def initialize(pairs_only: false, **) = super
+
       def self.plain(role, text, trace: nil, parts: nil, phase: nil, alone: false)
         new(role: role, parts: parts || text_parts(text), trace: trace,
             reasoning_parts: [], reasoning_items: [], call_items: [], result_items: [], picture_parts: [],
             trailing: [], first_slot: nil, phase: phase, alone: alone, replay_tokens: 0)
       end
 
-      def self.round(role, text, calls:, trailing:, first_slot:, results:, trace: nil, picture_parts: [])
+      def self.round(role, text, calls:, trailing:, first_slot:, results:, trace: nil, picture_parts: [], pairs_only: false)
         new(role: role, parts: text_parts(text), trace: trace,
             reasoning_parts: [], reasoning_items: [], call_items: calls, result_items: results, picture_parts: picture_parts,
-            trailing: trailing, first_slot: first_slot, phase: nil, alone: false, replay_tokens: 0)
+            trailing: trailing, first_slot: first_slot, phase: nil, alone: false, replay_tokens: 0, pairs_only: pairs_only)
       end
 
       def self.text_part(text) = Nexus::TextInputPart.new(type: Nexus::InputParts::TEXT, text: text)
@@ -72,7 +74,9 @@ module Conversations
       # reasoning item the ladder placed in the tail is priced once, by
       # `replay_tokens`.
       def priced_texts
-        placed = trailing.map(&:last).reject { |element| element in Nexus::ReasoningInputItem }
+        placed = trailing.map(&:last).reject do |element|
+          element in Nexus::ReasoningInputItem | Nexus::TextInputMessage(parts: [Nexus::ReasoningInputPart])
+        end
         texts + Nexus::ModelRequestInput.text_segments(placed + result_items + Array(picture))
       end
 
@@ -97,7 +101,7 @@ module Conversations
         return nil if blank? && reasoning_parts.empty?
 
         Nexus::TextInputMessage.new(role: role, parts: reasoning_parts + placed_parts(parts),
-          phase: phase, native_origin: (trace.native_origin if phase))
+          phase: phase, native_origin: (phase ? trace.native_origin : trace&.claude_origin))
       end
 
       def picture

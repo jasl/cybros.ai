@@ -7,9 +7,7 @@ providers:
     # International credentials and billing are separate from China and Code.
     base_url: https://api.moonshot.ai
 models:
-  # Document-based configuration only; no international key was available.
-  # The shared facts describe API capabilities, not downloadable weights.
-  # Rates remain unknown until an authoritative price table is available.
+  # Regional rates are unspecified. The model IDs follow the Kimi platform guide.
   moonshot_global/kimi-k3.1-pro:
     inherit: kimi-k3.1-pro
     pricing:
@@ -26,18 +24,6 @@ models:
     capabilities:
       reasoning:
         default_effort: max
-      reasoning_replay:
-        format: chat_reasoning
-        required_for_tool_rounds: true
-  moonshot_global/kimi-k3:
-    inherit: kimi-k3
-    display_name: Kimi K3
-    pricing:
-    capabilities:
-      limits:
-        combined_input_output_tokens: 1048576
-      reasoning:
-        disable_supported: false
       reasoning_replay:
         format: chat_reasoning
         required_for_tool_rounds: true

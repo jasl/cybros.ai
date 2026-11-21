@@ -148,6 +148,7 @@ module Rho
           attr_reader text: String
           attr_reader attachments: Array[String]
           def self.new: (text: String, attachments: Array[String]) -> instance
+          def pdf?: () -> bool
           def discard: () -> nil
         end
         SEPARATOR: String

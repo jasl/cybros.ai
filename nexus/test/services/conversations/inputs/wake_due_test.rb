@@ -33,7 +33,7 @@ class Conversations::Inputs::WakeDueTest < ActiveSupport::TestCase
     enqueued_jobs.select { |job| job[:job] == Conversations::Inputs::DrainJob }.map { |job| job[:args].first }
   end
 
-  test "each room with a due pending row is kicked once; a future row, a blocked row, a row with no time and the loop host never" do
+  test "scheduled and immediate inputs wake each idle room once, skipping future, blocked and run hosts" do
     due_twice = room
     row!(due_twice, deliver_at: 2.minutes.ago)
     row!(due_twice, deliver_at: 1.minute.ago)
@@ -43,6 +43,7 @@ class Conversations::Inputs::WakeDueTest < ActiveSupport::TestCase
     row!(future, deliver_at: 1.hour.from_now)
     blocked = room
     row!(blocked, deliver_at: 5.minutes.ago, state: "blocked")
+    row!(blocked, deliver_at: nil)
     untimed = room
     row!(untimed, deliver_at: nil)
     run = Run.create!(workspace: @workspace, creating_user: @user, status: "running",
@@ -50,13 +51,13 @@ class Conversations::Inputs::WakeDueTest < ActiveSupport::TestCase
     row!(run, deliver_at: 5.minutes.ago)
 
     pass = nil
-    assert_enqueued_jobs 2, only: Conversations::Inputs::DrainJob do
+    assert_enqueued_jobs 3, only: Conversations::Inputs::DrainJob do
       pass = Conversations::Inputs::WakeDue.call
     end
 
-    assert_equal [due_twice.id, due_once.id].sort, woken.sort
-    assert_equal 2, pass[:woken]
-    assert_equal 3, pass[:scanned]
+    assert_equal [due_twice.id, due_once.id, untimed.id].sort, woken.sort
+    assert_equal 3, pass[:woken]
+    assert_equal 5, pass[:scanned]
     assert_not pass.more?
   end
 
@@ -90,10 +91,10 @@ class Conversations::Inputs::WakeDueTest < ActiveSupport::TestCase
     assert_equal [busy.id, busy.id], woken
   end
 
-  test "the frontier is one clock read and one statement" do
+  test "a page uses one clock read, one bounded source scan and one check of its distinct rooms" do
     3.times { row!(room, deliver_at: 1.minute.ago) }
 
-    assert_queries_count(2, include_schema: false) { Conversations::Inputs::WakeDue.call }
+    assert_queries_count(3, include_schema: false) { Conversations::Inputs::WakeDue.call }
     assert_queries_match(/ORDER BY .*deliver_at.*id.*LIMIT/, count: 1) do
       Conversations::Inputs::WakeDue.call
     end
@@ -169,7 +170,7 @@ class Conversations::Inputs::WakeDueTest < ActiveSupport::TestCase
     ApplicationRecord.lease_connection.execute("ANALYZE inputs")
     sources = []
     subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
-      if !payload[:cached] && payload[:sql].start_with?('SELECT "inputs"."deliver_at"')
+      if !payload[:cached] && payload[:sql].start_with?("SELECT COALESCE(deliver_at, created_at)")
         sources << [payload[:sql].dup, payload.fetch(:binds).dup]
       end
     end
@@ -177,7 +178,7 @@ class Conversations::Inputs::WakeDueTest < ActiveSupport::TestCase
       first = Conversations::Inputs::WakeDue.call
       second = continue(first)
       assert_equal [500, 500], [first[:scanned], second[:scanned]]
-      assert_equal [1, 1], [first[:woken], second[:woken]]
+      assert_equal [1, 0], [first[:woken], second[:woken]]
     ensure
       ActiveSupport::Notifications.unsubscribe(subscriber)
     end
@@ -188,7 +189,7 @@ class Conversations::Inputs::WakeDueTest < ActiveSupport::TestCase
         "EXPLAIN (ANALYZE, BUFFERS) #{sql}", "EXPLAIN", binds
       ).join("\n")
       assert_match(/\ALimit\s/, plan)
-      assert_match(/Index(?: Only)? Scan using index_inputs_due/, plan)
+      assert_match(/Index(?: Only)? Scan using index_inputs_pending_due/, plan)
       assert_no_match(/Seq Scan|Bitmap|Sort|Filter:/, plan)
       assert_match(/actual [^\n]*rows=500(?:\.0+)? loops=1/, plan)
     end

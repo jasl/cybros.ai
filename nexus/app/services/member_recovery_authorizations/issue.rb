@@ -23,8 +23,10 @@ module MemberRecoveryAuthorizations
       end
     end
 
-    def initialize(user:)
+    def initialize(user:, purpose: :password, lost_sso_provider: nil)
       @user = user
+      @purpose = purpose.to_s
+      @lost_sso_provider = lost_sso_provider
     end
 
     def call
@@ -44,7 +46,17 @@ module MemberRecoveryAuthorizations
 
         # The Identity lock serializes issue against consume and another issue;
         # a guarded write cannot atomically supersede, fence, and insert.
-        identity.with_lock do
+        identity.account.with_lock do
+          identity.lock!
+          member = identity.user
+          member.lock!
+          return Result.not_recoverable unless member.active?
+          return Result.not_recoverable if @purpose == "password" && identity.account.sso_only?
+          return Result.not_recoverable if @purpose == "sso_connection" && identity.account.sso_providers.where(enabled: true).none?
+          if @lost_sso_provider && !identity.sso_connections.exists?(sso_provider: @lost_sso_provider)
+            return Result.not_recoverable
+          end
+
           MemberRecoveryAuthorization.current
             .where(identity: identity)
             .update_all(superseded_at: Time.current)
@@ -54,6 +66,8 @@ module MemberRecoveryAuthorizations
           )
           authorization = MemberRecoveryAuthorization.create!(
             account: identity.account,
+            purpose: @purpose,
+            lost_sso_provider: @lost_sso_provider,
             identity: identity,
             user: @user,
             generation: identity.credential_recovery_generation,

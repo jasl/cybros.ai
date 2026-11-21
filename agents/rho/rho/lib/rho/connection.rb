@@ -287,7 +287,7 @@ module Rho
           raise StoredConnectionError,
             "the staged connection is not format version #{STAGING_VERSION}"
         end
-        unless document["base_url"] == @home.base_url
+        unless Home.canonical_base_url(document["base_url"]) == @home.base_url
           raise StoredConnectionError, "the staged connection belongs to a different Nexus"
         end
         @request = document.fetch("branch").to_sym

@@ -6,12 +6,32 @@
 # Rails-native review: the `:nodoc:` Disk-only file server is gone, and the
 # Disk pin with it). `Streaming` runs the body on a live thread; `Current`
 # carries into it under the fiber isolation level.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::InferenceRequests::FilesController <
       AgentAPI::V1::Workspaces::BaseController
   include AgentAPI::V1::WorkspaceScoped
 
   include ActiveStorage::Streaming
 
+  # @oas_include
+  # @summary Read files
+  # @tags Member, files
+  # @parameter index(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter inference_request_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesInferenceRequestsFilesShow
+  # @response_ref (206) #/components/responses/AgentApiV1WorkspacesInferenceRequestsFilesShow
+  # @response_ref (304) #/components/responses/Empty
+  # @response_ref (416) #/components/responses/RangeError
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def show
     inference_request = InferenceRequest.where(workspace_id: @workspace.id).listable
       .find_by!(public_id: params.fetch(:inference_request_public_id))

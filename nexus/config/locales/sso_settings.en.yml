@@ -1,0 +1,102 @@
+en:
+  sso:
+    authentication: Authentication
+    providers: Single sign-on providers
+    login_methods: Sign-in methods
+    continue_with: "Continue with %{provider}"
+    verify_with: "Verify with %{provider}"
+    verify: Verify your identity with a connected provider or your current password.
+    current_password: Current password
+    contact_admin: Contact your installation administrator if you cannot use your company sign-in.
+    no_providers: No sign-in providers configured.
+    add: Add sign-in provider
+    oidc: GitLab or OpenID Connect
+    oauth2: OAuth 2.0
+    edit: Edit configuration
+    edit_named: "Edit %{provider}"
+    save: Save configuration
+    saved: Authentication settings saved.
+    enable: Enable
+    disable: Disable
+    enabled: Enabled
+    disabled: Disabled
+    group_migration: "The new group requirement can be published once the affected members below have another sign-in method."
+    admission_changed: "The admission rules have changed. Sign in with %{provider} in a private window to verify this connection without ending your current session."
+    admission: New members
+    jit_help: Enable automatic registration only for a closed enterprise provider or a required company group. Otherwise, users need an invitation.
+    registration: Automatic registration
+    invitation_only: Invitation required
+    secret_set: A secret is configured. Leave blank to keep it.
+    oauth2_fields: OAuth 2.0 endpoints and profile fields
+    fixed_authority: A tested provider keeps the identity source and client ID it used to identify members. To change them, add a new provider.
+    complete_credentials: Configure this application’s credentials and endpoints to test it.
+    test_before_enable: Run a successful test to enable this provider.
+    callback: Redirect URI for the provider application
+    canonical_url_required: Configure an HTTPS BASE_URL for this installation before testing sign-in.
+    test: Test connection
+    pending: Configuration changes are pending. A successful test publishes them.
+    policy: Sign-in policy
+    policy_mixed: Members can sign in with a local password or a connected provider.
+    policy_sso: Members sign in through a connected provider.
+    switch_mixed: Allow password sign-in
+    switch_only: Require single sign-on
+    coverage: "%{ready} of %{total} active members are ready for SSO."
+    admin_coverage: "%{ready} of %{total} owners and administrators are ready."
+    password_count: "Allowing passwords will restore password sign-in for %{count} active members."
+    dormant: "Members who will need to reconnect when restored"
+    review_deletion: "Review provider deletion"
+    delete_blocked: "An active member would lose their last sign-in method. Return to the provider to review affected accounts."
+    uncovered: Members who still need an SSO sign-in method
+    affected: Members who would lose their last sign-in method
+    existing_sessions: Existing sessions and tokens keep their current validity.
+    last_provider: At least one enabled provider is required while SSO is enforced.
+    binding_count:
+      one: "1 connection"
+      other: "%{count} connections"
+    delete: Delete provider
+    delete_effect: "Deletion removes the connections of %{active} active, %{suspended} suspended and %{removed} removed members."
+    disable_first: Disable this provider before deleting it.
+    deletion_forbidden: To delete a provider, first allow password sign-in in the installation policy.
+    confirm_name: "Type %{name} to confirm"
+    confirm_delete: Permanently delete this provider and all its connections?
+    deleted: Provider deleted.
+    connected_as: "Connected as %{name}"
+    last_method: This is your last sign-in method. Connect another provider or set a password if allowed.
+    connect: Connect
+    disconnect: Disconnect
+    disconnected: Sign-in method disconnected.
+    manage_password: Manage local password
+    set_password: Set a local password
+    fields:
+      name: Display name
+      protocol: Protocol
+      issuer: Issuer or provider base URL
+      client_id: Client ID
+      client_secret: Client secret
+      scopes: Scopes (space-separated)
+      token_auth_method: Token endpoint client authentication
+      authorization_endpoint: Authorization endpoint
+      token_endpoint: Token endpoint
+      userinfo_endpoint: Current-user endpoint
+      subject_field: Stable subject field
+      name_field: Display name field
+      email_field: Email field
+      email_verified_field: Verified-email boolean field
+      trusted_origins: Additional trusted discovery endpoint origins (space-separated)
+      required_group: Required company group path (optional)
+      jit: Allow eligible new users to register without an invitation
+  errors:
+    messages:
+      last_login_method: A member would lose their last sign-in method. Connect an alternative first.
+      sso_not_ready: All active members need a tested, enabled SSO provider before you can enforce SSO.
+      stale_configuration: The provider changed. Reload and try again.
+      immutable_authority: Changing the provider's identity source requires creating a new provider.
+      incomplete_configuration: Configure the application credentials and endpoints first.
+      test_required: Test this configuration before enabling it.
+      last_provider: SSO requires at least one enabled provider.
+      deletion_forbidden: Provider deletion is unavailable while single sign-on is required.
+      disable_first: Disable the provider before deleting it.
+      confirmation_required: Enter the exact provider name to delete its connections.
+      openid_required: must include openid
+      gitlab_group_required: is required for automatic registration on GitLab.com
+      oidc_required: requires OpenID Connect

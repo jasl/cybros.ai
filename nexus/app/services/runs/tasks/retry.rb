@@ -80,7 +80,8 @@ module Runs
 
           # Its sources were satisfied once and a grown graph never changes,
           # so the countdown restarts at 0. The previous run's answer goes
-          # with its error. A model route's consumed allowance stays in its invocation history.
+          # with its error. Model work gets a fresh bounded invocation;
+          # prior invocations still bound automatic fallback.
           node.content_bodies.where(role: "output").destroy_all
           Transition.node(
             node,
@@ -113,8 +114,8 @@ module Runs
 
         # An explicit model change retries this task alone. Its existing
         # tools/options/approval remain authoritative, and a person's retry
-        # renews no automatic switch: not the mail loop's allowance, and not
-        # a declined step's once-only re-run, which its own history bounds.
+        # can ask a spent route again without replenishing automatic
+        # fallback candidates, which its invocation history still bounds.
         def replacement_selection(run, node)
           return [nil, nil] if @command.model.nil?
           return [nil, :model_not_applicable] unless node.model_task?
@@ -124,7 +125,6 @@ module Runs
           model = fields.fetch("model", current_model).to_s
           refusal = ModelSelection::Recovery.constraint_refusal(run.account, node.model_selection, model)
           return [nil, refusal] if refusal
-          return [nil, :model_route_spent] if ModelFallback.spent_route?(node, model)
 
           inherited = model == current_model
           effort = fields["reasoning_effort"].presence || (node.reasoning_effort if inherited)

@@ -337,11 +337,7 @@ class Conversations::ContextAssemblyRunBackedTest < ActiveJob::TestCase
       "replay silenced: the blobs go, the label and the order stay"
   end
 
-  # A labelled round's words ride their own messages, so its host holds only
-  # the fence another model on the lane reads — and the history lane hosts
-  # that fence in the bytes the loop lane sent, or every later message's
-  # prefix moves.
-  test "another model reads nothing of a labelled round's thinking, in history as in the loop's own continuation" do
+  test "a switched model receives the same display summary in the loop and rebuilt history" do
     declare_tools!(@agent)
     say!("materialize me first")
     turn, run = materialize_loop_reply!(@conversation, agent: @agent, text: nil)
@@ -369,14 +365,15 @@ class Conversations::ContextAssemblyRunBackedTest < ActiveJob::TestCase
     round = loop_node(run, "r1")
     host = Runs::RoundReplay.call(round, fan_by_call_id: Runs::RoundReplay.fans_of([round]).fetch(round.id),
       replay: replay).message
-    assert_nil host, "a phased round hosts only what the ladder lands, and another model's blob lands nothing"
+    summary = "Prior model's reasoning summary:\nplan one"
+    assert_equal [summary], host.parts.map(&:text)
 
     history = Nexus::InputEntries.for(Conversations::ContextAssembly.assemble(conversation: @conversation.reload,
       prompt: "next", principal: @human, reasoning: replay).messages)
-    assert_equal [["user", "materialize me first", nil], ["assistant", "Reading it.", "commentary"],
+    assert_equal [["user", "materialize me first", nil], ["assistant", summary, nil], ["assistant", "Reading it.", "commentary"],
                   ["call", "call_a"], ["result", "call_a"]],
-      placed(history).first(4)
-    assert_not_includes history.to_json, "plan one"
+      placed(history).first(5)
+    assert_not_includes history.to_json, "encrypted_content"
   end
 
   # ── The dangling call ────────────────────────────────

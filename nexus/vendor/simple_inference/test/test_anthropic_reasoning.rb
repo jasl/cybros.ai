@@ -266,10 +266,7 @@ class TestAnthropicReasoning < Minitest::Test
     assert_nil adapter.last_request, "rejection must produce zero outbound IO"
   end
 
-  # Deterministic construction: effort rides output_config.effort in adaptive
-  # mode only; pairing it with a manual/disabled thinking hash is a
-  # contradiction the protocol surfaces instead of silently dropping effort.
-  def test_reasoning_effort_conflicts_with_non_adaptive_explicit_thinking
+  def test_reasoning_effort_conflicts_with_manual_thinking
     adapter = capturing_adapter
     protocol = SimpleInference::Protocols::AnthropicMessages.new(base_url: "https://api.anthropic.com", api_key: "secret", adapter: adapter)
 
@@ -305,6 +302,22 @@ class TestAnthropicReasoning < Minitest::Test
     # pin, not an implementation guess).
     assert_equal({ "type" => "adaptive", "display" => "summarized" }, request_body.fetch("thinking"))
     assert_equal({ "effort" => "high" }, request_body.fetch("output_config"))
+  end
+
+  def test_between_tools_accepts_bounded_effort_and_only_its_type
+    protocol = SimpleInference::Protocols::AnthropicMessages.new(
+      base_url: "https://api.anthropic.com", api_key: "k", thinking_binding: "drop_block"
+    )
+    options = { model: "fixture", max_output_tokens: 256, input: "Hello", thinking: { type: "between_tools" } }
+    request = protocol.compile_create(**options, reasoning_effort: "high")
+    body = JSON.parse(request.payload)
+    assert_equal({ "type" => "between_tools" }, body.fetch("thinking"))
+    assert_equal "high", body.dig("output_config", "effort")
+    assert_raises(SimpleInference::ValidationError) { protocol.compile_create(**options, reasoning_effort: "xhigh") }
+    assert_raises(SimpleInference::ValidationError) { protocol.compile_create(**options, output_config: { effort: "max" }) }
+    assert_raises(SimpleInference::ValidationError) do
+      protocol.compile_create(**options, thinking: { type: "between_tools", display: "summarized" })
+    end
   end
 
   def test_redacted_thinking_blocks_round_trip

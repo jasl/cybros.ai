@@ -30,6 +30,7 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     end
   else
     driven_by :selenium, using: :headless_chrome, screen_size: DESKTOP_SIZE do |options|
+      options.binary = ENV["SE_BROWSER_PATH"] if ENV["SE_BROWSER_PATH"]
       options.add_preference("profile.password_manager_leak_detection", false)
     end
   end
@@ -89,6 +90,7 @@ class MobileSystemTestCase < ApplicationSystemTestCase
   else
     driven_by :selenium, using: :headless_chrome, screen_size: MOBILE_SIZE,
       options: { name: :mobile_headless_chrome } do |options|
+      options.binary = ENV["SE_BROWSER_PATH"] if ENV["SE_BROWSER_PATH"]
       options.add_preference("profile.password_manager_leak_detection", false)
     end
   end

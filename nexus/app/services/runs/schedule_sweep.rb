@@ -14,11 +14,14 @@ module Runs
     end
 
     def call
-      schedules = schedule_window
+      schedules, work = ApplicationRecord.uncached do
+        page = schedule_window
+        [page, candidates(page)]
+      end
       mails = result_delivery_window
-      schedules.each { |id| advance(id) }
+      work.each { |id| advance(id) }
       woken = mails.map(&:last).uniq.count { |id| wake_result_delivery(id) }
-      cursors = [cursor(schedules, @schedule_after_id), cursor(mails.map(&:first), @result_delivery_after_id)]
+      cursors = [cursor(schedules.map(&:id), @schedule_after_id), cursor(mails.map(&:first), @result_delivery_after_id)]
 
       Sweeps::Pass.new(
         counts: { scanned: schedules.length + mails.length, result_delivery_woken: woken },
@@ -32,7 +35,27 @@ module Runs
         return [] if @schedule_after_id.nil?
 
         Run.where(status: Run::LIVE_STATUSES).where(id: (@schedule_after_id + 1)..)
-          .order(:id).limit(@batch).pluck(:id)
+          .order(:id).limit(@batch).select(:id, :status, :variant_id, :workspace_id, :creating_user_id, :stopped_at)
+          .preload(:workspace, creating_user: [:steward, :derived_from]).to_a
+      end
+
+      # Discovery holds no locks. Only a positive candidate enters
+      # ScheduleReady, which rereads current authority, steering and tasks
+      # under the usual locks. A concurrent change can also send a precise
+      # wake; the next fresh sweep revisits every live Run.
+      def candidates(page)
+        return [] if page.empty?
+
+        ids = page.map(&:id)
+        standalone = page.filter_map { |run| run.id if run.standalone? }
+        hosted = ids - standalone
+        needed = page.filter_map do |run|
+          run.id if run.canceling? || run.stopped? || !run.workspace.data_writable_by?(run.creating_user)
+        end
+        needed.concat(SourceWork.stopped_source_ids(hosted))
+        needed.concat(Steers::Synchronize.recovery_ids(standalone:, hosted:))
+        needed.concat(ScheduleReady.recovery_candidates(Run.where(id: ids)).ids)
+        ids & needed
       end
 
       def result_delivery_window

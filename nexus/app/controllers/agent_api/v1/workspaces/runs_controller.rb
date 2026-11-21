@@ -1,6 +1,7 @@
 # The loop surface: create with the seed envelope, read the task-grained trace.
 # Steps are placed in written order and no client authors an edge — the old
 # grammar's words are refused by name, which keeps the graph sound.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::RunsController <
       AgentAPI::V1::Workspaces::BaseController
   include AgentAPI::V1::WorkspaceScoped
@@ -18,6 +19,20 @@ class AgentAPI::V1::Workspaces::RunsController <
   # shell is told so by name, never silently ignored.
   REFUSED_SHELL_WORDS = %w[tasks deliverable tools compaction_policy].freeze
 
+  # @oas_include
+  # @summary List runs
+  # @tags Member, runs
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesRunsIndex
   def index
     scope = filtered_runs(Run.visible_to(acting_user, workspace: @workspace))
     page = keyset_page(scope, columns: { public_id: :uuid })
@@ -27,11 +42,43 @@ class AgentAPI::V1::Workspaces::RunsController <
     }
   end
 
+  # @oas_include
+  # @summary Read runs
+  # @tags Member, runs
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesRunsShow
   def show
     run = find_listable_loop(@workspace, param: :public_id)
     render json: { run: AgentAPI::RunPresenter.full(run) }
   end
 
+  # @oas_include
+  # @summary Create runs
+  # @tags Member, runs
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter Idempotency-Key(header) [String] Optional Run creation key, up to 255 bytes. Longer keys return 400 parameter_invalid.
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesRunsCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesRunsCreate
+  # @response_ref (201) #/components/responses/AgentApiV1WorkspacesRunsCreate
   def create
     envelope = create_envelope
     return if performed?
@@ -50,7 +97,7 @@ class AgentAPI::V1::Workspaces::RunsController <
       fallback_models: envelope["fallback_models"],
       memory_context: envelope["memory_context"],
       idempotency_key: optional_idempotency_key(
-        max_bytes: RunAppendReceipt::IDEMPOTENCY_KEY_MAX_BYTES
+        max_bytes: RunCreateReceipt::IDEMPOTENCY_KEY_MAX_BYTES
       )
     ))
 
@@ -81,6 +128,21 @@ class AgentAPI::V1::Workspaces::RunsController <
   # Soft delete: the loop leaves every product surface now and its rows are
   # reclaimed after the retention window. A LIVE loop refuses — stopping a
   # run is `stop`'s decision to make, never a side effect of hiding it.
+  # @oas_include
+  # @summary Destroy runs
+  # @tags Member, runs
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (204) #/components/responses/AgentApiV1WorkspacesRunsDestroy
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def destroy
     run = find_listable_loop(@workspace, param: :public_id)
     return unless authorize_writable(run)

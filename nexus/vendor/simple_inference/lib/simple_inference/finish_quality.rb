@@ -47,6 +47,10 @@ module SimpleInference
     # https://ai.google.dev/api/generate-content#FinishReason
     GEMINI = {
       "MAX_TOKENS" => OUTPUT_BUDGET_EXHAUSTED,
+      # This client requests one hop; the partial answer reached that hop's cap.
+      "CONTINUATION" => OUTPUT_BUDGET_EXHAUSTED,
+      "ESCALATION" => BLOCKED,
+      "PUP_LIMITED_DISABLED" => ERROR,
       "SAFETY" => REFUSED,
       "IMAGE_SAFETY" => REFUSED,
       "RECITATION" => REFUSED,

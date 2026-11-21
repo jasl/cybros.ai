@@ -199,7 +199,7 @@ module Conversations
             narrate_settle(conversation, run, turn, variant, shape)
             Conversations::TranscriptStream.settled_turn(turn, variant: variant, run: run)
             # The lane is idle again; queued arrivals continue.
-            Inputs::DrainJob.perform_later(conversation.id)
+            wake_waiting_input(conversation)
             relay_kick(conversation)
             true
           else
@@ -212,8 +212,7 @@ module Conversations
         end
 
         def wake_waiting_input(conversation)
-          state = conversation.inputs.where(state: %w[pending blocked])
-            .merge(Input.due(DatabaseClock.now)).in_read_order.pick(:state)
+          state = conversation.inputs.waiting_at.pick(:state)
           Inputs::DrainJob.perform_later(conversation.id) if state == "pending"
         end
 
@@ -376,7 +375,7 @@ module Conversations
           end
           arm_overflow(conversation, invocation, variant) if !source_stopped && invocation.context_overflow?
           # The lane is idle again; queued arrivals continue.
-          Inputs::DrainJob.perform_later(conversation.id)
+          wake_waiting_input(conversation)
           relay_kick(conversation)
         end
 

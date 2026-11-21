@@ -20,8 +20,18 @@ class TestPromptCacheTTL < Minitest::Test
   def test_omission_does_not_add_cache_fields_and_invalid_values_fail_before_io
     FORMATS.each do |format|
       assert_equal body(format), body(format, prompt_cache_ttl: nil)
-      %w[5m 1h 2d bad].each do |ttl|
+      invalid = format == "openrouter_chat" ? %w[2d bad] : %w[5m 1h 2d bad]
+      invalid.each do |ttl|
         assert_raises(SimpleInference::ValidationError) { body(format, prompt_cache_ttl: ttl) }
+      end
+    end
+  end
+
+  def test_openrouter_anthropic_ttls_apply_one_automatic_breakpoint_at_the_root
+    [false, true].each do |stream|
+      baseline = body("openrouter_chat", stream: stream)
+      { "5m" => { "type" => "ephemeral" }, "1h" => { "type" => "ephemeral", "ttl" => "1h" } }.each do |ttl, marker|
+        assert_equal baseline.merge("cache_control" => marker), body("openrouter_chat", stream: stream, prompt_cache_ttl: ttl)
       end
     end
   end

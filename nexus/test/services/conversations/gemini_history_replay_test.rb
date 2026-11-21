@@ -44,13 +44,40 @@ class Conversations::GeminiHistoryReplayTest < ActiveJob::TestCase
     _next_turn, next_loop = reply("Explain what you read", replay: "none")
     parts = wire_parts(loop_attempt(next_loop))
     assert_tool_pair(parts)
-    assert_empty parts.filter_map { |part| part["thoughtSignature"] }
+    assert_equal ["skip_thought_signature_validator"], parts.filter_map { |part| part["thoughtSignature"] }
     assert_empty parts.select { |part| part["thought"] }
+  end
+
+  test "another Gemini 4 model receives the signed answer and empty trailing part in their original positions" do
+    answer = [
+      { "text" => "Looked up the file.", "thoughtSignature" => "answer-signature" },
+      { "thought" => true, "text" => "Summarize the result." },
+      { "text" => " Finished." },
+      { "text" => "", "thoughtSignature" => "trailing-signature" },
+    ]
+    complete_tool_turn(final_parts: answer)
+
+    _, run = reply("Continue", model: "gemini-4-neon")
+    parts = wire_parts(loop_attempt(run))
+    assert_equal answer, parts.each_cons(answer.length).find { |group| group.first == answer.first }
+  end
+
+  test "a thought after the only ordinary part stays after the answer" do
+    answer = [{ "text" => "The file is complete." }, { "thought" => true, "text" => "Ready for the next file." }]
+    complete_tool_turn(final_parts: answer)
+
+    _, run = reply("Continue")
+    attempt = loop_attempt(run)
+    parts = wire_parts(attempt)
+    assert_equal answer, parts.each_cons(2).find { |first, _second| first == answer.first }
+    sealed = ModelRequests::InputSource.accepted_entry_payloads(attempt.model_invocation)
+    ordinary = sealed.flat_map { |entry| Array(entry["parts"]) }.find { |part| part["text"] == "The file is complete." }
+    assert_equal({ "type" => "text", "text" => "The file is complete." }, ordinary)
   end
 
   private
 
-    def complete_tool_turn(thought: true)
+    def complete_tool_turn(thought: true, final_parts: [{ "text" => "The file has been read." }])
       turn, run = reply("Read the file")
       parts = thought ? [{ "thought" => true, "text" => "Read before answering." }] : []
       run_loop_round!(run, response(parts + [
@@ -65,7 +92,7 @@ class Conversations::GeminiHistoryReplayTest < ActiveJob::TestCase
       schedule_loop!(run)
       continuation = loop_attempt(run)
       assert_equal [SIGNATURE], wire_parts(continuation).filter_map { |part| part["thoughtSignature"] }
-      apply_via(continuation, response([{ "text" => "The file has been read." }]))
+      apply_via(continuation, response(final_parts))
       Runs::ConvergeTerminalSteps.call
       schedule_loop!(run)
       Conversations::Turns::Converge.call
@@ -77,9 +104,9 @@ class Conversations::GeminiHistoryReplayTest < ActiveJob::TestCase
       assert_equal ["read-call"], parts.filter_map { |part| part.dig("functionResponse", "id") }
     end
 
-    def reply(text, replay: "all")
+    def reply(text, replay: "all", model: "gemini-4-hydrogen")
       turn, run = materialize_loop_reply!(@conversation.reload, agent: @agent, text: text,
-        provider_id: "gemini", model_ref: "gemini-3.8-flash",
+        provider_id: "gemini", model_ref: model,
         context_options: { "reasoning_replay" => { "mode" => replay } })
       schedule_loop!(run)
       [turn, run]

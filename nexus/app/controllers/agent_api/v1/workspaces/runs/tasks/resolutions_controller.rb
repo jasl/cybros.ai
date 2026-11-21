@@ -1,10 +1,28 @@
 # Workspace-scoped and member-authenticated like every write here; the
 # resolution token is a second factor checked inside the engine, never a
 # credential of its own.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Runs::Tasks::ResolutionsController <
       AgentAPI::V1::Workspaces::Runs::BaseController
   include AgentAPI::V1::SettlementRendering
 
+  # @oas_include
+  # @summary Create resolutions
+  # @tags Member, resolutions
+  # @parameter run_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter task_key(path) [!String] Resource selector.
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesRunsTasksResolutionsCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesRunsTasksResolutionsCreate
   def create
     run = find_listable_loop(@workspace)
     return unless authorize_writable(run)

@@ -74,10 +74,15 @@ HTTP API's opaque pagination tokens.
 If a read exceeds the tool-result bound, it completes with `result_too_large`.
 Reduce the list limit or read the full saved record through the Schedules API.
 
-`manage_schedule` accepts `create`, `update`, `pause`, `resume` or `cancel`.
-Creation requires `prompt` and `rule`; `name` is optional. Update requires
-`job_id` and `expected_lock_version` and changes the name, prompt or rule.
-Lifecycle actions require `job_id`.
+`manage_schedule` accepts `create`, `update`, `pause`, `resume`, `cancel` and
+`set_result_wake`. Creation requires `prompt` and `rule`. Both create and update
+accept `wake` (`auto` or `passive`). Update also requires `job_id` and
+`expected_lock_version`. Pause, resume and cancel require `job_id`.
+
+In the original scheduled execution, `{"action":"set_result_wake","wake":"auto"}`
+asks the parent to respond to this occurrence. Use `passive` to leave a receipt
+in its history. This action takes no job ID and returns the chosen `wake` and
+the occurrence’s `input_public_id`. The schedule retains its own default.
 
 A management result normally includes the saved record. If its full prompt would
 exceed the tool-result bound, the result contains `public_id`, `status`,

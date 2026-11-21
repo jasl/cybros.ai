@@ -869,11 +869,14 @@ execution.
   from the whole execution's deadline, which ends work. Preserve rate-limit lane floors/cooldowns,
   terminal request/authentication errors, cancellation and provider enforcement. The existing
   classifier-refusal path remains distinct; a content block is not permission to route around it.
-- Each resolved provider/model route enters a failed-step chain at most once; bounded retries on
-  that route are actual attempts. Derive consumption from durable invocation history within the
-  finite candidate/per-route allowance and existing execution deadline/budget. Do not add another
-  mutable failure counter, reset allowance on restart/redeclaration/retry of the same failed step,
-  or create a Conversation-lifetime failure budget. Skips consume no attempt allowance.
+- Each resolved provider/model route enters automatic failed-step recovery at most once; bounded
+  retries on that route are actual attempts. Derive consumption from durable invocation history
+  within the finite candidate/per-route allowance and existing execution deadline/budget. Do not add another
+  mutable failure counter, reset automatic allowance on restart/redeclaration,
+  or create a Conversation-lifetime failure budget. An explicit task retry creates a fresh bounded
+  invocation on its current or explicitly selected permitted model, including a refused or exhausted
+  route. Retain prior invocation history so the retry cannot replenish spent automatic fallback
+  candidates. Skips consume no attempt allowance.
 - Recheck every candidate against the actual request, including tools, media, context, reasoning
   and replay requirements. Same-model identity cannot make provider-native signed/encrypted history
   transferable. Withdraw partial output and requeue with a fresh generation; fence old attempt
@@ -1001,13 +1004,21 @@ execution.
   standalone runs, and InferenceRequests get five minutes plus tail; summarizers get no marker.
   `Nexus::PromptCache::RequestKind` owns those defaults and placement eligibility.
   Catalog-declared `configuration.prompt_cache_ttl` overrides the marked request's tier only;
-  it never enables summary markers or changes stable/tail placement. Other supported wires
+  it never enables summary markers or changes stable/tail placement. OpenRouter Claude
+  routes declare five-minute and one-hour TTLs and use the same request-kind policy for
+  the broker's request-level automatic breakpoint. Other supported wires
   lower their declared TTL vocabulary to request-level fields. Omission preserves wire defaults.
   Provider observations are optional
   diagnostics, not regression authority.
-- Reasoning is history. Default replay is `all`: retain every trace the target wire can read in
-  the form and position first carried. Protocol format determines representation; unreadable
-  origins contribute nothing, not a content fence. Fit traces with their turn using captured
+- Reasoning is history. Default replay is `all`. Preserve native reasoning in its original
+  position where the target accepts its origin. On a model or provider switch, when native
+  replay is incompatible, carry a provider-supplied readable summary in assistant history
+  if available. On a direct Claude downgrade, keep signed blocks at their original positions
+  and add the provider's labeled display summary to the receiving user or tool-result turn.
+  Preserve earlier handoffs when switching back so later signed prefixes still match.
+  Without a readable summary the next model continues from visible messages, tool calls and
+  results. Keep raw reasoning, encrypted state and signatures out of portable text.
+  Fit traces and any handoff text with their turn using captured
   token counts and sealed bytes. Remove them only with that turn through compaction or an
   author's narrower/off mode, never by trace-only trimming or a retry without required traces.
 - A hard/shared window reserves answer room `min(32k, 12.5%)`; advisory planning bounds already

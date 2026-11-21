@@ -1,4 +1,5 @@
 # The conversation's feed: the one events body over the listable conversation.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Conversations::EventsController <
       AgentAPI::V1::Workspaces::EventsController
   include AgentAPI::V1::WorkspaceScoped

@@ -134,7 +134,7 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
   # answer: wire truth for a lane whose endpoint answers 400 to a unary POST,
   # and a declared transport for every other SSE text lane.
   test "a text lane is lowered as the streaming request it is" do
-    wire_forced = DevModelLane.profile_for("codex_subscription/gpt-6.1-sol")
+    wire_forced = DevModelLane.profile_for("codex_subscription/gpt-6.2-sol")
     declared = DevModelLane.profile_for("dev/mock-text")
 
     assert wire_forced.wire_option(:stream_only), "codex reaches it from the wire"
@@ -240,7 +240,7 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
   test "shipped image lanes use their provider's current inline-byte contract" do
     snapshot = ModelCatalog.current
     expected_formats = {
-      "openai_api/gpt-image-2-2026-04-21" => nil,
+      "openai_api/gpt-image-2.6-sunburst" => nil,
       "xai/grok-imagine-image-2.0" => "b64_json",
     }
 
@@ -356,7 +356,7 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
   end
 
   # NOT ONE WIRE BYTE CHANGES for a lane that already claimed tools. The
-  # shipped kimi-k3 row is silent now; the same row with the deleted
+  # shipped Kimi row is silent now; the same row with the deleted
   # `tool_calls: true` line put back compiles the same profile, and one
   # invocation built against each yields the same payload, byte for byte —
   # the tools the round merges ride exactly as they did on 2026-09-15.
@@ -365,11 +365,11 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
       root: Rails.root.join("config/model_catalog"), override_dir: nil
     )
     provider = candidate.providers.fetch("openrouter")
-    silent = candidate.models.fetch("openrouter/moonshotai/kimi-k3")
+    silent = candidate.models.fetch("openrouter/moonshotai/kimi-k3.1-pro")
     refute silent.fetch("capabilities").key?("tool_calls"), "the row no longer restates its wire"
     claiming = silent.merge("capabilities" => silent.fetch("capabilities").merge("tool_calls" => true))
 
-    model_ref = "openrouter/moonshotai/kimi-k3"
+    model_ref = "openrouter/moonshotai/kimi-k3.1-pro"
     invocation, profile_silent = tooled_invocation(
       api_format: "openrouter_chat", provider: provider, model: silent, model_ref: model_ref
     )
@@ -391,9 +391,9 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
   # the one place a missing gate would show — never sees it, and a phase
   # with no origin has no licence to ride at all.
   test "an assistant message's phase reaches the wire only on the lane that produced it" do
-    origin = { "provider_id" => "openai_api", "model_id" => "gpt-6.1-sol", "api_format" => "openai_responses" }
+    origin = { "provider_id" => "openai_api", "model_id" => "gpt-6.2-sol", "api_format" => "openai_responses" }
     phased = phased_message("Reading the file.", origin: origin)
-    assistant = shipped_payload([user_message("read it"), phased], model_ref: "openai_api/gpt-6-luna")
+    assistant = shipped_payload([user_message("read it"), phased], model_ref: "openai_api/gpt-6.1-terra")
       .fetch("input").find { |item| item["role"] == "assistant" }
     assert_equal "commentary", assistant["phase"], "a different model on the same lane keeps the label"
 
@@ -403,18 +403,17 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
     assert messages.none? { |message| message.key?("phase") }, "a chat wire never receives the word"
 
     assistant = shipped_payload([user_message("read it"), phased_message("Reading the file.", origin: nil)],
-      model_ref: "openai_api/gpt-6-luna").fetch("input").find { |item| item["role"] == "assistant" }
+      model_ref: "openai_api/gpt-6.1-terra").fetch("input").find { |item| item["role"] == "assistant" }
     assert_not assistant.key?("phase"), "the origin is the phase's licence"
   end
 
   # A Responses round that thought and spoke between its calls, inherited
-  # by a chat model: the foreign reasoning items carry nothing across (the
-  # chat model cannot read them, and no fence stands in for them), and the
+  # by a chat model: its summaries become ordinary assistant text and the
   # round's calls still ride ONE assistant message — the commentary between
   # the calls folds into it — with every tool message after it, the shape a
   # strict chat endpoint accepts.
   test "a sealed Responses round with commentary between calls lowers to one assistant message on a chat wire" do
-    origin = { "provider_id" => "openai_api", "model_id" => "gpt-6.1-sol", "api_format" => "openai_responses" }
+    origin = { "provider_id" => "openai_api", "model_id" => "gpt-6.2-sol", "api_format" => "openai_responses" }
     reasoning = ->(blob, summary) do
       Nexus::ReasoningInputItem.new(type: "reasoning_item", native_origin: origin, payload: {
         "type" => "reasoning", "encrypted_content" => blob,
@@ -427,7 +426,10 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
 
     messages = shipped_payload(elements, model_ref: "openrouter/z-ai/glm-5.3").fetch("messages")
     assert_equal %w[user assistant tool tool], messages.map { |message| message["role"] }
-    assert_equal "Reading the first.", wire_text(messages[1]), "no thought of another model rides as words"
+    assert_equal ["Prior model's reasoning summary:\nplan one", "Reading the first.",
+                  "Prior model's reasoning summary:\nplan two"], messages[1].fetch("content").pluck("text")
+    assert_not_includes messages.to_json, "E1"
+    assert_not_includes messages.to_json, "E2"
     assert_equal %w[call_x call_y], messages[1].fetch("tool_calls").map { |c| c["id"] },
       "one assistant message carries the round's calls"
     assert_equal %w[call_x call_y], messages[2..].map { |message| message["tool_call_id"] },
@@ -438,14 +440,14 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
   # message's field: the detail blocks verbatim on the message that carries
   # the round's calls, the answer's words beside them.
   test "a chat model's own round carries its reasoning details on the calling message" do
-    origin = { "provider_id" => "openrouter", "model_id" => "moonshotai/kimi-k3", "api_format" => "openrouter_chat" }
+    origin = { "provider_id" => "openrouter", "model_id" => "moonshotai/kimi-k3.1-pro", "api_format" => "openrouter_chat" }
     blocks = [{ "type" => "reasoning.text", "text" => "read a first", "format" => "moonshot", "index" => 0 }]
     thought = Nexus::ReasoningInputPart.new(type: Nexus::InputParts::REASONING, native_origin: origin,
       payload: { "type" => "reasoning_details", "blocks" => blocks })
     round = Nexus::TextInputMessage.new(role: "assistant", parts: [thought])
     elements = [user_message("read a"), round, call_item("call_a"), result_item("call_a")]
 
-    messages = shipped_payload(elements, model_ref: "openrouter/moonshotai/kimi-k3").fetch("messages")
+    messages = shipped_payload(elements, model_ref: "openrouter/moonshotai/kimi-k3.1-pro").fetch("messages")
     assert_equal %w[user assistant tool], messages.map { |message| message["role"] }
     assert_equal blocks, messages[1].fetch("reasoning_details")
     assert_equal %w[call_a], messages[1].fetch("tool_calls").map { |c| c["id"] }
@@ -486,7 +488,7 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
   # The row's reasoning context is a request fact the send reads from the
   # catalog beside the effort: a GPT-6 API row asks for every turn's items.
   test "a row's reasoning context reaches the Responses wire beside the effort" do
-    payload = shipped_payload([user_message("hi")], model_ref: "openai_api/gpt-6.1-sol",
+    payload = shipped_payload([user_message("hi")], model_ref: "openai_api/gpt-6.2-sol",
       reasoning_effort: "medium", reasoning_context: "all_turns")
 
     assert_equal "all_turns", payload.dig("reasoning", "context")
@@ -496,22 +498,49 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
   test "configured TTL overrides only the Anthropic tier and never enables summary markers" do
     input = [user_message("hi"), user_message("next")]
     options = { "max_output_tokens" => 1024, "prompt_cache" => Nexus::PromptCache::RequestKind.stamp("mainline") }
-    original = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5", request_options: options)
-    overridden = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5",
+    original = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5-5", request_options: options)
+    overridden = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5-5",
       request_options: options.merge("prompt_cache_ttl" => "5m"))
     assert_equal original.to_json.gsub(',"ttl":"1h"', ""), overridden.to_json
     assert_not overridden.key?("prompt_cache_ttl")
-    branch = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5",
+    branch = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5-5",
       request_options: options.merge("prompt_cache_ttl" => "1h", "prompt_cache" => Nexus::PromptCache::RequestKind.stamp("branch")))
     assert_equal original, branch
 
-    summary = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5",
+    summary = shipped_payload(input, model_ref: "anthropic/claude-sonnet-5-5",
       request_options: options.merge("prompt_cache_ttl" => "1h", "prompt_cache" => Nexus::PromptCache::RequestKind.stamp("summary")))
     assert_not_includes summary.to_json, "cache_control"
   end
 
+  test "OpenRouter Claude advances its automatic breakpoint across tool rounds and skips summaries" do
+    input = [user_message("read this")]
+    options = { "prompt_cache" => Nexus::PromptCache::RequestKind.stamp("mainline") }
+    %w[fable-5.2 opus-5.5 sonnet-5.5 haiku-5.5].each do |model|
+      ref = "openrouter/anthropic/claude-#{model}"
+      initial = shipped_payload(input, model_ref: ref, request_options: options)
+      assert_equal({ "type" => "ephemeral", "ttl" => "1h" }, initial.fetch("cache_control"))
+      continuation = shipped_payload(input + [call_item("lookup"), result_item("lookup")], model_ref: ref, request_options: options)
+      assert_equal initial.fetch("cache_control"), continuation.fetch("cache_control")
+      assert_equal initial.fetch("messages"), continuation.fetch("messages").take(initial.fetch("messages").length)
+      assert_equal "tool", continuation.fetch("messages").last.fetch("role")
+      assert_not_includes continuation.fetch("messages").to_json, "cache_control"
+    end
+
+    ref = "openrouter/anthropic/claude-sonnet-5.5"
+    branch = { "prompt_cache" => Nexus::PromptCache::RequestKind.stamp("branch") }
+    assert_equal({ "type" => "ephemeral" }, shipped_payload(input, model_ref: ref, request_options: branch).fetch("cache_control"))
+    overridden = shipped_payload(input, model_ref: ref, request_options: options.merge("prompt_cache_ttl" => "5m"))
+    assert_equal({ "type" => "ephemeral" }, overridden.fetch("cache_control"))
+    summary = { "prompt_cache" => Nexus::PromptCache::RequestKind.stamp("summary"), "prompt_cache_ttl" => "1h" }
+    assert_not_includes shipped_payload(input, model_ref: ref, request_options: summary).to_json, "cache_control"
+
+    %w[openrouter/openai/gpt-6.2-sol openrouter/qwen/qwen4-max].each do |other|
+      assert_not_includes shipped_payload(input, model_ref: other, request_options: options).to_json, "cache_control"
+    end
+  end
+
   test "catalog TTL reaches native Responses and OpenRouter without changing the baseline" do
-    %w[openai_api/gpt-6-luna openrouter/openai/gpt-6-sol:exacto].each do |model_ref|
+    %w[openai_api/gpt-6.1-terra openrouter/openai/gpt-6.2-sol].each do |model_ref|
       original = shipped_payload([user_message("hi")], model_ref: model_ref)
       %w[30m 12h].each do |ttl|
         configured = shipped_payload([user_message("hi")], model_ref: model_ref,
@@ -519,6 +548,29 @@ class ModelRequests::BuildTest < ActiveSupport::TestCase
         assert_equal original.merge("prompt_cache_options" => { "ttl" => ttl }), configured
       end
     end
+  end
+
+  test "a Claude handoff after a tool result keeps the following system update in its legal position" do
+    fable = { "provider_id" => "anthropic", "api_format" => "anthropic_messages", "model_id" => "claude-fable-5-2" }
+    sonnet = fable.merge("model_id" => "claude-sonnet-5-5")
+    signed = Nexus::ReasoningInputPart.new(type: "reasoning", native_origin: fable,
+      payload: { "type" => "thinking", "thinking" => "check the digest", "signature" => "original" })
+    prefix = [user_message("start"), Nexus::TextInputMessage.new(role: "assistant", parts: [signed]),
+      call_item("a"), result_item("a"), user_message("phase two").with(role: "system")]
+    config = { "max_output_tokens" => 4096 }
+    switched = shipped_payload(prefix, model_ref: "anthropic/claude-sonnet-5-5", request_options: config).fetch("messages")
+    assert_equal %w[user assistant user system], switched.pluck("role")
+    assert_equal %w[tool_result text], switched[2].fetch("content").pluck("type")
+    assert_equal "Prior model's reasoning summary:\ncheck the digest", switched[2].fetch("content").last.fetch("text")
+
+    reply = user_message("done").with(role: "assistant", native_origin: sonnet)
+    back = shipped_payload(prefix + [reply, user_message("continue")], model_ref: "anthropic/claude-fable-5-2", request_options: config).fetch("messages")
+    # The tail cache marker advances to the new last turn. Cache markers
+    # are excluded from Anthropic's signed-prefix check.
+    original = switched.map { |message| message.fetch("content").map { |part| part.except("cache_control") } }
+    restored = back.take(switched.length).map { |message| message.fetch("content").map { |part| part.except("cache_control") } }
+    assert_equal switched.pluck("role"), back.take(switched.length).pluck("role")
+    assert_equal original, restored
   end
 
   test "send refuses a TTL the current model does not declare" do

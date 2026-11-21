@@ -45,7 +45,7 @@ class Conversations::ContextAssemblyBoundaryPrefixTest < ActiveJob::TestCase
 
   test "the chat field: a calling round's reasoning details ride its one assistant message on every later turn" do
     enable_lane("openrouter")
-    kimi = "moonshotai/kimi-k3"
+    kimi = "moonshotai/kimi-k3.1-pro"
     first_turn!("openrouter", kimi, "read a") do |run|
       apply_via(loop_attempt(run), chat_stream(reasoning: "look at a",
         tool_calls: [{ "id" => "call_a", "name" => "read_file", "arguments" => "{\"path\":\"a\"}" }]))

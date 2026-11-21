@@ -2,6 +2,21 @@ module BudgetReading
   extend ActiveSupport::Concern
   include AgentAPI::KeysetPagination
 
+  # @oas_include
+  # @summary List budgets
+  # @tags Platform, budgets
+  # @parameter agent_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter user_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ConcernsBudgetReadingRbIndex
   def index
     target = budget_target
     measured_at = Time.current
@@ -16,6 +31,22 @@ module BudgetReading
     }
   end
 
+  # @oas_include
+  # @summary Read budgets
+  # @tags Platform, budgets
+  # @parameter agent_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter user_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ConcernsBudgetReadingRbShow
   def show
     measured_at = Time.current
     render json: { budget: budget_projection(find_budget, at: measured_at), measured_at: measured_at }

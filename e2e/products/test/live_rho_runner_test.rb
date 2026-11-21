@@ -11,11 +11,9 @@ require "stringio"
 # AND THE CAPTURE PATH: a second turn NAMES `browser_screenshot`; the environment host loads
 # rho-browser from ITS home's settings.json with the driver in ITS env; the PNG is a CAPTURE the
 # result names with a `resource_link`; `rho fetch` (exe/rho) prints its bytes and the SDK reads the
-# same bytes; and the NEXT sealed request carries the picture the way the loop's CATALOG ROW selects
-# — the images rider's two halves ride the two floors. A text-only row (`deepseek/deepseek-flash`)
-# gets the RULED line in the picture's place, the part degraded where the segments are built; an
-# image row (`openrouter/z-ai/glm-5.3-flash`: the broker lists image input) gets the `upload` part
-# itself. The lane reads the row's `input_modalities` off the member plane (`client.models`, the
+# same bytes. A text-only model such as `deepseek/deepseek-v4-pro` receives an attachment index
+# line in the next sealed request. An image-capable model such as `deepseek/deepseek-flash`
+# receives the `upload` part. The lane reads `input_modalities` off the member plane (`client.models`, the
 # kernel's own listing of what this account can run) and asserts the half the row names; the model
 # ANSWERING from the picture is `live_capture`'s.
 #

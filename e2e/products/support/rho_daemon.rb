@@ -355,7 +355,7 @@ module E2E
       raise "the rho daemon has no announcement to address" unless document
 
       uri = URI.join(document.fetch("endpoint"), path)
-      request = { get: Net::HTTP::Get, post: Net::HTTP::Post, put: Net::HTTP::Put, delete: Net::HTTP::Delete }.fetch(verb).new(uri)
+      request = { get: Net::HTTP::Get, post: Net::HTTP::Post, patch: Net::HTTP::Patch, put: Net::HTTP::Put, delete: Net::HTTP::Delete }.fetch(verb).new(uri)
       request["Authorization"] = "Bearer #{document.fetch("bearer")}"
       if body
         request["Content-Type"] = "application/json"

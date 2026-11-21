@@ -153,6 +153,8 @@ when you want to make real model requests.
 
 ## Next
 
+- [Connect a host installation](connect-a-host-installation.md) to install rho,
+  connect it to this Nexus at `http://127.0.0.1:3000`, select a model and run a prompt.
 - [Build your own agent](build-an-agent.md) to develop another Nexus client.
 - [Agent API quickstart](../build/quickstart.md) to connect an agent and send its first request.
 - [Runner quickstart](../runners/quickstart.md) to serve tools from your machine.

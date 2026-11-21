@@ -264,13 +264,12 @@ class Run < ApplicationRecord
   # Every model task that is not a branch, a NULL mark included — SQL's
   # `!= 'branch'` would drop it.
   def mainline_nodes
-    tasks.where(type: Tasks::ModelTask.sti_name)
-      .where("continuation_source IS DISTINCT FROM ?", Tasks::ModelTask::BRANCH)
+    tasks.mainline_models
   end
 
   # A mainline round still to run, or running. Its request is sealed the
   # moment it starts, so nothing new can join it.
-  def mainline_live? = mainline_nodes.where(status: Task::LIVE_STATUSES).exists?
+  def mainline_live? = mainline_nodes.live.exists?
 
   # The conversation's last word: the mainline is a chain linked by each
   # round's first read, and its tail is the round no mainline round reads.

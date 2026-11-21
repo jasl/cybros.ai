@@ -17,19 +17,22 @@
     </div>
   <% end %>
 
-  <%= form_with url: join_path, scope: :acceptance do |form| %>
-    <%= hidden_field_tag :token, params[:token] %>
-    <fieldset class="fieldset">
-      <%= form.label :display_name, t("invitation_acceptances.new.your_name"), class: "label" %>
-      <%= validated_field form, :text_field, :display_name, @errors[:display_name], value: @submitted_display_name, required: true, autofocus: true, autocomplete: "name", placeholder: t("invitation_acceptances.new.enter_your_display_name") %>
+  <%= render "sso/login_options", providers: @login_providers, flow_params: { purpose: "invitation", invitation_token: params[:token] } %>
+  <% unless @invitation.account.sso_only? %>
+    <%= form_with url: join_path, scope: :acceptance do |form| %>
+      <%= hidden_field_tag :token, params[:token] %>
+      <fieldset class="fieldset">
+        <%= form.label :display_name, t("invitation_acceptances.new.your_name"), class: "label" %>
+        <%= validated_field form, :text_field, :display_name, @errors[:display_name], value: @submitted_display_name, required: true, autofocus: true, autocomplete: "name", placeholder: t("invitation_acceptances.new.enter_your_display_name") %>
 
-      <%= form.label :password, t("invitation_acceptances.new.password"), class: "label mt-2" %>
-      <%= validated_field form, :password_field, :password, @errors[:password], required: true, autocomplete: "new-password", placeholder: t("invitation_acceptances.new.enter_a_password"), maxlength: 72 %>
+        <%= form.label :password, t("invitation_acceptances.new.password"), class: "label mt-2" %>
+        <%= validated_field form, :password_field, :password, @errors[:password], required: true, autocomplete: "new-password", placeholder: t("invitation_acceptances.new.enter_a_password"), maxlength: 72 %>
 
-      <%= form.label :password_confirmation, t("invitation_acceptances.new.repeat_password"), class: "label mt-2" %>
-      <%= validated_field form, :password_field, :password_confirmation, @errors[:password_confirmation], required: true, autocomplete: "new-password", placeholder: t("invitation_acceptances.new.repeat_the_password"), maxlength: 72 %>
+        <%= form.label :password_confirmation, t("invitation_acceptances.new.repeat_password"), class: "label mt-2" %>
+        <%= validated_field form, :password_field, :password_confirmation, @errors[:password_confirmation], required: true, autocomplete: "new-password", placeholder: t("invitation_acceptances.new.repeat_the_password"), maxlength: 72 %>
 
-      <%= form.submit t("invitation_acceptances.new.accept_invitation"), class: "btn btn-primary btn-block mt-4" %>
-    </fieldset>
+        <%= form.submit t("invitation_acceptances.new.accept_invitation"), class: "btn btn-primary btn-block mt-4" %>
+      </fieldset>
+    <% end %>
   <% end %>
 </div>

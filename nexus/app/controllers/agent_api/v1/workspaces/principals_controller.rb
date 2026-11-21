@@ -7,9 +7,24 @@
 # pagination — the set is an account's members with access, small by
 # construction (the executors listing's shape). The system user is never a
 # member and never a principal.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::PrincipalsController < AgentAPI::V1::Workspaces::BaseController
   include AgentAPI::V1::WorkspaceScoped
 
+  # @oas_include
+  # @summary List principals
+  # @tags Member, principals
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesPrincipalsIndex
   def index
     render json: { principals: principals.map { |user| AgentAPI::PrincipalPresenter.basic(user) } }
   end

@@ -130,8 +130,9 @@ module Rho
     class ClaimAttachments
       POLL_SECONDS: Float
       Request: untyped
+      def self.public_id: (String reference) -> String?
       def initialize: (task: untyped, claim_token: String) -> void
-      def read: (String public_id, untyped io) -> CybrosAgent::Api::Upload
+      def read: (String public_id, untyped io) ?{ (CybrosAgent::Api::Upload) -> void } -> CybrosAgent::Api::Upload
       def wait: () -> Numeric
       def flush: () -> untyped
     end

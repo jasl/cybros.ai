@@ -7,6 +7,7 @@
 # `invalid_frame` (a key of neither kind, or a payload member of the wrong
 # type), `404` for a host or a row this credential's account does not
 # hold.
+# @auth [ExecutorBearer]
 class AgentAPI::V1::Executors::ProgressController < AgentAPI::V1::Executors::BaseController
   # Thirty-two concurrent keys at the four-frame-per-second cadence consume
   # 7,680 requests/minute. Keep room for host progress beside task progress;
@@ -27,6 +28,19 @@ class AgentAPI::V1::Executors::ProgressController < AgentAPI::V1::Executors::Bas
   rate_limit to: 1, within: Executors::Progress::MIN_INTERVAL, by: -> { frame_key },
     with: -> { head :accepted }, store: Executors::Progress::RATE, name: "frame-key", if: -> { frame_key }
 
+  # @oas_include
+  # @summary Create progress
+  # @tags Executor, progress
+  # @response_ref (202) #/components/responses/Empty
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def create
     result = Executors::Progress.call(executor: current_executor, frame: frame)
 

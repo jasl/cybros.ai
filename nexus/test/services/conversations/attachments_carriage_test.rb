@@ -142,7 +142,7 @@ class Conversations::AttachmentsCarriageTest < ActiveJob::TestCase
     source = PngFixture.bytes(width: 2304, height: 768)
     picture = upload(bytes: source)
 
-    %w[gpt-6-astra gpt-6.1-sol gpt-6-luna].each do |model_id|
+    %w[gpt-6.2-astra gpt-6.2-sol gpt-6.1-terra].each do |model_id|
       @conversation = Conversation.create!(workspace: @workspace, creating_user: @user)
       reply!(provider_id: "codex_subscription", model_ref: model_id, attachments: [picture.public_id])
       applied = Conversations::Inputs::ApplyNext.call(conversation_id: @conversation.id)

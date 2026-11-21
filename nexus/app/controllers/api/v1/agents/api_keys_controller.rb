@@ -1,3 +1,4 @@
+# @auth [PlatformBearer, BrowserSession]
 class API::V1::Agents::APIKeysController < API::V1::Agents::BaseController
   include API::V1::Agents::APIKeyActions
 

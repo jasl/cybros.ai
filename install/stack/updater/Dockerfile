@@ -1,6 +1,5 @@
 FROM docker:29.9.2-cli AS docker
-# Docker's latest published Ruby image as of 2026-10-24.
-FROM ruby:4.0.8-slim
+FROM ruby:4.0.10-slim
 
 RUN apt-get update && apt-get install --no-install-recommends -y ca-certificates \
     && rm -rf /var/lib/apt/lists/*

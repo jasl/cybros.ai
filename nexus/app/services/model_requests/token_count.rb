@@ -23,6 +23,13 @@ module ModelRequests
     ENVELOPE_TOKENS_FIXED = 8
 
     class << self
+      # Count exactly the portable or native material the compiler will send.
+      def for_input(selection, input, generation_config: nil)
+        profile = selection.execution_profile
+        elements = ModelReasoning::InputProjection.call(input, profile: profile, enabled: selection.reasoning.enabled)
+        count(profile: profile, segments: Nexus::ModelRequestInput.text_segments(elements, generation_config: generation_config))
+      end
+
       # Media is not counted: base64 through a text tokenizer is nonsense,
       # not conservatism. It stays bounded by the declared byte limit.
       def count(profile:, segments:)

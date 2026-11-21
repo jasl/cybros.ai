@@ -3,16 +3,46 @@
 # it and never writes it; a browsable-but-archived room still reads. PUT by
 # slot in the URL is a whole replacement, first or later write alike; the
 # workspaces row is the lock.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::PromptDocumentsController < AgentAPI::V1::Workspaces::BaseController
   include AgentAPI::V1::WorkspaceScoped
 
   SLOTS = %w[character].freeze
 
+  # @oas_include
+  # @summary List prompt documents
+  # @tags Member, prompt documents
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesPromptDocumentsIndex
   def index
     render json: { prompt_documents:
       AgentAPI::PromptDocumentPresenter.listing(@workspace.prompt_documents.order(:slot)) }
   end
 
+  # @oas_include
+  # @summary Read prompt documents
+  # @tags Member, prompt documents
+  # @parameter slot(path) [!String] Resource selector.
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesPromptDocumentsShow
   def show
     return unless slot_held?
 
@@ -22,6 +52,22 @@ class AgentAPI::V1::Workspaces::PromptDocumentsController < AgentAPI::V1::Worksp
     render json: { prompt_document: AgentAPI::PromptDocumentPresenter.full(document) }
   end
 
+  # @oas_include
+  # @summary Update prompt documents
+  # @tags Member, prompt documents
+  # @parameter slot(path) [!String] Resource selector.
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesPromptDocumentsUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesPromptDocumentsUpdate
   def update
     return unless slot_held? && authorize_writable(@workspace)
 
@@ -36,6 +82,21 @@ class AgentAPI::V1::Workspaces::PromptDocumentsController < AgentAPI::V1::Worksp
     render json: { prompt_document: AgentAPI::PromptDocumentPresenter.full(result.document) }
   end
 
+  # @oas_include
+  # @summary Destroy prompt documents
+  # @tags Member, prompt documents
+  # @parameter slot(path) [!String] Resource selector.
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (204) #/components/responses/AgentApiV1WorkspacesPromptDocumentsDestroy
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def destroy
     return unless slot_held? && authorize_writable(@workspace)
 

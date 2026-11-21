@@ -6,6 +6,7 @@
   </div>
   <dl class="grid gap-2 text-sm sm:grid-cols-2">
     <div><dt class="text-base-content/60"><%= t("schedules_console.scheduled_for") %></dt><dd><%= schedule_time(execution.fetch(:scheduled_for)) %></dd></div>
+    <div><dt class="text-base-content/60"><%= t("schedules_console.execution_wake") %></dt><dd><%= t("schedules_console.wake_modes.#{execution.fetch(:wake)}") %></dd></div>
     <div><dt class="text-base-content/60"><%= t("schedules_console.created_at") %></dt><dd><%= schedule_time(execution.fetch(:created_at)) %></dd></div>
   </dl>
   <p class="font-mono text-xs text-base-content/50 wrap-anywhere"><%= execution.fetch(:input_public_id) %></p>

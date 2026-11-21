@@ -110,7 +110,7 @@ the others nothing; only a table that is not rows refuses the extension.
 
 ## The tool
 
-`delegate_agent {agent, prompt, session?, workdir?}` is registered where the
+`delegate_agent {agent, prompt, attachments?, session?, workdir?}` is registered where the
 host serves the runner address and an enabled row exists — tool-less
 otherwise. Its description is assembled from the rows' `description` keys;
 its park is the longest enabled `timeout_ms`; its effect profile is bash's
@@ -124,6 +124,12 @@ the progress tail `rho watch` prints; a `session/request_permission` is
 answered by the floor and the row's policy; an `elicitation/create` is
 declined and quoted. Every line both ways lands in
 `<artifacts>/acp/<agent>-<session>.jsonl`, redacted, linked from the result.
+
+`attachments` takes an ordered list of Nexus upload references or UUIDs.
+The current executor claim must be able to read each selected PDF. The child
+must advertise `embeddedContext`, and each file can be up to 16 MiB. Rho sends
+the original bytes in embedded ACP resource blocks after the prompt text. The
+transcript records the URI, MIME type and decoded size of each outgoing PDF.
 
 Cancel (`rho stop LOOP KEY`) sends `session/cancel` and returns inside the
 pool's grace; the child lives on. A new delegation is refused while the old

@@ -1,7 +1,21 @@
 # The statistics consumer: account-wide usage series and totals over the
 # rollup buckets plus the unrolled remainder. Statistics, never money —
 # budgets and settlement read receipts only.
+# @auth [PlatformBearer, BrowserSession]
 class API::V1::Admin::ModelUsageReportsController < API::V1::Admin::BaseController
+  # @oas_include
+  # @summary Read model usage reports
+  # @tags Platform, model usage reports
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ApiV1AdminModelUsageReportsShow
   def show
     from, to = params.expect(:from, :to)
     result = ModelUsageRollups::UsageReport.call(

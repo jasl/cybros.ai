@@ -22,6 +22,22 @@ module BudgetWriting
     idempotency_envelope_mismatch: "This Idempotency-Key was used with a different request",
   }.freeze
 
+  # @oas_include
+  # @summary Create budgets
+  # @tags Platform, budgets
+  # @parameter agent_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter user_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/ConcernsBudgetWritingRbCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (201) #/components/responses/ConcernsBudgetWritingRbCreate
   def create
     key = required_operation_key or return
     fields = params.expect(budget: [:amount, :starts_at, :expires_at, :reason])
@@ -38,6 +54,23 @@ module BudgetWriting
     end
   end
 
+  # @oas_include
+  # @summary Update budgets
+  # @tags Platform, budgets
+  # @parameter agent_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter user_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/ConcernsBudgetWritingRbUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ConcernsBudgetWritingRbUpdate
   def update
     key = required_operation_key or return
     budget = find_budget

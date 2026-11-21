@@ -12,7 +12,7 @@ module Schedules
         answering_user_public_id: job.answering_user.public_id,
         speaker_public_id: job.speaker_public_id,
         source_run_public_id: job.source_run_public_id, source_task_key: job.source_task_key,
-        name: job.name, prompt: job.prompt, rule: job.rule,
+        name: job.name, prompt: job.prompt, rule: job.rule, wake: job.wake,
         model: { model: "#{job.provider_id}/#{job.model_ref}", reasoning_effort: job.reasoning_effort,
           reasoning_enabled: job.reasoning_enabled },
         model_selection: ModelSelection::Projection.intent(job.model_selection), fallback_models: job.fallback_models,

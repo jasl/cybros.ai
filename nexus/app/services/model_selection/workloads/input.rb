@@ -367,9 +367,16 @@ module ModelSelection
           end
 
           def normalize_text_only_part(part)
-            return unless present_string?(part.text)
+            text = String.try_convert(part.text)
+            unless part.native_origin.nil? && part.thought_signature.nil?
+              origin = Hash.try_convert(part.native_origin)
+              return unless origin && origin["api_format"] == "gemini_generate_content" &&
+                present_string?(origin["provider_id"]) && present_string?(origin["model_id"])
+              return if !part.thought_signature.nil? && !present_string?(part.thought_signature)
+            end
+            return unless text && (text.present? || origin && (!text.empty? || part.thought_signature))
 
-            Nexus::TextInputPart.new(type: Nexus::InputParts::TEXT, text: part.text.dup.freeze)
+            part.with(type: Nexus::InputParts::TEXT, text: text.dup.freeze)
           end
 
           def normalize_upload_part(part)

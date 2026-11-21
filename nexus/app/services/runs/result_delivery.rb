@@ -39,8 +39,7 @@ module Runs
       # Materialize the source window before graph/host predicates. Consumed
       # tips and intermediate nodes remain here, so recovery carries a cursor.
       def recovery_candidates(after_id:, limit:)
-        Task.where(detached: true, result_delivered_at: nil, status: Task::TERMINAL_STATUSES)
-          .where(id: (after_id + 1)..).order(:id).limit(limit)
+        Task.unmailed_results.where(id: (after_id + 1)..).order(:id).limit(limit)
       end
 
       # The clock's execution is a normal child, but has no old spawning
@@ -54,11 +53,13 @@ module Runs
         source = variant&.run
         return :source_stopped if source && SourceWork.stopped?(source.public_id, source)
 
-        selected = source ? surface(source) : {
+        # A run-backed reply resolves its model and tools only when command
+        # needs them to wake the parent. A plain reply carries its own model.
+        selected = {
           provider_id: variant&.provider_id, model_ref: variant&.model_ref,
           reasoning_effort: variant&.reasoning_effort, reasoning_enabled: variant&.reasoning_enabled,
           tool_names: [], approval_mode: nil,
-        }
+        } unless source
         new(source, conversation: parent, creating_user: job.creating_user,
           answering_user: turn.answering_user, surface: selected).relay_scheduled(child, turn, variant)
       end
@@ -153,7 +154,7 @@ module Runs
       result = receipt(key: key, envelope: { "schedule" => child.schedule_public_id,
         "conversation" => child.public_id, "turn" => turn.public_id, "text" => text },
         command: command(text, origin: CHILD_ORIGIN, sender_public_id: child.public_id,
-          task_key: child.schedule_public_id, wake: "auto",
+          task_key: child.schedule_public_id, wake: variant&.status == "completed" ? child.scheduled_result_wake : "auto",
           callback_result: CallbackResult.for(child: child, turn: turn, variant: variant, scheduled: true))) { turn.stamp_relayed }
       if result.outcome == :refused
         refused(key, result.refusal)

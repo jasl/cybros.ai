@@ -3,7 +3,7 @@ require_relative "manual_client"
 module E2E
   # The OpenAI smoke: one streamed reply over the direct API, printed as a compact capture.
   module ManualProvider
-    DEFAULT_MODEL = "gpt-6-luna".freeze
+    DEFAULT_MODEL = "gpt-6.1-terra".freeze
     # One short reply; a hang is the only thing this bound has to stop.
     TIMEOUT_SECONDS = 90
 

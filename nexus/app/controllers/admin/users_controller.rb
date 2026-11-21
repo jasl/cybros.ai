@@ -19,6 +19,7 @@ class Admin::UsersController < Admin::BaseController
   end
 
   def new
+    redirect_to admin_invitations_path, notice: t("sso_identity.invite_required") if Current.account.sso_only?
   end
 
   # Mail-less onboarding: the admin conveys the temporary password out of band; an

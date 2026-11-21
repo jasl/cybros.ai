@@ -111,6 +111,7 @@ module Rho
 
       private
 
+      def prompt_metadata: (Hash[String, untyped] message) -> Hash[String, untyped]
       def write: (Hash[String, untyped] record) -> nil
     end
 
@@ -217,7 +218,7 @@ module Rho
       STOP_EXITED: String
       STOP_TIMED_OUT: String
       STOP_REFUSED: String
-      def initialize: (session: Children::Session, prompt: String, env: untyped, home: untyped, log: untyped, clock: ^() -> Time) -> void
+      def initialize: (session: Children::Session, prompt: String, env: untyped, home: untyped, log: untyped, clock: ^() -> Time, ?attachments: Array[String]) -> void
       def run: () -> Rho::Env::Result
     end
 

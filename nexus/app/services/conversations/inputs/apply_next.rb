@@ -67,7 +67,7 @@ module Conversations
             # Pin actual FK principals before the host/link locks. Recheck the
             # queue head below; a changed head is retried by the ordinary drain.
             preview = Input.where(host_type: "Conversation", host_id: @conversation_id)
-              .where(state: %w[pending blocked]).merge(Input.due(DatabaseClock.now)).in_read_order.first
+              .waiting_at(DatabaseClock.now).first
             if preview&.conversation_link_id
               preview.host.workspace.lock!("FOR KEY SHARE")
               User.where(id: [preview.authoring_user_id, preview.answering_user_id]).order(:id).lock("FOR KEY SHARE").load
@@ -87,10 +87,7 @@ module Conversations
             # only a due row reaches, and an edit that re-times it re-pends it
             # first (Update#apply).
             now = DatabaseClock.now
-            candidates = @conversation.inputs
-              .where(state: %w[pending blocked])
-              .merge(Input.due(now))
-              .in_read_order
+            candidates = @conversation.inputs.waiting_at(now)
             # Usually only the head can run; leave later prompts in the queue
             # instead of loading their potentially large assembly intent.
             head = ApplicationRecord.uncached { candidates.first }

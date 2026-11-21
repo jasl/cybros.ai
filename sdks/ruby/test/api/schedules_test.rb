@@ -16,13 +16,15 @@ class ApiSchedulesTest < Minitest::Test
     attributed = row.merge("source_run_public_id" => "run-1", "source_task_key" => "r1t1")
     created = chat([[201, { "Idempotency-Replayed" => "true" }, { "schedule" => attributed }]]).schedules.create(
       prompt: "Report progress", rule: row.fetch("rule"), model: row.dig("model", "model"),
-      reasoning_enabled: true, reasoning_effort: "medium",
+      wake: "passive", reasoning_enabled: true, reasoning_effort: "medium",
       idempotency_key: "job-intent", to: "agent-1", source_run_public_id: "run-1", source_task_key: "r1t1")
 
     assert_equal :post, request.fetch(:method)
     assert_equal "#{PATH}/schedules", request.fetch(:path)
     assert_equal "job-intent", request.fetch(:headers).fetch("Idempotency-Key")
     body = request.fetch(:body).fetch("schedule")
+    assert_equal "passive", body.fetch("wake")
+    assert_equal row.fetch("wake"), created.schedule.wake
     assert_equal row.fetch("rule"), body.fetch("rule")
     assert_equal row.fetch("model"), body.fetch("model")
     assert_equal "agent-1", body.fetch("answering_user_public_id")
@@ -103,6 +105,7 @@ class ApiSchedulesTest < Minitest::Test
     assert_equal "execution-1", executions.last_cursor
     assert_nil executions.next_after
     assert_equal execution.fetch("child_conversation_public_id"), executions.items.first.child_conversation_public_id
+    assert_equal execution.fetch("wake"), executions.items.first.wake
     assert_nil executions.items.first.run_public_id
     assert_equal({ "after" => "tail", "limit" => 5 }, request.fetch(:params))
     empty = chat([[200, {}, { "executions" => [], "pagination" => { "next_after" => nil, "last_cursor" => "execution-1" } }]])

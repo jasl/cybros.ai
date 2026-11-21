@@ -24,7 +24,7 @@ class AdaptationsTest < Minitest::Test
     assert_equal %w[glm-5.3 gem], [resolver.for("openrouter/z-ai/glm-5.3").id, resolver.for("openrouter/z-ai/glm-5.3").source]
     assert_equal "glm-5.3", resolver.for("or/z-ai/glm-5.3").id, "the lane segment is the operator's; the reference is the key"
     assert_equal "claude", resolver.for("anthropic/claude-opus-5-5").id, "a preset row never read on the bench applies under auto"
-    assert_equal "codex", resolver.for("codex_subscription/gpt-6.1-sol").id, "both lanes reach the same row"
+    assert_equal "codex", resolver.for("codex_subscription/gpt-6.2-sol").id, "both lanes reach the same row"
     assert_equal "default", resolver.for("openrouter/z-ai/glm-5.3-flash").id, "a floor: no gem entry covers it"
     assert_equal "default", resolver.for("dev/mock-text").id
     assert_equal "default", resolver.for(nil).id
@@ -36,9 +36,9 @@ class AdaptationsTest < Minitest::Test
     resolver = load("default_model" => "openrouter/z-ai/glm-5.3")
     assert_equal "glm-5.3", resolver.boot.id
     refute resolver.boot_differs?("openrouter/z-ai/glm-5.3")
-    assert resolver.boot_differs?("openrouter/moonshotai/kimi-k3")
-    assert_equal({ row: "kimi-k3", source: "gem", boot_row: "glm-5.3" }, resolver.facts("openrouter/moonshotai/kimi-k3"))
-    assert_equal "kimi-k3 (gem; boot row glm-5.3)", Rho::Adaptations.describe(resolver.facts("openrouter/moonshotai/kimi-k3"))
+    assert resolver.boot_differs?("openrouter/moonshotai/kimi-k3.1-pro")
+    assert_equal({ row: "kimi-k3", source: "gem", boot_row: "glm-5.3" }, resolver.facts("openrouter/moonshotai/kimi-k3.1-pro"))
+    assert_equal "kimi-k3 (gem; boot row glm-5.3)", Rho::Adaptations.describe(resolver.facts("openrouter/moonshotai/kimi-k3.1-pro"))
     assert_equal({ row: "glm-5.3", source: "gem" }, resolver.facts, "the default model's own facts carry no boot line")
   end
 
@@ -50,8 +50,8 @@ class AdaptationsTest < Minitest::Test
     assert_equal %w[off off off], [choice.id, choice.source, choice.label]
     assert_equal "default", choice.row.id, "the set under off is the default row's: the plain names"
     assert_empty choice.hint_texts
-    refute resolver.boot_differs?("openrouter/moonshotai/kimi-k3")
-    assert_equal({ row: "off", source: "off" }, resolver.facts("openrouter/moonshotai/kimi-k3"))
+    refute resolver.boot_differs?("openrouter/moonshotai/kimi-k3.1-pro")
+    assert_equal({ row: "off", source: "off" }, resolver.facts("openrouter/moonshotai/kimi-k3.1-pro"))
     assert_equal "off", Rho::Adaptations.describe(resolver.facts)
   end
 
@@ -60,7 +60,7 @@ class AdaptationsTest < Minitest::Test
     assert_predicate resolver, :pinned?
     assert_equal "claude", resolver.for("openrouter/z-ai/glm-5.3").id
     assert_equal "claude", resolver.boot.id
-    refute resolver.boot_differs?("openrouter/moonshotai/kimi-k3"), "a pin is the universe and the turn row alike"
+    refute resolver.boot_differs?("openrouter/moonshotai/kimi-k3.1-pro"), "a pin is the universe and the turn row alike"
 
     error = assert_raises(Rho::ConfigurationError) { load("adaptations" => "opencode") }
     assert_match(/adaptations names no row "opencode"; the rows: /, error.message)

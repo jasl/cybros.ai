@@ -1,6 +1,21 @@
 # POST /api/v1/admin/users/{user_id}/removal: HTTP mapping only — lifecycle policy
 # stays in the domain command. Not surfaced by the CybrosAgent gem.
+# @auth [PlatformBearer, BrowserSession]
 class API::V1::Admin::Users::RemovalsController < API::V1::Admin::BaseController
+  # @oas_include
+  # @summary Create removals
+  # @tags Platform, removals
+  # @parameter user_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ApiV1AdminUsersRemovalsCreate
   def create
     # Members-only scope: the synthetic system User is unreachable and a
     # cross-account id cannot exist under the single Account; both read as

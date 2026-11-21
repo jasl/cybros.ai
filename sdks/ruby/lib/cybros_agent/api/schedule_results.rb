@@ -13,12 +13,12 @@ module CybrosAgent
     # Execution status is the ordinary child conversation's current state;
     # completing a one-time schedule does not say its execution has finished.
     ScheduleExecution = Data.define(:child_conversation_public_id, :input_public_id, :turn_public_id,
-      :variant_public_id, :run_public_id, :scheduled_for, :status, :created_at) do
+      :variant_public_id, :run_public_id, :scheduled_for, :wake, :status, :created_at) do
       def initialize(input_public_id: nil, turn_public_id: nil, variant_public_id: nil, run_public_id: nil, **) = super
       def to_h = super.compact
     end
 
-    Schedule = Data.define(:public_id, :name, :prompt, :rule, :model, :model_selection, :fallback_models, :configuration, :agent_configuration, :tool_names,
+    Schedule = Data.define(:public_id, :name, :prompt, :rule, :wake, :model, :model_selection, :fallback_models, :configuration, :agent_configuration, :tool_names,
       :approval_mode, :answering_user_public_id, :speaker_public_id, :status, :lock_version,
       :next_run_at, :last_enqueued_at, :last_input_public_id, :last_error_code, :last_execution,
       :source_run_public_id, :source_task_key, :workspace_public_id, :conversation_public_id, :conversation_title, :creating_user_public_id,

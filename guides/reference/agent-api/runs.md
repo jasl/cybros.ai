@@ -196,8 +196,9 @@ over it is `tool_input_too_large` at that step's `input`, while the
 whole envelope's 1 MB bound stays `steps_payload_too_large`.
 ### Idempotency
 
-Create honors `Idempotency-Key` (≤36 bytes, else 400): a retried create
-returns `200` with the standing run, `replayed: true`, and the original
+Run creation accepts an optional `Idempotency-Key` header of up to 255 bytes.
+A longer key returns `400 parameter_invalid`. Repeating the request with the
+same key returns `200` with the standing run, `replayed: true`, and the original
 seed `receipt`, including its `resolution_tokens`. Later appends do not
 replace this receipt. The retry cannot know the id the lost response minted,
 so the workspace-scoped receipt finds it; a different envelope under the
@@ -833,10 +834,11 @@ previous run's answer, error and outcome summary (`result`) go with it,
 so a re-run never reads a stale `refused`; a step a provider declined
 (`model_refused`) or was overloaded for (`provider_overloaded`) is
 retried this way, on the same model or on one the person names. Explicit
-retry does not renew an exhausted or refused model route. Such a repair
-returns `model_route_spent`; a different unspent route must satisfy the
-execution's captured model/provider constraints. The captured fallback
-list and original deadline are retained, including for result mail.
+retry creates a fresh bounded invocation even on an exhausted or refused
+model route. A replacement must satisfy the execution's captured
+model/provider constraints. Prior invocation history, the captured fallback
+list and original execution deadline are retained, including for result mail;
+spent routes stay excluded from automatic fallback.
 
 A task refused with `conversation_cost_limit_reached` remains eligible for
 repair even if its declared `on_failure` is `absorb` or `propagate`. Raise or
@@ -1003,10 +1005,11 @@ everything after it — so three laws hold the front of that prefix still:
   segment — which is why steers append at the mint and never splice
   earlier.
 
-On a wire that carries explicit breakpoints (the Anthropic family — a
-narrower fact than the profile's `prompt_caching`, which is on for every
-text wire since the provider caches a stable prefix on each), the kernel
-is the sole placer of two markers. The
+On the direct Anthropic Messages API, Nexus places two explicit cache
+breakpoints. On OpenRouter Claude routes, Nexus sends a single request-level
+`cache_control` and the provider advances the breakpoint to the last cacheable
+block as the conversation grows. [OpenRouter prompt caching](https://openrouter.ai/docs/guides/best-practices/prompt-caching)
+
 ### Where the markers land
 
 The stable marker lands on the last system block when the wire's system
@@ -1030,16 +1033,11 @@ reasoning, which the provider keeps in the cached prefix.
 
 ### The tier
 
-It is chosen by the turn's host, never per request: a
-conversation-hosted request — a direct reply, a regeneration, every
-round of a run-backed turn, the compaction summary born behind a turn —
-takes the 1-hour tier (`cache_control.ttl: 1h`) because a person paces
-it; a standalone run's rounds, seconds apart, and a InferenceRequest take the
-5-minute tier (`ephemeral`, no `ttl`). Both markers of one request take
-its tier. Reach is the Anthropic family alone; no paid lane this round
-runs one, so the 1-hour tier is pinned in unit and unobserved live.
-Every other family caches implicitly on prefix stability and needs no
-emission at all — the laws above are what pay there.
+Main conversation turns, direct replies and regenerations use the one-hour
+tier. Branches, subagents, standalone runs and InferenceRequests use five
+minutes. A compaction summary skips the cache write. On routes that advertise
+`configuration.prompt_cache_ttl`, callers can override the lifetime for
+eligible requests. The direct Anthropic markers share the selected lifetime.
 
 Round one is message-shaped from birth, so the write happens on the
 first round and the second already reads. Each round's `usage` item

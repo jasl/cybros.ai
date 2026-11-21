@@ -7,7 +7,7 @@
 # Checks the prerequisites it never installs
 # (git, bash, curl, tar, a C compiler), then, into a prefix YOU own
 # (default ~/.local/share/rho, never sudo), unpacks Homebrew's portable
-# Ruby 4.0.9 bottle (sha256-pinned, the sha IS the download address),
+# Ruby bottle (sha256-pinned, the sha IS the download address),
 # installs the lock's bundler into it, copies rho's packaged gem trees out of
 # the checkout this script sits in and runs `bundle install --deployment`
 # there, adds the tool rows of the chosen profile (rg, fd; jq, uv; Node +
@@ -99,36 +99,36 @@ run() {
 # >>> rho manifest (rendered from install/manifest.json by `rake install:render`; do not edit by hand)
 # shellcheck disable=SC2034
 RHO_MANIFEST_VERSION="1"
-RHO_MANIFEST_GENERATED="2026-10-23"
+RHO_MANIFEST_GENERATED="2026-11-21"
 RHO_PLATFORMS="darwin-arm64 darwin-x64 linux-x64 linux-arm64"
 RHO_PROFILES="minimal full dev"
 RHO_APP_TREES="sdks/ruby cmctl agents/rho/rho-env agents/rho/rho-browser agents/rho/rho-mcp agents/rho/rho-web-tools agents/rho/rho-codemode agents/rho/rho-webui agents/rho/rho-ingress-telegram agents/rho/rho-acp agents/rho/rho-acp-client agents/rho/rho-t3 agents/rho/rho"
 RHO_APP_ENTRY="agents/rho/rho/exe/rho"
 RHO_APP_GEMFILE="agents/rho/rho/Gemfile"
 RHO_APP_BUNDLE_WITHOUT="development:test"
-RHO_RUBY_VERSION="4.0.9"
-RHO_RUBY_BUNDLER="4.0.23"
+RHO_RUBY_VERSION="4.0.10"
+RHO_RUBY_BUNDLER="4.1.0"
 RHO_RUBY_HEADER="Authorization: Bearer QQ=="
 RHO_RUBY_darwin_arm64_TAG="arm64_big_sur"
-RHO_RUBY_darwin_arm64_FILENAME="portable-ruby-4.0.9.arm64_big_sur.bottle.tar.gz"
-RHO_RUBY_darwin_arm64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:43ff285a82f48c84a06d0676a3800815a19d290d32e44182ddd7a6e95478e18e"
-RHO_RUBY_darwin_arm64_SHA256="43ff285a82f48c84a06d0676a3800815a19d290d32e44182ddd7a6e95478e18e"
-RHO_RUBY_darwin_arm64_BYTES="12703398"
+RHO_RUBY_darwin_arm64_FILENAME="portable-ruby-4.0.10.arm64_big_sur.bottle.tar.gz"
+RHO_RUBY_darwin_arm64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:832729e175b3c0864c8417ebc2bdcf1509e3856a08bd866c8bb0de806da6964e"
+RHO_RUBY_darwin_arm64_SHA256="832729e175b3c0864c8417ebc2bdcf1509e3856a08bd866c8bb0de806da6964e"
+RHO_RUBY_darwin_arm64_BYTES="12714173"
 RHO_RUBY_darwin_x64_TAG="big_sur"
-RHO_RUBY_darwin_x64_FILENAME="portable-ruby-4.0.9.big_sur.bottle.tar.gz"
-RHO_RUBY_darwin_x64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:c90d3891dc3805de531cd262bc8f17382f499db0eb9185d76b8785ec93753fac"
-RHO_RUBY_darwin_x64_SHA256="c90d3891dc3805de531cd262bc8f17382f499db0eb9185d76b8785ec93753fac"
-RHO_RUBY_darwin_x64_BYTES="12256106"
+RHO_RUBY_darwin_x64_FILENAME="portable-ruby-4.0.10.big_sur.bottle.tar.gz"
+RHO_RUBY_darwin_x64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:c4f59d993944de5b080720477b9608eab8cf0ecace745d2058de5c1924c3037e"
+RHO_RUBY_darwin_x64_SHA256="c4f59d993944de5b080720477b9608eab8cf0ecace745d2058de5c1924c3037e"
+RHO_RUBY_darwin_x64_BYTES="12277703"
 RHO_RUBY_linux_x64_TAG="x86_64_linux"
-RHO_RUBY_linux_x64_FILENAME="portable-ruby-4.0.9.x86_64_linux.bottle.tar.gz"
-RHO_RUBY_linux_x64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:20d7b22eba004e0518932ce7f8a271c16b1a9da91b81f696c735d14d817a2c07"
-RHO_RUBY_linux_x64_SHA256="20d7b22eba004e0518932ce7f8a271c16b1a9da91b81f696c735d14d817a2c07"
-RHO_RUBY_linux_x64_BYTES="14391304"
+RHO_RUBY_linux_x64_FILENAME="portable-ruby-4.0.10.x86_64_linux.bottle.tar.gz"
+RHO_RUBY_linux_x64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:de39ccc6459a91489fbf5e34d4b556e6bfd20a53a0c8104d17ee84e7ab34334f"
+RHO_RUBY_linux_x64_SHA256="de39ccc6459a91489fbf5e34d4b556e6bfd20a53a0c8104d17ee84e7ab34334f"
+RHO_RUBY_linux_x64_BYTES="14408037"
 RHO_RUBY_linux_arm64_TAG="arm64_linux"
-RHO_RUBY_linux_arm64_FILENAME="portable-ruby-4.0.9.arm64_linux.bottle.tar.gz"
-RHO_RUBY_linux_arm64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:346f2c71db33cdf4c64c68954f4e1134fbf63cc0d1a5885cfdf94b881f5ec53b"
-RHO_RUBY_linux_arm64_SHA256="346f2c71db33cdf4c64c68954f4e1134fbf63cc0d1a5885cfdf94b881f5ec53b"
-RHO_RUBY_linux_arm64_BYTES="14704793"
+RHO_RUBY_linux_arm64_FILENAME="portable-ruby-4.0.10.arm64_linux.bottle.tar.gz"
+RHO_RUBY_linux_arm64_URL="https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:629b9568a047bffa15ae7ea15544cdbcd2ac63ea136af71777de39fc68dd5598"
+RHO_RUBY_linux_arm64_SHA256="629b9568a047bffa15ae7ea15544cdbcd2ac63ea136af71777de39fc68dd5598"
+RHO_RUBY_linux_arm64_BYTES="14727133"
 RHO_TOOLS="rg fd jq uv node playwright_core chromium"
 RHO_TOOL_rg_NAME="rg"
 RHO_TOOL_rg_VERSION="15.2.0"
@@ -271,7 +271,7 @@ RHO_TOOLCHAIN_GH_linux_arm64_MEMBERS="gh_2.103.1_linux_arm64/bin/gh"
 RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
 {
   "manifest_version": 1,
-  "generated": "2026-10-23",
+  "generated": "2026-11-21",
   "platforms": [
     "darwin-arm64",
     "darwin-x64",
@@ -306,10 +306,10 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
   },
   "runtime": {
     "kind": "ruby",
-    "version": "4.0.9",
-    "ruby": "4.0.9",
+    "version": "4.0.10",
+    "ruby": "4.0.10",
     "provenance": "Homebrew portable-ruby: Homebrew/brew Library/Homebrew/vendor/portable-ruby-version and the four vendor/portable-ruby-<arch>-<os> files; homebrew-core Formula/p/portable-ruby.rb bottle block",
-    "bundler": "4.0.23",
+    "bundler": "4.1.0",
     "bundler_provenance": "agents/rho/rho/Gemfile.lock BUNDLED WITH (the lock's version is installed into the portable Ruby always)",
     "headers": {
       "Authorization": "Bearer QQ=="
@@ -318,31 +318,31 @@ RHO_MANIFEST_JSON=$(cat <<'RHO_MANIFEST_JSON_EOF'
     "artifacts": {
       "darwin-arm64": {
         "tag": "arm64_big_sur",
-        "filename": "portable-ruby-4.0.9.arm64_big_sur.bottle.tar.gz",
-        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:43ff285a82f48c84a06d0676a3800815a19d290d32e44182ddd7a6e95478e18e",
-        "sha256": "43ff285a82f48c84a06d0676a3800815a19d290d32e44182ddd7a6e95478e18e",
-        "bytes": 12703398
+        "filename": "portable-ruby-4.0.10.arm64_big_sur.bottle.tar.gz",
+        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:832729e175b3c0864c8417ebc2bdcf1509e3856a08bd866c8bb0de806da6964e",
+        "sha256": "832729e175b3c0864c8417ebc2bdcf1509e3856a08bd866c8bb0de806da6964e",
+        "bytes": 12714173
       },
       "darwin-x64": {
         "tag": "big_sur",
-        "filename": "portable-ruby-4.0.9.big_sur.bottle.tar.gz",
-        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:c90d3891dc3805de531cd262bc8f17382f499db0eb9185d76b8785ec93753fac",
-        "sha256": "c90d3891dc3805de531cd262bc8f17382f499db0eb9185d76b8785ec93753fac",
-        "bytes": 12256106
+        "filename": "portable-ruby-4.0.10.big_sur.bottle.tar.gz",
+        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:c4f59d993944de5b080720477b9608eab8cf0ecace745d2058de5c1924c3037e",
+        "sha256": "c4f59d993944de5b080720477b9608eab8cf0ecace745d2058de5c1924c3037e",
+        "bytes": 12277703
       },
       "linux-x64": {
         "tag": "x86_64_linux",
-        "filename": "portable-ruby-4.0.9.x86_64_linux.bottle.tar.gz",
-        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:20d7b22eba004e0518932ce7f8a271c16b1a9da91b81f696c735d14d817a2c07",
-        "sha256": "20d7b22eba004e0518932ce7f8a271c16b1a9da91b81f696c735d14d817a2c07",
-        "bytes": 14391304
+        "filename": "portable-ruby-4.0.10.x86_64_linux.bottle.tar.gz",
+        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:de39ccc6459a91489fbf5e34d4b556e6bfd20a53a0c8104d17ee84e7ab34334f",
+        "sha256": "de39ccc6459a91489fbf5e34d4b556e6bfd20a53a0c8104d17ee84e7ab34334f",
+        "bytes": 14408037
       },
       "linux-arm64": {
         "tag": "arm64_linux",
-        "filename": "portable-ruby-4.0.9.arm64_linux.bottle.tar.gz",
-        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:346f2c71db33cdf4c64c68954f4e1134fbf63cc0d1a5885cfdf94b881f5ec53b",
-        "sha256": "346f2c71db33cdf4c64c68954f4e1134fbf63cc0d1a5885cfdf94b881f5ec53b",
-        "bytes": 14704793
+        "filename": "portable-ruby-4.0.10.arm64_linux.bottle.tar.gz",
+        "url": "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:629b9568a047bffa15ae7ea15544cdbcd2ac63ea136af71777de39fc68dd5598",
+        "sha256": "629b9568a047bffa15ae7ea15544cdbcd2ac63ea136af71777de39fc68dd5598",
+        "bytes": 14727133
       }
     },
     "floors": {

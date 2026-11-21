@@ -343,7 +343,7 @@ module Rho
     desc "run [PROMPT]", "Run a prompt to its end on this machine and print the answer " \
       "(the one conversation verb; the rest are rho-dev's)"
     option :model, type: :string,
-      desc: "Which model drives it, as provider/reference (e.g. openrouter/qwen3-coder); " \
+      desc: "Which model drives it, as provider/reference (e.g. openrouter/z-ai/glm-5.3); " \
             "default: the daemon's `default_model` setting"
     option :instructions, type: :string,
       desc: "Replace the instructions rho assembles from its tools' own snippets"

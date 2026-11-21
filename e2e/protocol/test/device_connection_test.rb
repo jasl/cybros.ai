@@ -37,6 +37,26 @@ class DeviceConnectionTest < Minitest::Test
     @actor&.close
   end
 
+  def test_terminal_login_uses_the_browser_and_revokes_only_the_api_session
+    E2E::DeviceAuthorizationBudget.consume
+    grant = CybrosAgent::Platform::Sessions.new(base_url: @base_url).create_with_device do |authorization|
+      @actor.visit(authorization.verification_uri_complete)
+      assert @page.has_field?("Device code", with: authorization.user_code)
+      @page.click_button "Continue"
+      assert @page.has_text?("Connect terminal")
+      assert @page.has_text?(authorization.user_code)
+      @page.click_button "Connect"
+      assert @page.has_text?("Connection ready")
+    end
+    terminal = CybrosAgent::PlatformClient.new(base_url: @base_url, credential: grant.token)
+    assert_equal grant.session.public_id, terminal.session.fetch.public_id
+    assert_equal "owner", terminal.profile.fetch.member.role
+    terminal.session.revoke
+    assert_raises(CybrosAgent::Api::Unauthorized) { terminal.session.fetch }
+    @actor.visit("/")
+    assert @page.has_text?("Overview")
+  end
+
   def test_device_connection_cancel_rotate_revoke_and_reuse_rejection
     # Before the human acts, the typed machine leg observes RFC pending. A
     # browser cancellation then maps to RFC access_denied without creating an

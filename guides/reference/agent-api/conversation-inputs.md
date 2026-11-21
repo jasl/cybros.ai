@@ -35,7 +35,7 @@ POST /agent_api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/inp
   "input": {
     "kind": "direct_reply",
     "text": "optional prompt riding as the final user message",
-    "model": { "model": "openai_api/gpt-6.1-sol", "reasoning_enabled": true, "reasoning_effort": "medium" },
+    "model": { "model": "openai_api/gpt-6.2-sol", "reasoning_enabled": true, "reasoning_effort": "medium" },
     "configuration": {},
     "tool_names": ["read_file", "write_file"],
     "approval_mode": "ask",
@@ -58,6 +58,17 @@ raw instructions, assembly intent and authored steps, even after the
 queued input has been edited or consumed. `Idempotency-Replayed` is
 `false` for a new acceptance and `true` for a replay. A changed request
 with that key returns `409 idempotency_envelope_mismatch`.
+
+An idle conversation starts draining when its first ready input arrives.
+Further inputs can share that wake. During an active turn, queued inputs wait for
+settlement. A bound `steer` follows the model boundary and `steer_now` wakes
+the target execution. Each future input gets a wake at its requested time.
+
+If a wake is lost, Nexus periodically rediscovers ready inputs. Each pass
+uses a fixed time cutoff across its pages. Recovery preserves kernel-mail
+priority and revisits a changed queue head on the next pass. An active turn
+or a blocked head can still delay materialization. Keep the original input
+UUID to observe its outcome.
 
 The receipt adds no separate prompt-size ceiling: submitted content and
 the compiled request retain their own storage and model-window limits.

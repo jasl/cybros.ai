@@ -437,6 +437,7 @@ module Rho
         def self.detail: (untyped request, Daemon::Context ctx) -> untyped
         def self.document: (untyped row, Daemon::Context ctx) -> Hash[Symbol, untyped]
         def self.artifacts: (untyped request, Daemon::Context ctx) -> untyped
+        def self.prepare_input_policy: (untyped request, Daemon::Context ctx) -> untyped
         def self.update: (untyped request, Daemon::Context ctx) -> untyped
         def self.archive: (untyped request, Daemon::Context ctx) -> untyped
         def self.unarchive: (untyped request, Daemon::Context ctx) -> untyped

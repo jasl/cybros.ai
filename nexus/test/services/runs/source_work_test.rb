@@ -1,11 +1,13 @@
 require "test_helper"
 require_relative "../../test_helpers/lock_order_test_helper"
+require_relative "../../test_helpers/turn_convergence_test_helper"
 
 class Runs::SourceWorkTest < ActiveJob::TestCase
   include InvocationHarness
   include RunSeamTestHelper
   include RunLaneTestHelper
   include LockOrderTestHelper
+  include TurnConvergenceTestHelper
 
   setup do
     @account = accounts(:cybros)
@@ -78,6 +80,23 @@ class Runs::SourceWorkTest < ActiveJob::TestCase
     assert_predicate derived.reload, :stopped?
     assert_equal "canceled", derived.status
     assert_equal "paused", other.run.reload.status
+  end
+
+  test "a full page of independent source chains retains every stopped ancestor" do
+    width = Runs::ScheduleSweep::BATCH
+    seed_running_pairs(3 * width)
+    roots, middle, leaves = Run.joins(:variant).order(id: :desc).limit(3 * width)
+      .pluck(:id, :public_id, "variants.turn_id").reverse.each_slice(width).to_a
+    [roots, middle, leaves].each_cons(2) do |parents, children|
+      parents.zip(children).each do |parent, child|
+        Turn.where(id: child.last).update_all(sender_run_public_id: parent.second)
+      end
+    end
+    Run.where(id: roots.map(&:first)).update_all(stopped_at: Time.current)
+    Run.where(id: middle.map(&:first)).update_all(status: "completed", completed_at: Time.current)
+
+    ids = leaves.map(&:first)
+    assert_equal ids, Runs::SourceWork.stopped_source_ids(ids).sort
   end
 
   test "immediate source hints cross a completed owner and spare an independent request in the same child" do

@@ -12,6 +12,7 @@ class Account < ApplicationRecord
   # before users and identities; delete_all because a spent recovery is pure
   # evidence with no dependents of its own.
   has_many :member_recovery_authorizations, dependent: :delete_all
+  has_many :sso_providers, dependent: :destroy
   has_many :invitations, dependent: :destroy
   # Model-work leaves fall before the owners their FKs reference; content
   # bodies before the uploads and fragments their children reference.
@@ -157,7 +158,15 @@ class Account < ApplicationRecord
       password_change_required: true
     )
     member = nil
-    transaction do
+    with_lock do
+      if sso_only?
+        identity.errors.add(:base, :sso_required)
+        return DirectMember.new(outcome: :invalid, member: nil, errors: identity.errors)
+      end
+      if invitations.exists?(email: identity.email)
+        identity.errors.add(:email, :held_by_invitation)
+        return DirectMember.new(outcome: :invalid, member: nil, errors: identity.errors)
+      end
       identity.save!
       member = users.create!(kind: :human, role: role, identity: identity, display_name: display_name)
       MemoryCollection.default_for(member)
@@ -173,12 +182,12 @@ class Account < ApplicationRecord
     # Both membership rows lock in id order so concurrent transfers and
     # per-member role/status commands serialize; every guard below re-reads
     # under the locks, making acceptance order the winner rule.
-    transaction do
+    with_lock do
       [by, to].uniq.sort_by(&:id).each(&:lock!)
 
       if !by.owner? || !by.active?
         :owner_required
-      elsif to.account_id != id || to.role != "admin" || !to.human? || !to.active?
+      elsif !to.eligible_for_ownership?(self)
         :target_not_eligible
       else
         by.update!(role: :admin)

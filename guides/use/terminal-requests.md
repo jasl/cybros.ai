@@ -2,6 +2,15 @@
 
 `rho run` sends one noninteractive request, prints the result and exits with a code. It is the CLI's single conversational verb; connection, model and plugin management are the CLI's main job.
 
+Before running a request, complete `rho connect`, keep `rho server` running and
+choose a model. `rho models --workload text_generation` lists usable model
+identifiers. Pass one with `--model provider/model`, or save it with
+`rho settings '{"default_model":"provider/model"}'`, replacing the example
+identifier with one from the list. A successful connection does not itself select
+a default model. See [Connect a host installation](../get-started/connect-a-host-installation.md)
+for the complete sequence and [Troubleshooting](troubleshooting.md#host-connection-and-first-request)
+for connection and model-selection errors.
+
 ```sh
 rho run "Summarize the files in this project" --dir /path/on/runner
 rho run -p "Summarize the files in this project"

@@ -1,0 +1,6 @@
+zh-CN:
+  oauth:
+    device:
+      terminal_consent_html: 本终端将以 %{name} 的身份登录，拥有你目前在 Nexus API 中的权限。你可以在设置中撤销这个会话。
+      subjects:
+        terminal: 终端

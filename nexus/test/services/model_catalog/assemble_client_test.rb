@@ -16,7 +16,7 @@ class ModelCatalog::AssembleClientTest < ActiveSupport::TestCase
   # an identity the token never carried sends nothing, and the lane still
   # runs on its Bearer — never fail closed on a label.
   test "the codex lane sends ChatGPT-Account-ID exactly when the credential carries the identity" do
-    profile = DevModelLane.profile_for("codex_subscription/gpt-6.1-sol")
+    profile = DevModelLane.profile_for("codex_subscription/gpt-6.2-sol")
 
     identified = client(profile, credential: codex_credential(identity: "acct_123"))
     assert_equal "acct_123", identified.config.headers.fetch("ChatGPT-Account-ID")
@@ -32,7 +32,7 @@ class ModelCatalog::AssembleClientTest < ActiveSupport::TestCase
   # ("ChatGPT derives cache affinity from the Responses session-id header",
   # client.rs) — the same key `prompt_cache_key` carries in the body.
   test "the codex lane keys its session on the invocation's cache key and its request on the invocation" do
-    profile = DevModelLane.profile_for("codex_subscription/gpt-6.1-sol")
+    profile = DevModelLane.profile_for("codex_subscription/gpt-6.2-sol")
     conversation = Conversation.create!(
       workspace: workspaces(:shared), creating_user: @creator, answering_user: users(:agent)
     )
@@ -61,7 +61,7 @@ class ModelCatalog::AssembleClientTest < ActiveSupport::TestCase
   # lane carry none of them: these are codex's backend headers, not a
   # kernel convention.
   test "a non-codex lane and the credentialless compile carry none of the codex headers" do
-    codex = DevModelLane.profile_for("codex_subscription/gpt-6.1-sol")
+    codex = DevModelLane.profile_for("codex_subscription/gpt-6.2-sol")
     compile = client(codex, credential: nil, invocation: nil).config.headers
     assert_empty compile.keys & %w[ChatGPT-Account-ID session-id thread-id x-client-request-id]
     refute compile.key?("Authorization")
@@ -73,7 +73,7 @@ class ModelCatalog::AssembleClientTest < ActiveSupport::TestCase
       account: @account, provider_id: "openai_api", material_kind: "api_key", secret: "sk-test",
       provider_account_identity: "acct_123"
     )
-    plain = client(DevModelLane.profile_for("openai_api/gpt-6.1-sol"), credential: api_key, invocation: inference_request)
+    plain = client(DevModelLane.profile_for("openai_api/gpt-6.2-sol"), credential: api_key, invocation: inference_request)
       .config.headers
     assert_equal "Bearer sk-test", plain.fetch("Authorization")
     assert_empty plain.keys & %w[ChatGPT-Account-ID session-id thread-id x-client-request-id]

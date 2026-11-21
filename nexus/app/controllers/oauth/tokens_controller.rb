@@ -47,6 +47,17 @@ class OAuth::TokensController < OAuth::MachineController
 
   rescue_from OAuth::InvalidRequest, with: -> { render_oauth_error(:invalid_request) }
 
+  # @oas_include
+  # @summary Create tokens
+  # @tags OAuth, tokens
+  # @no_auth
+  # @request_body_ref #/components/requestBodies/OauthTokensCreate
+  # @response_ref (400) #/components/responses/OAuthError
+  # @response_ref (409) #/components/responses/OAuthError
+  # @response_ref (415) #/components/responses/OAuthError
+  # @response_ref (429) #/components/responses/OAuthError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/OauthTokensCreate
   def create
     return render_oauth_error(:invalid_client) unless OAuth::Client.registered?(scalar_field(:client_id))
     # Application login has one coarse scope. The retained connector still
@@ -54,6 +65,11 @@ class OAuth::TokensController < OAuth::MachineController
     scope = scalar_field(:scope)
     if scalar_field(:client_id) == OAuth::APPLICATION_CLIENT_ID && scope && scope != OAuth::APPLICATION_SCOPE
       return render_oauth_error(:invalid_scope)
+    end
+
+    if scalar_field(:client_id) == OAuth::TERMINAL_CLIENT_ID
+      return render_oauth_error(:invalid_scope) if scope
+      return render_oauth_error(:unsupported_grant_type) unless @token_grant_type == OAuth::DEVICE_GRANT_TYPE
     end
 
     case @token_grant_type
@@ -123,10 +139,15 @@ class OAuth::TokensController < OAuth::MachineController
 
       result = DeviceAuthorizations::Consume.call(authorization: @device_authorization)
 
-      if result.outcome == :minted
-        render_token(result)
-      else
-        render_oauth_error(result.outcome)
+      case result.outcome
+      when :minted then render_token(result)
+      when :session_issued
+        session = result.session
+        render json: {
+          access_token: result.secret, token_type: "Bearer", expires_in: Session::LIFETIME.to_i,
+          session: { public_id: session.public_id, kind: session.kind, expires_at: session.expires_at },
+        }
+      else render_oauth_error(result.outcome)
       end
     end
 

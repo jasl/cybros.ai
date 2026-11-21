@@ -88,25 +88,17 @@ module SimpleInference
       # kernel's stored ids never change.
       TOOL_ID_REFUSED = /[^a-zA-Z0-9_-]/
 
-      # Three more registry-declared construction facts beside the path and
-      # the version marker (alignment 2026-09-16):
-      # - betas: extra `anthropic-beta` tokens the row wants on every request;
-      # - thinking_binding: the fable-5-1 and opus-5-5 rows' `drop_block` —
-      #   SCOPED BY MODEL ID on the row, never by lane (older deployments may
-      #   reject the field; opencode gates it at claude >= 5.1 except
-      #   mythos-5.1);
-      # - mid_conversation_system: the row states that `role: system` is a
-      #   wire message inside messages[] (GA on fable-5-1 / fable-5 /
-      #   opus-5-5 / opus-5 / opus-4-8, not on sonnet-5); without it a
-      #   non-leading system entry lowers in place to user text.
+      # The model row declares which binding controls, system updates and
+      # tool choices its Messages endpoint accepts.
       def initialize(messages_path: nil, anthropic_version: nil, betas: nil, thinking_binding: nil,
-                     mid_conversation_system: nil, **connection)
+                     mid_conversation_system: nil, forced_tool_choice: true, **connection)
         super(**connection)
         @messages_path = normalized_messages_path(messages_path)
         @anthropic_version = validated_anthropic_version(anthropic_version)
         @betas = validated_betas(betas)
         @thinking_binding = validated_thinking_binding(thinking_binding)
         @mid_conversation_system = mid_conversation_system == true
+        @forced_tool_choice = forced_tool_choice
       end
 
       # The responses-family options this protocol PROCESSES by name (thinking
@@ -428,11 +420,10 @@ module SimpleInference
           current["stop_reason"] = delta["stop_reason"] unless delta["stop_reason"].nil?
           current["stop_sequence"] = delta["stop_sequence"] unless delta["stop_sequence"].nil?
           current["stop_details"] = Internal::Keys.deep_stringify(delta["stop_details"]) unless delta["stop_details"].nil?
-          # message_start carries the message's own list; a delta appends.
-          unless delta["input_transformations"].nil?
-            current["input_transformations"] =
-              Array(current["input_transformations"]) +
-              Array(delta["input_transformations"]).map { |entry| Internal::Keys.deep_stringify(entry) }
+          # After a mid-stream fallback the serving model replaces the initial
+          # binding verdict, including when its final list is empty.
+          unless event["input_transformations"].nil?
+            current["input_transformations"] = event["input_transformations"]
           end
           current["usage"] = Internal::Keys.deep_stringify(current["usage"]).merge(usage)
           current

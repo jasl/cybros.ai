@@ -56,7 +56,11 @@ module Rho
         JSON.parse(File.read(File.join(directory, "plugin_descriptors.json"))).each do |row|
           add(row, source: { "kind" => "builtin", "version" => Rho::VERSION }, directory: directory)
         end
-        Gem.loaded_specs.each_value do |spec|
+        # A separately installed plugin need not be a dependency of rho, so
+        # it may not be activated yet. Read metadata without requiring its code;
+        # an already activated version remains the process's version authority.
+        Gem::Specification.latest_specs(true).each do |installed|
+          spec = Gem.loaded_specs[installed.name] || installed.to_spec
           manifest = spec.metadata["rho_extension_manifest"]
           next unless manifest
 

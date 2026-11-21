@@ -164,6 +164,10 @@ currently supplies a checkout-based installation instead.
   the text already sent. A replacement changes `messageId`, including when
   the reset happened while this surface was not following; continuation
   emits only the new bytes.
+  An editor can attach a PDF as a `resource` block with `mimeType: "application/pdf"`
+  and a base64 `blob` of up to 16 MiB decoded. Rho queues it as a conversation
+  attachment. PDF-only prompts are accepted. Built-in slash commands and
+  answers to pending text questions cannot carry a PDF.
   A queued prompt waits for its own input's durable materialization event,
   polling from the receipt's pre-submission position once per second. Another
   sender's turn or a compaction summary cannot answer it; the editor can cancel

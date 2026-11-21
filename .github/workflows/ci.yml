@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  RUBY_VERSION: "4.0.9"
+  RUBY_VERSION: "4.0.10"
   # Keep dependency installs reproducible and fail if a lockfile would change.
   BUNDLE_FROZEN: "true"
 

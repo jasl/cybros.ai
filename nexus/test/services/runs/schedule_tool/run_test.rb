@@ -71,6 +71,40 @@ class Runs::ScheduleTool::RunTest < ActiveJob::TestCase
     assert_equal 1, @conversation.schedules.count
   end
 
+  test "only the original scheduled execution chooses its own result wake and settles that choice atomically" do
+    saved = execute(create_arguments.merge("wake" => "passive"))
+    job = @conversation.schedules.sole
+    assert_equal "passive", saved.fetch("wake")
+    assert_equal :dispatched, ::Schedules::Dispatch.call(id: job.id, cutoff: job.next_run_at)
+    child = job.reload.last_execution_conversation
+    assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
+    @run = child.reload.active_turn.active_variant.run
+    node = tool_call({ "action" => "set_result_wake", "wake" => "auto" })
+
+    assert_raises(RuntimeError) do
+      Runs::KernelTool.stub(:settle, ->(*) { raise "interrupted" }) { Runs::ScheduleTool::Run.call(node: node) }
+    end
+    assert_equal "passive", child.reload.scheduled_result_wake
+    assert_equal :applied, Runs::ScheduleTool::Run.call(node: node.reload)
+    assert_equal({ "wake" => "auto", "input_public_id" => child.scheduled_input_public_id }, output(node))
+    assert_equal :not_running, Runs::ScheduleTool::Run.call(node: node.reload)
+    assert_equal "passive", job.reload.wake
+    assert_equal "auto", ::Schedules::ExecutionProjection.call([child.id]).fetch(child.id).fetch(:wake)
+
+    schedule_loop!(@run)
+    run_loop_round!(@run, sse_success("An exception needs your attention."))
+    Conversations::Turns::Converge.call(conversation_id: child.id)
+    _follow_up, @run = materialize_loop_reply!(child, agent: @agent, text: "Review the earlier occurrence.")
+    stale = tool_call({ "action" => "set_result_wake", "wake" => "passive" })
+    assert_equal :applied, Runs::ScheduleTool::Run.call(node: stale)
+    assert_includes stale.reload.output_body.effective_text, "scheduled_execution_required"
+
+    Runs::Spawn::RelayJob.perform_now(child.id)
+    mail = @conversation.inputs.sole
+    assert_equal "direct_reply", mail.kind
+    assert_equal child.scheduled_input_public_id, mail.callback_result.fetch("input_public_id")
+  end
+
   test "a large saved prompt still permits an atomic mutation with a compact tool receipt" do
     saved = execute(create_arguments)
     job = Schedule.find_by!(public_id: saved.fetch("public_id"))
@@ -89,6 +123,34 @@ class Runs::ScheduleTool::RunTest < ActiveJob::TestCase
       "lock_version" => job.lock_version, "next_run_at" => nil }, output(node))
     assert_equal :not_running, Runs::ScheduleTool::Run.call(node: node)
     assert_equal version + 1, job.reload.lock_version
+  end
+
+  test "a manual regeneration of the scheduled turn cannot promote its original passive result" do
+    execute(create_arguments.merge("wake" => "passive"))
+    job = @conversation.schedules.sole
+    assert_equal :dispatched, ::Schedules::Dispatch.call(id: job.id, cutoff: job.next_run_at)
+    child = job.reload.last_execution_conversation
+    assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: child.id)
+    turn = child.reload.active_turn
+    original = turn.active_variant.run
+    schedule_loop!(original)
+    run_loop_round!(original, sse_success("No exception today."))
+    Conversations::Turns::Converge.call(conversation_id: child.id)
+    Runs::Spawn::RelayJob.perform_now(child.id)
+    receipt = @conversation.inputs.sole
+    assert_equal "message", receipt.kind
+    assert_equal original.variant.public_id, receipt.callback_result.fetch("variant_public_id")
+
+    regenerated = Conversations::Turns::Regenerate.call(Conversations::Turns::Regenerate::Command.new(
+      conversation: child, turn_public_id: turn.public_id, acting_user: @human,
+      provider_id: "dev", model_ref: "mock-text", reasoning_effort: nil, request_options: nil
+    ))
+    assert_predicate regenerated, :accepted?
+    @run = regenerated.value.run
+    node = tool_call({ "action" => "set_result_wake", "wake" => "auto" })
+    assert_equal :applied, Runs::ScheduleTool::Run.call(node: node)
+    assert_includes node.reload.output_body.effective_text, "scheduled_execution_required"
+    assert_equal "passive", child.reload.scheduled_result_wake
   end
 
   test "read pages and optimistic edits stay scoped to the calling conversation" do

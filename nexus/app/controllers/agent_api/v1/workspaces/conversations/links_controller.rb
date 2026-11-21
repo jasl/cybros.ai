@@ -1,7 +1,23 @@
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Conversations::LinksController <
       AgentAPI::V1::Workspaces::Conversations::BaseController
   include AgentAPI::V1::WorkspaceScoped
 
+  # @oas_include
+  # @summary List links
+  # @tags Member, links
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsLinksIndex
   def index
     conversation = find_listable_conversation(@workspace)
     scope = ConversationLink.for_conversation(conversation)
@@ -15,12 +31,45 @@ class AgentAPI::V1::Workspaces::Conversations::LinksController <
       next_after: page.next_after }
   end
 
+  # @oas_include
+  # @summary Read links
+  # @tags Member, links
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsLinksShow
   def show
     conversation = find_listable_conversation(@workspace)
     link = ConversationLink.for_conversation(conversation).find_by!(public_id: params.fetch(:public_id))
     render json: { link: ::Conversations::LinkProjection.call(link, conversation: conversation) }
   end
 
+  # @oas_include
+  # @summary Create links
+  # @tags Member, links
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter_ref #/components/parameters/IdempotencyKey
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsLinksCreate
+  # @response_ref (201) #/components/responses/AgentApiV1WorkspacesConversationsLinksCreate
   def create
     conversation = find_listable_conversation(@workspace)
     return unless authorize_writable(conversation)

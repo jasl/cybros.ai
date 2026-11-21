@@ -18,22 +18,19 @@ module Rho
           "properties" => { "upload" => { "type" => "string", "description" => "Attachment reference or upload UUID" } },
           "required" => ["upload"],
         })
-        UPLOAD_ID = /\A(?:nexus:\/\/uploads\/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\z/i
-        private_constant :UPLOAD_ID
 
         def initialize(env:)
           @env = env
         end
 
         def call(args)
-          match = UPLOAD_ID.match(args.fetch("upload"))
-          return Result.error("Expected a Nexus attachment reference or upload UUID") unless match
+          public_id = ClaimAttachments.public_id(args.fetch("upload"))
+          return Result.error("Expected a Nexus attachment reference or upload UUID") unless public_id
 
           context = ExecutionContext.current
           return Result.error("Attachment import requires an active executor claim") unless context&.attachments
 
           context.raise_if_cancelled!
-          public_id = match[1].downcase
           directory = @env.ensure_artifacts_dir!
           Tempfile.create(["attachment-", ".part"], directory, binmode: true) do |io|
             upload = context.attachments.read(public_id, io)

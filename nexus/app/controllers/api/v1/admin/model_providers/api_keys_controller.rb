@@ -3,9 +3,25 @@
 # no-op, so a retried install cannot invalidate a working key. A lane that authenticates some
 # other way answers `409 material_kind_conflict` — the service's own word, the one the pack's
 # `models.json` table lists; a bare HTTP status name is not a code.
+# @auth [PlatformBearer, BrowserSession]
 class API::V1::Admin::ModelProviders::APIKeysController < API::V1::Admin::ModelProviders::BaseController
   before_action :require_api_key_lane
 
+  # @oas_include
+  # @summary Update api keys
+  # @tags Platform, api keys
+  # @parameter model_provider_id(path) [!String] Resource selector.
+  # @request_body_ref #/components/requestBodies/ApiV1AdminModelProvidersApiKeysUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ApiV1AdminModelProvidersApiKeysUpdate
   def update
     fields = params.expect(command: [:api_key])
     result = ModelProviders::ConfigureAPIKey.call(
@@ -24,6 +40,20 @@ class API::V1::Admin::ModelProviders::APIKeysController < API::V1::Admin::ModelP
     end
   end
 
+  # @oas_include
+  # @summary Destroy api keys
+  # @tags Platform, api keys
+  # @parameter model_provider_id(path) [!String] Resource selector.
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ApiV1AdminModelProvidersApiKeysDestroy
   def destroy
     result = ModelProviders::RemoveAPIKey.call(account: account, provider_id: provider_id)
     return render_lane if result.done?

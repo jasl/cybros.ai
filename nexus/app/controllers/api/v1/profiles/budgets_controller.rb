@@ -1,3 +1,4 @@
+# @auth [PlatformBearer, BrowserSession]
 class API::V1::Profiles::BudgetsController < API::V1::BaseController
   include BudgetReading
 

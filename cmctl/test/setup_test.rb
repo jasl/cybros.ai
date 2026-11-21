@@ -47,6 +47,35 @@ class SetupTest < OperatorTest
     assert_revoke_last
   end
 
+  def test_explicit_device_setup_completes_without_an_email_or_password_prompt
+    @config.write(base_url: "https://saved.example", token: "already-saved-session")
+    terminal_answers
+    @transport.answer(200, profile)
+    providers_answer(configured: true, enabled: true)
+    provider_answer(configured: true, enabled: true)
+    models_answer
+    sign_out_answer
+
+    assert run_setup("1\n1\nn\n", device: true)
+    assert_revoke_last
+    assert_equal TOKEN, @transport.requests.last.fetch(:credential)
+    assert_equal "already-saved-session", @config.read.token
+    refute_includes @output.string, "Nexus email"
+    refute_includes @output.string, "Nexus password"
+  end
+
+  def test_setup_offers_browser_login_and_revokes_its_temporary_session
+    saved_session
+    terminal_answers
+    @transport.answer(200, profile(role: "member"))
+    @transport.answer(200, { "revoked" => true })
+    assert_raises(CybrosControl::Error) { run_setup("\n") }
+    assert_includes @output.string, "press Enter to sign in with your browser"
+    assert_includes @error.string, "BCDF-GHJK"
+    assert_equal :delete, @transport.requests.last.fetch(:method)
+    assert_equal TOKEN, @config.read.token
+  end
+
   def test_supplied_human_client_is_checked_without_password_login_or_revocation
     @transport.answer(200, profile(role: "admin"))
     providers_answer(configured: true, enabled: true)
@@ -221,11 +250,11 @@ class SetupTest < OperatorTest
 
   private
 
-    def run_setup(input, client: nil)
+    def run_setup(input, client: nil, device: false)
       @output = Terminal.new
       @error = StringIO.new
       CybrosControl::Setup.new(url: "http://localhost:3000", input: Terminal.new(input), output: @output, error: @error,
-        client: client,
+        client: client, device: device,
         sessions: ->(url) { CybrosAgent::Platform::Sessions.new(base_url: url, transport: @transport) },
         clients: ->(url, token) { CybrosAgent::PlatformClient.new(base_url: url, credential: token, transport: @transport) },
         sleeper: ->(_seconds) { }).run

@@ -19,8 +19,7 @@ module Runs
     # The scheduler is the durable recovery floor for a lost enqueue or a job
     # deferred by Pause/maintenance. Already-started HTTP is never redelivered.
     def recover(run)
-      run.tasks.where(status: "running", external_started_at: nil)
-        .where.not(mcp_connection_public_id: nil).find_each { |node| after_commit(node) }
+      run.tasks.unstarted_mcp_calls.find_each { |node| after_commit(node) }
     end
   end
 end

@@ -8,8 +8,7 @@ module Schedules
       return {} if conversation_ids.empty?
 
       children = Conversation.where(id: conversation_ids).to_a
-      inputs = Input.where(host_type: "Conversation", host_id: conversation_ids)
-        .index_by(&:public_id)
+      inputs = Input.where(public_id: children.filter_map(&:scheduled_input_public_id)).index_by(&:public_id)
       turns = Turn.where(public_id: children.filter_map(&:scheduled_turn_public_id)).index_by(&:public_id)
       variants = Variant.where(turn_id: turns.values.map(&:id))
         .where("position = 0 OR source = 'fallback'").to_a
@@ -39,7 +38,7 @@ module Schedules
         turn_public_id: turn&.public_id,
         variant_public_id: variant&.public_id,
         run_public_id: run&.public_id,
-        scheduled_for: child.scheduled_for,
+        scheduled_for: child.scheduled_for, wake: child.scheduled_result_wake,
         status: input ? (input.blocked? ? "blocked" : "queued") : (run&.status || variant&.status || turn&.status || "canceled"),
         created_at: child.created_at,
       }

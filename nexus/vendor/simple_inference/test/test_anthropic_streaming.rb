@@ -322,10 +322,7 @@ class TestAnthropicStreaming < Minitest::Test
     assert_equal({ "input_tokens" => 1, "output_tokens" => 4 }, usage, "absent wire fields must never be fabricated as 0")
   end
 
-  # F10c + F8 (stream): message_start's input_transformations and the
-  # message_delta's stop_details / input_transformations reach the
-  # assembled message the streamed Result carries.
-  def test_stream_merges_stop_details_and_input_transformations_into_the_assembled_message
+  def test_stream_uses_final_model_binding_verdict_and_stop_details_after_a_fallback
     adapter =
       Class.new(SimpleInference::HTTPAdapter) do
         def call_stream(_env)
@@ -333,7 +330,7 @@ class TestAnthropicStreaming < Minitest::Test
           sse << %(event: message_start\n)
           sse << %(data: {"type":"message_start","message":{"id":"msg_s","role":"assistant","content":[],"input_transformations":[{"path":"messages.1.content.0","reason":"model_binding_mismatch"}],"usage":{"input_tokens":3,"output_tokens":0}}}\n\n)
           sse << %(event: message_delta\n)
-          sse << %(data: {"type":"message_delta","delta":{"stop_reason":"refusal","stop_sequence":null,"stop_details":{"type":"refusal","category":"bio"},"input_transformations":[{"path":"messages.5.content.0","reason":"prefix_binding_mismatch"}]},"usage":{"output_tokens":0}}\n\n)
+          sse << %(data: {"type":"message_delta","delta":{"stop_reason":"refusal","stop_sequence":null,"stop_details":{"type":"refusal","category":"bio"}},"input_transformations":[],"usage":{"output_tokens":0}}\n\n)
           sse << %(event: message_stop\n)
           sse << %(data: {"type":"message_stop"}\n\n)
           yield sse
@@ -348,12 +345,6 @@ class TestAnthropicStreaming < Minitest::Test
     assert_equal "refusal", result.finish_detail
     body = result.provider_response.body
     assert_equal({ "type" => "refusal", "category" => "bio" }, body.fetch("stop_details"))
-    assert_equal(
-      [
-        { "path" => "messages.1.content.0", "reason" => "model_binding_mismatch" },
-        { "path" => "messages.5.content.0", "reason" => "prefix_binding_mismatch" },
-      ],
-      body.fetch("input_transformations")
-    )
+    assert_empty body.fetch("input_transformations")
   end
 end

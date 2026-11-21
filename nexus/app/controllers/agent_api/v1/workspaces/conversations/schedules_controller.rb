@@ -1,8 +1,24 @@
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Conversations::SchedulesController <
       AgentAPI::V1::Workspaces::Conversations::BaseController
   include AgentAPI::V1::WorkspaceScoped
   include ScheduleListing
 
+  # @oas_include
+  # @summary List schedules
+  # @tags Member, schedules
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsSchedulesIndex
   def index
     conversation = find_listable_conversation(@workspace)
     scope = filtered_schedules(conversation.schedules).including_context
@@ -11,10 +27,43 @@ class AgentAPI::V1::Workspaces::Conversations::SchedulesController <
       pagination: { next_after: page.next_after } }
   end
 
+  # @oas_include
+  # @summary Read schedules
+  # @tags Member, schedules
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsSchedulesShow
   def show
     render json: { schedule: ::Schedules::Projection.full(find_job, by: acting_user) }
   end
 
+  # @oas_include
+  # @summary Create schedules
+  # @tags Member, schedules
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter_ref #/components/parameters/IdempotencyKey
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesConversationsSchedulesCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (201) #/components/responses/AgentApiV1WorkspacesConversationsSchedulesCreate
   def create
     conversation = find_listable_conversation(@workspace)
     key = required_idempotency_key
@@ -39,6 +88,23 @@ class AgentAPI::V1::Workspaces::Conversations::SchedulesController <
     render_idempotent_outcome(result)
   end
 
+  # @oas_include
+  # @summary Update schedules
+  # @tags Member, schedules
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesConversationsSchedulesUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsSchedulesUpdate
   def update
     job = find_job
     fields = submitted_fields
@@ -65,7 +131,7 @@ class AgentAPI::V1::Workspaces::Conversations::SchedulesController <
 
     def submitted_fields
       fields = params.permit(schedule: [
-        :name, :prompt, :approval_mode, :answering_user_public_id, :speaker_public_id,
+        :name, :prompt, :wake, :approval_mode, :answering_user_public_id, :speaker_public_id,
         :source_run_public_id, :source_task_key,
         :expected_lock_version, { rule: %i[kind run_at every_seconds starts_at local_time time_zone],
           model: %i[model reasoning_effort reasoning_enabled], model_selection: {}, fallback_models: [],
@@ -73,6 +139,7 @@ class AgentAPI::V1::Workspaces::Conversations::SchedulesController <
       ]).fetch(:schedule).to_h
       fields.except!("source_run_public_id", "source_task_key") unless action_name == "create"
       supplied = params.fetch(:schedule)
+      raise APIErrors::ParameterInvalid, :wake if supplied.key?(:wake) && !fields.key?("wake")
       if supplied.key?(:executor_contexts) && !fields.key?("executor_contexts")
         raise APIErrors::ParameterInvalid, :executor_contexts
       end

@@ -3,8 +3,8 @@ require "test_helpers/log_capture"
 require "test_helpers/refused_step_test_helper"
 
 # A provider refusal advances through the execution's captured fallback order.
-# Each prior invocation stays sealed, and the task's history prevents retries
-# and later declaration edits from renewing a route that already failed.
+# Each prior invocation stays sealed, and the task's history bounds automatic
+# recovery even when a person explicitly retries a failed route.
 class Runs::RefusalFallbackTest < ActiveJob::TestCase
   include RefusedStepTestHelper
   include AgentMembershipTestHelper
@@ -113,11 +113,9 @@ class Runs::RefusalFallbackTest < ActiveJob::TestCase
     assert_equal %w[running mock-windowless], node(run, "r1").values_at(:status, :model_ref)
   end
 
-  # The bound is the step's own history, so nothing renews it: a refusal
-  # that stood for want of a declaration stays the step's one refusal, and
-  # neither a declaration made since nor a person's retry turns the next
-  # refusal into a switch.
-  test "neither a person's retry nor a later declaration re-arms the switch" do
+  # A person can ask the same model again. Its captured empty fallback list
+  # stays empty even after the live declaration changes.
+  test "a person's retry re-asks the refused model without adopting a later fallback declaration" do
     declare_tools!(@agent)
     conversation = Conversation.create!(workspace: @workspace, creating_user: @human, answering_user: @agent)
     _turn, run = materialize_loop_reply!(conversation, agent: @agent)
@@ -134,8 +132,14 @@ class Runs::RefusalFallbackTest < ActiveJob::TestCase
     schedule(run)
 
     round = node(run, "r1")
-    assert_equal %w[failed mock-text model_route_spent], round.values_at(:status, :model_ref, :error_key)
-    assert_equal 1, step_invocations(round).count, "manual retry cannot renew the spent provider route"
+    assert_equal ["running", "mock-text", nil], round.values_at(:status, :model_ref, :error_key)
+    assert_equal 2, step_invocations(round).count
+
+    refuse!(run, "r1")
+
+    assert_equal %w[failed mock-text model_refused], round.reload.values_at(:status, :model_ref, :error_key)
+    assert_equal 2, step_invocations(round).count, "manual retry cannot add an automatic fallback"
+    assert_empty round.fallback_models
   end
 
   # A named model is switched too: the node keeps no provenance of who

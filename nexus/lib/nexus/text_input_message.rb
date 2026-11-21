@@ -6,8 +6,8 @@ module Nexus
   # `phase` is a wire's own label on an assistant message it produced (the
   # Responses grammar's commentary | final_answer), carried with the
   # `native_origin` that licenses it: the compiler resends it only to the
-  # wire and lane that wrote it. Both are absent on every other message, so
-  # its bytes are the ones it always had.
+  # wire and lane that wrote it. Claude replies also carry their producer
+  # without a phase so a model handoff stays at the turn that received it.
   TextInputMessage = Data.define(:role, :parts, :phase, :native_origin) do
     def self.from_h(hash)
       new(

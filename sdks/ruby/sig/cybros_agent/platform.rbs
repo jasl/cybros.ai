@@ -62,6 +62,7 @@ module CybrosAgent
     class Sessions < Api::BaseClient
       def initialize: (base_url: String, ?transport: _Transport?, ?request_timeout: Numeric) -> void
       def create: (email: String, password: String) -> SessionGrant
+      def create_with_device: () { (DeviceFlow::Authorization) -> void } -> SessionGrant
     end
 
     class SessionContext

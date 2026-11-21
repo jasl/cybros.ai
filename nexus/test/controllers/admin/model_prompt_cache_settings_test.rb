@@ -57,7 +57,7 @@ class Admin::ModelPromptCacheSettingsTest < ActionDispatch::IntegrationTest
   end
 
   test "models without a declared TTL offer no editable control" do
-    get admin_model_provider_model_definition_path("codex_subscription", model: "codex_subscription/gpt-6.1-sol")
+    get admin_model_provider_model_definition_path("codex_subscription", model: "codex_subscription/gpt-6.2-sol")
     assert_response :success
     assert_select "select[name='model_definition[prompt_cache_ttl]']:not([disabled])", count: 0
   end

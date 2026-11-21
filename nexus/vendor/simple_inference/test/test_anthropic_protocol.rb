@@ -88,6 +88,35 @@ class TestAnthropicProtocol < Minitest::Test
     assert_equal "calculator", request_body.fetch("tools").fetch(0).fetch("name")
   end
 
+  def test_model_limited_to_auto_and_none_rejects_forcing_any_or_one_tool_on_compile
+    protocol = SimpleInference::Protocols::AnthropicMessages.new(
+      base_url: "https://api.anthropic.com", api_key: "k", forced_tool_choice: false
+    )
+    options = { model: "fixture", input: "Call lookup.", max_output_tokens: 128 }
+    ["required", "any", { "type" => "any" }, { type: "tool", name: "auto" },
+     { type: "function", function: { name: "lookup" } }].each do |forced|
+      assert_raises(SimpleInference::ValidationError) { protocol.compile_create(**options, tool_choice: forced) }
+    end
+    %w[auto none].each do |allowed|
+      [allowed, { "type" => allowed }].each do |choice|
+        body = JSON.parse(protocol.compile_create(**options, tool_choice: choice).payload)
+        assert_equal allowed, body.dig("tool_choice", "type")
+      end
+    end
+  end
+
+  def test_model_accepting_forced_choice_maps_native_and_neutral_forms
+    options = { model: "fixture", input: "Call lookup.", max_output_tokens: 128 }
+    protocol = exploding_protocol
+    ["any", "required", { "type" => "any" }, { type: "required" }].each do |choice|
+      body = JSON.parse(protocol.compile_create(**options, tool_choice: choice).payload)
+      assert_equal({ "type" => "any" }, body.fetch("tool_choice"))
+    end
+    choice = { "type" => "tool", "name" => "none", "disable_parallel_tool_use" => true }
+    body = JSON.parse(protocol.compile_create(**options, tool_choice: choice).payload)
+    assert_equal choice, body.fetch("tool_choice")
+  end
+
   def test_create_maps_tool_choice_parallel_control_and_default_input_schema
     adapter = Class.new(SimpleInference::HTTPAdapter) do
       attr_reader :last_request
@@ -457,7 +486,7 @@ class TestAnthropicProtocol < Minitest::Test
     refute plain.last_request.fetch(:headers).key?("anthropic-beta"), "no betas declared, no header"
 
     keys = SimpleInference::Protocols::AnthropicMessages.protocol_option_keys
-    assert_equal %i[messages_path anthropic_version betas thinking_binding mid_conversation_system], keys
+    assert_equal %i[messages_path anthropic_version betas thinking_binding mid_conversation_system forced_tool_choice], keys
 
     error = assert_raises(SimpleInference::ConfigurationError) do
       SimpleInference::Protocols::AnthropicMessages.new(base_url: "https://api.anthropic.com", api_key: "k", betas: ["ok", " "])

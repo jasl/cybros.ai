@@ -22,6 +22,8 @@ class ToolTest < Minitest::Test
     klass = Tool.build(rows)
     validator = Rho::Env::Extensions::Tool.validate(klass, extension: "rho.acp-client")
     assert_nil Rho::Env::InputSchema.refusal(validator, { "agent" => "codex", "prompt" => "hi" })
+    assert_nil Rho::Env::InputSchema.refusal(validator, { "agent" => "codex", "prompt" => "hi", "attachments" => ["uuid"] })
+    assert Rho::Env::InputSchema.refusal(validator, { "agent" => "codex", "prompt" => "hi", "attachments" => "uuid" })
     assert_equal "delegate_agent", klass::NAME
     assert_equal Rho::Env::Tools::Bash::EFFECT_PROFILE, klass::EFFECT_PROFILE
     assert_equal 900_000, klass::TIMEOUT_MS, "the longest ENABLED clock; the disabled row's never"
@@ -31,10 +33,10 @@ class ToolTest < Minitest::Test
     assert klass.method_defined?(:call)
   end
 
-  def test_the_schema_offers_the_enabled_agents_and_the_four_parameters
+  def test_the_schema_offers_the_enabled_agents_and_the_delegation_parameters
     schema = Tool.build(rows)::SCHEMA
     assert_equal "object", schema.fetch("type")
-    assert_equal %w[agent prompt session workdir], schema.fetch("properties").keys
+    assert_equal %w[agent prompt attachments session workdir], schema.fetch("properties").keys
     assert_equal %w[opencode codex], schema.dig("properties", "agent", "enum")
     assert_equal %w[agent prompt], schema.fetch("required")
     assert_predicate schema, :frozen?

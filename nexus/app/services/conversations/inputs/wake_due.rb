@@ -1,9 +1,10 @@
 module Conversations
   module Inputs
-    # Busy rooms retain their due rows: the cursor must pass them even when
-    # their drains cannot progress. The next recurring wake revisits them.
+    # Recover an immediate or scheduled drain whose after-commit wake was lost.
+    # Retained rows advance the cursor even when their room cannot drain.
     class WakeDue
       BUDGET = 500
+      DUE_AT = Arel.sql("COALESCE(deliver_at, created_at)")
 
       def self.call(...) = new(...).call
 
@@ -15,7 +16,7 @@ module Conversations
 
       def call
         rows = frontier
-        ids = rows.map(&:last).uniq
+        ids = drainable_hosts(rows)
         ActiveJob.perform_all_later(ids.map { |id| DrainJob.new(id) })
         Sweeps::Pass.new(
           counts: { scanned: rows.length, woken: ids.length },
@@ -27,11 +28,24 @@ module Conversations
 
         def frontier
           scope = Input.where(host_type: "Conversation", state: "pending")
-            .where(deliver_at: ..@cutoff)
+            .where(DUE_AT.lteq(@cutoff))
           if @after_at
-            scope = scope.where("(deliver_at, id) > (?, ?)", Time.zone.iso8601(@after_at), @after_id)
+            scope = scope.where("(#{DUE_AT}, id) > (?, ?)", Time.zone.iso8601(@after_at), @after_id)
           end
-          scope.order(:deliver_at, :id).limit(BUDGET).pluck(:deliver_at, :id, :host_id)
+          scope.order(DUE_AT, :id).limit(BUDGET).pluck(DUE_AT, :id, :host_id)
+        end
+
+        def drainable_hosts(rows)
+          ids = rows.map(&:last).uniq
+          hosts = Conversation.listable.where(id: ids)
+          busy = Turn.active.where("turns.conversation_id = conversations.id")
+          inputs = Input.where(host_type: "Conversation").where("inputs.host_id = conversations.id")
+          first = inputs.pending.due(@cutoff).order(:queue_position).limit(1).select(:id)
+          head = inputs.waiting_at(@cutoff).limit(1).select(:state)
+          # The FIFO index picks one due row to represent the room. Only its
+          # page evaluates the kernel-first head, which can be blocked.
+          eligible = "CASE WHEN (#{first.to_sql}) IN (?) THEN (#{head.to_sql}) = 'pending' ELSE FALSE END"
+          ids & hosts.where.not(busy.arel.exists).where(eligible, rows.map(&:second)).ids
         end
 
         def cursor(rows)

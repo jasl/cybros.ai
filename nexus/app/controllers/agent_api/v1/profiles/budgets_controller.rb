@@ -1,3 +1,4 @@
+# @auth [MemberBearer]
 class AgentAPI::V1::Profiles::BudgetsController < AgentAPI::V1::BaseController
   include BudgetReading
 

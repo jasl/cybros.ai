@@ -3,10 +3,14 @@
 format: 1
 row: claude
 models:
+  - claude-fable-5-2
   - claude-opus-5-5
-  - claude-fable-5
-  - claude-fable-5-1
-  - claude-sonnet-5
+  - claude-sonnet-5-5
+  - claude-haiku-5-5
+  - anthropic/claude-fable-5.2
+  - anthropic/claude-opus-5.5
+  - anthropic/claude-sonnet-5.5
+  - anthropic/claude-haiku-5.5
 tool_style: [claude]
 tool_descriptions: []
 summarizer_prompt: null

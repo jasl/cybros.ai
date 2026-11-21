@@ -153,13 +153,17 @@ class Input < ApplicationRecord
   # explicit OR, as the admitter spells its own; a row before its time is
   # neither the head nor a blocker — it is not in the room yet. No fourth
   # state: the column is the fact.
-  scope :due, ->(now) { where(deliver_at: nil).or(where(deliver_at: ..now)) }
+  scope :due, ->(now) {
+    at = arel_table[:deliver_at]
+    where(at.eq(nil).or(at.lteq(now)))
+  }
   # THE READ ORDER: the kernel's set FIRST, then arrival — a read rule
   # the drain and the listing share, never a renumbering;
   # `queue_position` stays the arrival number. Postgres orders `false`
   # before `true`, so the rows in KERNEL_ORIGINS lead; a peer's `send`
   # reads in arrival order like a person's word.
   scope :in_read_order, -> { order(arel_table[:origin].not_in(KERNEL_ORIGINS), :queue_position) }
+  scope :waiting_at, ->(at = Arel.sql("statement_timestamp()")) { where(state: %w[pending blocked]).due(at).in_read_order }
   # The caller-authored countable set: what the caller-authored queue
   # limit bounds. Peer mail counts — an agent's `send` included; the
   # kernel's own set is not COUNTED against the bound but can meet it.

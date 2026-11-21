@@ -160,6 +160,8 @@ module Rho
       ELICITATION_CAPABILITY_KEYS: Array[String]
       AGENT_CAPABILITY_KEYS: Array[String]
       PROMPT_CAPABILITY_KEYS: Array[String]
+      PDF_MIME_TYPE: String
+      PDF_BLOB_MAX_BYTES: Integer
       MCP_CAPABILITY_KEYS: Array[String]
       SESSION_CAPABILITY_KEYS: Array[String]
       BASELINE_CLIENT_CAPABILITIES: Hash[String, untyped]

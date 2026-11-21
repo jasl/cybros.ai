@@ -20,7 +20,7 @@ class OpsConversationsTest < Minitest::Test
 
   class CatalogApi < NexusDoubles::FakeAgentApi
     attr_accessor :refusal
-    attr_reader :writes
+    attr_reader :writes, :row
 
     def initialize
       super
@@ -71,13 +71,33 @@ class OpsConversationsTest < Minitest::Test
   def test_conversation_routes_require_bearer_and_the_connected_member_plane
     daemon = boot
     [["get", "/conversations"], ["get", "/conversations/detail?public_id=c-1"],
-     ["get", "/inputs?public_id=c-1&host_type=conversation"],
+     ["get", "/inputs?public_id=c-1&host_type=conversation"], ["post", "/conversations/prepare-input-policy"],
      ["patch", "/conversations"], ["post", "/conversations/archive"], ["post", "/conversations/unarchive"]].each do |verb, path|
       assert_equal "401", request(daemon, verb.to_sym, path).code
-      response = request(daemon, verb.to_sym, path, token: bearer(daemon), body: { "public_id" => "c-1", "title" => "Title" })
+      response = request(daemon, verb.to_sym, path, token: bearer(daemon), body: { "public_id" => "c-1", "workspace_public_id" => "ws-1" })
       assert_equal "409", response.code
       assert_equal "member_plane_unavailable", JSON.parse(response.body).dig("error", "code")
     end
+  end
+
+  def test_input_policy_refuses_archived_side_and_channel_conversations_before_assembling_tools
+    api = CatalogApi.new
+    daemon = member_ready(boot, api)
+    address = { public_id: "c-1", workspace_public_id: "ws-1" }
+    prepare = -> { request(daemon, :post, "/conversations/prepare-input-policy", token: bearer(daemon), body: address) }
+    original = api.row.dup
+    [
+      [{ "archived_at" => "2026-09-29T00:00:00Z" }, "input_policy_unavailable"],
+      [{ "side" => true }, "input_policy_unavailable"],
+      [{ "metadata" => { Rho::BotSettings::CONVERSATION_METADATA_KEY => "bot-1" } }, "ingress_bound"],
+    ].each do |change, expected_code|
+      api.row.replace(original.merge(change))
+      response = prepare.call
+      assert_equal "409", response.code, response.body
+      assert_equal expected_code, JSON.parse(response.body).dig("error", "code")
+    end
+    assert_empty api.tool_assemblies
+    assert_empty api.inputs
   end
 
   def test_listing_and_detail_use_the_adopted_workspace_without_attaching_a_host

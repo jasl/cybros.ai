@@ -409,19 +409,43 @@ gesture, so send the profile's own word, and a rank-equal word is lawful.
 
 ### Reasoning in history
 
-Assembled replies also carry the earlier turns' reasoning back to the
-model, by default every turn, in the target wire's own field: signed
-thinking blocks, encrypted reasoning items, Gemini's thought parts, the
-chat message's `reasoning_details` or `reasoning_content`, DeepSeek's
-plain-text reasoning item — when the target can read its origin.
-Anthropic's and Gemini's cross their own models, the API dropping what a
-model cannot read, unbilled; every other format rides the exact model
-that produced it.
+Assembled replies replay reasoning in its original position when the
+target accepts the native format and origin. This lets a model resume
+work after a tool call with the reasoning state it returned.
 
-Reasoning the target cannot read carries nothing: no text stands in for
-it, and signatures and encrypted material never cross. Replayed reasoning
-is history — it is priced with its turn in the one fit and leaves the
-window only with its turn.
+When you switch models or providers, Nexus uses a readable summary supplied
+by the original provider if the target cannot use the native state. The
+summary travels as ordinary assistant history. It can help the new model
+recover an earlier decision or an unfinished step. If the provider supplied
+no summary, the new model continues from the visible messages, tool calls
+and results. Private reasoning, encrypted state and signatures stay out of
+that text. The summary follows its turn's history and replay limits.
+
+A Run can switch back to the model that produced an earlier round. Nexus
+keeps that round’s native state in the Run so the original model can use it
+again. A tool-enabled conversation turn starts with the history already
+assembled for its selected model. If that turn immediately falls back to a
+model from an earlier turn, it carries forward the summary and visible work
+that the initial request admitted. The next conversation turn assembles
+history again and can use the earlier model’s stored native state within
+the selected history and replay limits.
+
+On OpenAI Responses, Nexus can replay encrypted reasoning when moving from
+GPT-6.2 Sol to GPT-6.2 Astra. On the Codex subscription it can replay between
+those two models in either direction. Switching between either 6.2 model and
+GPT-6.1 Terra, or between the API and the subscription, uses the portable
+history described above. Keep earlier instructions, tool calls and results in
+their original positions. A prefix edit can cause the provider to remove a
+later reasoning item even on the same model.
+[OpenAI reasoning item removal](https://developers.openai.com/api/docs/guides/reasoning#reasoning-item-removal-across-requests)
+
+On Anthropic's Messages API, Fable 5.2 can read the signed thinking from
+Opus, Sonnet and Haiku 5.5. Opus can read Sonnet and Haiku, and Sonnet can
+read Haiku. In the reverse direction, Nexus keeps the signed blocks and
+appends any readable summaries after the receiving turn's user input and
+tool results. Returning to the earlier model preserves the earlier handoff
+at the same point in the conversation.
+[Anthropic's model compatibility table](https://platform.claude.com/docs/en/build-with-claude/preserved-thinking#which-model-switches-keep-the-reasoning-on-the-claude-api)
 
 ### reasoning_replay
 
@@ -445,13 +469,13 @@ window and the bytes. The fit leaves the turn's own answer room on a hard
 or shared window, `min(32k, 12.5 %)` of it; a model planned to an
 advisory bound below its window has that room already.
 
-What puts a trace back on a later turn is the caller's own word for one
-turn: a narrower mode named for it, a `history` bound stated for it, or
-effective `reasoning_enabled: false` on a native lane, since reasoning off
-replays none. The next turn at the default carries again what that turn
-left out. After a model switch the earlier traces the new model cannot
-read carry nothing — one change at the switch — and later turns on that
-model extend each other.
+The replay mode and `history` bound apply to the current turn. Mode
+`none` omits both native reasoning and provider summaries from assembled
+history. With replay enabled, switching to a model whose effective
+`reasoning_enabled` is `false` still allows a provider-supplied summary
+as ordinary assistant text. Native reasoning and signatures require
+thinking to be enabled on the target. Later turns on that same model
+extend the resulting prefix.
 
 A provider's non-transient HTTP refusal (4xx) of a request carrying
 native reasoning disables default replay for later assembled requests in

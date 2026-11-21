@@ -3,6 +3,7 @@ require "rbconfig"
 
 # Keep CI's fast contract checks explicit; the full suites remain in bin/ci.
 tests = %w[
+  test/controllers/openapi_test.rb
   test/controllers/sessions_controller_test.rb
   test/controllers/api/v1/sessions_test.rb
   test/controllers/oauth/token_refresh_and_revoke_test.rb
@@ -19,4 +20,5 @@ ENV["RAILS_ENV"] = "test"
 Dir.chdir(File.expand_path("..", __dir__))
 # Explicit test paths skip Rails' automatic asset preparation.
 system(RbConfig.ruby, "bin/rails", "db:prepare", "test:prepare", exception: true)
+system(RbConfig.ruby, "bin/rails", "openapi:check", exception: true)
 exec RbConfig.ruby, "bin/rails", "test", *tests, *ARGV

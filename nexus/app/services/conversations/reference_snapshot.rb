@@ -110,7 +110,7 @@ module Conversations
           "results" => Nexus::InputEntries.for(segment.result_items),
           "trace" => segment.trace&.envelope,
           "pictures" => segment.picture_parts.map { |part| part.upload.public_id },
-          "pairs_only" => !segment.words? && placed_messages(segment).empty?,
+          "pairs_only" => segment.pairs_only,
         }
       else
         message = Nexus::TextInputMessage.new(role: segment.role, parts: encoded_parts(segment.parts),
@@ -156,7 +156,7 @@ module Conversations
         Segment.round(entry.fetch("role"), text, calls: placed.call_items,
           trailing: placed.trailing, first_slot: placed.first_slot,
           results: entry.fetch("results").map { |result| Nexus::ToolResultInputItem.from_h(result) },
-          trace: trace, picture_parts: AttachmentLine.parts(pictures, carries: carries))
+          trace: trace, picture_parts: AttachmentLine.parts(pictures, carries: carries), pairs_only: entry.fetch("pairs_only"))
       else raise ArgumentError, "unknown reference entry kind: #{entry.fetch("kind")}"
       end
     end

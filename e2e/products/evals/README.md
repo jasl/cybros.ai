@@ -96,7 +96,7 @@ pairs a runner home once, and starts a fresh container over that home for each r
 drives the turn through `--runner`; file and process tools execute inside the task container.
 
 Terminal-bench loads the 21 pinned task names in `bench.yml`. The configured default cell is
-`deepseek/deepseek-flash`, 3 runs per task. Explicitly selected `openrouter/moonshotai/kimi-k3` or
+`deepseek/deepseek-flash`, 3 runs per task. Explicitly selected `openrouter/moonshotai/kimi-k3.1-pro` or
 `openrouter/z-ai/glm-5.3` use the optional cell, also 3 runs. A smoke may narrow the count. Each task
 keeps its upstream deadline. Hidden tests are copied in after the turn and run as root with network
 access; the model's turn does not receive that test mount. Agents-on-Rails retains its own

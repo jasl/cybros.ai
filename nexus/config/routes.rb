@@ -1,4 +1,7 @@
 Rails.application.routes.draw do
+  draw :sso
+  draw :sso_settings
+  get "openapi.json", to: "openapi#show", format: false
   resource :setup, only: [:show, :create]
   resource :session, only: [:new, :create, :destroy]
   # The emailed reset capability travels only in the filtered token

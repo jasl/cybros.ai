@@ -1,0 +1,54 @@
+<% if provider.errors.any? %>
+  <div class="alert alert-error" role="alert"><%= provider.errors.full_messages.to_sentence %></div>
+<% end %>
+<%= form_with model: form_record, url: url, method: method, scope: :sso_provider, class: "space-y-5" do |form| %>
+  <% if provider.persisted? %>
+    <%= form.hidden_field :lock_version, value: provider.lock_version %>
+  <% end %>
+  <fieldset class="fieldset">
+    <%= form.label :name, t("sso.fields.name"), class: "label" %>
+    <%= form.text_field :name, required: true, maxlength: 100, class: "input w-full" %>
+    <% if @authority_editable %>
+      <%= form.label :protocol, t("sso.fields.protocol"), class: "label" %>
+      <%= form.select :protocol, [[t("sso.oidc"), "oidc"], [t("sso.oauth2"), "oauth2"]], {}, class: "select w-full" %>
+      <%= form.label :issuer, t("sso.fields.issuer"), class: "label" %>
+      <%= form.url_field :issuer, required: true, placeholder: "https://gitlab.example.com", class: "input w-full" %>
+    <% else %>
+      <p class="break-all text-base-content/70"><%= provider.issuer %></p>
+      <p class="text-sm text-base-content/70" id="sso-fixed-authority"><%= t("sso.fixed_authority") %></p>
+    <% end %>
+    <%= form.label :client_id, t("sso.fields.client_id"), class: "label" %>
+    <%= form.text_field :client_id, autocomplete: "off", readonly: !@authority_editable,
+          aria: { describedby: ("sso-fixed-authority" unless @authority_editable) }, class: "input w-full" %>
+    <%= form.label :client_secret, t("sso.fields.client_secret"), class: "label" %>
+    <%= form.password_field :client_secret, value: nil, autocomplete: "new-password", class: "input w-full" %>
+    <% if provider.client_secret.present? %><p><%= t("sso.secret_set") %></p><% end %>
+    <%= form.label :scopes, t("sso.fields.scopes"), class: "label" %>
+    <%= form.text_field :scopes, class: "input w-full" %>
+    <%= form.label :token_auth_method, t("sso.fields.token_auth_method"), class: "label" %>
+    <%= form.select :token_auth_method, %w[client_secret_basic client_secret_post], {}, class: "select w-full" %>
+  </fieldset>
+  <% if @authority_editable || provider.protocol == "oauth2" %>
+    <details class="rounded-box border border-base-300 p-4" <%= "open" if provider.protocol == "oauth2" %>>
+      <summary class="cursor-pointer font-medium"><%= t("sso.oauth2_fields") %></summary>
+      <fieldset class="fieldset mt-2">
+        <% %i[authorization_endpoint token_endpoint userinfo_endpoint subject_field name_field email_field email_verified_field].each do |field| %>
+          <%= form.label field, t("sso.fields.#{field}"), class: "label" %>
+          <% fixed = !@authority_editable && SsoProvider::SUBJECT_AUTHORITY_FIELDS.include?(field.to_s) %>
+          <%= form.text_field field, readonly: fixed, aria: { describedby: ("sso-fixed-authority" if fixed) }, class: "input w-full" %>
+        <% end %>
+      </fieldset>
+    </details>
+  <% end %>
+  <fieldset class="fieldset">
+    <% if @authority_editable || provider.protocol == "oidc" %>
+      <%= form.label :trusted_origins, t("sso.fields.trusted_origins"), class: "label" %>
+      <%= form.text_field :trusted_origins, class: "input w-full" %>
+      <%= form.label :required_group, t("sso.fields.required_group"), class: "label" %>
+      <%= form.text_field :required_group, class: "input w-full" %>
+    <% end %>
+    <label class="label"><%= form.check_box :jit, class: "checkbox" %> <%= t("sso.fields.jit") %></label>
+    <p class="text-base-content/70"><%= t("sso.jit_help") %></p>
+  </fieldset>
+  <%= form.submit t("sso.save"), class: "btn btn-primary" %>
+<% end %>

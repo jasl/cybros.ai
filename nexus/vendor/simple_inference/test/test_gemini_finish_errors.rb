@@ -51,7 +51,7 @@ class TestGeminiFinishErrors < Minitest::Test
   end
 
   def test_unknown_and_unsupported_finishes_still_fail_closed
-    %w[FUTURE_UNKNOWN_FINISH ESCALATION PUP_LIMITED_DISABLED].each do |reason|
+    %w[FUTURE_UNKNOWN_FINISH MODEL_ARMOR].each do |reason|
       protocol = SimpleInference::Protocols::GeminiGenerateContent.new(
         base_url: "https://generativelanguage.googleapis.com", api_key: "test-only", adapter: Adapter.new(reason)
       )

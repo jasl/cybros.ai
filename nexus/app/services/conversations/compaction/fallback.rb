@@ -19,6 +19,13 @@ module Conversations
 
       def self.call(run) = new(run).call
 
+      def self.expired_delegates(tasks)
+        # Both Arm paths append their delegate with kernel authorship. A
+        # timed-out tool emitted by the caller or a model cannot be a repair.
+        tasks.where(type: Tasks::ToolTask.sti_name, authored_by: "kernel", status: EXPIRED_STATUSES, on_failure: ABSORB)
+          .where("NOT (COALESCE(compaction, '{}'::jsonb) ? :key)", key: DELEGATE_FALLBACK)
+      end
+
       def initialize(run)
         @run = run
       end
@@ -39,9 +46,7 @@ module Conversations
         # named it — nil for a summary loop's own seed. An ordinary wake has
         # no candidates, so it never loads the loop's completed history.
         def expired_delegate
-          nodes = @run.tasks
-            .where(type: Tasks::ToolTask.sti_name, status: EXPIRED_STATUSES, on_failure: ABSORB)
-            .where("NOT (COALESCE(compaction, '{}'::jsonb) ? :key)", key: DELEGATE_FALLBACK).to_a
+          nodes = self.class.expired_delegates(@run.tasks).to_a
           return nil if nodes.empty?
 
           source = Tasks::ModelTask::SUMMARY_SOURCE

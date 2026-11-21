@@ -61,19 +61,19 @@ For example:
 ```text
 deepseek/deepseek-flash  text_generation
 deepseek/deepseek-v4-pro  text_generation
-kimi_code/kimi-for-coding  text_generation
+kimi_code/k3.1-pro  text_generation
 ```
 
 Use references from your own list. This example selects Kimi as the default
 conversation model and DeepSeek Flash for generated conversation titles:
 
 ```sh
-bundle exec exe/rho settings '{"default_model":"kimi_code/kimi-for-coding","conversation_title_model":"deepseek/deepseek-flash"}'
+bundle exec exe/rho settings '{"default_model":"kimi_code/k3.1-pro","conversation_title_model":"deepseek/deepseek-flash"}'
 bundle exec exe/rho settings
 ```
 
 The second command shows the saved settings. Check that `default_model` is
-`kimi_code/kimi-for-coding` and `conversation_title_model` is
+`kimi_code/k3.1-pro` and `conversation_title_model` is
 `deepseek/deepseek-flash`. Other settings are preserved. A running rho applies
 the changes immediately. See [Command line](../reference/cli.md) for the settings
 command syntax.
@@ -141,7 +141,7 @@ runner:    01a15402-bea1-7ff5-9bad-08c233df9bae serving 22 tools (socket connect
   member: live
   executor_transport: live
 workspace: dedicated rho on s-MBP-M4-Pro.local (01a15405-04ed-7c0e-aa4d-4d453e082dd6)
-model:     kimi_code/kimi-for-coding
+model:     kimi_code/k3.1-pro
 ```
 
 The port, IDs, hostname, paths and tool count vary by installation.

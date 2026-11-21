@@ -1,5 +1,6 @@
 # The conversation's own store: the client state that forks with it; the
 # archived bin stays browsable, a tombstone reads as absence.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Conversations::StoreEntriesController <
       AgentAPI::V1::StoreEntriesController
   include AgentAPI::V1::WorkspaceScoped

@@ -129,6 +129,39 @@ class RhoConversationTest < Minitest::Test
     [@home, @project, *Array(@bound_directories), *Array(@mirrors)].each { |dir| FileUtils.remove_entry(dir) if dir && File.directory?(dir) }
   end
 
+  def test_prepared_input_policy_survives_mode_changes_and_human_input_replay
+    project = connect!
+    @daemon.control(:post, "/environment", body: { root: project }, expected_status: 200)
+    agent, runner = rho_identity
+    workspace = steward_client.workspace(@workspace_public_id)
+    created = workspace.conversations.create(answering_user_public_id: agent, default_runner_executor_public_id: runner,
+      idempotency_key: SecureRandom.uuid)
+    chat = workspace.conversation(created.public_id)
+    address = { workspace_public_id: @workspace_public_id, public_id: created.public_id }
+    @daemon.control(:patch, "/conversations/modes", body: address.merge(subagent: false, code_mode: false), expected_status: 200)
+    policy = @daemon.control(:post, "/conversations/prepare-input-policy", body: address, expected_status: 200)
+    assert_equal File.realpath(project), File.realpath(policy.fetch("executor_contexts").fetch(runner).fetch("rho.environment").fetch("root"))
+
+    @daemon.control(:patch, "/conversations/modes", body: address.merge(subagent: true, code_mode: true), expected_status: 200)
+    enabled = @daemon.control(:post, "/conversations/prepare-input-policy", body: address, expected_status: 200)
+    removed = enabled.fetch("tool_names") - policy.fetch("tool_names")
+    assert_includes removed, "code"
+    assert_includes removed, "spawn"
+    assert_empty chat.turns.list.items
+
+    fields = policy.transform_keys(&:to_sym).merge(kind: "direct_reply", text: "!mock -- Prepared reply", model: MODEL, idempotency_key: SecureRandom.uuid)
+    accepted = chat.inputs.create(**fields)
+    replay = chat.inputs.create(**fields)
+    assert_equal accepted.public_id, replay.public_id
+    assert_predicate replay, :replayed?
+    run = await("Human input did not materialize", every: FEED_POLL) { chat.inputs.materialization(accepted.public_id)&.run_public_id }
+    await_run_status(run, "completed")
+    assert_equal policy.fetch("tool_names").sort, declared_tool_names(run).sort
+    assert_empty sealed_tool_names(run) & removed
+    authors = feed(created.public_id).select { |event| event.fetch("type") == "input_accepted" }
+    assert_equal ["human"], authors.map { |event| event.dig("payload", "authored_by", "kind") }
+  end
+
   # THE DAEMON'S MATERIALIZATION BOUND (`Rho::Daemon::Loops::MATERIALIZATION_WAIT`),
   # named here rather than loaded: a `pending` answer costs exactly this
   # long at the terminal, and a blocked input must cost nothing like it.

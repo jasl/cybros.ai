@@ -485,6 +485,26 @@ class Conversations::InputsCreateTest < ActiveSupport::TestCase
 
   def drain_kicks = enqueued_jobs.select { |job| job[:job] == Conversations::Inputs::DrainJob }
 
+  test "one precise wake drains a burst of ready messages in order" do
+    receipts = 3.times.map { |i| create!(entries: [{ "text" => "message #{i}" }]).value.public_id }
+
+    assert_equal 1, drain_kicks.size
+    perform_enqueued_jobs(only: Conversations::Inputs::DrainJob)
+    assert_equal receipts, @conversation.turns.order(:position).pluck(:input_public_id)
+  end
+
+  test "arrivals during an active reply queue or wake only the addressed execution" do
+    seam = create_run_backed_turn(conversation: @conversation, acting_user: @user)
+    clear_enqueued_jobs
+    assert_no_enqueued_jobs only: Conversations::Inputs::DrainJob do
+      assert_equal "pending", create!.value.state
+      assert_equal "steering", create!(delivery_mode: "steer").value.state
+      assert_enqueued_with(job: Runs::ScheduleJob, args: [seam.run.id]) do
+        assert_equal "steering", create!(delivery_mode: "steer_now").value.state
+      end
+    end
+  end
+
   test "deliver_at is stored on the row, narrated, and the one kick is scheduled at the time" do
     at = 1.hour.from_now.change(usec: 0)
 

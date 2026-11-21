@@ -8,6 +8,7 @@
 # `user/` rung included, which the person's own collection resource keeps
 # serving. `MemoryOverrideGuard` also protects Workspace/Conversation-owned
 # collection document resources; a collection UUID cannot bypass the override.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Conversations::MemoryController <
       AgentAPI::V1::Workspaces::Conversations::BaseController
   include AgentAPI::V1::WorkspaceScoped
@@ -16,6 +17,21 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryController <
   include AgentAPI::SpeakerParameters
   before_action :resolve_memory_speaker
 
+  # @oas_include
+  # @summary List memory
+  # @tags Member, memory
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsMemoryIndex
   def index
     return unless not_overridden(@workspace)
 
@@ -25,6 +41,22 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryController <
     render json: { memory: AgentAPI::MemoryPresenter.listing(context.listing), memory_context: context.management_projection }
   end
 
+  # @oas_include
+  # @summary Read memory
+  # @tags Member, memory
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesConversationsMemoryShow
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesConversationsMemoryShow
   def show
     return unless not_overridden(@workspace, path: path_param)
 
@@ -38,6 +70,22 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryController <
     render json: { memory: AgentAPI::MemoryPresenter.full(document).merge(path: path_param) }
   end
 
+  # @oas_include
+  # @summary Create memory
+  # @tags Member, memory
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesConversationsMemoryCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (201) #/components/responses/AgentApiV1WorkspacesConversationsMemoryCreate
   def create
     fields = params.expect(memory: [:path, :content, :description, :expected_collection_public_id, :expected_public_id, :expected_lock_version, :speaker_public_id])
     return unless not_overridden(@workspace, path: fields[:path])
@@ -57,6 +105,22 @@ class AgentAPI::V1::Workspaces::Conversations::MemoryController <
       status: :created
   end
 
+  # @oas_include
+  # @summary Delete memory
+  # @tags Member, memory
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1WorkspacesConversationsMemoryDelete
+  # @response_ref (204) #/components/responses/AgentApiV1WorkspacesConversationsMemoryDelete
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
   def delete
     fields = params.expect(memory: [:path, :expected_collection_public_id, :expected_public_id, :expected_lock_version, :speaker_public_id])
     path = fields[:path]

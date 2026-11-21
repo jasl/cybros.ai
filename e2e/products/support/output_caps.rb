@@ -18,10 +18,10 @@ module E2E
     # read 2026-09-27), so it takes the same room.
     BY_MODEL = {
       "z-ai/glm-5.3" => 16_384,
-      "moonshotai/kimi-k3" => 16_384,
+      "moonshotai/kimi-k3.1-pro" => 16_384,
       "claude-opus-5-5" => 32_768,
-      "gpt-6.1-sol" => 32_768,
-      "gpt-6-luna" => 32_768,
+      "gpt-6.2-sol" => 32_768,
+      "gpt-6.1-terra" => 32_768,
       "grok-4.7" => 32_768,
     }.freeze
 

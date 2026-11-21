@@ -1,4 +1,4 @@
-# The drain wake, kicked after every acceptance and turn terminal.
+# The queue's wake after admission, settlement, editing or periodic recovery.
 # Level-triggered: the drain re-reads the head under the lock, so a
 # duplicate kick is never a double apply.
 class Conversations::Inputs::DrainJob < ApplicationJob

@@ -1,8 +1,22 @@
 # Cross-workspace history uses the same visibility and pagination as the
 # workspace collection. Application identity remains ordinary metadata.
+# @auth [MemberBearer]
 class AgentAPI::V1::ConversationsController < AgentAPI::V1::Workspaces::BaseController
   include AgentAPI::ConversationListing
 
+  # @oas_include
+  # @summary List conversations
+  # @tags Member, conversations
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ConversationsIndex
   def index
     scope = Conversation.visible_to(acting_user).working.lifecycle_roots
       .includes(:active_turn, :answering_user, :workspace)

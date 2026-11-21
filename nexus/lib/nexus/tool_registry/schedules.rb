@@ -44,11 +44,16 @@ module Nexus
             and cancel require job_id. Updates affect future runs. Pause stops dispatch;
             resume chooses the next future occurrence; cancel stops the schedule and removes
             a pending execution input. Already-running work uses the ordinary stop control.
+            When creating or updating a job, wake=auto asks the parent to answer each result
+            (the default); passive records successful results without asking the parent to answer.
+            In the original scheduled execution, action=set_result_wake with wake=auto or passive
+            changes only this occurrence's result. Use auto to report an exception to a quiet check.
             Do not sleep until due or schedule a successor. Only claim a job was saved after
             this tool returns its accepted record.
           TEXT
           parameters: { "type" => "object", "properties" => {
-            "action" => { "type" => "string", "enum" => %w[create update pause resume cancel] },
+            "action" => { "type" => "string", "enum" => %w[create update pause resume cancel set_result_wake] },
+            "wake" => { "type" => "string", "enum" => %w[auto passive] },
             "job_id" => { "type" => "string", "minLength" => 1 },
             "name" => { "type" => "string", "minLength" => 1 },
             "prompt" => { "type" => "string", "minLength" => 1 },

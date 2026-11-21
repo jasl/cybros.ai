@@ -92,7 +92,7 @@ There are no query or body parameters.
     "memory_context_limit": null,
     "conversation_reach": null,
     "default_model": "openrouter/z-ai/glm-5.3",
-    "fallback_models": ["openrouter/moonshotai/kimi-k3"]
+    "fallback_models": ["openrouter/moonshotai/kimi-k3.1-pro"]
   },
   "measured_at": "2026-07-25T00:00:00Z"
 }

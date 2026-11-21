@@ -22,7 +22,7 @@ packages the executable as a gem. Installing the gem adds `cmctl` to PATH.
 For guided terminal setup, after creating the first account in Nexus:
 
 ```sh
-cmctl setup --url http://localhost:3000
+cmctl setup --url http://localhost:3000 --device
 ```
 
 The same wizard is included in `rho setup` and the Compose installer's
@@ -50,13 +50,13 @@ Start Nexus and finish its browser-based first setup to create the Account
 and owner. Then log in as that owner or an active Human administrator:
 
 ```sh
-bundle exec cmctl login --url http://localhost:3000 --email operator@example.com
+bundle exec cmctl login --url http://localhost:3000
 bundle exec cmctl status
 bundle exec cmctl providers
 bundle exec cmctl models --workload text_generation
 ```
 
-Login prompts for the password without echo. A temporary password must first
+Login prints a browser URL and a device code. Compare the code in the Nexus browser and approve the terminal. Use `--device` to request this explicitly. For password login on installations that allow it, add `--email operator@example.com`. The password prompt hides your input. A temporary password must first
 be changed in the Nexus browser console. Login saves only the API Session
 and server URL, in `~/.cmctl/session.json` with file mode `0600` beneath a
 `0700` directory. `CMCTL_HOME` or a leading `--home DIR` chooses another

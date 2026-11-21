@@ -37,6 +37,7 @@ export interface ScheduleExecution {
   variant_public_id: string | null;
   run_public_id: string | null;
   scheduled_for: string;
+  wake: string;
   status: string;
   created_at: string;
 }
@@ -47,6 +48,7 @@ export interface Schedule {
   name: string | null;
   prompt: string;
   rule: ScheduleRule;
+  wake: string;
   model: ScheduleModel | null;
   configuration: JsonObject | null;
   agent_configuration: JsonObject | null;

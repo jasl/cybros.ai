@@ -1,4 +1,21 @@
 class AgentAPI::V1::MemoryCollections::OwnedController < AgentAPI::V1::MemoryCollectionsController
+  # @oas_include
+  # @summary Create memory collections
+  # @tags Member, memory collections
+  # @parameter agent_name(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter conversation_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @request_body_ref #/components/requestBodies/AgentApiV1MemoryCollectionsOwnedCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (201) #/components/responses/AgentApiV1MemoryCollectionsOwnedCreate
   def create
     fields = params.expect(memory_collection: [:name, :description, :speaker_public_id, :default])
     speaker = if fields[:speaker_public_id].present?

@@ -29,6 +29,7 @@ pub struct ScheduleExecution {
     pub variant_public_id: Option<String>,
     pub run_public_id: Option<String>,
     pub scheduled_for: String,
+    pub wake: crate::types::names::ScheduleWake,
     pub status: crate::types::names::TurnStatus,
     pub created_at: String,
     #[serde(flatten)]
@@ -42,6 +43,7 @@ pub struct Schedule {
     pub name: Option<String>,
     pub prompt: String,
     pub rule: ScheduleRule,
+    pub wake: crate::types::names::ScheduleWake,
     pub model: Option<ScheduleModel>,
     pub model_selection: Option<JsonObject>,
     pub fallback_models: Option<Vec<String>>,

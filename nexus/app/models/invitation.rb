@@ -117,7 +117,11 @@ class Invitation < ApplicationRecord
         password_confirmation: password_confirmation
       )
 
-      transaction do
+      account.with_lock do
+        if account.sso_only?
+          errors.add(:base, :sso_required)
+          return Acceptance.new(outcome: :rejected, member: nil, errors: errors)
+        end
         identity.save!
         member = account.users.create!(
           kind: :human, role: role, identity: identity, display_name: display_name

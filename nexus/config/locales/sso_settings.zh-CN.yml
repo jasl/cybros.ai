@@ -1,0 +1,102 @@
+zh-CN:
+  sso:
+    authentication: 身份验证
+    providers: 单点登录源
+    login_methods: 登录方式
+    continue_with: "使用%{provider}继续"
+    verify_with: "使用%{provider}验证身份"
+    verify: 请使用已连接的登录源或当前密码验证身份。
+    current_password: 当前密码
+    contact_admin: 无法使用企业登录时，请联系本安装的管理员。
+    no_providers: 尚未配置登录源。
+    add: 新增登录源
+    oidc: GitLab 或 OpenID Connect
+    oauth2: OAuth 2.0
+    edit: 编辑配置
+    edit_named: "编辑%{provider}"
+    save: 保存配置
+    saved: 已保存身份验证设置。
+    enable: 启用
+    disable: 禁用
+    enabled: 已启用
+    disabled: 已禁用
+    group_migration: "下列受影响的成员需先添加其他登录方式，然后才能应用新的企业组要求。"
+    admission_changed: "准入规则已更改。请在隐私窗口中使用%{provider}登录以重新验证此连接，当前会话可继续使用。"
+    admission: 新成员准入
+    jit_help: 仅对封闭企业实例或指定企业组开放即时注册。其他情况下用户须获得邀请。
+    registration: 即时注册
+    invitation_only: 需要邀请
+    secret_set: 已配置密钥，留空可保留现有值。
+    oauth2_fields: OAuth 2.0 端点和资料字段
+    fixed_authority: 通过测试后，将固定此登录源的客户端 ID 和标识用户所用的端点。如需更换身份来源，请添加新的登录源。
+    complete_credentials: 请填写该应用的凭据和端点以进行测试。
+    test_before_enable: 通过连接测试后即可启用此登录源。
+    callback: 提供给登录源应用的回调地址
+    canonical_url_required: 请先为本安装配置 HTTPS 的 BASE_URL，然后再测试登录。
+    test: 测试连接
+    pending: 候选配置待测试。测试成功后即应用。
+    policy: 登录策略
+    policy_mixed: 成员可以使用本地密码或已连接的登录源登录。
+    policy_sso: 成员须通过已连接的登录源登录。
+    switch_mixed: 允许密码登录
+    switch_only: 仅允许单点登录
+    coverage: "%{total} 名活跃成员中，%{ready} 人已具备 SSO 登录方式。"
+    admin_coverage: "%{total} 名所有者和管理员中，%{ready} 人已具备 SSO 登录方式。"
+    password_count: "允许密码登录后，%{count} 名活跃成员将重新获得密码登录资格。"
+    dormant: "恢复时需要重新连接登录源的成员"
+    review_deletion: "检查登录源删除影响"
+    delete_blocked: "有活跃成员会失去最后一种登录方式。请返回登录源详情查看受影响账号。"
+    uncovered: 仍需绑定 SSO 登录方式的成员
+    affected: 将失去最后一种登录方式的成员
+    existing_sessions: 已签发的会话和令牌继续按原有效期使用。
+    last_provider: 仅 SSO 模式下须至少保留一个启用的登录源。
+    binding_count:
+      one: "1 个连接"
+      other: "%{count} 个连接"
+    delete: 删除登录源
+    delete_effect: "删除将清除 %{active} 名活跃成员、%{suspended} 名已暂停成员、%{removed} 名已移除成员的连接。"
+    disable_first: 请先禁用此登录源后再删除。
+    deletion_forbidden: 如需删除登录源，请先在登录策略中允许密码登录。
+    confirm_name: "输入 %{name} 以确认"
+    confirm_delete: 永久删除此登录源及其所有连接？
+    deleted: 已删除登录源。
+    connected_as: "已连接至 %{name}"
+    last_method: 这是你唯一的登录方式。请先绑定另一个登录源，或在允许时设置密码。
+    connect: 连接
+    disconnect: 解除连接
+    disconnected: 已解除连接。
+    manage_password: 管理本地密码
+    set_password: 设置本地密码
+    fields:
+      name: 显示名称
+      protocol: 协议
+      issuer: 发行方或登录源基础 URL
+      client_id: 客户端 ID
+      client_secret: 客户端密钥
+      scopes: 授权范围（以空格分隔）
+      token_auth_method: 令牌端点的客户端认证方式
+      authorization_endpoint: 授权端点
+      token_endpoint: 令牌端点
+      userinfo_endpoint: 当前用户资料端点
+      subject_field: 稳定用户 ID 字段
+      name_field: 显示名称字段
+      email_field: 邮箱字段
+      email_verified_field: 邮箱已验证的布尔值字段
+      trusted_origins: 额外信任的 discovery 端点来源（以空格分隔）
+      required_group: 必须加入的企业组完整路径（可选）
+      jit: 允许符合条件的新成员无需邀请直接注册
+  errors:
+    messages:
+      last_login_method: 有成员将失去最后一种登录方式。请先添加替代方式。
+      sso_not_ready: 所有活跃成员均须连接已测试、已启用的登录源，才能强制 SSO。
+      stale_configuration: 登录源已更新，请刷新后重试。
+      immutable_authority: 更改身份来源需要新建登录源。
+      incomplete_configuration: 请先配置应用凭据和端点。
+      test_required: 启用前请先测试此配置。
+      last_provider: 仅 SSO 模式下须至少保留一个启用的登录源。
+      deletion_forbidden: 仅 SSO 模式下无法删除任何登录源。
+      disable_first: 请先禁用此登录源后再删除。
+      confirmation_required: 请输入准确的登录源名称以确认删除其连接。
+      openid_required: 须包含 openid
+      gitlab_group_required: 为 GitLab.com 开启即时注册须设置企业组
+      oidc_required: 需要使用 OpenID Connect

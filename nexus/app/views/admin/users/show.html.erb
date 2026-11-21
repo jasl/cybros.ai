@@ -30,7 +30,8 @@
   <% if administrable && @member.removed? %>
     <section class="rounded-box border border-base-300 bg-base-200">
       <%= render layout: "shared/action_row", locals: { title: t("admin.users.show.restore"), description: t("admin.users.show.restore_description") } do %>
-        <%= button_to t("admin.users.show.restore"), admin_user_restoration_path(@member), method: :post, class: "btn btn-primary btn-sm" %>
+        <% reconnect = !@member.identity.login_path_configured?(Current.account) %>
+        <%= button_to (reconnect ? t("sso_identity.reconnect") : t("admin.users.show.restore")), admin_user_restoration_path(@member), method: :post, params: { reconnect: (1 if reconnect) }, class: "btn btn-primary btn-sm" %>
       <% end %>
     </section>
   <% end %>
@@ -57,7 +58,8 @@
           <% end %>
         <% elsif @member.suspended? %>
           <%= render layout: "shared/action_row", locals: { title: t("admin.users.show.reactivate"), description: t("admin.users.show.reactivate_description") } do %>
-            <%= button_to t("admin.users.show.reactivate"), admin_user_activation_path(@member), method: :post, class: "btn btn-ghost btn-sm" %>
+            <% reconnect = !@member.identity.login_path_configured?(Current.account) %>
+            <%= button_to (reconnect ? t("sso_identity.reconnect") : t("admin.users.show.reactivate")), admin_user_activation_path(@member), method: :post, params: { reconnect: (1 if reconnect) }, class: "btn btn-ghost btn-sm" %>
           <% end %>
         <% end %>
         <%= render layout: "shared/action_row", locals: { title: t("admin.users.show.remove"), description: t("admin.users.show.remove_description") } do %>
@@ -69,7 +71,11 @@
     <% if actor.owner? && @member.admin? && @member.active? %>
       <section class="rounded-box border border-base-300 bg-base-200">
         <%= render layout: "shared/action_row", locals: { title: t("admin.users.show.transfer_ownership"), description: t("admin.users.show.transfer_description", name: member_name) } do %>
-          <%= button_to t("admin.users.show.transfer_ownership"), admin_user_ownership_transfer_path(@member), method: :post, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("admin.users.show.transfer_confirm", name: member_name) } %>
+          <% if @member.eligible_for_ownership?(Current.account) %>
+            <%= button_to t("admin.users.show.transfer_ownership"), admin_user_ownership_transfer_path(@member), method: :post, class: "btn btn-error btn-soft btn-sm", data: { turbo_confirm: t("admin.users.show.transfer_confirm", name: member_name) } %>
+          <% else %>
+            <p class="text-sm"><%= t("sso_identity.owner_login_required") %></p>
+          <% end %>
         <% end %>
       </section>
     <% end %>

@@ -61,8 +61,10 @@ Open a readable Run and select **Download diagnostics**. The file is named
 
 Attachments remain on their authenticated download paths; the archive does not
 read their bytes or copy a Runner's local files. Tool results also retain their
-ordinary resource links. Native reasoning replay material, provider credentials,
-claim tokens, resolution tokens and internal database IDs are not exported.
+ordinary resource links. Sealed request records include the entries used for
+replay, which can contain signed parts or encrypted reasoning items. The
+separate reasoning-trace capture, provider credentials, claim tokens,
+resolution tokens and internal database IDs are excluded.
 Opaque application content keeps its recorded values.
 
 The export includes retained invocations, including earlier attempts and fallback

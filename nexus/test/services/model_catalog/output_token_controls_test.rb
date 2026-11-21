@@ -20,7 +20,7 @@ class ModelCatalog::OutputTokenControlsTest < ActiveJob::TestCase
       %w[openai_api gemini deepseek xai openrouter].include?(ref.split("/", 2).first) &&
         DevModelLane.profile_for(ref).workload == "text_generation"
     end
-    assert_equal 21, refs.length
+    assert_equal 31, refs.length
     refs.each do |ref|
       explicit = resolve(ref, max_output_tokens: 512)
       assert_predicate explicit, :resolved?, "#{ref}: #{explicit.refusal}"
@@ -40,12 +40,11 @@ class ModelCatalog::OutputTokenControlsTest < ActiveJob::TestCase
 
   test "each provider lowers the accepted cap onto its native wire and sends no invented default" do
     {
-      "openai_api/gpt-6-luna" => ["max_output_tokens"],
-      "gemini/gemini-3.8-flash" => %w[generationConfig maxOutputTokens],
+      "openai_api/gpt-6.1-terra" => ["max_output_tokens"],
       "gemini/gemini-4-argon" => %w[generationConfig maxOutputTokens],
       "deepseek/deepseek-flash" => ["max_output_tokens"],
       "xai/grok-4.7" => ["max_output_tokens"],
-      "openrouter/openai/gpt-6-sol:exacto" => ["max_tokens"],
+      "openrouter/openai/gpt-6.2-sol" => ["max_tokens"],
     }.each do |ref, path|
       assert_equal 512, build_payload(resolve(ref, max_output_tokens: 512).selection).dig(*path), ref
       assert_nil build_payload(resolve(ref).selection).dig(*path), ref
@@ -54,10 +53,12 @@ class ModelCatalog::OutputTokenControlsTest < ActiveJob::TestCase
 
   test "direct-provider output caps retain documented bounds rather than rounded context figures" do
     {
-      "openai_api/gpt-6-astra" => 128_000,
-      "openai_api/gpt-6.1-sol" => 128_000,
-      "openai_api/gpt-6-luna" => 128_000,
-      "gemini/gemini-3.8-flash" => 65_536,
+      "openai_api/gpt-6.2-astra" => 128_000,
+      "openai_api/gpt-6.2-sol" => 128_000,
+      "openai_api/gpt-6.1-terra" => 128_000,
+      "gemini/gemini-4-hydrogen" => 65_536,
+      "gemini/gemini-4-neon" => 65_536,
+      "gemini/gemini-4-carbon" => 65_536,
       "gemini/gemini-4-argon" => 65_536,
       "deepseek/deepseek-flash" => 393_216,
       "deepseek/deepseek-v4-pro" => 393_216,
@@ -76,7 +77,7 @@ class ModelCatalog::OutputTokenControlsTest < ActiveJob::TestCase
     ModelProviders::InstallOAuthPair.call(account: @account, provider_id: "codex_subscription",
       access_token: "test-only-access", refresh_token: "test-only-refresh", lineage_id: SecureRandom.uuid_v7,
       expected_generation: nil, expires_at: 3.hours.from_now)
-    %w[gpt-6-astra gpt-6.1-sol gpt-6-luna].each do |model|
+    %w[gpt-6.2-astra gpt-6.2-sol gpt-6.1-terra].each do |model|
       ref = "codex_subscription/#{model}"
       assert_predicate resolve(ref), :resolved?, ref
       assert_equal :unsupported_generation_parameter, resolve(ref, max_output_tokens: 512).refusal, ref
@@ -85,7 +86,7 @@ class ModelCatalog::OutputTokenControlsTest < ActiveJob::TestCase
   end
 
   test "OpenAI Responses rejects a cap below its protocol minimum instead of spending a request" do
-    %w[gpt-6-astra gpt-6.1-sol gpt-6-luna].each do |model|
+    %w[gpt-6.2-astra gpt-6.2-sol gpt-6.1-terra].each do |model|
       ref = "openai_api/#{model}"
       assert_equal :invalid_generation_parameter, resolve(ref, max_output_tokens: 15).refusal, ref
       result = resolve(ref, max_output_tokens: 16)
@@ -94,15 +95,21 @@ class ModelCatalog::OutputTokenControlsTest < ActiveJob::TestCase
     end
   end
 
-  test "the two native Gemini models lower thinking levels and reject unsupported sampling" do
-    assert_equal :unknown_model, resolve("gemini/gemini-3.7-flash").refusal
-    %w[gemini-3.8-flash gemini-4-argon].each do |name|
+  test "Gemini 4 lowers each model's thinking levels and rejects unsupported effort and sampling" do
+    assert_equal :unknown_model, resolve("gemini/gemini-3.8-flash").refusal
+    {
+      "gemini-4-argon" => %w[low medium high],
+      "gemini-4-carbon" => %w[low medium high],
+      "gemini-4-hydrogen" => %w[low medium high xhigh],
+      "gemini-4-neon" => %w[low medium high xhigh],
+    }.each do |name, efforts|
       ref = "gemini/#{name}"
+      assert_equal :unsupported_reasoning_effort, resolve(ref, effort: "xhigh").refusal unless efforts.include?("xhigh")
       assert_equal :unsupported_reasoning_effort, resolve(ref, effort: "minimal").refusal
       %i[temperature top_p top_k].each do |parameter|
         assert_equal :unsupported_generation_parameter, resolve(ref, **{ parameter => 1 }).refusal
       end
-      %w[low medium high].each do |effort|
+      efforts.each do |effort|
         result = resolve(ref, effort: effort)
         assert_predicate result, :resolved?
         body = build_payload(result.selection)

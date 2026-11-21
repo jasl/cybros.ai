@@ -117,11 +117,20 @@ fixture; no Rho application daemon advances those runs.
 
 - `offline_agent_test.rb` covers multiple Runner/MCP rounds, durable human approval
   and questions, attachment downloads, image generation and restart recovery.
+  Its application-executor journey kills a process after a journal append,
+  compares that claimed write with an unclaimed sibling at expiry, and checks
+  the journal after a member reviews the first and retries the second.
   Its Conversation cost-limit journey completes one counted MCP write, holds a
   priced model task and its dependent, raises the cap through the public API, and
   retries the original task without repeating the write or replacing the execution.
 - `schedules_test.rb` covers model-created schedules, frozen agent configurations,
-  independent scheduled children and exact result callbacks.
+  independent scheduled children and exact result callbacks. A scheduled child
+  with a required offline application hook appears in the Human attention list
+  and publishes one passive receipt after the original execution is repaired.
+  Another recurring check reads a real Runner file eleven times. Ten normal
+  results each leave a receipt and the incident produces one parent model call.
+  The independent Runner journey checks that a Human can read the scheduled
+  result after the submitting program exits.
 - `delegate_compaction_test.rb` covers a generic executor delegate and one kernel
   fallback after that executor dies and its announced timeout expires.
 - `until_test.rb` and `codemode_test.rb` retain Rho's application boundaries. An
@@ -565,9 +574,9 @@ With `OPENROUTER_API_KEY` supplied privately in the process environment, run fro
 
 ```sh
 RAILS_ENV=development E2E_LIVE=1 \
-  E2E_OPENROUTER_CHAT_MODELS=qwen/qwen3.8-max-0902,qwen/qwen3.8-flash,qwen/qwen3.8-27b \
-  E2E_OPENROUTER_TOOL_MODELS=qwen/qwen3.6-35b-a3b \
-  E2E_OPENROUTER_VISION_MODELS=qwen/qwen3.6-35b-a3b,qwen/qwen3.5-9b \
+  E2E_OPENROUTER_CHAT_MODELS=moonshotai/kimi-k3.1-pro,deepseek/deepseek-v4.1-flash-1017,z-ai/glm-5.3-flash \
+  E2E_OPENROUTER_TOOL_MODELS=moonshotai/kimi-k3.1-pro \
+  E2E_OPENROUTER_VISION_MODELS=tencent/hy4,deepseek/deepseek-v4.1-flash-1017 \
   bundle exec rake live_openrouter
 ```
 
@@ -600,8 +609,8 @@ fails. For example, run this comparison by itself:
 
 ```sh
 RAILS_ENV=development E2E_LIVE=1 \
-  E2E_OPENROUTER_REASONING_MODELS=qwen/qwen3.5-9b \
-  E2E_OPENROUTER_PROVIDER=together \
+  E2E_OPENROUTER_REASONING_MODELS=deepseek/deepseek-v4.1-flash-1017 \
+  E2E_OPENROUTER_PROVIDER=deepseek \
   bundle exec rake live_openrouter
 ```
 

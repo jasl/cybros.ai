@@ -1,5 +1,7 @@
 import { AuthorizationLost, CancelledError, MalformedResponse, SDKError, TransportError } from './errors.js';
 import { bearer, object } from './json.js';
+import { shape } from './decode.js';
+import type { PlatformSessionGrant } from './models.js';
 import { Transport } from './http.js';
 import { delay } from './feeds.js';
 import type { ConnectionOptions, RequestOptions } from './http.js';
@@ -14,25 +16,23 @@ export interface OAuthCredentialsBundle {
 }
 export interface DeviceAuthorization {
   device_code: string; user_code: string; verification_uri: string; verification_uri_complete: string;
-  expires_in: number; interval: number; deadline: number; branch: 'agent' | 'runner' | 'application';
+  expires_in: number; interval: number; deadline: number; branch: 'agent' | 'runner' | 'application' | 'terminal';
 }
 export interface AgentClaims { agent_identifier: string; agent_display_name: string; executor_display_name: string; }
 export interface RunnerClaims { registration_identifier: string; runner_display_name: string; executor_kind: 'runner' | 'tool_provider'; }
-export type PollResult = { state: 'pending' } | { state: 'slow_down' } | { state: 'throttled'; retry_after: number } | { state: 'authorized'; credentials: OAuthCredentialsBundle };
+export type PollResult<Grant = OAuthCredentialsBundle> = { state: 'pending' } | { state: 'slow_down' } | { state: 'throttled'; retry_after: number } | { state: 'authorized'; credentials: Grant };
 export interface OAuthAuthority { rotate(refreshToken: string): Promise<OAuthCredentialsBundle>; revoke(token: string): Promise<void>; }
 /** OAuth machine requests do not carry an existing bearer or follow redirects. */
-export class DeviceFlow implements OAuthAuthority {
+abstract class DeviceAuthorizationFlow<Grant> {
   protected readonly transport: Transport;
   protected readonly clientId: string;
   protected readonly origin: string;
   #owned = new Set<Promise<unknown>>();
-  #waits = new Map<string, Promise<OAuthCredentialsBundle>>();
+  #waits = new Map<string, Promise<Grant>>();
   constructor(options: ConnectionOptions, clientId = 'cybros-first-party-connector') {
     this.transport = new Transport({ timeoutMs: 120_000, ...options }, 'member', true);
     this.origin = this.transport.baseURL; this.clientId = clientId;
   }
-  requestAuthorization(claims: AgentClaims): Promise<DeviceAuthorization> { return this.start(claims, 'agent'); }
-  requestRunnerAuthorization(claims: RunnerClaims): Promise<DeviceAuthorization> { return this.start(claims, 'runner'); }
   protected async start(claims: object, branch: DeviceAuthorization['branch']): Promise<DeviceAuthorization> {
     const started = performance.now();
     const response = await this.post('/oauth/device_authorization', claims);
@@ -41,13 +41,13 @@ export class DeviceFlow implements OAuthAuthority {
     const expires = positive(body.expires_in, 'expires_in');
     return { device_code: text(body.device_code, 'device_code'), user_code: text(body.user_code, 'user_code'), verification_uri: httpURL(body.verification_uri), verification_uri_complete: httpURL(body.verification_uri_complete), interval: positive(body.interval, 'interval'), expires_in: expires, deadline: started + expires * 1000, branch };
   }
-  async poll(authorization: DeviceAuthorization): Promise<PollResult> {
+  async poll(authorization: DeviceAuthorization): Promise<PollResult<Grant>> {
     const remaining = authorization.deadline - performance.now();
     if (remaining <= 0) throw new OAuthError('expired_token', 400);
     const response = await this.post('/oauth/token', { grant_type: 'urn:ietf:params:oauth:grant-type:device_code', device_code: authorization.device_code }, { timeoutMs: Math.min(120_000, remaining) });
     if (response.status === 200) {
-      let credentials: OAuthCredentialsBundle;
-      try { credentials = this.decode(response.data); this.validateInitial(credentials, authorization.branch); }
+      let credentials: Grant;
+      try { credentials = this.decodeInitial(response.data, authorization.branch); }
       catch (cause) { throw new AuthorizationLost('Device token response was invalid; reconnect required', { cause }); }
       return { state: 'authorized', credentials };
     }
@@ -58,7 +58,7 @@ export class DeviceFlow implements OAuthAuthority {
     throw this.failure(response.status, body);
   }
   /** Cancellation stops this caller's wait; the owned bounded ceremony can be recovered by calling again. */
-  awaitCredentials(authorization: DeviceAuthorization, options: Pick<RequestOptions, 'signal'> = {}): Promise<OAuthCredentialsBundle> {
+  awaitCredentials(authorization: DeviceAuthorization, options: Pick<RequestOptions, 'signal'> = {}): Promise<Grant> {
     let promise = this.#waits.get(authorization.device_code);
     if (!promise) {
       promise = this.own(this.pollUntilReady(authorization));
@@ -72,6 +72,39 @@ export class DeviceFlow implements OAuthAuthority {
     if (response.status === 409 && object(response.data).error === 'too_late') return 'too_late';
     throw this.failure(response.status, response.data);
   }
+  async drain(): Promise<void> { await Promise.allSettled([...this.#owned]); }
+  protected own<T>(promise: Promise<T>): Promise<T> {
+    this.#owned.add(promise); void promise.finally(() => this.#owned.delete(promise)).catch(() => {}); return promise;
+  }
+  protected async post(path: string, fields: object, options: RequestOptions & { allowEmpty?: boolean } = {}) {
+    const body = new URLSearchParams({ client_id: this.clientId });
+    for (const [key, value] of Object.entries(fields)) if (value !== undefined && value !== null) body.set(key, String(value));
+    return this.transport.call(path, { ...options, method: 'POST', body, success: [200, 400, 401, 403, 409, 422, 429, 500, 502, 503, 504] });
+  }
+  protected failure(status: number, data: unknown): OAuthError {
+    const body = data !== null && typeof data === 'object' ? object(data) : {};
+    return new OAuthError(status >= 500 ? 'server_error' : typeof body.error === 'string' ? body.error : 'invalid_response', status);
+  }
+  protected abstract decodeInitial(data: unknown, branch: DeviceAuthorization['branch']): Grant;
+  private async pollUntilReady(authorization: DeviceAuthorization): Promise<Grant> {
+    let interval = authorization.interval * 1000, transient = 0;
+    while (true) {
+      let result: PollResult<Grant>;
+      try { result = await this.poll(authorization); transient = 0; }
+      catch (error) {
+        if (!(error instanceof TransportError || error instanceof OAuthError && error.status >= 500) || ++transient > 3) throw error;
+        await delay(Math.min(5000, Math.max(0, authorization.deadline - performance.now()))); continue;
+      }
+      if (result.state === 'authorized') return result.credentials;
+      if (result.state === 'slow_down') interval += 5000;
+      const wait = result.state === 'throttled' ? Math.max(interval, result.retry_after * 1000) : interval;
+      await delay(Math.min(wait, Math.max(0, authorization.deadline - performance.now())));
+    }
+  }
+}
+export class DeviceFlow extends DeviceAuthorizationFlow<OAuthCredentialsBundle> implements OAuthAuthority {
+  requestAuthorization(claims: AgentClaims): Promise<DeviceAuthorization> { return this.start(claims, 'agent'); }
+  requestRunnerAuthorization(claims: RunnerClaims): Promise<DeviceAuthorization> { return this.start(claims, 'runner'); }
   async rotate(refreshToken: string): Promise<OAuthCredentialsBundle> {
     try {
       const response = await this.post('/oauth/token', { grant_type: 'refresh_token', refresh_token: refreshToken });
@@ -88,38 +121,30 @@ export class DeviceFlow implements OAuthAuthority {
     }
   }
   async revoke(token: string): Promise<void> { const response = await this.post('/oauth/revoke', { token }, { allowEmpty: true }); if (response.status !== 200) throw this.failure(response.status, response.data); }
-  async drain(): Promise<void> { await Promise.allSettled([...this.#owned]); }
-  protected own<T>(promise: Promise<T>): Promise<T> {
-    this.#owned.add(promise); void promise.finally(() => this.#owned.delete(promise)).catch(() => {}); return promise;
-  }
-  protected async post(path: string, fields: object, options: RequestOptions & { allowEmpty?: boolean } = {}) {
-    const body = new URLSearchParams({ client_id: this.clientId });
-    for (const [key, value] of Object.entries(fields)) if (value !== undefined && value !== null) body.set(key, String(value));
-    return this.transport.call(path, { ...options, method: 'POST', body, success: [200, 400, 401, 403, 409, 422, 429, 500, 502, 503, 504] });
-  }
-  protected failure(status: number, data: unknown): OAuthError {
-    const body = data !== null && typeof data === 'object' ? object(data) : {};
-    return new OAuthError(status >= 500 ? 'server_error' : typeof body.error === 'string' ? body.error : 'invalid_response', status);
-  }
   protected decode(data: unknown): OAuthCredentialsBundle { return decodeConnection(data); }
   protected validateInitial(bundle: OAuthCredentialsBundle, branch: DeviceAuthorization['branch']) {
     const member = bundle.access_token !== null, executor = bundle.executor_access_token !== null, runner = bundle.runner !== null;
     if (!(branch === 'agent' && member && executor && !runner || branch === 'runner' && !member && executor && !runner)) throw new MalformedResponse('Credential branch mismatch');
   }
-  private async pollUntilReady(authorization: DeviceAuthorization): Promise<OAuthCredentialsBundle> {
-    let interval = authorization.interval * 1000, transient = 0;
-    while (true) {
-      let result: PollResult;
-      try { result = await this.poll(authorization); transient = 0; }
-      catch (error) {
-        if (!(error instanceof TransportError || error instanceof OAuthError && error.status >= 500) || ++transient > 3) throw error;
-        await delay(Math.min(5000, Math.max(0, authorization.deadline - performance.now()))); continue;
-      }
-      if (result.state === 'authorized') return result.credentials;
-      if (result.state === 'slow_down') interval += 5000;
-      const wait = result.state === 'throttled' ? Math.max(interval, result.retry_after * 1000) : interval;
-      await delay(Math.min(wait, Math.max(0, authorization.deadline - performance.now())));
-    }
+  protected decodeInitial(data: unknown, branch: DeviceAuthorization['branch']): OAuthCredentialsBundle {
+    const grant = this.decode(data);
+    this.validateInitial(grant, branch);
+    return grant;
+  }
+}
+
+/** A terminal login issues a Human API Session, revoked through the Platform session resource. */
+export class TerminalDeviceFlow extends DeviceAuthorizationFlow<PlatformSessionGrant> {
+  constructor(options: ConnectionOptions) { super(options, 'cybros-terminal'); }
+
+  requestAuthorization(): Promise<DeviceAuthorization> { return this.start({}, 'terminal'); }
+
+  protected decodeInitial(data: unknown): PlatformSessionGrant {
+    const body = object(data);
+    const session = shape('PlatformSession', body.session);
+    if (session.kind !== 'api' || !session.public_id || !session.expires_at) throw new MalformedResponse('Expected a Human API Session');
+    positive(body.expires_in, 'expires_in');
+    return { session, token: text(body.access_token, 'access_token'), token_type: bearer(body.token_type) };
   }
 }
 export interface ApplicationClaims { agent_identifier?: string; agent_display_name?: string; executor_display_name?: string; registration_identifier?: string; runner_display_name?: string; executor_kind?: 'runner' | 'tool_provider'; }

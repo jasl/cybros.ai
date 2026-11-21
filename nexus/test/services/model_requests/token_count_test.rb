@@ -26,7 +26,7 @@ class ModelRequests::TokenCountTest < ActiveSupport::TestCase
 
   test "an openai-family lane counts exactly through its declared encoding" do
     result = ModelRequests::TokenCount.count(
-      profile: profile("openai_api/gpt-6.1-sol"),
+      profile: profile("openai_api/gpt-6.2-sol"),
       segments: ["The quick brown fox jumps over the lazy dog."]
     )
 
@@ -42,7 +42,7 @@ class ModelRequests::TokenCountTest < ActiveSupport::TestCase
   test "special-token markup is counted as the literal text it becomes" do
     markup = "<|endoftext|>" * 20
     result = ModelRequests::TokenCount.count(
-      profile: profile("openai_api/gpt-6.1-sol"), segments: [markup]
+      profile: profile("openai_api/gpt-6.2-sol"), segments: [markup]
     )
 
     honored = Tiktoken.get_encoding("o200k_base").encode_with_special_tokens(markup).length
@@ -79,7 +79,7 @@ class ModelRequests::TokenCountTest < ActiveSupport::TestCase
   test "the chat envelope is charged on the exact arms and only where it applies" do
     text = "hello"
     exact = ModelRequests::TokenCount.count(
-      profile: profile("openai_api/gpt-6.1-sol"), segments: [text]
+      profile: profile("openai_api/gpt-6.2-sol"), segments: [text]
     )
     raw = Tiktoken.get_encoding("o200k_base").encode_ordinary(text).length
 
@@ -199,12 +199,11 @@ class ModelRequests::TokenCountTest < ActiveSupport::TestCase
     bindings = {
       "deepseek/deepseek-flash" => "deepseek-ai/DeepSeek-V4.1-Flash",
       "deepseek/deepseek-v4-pro" => "deepseek-ai/DeepSeek-V4-Pro-0813",
-      "openrouter/deepseek/deepseek-v4.1-flash" => "deepseek-ai/DeepSeek-V4.1-Flash",
+      "openrouter/deepseek/deepseek-v4.1-flash-1017" => "deepseek-ai/DeepSeek-V4.1-Flash",
       "openrouter/deepseek/deepseek-v4-pro-0813" => "deepseek-ai/DeepSeek-V4-Pro-0813",
-      "openrouter/z-ai/glm-5.2:exacto" => "zai-org/GLM-5.2",
       "openrouter/z-ai/glm-5.3" => "zai-org/GLM-5.2",
       "openrouter/z-ai/glm-5.3-flash" => "zai-org/GLM-5.2",
-      "openrouter/tencent/hy3:exacto" => "tencent/Hy3",
+      "openrouter/tencent/hy4" => "tencent/Hy4",
       "openrouter/qwen/qwen3.8-flash" => "Qwen/Qwen3.8-Flash-Next",
     }
     bindings.each do |model_ref, tokenizer_id|
@@ -219,6 +218,22 @@ class ModelRequests::TokenCountTest < ActiveSupport::TestCase
       assert_equal 5 + envelope(2), counted.tokens, model_ref
       assert_equal 3 + envelope(1), Conversations::ContextAssembly::FillCost.call("你好，世界", selected), model_ref
     end
+  end
+
+  test "a retained Hy3 deployment can still install and count with its original vocabulary" do
+    ref = "openrouter/tencent/hy3:exacto"
+    model = { "token_counter" => { "kind" => "huggingface", "tokenizer_id" => "tencent/Hy3" } }
+    policy = @account.model_provider_configs.build(provider_id: "openrouter", model_overrides:
+      ModelProviderConfig.empty_overrides.merge("retained_catalog" => { "models" => { ref => model } }))
+    catalog = ModelCatalog::RetainedCatalog.base(snapshot: ModelCatalog.current, policy: policy)
+    selected = ModelCatalog::ProfileBuilder.call(model_ref: ref, provider: catalog.providers.fetch("openrouter"),
+      model: catalog.models.fetch(ref))
+
+    manifest = JSON.parse(Rails.root.join("config/tokenizers.json").read)
+    assert_includes manifest.pluck("repository"), selected.token_counter.tokenizer_id
+    counted = ModelRequests::TokenCount.count(profile: selected, segments: ["multimodal 音视频摘要"])
+    assert_predicate counted, :exact?
+    assert_equal 7 + envelope(1), counted.tokens # Hy4 splits this into five text tokens.
   end
 
   test "the local Qwen examples count with their installed vocabularies" do

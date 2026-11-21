@@ -22,6 +22,33 @@ client_id = cybros-first-party-connector
 It is OAuth metadata, not a product entity. Every machine request must carry exactly this value;
 `invalid_client` otherwise. There is no client secret.
 
+## Human terminal login
+
+An operator terminal can obtain its own Human API Session through the same device ceremony.
+Send `POST /oauth/device_authorization` with only `client_id=cybros-terminal`. Show the returned
+`verification_uri_complete` and `user_code` to the operator. The browser requires a signed-in
+Human to compare the code and approve the terminal. An existing browser session can approve
+immediately, including on installations that require SSO. On an uninitialized installation,
+the start returns `409 initialization_required` and a public setup URL.
+
+Poll `POST /oauth/token` with the same client ID, the returned `device_code` and
+`grant_type=urn:ietf:params:oauth:grant-type:device_code`. The pending, slow-down, expiry,
+cancellation and single-use rules below apply. A successful poll returns:
+
+```json
+{
+  "access_token": "…",
+  "token_type": "Bearer",
+  "expires_in": 2592000,
+  "session": { "public_id": "01900000-0000-7000-8000-000000000010", "kind": "api", "expires_at": "2026-08-29T00:00:00Z" }
+}
+```
+
+Use the bearer for the Platform API. It expires after 30 days. Revoke the terminal session
+with `DELETE /api/v1/session` using that bearer or from the browser's session settings.
+Terminal login accepts no Agent or Runner claims, issues no refresh token, and does not
+connect a runtime. See [cmctl](../../operate/cmctl.md) for the operator commands.
+
 ## Requests, responses, and caching
 
 - Machine requests are `application/x-www-form-urlencoded` or `application/json` POSTs

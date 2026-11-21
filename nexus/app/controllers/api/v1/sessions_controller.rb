@@ -1,3 +1,4 @@
+# @auth [PlatformBearer, BrowserSession]
 class API::V1::SessionsController < API::V1::BaseController
   LOGIN_RATE_LIMIT_WINDOW = 3.minutes.freeze
 
@@ -7,6 +8,19 @@ class API::V1::SessionsController < API::V1::BaseController
     only: :create,
     with: -> { render_rate_limited(retry_after: LOGIN_RATE_LIMIT_WINDOW) }
 
+  # @oas_include
+  # @summary Read sessions
+  # @tags Platform, sessions
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ApiV1SessionsShow
   def show
     if Current.session
       render json: { session: session_payload(Current.session) }
@@ -16,6 +30,21 @@ class API::V1::SessionsController < API::V1::BaseController
   end
 
   # cmctl login: password authentication reveals the bearer exactly once.
+  # @oas_include
+  # @summary Create sessions
+  # @tags Platform, sessions
+  # @no_auth
+  # @request_body_ref #/components/requestBodies/ApiV1SessionsCreate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (201) #/components/responses/ApiV1SessionsCreate
   def create
     credentials = params.permit(:email, :password)
     outcome = Sessions::Start.call(
@@ -33,6 +62,8 @@ class API::V1::SessionsController < API::V1::BaseController
         token: outcome.secret,
         token_type: "Bearer",
       }, status: :created
+    when :sso_required
+      render_error(:sso_required, "Use browser or device sign-in", status: :forbidden)
     when :local_recovery_required
       render_error(:local_recovery_required, "Password sign-in is locked pending local recovery", status: :forbidden)
     when :password_change_required
@@ -44,6 +75,19 @@ class API::V1::SessionsController < API::V1::BaseController
     end
   end
 
+  # @oas_include
+  # @summary Destroy sessions
+  # @tags Platform, sessions
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ApiV1SessionsDestroy
   def destroy
     if Current.session
       Current.session.destroy

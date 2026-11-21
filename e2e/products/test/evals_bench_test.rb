@@ -19,9 +19,9 @@ class EvalsBenchTest < Minitest::Test
   # These cases exercise the shipped model adaptation rows themselves. Their policy is still
   # authored here rather than imported from the paid benchmark configuration.
   ADAPTATION_BENCH = BENCH.with(document: BENCH.document.merge(
-    "tiers" => { "strong" => %w[openrouter/z-ai/glm-5.3 openrouter/moonshotai/kimi-k3],
+    "tiers" => { "strong" => %w[openrouter/z-ai/glm-5.3 openrouter/moonshotai/kimi-k3.1-pro],
                  "floor" => %w[deepseek/deepseek-flash openrouter/z-ai/glm-5.3-flash] },
-    "named_only" => { "strong" => ["openai_api/gpt-6.1-sol"], "floor" => ["openai_api/gpt-6-luna"] },
+    "named_only" => { "strong" => ["openai_api/gpt-6.2-sol"], "floor" => ["openai_api/gpt-6.1-terra"] },
     "fallbacks" => {}
   ))
   CATALOG_FILES = Dir[File.expand_path("../../../nexus/config/model_catalog/*.yml", __dir__)].sort
@@ -224,8 +224,8 @@ class EvalsBenchTest < Minitest::Test
     E2E::AdaptationRows.stub(:find, WORD) do
       word = assert_raises(ArgumentError) { ADAPTATION_BENCH.subset({ "E2E_EVALS_STYLES" => "nexus", "E2E_EVALS_MODELS" => glm, "E2E_EVALS_CANDIDATE" => WORD.key }) }
       assert_match(/is read under E2E_EVALS_STYLES=pack alone, got nexus/, word.message)
-      other = assert_raises(ArgumentError) { ADAPTATION_BENCH.subset({ "E2E_EVALS_STYLES" => "pack", "E2E_EVALS_MODELS" => "openrouter/moonshotai/kimi-k3", "E2E_EVALS_CANDIDATE" => WORD.key }) }
-      assert_match(%r{openrouter/moonshotai/kimi-k3 resolves to row kimi-k3, not glm-5.3}, other.message)
+      other = assert_raises(ArgumentError) { ADAPTATION_BENCH.subset({ "E2E_EVALS_STYLES" => "pack", "E2E_EVALS_MODELS" => "openrouter/moonshotai/kimi-k3.1-pro", "E2E_EVALS_CANDIDATE" => WORD.key }) }
+      assert_match(%r{openrouter/moonshotai/kimi-k3.1-pro resolves to row kimi-k3, not glm-5.3}, other.message)
       whole = assert_raises(ArgumentError) { ADAPTATION_BENCH.subset({ "E2E_EVALS_STYLES" => "pack", "E2E_EVALS_CANDIDATE" => WORD.key }) }
       assert_match(/resolves to row/, whole.message, "the bench's whole list carries other rows' models and the floors: refused")
     end
@@ -243,15 +243,15 @@ class EvalsBenchTest < Minitest::Test
     end
     # A NAMED floor is refused the same way, where the gem's own row covers it: luna and sol resolve
     # to one row, so the row check passes on both and only the tier tells them apart.
-    luna_row = E2E::AdaptationRows::Candidate.new(row_id: PACK.for("openai_api/gpt-6-luna").id, id: "x", kind: "lead_hints",
+    terra_row = E2E::AdaptationRows::Candidate.new(row_id: PACK.for("openai_api/gpt-6.1-terra").id, id: "x", kind: "lead_hints",
       payload: "The test's line.", seed: "s")
-    E2E::AdaptationRows.stub(:find, luna_row) do
+    E2E::AdaptationRows.stub(:find, terra_row) do
       refused = assert_raises(ArgumentError) do
-        ADAPTATION_BENCH.subset({ "E2E_EVALS_STYLES" => "pack", "E2E_EVALS_MODELS" => "openai_api/gpt-6-luna", "E2E_EVALS_CANDIDATE" => luna_row.key })
+        ADAPTATION_BENCH.subset({ "E2E_EVALS_STYLES" => "pack", "E2E_EVALS_MODELS" => "openai_api/gpt-6.1-terra", "E2E_EVALS_CANDIDATE" => terra_row.key })
       end
-      assert_match(/openai_api\/gpt-6-luna is on the floor tier \(read-only, never tuned for\)/, refused.message)
-      sol = ADAPTATION_BENCH.subset({ "E2E_EVALS_STYLES" => "pack", "E2E_EVALS_MODELS" => "openai_api/gpt-6.1-sol", "E2E_EVALS_CANDIDATE" => luna_row.key })
-      assert_equal luna_row.key, sol.candidate.key, "the same row on a named strong model: admitted"
+      assert_match(/openai_api\/gpt-6.1-terra is on the floor tier \(read-only, never tuned for\)/, refused.message)
+      sol = ADAPTATION_BENCH.subset({ "E2E_EVALS_STYLES" => "pack", "E2E_EVALS_MODELS" => "openai_api/gpt-6.2-sol", "E2E_EVALS_CANDIDATE" => terra_row.key })
+      assert_equal terra_row.key, sol.candidate.key, "the same row on a named strong model: admitted"
     end
   end
 
@@ -415,7 +415,7 @@ class EvalsBenchTest < Minitest::Test
     refute_includes strong_rows, "default", "a strong-tier model has its own row"
     assert_empty strong_rows & floor_rows, "no strong and floor pair shares a row"
     assert_equal ["default"], PACK.gem_rows.select(&:default?).map(&:id)
-    refute_equal "default", PACK.for("openai_api/gpt-6-luna").id,
+    refute_equal "default", PACK.for("openai_api/gpt-6.1-terra").id,
       "a NAMED floor rides its family's gem row under pack — the bench writes none for it and the candidate door refuses it; " \
       "the roster's floors stay on default"
   end

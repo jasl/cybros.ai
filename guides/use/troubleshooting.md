@@ -22,6 +22,93 @@ Start with `rho status`, `rho doctor --strict` and the relevant channel or plugi
 
 Interactive and `--yes` stack installations print the same browser setup steps; `--no-start` requires `./cybros up` before opening the page. Reinstallation preserves the stack's `.env`, `secrets.env` and local Compose customizations.
 
+## Host connection and first request
+
+Use the same `RHO_HOME` for `connect`, `server`, `settings` and `run`. The default
+is `~/.rho`. Follow [Connect a host installation](../get-started/connect-a-host-installation.md)
+for the complete sequence.
+
+### Unsupported settings format
+
+`unsupported settings format; reconfigure this rho installation` means the
+existing `settings.json` is incompatible with this rho version. Core settings
+from older pre-release versions are not migrated automatically.
+
+Stop the daemon or its service before moving the settings file aside:
+
+```sh
+rho_home="${RHO_HOME:-$HOME/.rho}"
+mv "$rho_home/settings.json" "$rho_home/settings.json.backup-$(date +%s)"
+```
+
+Restart rho to create current-format settings, then rerun `rho setup` to choose
+your settings again. This resets core settings and plugin overrides, including
+saved plugin credentials; keep the backup private. The home binding, Agent
+credentials and working files stay in place. Do not just change the file's
+version number: its structure may also be incompatible.
+
+### Connection refused
+
+`Errno::ECONNREFUSED` means a connection attempt reached an address where no
+service accepted it. For Nexus on the same host at port 3000, check:
+
+```sh
+curl -I --connect-timeout 3 http://127.0.0.1:3000
+```
+
+An HTTP response, including a login redirect, confirms that the web service is
+reachable. Otherwise, start Nexus or correct its listening address and port. For
+a development checkout, run `bin/dev` from the `nexus` directory and keep it
+running; it also starts jobs and the model runner needed to execute requests.
+
+Current rho normalizes HTTP `localhost` to `127.0.0.1`, so an IPv4-only Nexus
+listener works with either spelling. If an older installed rho rejects switching
+between those names as a different Nexus, update rho and restart its daemon.
+Other address changes still require a different home; see
+[Command line](../reference/cli.md). Inside Docker, loopback refers to the
+container; use the Nexus address reachable from that container.
+
+If Nexus responds but `connect` still reports a refused connection, inspect
+`rho status` and rho's logs to identify the failing endpoint before changing
+Nexus's listener.
+
+### Console page unavailable
+
+`rho console --open` reporting `This daemon serves no console page` means the
+daemon is running its control API without a browser page. Its listening address
+alone does not prove a WebUI is available.
+
+Check `rho extensions list` for `rho.webui`. If it is disabled, run
+`rho extensions enable rho.webui`. If it is absent, check
+`gem list --local '^rho-webui$'` in the Ruby environment that runs rho. Install
+the `rho-webui` gem alongside rho, or use the
+[host installer](../get-started/connect-a-host-installation.md), then restart
+`rho server`. An installed plugin still missing from the list after restart
+requires updating rho as well.
+
+Ensure the deployment's `api_only` setting is false and `RHO_API_ONLY` is unset
+or false. Inspect any plugin readiness errors in `rho extensions list`. Once
+the plugin is active and page serving is enabled, rerun `rho console --open`;
+the page uses the daemon's current port.
+
+### Member credential unavailable
+
+`The member credential is not available` means the running daemon has no usable
+Agent member credential for the request. Run `rho status`; a running daemon can
+still be disconnected. Rerun `rho connect`, complete the displayed approval and
+wait for **Connected** or **Connected as …** before retrying. If connection
+fails, resolve that error first.
+
+### Model selection required
+
+`Select a default model or a model for this request` means no model was selected.
+Run `rho models --workload text_generation`, then pass an exact identifier with
+`rho run "Say hello" --model provider/model`. To save it as the default, use
+`rho settings '{"default_model":"provider/model"}'`. Replace `provider/model`
+with an identifier from the list. The running daemon applies the saved default
+immediately. If the list is empty, configure provider access and model visibility
+in Nexus; see [Models and providers](../operate/models-and-providers.md).
+
 Before sharing logs, remove credentials, private setup links, private prompts and file contents.
 
 Installation and connection recovery is covered in [Install the stack](../get-started/install.md); service, path and network configuration in [Deployment layouts](../operate/deployment-layouts.md); upgrade recovery in [Status, logs and upgrades](../operate/status-logs-upgrades.md).

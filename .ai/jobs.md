@@ -72,13 +72,25 @@
 - Model work uses Solid Queue's independent `queue` database. Primary authority commits first;
   after-commit enqueue is best effort, and an indexed durable-state scan recovers lost wakes.
   Do not add an outbox, cross-database transaction, or mirrored delivery ledger for that signal.
-- Scheduled-input recovery (`Conversations::Inputs::WakeDueJob`) carries `(deliver_at, id)` and
-  the chain's original database-clock cutoff, counts every due source row, and deduplicates hosts
-  within a page. Busy/paused rooms may retain due inputs indefinitely; the next scheduled scan
-  revisits them. Turn convergence has independent reply, settle, reopen, and replace windows;
-  pair qualification follows materialization, using bounded correlated probes. A transition that
-  already knows its Run sends that precise hint to the same convergence writer without starting
-  a global continuation chain.
+- `Runs::ScheduleSweep` visits every live Run in bounded id order, including pending, paused
+  and held Runs whose authority or source may have been cut. For each materialized page it
+  checks creator write standing, source ownership, bound steering and task state in bulk.
+  A healthy foreground wait can skip the Run lock once its attention state is current.
+  Every possible transition goes through the same locked `ScheduleReady` as a precise wake.
+  Keep recovery predicates aligned with their consumers when adding a new scheduling arm.
+  Missed changes are revisited on the next pass. Undelivered result mail has its own cursor.
+- Conversation-input recovery (`Conversations::Inputs::WakeDueJob`) carries
+  `(COALESCE(deliver_at, created_at), id)` and the chain's original database-clock cutoff. Every
+  due source row counts against the page, including those for busy rooms or blocked queue heads.
+  A stable queue gets one drain from the page containing its first due pending row by FIFO
+  position. That page checks the actual kernel-first queue head before waking the room. A head
+  that changes during a pass is revisited at the next recurring cutoff. Admission wakes an idle
+  queue head or a possible hold repair. Active turns release queued work on settlement. Each future input
+  retains its own timed wake; bound immediate steering nudges the executing Run. Source-work
+  recovery checks revocation and closed links. Turn convergence has independent reply,
+  settle, reopen, and replace windows; pair qualification follows materialization, using bounded
+  correlated probes. A transition that already knows its Run sends that precise hint to the same
+  convergence writer without starting a global continuation chain.
 - Child-reply recovery uses the reply turn's `relayed_at`, with an after-commit child hint and
   `relay_spawned_replies` as the recurring keyset floor. The mail-path receipt and the transaction
   around await settlement plus the relay stamp keep duplicate delivery idempotent.

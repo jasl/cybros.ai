@@ -62,6 +62,47 @@ fn grant_planes_and_discriminators_keep_independent_lineages() {
     assert_eq!(unknown.user.unwrap().role, "zz_unknown_value");
 }
 #[tokio::test]
+async fn terminal_device_login_returns_the_human_api_session() {
+    let mut server = Server::script(vec![
+        Reply::json(
+            200,
+            fixture("oauth", "valid_device_authorization_fixture").to_string(),
+        ),
+        Reply::json(
+            200,
+            fixture("oauth", "terminal_session_response").to_string(),
+        ),
+        Reply::json(
+            200,
+            fixture("oauth", "valid_agent_token_fixture").to_string(),
+        ),
+    ])
+    .await;
+    let login = TerminalDeviceFlow::new(&server.url).unwrap();
+    let auth = login.request_authorization().await.unwrap();
+    let session = login.await_credentials(&auth).await.unwrap();
+    assert_eq!(session.token.expose(), "fixture-session-token");
+    assert_eq!(session.session.kind, "api");
+    let start = server.next().await;
+    assert_eq!(start.path, "/oauth/device_authorization");
+    assert_eq!(
+        serde_json::to_value(form(&start.body)).unwrap(),
+        fixture("oauth", "terminal_authorization_request")
+    );
+    let poll = server.next().await;
+    assert_eq!(poll.path, "/oauth/token");
+    let params = form(&poll.body);
+    assert_eq!(params["client_id"], "cybros-terminal");
+    assert_eq!(params["device_code"], auth.device_code.expose());
+    assert!(matches!(
+        login.poll(&auth).await,
+        Err(Error::Credential {
+            kind: CredentialFailure::AuthorityLost
+        })
+    ));
+}
+
+#[tokio::test]
 async fn device_poll_recognizes_pending_slow_down_throttling_and_uses_forms() {
     let mut throttle = Reply::json(429, "{}");
     throttle.headers.push(("Retry-After".into(), "7".into()));

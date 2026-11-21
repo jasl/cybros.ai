@@ -133,7 +133,8 @@ module Runs
       paired = Pairing.call(calls: round_calls, nodes_by_call_id: @fan_by_call_id,
         tips_by_call_key: @tips_by_call_key, cleared: @cleared, reference: @reference, receipts: @receipts)
       placed = Placement.call(trace: placed_trace, natives: replayed_items(decision),
-        calls: tool_call_items(decision), text: (body_text unless only_pairs), messages: !only_pairs)
+        calls: tool_call_items(decision), text: (body_text unless only_pairs), messages: !only_pairs,
+        message_payloads: decision&.message_payloads || {})
       Round.new(
         leading: placed.leading,
         message: host_message(decision, phased: only_pairs || placed.phased),
@@ -162,7 +163,7 @@ module Runs
 
         body = text.present? ?
           [Nexus::TextInputPart.new(type: Nexus::InputParts::TEXT, text: text)] : []
-        Nexus::TextInputMessage.new(role: "assistant", parts: parts + body)
+        Nexus::TextInputMessage.new(role: "assistant", parts: parts + body, native_origin: trace&.claude_origin)
       end
 
       # A call may carry the signature the provider bound to the thinking
@@ -173,7 +174,7 @@ module Runs
         round_calls.map do |entry|
           payload = payloads[entry["id"].to_s]
           item = Nexus::ToolCallInputItem.new(
-            type: "tool_call_item",
+            type: "tool_call_item", native_origin: trace&.claude_origin,
             payload: {
               "type" => "function_call",
               "call_id" => entry["id"],
@@ -221,21 +222,17 @@ module Runs
           if @replay.nil? || !@replay.replay? || trace_envelope.nil?
             nil
           else
-            ModelReasoning::ReplayLadder.call(trace: trace, target: @replay.target)
+            ModelReasoning::ReplayLadder.for_sealed_round(trace: trace, target: @replay.target)
           end
       end
 
       # Each replayed item beside the trace ordinal it came from, for the walk.
       def replayed_items(decision)
-        return [] unless decision&.kind == :native_item
-
-        origin = trace.native_origin
-        decision.ordinals.zip(decision.payloads).map do |ordinal, item|
-          [ordinal, Nexus::ReasoningInputItem.new(type: "reasoning_item", payload: item, native_origin: origin)]
-        end
+        decision ? decision.placed_items(trace.native_origin) : []
       end
 
       def replayed_parts(decision)
+        return decision.summary_parts if decision&.kind == :summary
         return [] unless decision&.kind == :native_parts
 
         origin = trace.native_origin

@@ -111,12 +111,7 @@ module CybrosAgent
         check_authorization_deadline(authorization)
 
         if response.status == 200
-          result = credentials(
-            response.body,
-            malformed: AuthorizationLostError.new("token response was invalid; reconnect required")
-          )
-          validate_initial_credentials(result, branch: authorization.branch)
-          return result
+          return initial_credentials(response.body, branch: authorization.branch)
         end
         return Throttled.new(retry_after: response.retry_after) if response.status == 429
         raise oauth_failure(response) if response.status >= 500
@@ -312,6 +307,12 @@ module CybrosAgent
         )
       rescue MalformedResponse
         raise malformed, cause: nil
+      end
+
+      def initial_credentials(body, branch:)
+        result = credentials(body, malformed: AuthorizationLostError.new("token response was invalid; reconnect required"))
+        validate_initial_credentials(result, branch: branch)
+        result
       end
 
       def validate_initial_credentials(credentials, branch:)

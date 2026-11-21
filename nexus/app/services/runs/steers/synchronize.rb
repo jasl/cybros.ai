@@ -7,6 +7,22 @@ module Runs
     module Synchronize
       module_function
 
+      # Local steers wait for the next model boundary. Only an immediate
+      # steer or an input whose link or source may have been revoked needs
+      # this recovery pass while the Run is otherwise waiting.
+      def recovery_ids(standalone:, hosted:)
+        inputs = Input.steering.where("inputs.expected_steering_run_public_id IS NULL OR inputs.expected_steering_run_public_id = runs.public_id")
+          .where(<<~SQL.squish)
+            inputs.delivery_mode = 'steer_now' OR inputs.conversation_link_id IS NOT NULL OR
+            (inputs.sender_run_public_id IS NOT NULL AND inputs.source_released_at IS NULL)
+          SQL
+        by_run = inputs.where(host_type: "Run").where("inputs.host_id = runs.id")
+        by_turn = inputs.where("inputs.steering_target_turn_id = (SELECT turn_id FROM variants WHERE id = runs.variant_id)")
+        # A single EXISTS per host type lets PostgreSQL scan an empty inbox
+        # once or probe a populated inbox by the Run or Turn key.
+        Run.where(id: standalone).where(by_run.arel.exists).ids + Run.where(id: hosted).where(by_turn.arel.exists).ids
+      end
+
       def call(run_id:)
         preview = Run.find_by(id: run_id)
         return unless preview

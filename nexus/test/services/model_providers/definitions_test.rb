@@ -57,7 +57,7 @@ class ModelProviders::DefinitionsTest < ActiveSupport::TestCase
 
   test "provider edits cannot silently drop currently effective models or invalidate selectors" do
     result = set_definition("local", @definition.merge("api_format" => "openai_responses"))
-    model = { "capabilities" => { "reasoning" => { "efforts" => ["xhigh"], "default_effort" => "xhigh" } } }
+    model = { "capabilities" => { "reasoning" => { "efforts" => ["max"], "default_effort" => "max" } } }
     result = ModelProviders::UpsertModelOverride.call(account: @account, provider_id: "local", model_ref: "local/reasoner",
       model: model, expected_lock_version: result.policy.lock_version, validate_definition: true)
     assert_predicate result, :done?
@@ -81,7 +81,7 @@ class ModelProviders::DefinitionsTest < ActiveSupport::TestCase
     ModelCatalog.stub(:current, snapshot) do
       result = set_definition("resettable", @definition.merge("api_format" => "openai_responses"))
       result = ModelProviders::UpsertModelOverride.call(account: @account, provider_id: "resettable", model_ref: "resettable/reasoner",
-        model: { "capabilities" => { "reasoning" => { "efforts" => ["xhigh"], "default_effort" => "xhigh" } } },
+        model: { "capabilities" => { "reasoning" => { "efforts" => ["max"], "default_effort" => "max" } } },
         expected_lock_version: result.policy.lock_version, validate_definition: true)
       assert_predicate result, :done?
       reset = ModelProviders::ResetDefinition.call(account: @account, provider_id: "resettable", expected_lock_version: result.policy.lock_version)

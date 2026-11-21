@@ -1,0 +1,22 @@
+<% content_for :title, t("sso.review_deletion") %>
+<div class="max-w-3xl space-y-4">
+  <%= link_to @provider.name, admin_sso_provider_path(@provider), class: "link" %>
+  <h1 class="text-xl font-semibold"><%= t("sso.review_deletion") %></h1>
+  <p><%= t("sso.delete_effect", active: @bindings.fetch("active", 0), suspended: @bindings.fetch("suspended", 0), removed: @bindings.fetch("removed", 0)) %></p>
+  <% if @dormant.any? %>
+    <h2 class="font-medium"><%= t("sso.dormant") %></h2>
+    <ul class="list-disc pl-5"><% @dormant.each do |member| %>
+      <li class="break-words"><%= link_to member.display_name, admin_user_path(member), class: "link" %> · <%= member.identity.email %> · <%= t("members.statuses.#{member.status}") %></li>
+    <% end %></ul>
+    <%= render "shared/pagination_footer", pagy: @dormant_pagy, noun: "users", aria_label: t("sso.dormant") %>
+  <% end %>
+  <% if @blocked %><p><%= t("sso.delete_blocked") %></p><% end %>
+  <%= form_with url: admin_sso_provider_path(@provider), method: :delete, data: { turbo_confirm: t("sso.confirm_delete") } do |form| %>
+    <%= form.hidden_field :lock_version, value: @provider.lock_version %>
+    <% if @bindings.values.sum.positive? %>
+      <%= form.label :confirmation, t("sso.confirm_name", name: @provider.name), class: "label" %>
+      <%= form.text_field :confirmation, required: true, class: "input" %>
+    <% end %>
+    <%= form.submit t("sso.delete"), disabled: @blocked, class: "btn btn-error btn-sm" %>
+  <% end %>
+</div>

@@ -28,6 +28,11 @@ zh-CN:
     command_scope: 暂停会阻止后续执行，已经开始的工作会继续。立即执行会额外运行一次，不改变原定时间。若未收到响应，请先查看执行历史再重试。
     cancel_confirmation: 取消此排程并移除其等待中的输入？已经开始的工作会继续；如需停止，请使用该工作的停止操作。
     read_only: 你可以读取此排程，但不能修改。
+    default_wake: 成功回执的默认处理方式
+    execution_wake: 本次成功后的处理方式
+    wake_modes:
+      auto: 请父会话回应
+      passive: 在父会话留档
     saved_instructions: 保存的指令
     creator: 创建者
     answerer: 回答 Agent

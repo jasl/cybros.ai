@@ -13,7 +13,10 @@ class MemberRecoveryAuthorization < ApplicationRecord
 
   include Convergence
 
-  attr_readonly :account_id, :identity_id, :user_id, :generation, :lookup_id, :secret_digest
+  enum :purpose, %w[password sso_connection].index_by(&:itself), validate: true, scopes: false
+  belongs_to :lost_sso_provider, class_name: "SsoProvider", optional: true
+
+  attr_readonly :purpose, :lost_sso_provider_id, :account_id, :identity_id, :user_id, :generation, :lookup_id, :secret_digest
 
   belongs_to :account
   belongs_to :identity

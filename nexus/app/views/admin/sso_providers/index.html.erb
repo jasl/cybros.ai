@@ -1,0 +1,49 @@
+<% content_for :title, t("sso.authentication") %>
+<div class="max-w-4xl space-y-6">
+  <header class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-semibold"><%= t("sso.authentication") %></h1>
+    <%= link_to t("sso.add"), new_admin_sso_provider_path, class: "btn btn-sm" %>
+  </header>
+  <section class="space-y-3">
+    <h2 class="text-lg font-semibold"><%= t("sso.providers") %></h2>
+    <% if @providers.empty? %><p><%= t("sso.no_providers") %></p><% end %>
+    <% @providers.each do |provider| %>
+      <div class="rounded-box border border-base-300 p-4">
+        <%= link_to provider.name, admin_sso_provider_path(provider), class: "link font-medium" %>
+        <p class="break-all text-sm"><%= provider.issuer %></p>
+        <small><%= t(provider.enabled? ? "sso.enabled" : "sso.disabled") %> · <%= t("sso.binding_count", count: @counts.fetch(provider.id, 0)) %></small>
+      </div>
+    <% end %>
+  </section>
+  <section class="space-y-2 rounded-box border border-base-300 p-4">
+    <h2 class="text-lg font-semibold"><%= t("sso.policy") %></h2>
+    <p><%= t(Current.account.sso_only? ? "sso.policy_sso" : "sso.policy_mixed") %></p>
+    <p><%= t("sso.coverage", ready: @active_count - @uncovered_pagy.count, total: @active_count) %></p>
+    <p><%= t("sso.admin_coverage", ready: @covered_admins, total: @admin_count) %></p>
+    <% if @password_count %><p><%= t("sso.password_count", count: @password_count) %></p><% end %>
+    <% if @uncovered.any? %>
+      <h3 class="font-medium"><%= t("sso.uncovered") %></h3>
+      <ul class="list-disc pl-5">
+        <% @uncovered.each do |user| %>
+          <li><%= link_to user.display_name, admin_user_path(user), class: "link" %> · <%= user.identity.email %> · <%= t("members.roles.#{user.role}") %></li>
+        <% end %>
+      </ul>
+      <%= render "shared/pagination_footer", pagy: @uncovered_pagy, noun: "users", aria_label: t("sso.uncovered") %>
+    <% end %>
+    <% if @policy_verified %>
+      <p role="status"><%= t("sso_identity.verified") %></p>
+    <% else %>
+      <%= render "sso/verify_sources", providers: @proof_sources.map(&:sso_provider), action_name: "sso_policy", target: @policy_mode, return_to: admin_sso_providers_path %>
+    <% end %>
+    <%= form_with url: admin_sso_policy_path, method: :patch do |form| %>
+      <% if !@policy_verified && !Current.account.sso_only? && Current.identity.password_digest.present? %>
+        <%= form.label :current_password, t("sso.current_password"), class: "label" %>
+        <%= form.password_field :current_password, autocomplete: "current-password", class: "input input-sm" %>
+      <% end %>
+      <%= form.hidden_field :mode, value: @policy_mode %>
+      <%= form.submit t(Current.account.sso_only? ? "sso.switch_mixed" : "sso.switch_only"), class: "btn btn-sm",
+            disabled: !Current.account.sso_only? && @uncovered_pagy.count.positive? %>
+    <% end %>
+    <small><%= t("sso.existing_sessions") %></small>
+  </section>
+</div>

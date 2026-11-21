@@ -211,6 +211,20 @@ class ConnectionTest < Minitest::Test
     assert_equal "0199-executor", session["executor_public_id"]
   end
 
+  def test_a_localhost_session_restores_and_reconnects_through_ipv4_loopback
+    @home = Rho::Home.resolve(base_url: "http://127.0.0.1:3000", root: File.join(@root, "local")).prepare
+    first = connect
+    session = first.identity.session
+    session.write(session.read.merge("base_url" => "http://localhost:3000"))
+    original = File.read(session.path)
+
+    restored = Rho::Identity.from_pointer(home: @home, pointer: pointer)
+    assert_same restored, restored.verify_belongs_here
+    assert_same restored, restored.verify_installable
+    assert_equal original, File.read(session.path)
+    assert_equal :active, connect.phase
+  end
+
   # A directory copied from another installation must not be adopted: the
   # installation key is a digest, so a moved tree looks native.
   def test_an_identity_root_from_another_nexus_is_refused
@@ -328,6 +342,21 @@ class ConnectionTest < Minitest::Test
 
   def test_resume_reports_that_there_is_nothing_to_resume
     refute connection.resume
+  end
+
+  def test_a_localhost_staged_connection_resumes_through_ipv4_loopback
+    @home = Rho::Home.resolve(base_url: "http://127.0.0.1:3000", root: File.join(@root, "local")).prepare
+    first = connection
+    first.define_singleton_method(:install) { raise Rho::StateError, "injected failure" }
+    first.start
+    assert_raises(Rho::StateError) { first.await }
+    staging = Rho::StateFile.new(@home.pending_connection_path)
+    staging.write(staging.read.merge("base_url" => "http://localhost:3000"))
+
+    second = connection
+    assert second.resume
+    assert_equal :active, second.phase
+    refute File.exist?(@home.pending_connection_path)
   end
 
   # An Agent authorization must produce the two-plane shape it requested.

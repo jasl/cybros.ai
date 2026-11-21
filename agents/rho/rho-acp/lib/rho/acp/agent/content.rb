@@ -10,13 +10,15 @@ module Rho
       # blank line; a `resource` with `text` renders as embedded context —
       # a fenced block headed by its `uri`; a `resource_link` is its `uri` on one
       # line (the runner reads it); an `image` (base64) and a `resource`
-      # `blob` whose `mimeType` is `image/*` become files under
+      # `blob` whose `mimeType` is `image/*` or `application/pdf` become files under
       # `RHO_HOME/tmp/acp/<session>/`, posted as `attachments:` on the
       # queued turn and DELETED once `say` answered (`Rendered#discard`);
       # any other blob and `audio` are -32602. The surface rewrites no
       # word of the prompt.
       module Content
         Rendered = Data.define(:text, :attachments) do
+          def pdf? = attachments.any? { |path| File.extname(path) == ".pdf" }
+
           # The files are the turn's for the length of the `say` alone.
           def discard
             attachments.each do |path|
@@ -32,6 +34,7 @@ module Rho
         EXTENSIONS = {
           "image/png" => "png", "image/jpeg" => "jpg", "image/jpg" => "jpg", "image/gif" => "gif",
           "image/webp" => "webp", "image/bmp" => "bmp", "image/svg+xml" => "svg", "image/tiff" => "tiff",
+          Acp::Methods::PDF_MIME_TYPE => "pdf",
         }.freeze
 
         module_function
@@ -50,8 +53,8 @@ module Rho
             files << file unless file.nil?
           end
           Rendered.new(text: parts.join(SEPARATOR), attachments: files)
-        rescue Refusal
-          files.each { |path| File.delete(path) if File.exist?(path) }
+        rescue Refusal, SystemCallError, IOError
+          Rendered.new(text: "", attachments: files).discard
           raise
         end
 
@@ -82,7 +85,7 @@ module Rho
           uri
         end
 
-        # An embedded resource: text as context, an image blob as a file.
+        # Embedded text becomes context. An image or PDF blob becomes an attachment.
         def resource_of(block, index, dir)
           resource = block["resource"]
           raise Refusal.invalid_params("prompt[#{index}]: resource must carry a resource object") unless resource.is_a?(Hash)
@@ -109,23 +112,47 @@ module Rho
 
         def blob_file(resource, index, dir)
           mime = resource["mimeType"].to_s
-          raise Refusal.invalid_params("prompt[#{index}]: a #{mime.empty? ? "typeless" : mime} blob is not accepted; images only") unless
-            mime.start_with?("image/")
+          pdf = mime == Acp::Methods::PDF_MIME_TYPE
+          unless pdf || mime.start_with?("image/")
+            raise Refusal.invalid_params("prompt[#{index}]: a #{mime.empty? ? "typeless" : mime} blob is not accepted; expected an image or PDF")
+          end
 
-          write_file(resource["blob"], mime, index, dir)
+          write_file(resource.fetch("blob"), mime, index, dir, pdf: pdf)
         end
 
         # The bytes decoded strictly (a blob that is not base64 is refused,
         # never written), under the session's tmp dir, 0600.
-        def write_file(data, mime, index, dir)
-          bytes = Base64.strict_decode64(data.delete("\n\r "))
+        def write_file(data, mime, index, dir, pdf: false)
+          encoded = data.delete("\n\r ")
+          bytes = pdf ? decode_pdf(encoded, index) : Base64.strict_decode64(encoded)
           FileUtils.mkdir_p(dir, mode: 0o700)
           path = File.join(dir, "#{index}-#{SecureRandom.hex(8)}.#{extension(mime)}")
-          File.binwrite(path, bytes)
-          File.chmod(0o600, path)
+          created = false
+          File.open(path, "wbx", 0o600) do |file|
+            created = true
+            file.write(bytes)
+          end
           path
         rescue ArgumentError
-          raise Refusal.invalid_params("prompt[#{index}]: the image data is not base64")
+          raise Refusal.invalid_params("prompt[#{index}]: the attachment data is not base64")
+        rescue SystemCallError, IOError
+          FileUtils.rm_f(path) if created
+          raise
+        end
+
+        def decode_pdf(encoded, index)
+          limit = Acp::Methods::PDF_BLOB_MAX_BYTES
+          if encoded.empty?
+            raise Refusal.invalid_params("prompt[#{index}]: PDF blob needs base64 data")
+          end
+          if encoded.bytesize > ((limit + 2) / 3) * 4
+            raise Refusal.invalid_params("prompt[#{index}]: PDF blob exceeds 16 MiB")
+          end
+
+          bytes = Base64.strict_decode64(encoded)
+          raise Refusal.invalid_params("prompt[#{index}]: PDF blob exceeds 16 MiB") if bytes.bytesize > limit
+
+          bytes
         end
 
         def extension(mime)

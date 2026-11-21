@@ -34,8 +34,7 @@ module Runs
     # Called under the waiting loop's lock by its ordinary scheduler. Reading
     # another execution acquires no second loop lock and never mutates it.
     def reconcile(run)
-      run.tasks.where(status: "dispatched").where.not(awaited_task_key: nil)
-        .each { |node| settle(node) }
+      run.tasks.waiting_on_tasks.each { |node| settle(node) }
     end
 
     def settle(node)
@@ -57,8 +56,7 @@ module Runs
     # Settlement hints only accelerate the existing schedule sweep. The index
     # contains live observers, so ordinary tasks with no observers add no jobs.
     def wake_observers(run)
-      ids = Task.where(awaited_run_public_id: run.public_id,
-        status: "dispatched").where.not(awaited_task_key: nil).distinct.pluck(:run_id)
+      ids = Task.waiting_on_tasks.where(awaited_run_public_id: run.public_id).distinct.pluck(:run_id)
       ids.each { |id| ScheduleJob.perform_later(id) }
     end
   end

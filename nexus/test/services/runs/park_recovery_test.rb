@@ -117,6 +117,10 @@ class Runs::ParkRecoveryTest < ActiveJob::TestCase
     end)
     ApplicationRecord.lease_connection.execute("ANALYZE tasks")
     sources = []
+    records = 0
+    instantiations = ActiveSupport::Notifications.subscribe("instantiation.active_record") do |*, payload|
+      records += payload.fetch(:record_count)
+    end
     subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
       sql = payload[:sql]
       if !payload[:cached] && sql.start_with?('SELECT "tasks"."id" FROM "tasks"') &&
@@ -131,8 +135,10 @@ class Runs::ParkRecoveryTest < ActiveJob::TestCase
       assert_equal [0, 0], [first[:expired], second[:expired]]
     ensure
       ActiveSupport::Notifications.unsubscribe(subscriber)
+      ActiveSupport::Notifications.unsubscribe(instantiations)
     end
 
+    assert_operator records, :<, 500, "two pages of healthy parks share one executor's shutdown check"
     assert_equal 2, sources.length
     sources.each do |sql, binds|
       plan = ApplicationRecord.lease_connection.select_values(

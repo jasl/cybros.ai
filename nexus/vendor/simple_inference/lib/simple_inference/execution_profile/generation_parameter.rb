@@ -9,7 +9,7 @@ module SimpleInference
       # 2026-09-16, F21): a string contract enumerating low, medium, high.
       NAMES = %w[
         temperature max_output_tokens top_p top_k min_p seed frequency_penalty presence_penalty
-        output_format result_count voice format language dimensions verbosity prompt_cache_ttl questions
+        output_format result_count complexity voice format language dimensions verbosity prompt_cache_ttl questions
       ].freeze
       KINDS = %w[integer number string output_format decision_questions].freeze
       OUTPUT_FORMAT_VALUES = %w[text json_object json_schema].freeze

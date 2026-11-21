@@ -9,6 +9,13 @@ require "io/console"
 require_relative "cybros_control/version"
 
 module CybrosControl
+  def self.login_with_device(sessions, output)
+    sessions.create_with_device do |authorization|
+      output.puts("Open #{authorization.verification_uri_complete} in your browser.")
+      output.puts("Compare the code #{authorization.user_code}, then approve this terminal.")
+    end
+  end
+
   class Error < StandardError; end
   class UsageError < Error; end
   class Cancelled < Error; end

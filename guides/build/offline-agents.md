@@ -46,7 +46,10 @@ reuse the execution's captured authority and persist their results in Nexus.
 Use an inline `agent_configuration` when admission must freeze the complete
 configuration immediately. Without one, an ordinary input captures the
 answering Agent's standing declaration at materialization. Scheduled jobs keep
-their own captured declaration for later occurrences.
+their own captured declaration for later occurrences. For recurring checks, set
+`wake: "passive"` to record successful observations without calling the parent
+model. The child can request a parent response for a single incident.
+[Quiet monitoring](schedules.md#quiet-monitoring)
 
 ## 3. Submit once and retain the receipt
 
@@ -60,7 +63,29 @@ Runner and kernel tools. After reconnecting, resolve that input's materializatio
 and follow its original candidate and automatic fallback lineage. Do not submit
 another input merely because observation disconnected.
 
-## 4. Handle decisions and results
+## 4. Recover work that needs the application
+
+A paired Agent keeps its identity and executor address when its process exits.
+A returning executor can read its HTTP inbox and claim a dispatched application
+Task before its deadline. Other Runs can continue on Nexus or on independent
+executors.
+
+If the deadline has passed, read the original Task and Run through the member
+API. An unclaimed call or a claimed call with a replayable effect profile
+settles as `timed_out` with `tool_timeout`. A claimed call with a non-replayable
+effect profile settles as `uncertain` with `tool_uncertain`. Check the external
+system before deciding whether to repeat that call. [Executor expiry](../reference/agent-api/executor-inbox.md#expiry)
+
+For an application step that must succeed, author it with `on_failure: "halt"`.
+Lifecycle hooks already use this policy. Once independent work has settled,
+the Run waits at `needs_attention`. Restore the executor and use the original
+Run and Task key to retry the step, or abandon the unresolved failure after
+review. Retrying preserves completed siblings and rechecks approval for the
+new attempt. A scheduled child can resume this way and report back to its
+original parent. A model-generated tool call normally uses `absorb` and hands
+the error to the model for its next decision. [Failure policies](../reference/agent-api/run-statuses.md#failure-policies)
+
+## 5. Handle decisions and results
 
 An approval or human question remains a durable wait while the application is
 absent. A separate authorized UI can answer through the member-plane decision

@@ -5,7 +5,7 @@ class Runs::GeminiReplayTest < ActiveJob::TestCase
   include InvocationHarness
   include CompactionSummaryTestHelper
 
-  MODEL = "gemini/gemini-3.8-flash".freeze
+  MODEL = "gemini/gemini-4-hydrogen".freeze
   READ_TOOL = {
     "type" => "function",
     "function" => { "name" => "read_file", "parameters" => { "type" => "object" } },
@@ -146,7 +146,7 @@ class Runs::GeminiReplayTest < ActiveJob::TestCase
 
     def gemini_response(thought:, provider_ids:, answer: nil)
       parts = thought ? [{ "thought" => true, "text" => thought }] : []
-      parts << { "text" => answer } if answer
+      parts << { "text" => answer, "thoughtSignature" => "signed-answer" } if answer
       parts += SIGNATURES.first(provider_ids.length).each_with_index.map do |(call_id, signature), index|
         { "thoughtSignature" => signature,
           "functionCall" => { "id" => provider_ids[index], "name" => "read_file", "args" => { "path" => call_id } }.compact }

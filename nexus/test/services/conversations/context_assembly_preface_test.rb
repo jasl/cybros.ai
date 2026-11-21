@@ -493,10 +493,7 @@ class Conversations::ContextAssemblyPrefaceTest < ActiveJob::TestCase
     end
   end
 
-  # A trace another model produced carries nothing on the target's wire — no blob and no fence —
-  # so the switch is ONE edit at the first earlier trace (a new model is a new cache), and from the
-  # switch on the requests on that target extend each other.
-  test "after a model switch nothing of the earlier reasoning rides on the other model, and later turns extend" do
+  test "a model switch carries display summaries and later turns extend that prefix" do
     ModelCatalog.stub(:current, DevModelLane.windowed_catalog(input_tokens: 8_192)) do
       declare_tools!(@agent)
       _turn1, loop1 = windowed_turn!("read the notes")
@@ -505,7 +502,7 @@ class Conversations::ContextAssemblyPrefaceTest < ActiveJob::TestCase
       turn2, loop2 = windowed_turn!("and next", model_ref: WINDOWED_OTHER)
       second = round_request_entries(loop_node(loop2, "r1"))
       assert_empty replayed_blobs(second), "a blob never crosses a model boundary"
-      assert_not_includes second.to_json, "plan one", "nor its summary, as words"
+      assert_includes second.to_json, "plan one", "the provider summary is readable on the new model"
       assert_not_includes second.to_json, "<think>"
       run_loop_round!(loop2, thought("next, done", "blob-other"))
       converge!

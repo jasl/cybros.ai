@@ -152,12 +152,12 @@ ledger, never a blurred one.
 
 The current `bench.yml` selects:
 
-- **Strong:** `openrouter/z-ai/glm-5.3`, `openrouter/moonshotai/kimi-k3`.
+- **Strong:** `openrouter/z-ai/glm-5.3`, `openrouter/moonshotai/kimi-k3.1-pro`.
 - **Floor:** `deepseek/deepseek-flash`, `openrouter/z-ai/glm-5.3-flash`. Floor runs record behavior;
   they do not justify tuning task wording or model adaptations. The direct DeepSeek lane uses
   `DEEPSEEK_API_KEY`; OpenRouter IDs use `OPENROUTER_API_KEY`.
-- **Named only:** `anthropic/claude-opus-5-5`, `openai_api/gpt-6.1-sol` (strong bar) and
-  `openai_api/gpt-6-luna` (floor bar), under `named_only:`. They read their tier's bar but are not on
+- **Named only:** `anthropic/claude-opus-5-5`, `openai_api/gpt-6.2-sol` (strong bar) and
+  `openai_api/gpt-6.1-terra` (floor bar), under `named_only:`. They read their tier's bar but are not on
   the roster: a run includes one only when `E2E_EVALS_MODELS` names it, so a run that names no models
   never pays for them. They use the direct lanes' `ANTHROPIC_API_KEY` and `OPENAI_API_KEY`.
 - Task `tiers:` and optional `models:` narrow those choices. The two compaction wall tasks are

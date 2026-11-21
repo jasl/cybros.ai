@@ -15,6 +15,7 @@
 # "fixture-login"}` --mode terminal_auth_only one terminal-type auth method; `session/new` is -32000
 # for good --mode elicit a form `elicitation/create`; the answer, or the action, becomes the text
 # --mode model_option a `model` config option; `set_config_option` moves it; the text names it
+# --mode pdf advertises embedded context and reports the URI, MIME type and SHA-256 of each PDF
 # --protocol-version N the version `initialize` answers (1 by default)
 #
 # Every mode: -32602 for a relative cwd, -32002 for an unknown session,
@@ -33,6 +34,8 @@
 # and each prompt turn runs on a thread of its own that polls the turn's
 # flag; nothing raises into another thread (a `Thread#raise` under the
 # write lock would tear a line).
+require "base64"
+require "digest"
 require "json"
 require "optparse"
 
@@ -45,7 +48,7 @@ module E2E
       CASCADE_WAIT_SECONDS = 5
       CANCELLED_OUTCOME_WAIT_SECONDS = 1
       POLL_SECONDS = 0.02
-      MODES = %w[plain permission id_only sleep ignore_cancel die auth_required terminal_auth_only elicit model_option].freeze
+      MODES = %w[plain permission id_only sleep ignore_cancel die auth_required terminal_auth_only elicit model_option pdf].freeze
 
       # `cancelled` is nil,:cancelled (session/cancel) or:aborted ($/cancel_request on the prompt).
       Turn = Struct.new(:session, :request_id, :cancelled, :thread, :outstanding)
@@ -153,7 +156,7 @@ module E2E
             "agentInfo" => { "name" => NAME, "title" => "ACP fixture agent", "version" => "1" },
             "agentCapabilities" => {
               "loadSession" => false,
-              "promptCapabilities" => { "image" => false, "audio" => false, "embeddedContext" => false },
+              "promptCapabilities" => { "image" => false, "audio" => false, "embeddedContext" => @mode == "pdf" },
               "mcpCapabilities" => { "http" => false, "sse" => false },
               "sessionCapabilities" => { "close" => {} },
             },
@@ -239,11 +242,23 @@ module E2E
           end
           return failure(id, -32600, "a prompt is already running on #{session}") if busy
 
-          turn.thread = Thread.new { run_turn(turn, prompt_text(params)) }
+          text = @mode == "pdf" ? pdf_prompt(params) : prompt_text(params)
+          turn.thread = Thread.new { run_turn(turn, text) }
         end
 
         def prompt_text(params)
           Array(params["prompt"]).filter_map { |block| block["text"] if block.is_a?(Hash) && block["type"] == "text" }.join("\n\n")
+        end
+
+        def pdf_prompt(params)
+          blocks = params.fetch("prompt").map do |block|
+            next block unless block["type"] == "resource"
+
+            resource = block.fetch("resource")
+            { "type" => "resource", "uri" => resource.fetch("uri"), "mimeType" => resource.fetch("mimeType"),
+              "sha256" => Digest::SHA256.hexdigest(Base64.strict_decode64(resource.fetch("blob"))) }
+          end
+          JSON.generate(blocks)
         end
 
         def run_turn(turn, text)

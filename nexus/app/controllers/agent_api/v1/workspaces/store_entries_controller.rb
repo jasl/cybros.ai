@@ -1,4 +1,5 @@
 # The workspace's store: one of three doors of the same family.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::StoreEntriesController < AgentAPI::V1::StoreEntriesController
   include AgentAPI::V1::WorkspaceScoped
 

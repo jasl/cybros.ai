@@ -58,13 +58,16 @@ class ContentBody < ApplicationRecord
     entries.map { |entry| entry.content_fragment.payload }
   end
 
-  # Native replay may contain model-bound signatures or encrypted items:
-  # a role-less reasoning item (Responses, DeepSeek's plain-text item) or a
-  # reasoning part (Anthropic's and Gemini's blocks, the chat field).
+  # Gemini also binds native reasoning to ordinary text and function calls.
+  # Its migration marker for an imported call is added after the request is sealed.
   def native_reasoning?
     entry_payloads.any? do |payload|
-      payload["type"] == "reasoning_item" ||
-        Array(payload["parts"]).any? { |part| part["type"] == "reasoning" }
+      case payload["type"]
+      when "reasoning_item" then true
+      when "tool_call_item" then payload.dig("payload", "provider_payload", "thoughtSignature").present?
+      else
+        Array(payload["parts"]).any? { |part| part["type"] == "reasoning" || part["thought_signature"].present? }
+      end
     end
   end
 

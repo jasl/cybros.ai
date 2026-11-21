@@ -1,0 +1,5 @@
+<% content_for :title, t("sso.add") %>
+<div class="max-w-2xl space-y-5">
+  <h1 class="text-2xl font-semibold"><%= t("sso.add") %></h1>
+  <%= render "form", provider: @provider, form_record: @provider, url: admin_sso_providers_path, method: :post %>
+</div>

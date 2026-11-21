@@ -26,6 +26,11 @@ module User::Role
     human? && active?
   end
 
+  def eligible_for_ownership?(policy)
+    account_id == policy.id && role == "admin" && active_human_member? &&
+      !identity.password_change_required? && identity.login_path_configured?(policy)
+  end
+
   # An ordinary Agent: agent kind excluding the synthetic system
   # user, which shares kind: agent without being a product principal. The
   # one domain predicate for the concept — never re-derive it inline.

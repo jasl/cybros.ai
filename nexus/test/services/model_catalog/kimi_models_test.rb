@@ -5,28 +5,30 @@ class ModelCatalog::KimiModelsTest < ActiveSupport::TestCase
     @catalog = ModelCatalog::FileBase.compile(root: Rails.root.join("config/model_catalog"), override_dir: nil)
   end
 
-  test "Kimi Code exposes the four exact model IDs with their documented windows and thinking controls" do
-    %w[k3 k3-256k k3.1-pro k3.1-pro-highspeed].each do |id|
+  test "Kimi Code exposes both K3.1 Pro speeds with their documented windows and thinking controls" do
+    assert_equal %w[kimi_code/k3.1-pro kimi_code/k3.1-pro-highspeed], @catalog.models.keys.grep(%r{\Akimi_code/}).sort
+    %w[k3.1-pro k3.1-pro-highspeed].each do |id|
       ref = "kimi_code/#{id}"
       model = @catalog.models.fetch(ref)
       profile = profile_for(ref)
       assert_equal id, profile.model_pin
       assert_equal "openai_compatible_chat", profile.adapter_profile
       assert_equal ["image"], profile.input_modalities
-      window = id == "k3-256k" ? 262_144 : 1_048_576
-      assert_equal window, profile.local_safety_limits.combined_input_output_tokens
+      assert_equal 1_048_576, profile.local_safety_limits.combined_input_output_tokens
       assert_nil profile.local_safety_limits.output_tokens, "no unpublished completion ceiling"
       assert_equal %w[low high max], profile.reasoning_options.fetch("efforts")
       assert_equal false, model.dig("capabilities", "reasoning", "disable_supported")
       assert_nil model.fetch("pricing"), "a subscription is not free per-token inference"
-      assert_nil model["token_counter"], "no guessed weight/tokenizer repository"
+      assert_nil model["token_counter"], "the released tokenizer has no tokenizer.json"
     end
   end
 
   test "regional API routes use independent providers and API platform IDs" do
     { "moonshot" => "https://api.moonshot.cn", "moonshot_global" => "https://api.moonshot.ai" }.each do |provider, url|
       assert_equal url, @catalog.providers.fetch(provider).fetch("base_url")
-      %w[kimi-k3.1-pro kimi-k3.1-pro-highspeed].each do |id|
+      ids = %w[kimi-k3.1-pro kimi-k3.1-pro-highspeed]
+      assert_equal ids.map { |id| "#{provider}/#{id}" }, @catalog.models.keys.grep(%r{\A#{provider}/}).sort
+      ids.each do |id|
         ref = "#{provider}/#{id}"
         profile = profile_for(ref)
         assert_equal id, profile.model_pin
@@ -35,7 +37,6 @@ class ModelCatalog::KimiModelsTest < ActiveSupport::TestCase
         assert_nil @catalog.models.fetch(ref).fetch("pricing")
       end
     end
-    refute @catalog.models.keys.any? { |ref| ref.start_with?("moonshot/kimi-k2") }
   end
 
   private

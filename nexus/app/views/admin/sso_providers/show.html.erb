@@ -1,0 +1,38 @@
+<% content_for :title, @provider.name %>
+<div class="max-w-3xl space-y-5">
+  <%= link_to t("sso.authentication"), admin_sso_providers_path, class: "link text-sm" %>
+  <h1 class="text-2xl font-semibold"><%= @provider.name %></h1>
+  <p class="break-all"><%= @provider.issuer %> · <%= t(@provider.enabled? ? "sso.enabled" : "sso.disabled") %></p>
+  <dl class="space-y-2">
+    <dt class="font-medium"><%= t("sso.callback") %></dt>
+    <dd class="select-all break-all font-mono text-sm"><%= @callback_url || t("sso.canonical_url_required") %></dd>
+    <dt class="font-medium"><%= t("sso.admission") %></dt>
+    <dd><%= t(@provider.jit? ? "sso.registration" : "sso.invitation_only") %><% if @provider.required_group.present? %> · <%= @provider.required_group %><% end %></dd>
+  </dl>
+  <% if @provider.pending_configuration %><p role="status"><%= t("sso.pending") %></p><% end %>
+  <% if @group_migration_needed %><p><%= t("sso.group_migration") %></p><% end %>
+  <div class="flex flex-wrap items-center gap-3">
+    <%= link_to t("sso.edit"), edit_admin_sso_provider_path(@provider), class: "btn btn-sm" %>
+    <%= button_to t("sso.test"), sso_start_path(@provider), params: { purpose: "test", return_to: admin_sso_provider_path(@provider) }, disabled: !@testable, class: "btn btn-sm", form: { data: { turbo: false } } %>
+    <%= button_to t(@provider.enabled? ? "sso.disable" : "sso.enable"), admin_sso_provider_activation_path(@provider), method: @provider.enabled? ? :delete : :post,
+          params: { lock_version: @provider.lock_version }, disabled: @provider.enabled? ? (@affected_pagy.count.positive? || @last_enabled) : (!@provider.tested_at? || @provider.pending_configuration.present?), class: "btn btn-sm" %>
+  </div>
+  <% if !@testable && @callback_url.present? %><p><%= t("sso.complete_credentials") %></p><% end %>
+  <% if !@provider.enabled? && !@provider.tested_at? %><p><%= t("sso.test_before_enable") %></p><% end %>
+  <% if @last_enabled %><p><%= t("sso.last_provider") %></p><% end %>
+  <% if @affected.any? %>
+    <section><h2 class="font-medium"><%= t("sso.affected") %></h2>
+      <ul class="list-disc pl-5"><% @affected.each do |user| %><li><%= link_to user.display_name, admin_user_path(user), class: "link" %> · <%= user.identity.email %></li><% end %></ul>
+      <%= render "shared/pagination_footer", pagy: @affected_pagy, noun: "users", aria_label: t("sso.affected") %>
+    </section>
+  <% end %>
+  <section class="space-y-2 border-t border-base-300 pt-4">
+    <h2 class="font-medium"><%= t("sso.delete") %></h2>
+    <p><%= t("sso.delete_effect", active: @bindings.fetch("active", 0), suspended: @bindings.fetch("suspended", 0), removed: @bindings.fetch("removed", 0)) %></p>
+    <% if Current.account.sso_only? || @provider.enabled? %>
+      <p><%= t(Current.account.sso_only? ? "sso.deletion_forbidden" : "sso.disable_first") %></p>
+    <% else %>
+      <%= link_to t("sso.review_deletion"), admin_sso_provider_deletion_path(@provider), class: "btn btn-sm" %>
+    <% end %>
+  </section>
+</div>

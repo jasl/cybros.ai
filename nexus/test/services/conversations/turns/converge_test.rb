@@ -76,6 +76,7 @@ class Conversations::Turns::ConvergeTest < ActiveJob::TestCase
     run = schedule!(seam.run)
     assert_equal "completed", run.status
     assert_equal "running", seam.variant.reload.status, "the loop lock never writes the turn's row"
+    accept!(text: "queued while the completed loop awaits turn settlement")
 
     result = nil
     assert_enqueued_with(job: Conversations::Inputs::DrainJob, args: [@conversation.id]) do

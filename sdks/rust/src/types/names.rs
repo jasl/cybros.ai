@@ -36,6 +36,7 @@ open_enum!(InferenceStatus {Canceled => "canceled", Completed => "completed", Fa
 open_enum!(InferenceEventType {ProviderOutputItemCompleted => "provider_output_item_completed", ProviderOutputItemDelta => "provider_output_item_delta", ProviderOutputItemStarted => "provider_output_item_started", ReasoningDelta => "reasoning_delta", Result => "result", Rollback => "rollback", RunStatus => "run_status", TextDelta => "text_delta", Usage => "usage"});
 open_enum!(Workload {Decision => "decision", Embedding => "embedding", ImageGeneration => "image_generation", SpeechGeneration => "speech_generation", TextGeneration => "text_generation", Transcription => "transcription"});
 open_enum!(ScheduleStatus {Active => "active", Paused => "paused", Canceled => "canceled", Completed => "completed"});
+open_enum!(ScheduleWake {Auto => "auto", Passive => "passive"});
 open_enum!(ScheduleRuleKind {Once => "once", Interval => "interval", Daily => "daily"});
 open_enum!(WorkspaceState {Active => "active", Archived => "archived", Archiving => "archiving", Deleted => "deleted", Deleting => "deleting", Restoring => "restoring"});
 open_enum!(AccessMode {AccountWide => "account_wide", Private => "private"});

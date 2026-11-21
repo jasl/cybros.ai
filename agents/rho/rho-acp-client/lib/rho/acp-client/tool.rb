@@ -19,7 +19,7 @@ module Rho
       NAME = "delegate_agent".freeze
       FRAME = "Delegate a task to another coding agent, which works in the runner root with its own tools and its " \
               "own model until it answers. Give the whole task in `prompt`: the agent has none of this " \
-              "conversation's context. The result is the agent's reply and a `session` id; pass that `session` to " \
+              "conversation's context except PDFs you select with `attachments`. The result is the agent's reply and a `session` id; pass that `session` to " \
               "continue the same agent with a follow-up. The agent's commands and edits run as this runner's user " \
               "and are refused only where rho's own floor refuses them. Agents:".freeze
 
@@ -46,7 +46,10 @@ module Rho
           "type" => "object",
           "properties" => {
             "agent" => { "type" => "string", "enum" => keys, "description" => "Which agent, by its name above" },
-            "prompt" => { "type" => "string", "description" => "The task, in full; the agent starts with nothing else" },
+            "prompt" => { "type" => "string", "description" => "The full task for the child agent" },
+            "attachments" => { "type" => "array", "items" => { "type" => "string" },
+                               "description" => "PDFs to forward in order to a child that supports embedded context. " \
+                                                "Use Nexus attachment references or upload UUIDs. Each PDF can be up to 16 MiB." },
             "session" => { "type" => "string",
                            "description" => "A session id from an earlier delegate_agent result, to continue that agent's session" },
             "workdir" => { "type" => "string",

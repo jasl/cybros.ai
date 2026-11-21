@@ -6,44 +6,8 @@ providers:
     # The shared chat protocol owns /v1/chat/completions.
     base_url: https://api.moonshot.cn
 models:
-  # models.dev/providers/moonshotai-cn/, read 2026-10-19: these are its
-  # published USD rates per million tokens, already normalized; no FX
-  # conversion is performed here or at runtime. The API platform's prices
-  # and model ids are independent of the kimi_code subscription alias.
-  # Windows, reasoning controls and preserved-thinking requirements checked
-  # against platform.kimi.com/docs/guide/use-thinking-models and the model
-  # guides. Video input is outside the kernel's supported input modalities.
-  moonshot/kimi-k3:
-    pricing:
-      account_unit: USD
-      schedule:
-        kind: catalog_only
-        rates:
-          input_per_mtok: "3"
-          cached_input_per_mtok: "0.3"
-          # The default cache TTL is 5m; no TTL override is exposed here.
-          cache_write_per_mtok: "3"
-          output_per_mtok: "15"
-    capabilities:
-      input_modalities: [image]
-      limits:
-        combined_input_output_tokens: 1048576
-        output_tokens: 1048576
-      reasoning:
-        disable_supported: false
-        efforts: [low, high, max]
-        # Catalog policy, consistent with other open-model routes.
-        default_effort: low
-        default_enabled: true
-      reasoning_replay:
-        format: chat_reasoning
-        required_for_tool_rounds: true
-      generation_parameters:
-        max_output_tokens:
-          maximum: 1048576
   # https://platform.kimi.com/docs/guide/kimi-k3-1-pro-quickstart
-  # Read 2026-10-24. Official pricing tables currently omit machine-readable
-  # rates; leave new routes unpriced rather than copy another model's rates.
+  # The regional price table did not expose rates for these IDs on 2026-11-21.
   moonshot/kimi-k3.1-pro:
     inherit: kimi-k3.1-pro
     pricing:

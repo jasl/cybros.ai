@@ -157,7 +157,7 @@ module Rho
         session = Children.acquire(row, conversation: conversation, cwd: cwd, workdir_given: !workdir.empty?,
           session: (args["session"] unless args["session"].to_s.empty?), env: env, artifacts_dir: env.ensure_artifacts_dir!,
           log: @log, clock: @clock || -> { Time.now })
-        Call.new(session: session, prompt: args["prompt"].to_s, env: env, home: @home, log: @log,
+        Call.new(session: session, prompt: args["prompt"].to_s, attachments: args.fetch("attachments", []), env: env, home: @home, log: @log,
           clock: @clock || -> { Time.now }).run
       rescue Refused, Unavailable => error
         Rho::Env::Result.error(error.message)

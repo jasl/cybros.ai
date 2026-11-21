@@ -31,7 +31,8 @@ module SimpleInference
     #   plaintext response.reasoning_text items. The OpenAI stateless-CoT
     #   capture defaults (store:false + include) must therefore NOT be
     #   applied here.
-    # - Text-only lane: no media input exists on this route.
+    # - Flash accepts inline images through the inherited Responses input
+    #   encoding. Pro takes text input.
     class DeepSeekResponses < OpenAIResponses
       DEFAULT_RESPONSES_PATH = "/responses".freeze
 

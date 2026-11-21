@@ -8,6 +8,7 @@ class AcpContentTest < Minitest::Test
   Content = Rho::Acp::Agent::Content
   Refusal = Rho::Acp::Agent::Refusal
   PNG = Base64.strict_encode64("\x89PNG\r\n\x1a\nfake".b)
+  PDF = "%PDF-1.7\nEmbedded ACP document\n%%EOF\n".b.freeze
 
   def setup
     @dir = Dir.mktmpdir("rho-acp-content")
@@ -61,9 +62,38 @@ class AcpContentTest < Minitest::Test
     rendered.discard
   end
 
-  def test_a_non_image_blob_audio_and_a_bad_shape_are_refused
+  def test_a_pdf_only_prompt_keeps_the_decoded_bytes_in_a_private_file
+    rendered = Content.render([pdf_resource], dir: @dir)
+    assert_empty rendered.text
+    assert_predicate rendered, :pdf?
+    path = rendered.attachments.fetch(0)
+    assert path.end_with?(".pdf")
+    assert_equal 0o600, File.stat(path).mode & 0o777
+    assert_equal PDF, File.binread(path)
+    rendered.discard
+    refute File.exist?(path)
+  end
+
+  def test_a_pdf_is_bounded_by_its_decoded_byte_size
+    limit = 16 * 1024 * 1024
+    bytes = PDF.ljust(limit, "\n")
+    rendered = Content.render([pdf_resource(Base64.strict_encode64(bytes))], dir: @dir)
+    assert_equal limit, File.size(rendered.attachments.fetch(0))
+    rendered.discard
+
+    error = assert_raises(Refusal) do
+      Content.render([pdf_resource(Base64.strict_encode64(bytes + "\n"))], dir: @dir)
+    end
+    assert_equal(-32602, error.code)
+    assert_match(/exceeds 16 MiB/, error.message)
+    assert_empty Dir.children(@dir)
+  end
+
+  def test_unsupported_blobs_audio_and_bad_shapes_are_refused
     [
-      [[{ "type" => "resource", "resource" => { "uri" => "file:///x.pdf", "mimeType" => "application/pdf", "blob" => PNG } }], /pdf blob is not accepted/],
+      [[{ "type" => "resource", "resource" => { "uri" => "file:///x.zip", "mimeType" => "application/zip", "blob" => PNG } }], /zip blob is not accepted/],
+      [[pdf_resource(" \r\n")], /needs base64 data/],
+      [[pdf_resource("AB==")], /not base64/],
       [[{ "type" => "audio", "data" => PNG, "mimeType" => "audio/wav" }], /audio is not accepted/],
       [[{ "type" => "video" }], /unknown content block type/],
       [[{ "type" => "text", "text" => 3 }], /text must be a string/],
@@ -79,7 +109,7 @@ class AcpContentTest < Minitest::Test
 
   def test_a_refused_render_leaves_no_file_behind
     assert_raises(Refusal) do
-      Content.render([{ "type" => "image", "data" => PNG, "mimeType" => "image/png" }, { "type" => "audio" }], dir: @dir)
+      Content.render([pdf_resource, { "type" => "audio" }], dir: @dir)
     end
 
     assert_empty Dir.children(@dir)
@@ -89,7 +119,7 @@ class AcpContentTest < Minitest::Test
     core = RhoAcpTest::CoreDouble.new
     seen = nil
     core.say_answers << lambda do |_id, _text, attachments:, **|
-      seen = attachments.map { |path| [path, File.exist?(path)] }
+      seen = attachments.map { |path| [path, File.binread(path)] }
       { "turn" => { "public_id" => "trn_1" }, "run" => { "public_id" => "alp_1" } }
     end
     core.events["cnv_1"] = [[["turn_status", { "turn_public_id" => "trn_1", "run_public_id" => "alp_1", "status" => "completed", "run_status" => "completed" }], ["closed", {}]]]
@@ -97,16 +127,41 @@ class AcpContentTest < Minitest::Test
     harness.initialize_agent
     harness.new_session(cwd: "/tmp")
 
-    answer = harness.prompt("cnv_1", [{ "type" => "text", "text" => "see" }, { "type" => "image", "data" => PNG, "mimeType" => "image/png" }])
+    answer = harness.prompt("cnv_1", [
+      { "type" => "text", "text" => "see" }, { "type" => "image", "data" => PNG, "mimeType" => "image/png" }, pdf_resource,
+    ])
 
     assert_equal({ "stopReason" => "end_turn" }, answer)
-    assert_equal 1, seen.length
-    path, existed = seen.first
-    assert existed, "the file was gone before say read it"
-    assert path.start_with?(File.join(harness.home.tmp_root, "acp", "cnv_1"))
-    refute File.exist?(path)
+    assert_equal [Base64.strict_decode64(PNG), PDF], seen.map(&:last)
+    seen.each do |path, _bytes|
+      assert path.start_with?(File.join(harness.home.tmp_root, "acp", "cnv_1"))
+      refute File.exist?(path)
+    end
     assert_equal "see", core.calls_of(:say).first.first[1]
   ensure
     harness&.close
+  end
+
+  def test_a_builtin_command_with_a_pdf_is_refused_without_running_the_command
+    core = RhoAcpTest::CoreDouble.new
+    harness = RhoAcpTest::AgentHarness.new(core: core)
+    harness.initialize_agent
+    harness.new_session(cwd: "/tmp")
+
+    error = assert_raises(Rho::Acp::RemoteError) do
+      harness.prompt("cnv_1", [{ "type" => "text", "text" => "/compact" }, pdf_resource])
+    end
+    assert_equal(-32602, error.code)
+    assert_match(/PDF attachments require a new conversation turn/, error.message)
+    refute core.called?(:compact)
+    assert_empty Dir.children(File.join(harness.home.tmp_root, "acp", "cnv_1"))
+  ensure
+    harness&.close
+  end
+
+  private
+
+  def pdf_resource(blob = Base64.strict_encode64(PDF))
+    { "type" => "resource", "resource" => { "uri" => "file:///not-on-the-runner/report.pdf", "mimeType" => "application/pdf", "blob" => blob } }
   end
 end

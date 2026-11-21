@@ -16,6 +16,8 @@ test('global and scoped Schedule listings preserve Workspace and execution Varia
   const chat = member.workspace('workspace').conversation('conversation');
   for (const scope of [member.schedules, member.workspace('workspace').schedules, chat.schedules]) {
     const result = await scope.list({ status: 'paused', after: 'cursor', limit: 4 });
+    expect(result.items[0]?.wake).toBe('passive');
+    expect(result.items[0]?.last_execution?.wake).toBe('auto');
     expect(result.items[0]?.workspace_public_id).toBe(body.schedules[0]?.workspace_public_id);
     expect(result.items[0]?.last_execution?.variant_public_id).toBe(body.schedules[0]?.last_execution?.variant_public_id);
   }

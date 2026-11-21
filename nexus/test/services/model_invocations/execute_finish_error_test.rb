@@ -12,7 +12,7 @@ class ModelInvocations::ExecuteFinishErrorTest < ActiveJob::TestCase
   end
 
   test "the native Gemini stream withdraws emitted text and buffered tails before recording its billed error finish" do
-    attempt = admitted_attempt(model: "gemini/gemini-3.8-flash")
+    attempt = admitted_attempt(model: "gemini/gemini-4-hydrogen")
     frames = [
       { "candidates" => [{ "content" => { "parts" => [{ "text" => "unfinished answer" }] } }] },
       { "candidates" => [{ "content" => { "parts" => [{ "text" => " tail" }] } }] },
@@ -37,7 +37,7 @@ class ModelInvocations::ExecuteFinishErrorTest < ActiveJob::TestCase
     receipt = UsageRecord.find_by!(model_invocation_public_id: invocation.public_id)
     assert_equal ["succeeded", 3, 4, 7], receipt.values_at(:status, :input_tokens, :output_tokens, :total_tokens)
     assert_equal "USD", receipt.cost_unit
-    assert_equal BigDecimal("0.00001725"), receipt.cost_amount,
+    assert_equal BigDecimal("0.0000345"), receipt.cost_amount,
       "discarding an errored generation does not discard its reported, priced usage"
   end
 end

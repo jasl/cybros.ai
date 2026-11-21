@@ -1,5 +1,5 @@
 import { Client, ExecutorClient, PlatformClient, Sessions, ApplicationOAuth, Steps, Unauthorized } from '@cybros/agent';
-import type { JsonValue, DecisionQuestion } from '@cybros/agent';
+import type { CreateRun, JsonValue, DecisionQuestion } from '@cybros/agent';
 import { RealtimeClient } from '@cybros/agent/realtime';
 import { readFileSync } from 'node:fs';
 interface Configuration {
@@ -7,6 +7,7 @@ interface Configuration {
   link_public_id: string; prompt: string;
   action: string; base_url: string; credential: string; marker: string; runner_public_id: string;
   workspace_key: string; conversation_key: string; input_key: string;
+  run: CreateRun; run_key: string;
   workspace_public_id: string; conversation_public_id: string; input_public_id: string;
   run_public_id: string; task_key: string; email: string; password: string; agent_identifier: string;
   position?: { cursor: string | null; sequence: number } | null;
@@ -32,6 +33,10 @@ async function observe() {
 }
 async function main(): Promise<object> {
   switch (config.action) {
+    case 'member_create_run': {
+      const created = await member().workspace(config.workspace_public_id).runs.create(config.run, { idempotencyKey: config.run_key });
+      return { run_public_id: created.run.public_id, receipt: created.receipt, replayed: created.replayed };
+    }
     case 'executor_announce': {
       const description = await executor().announce({ services: { agent: { tools: [] }, runner: { tools: [{ name: 'sdk_echo', description: 'Echo one test marker', input_schema: { type: 'object', properties: { marker: { type: 'string' } }, required: ['marker'] }, effect_profile: { kind: 'read_only', destructive: false, effect_scope: 'closed', idempotency: 'intrinsic', reconciliation: 'none' } }] } } });
       return { executor_public_id: description.executor.public_id };

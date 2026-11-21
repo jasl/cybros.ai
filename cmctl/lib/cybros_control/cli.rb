@@ -7,8 +7,8 @@ module CybrosControl
     HELP = <<~TEXT.freeze
       Usage: cmctl [--home DIR] COMMAND
 
-        login --url URL --email EMAIL [--password-stdin]
-        setup --url URL
+        login --url URL [--device | --email EMAIL [--password-stdin]]
+        setup --url URL [--device]
         status
         logout [--local]
         providers
@@ -107,31 +107,41 @@ module CybrosControl
 
       def setup(arguments)
         url = nil
+        device = false
         OptionParser.new do |parser|
           parser.on("--url URL") { |value| url = value }
+          parser.on("--device") { device = true }
         end.parse!(arguments)
         no_arguments(arguments)
         raise UsageError, "setup requires --url" if url.to_s.empty?
 
         Setup.new(url: url, input: @input, output: @output, error: @error, env: @env,
-          sessions: @sessions, clients: @clients).run
+          sessions: @sessions, clients: @clients, device: device).run
       end
 
       def login(arguments)
         url = email = nil
         from_stdin = false
+        device = false
         OptionParser.new do |parser|
           parser.on("--url URL") { |value| url = value }
+          parser.on("--device") { device = true }
           parser.on("--email EMAIL") { |value| email = value }
           parser.on("--password-stdin") { from_stdin = true }
         end.parse!(arguments)
         no_arguments(arguments)
-        raise UsageError, "login requires --url and --email" if url.to_s.empty? || email.to_s.empty?
+        raise UsageError, "login requires --url" if url.to_s.empty?
+        raise UsageError, "--device cannot be combined with password options" if device && (email || from_stdin)
+        raise UsageError, "--password-stdin requires --email" if from_stdin && email.to_s.empty?
         raise Error, "Already logged in; run cmctl logout before connecting again" if @config.present?
 
         url = Config.base_url(url)
-        password = secret("Password", from_stdin: from_stdin)
-        grant = @sessions.call(url).create(email: email, password: password)
+        sessions = @sessions.call(url)
+        grant = if email.to_s.empty?
+          CybrosControl.login_with_device(sessions, @error)
+        else
+          sessions.create(email: email, password: secret("Password", from_stdin: from_stdin))
+        end
         connected = @clients.call(url, grant.token)
         begin
           profile = connected.profile.fetch

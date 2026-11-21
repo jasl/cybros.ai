@@ -28,6 +28,13 @@
     "license_sha256": "76a14d21e741dbbf1572e9c0e6bb809a9bd76f5b4da64a0b89e7331cc77ea84a"
   },
   {
+    "repository": "tencent/Hy4",
+    "revision": "c10c0de5b6f850703fb0a90e65d1c32b558b9167",
+    "tokenizer_sha256": "2e3f3d22065c2be5765ce99ab2410411ae338b32ce809ea20dcdb61d00198e83",
+    "license": "Tencent Hy License, Version 1.0",
+    "license_sha256": "52755a6786f2f4b83b48cd7246aa9e34f7aac98563e4e60808ab02390799fdbd"
+  },
+  {
     "repository": "Qwen/Qwen3.8-Flash-Next",
     "revision": "de4b8e4d43b917e7706784d8bb445c9af86a3540",
     "tokenizer_sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",

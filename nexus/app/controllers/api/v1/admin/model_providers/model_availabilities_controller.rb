@@ -1,4 +1,20 @@
+# @auth [PlatformBearer, BrowserSession]
 class API::V1::Admin::ModelProviders::ModelAvailabilitiesController < API::V1::Admin::ModelProviders::BaseController
+  # @oas_include
+  # @summary Update model availabilities
+  # @tags Platform, model availabilities
+  # @parameter model_provider_id(path) [!String] Resource selector.
+  # @request_body_ref #/components/requestBodies/ApiV1AdminModelProvidersModelAvailabilitiesUpdate
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/ApiV1AdminModelProvidersModelAvailabilitiesUpdate
   def update
     fields = params.expect(command: [:model, :available, :expected_lock_version])
     available = fields[:available]

@@ -6,9 +6,23 @@
 # a credential-less row is never offered; an ineligible or foreign id
 # conceals as absence. No pagination: the set is an account's machines,
 # small by construction.
+# @auth [MemberBearer]
 class AgentAPI::V1::ExecutorsController < AgentAPI::V1::BaseController
   serves_plane :member
 
+  # @oas_include
+  # @summary List executors
+  # @tags Member, executors
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ExecutorsIndex
   def index
     live_server_ids = NexusServer.live_ids
     render json: {
@@ -16,6 +30,20 @@ class AgentAPI::V1::ExecutorsController < AgentAPI::V1::BaseController
     }
   end
 
+  # @oas_include
+  # @summary Read executors
+  # @tags Member, executors
+  # @parameter public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1ExecutorsShow
   def show
     executor = addressable.find { |candidate| candidate.public_id == params[:public_id] }
     return render_not_found if executor.nil?

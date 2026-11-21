@@ -21,7 +21,7 @@ class Settings::PasswordsController < Settings::BaseController
       presented_session: Current.session,
       user_agent: request.user_agent,
       ip_address: request.remote_ip
-    )
+    ) { consume_sso_proof("settings_password") }
 
     if replacement
       # The presented Session was consumed; this browser adopts its replacement,

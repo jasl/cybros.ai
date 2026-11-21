@@ -5,6 +5,7 @@ require "json"
 require "net/http"
 require "securerandom"
 require "shellwords"
+require "stringio"
 require "tmpdir"
 require "support/actor_provisioning"
 require "support/ceremony"
@@ -54,6 +55,7 @@ class RhoAcpSymmetryTest < Minitest::Test
   TRAILER = /session: (acp-[0-9a-f]{12}) · stop: (\w+) · calls: (\d+) \((\d+) refused by the floor\) · capture: (\S+)/
   # The three options B's surface offers a park, by id.
   PERMISSION_OPTION_IDS = %w[allow always reject].freeze
+  PDF = "%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\n%%EOF\n".b.freeze
 
   World = Struct.new(:daemon, :home, :peer, :peer_home, :project, :scratch, :steward, :actor, :room_public_id,
     :runner_id, :profile, :handle, :peer_profile, :peer_handle, keyword_init: true)
@@ -292,13 +294,54 @@ class RhoAcpSymmetryTest < Minitest::Test
     assert alive?(listed.fetch("pid")), "the child survived the cancel"
   end
 
+  def test_acp_symmetry_delegates_a_nexus_pdf_byte_for_byte
+    path = File.join(@world.project, "delegation-#{SecureRandom.hex(4)}.pdf")
+    File.binwrite(path, PDF)
+    conversation, turn, run = open_turn("!mock reply=Ready -- Keep this document", "--attach", path)
+    await_loop_turn_status(run, "completed")
+    chat = @conversations.conversation(conversation)
+    first = chat.turns.fetch(turn)
+    upload = first.active_variant.attachments.fetch(0)
+    uri = "nexus://uploads/#{upload.public_id}"
+    child_prompt = "!mock reply=#{CGI.escape("Received PDF")} -- Inspect the attachment"
+
+    queued = rho("say", conversation, delegate(child_prompt, attachments: [uri]), "--mode", "queue")
+    input_id = queued[/^queued:\s+(\S+)/, 1]
+    refute_nil input_id, queued
+    materialized = await("the PDF delegation never materialized") { chat.inputs.materialization(input_id) }
+    delegated_run = await_run_status(materialized.run_public_id, "completed")
+    row = delegate_row(delegated_run)
+    output = task_output(materialized.run_public_id, row.fetch("key"))
+    assert_includes output, "Mock: Received PDF"
+    session, stop, = trailer(output)
+    assert_equal "end_turn", stop
+
+    lines = capture_lines(session)
+    chunk = lines.find { |line| line.dig("message", "params", "update", "sessionUpdate") == "agent_message_chunk" }
+    refute_nil chunk, "the child streamed its answer"
+    turn_id = chunk.dig("message", "params", "update", "messageId").split(":", 2).first
+    child_chat = @conversations.conversation(acp_session(session).fetch("acp_session"))
+    child_turn = child_chat.turns.fetch(turn_id)
+    assert_equal child_prompt, child_turn.active_variant.prompt_text
+    attachment = child_turn.active_variant.attachments.fetch(0)
+    assert_equal ["application/pdf", PDF.bytesize], [attachment.content_type, attachment.byte_size]
+    io = StringIO.new("".b)
+    assert_equal 200, @client.uploads.bytes(attachment.public_id, io).status
+    assert_equal PDF, io.string
+
+    record = request_line(lines, "session/prompt")
+    assert_equal({ "uri" => uri, "mimeType" => "application/pdf", "size" => PDF.bytesize },
+      record.dig("message", "params", "prompt", 1, "resource"))
+  end
+
   private
 
     # ---- the mock's scripts ----
 
     # A's one call: `delegate_agent` to B with B's whole script as the prompt.
-    def delegate(prompt)
-      "!mock tool_call=delegate_agent:#{CGI.escape(JSON.generate("agent" => AGENT, "prompt" => prompt))} -- delegated"
+    def delegate(prompt, **fields)
+      arguments = { "agent" => AGENT, "prompt" => prompt }.merge(fields)
+      "!mock tool_call=delegate_agent:#{CGI.escape(JSON.generate(arguments))} -- delegated"
     end
 
     # B's script: one call per round, then the remainder SPOKEN (`reply=`)
@@ -318,8 +361,8 @@ class RhoAcpSymmetryTest < Minitest::Test
       output
     end
 
-    def open_turn(prompt)
-      output = rho("do", prompt, "--model", MODEL, "--dir", @world.project)
+    def open_turn(prompt, *flags)
+      output = rho("do", prompt, "--model", MODEL, "--dir", @world.project, *flags)
       ids = %w[conversation turn run].map { |line| output[/^#{line}:\s+(\S+)/, 1] }
       refute_includes ids, nil, "rho do printed fewer than three ids:\n#{output}"
       ids

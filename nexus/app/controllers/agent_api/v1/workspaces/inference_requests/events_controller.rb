@@ -1,6 +1,7 @@
 # The durable replay window: strictly-after cursor, ascending, exclusive — the
 # recovery path the realtime stream leans on. The limit is a hard reject, not
 # a clamp.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::InferenceRequests::EventsController <
       AgentAPI::V1::Workspaces::BaseController
   include AgentAPI::V1::WorkspaceScoped
@@ -11,6 +12,21 @@ class AgentAPI::V1::Workspaces::InferenceRequests::EventsController <
   DEFAULT_LIMIT = 100
   MAX_LIMIT = 200
 
+  # @oas_include
+  # @summary List events
+  # @tags Member, events
+  # @parameter inference_request_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @parameter workspace_public_id(path) [!String] Public UUIDv7. format: (uuid)
+  # @response_ref (400) #/components/responses/APIError
+  # @response_ref (401) #/components/responses/APIError
+  # @response_ref (403) #/components/responses/APIError
+  # @response_ref (404) #/components/responses/APIError
+  # @response_ref (409) #/components/responses/APIError
+  # @response_ref (413) #/components/responses/APIError
+  # @response_ref (422) #/components/responses/APIError
+  # @response_ref (429) #/components/responses/APIError
+  # @response_ref (500) #/components/responses/ServerError
+  # @response_ref (200) #/components/responses/AgentApiV1WorkspacesInferenceRequestsEventsIndex
   def index
     inference_request = InferenceRequest.where(workspace_id: @workspace.id).listable
       .find_by!(public_id: params.fetch(:inference_request_public_id))

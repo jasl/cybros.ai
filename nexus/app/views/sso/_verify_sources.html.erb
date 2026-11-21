@@ -1,0 +1,5 @@
+<% providers.each do |provider| %>
+  <%= button_to t("sso.verify_with", provider: provider.name), sso_start_path(provider),
+        params: { purpose: "reauth", action_name: action_name, target: target, return_to: return_to },
+        class: "btn btn-ghost btn-sm", form: { data: { turbo: false } } %>
+<% end %>

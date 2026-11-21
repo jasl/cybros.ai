@@ -10,14 +10,17 @@
 
   <section>
     <h2 class="mb-1 text-xs font-medium text-base-content/60"><%= t("settings.emails.show.email") %></h2>
-    <p class="mb-3 text-sm text-base-content/60"><%= t("settings.emails.show.changing_the_email_address_used_to_sign_in_requires") %></p>
+    <% sso_verified = Sso::Proof.valid?(session: Current.session, action: "settings_email", target: Current.user.public_id) %>
+    <%= render "settings/sso_verification", action_name: "settings_email", verified: sso_verified %>
     <%= form_with url: settings_email_path, method: :patch, scope: :email, data: { turbo_frame: "_top" } do |form| %>
       <div class="rounded-box border border-base-300 bg-base-200">
         <%= render layout: "shared/form_row", locals: { form:, attribute: :email, label: t("settings.emails.show.email") } do %>
           <%= validated_field form, :email_field, :email, @identity.errors.full_messages_for(:email), size: :sm, value: @identity.email, required: true, autocomplete: "email" %>
         <% end %>
-        <%= render layout: "shared/form_row", locals: { form:, attribute: :current_password, label: t("settings.emails.show.current_password") } do %>
-          <%= validated_field form, :password_field, :current_password, @identity.errors.full_messages_for(:current_password), size: :sm, required: true, autocomplete: "current-password", maxlength: 72 %>
+        <% if !Current.account.sso_only? && Current.identity.password_digest.present? && !sso_verified %>
+          <%= render layout: "shared/form_row", locals: { form:, attribute: :current_password, label: t("settings.emails.show.current_password") } do %>
+            <%= validated_field form, :password_field, :current_password, @identity.errors.full_messages_for(:current_password), size: :sm, required: true, autocomplete: "current-password", maxlength: 72 %>
+          <% end %>
         <% end %>
       </div>
       <div class="mt-3 flex justify-end">

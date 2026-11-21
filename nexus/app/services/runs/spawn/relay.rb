@@ -75,7 +75,12 @@ module Runs
 
           return Conversation.where(id: @conversation_id).pluck(:id) if @conversation_id
 
-          Conversation.where.not(schedule_id: nil).where(id: (@after_id + 1)..).order(:id).limit(@budget).pluck(:id)
+          # Only an unacknowledged original reply can owe a delivery. Reused
+          # children may have many later turns, each with its own lifecycle.
+          Conversation.joins(:turns).where.not(schedule_id: nil)
+            .where("turns.public_id = conversations.scheduled_turn_public_id")
+            .where(turns: OWED_KINDS.merge(relayed_at: nil))
+            .where(id: (@after_id + 1)..).order(:id).limit(@budget).pluck(:id)
         end
 
         def delegation_frontier
@@ -113,7 +118,7 @@ module Runs
           return [] unless child.scheduled_execution? && child.scheduled_turn_public_id
 
           child.turns.where(**OWED_KINDS, relayed_at: nil, public_id: child.scheduled_turn_public_id)
-            .select { |turn| Schedules::Execution.ready_for_reply?(turn) }
+            .select { |turn| Schedules::Execution.ready_for_reply?(child: child, turn: turn) }
         end
 
         # Only the schedule's original reply enters this lane. Spawn and

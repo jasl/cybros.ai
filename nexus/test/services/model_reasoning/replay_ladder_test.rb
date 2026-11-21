@@ -1,9 +1,6 @@
 require "test_helper"
 
-# The per-turn replay ladder: the native shape where the target can read
-# it, else nothing — a trace whose origin misses the target contributes no
-# bytes, never a fence in content. Every miss names its gate, and nothing
-# here ever raises.
+# Replay decisions at the native and portable boundaries.
 class ModelReasoning::ReplayLadderTest < ActiveSupport::TestCase
   def trace(format:, provider: "prov", model: "m-1", items: [])
     ModelReasoning::Trace.new(envelope: {
@@ -35,6 +32,16 @@ class ModelReasoning::ReplayLadderTest < ActiveSupport::TestCase
     thinking, redacted = decision.payloads
     assert_equal({ "type" => "thinking", "thinking" => "chain", "signature" => "sig" }, thinking)
     assert_equal({ "type" => "redacted_thinking", "data" => "blob" }, redacted)
+  end
+
+  test "only the direct Claude route identifies thinking text as a portable display summary" do
+    items = [{ "provider_payload" => { "type" => "thinking", "thinking" => "checkpoint", "signature" => "opaque" } }]
+    foreign = target(format: "chat_reasoning", provider: "elsewhere")
+    direct = trace(format: "anthropic_thinking", provider: "anthropic", model: "claude-fable-5-1", items: items)
+    assert_equal ["Prior model's reasoning summary:\ncheckpoint"], decide(direct, foreign).payloads
+
+    local = trace(format: "anthropic_thinking", provider: "local", model: "claude-sonnet-5-5", items: items)
+    assert_equal :drop, decide(local, foreign).kind
   end
 
   test "the verbatim block wins: Claude 5's signature-only thinking replays exactly as received" do
@@ -72,7 +79,22 @@ class ModelReasoning::ReplayLadderTest < ActiveSupport::TestCase
     assert_equal [{ "type" => "thinking", "thinking" => "the full chain", "signature" => "sig" }], decision.payloads
   end
 
-  test "responses same-model replays the encrypted item; another model reads nothing of it" do
+  test "a foreign provider receives only the display summary for each current Claude model" do
+    items = [
+      { "provider_payload" => { "type" => "thinking", "thinking" => "review the result", "signature" => "secret-one" } },
+      { "provider_payload" => { "type" => "thinking", "thinking" => "", "signature" => "secret-two" } },
+      { "redacted" => true, "encrypted_content" => "secret-three" },
+    ]
+    %w[claude-fable-5-2 claude-opus-5-5 claude-sonnet-5-5 claude-haiku-5-5].each do |model|
+      history = trace(format: "anthropic_thinking", provider: "anthropic", model: model, items: items)
+      decision = decide(history, target(format: "responses_reasoning", provider: "openai_api"))
+      assert_equal ["Prior model's reasoning summary:\nreview the result"], decision.summary_parts.map(&:text), model
+    end
+    custom = trace(format: "anthropic_thinking", provider: "custom", model: "raw-reasoner", items: items)
+    assert_equal :drop, decide(custom, target(format: "responses_reasoning")).kind
+  end
+
+  test "Responses replays its encrypted item locally and its display summary across models" do
     blob = trace(format: "responses_reasoning", items: [
       { "text" => "hidden", "summary_text" => "the plan", "encrypted_content" => "gAAA",
         "summary" => [{ "type" => "summary_text", "text" => "the plan" }], "ordinal" => 0 },
@@ -86,9 +108,35 @@ class ModelReasoning::ReplayLadderTest < ActiveSupport::TestCase
     assert_equal [0], native.ordinals, "the decision names the trace item it replays"
 
     crossed = decide(blob, target(format: "responses_reasoning", model: "other"))
-    assert_equal :drop, crossed.kind
+    assert_equal :summary, crossed.kind
+    assert_equal ["Prior model's reasoning summary:\nthe plan"], crossed.summary_parts.map(&:text)
     assert_equal "cross_model_mismatch", crossed.reason
-    assert_empty crossed.payloads, "no summary crosses as text either"
+  end
+
+  test "a GPT-6.2 reasoning item crosses only compatible model pairs on its owning lane" do
+    sol = "gpt-6.2-sol"
+    astra = "gpt-6.2-astra"
+    [
+      ["openai_api", "openai_responses", sol, "openai_api", astra, :native_item],
+      ["codex_subscription", "codex_responses", sol, "codex_subscription", astra, :native_item],
+      ["codex_subscription", "codex_responses", astra, "codex_subscription", sol, :native_item],
+      ["openai_api", "openai_responses", astra, "openai_api", sol, :summary],
+      ["codex_subscription", "codex_responses", sol, "openai_api", astra, :summary],
+      ["custom", "openai_responses", sol, "custom", astra, :summary],
+    ].each do |provider, wire, producer, lane, recipient, expected|
+      envelope = { "origin_provider_id" => provider, "origin_api_format" => wire, "origin_model_id" => producer,
+        "origin_format_variant" => "responses_reasoning", "items" => [
+          { "ordinal" => 0, "encrypted_content" => "opaque", "summary_text" => "checkpoint" },
+        ] }
+      decision = decide(ModelReasoning::Trace.new(envelope: envelope),
+        target(format: "responses_reasoning", provider: lane, model: recipient))
+      assert_equal expected, decision.kind, "#{provider}/#{producer} to #{lane}/#{recipient}"
+      if expected == :summary
+        assert_equal ["Prior model's reasoning summary:\ncheckpoint"], decision.payloads
+      else
+        assert_equal "opaque", decision.payloads.sole.fetch("encrypted_content")
+      end
+    end
   end
 
   # A round that thinks between its calls leaves one reasoning item per thought, each with its
@@ -141,6 +189,42 @@ class ModelReasoning::ReplayLadderTest < ActiveSupport::TestCase
     assert_equal :native_parts, decision.kind
     assert_equal({ "type" => "thought", "text" => "thought text" }, decision.payloads.sole,
       "unsigned always accepted; a foreign signature is a 400 — so no signature ever rides")
+  end
+
+  test "compatible Gemini 4 models preserve signed thought boundaries and ordinals" do
+    thought = trace(format: "gemini_thought", model: "gemini-4-argon", items: [
+      { "kind" => "reasoning_text", "ordinal" => 0, "provider_payload" =>
+        { "parts" => [{ "thought" => true, "text" => "Summary" }, { "thought" => true, "text" => "", "thoughtSignature" => "A" }] } },
+      { "kind" => "tool_call", "ordinal" => 1, "item_id" => "call" },
+      { "kind" => "reasoning_text", "ordinal" => 2, "text" => "Later", "signature" => "B" },
+    ])
+    decision = decide(thought, target(format: "gemini_thought", model: "gemini-4-neon"))
+    placed = decision.placed_items(thought.native_origin)
+    assert_equal [0, 0, 2], placed.map(&:first)
+    assert_equal [["Summary", nil], ["", "A"], ["Later", "B"]], placed.map { |_, message|
+      message.parts.sole.payload.values_at("text", "thoughtSignature")
+    }
+  end
+
+  test "an opaque trace or raw reasoning alone has no portable fallback" do
+    hidden = trace(format: "responses_reasoning_text", items: [
+      { "kind" => "reasoning_text", "text" => "raw chain" },
+      { "redacted" => true, "encrypted_content" => "ciphertext", "summary_text" => "redacted" },
+      { "reasoning_tokens" => 2000 },
+    ])
+    assert_equal :drop, decide(hidden, target(format: "gemini_thought", provider: "other")).kind
+  end
+
+  test "earlier streamed Gemini captures retain the full summary and the signature on its original tail" do
+    thought = trace(format: "gemini_thought", model: "gemini-3.8-flash", items: [
+      { "kind" => "reasoning_text", "text" => "First. Second.", "ordinal" => 0,
+        "provider_payload" => { "thought" => true, "text" => "Second.", "thoughtSignature" => "tail" } },
+    ])
+    native = decide(thought, target(format: "gemini_thought", model: "gemini-3.8-flash"))
+    assert_equal [["First. ", nil], ["Second.", "tail"]], native.payloads.map { |part| part.values_at("text", "thoughtSignature") }
+    crossed = decide(thought, target(format: "gemini_thought", model: "gemini-4-carbon"))
+    assert_equal "First. Second.", crossed.payloads.pluck("text").join
+    assert_empty crossed.payloads.pluck("thoughtSignature").compact
   end
 
   test "every miss names its gate" do

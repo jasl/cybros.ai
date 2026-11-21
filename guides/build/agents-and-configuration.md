@@ -23,7 +23,7 @@ PUT /agent_api/v1/profile/configuration
       "stop": { "tool": "review_completion", "timeout_ms": 30000, "max_continuations": 2 }
     },
     "default_model": "openrouter/z-ai/glm-5.3",
-    "fallback_models": ["openrouter/moonshotai/kimi-k3"]
+    "fallback_models": ["openrouter/moonshotai/kimi-k3.1-pro"]
   },
   "prompt_documents": {
     "system_prompt": { "content": "You are {{agent}}.", "role": "developer" },
@@ -96,7 +96,7 @@ Read a selected runner's announced declarations and environment through the tool
 
 An input or schedule may select a model and the independent `reasoning_enabled` and `reasoning_effort` controls. A missing selection uses the configuration’s `default_model`. Inputs also accept `model_selection` to record default, inherited or explicit intent and model/provider constraints, independently of the initial route. An ordered `fallback_models` override replaces the inherited list; `[]` forbids automatic switches.
 
-Only eligible, available candidates may be tried, with bounded retries and no renewal of a spent route. Kernel result mail retains its source execution’s list and constraints; it has no hidden switch to the recipient’s current default. See [Model selection and recovery](../reference/agent-api/models.md#model-selection-and-recovery).
+Only eligible, available candidates may be tried, with bounded retries and no automatic renewal of a spent route. An explicit task retry may create a fresh bounded invocation on the same model. Kernel result mail retains its source execution’s list and constraints; it has no hidden switch to the recipient’s current default. See [Model selection and recovery](../reference/agent-api/models.md#model-selection-and-recovery).
 
 ## Named Agent identities
 

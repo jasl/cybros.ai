@@ -9,7 +9,7 @@
   // Features to add to the dev container. More info: https://containers.dev/features.
   "features": {
     "ghcr.io/rails/devcontainer/features/ruby": {
-      "version": "4.0.9",
+      "version": "4.0.10",
       "usePrecompiledRubies": "true"
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},

@@ -2,15 +2,11 @@ schema_version: cybros.model_catalog.v1
 # Explicit model facts shared by provider routes. Serving limits may override
 # the complete limits block; protocol options and pricing stay on each route.
 model_definitions:
-  hy3:
+  hy4:
     token_counter:
       kind: huggingface
-      tokenizer_id: tencent/Hy3
+      tokenizer_id: tencent/Hy4
     capabilities:
+      input_modalities: [image]
       limits:
-        combined_input_output_tokens: 200000
-      reasoning:
-        disable_supported: true
-        efforts: [low, high]
-        default_effort: low
-        default_enabled: true
+        combined_input_output_tokens: 1048576

@@ -49,6 +49,16 @@ class OperatorTest < Minitest::Test
 
   def output = JSON.parse(@output.string)
 
+  def terminal_answers
+    @transport.answer(200, {
+      "user_code" => "BCDF-GHJK", "device_code" => "synthetic-device-secret",
+      "verification_uri" => "https://nexus.example/oauth/device",
+      "verification_uri_complete" => "https://nexus.example/oauth/device?user_code=BCDF-GHJK",
+      "expires_in" => 900, "interval" => 5,
+    })
+    @transport.answer(200, { "access_token" => TOKEN, "token_type" => "Bearer", "expires_in" => 2_592_000, "session" => SESSION })
+  end
+
   def saved_session
     @config.write(base_url: "http://localhost:3000", token: TOKEN)
   end

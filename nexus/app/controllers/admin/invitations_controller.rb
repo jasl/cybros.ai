@@ -14,7 +14,7 @@ class Admin::InvitationsController < Admin::BaseController
   def create
     @invitation = Current.account.invitations.new(invitation_params.merge(inviter: Current.user))
 
-    if @invitation.save
+    if Current.account.with_lock { @invitation.save }
       if @invitation.delivery_requested?
         @invitation.deliver_later
         redirect_to admin_invitations_path, notice: t("admin.invitations.create.requested")

@@ -160,7 +160,7 @@ class ModelInvocations::ExecuteAttemptTest < ActiveJob::TestCase
     ModelProviders::EnableLane.call(account: @account, provider_id: "openai_api", expected_lock_version: nil)
 
     sent = [true, false].to_h do |enabled|
-      attempt = admitted_attempt(model: "openai_api/gpt-6-luna", reasoning_effort: "medium", reasoning_enabled: enabled)
+      attempt = admitted_attempt(model: "openai_api/gpt-6.1-terra", reasoning_effort: "medium", reasoning_enabled: enabled)
       fake_dispatch(sse_success("hi")) do |adapter|
         ModelInvocations::ExecuteAttempt.call(attempt: attempt, host: "solid_queue")
         [enabled, JSON.parse(adapter.requests.sole.fetch(:body))]
@@ -178,18 +178,31 @@ class ModelInvocations::ExecuteAttemptTest < ActiveJob::TestCase
     assert_pre_io_refusal(attempt, :provider_disabled, catalog: ModelCatalog.current, status: "canceled")
   end
 
-  test "a model missing from the current catalog terminalizes before provider IO" do
-    attempt = admitted_attempt
+  test "an admitted attempt uses the retained model after removal from the file catalog" do
+    ref = DevModelLane::UNMETERED_TEXT_MODEL
+    attempt = admitted_attempt(model: ref)
     current = ModelCatalog.current
-    catalog = ModelCatalog::Snapshot.new(
-      providers: current.providers,
-      model_definitions: current.model_definitions,
-      authored_models: current.authored_models,
-      models: current.models.except("dev/mock-text"),
-      selectors: current.selectors
-    ).freeze
+    retired = current.with(models: current.models.except(ref), authored_models: current.authored_models.except(ref))
 
-    assert_pre_io_refusal(attempt, :unknown_model, catalog: catalog, status: "canceled")
+    ModelCatalog.stub(:current, retired) do
+      fake_dispatch(sse_success("finished")) do |adapter|
+        ModelInvocations::ExecuteAttempt.call(attempt: attempt, host: "solid_queue")
+        assert_equal "mock-unmetered", JSON.parse(adapter.requests.sole.fetch(:body)).fetch("model")
+      end
+    end
+
+    assert_equal "completed", attempt.reload.status
+  end
+
+  test "a model explicitly removed after admission terminalizes before provider IO" do
+    ref = DevModelLane::UNMETERED_TEXT_MODEL
+    attempt = admitted_attempt(model: ref)
+    policy = ModelProviderConfig.find_by!(account: @account, provider_id: "dev")
+    removal = ModelProviders::RemoveModelOverride.call(account: @account, provider_id: "dev",
+      model_ref: ref, expected_lock_version: policy.lock_version, validate_definition: true)
+    assert_predicate removal, :done?
+
+    assert_pre_io_refusal(attempt, :unknown_model, catalog: ModelCatalog.current, status: "canceled")
   end
 
   test "a current model that serves another workload terminalizes before provider IO" do

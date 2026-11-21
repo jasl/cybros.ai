@@ -1,3 +1,4 @@
+# @auth [MemberBearer]
 class AgentAPI::V1::Profiles::MemoryCollectionsController < AgentAPI::V1::MemoryCollections::OwnedController
   private
 

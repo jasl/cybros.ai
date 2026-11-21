@@ -10,6 +10,9 @@
 #     schedule: at 5am every day
 
 production: &schedules
+  reap_expired_sso_attempts:
+    class: SsoAttempts::ReapJob
+    schedule: every 15 minutes
   reap_dead_sessions:
     class: Sessions::ReapJob
     schedule: every day at 4am

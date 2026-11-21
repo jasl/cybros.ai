@@ -21,9 +21,21 @@ module Sessions
         end
       end
 
+      def issue_api_session(user, user_agent: nil, ip_address: nil)
+        parts = Session::DIGESTED.mint_parts
+        session = user.identity.sessions.create!(
+          kind: :api, user: user, lookup_id: parts.lookup_id, secret_digest: parts.digest,
+          user_agent: user_agent&.first(255), ip_address: ip_address
+        )
+        result(:authenticated, session: session, secret: parts.raw)
+      end
+
       private
 
         def authenticate_and_start(credentials, kind:, user_agent:, ip_address:)
+          # This Account-wide refusal also applies to unknown emails.
+          return result(:sso_required) if Account.exists?(sso_only: true)
+
           if credentials.invalid_for_authentication?
             return result(:invalid_credentials)
           end
@@ -36,7 +48,12 @@ module Sessions
           elsif kind == :api && identity.password_change_required?
             result(:password_change_required)
           else
-            start(identity, kind: kind, user_agent: user_agent, ip_address: ip_address)
+            identity.account.with_lock do
+              # A settings commit that won during BCrypt must prevent issuance.
+              return result(:sso_required) if identity.account.sso_only?
+
+              start(identity, kind: kind, user_agent: user_agent, ip_address: ip_address)
+            end
           end
         end
 
@@ -51,18 +68,12 @@ module Sessions
         def start(identity, kind:, user_agent:, ip_address:)
           case kind
           when :api
-            start_api(identity)
+            issue_api_session(identity.user, user_agent: user_agent, ip_address: ip_address)
           when :browser
             start_browser(identity, user_agent: user_agent, ip_address: ip_address)
           else
             raise ArgumentError, "unknown session kind: #{kind.inspect}"
           end
-        end
-
-        def start_api(identity)
-          parts = Session::DIGESTED.mint_parts
-          session = identity.sessions.create!(kind: :api, lookup_id: parts.lookup_id, secret_digest: parts.digest)
-          result(:authenticated, session: session, secret: parts.raw)
         end
 
         def start_browser(identity, user_agent:, ip_address:)

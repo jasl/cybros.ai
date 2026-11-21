@@ -110,7 +110,7 @@ again through a newly authorized request; its previous credentials stay revoked.
     "prompt_template": null,
     "compaction_policy": { "mode": "kernel" },
     "default_model": "openrouter/z-ai/glm-5.3",
-    "fallback_models": ["openrouter/moonshotai/kimi-k3"]
+    "fallback_models": ["openrouter/moonshotai/kimi-k3.1-pro"]
   }
 }
 ```

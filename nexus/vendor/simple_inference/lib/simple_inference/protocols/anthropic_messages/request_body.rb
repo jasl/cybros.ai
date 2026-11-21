@@ -91,6 +91,7 @@ module SimpleInference
           validate_manual_thinking(thinking, body)
 
           output_config = anthropic_output_config(options, effort: effort, enabled: enabled)
+          validate_between_tools(thinking, output_config) if thinking && thinking[:type].to_s == "between_tools"
           body[:output_config] = output_config if output_config
         end
 
@@ -141,18 +142,28 @@ module SimpleInference
           effort == "none" ? { type: "disabled" } : { type: "adaptive", display: "summarized" }
         end
 
-        # Effort rides output_config.effort in adaptive mode only; pairing it
-        # with a manual/disabled thinking Hash is a contradiction the caller
-        # must resolve — silently dropping either side would hide a decision.
+        # Manual budgets and disabled thinking cannot also request effort.
         def ensure_effort_thinking_consistency(effort, thinking)
           return if effort.nil?
 
           type = thinking[:type].to_s
-          return if effort == "none" ? type == "disabled" : type == "adaptive"
+          return if effort == "none" ? type == "disabled" : %w[adaptive between_tools].include?(type)
 
           raise SimpleInference::ValidationError,
                 "reasoning_effort #{effort.inspect} conflicts with explicit thinking type #{type.inspect}: " \
-                "effort rides output_config.effort in adaptive mode only (\"none\" pairs with type \"disabled\")"
+                "use adaptive or between_tools with effort (\"none\" pairs with type \"disabled\")"
+        end
+
+        # Between-tool updates have a fixed display and no binding or budget options.
+        def validate_between_tools(thinking, output_config)
+          unless thinking.keys == [:type]
+            raise SimpleInference::ValidationError, "between_tools accepts only its type in thinking"
+          end
+
+          effort = output_config&.fetch(:effort, nil)
+          return if effort.nil? || %w[low medium high].include?(effort.to_s)
+
+          raise SimpleInference::ValidationError, "between_tools accepts only low, medium or high effort"
         end
 
         # Manual mode is caller-chosen; the protocol validates the register's
@@ -606,41 +617,36 @@ module SimpleInference
         end
 
         def build_tool_choice(tool_choice:, parallel_tool_calls:)
-          return nil if tool_choice.nil? && parallel_tool_calls.nil?
+          choice = normalize_tool_choice(tool_choice)
+          return nil if choice.nil? && parallel_tool_calls.nil?
 
-          normalized_choice = normalize_tool_choice(tool_choice)
-          return nil if normalized_choice.nil? && parallel_tool_calls.nil?
+          choice ||= { type: "auto" }
+          unless @forced_tool_choice || %w[auto none].include?(choice[:type])
+            raise SimpleInference::ValidationError, "this model accepts only auto or none for tool_choice"
+          end
 
-          normalized_choice ||= "auto"
-          choice = {
-            type: case normalized_choice
-                  when "auto", "none"
-                    normalized_choice
-                  when "required"
-                    "any"
-                  else
-                    "tool"
-                  end,
-          }
-          choice[:name] = normalized_choice if choice[:type] == "tool"
           choice[:disable_parallel_tool_use] = !parallel_tool_calls if !parallel_tool_calls.nil? && choice[:type] != "none"
           choice
         end
 
         def normalize_tool_choice(tool_choice)
-          return nil if tool_choice.nil?
-
-          # The wire's declared union: a mode string, or the function envelope.
-          case tool_choice
-          when Hash
-            normalized = tool_choice
-            type = normalized[:type]
-            return normalized.dig(:function, :name) || normalized[:name] if type == "function"
-
-            type if type.is_a?(String) && !type.empty?
+          envelope = Hash.try_convert(tool_choice)
+          envelope = Internal::Keys.shallow_symbolize(envelope) if envelope
+          mode = envelope ? envelope[:type] : tool_choice
+          parallel = envelope&.slice(:disable_parallel_tool_use) || {}
+          case mode
+          when "auto" then { type: "auto", **parallel }
+          when "none" then { type: "none" }
+          when "any", "required" then { type: "any", **parallel }
           when String
-            value = tool_choice
-            value.empty? ? nil : value
+            return if mode.empty?
+
+            name = mode
+            if envelope && %w[function tool].include?(mode)
+              name = Internal::Keys.shallow_symbolize(envelope[:function])[:name] || envelope[:name]
+              raise SimpleInference::ValidationError, "a named tool_choice requires a name" if name.to_s.empty?
+            end
+            { type: "tool", name: name, **parallel }
           else
             nil
           end

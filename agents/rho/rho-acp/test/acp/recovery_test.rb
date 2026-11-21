@@ -1,4 +1,5 @@
 require "test_helper"
+require "base64"
 
 class AcpRecoveryTest < Minitest::Test
   Methods = Rho::Acp::Methods
@@ -96,6 +97,15 @@ class AcpRecoveryTest < Minitest::Test
     ])
 
     assert_equal "end_turn", @harness.prompt("cnv_1", "go")["stopReason"]
+    error = assert_raises(Rho::Acp::RemoteError) do
+      @harness.prompt("cnv_1", [
+        { "type" => "text", "text" => "main" },
+        { "type" => "resource", "resource" => { "uri" => "file:///answer.pdf", "mimeType" => "application/pdf",
+                                               "blob" => Base64.strict_encode64("%PDF-1.7\n%%EOF\n") } },
+      ])
+    end
+    assert_equal(-32602, error.code)
+    assert_empty @core.calls_of(:answer)
     assert_equal "end_turn", @harness.prompt("cnv_1", "main")["stopReason"]
     assert_equal ["an earlier round", "Which branch?", "done"],
       chunks.map { |u| u.dig("update", "content", "text") }

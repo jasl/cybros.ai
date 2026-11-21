@@ -299,7 +299,7 @@ Provider lane and key changes, and diagnostics for unavailable models, belong to
 operator CLI, `cmctl`.
 
 ```sh
-rho run "find the failing test and fix it" --model openrouter/qwen3-coder
+rho run "find the failing test and fix it" --model openrouter/z-ai/glm-5.3
 rho run -p "summarize this repository"          # the final answer alone
 rho run "run the tests" --output-format json    # one result object at the end
                                                 # (stream-json: one object per event, then it)
@@ -503,6 +503,17 @@ input; `subagent:` works the same way. The local control route is
 `{ "modes": { "code_mode": true, "subagent": true, "available": true,
 "code_mode_available": true } }`. `available` is false for an unrelated answerer;
 `code_mode_available` additionally reflects whether the plugin is enabled.
+
+A client that submits Human-authored inputs directly to Nexus can call the authenticated
+`POST /conversations/prepare-input-policy` control route first. Its JSON body accepts only
+`workspace_public_id` and `public_id`, both required. For a writable, non-side rho conversation,
+the response contains `tool_names` and, when needed, `executor_contexts`. Copy these fields
+into the `direct_reply` input submitted with the Human member's own Nexus credential.
+The client checks the Human's write access. rho refuses archived, Side, channel-owned
+and unrelated agents' conversations. An empty `tool_names` array means zero tools.
+Omitted `executor_contexts` preserve the conversation's inherited binding. Keep the returned
+fields with the input's idempotency key for retries. Preparation does not submit an input.
+Handle a refusal before sending so a restricted selection cannot become an unrestricted reply.
 
 Subagent off removes role spawn and bounded task delegation from new inputs,
 including explicit tool lists. Existing workers can finish and report; send,
@@ -2171,7 +2182,7 @@ scope, Docker-command, repository, path or recovery selector on this surface.
 bash install/install.sh
 ```
 
-One readable file that runs from the checkout it sits in, no sudo: Homebrew's portable Ruby 4.0.9
+One readable file that runs from the checkout it sits in, no sudo: Homebrew's portable Ruby
 (sha256-pinned) and the rho gems into a prefix you own (`~/.local/share/rho`), rg and fd beside them (jq
 and uv in the default `full` profile; Node, playwright-core and the Chromium shell in `dev`), a launcher
 at `~/.local/bin/rho`. `--profile dev` for browsing. Then `rho doctor`; `rho update` = `git pull

@@ -474,15 +474,32 @@ module Conversations
           @accepted&.call(input)
           @host.note_activity
           narrate(input)
-          # The queue-default wake, for every accepted row — the kernel's
-          # receipt included: an idle recipient begins processing
-          # immediately. Rails defers the enqueue to commit, so a
-          # rolled-back acceptance kicks nothing. A scheduled row's is the
-          # SAME kick at the time it is due: one enqueue per accept; a time
-          # inside the grace is due and kicks now.
-          @host.wake_drain(at: wake_at(input))
-          input.wake_steering
+          wake(input)
           Outcome.accepted(input)
+        end
+
+        def wake(input)
+          # The standalone scheduler owns both queued input and steering. A
+          # Conversation steer instead belongs to its bound reply's model boundary.
+          return @host.wake_drain unless @host.hosts_turns?
+          return input.wake_steering if input.steering?
+          at = wake_at(input)
+          return @host.wake_drain(at: at) if at
+          return if @host.active_turn_id
+          return @host.wake_drain if input.queue_position.zero?
+
+          # The host is locked by admission. An earlier ready head already
+          # owns the precise wake, and DrainJob continues while the lane is idle.
+          head_id, state = @host.inputs.waiting_at.pick(:id, :state)
+          return if state == "blocked"
+          return @host.wake_drain if head_id == input.id
+
+          # A new caller can repair a held tail even with older mail queued.
+          # ApplyNext owns the exact author, time and summary-hold checks.
+          if input.sender_conversation_public_id.nil? && @host.timeline_position_head.positive?
+            tail = @host.turns.order(position: :desc).limit(1).select(:active_variant_id)
+            @host.wake_drain if Run.where(variant_id: tail, status: "needs_attention").exists?
+          end
         end
 
         def agent_configuration(addressee)

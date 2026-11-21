@@ -108,8 +108,7 @@ module ModelSelection
       profile = selection.execution_profile
       return if limit.nil? || profile.token_counter.nil?
 
-      counted ||= ModelRequests::TokenCount.count(profile: profile,
-        segments: Nexus::ModelRequestInput.text_segments(input))
+      counted ||= ModelRequests::TokenCount.for_input(selection, input)
       :estimated_input_exceeds_model_limit if counted.counted? && counted.exact? && counted.tokens > limit
     end
   end

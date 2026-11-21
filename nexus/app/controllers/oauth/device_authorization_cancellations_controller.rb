@@ -8,6 +8,17 @@ class OAuth::DeviceAuthorizationCancellationsController < OAuth::MachineControll
 
   rescue_from OAuth::InvalidRequest, with: -> { render_oauth_error(:invalid_request) }
 
+  # @oas_include
+  # @summary Create device authorization cancellations
+  # @tags OAuth, device authorization cancellations
+  # @no_auth
+  # @request_body_ref #/components/requestBodies/OauthDeviceAuthorizationCancellationsCreate
+  # @response_ref (200) #/components/responses/OauthDeviceAuthorizationCancellationsCreate
+  # @response_ref (400) #/components/responses/OAuthError
+  # @response_ref (409) #/components/responses/OAuthError
+  # @response_ref (415) #/components/responses/OAuthError
+  # @response_ref (429) #/components/responses/OAuthError
+  # @response_ref (500) #/components/responses/ServerError
   def create
     return render_oauth_error(:invalid_client) unless OAuth::Client.registered?(scalar_field(:client_id))
     # Keep the first-party extension tolerant of the same OAuth-library

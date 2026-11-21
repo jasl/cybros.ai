@@ -38,7 +38,13 @@ and explicitly resend after the interval. Mail delivery has no automatic
 application retry policy. Revoking an invitation invalidates every copy of its
 link, and a queued job that can no longer find it sends nothing.
 
-The recipient chooses a display name and password on the join page. Successful
+The recipient chooses a display name on the join page. They can register and
+connect an enabled enterprise identity provider in one step. Mixed mode also
+accepts a local password. With SSO-only enabled, both invitations and new
+member registration use enterprise sign-in. See the
+[enterprise sign-in guide](../guides/operate/enterprise-sign-in.md).
+
+For a password invitation, successful
 acceptance creates the identity and human member and consumes the invitation
 atomically. Rejected input leaves the invitation available. Browser sign-in
 follows creation; if that step fails, the new member can sign in normally with
@@ -46,7 +52,7 @@ the password they just set. An accepted link cannot create another member.
 
 ## Create with a temporary password
 
-Open **Administration → Users → Add user** (`/admin/users/new`), choose the
+In mixed mode, open **Administration → Users → Add user** (`/admin/users/new`), choose the
 email, display name and role, and set a temporary password. Convey it to the
 member separately. Their first sign-in requires a password change before ordinary
 use. If an invitation already holds that address, revoke it first.

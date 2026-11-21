@@ -1,5 +1,9 @@
 # Human member password recovery
 
+Password recovery applies in mixed mode. Email reset also requires an existing
+local password. For an SSO-only installation or a member who lost their external
+identity, use the [enterprise sign-in recovery procedure](../guides/operate/enterprise-sign-in.md#reconnect-a-member).
+
 Nexus offers email password reset and deployment-local recovery for an active
 human member. Neither procedure restores a suspended or removed member, changes
 their role, or signs them in automatically. After setting a new password, the
@@ -94,7 +98,8 @@ must sign in again and issue replacement personal access tokens as needed.
 ## Email changes and recovery
 
 Changing an email address under **Settings → Email** requires the current
-password and invalidates outstanding email reset links. If a password reset
+password or fresh proof from a connected provider and invalidates outstanding
+email reset links. SSO-only installations require provider proof. If a password reset
 wins while an email change is verifying the old password, that email change is
 rejected: an earlier password proof cannot move the recovery address after the
 password has changed. If the email change wins first, the old reset link is

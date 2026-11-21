@@ -6,7 +6,7 @@ module OAuth
   # resolved to decide whether they belong to the private network.
   module Client
     def self.registered?(client_id)
-      [OAuth::DEVICE_CLIENT_ID, OAuth::APPLICATION_CLIENT_ID].include?(client_id)
+      [OAuth::DEVICE_CLIENT_ID, OAuth::APPLICATION_CLIENT_ID, OAuth::TERMINAL_CLIENT_ID].include?(client_id)
     end
 
     def self.redirect_allowed?(value)

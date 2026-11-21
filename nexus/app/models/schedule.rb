@@ -22,6 +22,7 @@ class Schedule < ApplicationRecord
 
   enum :status, STATUSES.index_by(&:itself), default: :active, validate: true, scopes: false
   validates :name, length: { maximum: 255 }, allow_nil: true
+  validates :wake, inclusion: { in: Task::WAKE_MODES }
   validates :prompt, :provider_id, :model_ref, presence: true
   validates :last_error_code, length: { maximum: 64 }, allow_nil: true
   validates :source_task_key, length: { maximum: 255 }, allow_nil: true

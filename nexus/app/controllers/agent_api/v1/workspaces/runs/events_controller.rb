@@ -1,5 +1,6 @@
 # The loop's feed: the one events body over the listable loop. A loop-backed
 # loop's stream is its conversation's, so it refuses by name.
+# @auth [MemberBearer]
 class AgentAPI::V1::Workspaces::Runs::EventsController <
       AgentAPI::V1::Workspaces::EventsController
   include AgentAPI::V1::WorkspaceScoped

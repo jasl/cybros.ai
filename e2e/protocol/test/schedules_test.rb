@@ -24,6 +24,7 @@ class SchedulesTest < Minitest::Test
   def setup
     @base_url = E2E.base_url
     steward = E2E::ActorProvisioning.world(@base_url).rho_steward
+    @human = CybrosAgent::Client.new(base_url: @base_url, credential: steward.member_token)
     actor = E2E::StewardSession.actor(base_url: @base_url, human: steward)
     @home = Dir.mktmpdir("scheduled-jobs-e2e")
     @project = File.realpath(Dir.mktmpdir("scheduled-jobs-project"))
@@ -70,9 +71,9 @@ class SchedulesTest < Minitest::Test
   def test_a_model_created_once_schedule_keeps_its_snapshot_across_submitter_exit_and_kernel_downtime
     marker = "offline-schedule-#{SecureRandom.hex(10)}"
     File.write(File.join(@project, "offline-schedule.txt"), marker)
-    arguments = { "action" => "create", "prompt" => script("read", { "path" => "offline-schedule.txt" }, "report the scheduled result"),
+    arguments = { "action" => "create", "prompt" => script("read", { "path" => "offline-schedule.txt" }, "report the scheduled result", echo_content: true),
       "rule" => { "kind" => "once", "run_at" => (Time.now + 3_600).utc.iso8601 } }
-    chat, source = open_conversation(script("manage_schedule", arguments, "job saved"))
+    chat, source = open_conversation(script("manage_schedule", arguments, "job saved", echo_content: true))
     await("the model-created schedule") do
       row = source.fetch
       row if row.status == "completed"
@@ -132,8 +133,128 @@ class SchedulesTest < Minitest::Test
     read = @workspace.run(execution.run_public_id).fetch.tasks.find { |task| task.tool_name == "read" }
     assert_equal @runner.executor_public_id, read.claimed_by.executor_public_id
     assert_equal [execution.input_public_id], jobs.executions(schedule.public_id).items.map(&:input_public_id)
+
+    human_chat = @human.workspace(@workspace.public_id).conversation(chat.public_id)
+    report = await("the Human to receive the scheduled result in the original conversation") do
+      callback_turns(human_chat, execution.child_conversation_public_id).find { |row| row.status == "completed" }
+    end
+    assert_includes report.text, marker
+    assert_equal [execution.input_public_id], report.callback_sources.map { |origin| origin.result.input_public_id }
+    assert_equal execution.variant_public_id, report.callback_sources.first.result.variant_public_id
   ensure
     E2E.hosts.start
+  end
+
+  def test_a_due_occurrence_waits_for_repair_of_its_offline_application_hook
+    Dir.mktmpdir("scheduled-application") do |home|
+      tool = "admit_scheduled_work"
+      application = E2E::FakeExecutorProcess.new(base_url: @base_url, home: home,
+        credential: @peer.executor_credential, kind: :agent, tools: [tool])
+      begin
+        application.start
+        address = application.executor_public_id
+        @peer.client.profile.declare_configuration(tool_definitions: [], approval_mode: "bypass", approval_rules: nil,
+          default_model: MODEL, prompt_mechanism: "default", compaction_policy: { "mode" => "off" },
+          lifecycle_hooks: { "turn_start" => { "tool" => tool, "timeout_ms" => 5_000 } })
+        application.stop
+
+        chat = @workspace.conversation(@workspace.conversations.create(idempotency_key: SecureRandom.uuid).public_id)
+        jobs = chat.schedules
+        job = create_job(jobs, prompt: "!mock reply=review-finished -- Review the project", wake: "passive",
+          rule: { "kind" => "once", "run_at" => (Time.now + 3).utc.iso8601 }, idempotency_key: SecureRandom.uuid)
+        occurrence = await("the scheduled input to start its child Run") do
+          execution = jobs.executions(job.public_id).items.first
+          execution if execution&.run_public_id
+        end
+        run = @human.workspace(@workspace.public_id).run(occurrence.run_public_id)
+        held = await("the expired application hook to hold the child Run") do
+          state = run.fetch
+          state if state.needs_attention?
+        end
+        hook = held.tasks.find { |task| task.tool_name == tool }
+        refute_nil hook
+        assert_equal ["timed_out", "tool_timeout", address, nil],
+          [hook.status, hook.error.fetch("key"), hook.addressed_to.executor_public_id, hook.claimed_by]
+        assert_equal ["passive", "needs_attention"], [jobs.fetch(job.public_id).last_execution.wake,
+          jobs.executions(job.public_id).items.first.status]
+        attention = @human.work.attention(workspace_public_id: @workspace.public_id).items
+        assert attention.any? { |item| item.run_public_id == occurrence.run_public_id && item.task.key == hook.key }
+        refute chat.turns.list.items.any? { |turn| turn.sender_conversation_public_id == occurrence.child_conversation_public_id }
+        refute chat.inputs.list.items.any? { |input| input.sender_conversation_public_id == occurrence.child_conversation_public_id }
+
+        application.start
+        assert_equal address, application.executor_public_id
+        assert_equal "needs_attention", run.fetch.status
+        run.tasks_context(hook.key).retry
+        report = await("the repaired occurrence's report in the original conversation") do
+          callback_turns(chat, occurrence.child_conversation_public_id, kind: "message").find { |turn| turn.status == "completed" }
+        end
+        source = report.callback_sources.fetch(0).result
+        assert_equal [occurrence.input_public_id, occurrence.turn_public_id, occurrence.variant_public_id, occurrence.run_public_id],
+          [source.input_public_id, source.turn_public_id, source.variant_public_id, report.sender_run_public_id]
+        assert_equal [address, "completed"], [run.task(hook.key).task.claimed_by.executor_public_id, run.fetch.status]
+        child = @workspace.conversation(occurrence.child_conversation_public_id)
+        assert_includes child.turns.fetch(occurrence.turn_public_id).text, "review-finished"
+        assert_equal [occurrence.input_public_id], jobs.executions(job.public_id).items.map(&:input_public_id)
+        assert_equal [report.public_id], chat.turns.list.items.select { |turn| turn.sender_conversation_public_id == occurrence.child_conversation_public_id }.map(&:public_id)
+        assert_nil report.active_variant&.run_public_id
+      ensure
+        application.stop
+      end
+    end
+  end
+
+  def test_a_recurring_monitor_records_ten_quiet_checks_and_wakes_its_parent_for_one_incident
+    chat, seed = open_conversation("!mock reply=noted -- Monitor the project")
+    await("the parent to become idle") { seed.fetch.status == "completed" }
+    jobs = chat.schedules
+    path = File.join(@project, "health.txt")
+    File.write(path, "healthy\n!mock reply=healthy -- Observed service health\n")
+    job = create_job(jobs, prompt: script("read", { path: "health.txt" }, "Check service health"),
+      rule: { kind: "interval", every_seconds: 3_600, starts_at: (Time.now + 3_600).utc.iso8601 },
+      wake: "passive", idempotency_key: SecureRandom.uuid)
+    observations = []
+    11.times do |index|
+      incident = index == 10
+      if incident
+        # Only the observed file changes. Its script tells the deterministic model
+        # how to respond after the Runner read. The kernel never interprets health text.
+        override = CGI.escape(JSON.generate(action: "set_result_wake", wake: "auto"))
+        File.write(path, "degraded\n!mock tool_call=read,manage_schedule:#{override} reply=degraded -- Observed service health\n")
+      end
+      dispatched = jobs.run(job.public_id).last_execution
+      report = await("receipt for check #{index + 1}") do
+        chat.turns.list(limit: 50).items.find do |turn|
+          turn.sender_conversation_public_id == dispatched.child_conversation_public_id && turn.status == "completed"
+        end
+      end
+      row = jobs.fetch(job.public_id).last_execution
+      source = report.callback_sources.fetch(0).result
+      assert_equal [row.child_conversation_public_id, row.input_public_id, row.turn_public_id, row.variant_public_id],
+        [source.conversation_public_id, source.input_public_id, source.turn_public_id, source.variant_public_id]
+      assert_equal incident ? "auto" : "passive", row.wake
+      assert_equal incident ? "direct_reply" : "message", report.kind
+      child_tasks = @workspace.run(row.run_public_id).fetch.tasks
+      read = child_tasks.find { |task| task.tool_name == "read" }
+      assert_equal @runner.executor_public_id, read.claimed_by.executor_public_id
+      assert_equal incident ? 3 : 2, child_tasks.count(&:model_task?)
+      if incident
+        assert_includes @workspace.conversation(row.child_conversation_public_id).turns.fetch(row.turn_public_id).text, "degraded"
+        parent_run = @workspace.run(report.active_variant.run_public_id)
+        assert_equal 1, parent_run.fetch.tasks.count(&:model_task?)
+        assert_includes JSON.generate(parent_run.tasks_context("r1").request.entries), "degraded"
+      else
+        assert_includes report.text, "healthy"
+        assert_nil report.active_variant&.run_public_id
+      end
+      observations << row.input_public_id
+    end
+    assert_equal 11, observations.uniq.size
+    assert_equal observations.sort, jobs.executions(job.public_id, limit: 50).items.map(&:input_public_id).sort
+    assert_equal "passive", jobs.fetch(job.public_id).wake
+    turns = chat.turns.list(limit: 50).items
+    assert_equal 10, turns.count { |turn| turn.kind == "message" && turn.origin == "child" }
+    assert_equal 1, turns.count { |turn| turn.kind == "direct_reply" && turn.origin == "child" }
   end
 
   def test_two_independent_worker_finals_share_a_parent_reply_and_keep_exact_result_identity
@@ -235,8 +356,8 @@ class SchedulesTest < Minitest::Test
       [chat, @workspace.run(materialization.run_public_id)]
     end
 
-    def callback_turns(chat, child_id)
-      chat.turns.list.items.select { |turn| turn.sender_conversation_public_id == child_id && turn.kind == "direct_reply" }
+    def callback_turns(chat, child_id, kind: "direct_reply")
+      chat.turns.list.items.select { |turn| turn.sender_conversation_public_id == child_id && turn.kind == kind }
     end
 
     def task_text(detail)

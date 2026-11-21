@@ -27,7 +27,7 @@ class Settings::TokensController < Settings::BaseController
       name: @token_form.fetch(:name),
       note: @token_form.fetch(:note).presence,
       credential_plane: @token_form.fetch(:credential_plane)
-    )
+    ) { consume_sso_proof("settings_token") }
 
     case result.outcome
     when :issued

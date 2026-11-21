@@ -39,12 +39,12 @@ module RhoAcpClientTest
   # context a tool call runs under — `conversation_public_id` is what the
   # children table keys a child by.
   module Helpers
-    def with_tool_env(conversation: "conv-1", task_key: "r1t0", deadline: nil)
+    def with_tool_env(conversation: "conv-1", task_key: "r1t0", deadline: nil, attachments: nil)
       Dir.mktmpdir("rho-acp-client-test") do |root|
         real = File.realpath(root)
         env = Rho::Env::ToolEnv.new(root: real, artifacts_dir: File.join(real, ".artifacts"))
         context = Rho::Env::ExecutionContext.new(conversation_public_id: conversation, task_key: task_key,
-          run_public_id: "loop-1", deadline: deadline)
+          run_public_id: "loop-1", deadline: deadline, attachments: attachments)
         Rho::Env::ExecutionContext.with(context) { yield(env, real, context) }
       end
     end

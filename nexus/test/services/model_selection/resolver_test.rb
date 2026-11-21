@@ -251,9 +251,9 @@ class ModelSelection::ResolverTest < ActiveSupport::TestCase
     enable_lane("openai_api")
     install_key("openai_api")
 
-    selection = resolve(model: "openai_api/gpt-6.1-sol").selection
+    selection = resolve(model: "openai_api/gpt-6.2-sol").selection
     assert selection.reasoning.enabled
-    # gpt-6.1-sol's row authors `all_turns` as the kernel's own request — it
+    # gpt-6.2-sol's row authors `all_turns` as the kernel's own request — it
     # replays every earlier turn's reasoning items — while the vendor's
     # default stays unauthored.
     assert_equal "all_turns", selection.reasoning.context_policy
@@ -273,7 +273,7 @@ class ModelSelection::ResolverTest < ActiveSupport::TestCase
       expires_at: 3.hours.from_now
     )
 
-    selection = resolve(model: "codex_subscription/gpt-6.1-sol").selection
+    selection = resolve(model: "codex_subscription/gpt-6.2-sol").selection
 
     # The shipped fragment writes no streaming line — streaming is the wire's
     # fact — and this lane's wire accepts ONLY streaming: reading that

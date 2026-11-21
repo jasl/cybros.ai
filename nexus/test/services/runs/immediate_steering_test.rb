@@ -33,6 +33,23 @@ class Runs::ImmediateSteeringTest < ActiveJob::TestCase
       .map { |entry| entry.content_fragment.payload }.to_json
   end
 
+  test "an ordinary local steer waits without locking its Run and lands when the tools finish" do
+    run, tokens = steer_fixture
+    accepted = loop_input!(run, acting_user: @human, text: "include both results")
+    assert_predicate accepted, :accepted?
+    clear_enqueued_jobs
+    assert_no_queries_match(/FROM "runs".*FOR UPDATE/) { Runs::ScheduleSweepJob.perform_now }
+    assert Input.exists?(accepted.value.id)
+    assert_equal "queued", node(run, "r1").status
+
+    commit_claimed_tool(run, tokens, "r1t0", "first result")
+    commit_claimed_tool(run, tokens, "r1t1", "second result")
+    clear_enqueued_jobs
+    Runs::ScheduleSweepJob.perform_now
+    assert_equal 1, sealed_request(run, "r1").scan("include both results").length
+    assert_not Input.exists?(accepted.value.id)
+  end
+
   test "steer_now reads pending receipts immediately and preserves the original foreground join" do
     run, tokens = steer_fixture
     commit_claimed_tool(run, tokens, "r1t0", "short task complete")
@@ -99,13 +116,18 @@ class Runs::ImmediateSteeringTest < ActiveJob::TestCase
     refute_includes history.entries.join("\n"), "Tool read_file (completed, result available): {\"path\":\"long\"}"
   end
 
-  test "steer_now keeps a tool that completes during the model invocation behind that model" do
+  test "the sweep recovers a lost steer_now wake while a claimed tool stays behind the inserted model" do
     run, tokens = steer_fixture
     commit_claimed_tool(run, tokens, "r1t0", "short done")
+    clear_enqueued_jobs
     accepted = loop_input!(run, acting_user: @human, text: "inspect now", delivery_mode: "steer_now")
     assert_predicate accepted, :accepted?
-    schedule!(run)
+    assert_enqueued_with(job: Runs::ScheduleJob, args: [run.id])
+    clear_enqueued_jobs
+    Runs::ScheduleSweepJob.perform_now
+    assert_not Input.exists?(accepted.value.id), "the periodic sweep consumed the immediate correction"
     pending_request = sealed_request(run, "steer1")
+    assert_includes pending_request, "inspect now"
     commit_claimed_tool(run, tokens, "r1t1", "long result during steer")
     schedule!(run)
     assert_equal "queued", node(run, "r1").status

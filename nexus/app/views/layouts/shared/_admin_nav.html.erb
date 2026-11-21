@@ -32,6 +32,12 @@
     <% end %>
   </li>
   <li>
+    <%= link_to admin_sso_providers_path, class: class_names("gap-2.5", "menu-active": controller_path.start_with?("admin/sso_")) do %>
+      <span class="iconify lucide--key-round size-4" aria-hidden="true"></span>
+      <%= t("sso.authentication") %>
+    <% end %>
+  </li>
+  <li>
     <% agents_current = controller_path == "admin/agents" || controller_path.start_with?("admin/agents/") %>
     <%= link_to admin_agents_path, class: class_names("gap-2.5", "menu-active": agents_current), aria: { current: ("page" if agents_current) } do %>
       <span class="iconify lucide--bot size-4" aria-hidden="true"></span>

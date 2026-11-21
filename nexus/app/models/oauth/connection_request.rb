@@ -14,7 +14,7 @@ module OAuth
 
     attr_accessor(*FIELDS, :flow)
 
-    validates :client_id, inclusion: { in: [OAuth::DEVICE_CLIENT_ID, OAuth::APPLICATION_CLIENT_ID] }
+    validates :client_id, inclusion: { in: [OAuth::DEVICE_CLIENT_ID, OAuth::APPLICATION_CLIENT_ID, OAuth::TERMINAL_CLIENT_ID] }
     validates :connection_mode, inclusion: { in: %w[connect login] }
     validates :agent_identifier, length: { maximum: User::AGENT_IDENTIFIER_MAX_LENGTH }, allow_nil: true
     validates :agent_display_name, length: { maximum: User::DISPLAY_NAME_MAX_LENGTH }, allow_nil: true
@@ -31,6 +31,10 @@ module OAuth
 
     def application?
       client_id == OAuth::APPLICATION_CLIENT_ID
+    end
+
+    def terminal?
+      client_id == OAuth::TERMINAL_CLIENT_ID
     end
 
     def code_flow?
@@ -60,6 +64,14 @@ module OAuth
     private
 
       def connection_shape
+        if terminal?
+          if [agent_identifier, agent_display_name, executor_display_name, registration_identifier, runner_display_name, executor_kind].any?
+            errors.add(:client_id, :invalid)
+          end
+          errors.add(:scope, :invalid) unless scope.nil?
+          return
+        end
+
         agent = agent_identifier.present?
         runner = registration_identifier.present?
         errors.add(:agent_identifier, :blank) unless agent || runner

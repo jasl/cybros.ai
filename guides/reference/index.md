@@ -22,3 +22,5 @@ Lookup tables for the contracts the guides describe. Guides explain how to do so
 - Errors use one JSON envelope: `{ "error": { "code": "…", "message": "…" } }`. A `5xx` body may be JSON, non-JSON or empty; classify by status.
 - `limit` parameters use each resource's documented default when omitted; malformed, nonpositive or above-maximum values return `400 parameter_invalid` and are never clamped.
 - Lists use opaque keyset cursors; hand `next_after` back to the same call with the same filters.
+
+The [OpenAPI description](openapi.md) provides machine-readable HTTP schemas.

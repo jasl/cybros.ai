@@ -24,6 +24,23 @@ rho setup --nexus-url https://nexus.example
 
 The wizard lets you create an account in Nexus if needed, approve the device code, configure Telegram, optionally configure a provider through the same human OAuth login, and choose a saved default model. rho saves this terminal login for later setup commands.
 
+To connect without the setup wizard, use `rho connect` instead. For Nexus running
+on the same Mac or Linux host at port 3000:
+
+```sh
+rho connect --nexus-url http://127.0.0.1:3000
+```
+
+Complete the displayed browser or device-code approval and wait for the terminal
+to print **Connected** or **Connected as …**. Starting the daemon alone does not
+connect it. `rho connect` establishes credentials; choose a model separately
+before your first request.
+
+Keep the same `RHO_HOME` in every terminal (default `~/.rho`). Later commands use
+its saved Nexus address. HTTP `localhost` and `127.0.0.1` share a binding; see
+[Command line](../reference/cli.md) for the address rules. If connection fails,
+use [Troubleshooting](../use/troubleshooting.md#host-connection-and-first-request).
+
 rho announces a Local Runner service on the application address, reserved for its Main Agent, Bots and Subagents. Independent executor implementations can serve several applications under their approved [sharing scope](../runners/deploy.md#identity-and-scope).
 
 ## Connect with API keys
@@ -63,13 +80,28 @@ rho console --open
 
 `rho console --open` opens rho's public URL. Choose **Connect to Nexus** or **Use a device code** to establish the browser session, then create a conversation with an available model and runner. The runner uses its default working directory.
 
-For a quick noninteractive text check with a saved default model:
+Check `rho status` for the connection state as well as the running daemon. If
+the state is disconnected or not connected, finish `rho connect` before sending
+a request. A pending workspace alone is not evidence of a completed connection.
+
+Choose a `provider/model` identifier from `rho models --workload text_generation`.
+Replace `provider/model` below with that exact identifier for a quick text check:
 
 ```sh
+rho run "Say hello" --model provider/model
+```
+
+To save that choice for future requests:
+
+```sh
+rho settings '{"default_model":"provider/model"}'
 rho run "Say hello"
 ```
 
-This is a normal, potentially billed model request.
+Saved settings apply immediately to the running daemon. Model discovery does
+not make a model request; `rho run` is a normal, potentially billed request.
+If no usable model is listed, configure one through
+[Models and providers](../operate/models-and-providers.md), then list models again.
 
 ## Keep it running
 

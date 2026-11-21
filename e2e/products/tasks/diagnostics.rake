@@ -364,9 +364,9 @@ end
 # model) with its verdict; a failing journey's own output is in its log file. E2E_LIVE=1 rake
 # live_sweep # every live journey, both models E2E_LIVE=1 rake live_sweep[until,processes] # a
 # subset
-# `vision` and `capture` require their own target (`E2E_VISION_MODEL`), never
-# the sweep's floor rows — which read the index line and could not answer — so the sweep leaves them
-# to their own tasks (the floor's half of the images rider rides `live_rho_runner`). `mcp_oauth` is
+# `vision` and `capture` run as separate tasks with an image-capable target
+# selected through `E2E_VISION_MODEL`. `live_rho_runner` checks how the sweep model receives
+# a screenshot according to its declared modalities. `mcp_oauth` is
 # MANUAL — a real consent click inside five minutes, and a server named by `E2E_MCP_OAUTH_URL` — so
 # the sweep leaves it to its own task too: it must not block the sweep twice for five minutes.
 # `acp_client` runs codex-acp under THIS MACHINE'S Codex login — the owner's quota, `npx`, not a
@@ -465,7 +465,7 @@ Minitest::TestTask.create(:live_tool_discovery_smoke_test) do |t|
   t.test_globs = ["test/live_tool_discovery_smoke_test.rb"]
 end
 
-desc "The 1-hour cache tier on the direct Anthropic key (pre-audit L437): two turns on anthropic/claude-sonnet-5 " \
+desc "The 1-hour cache tier on the direct Anthropic key (pre-audit L437): two turns on anthropic/claude-sonnet-5-5 " \
      "through rho, the receipts' per-tier write share read the way settlement reads it — a 1-hour write on turn 1, " \
      "a read on turn 2 (paid, cents): E2E_LIVE=1 + ANTHROPIC_API_KEY; E2E_CACHE_TIER_MODEL names the row; out of " \
      "the graded exit lanes and the sweep"

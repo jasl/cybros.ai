@@ -129,9 +129,9 @@ class ModelCatalog::ModelInheritanceTest < ActiveSupport::TestCase
   end
 
   test "wire-neutral definitions still validate every composed route against its own protocol" do
-    definition = { "input_modalities" => ["image"], "reasoning" => { "efforts" => ["xhigh"] } }
+    definition = { "input_modalities" => ["image"], "reasoning" => { "efforts" => ["max"] } }
     unused = compile(definitions: { "example-text" => definition }, models: {})
-    assert_equal ["xhigh"], unused.model_definitions.fetch("example-text").dig("capabilities", "reasoning", "efforts")
+    assert_equal ["max"], unused.model_definitions.fetch("example-text").dig("capabilities", "reasoning", "efforts")
 
     assert_raises(ModelCatalog::CompileError) do
       compile(definitions: { "example-text" => definition },

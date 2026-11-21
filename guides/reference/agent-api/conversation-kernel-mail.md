@@ -92,9 +92,10 @@ contract](models.md#model-selection-and-recovery) as other model work.
 
 If selection or execution still fails, the mail turn retains its prompt,
 recipient and execution configuration in a run held at `needs_attention`.
-A task retry can name a different unspent model allowed by the captured
-constraints without repeating completed tools or the child request. It
-cannot renew the spent route budget or reset the original deadline.
+A task retry can ask the same model again or name a replacement allowed
+by the captured constraints without repeating completed tools or the child
+request. It creates a fresh bounded invocation while retaining spent
+automatic fallback history and the original execution deadline.
 Separate input or assembly refusals still degrade to
 a completed message containing the received text; that message has no
 retryable model task.

@@ -10,15 +10,18 @@ on the request path.
 
 | Installed vocabulary | Model bindings | Source license |
 | --- | --- | --- |
-| `deepseek-ai/DeepSeek-V4.1-Flash` | Direct DeepSeek Flash and its OpenRouter row | MIT |
+| `deepseek-ai/DeepSeek-V4.1-Flash` | Direct DeepSeek Flash and OpenRouter Flash-1017 | MIT |
 | `deepseek-ai/DeepSeek-V4-Pro-0813` | Direct DeepSeek Pro and its OpenRouter row | MIT |
-| `zai-org/GLM-5.2` | OpenRouter GLM 5.2, 5.3 and 5.3 Flash | MIT |
-| `tencent/Hy3` | OpenRouter Hy3 | Apache-2.0 |
+| `zai-org/GLM-5.2` | OpenRouter GLM 5.3 and 5.3 Flash | MIT |
+| `tencent/Hy3` | Previously enabled OpenRouter Hy3 deployments with a retained model definition | Apache-2.0 |
+| `tencent/Hy4` | OpenRouter Hy4 | Tencent Hy License, Version 1.0 |
 | `Qwen/Qwen3.8-Flash-Next` | OpenRouter Qwen Flash; local Flash-Next and 27B examples | Qwen Community License 1.0 |
 | `Qwen/Qwen3.5-9B` | Local Qwen 3.6 35B-A3B and 3.5 9B examples | Apache-2.0 |
 
-Shared bindings are based on byte-identical official `tokenizer.json` files,
-not family-name matching. The GLM comparison used [5.2](https://huggingface.co/zai-org/GLM-5.2/tree/cf457fa734ab149ffef225f80893eb38c6ff5cdc),
+The official `tokenizer.json` files are byte-identical for each group sharing a
+vocabulary. The DeepSeek comparison used [Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/tree/2cba9e42aa026125f3ed06c6d98c1db82f7ca027)
+and [Flash-1017](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017/tree/08c8657f02291e11b6f6b63e0e16014f8e748518).
+The GLM comparison used [5.2](https://huggingface.co/zai-org/GLM-5.2/tree/cf457fa734ab149ffef225f80893eb38c6ff5cdc),
 [5.3](https://huggingface.co/zai-org/GLM-5.3/tree/aca966e4e02791568aa6a4ced368624b3d897f42)
 and [5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash/tree/eb9eb208eb0d988989d07a6a12d0fdeb5f52574a).
 The Qwen comparisons used [Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next/tree/de4b8e4d43b917e7706784d8bb445c9af86a3540)

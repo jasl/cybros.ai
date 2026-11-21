@@ -61,12 +61,8 @@ module SimpleInference
           end
         end
 
-        # Frozen reasoning contract: 3.x reasoning is thinkingConfig.thinkingLevel
-        # (closed vocabulary; the model default "medium" applies when unset), and
-        # includeThoughts: true returns the rolling thought summaries the kernel
-        # consumes as reasoning deltas. The 2.5-era thinkingBudget is never
-        # emitted from reasoning_effort; a caller-supplied :thinking_config hash
-        # stays a verbatim escape hatch for 2.5-generation models.
+        # Ask for Google's public summaries even when the model chooses its
+        # own effort. A caller-supplied native config controls both fields.
         def gemini_thinking_config(declared)
           enabled = validated_reasoning_enabled(declared[:reasoning_enabled], effort: declared[:reasoning_effort])
           if enabled == false
@@ -77,14 +73,13 @@ module SimpleInference
           return Internal::Keys.shallow_symbolize(existing) unless existing.nil?
 
           effort = declared[:reasoning_effort]
-          return nil if effort.nil?
+          return { includeThoughts: true } if effort.nil?
 
           level = effort.to_s
           unless THINKING_LEVELS.include?(level)
             raise SimpleInference::ValidationError,
-                  "reasoning_effort #{effort.inspect} is outside the frozen gemini 3.x thinkingLevel " \
-                  "vocabulary (#{THINKING_LEVELS.join("|")}) — there is no disable level and no " \
-                  "nearest-level mapping on this lane"
+                  "reasoning_effort #{effort.inspect} is outside the Gemini thinkingLevel vocabulary " \
+                  "(#{THINKING_LEVELS.join("|")})"
           end
 
           {
@@ -120,6 +115,7 @@ module SimpleInference
           system_instruction = nil if system_instruction.empty?
 
           reject_assistant_last_input(contents)
+          mark_imported_function_calls(contents)
 
           [system_instruction, contents]
         end
@@ -258,27 +254,27 @@ module SimpleInference
 
           case type
           when "", "text", "input_text", "output_text"
-            text = normalized["text"].to_s
-            text.empty? ? nil : { text: text }
+            gemini_text_part(normalized)
           when "input_image", "image", "image_url"
             normalize_image_content_part(normalized)
           when "input_file"
             media = input_file_media(normalized)
             { inline_data: { mime_type: media.media_type, data: [media.bytes].pack("m0") } }
           when "thought"
-            # Replayed prior-turn reasoning as a native Gemini thought part. The signature is
-            # optional and strictly validated when present, so a replayed thought is unsigned
-            # (always accepted); attach thoughtSignature only when the caller supplies one.
-            text = normalized["text"].to_s
-            return nil if text.empty?
-
-            part = { thought: true, text: text }
-            signature = thought_signature_of(normalized)
-            part[:thoughtSignature] = signature if signature.to_s.length.positive?
-            part
+            gemini_text_part(normalized)&.merge(thought: true)
           else
             raise SimpleInference::ValidationError, "unsupported gemini content part #{type.inspect}"
           end
+        end
+
+        # A stream can finish with a signature attached to an empty text
+        # Part. Its position and the presence of its text field matter on replay.
+        def gemini_text_part(part)
+          text = part["text"]
+          signature = thought_signature_of(part)
+          return if text.to_s.empty? && signature.to_s.empty?
+
+          { text: text, thoughtSignature: signature }.compact
         end
 
         # Media ingress is BYTES-ONLY (transport policy, register Input-media
@@ -345,12 +341,31 @@ module SimpleInference
           end
 
           {
+            imported_call: true,
             functionCall: {
               name: name,
               args: arguments || {},
               id: call_id,
             }.compact,
           }
+        end
+
+        # Google's transfer marker lets a model consume an imported tool result
+        # when no native signature exists. Mark the first call of its parallel
+        # group on every render so appending a new turn leaves the prefix intact.
+        # A functionCall with a native provider payload keeps that payload.
+        def mark_imported_function_calls(contents)
+          contents.each do |content|
+            parts = content.fetch(:parts)
+            first_call = true
+            parts.each do |part|
+              next unless part.key?(:functionCall)
+
+              imported = part.delete(:imported_call)
+              part[:thoughtSignature] = "skip_thought_signature_validator" if imported && first_call
+              first_call = false
+            end
+          end
         end
 
         def append_content(contents, role:, parts:)

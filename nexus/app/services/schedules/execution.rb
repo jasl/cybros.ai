@@ -17,8 +17,10 @@ module Schedules
       end
     end
 
-    def ready_for_reply?(turn)
-      turn.conversation.with_lock do
+    def ready_for_reply?(child:, turn:)
+      # Refresh the occurrence's selected wake under the same lock as its
+      # last tool decision before handing the ready result to the relay.
+      child.with_lock do
         variant = Runs::Delegations.answering_variant(turn.reload)
         loop = variant&.run
         if loop

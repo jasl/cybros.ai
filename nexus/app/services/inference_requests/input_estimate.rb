@@ -50,10 +50,8 @@ module InferenceRequests
       return Result.refused(prepared.refusal) unless prepared.accepted?
 
       selection = prepared.selection
-      counted = ModelRequests::TokenCount.count(
-        profile: selection.execution_profile,
-        segments: Nexus::ModelRequestInput.text_segments(prepared.normalized.value, generation_config: selection.generation_config)
-      )
+      counted = ModelRequests::TokenCount.for_input(selection, prepared.normalized.value,
+        generation_config: selection.generation_config)
       return Result.refused(counted.refusal) unless counted.counted?
 
       limits = selection.capabilities.limits

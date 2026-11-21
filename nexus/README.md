@@ -116,7 +116,7 @@ The supported variables are `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
 `KIMI_CODE_API_KEY` (the `kimi_code` subscription provider),
 `MOONSHOT_API_KEY` (the `moonshot` provider at `api.moonshot.cn`),
 and `MOONSHOT_GLOBAL_API_KEY` (the independent `moonshot_global` provider at `api.moonshot.ai`).
-Both API providers offer `kimi-k3`, `kimi-k3.1-pro`, and
+Both API providers offer `kimi-k3.1-pro` and
 `kimi-k3.1-pro-highspeed` under their own provider prefix. Their credentials
 and billing are separate from the Kimi Code subscription; unknown prices remain absent.
 The import stores credentials through the ordinary encrypted credential writer

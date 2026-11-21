@@ -65,14 +65,14 @@ class Schedules::RelayTest < ActiveJob::TestCase
     assert_empty @conversation.inputs
   end
 
-  test "later job edits do not rewrite an accepted occurrence's callback source" do
+  test "later job edits preserve the original prompt and its passive receipt without a parent model call" do
     prompt = "Summarize the current inbox for this periodic occurrence."
-    job = create_job(prompt: prompt,
+    job = create_job(prompt: prompt, wake: "passive",
       rule: { "kind" => "interval", "starts_at" => (NOW + 60).iso8601, "every_seconds" => 60 })
     child, turn = start_child(job)
     revised = DatabaseClock.stub(:now, NOW + 65) do
       Schedules::Manage.revise(job, {
-        name: "Future audit", prompt: "Run the replacement one-time audit.",
+        name: "Future audit", prompt: "Run the replacement one-time audit.", wake: "auto",
         rule: { "kind" => "once", "run_at" => (NOW + 120).iso8601 },
       }, by: @human, expected_lock_version: job.lock_version)
     end
@@ -88,6 +88,28 @@ class Schedules::RelayTest < ActiveJob::TestCase
     assert_equal NOW + 60, child.scheduled_for
     assert_not_includes mail.text, "replacement"
     assert_not_includes mail.text, "Future audit"
+    assert_equal "message", mail.kind
+    assert_no_difference -> { ModelInvocation.count } do
+      assert_equal 1, Conversations::Inputs::ApplyNext.drain(conversation_id: @conversation.id)
+      relay(child)
+    end
+    receipt = @conversation.turns.sole
+    assert_equal "message", receipt.kind
+    assert_equal turn.public_id, receipt.callback_sources.sole.fetch("result").fetch("turn_public_id")
+    assert_empty @conversation.inputs
+    assert_nil @conversation.reload.active_turn
+  end
+
+  test "a terminal failure in a passive occurrence wakes its parent" do
+    declare_tools!(@agent, tools: [])
+    child, turn = start_child(create_job(wake: "passive"))
+    apply_via(attempt_of(turn.active_variant.model_invocation_id), json_response(400, { "error" => "failed check" }))
+    converge(turn)
+    assert_equal "failed", turn.reload.status
+    relay(child)
+    mail = @conversation.inputs.sole
+    assert_equal "direct_reply", mail.kind
+    assert_equal turn.public_id, mail.callback_result.fetch("turn_public_id")
   end
 
   test "a model-created schedule retains the original member requester without impersonating its speaker" do
@@ -181,7 +203,7 @@ class Schedules::RelayTest < ActiveJob::TestCase
   end
 
   test "a repairable child hold returns its result only after the original execution succeeds on retry" do
-    job = create_job
+    job = create_job(wake: "passive")
     child, turn = start_child(job)
     child_loop = turn.active_variant.run
     schedule_loop!(child_loop)
@@ -209,6 +231,7 @@ class Schedules::RelayTest < ActiveJob::TestCase
     relay(child)
 
     assert_equal envelope(job, child, "Mock: #{REPLY}"), @conversation.inputs.sole.text
+    assert_equal "message", @conversation.inputs.sole.kind
     assert_not_nil turn.reload.relayed_at
     assert_not Runs::Delegations.owed_result?(turn)
     assert_not Schedules::Execution.unfinished?(job.reload.last_execution_conversation)
@@ -320,7 +343,9 @@ class Schedules::RelayTest < ActiveJob::TestCase
     assert_no_enqueued_jobs(only: Runs::Spawn::RelayJob) { Runs::Spawn::RelayJob.perform_now }
     assert_equal 1, @conversation.inputs.count
     assert_not_nil turn.reload.relayed_at
-    assert_equal 0, Runs::Spawn::Relay.call[:relayed]
+    pass = Runs::Spawn::Relay.call(delegations_done: true, inputs_done: true, variants_done: true, budget: 1)
+    assert_equal 0, pass[:scanned], "a retained receipt takes no slot in the next recovery window"
+    assert_equal 0, pass[:relayed]
   end
 
   test "only the scheduled original reply is relayed while a later child exchange remains local" do
